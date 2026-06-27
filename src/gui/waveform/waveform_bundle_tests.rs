@@ -1,6 +1,6 @@
 use super::{
     WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
-    parse_operating_point_csv_text, parse_waveform_csv_text,
+    parse_noise_total_csv_text, parse_operating_point_csv_text, parse_waveform_csv_text,
     scope_report_bundle_artifact_detail_rows, scope_report_bundle_changed_artifacts,
     scope_report_bundle_index_path, scope_report_bundle_integrity_details,
     scope_report_bundle_integrity_details_csv, scope_report_bundle_integrity_details_markdown,
@@ -205,6 +205,8 @@ fn scope_report_bundle_exports_dc_operating_points_without_waveforms() {
     assert!(index.contains("<td>limiting</td>"));
     assert!(manifest.contains("operating_points.csv,operating_points.csv"));
     assert!(manifest.contains("operating_points.md,operating_points.md"));
+    assert!(manifest.contains("noise_totals.csv,noise_totals.csv"));
+    assert!(manifest.contains("noise_totals.md,noise_totals.md"));
     assert!(scope_report_bundle_missing_artifacts(bundle).is_empty());
     assert!(
         scope_report_bundle_changed_artifacts(bundle)
@@ -212,6 +214,62 @@ fn scope_report_bundle_exports_dc_operating_points_without_waveforms() {
             .is_empty()
     );
     assert!(app.status.contains("Exported scope report bundle"));
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
+fn scope_report_bundle_exports_noise_totals_without_waveforms() {
+    let noise_total = parse_noise_total_csv_text(
+        "onoise_total_v,inoise_total_v\n2.0e-7,4.0e-7\n",
+        "out/analog/divider_output_noise/noise_total.csv",
+    )
+    .unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_noise_bundle_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        noise_totals: vec![noise_total],
+        ..Default::default()
+    };
+
+    app.export_scope_report_bundle(&[]);
+
+    let bundle = std::path::Path::new(&app.waveform_recent_report_bundles[0]);
+    let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
+    let noise_csv = fs::read_to_string(bundle.join("noise_totals.csv")).unwrap();
+    let noise_markdown = fs::read_to_string(bundle.join("noise_totals.md")).unwrap();
+    let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
+    let index = fs::read_to_string(bundle.join("index.html")).unwrap();
+    let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
+
+    assert!(svg.contains("CircuitCI Noise Total Bundle"));
+    assert!(noise_csv.starts_with("scenario,sweep,corner,output_rms_v,input_rms_v,artifact\n"));
+    assert!(noise_csv.contains("divider_output_noise,nominal,nominal"));
+    assert!(noise_csv.contains("2.000000000000e-7,4.000000000000e-7"));
+    assert!(noise_markdown.contains("| divider_output_noise | nominal | nominal |"));
+    assert!(noise_markdown.contains(" V |"));
+    assert!(readme.contains("## Noise Totals"));
+    assert!(readme.contains("- Artifacts: 1"));
+    assert!(readme.contains("- Values: 2"));
+    assert!(index.contains("<h2>Noise Totals</h2>"));
+    assert!(index.contains("href=\"noise_totals.csv\""));
+    assert!(index.contains("<td>divider_output_noise</td>"));
+    assert!(index.contains("<td class=\"number\">"));
+    assert!(manifest.contains("noise_totals.csv,noise_totals.csv"));
+    assert!(manifest.contains("noise_totals.md,noise_totals.md"));
+    assert!(scope_report_bundle_missing_artifacts(bundle).is_empty());
+    assert!(
+        scope_report_bundle_changed_artifacts(bundle)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(app.status.contains("noise-total value row"));
 
     fs::remove_dir_all(&base_dir).unwrap();
 }

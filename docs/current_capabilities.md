@@ -119,7 +119,8 @@ Current analog support:
   and frequency band, and the check editor offers output and input-referred
   density/RMS noise presets. Scopes plots `noise_spectrum.csv` as
   frequency-axis output/input density traces and loads `noise_total.csv` into a
-  compact integrated-RMS noise table with CSV/Markdown copy actions.
+  compact integrated-RMS noise table with CSV/Markdown copy actions and
+  report-bundle export.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

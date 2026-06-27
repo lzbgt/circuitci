@@ -11,6 +11,9 @@ use super::waveform_footprint::{
     waveform_footprint_summary_markdown,
 };
 use super::waveform_load::format_waveform_load_bytes;
+use super::waveform_noise::{
+    noise_total_views_csv, noise_total_views_html, noise_total_views_markdown,
+};
 use super::waveform_operating_point::{
     operating_point_views_csv, operating_point_views_html, operating_point_views_markdown,
 };
@@ -32,6 +35,8 @@ pub(super) struct ScopeReportBundleFiles {
     measurement_snapshots_markdown: String,
     operating_points_csv: String,
     operating_points_markdown: String,
+    noise_totals_csv: String,
+    noise_totals_markdown: String,
     sweep_margin_summaries_csv: String,
     sweep_margin_summaries_markdown: String,
     readme: String,
@@ -71,8 +76,9 @@ impl CircuitCiApp {
                     .iter()
                     .map(|view| view.values.len())
                     .sum::<usize>();
+                let noise_total_values = self.noise_totals.len() * 2;
                 self.status = format!(
-                    "Exported scope report bundle with {} snapshot row(s) and {operating_point_values} DC value row(s) to {}.",
+                    "Exported scope report bundle with {} snapshot row(s), {operating_point_values} DC value row(s), and {noise_total_values} noise-total value row(s) to {}.",
                     snapshots.len(),
                     bundle_dir.display()
                 );
@@ -129,14 +135,17 @@ impl CircuitCiApp {
         &mut self,
         snapshots: &[ScopeMeasurementSnapshot],
     ) -> Option<ScopeReportBundleFiles> {
-        if snapshots.is_empty() && self.operating_points.is_empty() {
-            self.status = "No scope measurement snapshots or DC operating-point rows are available to bundle.".to_string();
+        if snapshots.is_empty() && self.operating_points.is_empty() && self.noise_totals.is_empty()
+        {
+            self.status = "No scope measurement snapshots, DC operating-point rows, or noise-total rows are available to bundle.".to_string();
             return None;
         }
         let scope_plot_svg = if let Some(scope_plot_svg) = self.current_scope_plot_svg() {
             scope_plot_svg
         } else if !self.operating_points.is_empty() {
             dc_operating_point_placeholder_svg()
+        } else if !self.noise_totals.is_empty() {
+            noise_total_placeholder_svg()
         } else {
             self.status = "No scope plot is available to include in the report bundle.".to_string();
             return None;
@@ -147,19 +156,26 @@ impl CircuitCiApp {
             operating_point_views_csv(&self.operating_points, self.report.as_ref());
         let operating_points_markdown =
             operating_point_views_markdown(&self.operating_points, self.report.as_ref());
+        let noise_totals_csv = noise_total_views_csv(&self.noise_totals);
+        let noise_totals_markdown = noise_total_views_markdown(&self.noise_totals);
         let sweep_margin_rows = scope_sweep_margin_summary_rows(self.report.as_ref());
         let sweep_margin_summaries_csv = scope_sweep_margin_summaries_csv(&sweep_margin_rows);
         let sweep_margin_summaries_markdown =
             scope_sweep_margin_summaries_markdown(&sweep_margin_rows);
-        let metadata = scope_report_bundle_content_metadata(
-            &scope_plot_svg,
-            &measurement_snapshots_csv,
-            &measurement_snapshots_markdown,
-            &operating_points_csv,
-            &operating_points_markdown,
-            &sweep_margin_summaries_csv,
-            &sweep_margin_summaries_markdown,
-        );
+        let metadata = scope_report_bundle_content_metadata(&[
+            ("scope_plot.svg", &scope_plot_svg),
+            ("measurement_snapshots.csv", &measurement_snapshots_csv),
+            ("measurement_snapshots.md", &measurement_snapshots_markdown),
+            ("operating_points.csv", &operating_points_csv),
+            ("operating_points.md", &operating_points_markdown),
+            ("noise_totals.csv", &noise_totals_csv),
+            ("noise_totals.md", &noise_totals_markdown),
+            ("sweep_margin_summaries.csv", &sweep_margin_summaries_csv),
+            (
+                "sweep_margin_summaries.md",
+                &sweep_margin_summaries_markdown,
+            ),
+        ]);
         Some(ScopeReportBundleFiles {
             scope_plot_svg,
             index_html: self.scope_report_bundle_index_html(
@@ -171,6 +187,8 @@ impl CircuitCiApp {
             measurement_snapshots_markdown,
             operating_points_csv,
             operating_points_markdown,
+            noise_totals_csv,
+            noise_totals_markdown,
             sweep_margin_summaries_csv,
             sweep_margin_summaries_markdown,
             readme: self.scope_report_bundle_readme(snapshots, &sweep_margin_rows, &metadata),
@@ -203,6 +221,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
 - `operating_points.csv` - loaded DC operating-point rows.
 - `operating_points.md` - loaded DC operating-point rows as Markdown.
+- `noise_totals.csv` - loaded integrated output/input RMS noise rows.
+- `noise_totals.md` - loaded integrated output/input RMS noise rows as Markdown.
 - `sweep_margin_summaries.csv` - worst-corner sweep margin summary rows from the loaded validation report.
 - `sweep_margin_summaries.md` - worst-corner sweep margin summary rows as Markdown.
 - `README.md` - this manifest.
@@ -227,6 +247,13 @@ report conveniences and are not part of the manifest they describe.
 - Group: {}
 
 ## DC Operating Points
+
+- Artifacts: {}
+- Values: {}
+
+{}
+
+## Noise Totals
 
 - Artifacts: {}
 - Values: {}
@@ -267,6 +294,9 @@ report conveniences and are not part of the manifest they describe.
                 .map(|view| view.values.len())
                 .sum::<usize>(),
             operating_point_views_markdown(&self.operating_points, self.report.as_ref()),
+            self.noise_totals.len(),
+            self.noise_totals.len() * 2,
+            noise_total_views_markdown(&self.noise_totals),
             sweep_margin_rows.len(),
             scope_sweep_margin_summaries_markdown(sweep_margin_rows),
             self.waveform_plot_export_size.label(),
@@ -323,6 +353,8 @@ report conveniences and are not part of the manifest they describe.
     <li><a href=\"measurement_snapshots.md\">measurement_snapshots.md</a> - filtered measurement snapshot rows as Markdown.</li>
     <li><a href=\"operating_points.csv\">operating_points.csv</a> - loaded DC operating-point rows.</li>
     <li><a href=\"operating_points.md\">operating_points.md</a> - loaded DC operating-point rows as Markdown.</li>
+    <li><a href=\"noise_totals.csv\">noise_totals.csv</a> - loaded integrated output/input RMS noise rows.</li>
+    <li><a href=\"noise_totals.md\">noise_totals.md</a> - loaded integrated output/input RMS noise rows as Markdown.</li>
     <li><a href=\"sweep_margin_summaries.csv\">sweep_margin_summaries.csv</a> - worst-corner sweep margin summary rows from the loaded validation report.</li>
     <li><a href=\"sweep_margin_summaries.md\">sweep_margin_summaries.md</a> - worst-corner sweep margin summary rows as Markdown.</li>
     <li><a href=\"README.md\">README.md</a> - text manifest.</li>
@@ -345,6 +377,15 @@ report conveniences and are not part of the manifest they describe.
   </table>
   <h2>DC Operating Points</h2>
   <p><a href=\"operating_points.csv\">CSV</a> | <a href=\"operating_points.md\">Markdown</a></p>
+  <table>
+    <tbody>
+      <tr><th>Artifacts</th><td class=\"number\">{}</td></tr>
+      <tr><th>Values</th><td class=\"number\">{}</td></tr>
+    </tbody>
+  </table>
+  {}
+  <h2>Noise Totals</h2>
+  <p><a href=\"noise_totals.csv\">CSV</a> | <a href=\"noise_totals.md\">Markdown</a></p>
   <table>
     <tbody>
       <tr><th>Artifacts</th><td class=\"number\">{}</td></tr>
@@ -390,6 +431,9 @@ report conveniences and are not part of the manifest they describe.
                 .map(|view| view.values.len())
                 .sum::<usize>(),
             operating_point_views_html(&self.operating_points, self.report.as_ref()),
+            self.noise_totals.len(),
+            self.noise_totals.len() * 2,
+            noise_total_views_html(&self.noise_totals),
             scope_sweep_margin_summaries_html(sweep_margin_rows),
             html_escape(self.waveform_plot_export_size.label()),
             yes_no(self.waveform_plot_export_cursors),
@@ -499,6 +543,13 @@ pub(super) fn write_scope_report_bundle_files(
             fs::write(
                 bundle_dir.join("operating_points.md"),
                 &files.operating_points_markdown,
+            )
+        })
+        .and_then(|()| fs::write(bundle_dir.join("noise_totals.csv"), &files.noise_totals_csv))
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("noise_totals.md"),
+                &files.noise_totals_markdown,
             )
         })
         .and_then(|()| {
@@ -775,6 +826,19 @@ fn dc_operating_point_placeholder_svg() -> String {
   <text x=\"48\" y=\"92\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"28\" fill=\"#202124\">CircuitCI DC Operating-Point Bundle</text>
   <text x=\"48\" y=\"136\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"18\" fill=\"#57606a\">No time or frequency trace plot was loaded for this export.</text>
   <text x=\"48\" y=\"168\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"18\" fill=\"#57606a\">See operating_points.csv and operating_points.md for bias evidence.</text>
+</svg>
+"
+    .to_string()
+}
+
+fn noise_total_placeholder_svg() -> String {
+    "\
+<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"960\" height=\"240\" viewBox=\"0 0 960 240\" role=\"img\" aria-label=\"CircuitCI noise-total bundle\">
+  <rect width=\"960\" height=\"240\" fill=\"#ffffff\"/>
+  <rect x=\"24\" y=\"24\" width=\"912\" height=\"192\" fill=\"#f6f8fa\" stroke=\"#d0d7de\"/>
+  <text x=\"48\" y=\"92\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"28\" fill=\"#202124\">CircuitCI Noise Total Bundle</text>
+  <text x=\"48\" y=\"136\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"18\" fill=\"#57606a\">No noise spectrum plot was loaded for this export.</text>
+  <text x=\"48\" y=\"168\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"18\" fill=\"#57606a\">See noise_totals.csv and noise_totals.md for integrated RMS noise evidence.</text>
 </svg>
 "
     .to_string()

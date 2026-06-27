@@ -39,6 +39,9 @@ impl CircuitCiApp {
                             .copy_text(noise_total_views_markdown(&self.noise_totals));
                         self.status = "Copied noise-total table Markdown.".to_string();
                     }
+                    if ui.button("Export Bundle").clicked() {
+                        self.export_scope_report_bundle(&[]);
+                    }
                 });
                 egui::Grid::new("noise_total_results")
                     .num_columns(6)
@@ -250,6 +253,44 @@ pub(super) fn noise_total_views_markdown(views: &[NoiseTotalView]) -> String {
         ));
     }
     markdown
+}
+
+pub(super) fn noise_total_views_html(views: &[NoiseTotalView]) -> String {
+    let mut html = String::from(
+        "\
+<table>
+  <thead>
+    <tr><th>Scenario</th><th>Sweep</th><th>Corner</th><th>Output RMS</th><th>Input RMS</th><th>Artifact</th></tr>
+  </thead>
+  <tbody>
+",
+    );
+    for view in views {
+        html.push_str(&format!(
+            "    <tr><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{} V</td><td class=\"number\">{} V</td><td>{}</td></tr>\n",
+            html_escape(&view.scenario),
+            html_escape(view.sweep.as_deref().unwrap_or("nominal")),
+            html_escape(view.corner.as_deref().unwrap_or("nominal")),
+            html_escape(&format_value(view.output_rms_v)),
+            html_escape(&format_value(view.input_rms_v)),
+            html_escape(&view.label),
+        ));
+    }
+    html.push_str("  </tbody>\n</table>");
+    html
+}
+
+fn html_escape(value: &str) -> String {
+    let value = value.trim();
+    if value.is_empty() {
+        return "-".to_string();
+    }
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 fn markdown_escape(value: &str) -> String {

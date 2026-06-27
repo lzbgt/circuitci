@@ -81,6 +81,8 @@ use waveform_load_diagnostics::{
     waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
     waveform_load_diagnostics_csv,
 };
+#[cfg(test)]
+use waveform_noise::parse_noise_total_csv_text;
 pub(super) use waveform_noise::{
     NoiseTotalView, load_report_noise_totals_with_progress_and_cancel,
 };
