@@ -4,6 +4,7 @@ mod analog_runner;
 mod analog_soa;
 mod analog_spice;
 mod analog_util;
+mod analog_waveform_measurements;
 mod backdrive;
 mod clock_source;
 mod common;

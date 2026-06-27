@@ -1034,10 +1034,10 @@ mod tests {
     };
     use crate::board_ir::load_project;
     use crate::library::{bind_project, load_library};
-    use crate::validation::analog_assertions::interpolate_at;
     use crate::validation::analog_operating_limits::{
         operating_limit_probes, operating_probe_expressions,
     };
+    use crate::validation::analog_waveform_measurements::interpolate_at;
     use std::path::Path;
 
     #[test]

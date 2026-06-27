@@ -358,6 +358,12 @@ single-value SPICE edits. It must remain a thin UI layer over
 `sketch_rename.rs` and `sketch_spice.rs`; it may parse convenience engineering
 suffixes for scalar values, but it must not bypass pin-convention validation,
 branch-expression rewrite rules, or Board IR reparse validation.
+`src/validation/analog_assertions.rs` owns Board IR analog assertion contracts,
+finding construction, limit/measured metadata, and assertion-summary plumbing.
+Pure waveform measurement algorithms, including interpolation, windowed
+aggregates, pulse/crossing metrics, settling, overshoot, and phase delay, live
+in `src/validation/analog_waveform_measurements.rs` so new simulation-signoff
+measurements can be added without growing assertion reporting code.
 `src/gui/sketch_component_labels.rs` owns visible component reference/value
 labels. Label text must always be derived from Board IR component IDs and
 scalar component-level SPICE evidence; persisted
