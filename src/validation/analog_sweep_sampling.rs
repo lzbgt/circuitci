@@ -4,6 +4,7 @@ use crate::board_ir::{
 use std::collections::BTreeSet;
 
 const MAX_MONTE_CARLO_SAMPLES: usize = 64;
+const NORMAL_SIGMA_SPAN: f64 = 3.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct MonteCarloComponentValue {
@@ -54,20 +55,13 @@ pub(super) fn monte_carlo_component_value_samples(
                 entry.field.as_str()
             ));
         }
-        if !matches!(entry.distribution, AnalogMonteCarloDistribution::Uniform) {
-            return Err(format!(
-                "Analog sweep {sweep_name} Monte Carlo only supports uniform distribution today."
-            ));
-        }
     }
 
     let mut samples = Vec::with_capacity(monte_carlo.samples);
     for sample_index in 0..monte_carlo.samples {
         let mut sample = Vec::with_capacity(monte_carlo.component_values.len());
         for (entry_index, entry) in monte_carlo.component_values.iter().enumerate() {
-            let unit = deterministic_unit_sample(monte_carlo.seed, sample_index, entry_index);
-            let tolerance = entry.tolerance_percent / 100.0;
-            let value = entry.nominal * (1.0 - tolerance + unit * 2.0 * tolerance);
+            let value = sampled_component_value(monte_carlo.seed, sample_index, entry_index, entry);
             if entry.field.requires_positive_value() && value <= 0.0 {
                 return Err(format!(
                     "Analog sweep {sweep_name} Monte Carlo component value {}.{} generated a non-positive sample.",
@@ -84,6 +78,33 @@ pub(super) fn monte_carlo_component_value_samples(
         samples.push(sample);
     }
     Ok(samples)
+}
+
+fn sampled_component_value(
+    seed: u64,
+    sample_index: usize,
+    entry_index: usize,
+    entry: &crate::board_ir::AnalogMonteCarloComponentValue,
+) -> f64 {
+    let tolerance = entry.tolerance_percent / 100.0;
+    match entry.distribution {
+        AnalogMonteCarloDistribution::Uniform => {
+            let unit = deterministic_unit_sample(seed, sample_index, entry_index);
+            entry.nominal * (1.0 - tolerance + unit * 2.0 * tolerance)
+        }
+        AnalogMonteCarloDistribution::Normal => {
+            let z = deterministic_normal_sample(seed, sample_index, entry_index)
+                .clamp(-NORMAL_SIGMA_SPAN, NORMAL_SIGMA_SPAN);
+            entry.nominal * (1.0 + z * tolerance / NORMAL_SIGMA_SPAN)
+        }
+    }
+}
+
+fn deterministic_normal_sample(seed: u64, sample_index: usize, entry_index: usize) -> f64 {
+    let u1 = deterministic_unit_sample(seed ^ 0x517c_c1b7_2722_0a95, sample_index, entry_index)
+        .max(f64::MIN_POSITIVE);
+    let u2 = deterministic_unit_sample(seed ^ 0xa24b_aed4_963e_e407, sample_index, entry_index);
+    (-2.0 * u1.ln()).sqrt() * (std::f64::consts::TAU * u2).cos()
 }
 
 fn deterministic_unit_sample(seed: u64, sample_index: usize, entry_index: usize) -> f64 {
@@ -157,5 +178,29 @@ mod tests {
             .unwrap_err();
 
         assert!(error.contains("declares component value R1.value_ohm more than once"));
+    }
+
+    #[test]
+    fn monte_carlo_normal_component_samples_are_deterministic_and_bounded_at_three_sigma() {
+        let mut monte_carlo = rc_monte_carlo(77);
+        monte_carlo.component_values[0].distribution = AnalogMonteCarloDistribution::Normal;
+        monte_carlo.component_values[1].distribution = AnalogMonteCarloDistribution::Normal;
+
+        let samples =
+            monte_carlo_component_value_samples("rc_mc", &monte_carlo, &BTreeSet::new()).unwrap();
+        let repeated =
+            monte_carlo_component_value_samples("rc_mc", &monte_carlo, &BTreeSet::new()).unwrap();
+
+        assert_eq!(samples, repeated);
+        assert_eq!(samples.len(), 4);
+        assert!(
+            samples
+                .iter()
+                .any(|sample| (sample[0].value - 1000.0).abs() > 0.1)
+        );
+        for sample in samples {
+            assert!((950.0..=1050.0).contains(&sample[0].value));
+            assert!((0.00000009..=0.00000011).contains(&sample[1].value));
+        }
     }
 }

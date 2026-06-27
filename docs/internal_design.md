@@ -416,8 +416,9 @@ GUI-only model. `src/gui/analog_sweep_monte_carlo.rs` keeps the Monte Carlo
 YAML mutation helpers separate from the general sweep projection/preset helper
 so the GUI can grow without pushing either module over the source-size guard.
 `src/validation/analog_sweep_sampling.rs` owns deterministic Monte Carlo
-component-value sample generation so sampled tolerance runs expand into normal
-sweep corners before any transient, AC, DC, or noise backend is invoked.
+component-value sample generation for uniform and truncated normal
+distributions so sampled tolerance runs expand into normal sweep corners before
+any transient, AC, DC, or noise backend is invoked.
 `src/validation/analog_sweep_reports.rs` owns Monte Carlo yield and percentile
 criteria evaluation, promoting the corresponding summary finding to critical
 when declared targets are missed.

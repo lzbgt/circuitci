@@ -2602,8 +2602,12 @@ emits an ngspice `.lib "path" section` line.
 
 Monte Carlo sweeps use a `monte_carlo` block with `samples`, optional `seed`,
 and `component_values[]` entries containing `component`, `field`, `nominal`,
-`tolerance_percent`, and optional `distribution: uniform`. A Monte Carlo block
-may also declare `criteria` with optional `min_yield_percent`,
+`tolerance_percent`, and optional `distribution`. Supported distributions are
+`uniform` and `normal`; `uniform` samples linearly within
+`nominal * (1 +/- tolerance_percent/100)`, while `normal` treats the same
+tolerance as +/-3 sigma and clamps sampled z-scores to that range so generated
+passive values remain bounded. A Monte Carlo block may also declare `criteria`
+with optional `min_yield_percent`,
 `min_p1_margin`, `min_p5_margin`, `min_p50_margin`, and `min_p95_margin`
 limits. The sampler is deterministic: the same seed, sample count, and target
 list produce the same sampled component values, corner names, artifacts, and

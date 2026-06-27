@@ -150,9 +150,10 @@ Current analog support:
   such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`, and vendor model-library
   sections through section-specific ngspice `.lib` cards. They can also use
   deterministic Monte Carlo component-value samples for generated-board
-  tolerance observations, with sampled values represented as normal component
-  value corners and summarized with per-assertion yield percent, pass/fail
-  counts, mean margin, margin standard deviation, min/max margin, and
+  tolerance observations using uniform or normal distributions, with sampled
+  values represented as normal component value corners and summarized with
+  per-assertion yield percent, pass/fail counts, mean margin, margin standard
+  deviation, min/max margin, and
   linearly interpolated P1/P5/P50/P95 sampled-margin percentiles. Optional
   Monte Carlo criteria can require minimum yield percent or percentile margins,
   causing sampled tolerance observations to fail when design-yield targets are
@@ -167,9 +168,10 @@ Current analog support:
   Built-in corner presets add common supply, load, temperature, model-selector,
   and RC-tolerance sweeps; `TEMP_C` and `TEMPERATURE_C` also drive ngspice
   `.temp`. Declared Monte Carlo sweeps are shown with their sample counts and
-  sampled component fields in the same table, and users can author sample
-  count, seed, nominal/tolerance targets, minimum yield percent, and
-  P1/P5/P50/P95 margin targets from the GUI.
+  sampled component fields/distributions in the same table, and users can
+  author sample count, seed, nominal/tolerance targets, uniform/normal
+  distribution, minimum yield percent, and P1/P5/P50/P95 margin targets from
+  the GUI.
 - GUI generated run-setup overview rows for completed sweep worst-corner
   assertion margins, including limiting corner, parameter values, component
   value inputs, selected model sections, measured value, limit, margin,

@@ -57,6 +57,7 @@ pub(super) struct AnalogMonteCarloComponentValueSummary {
     pub(super) field: String,
     pub(super) nominal: f64,
     pub(super) tolerance_percent: f64,
+    pub(super) distribution: String,
 }
 
 #[derive(Debug, Clone)]
@@ -261,6 +262,10 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
                                                 nominal: component_value.nominal,
                                                 tolerance_percent: component_value
                                                     .tolerance_percent,
+                                                distribution: component_value
+                                                    .distribution
+                                                    .as_str()
+                                                    .to_string(),
                                             }
                                         })
                                         .collect(),
@@ -1366,6 +1371,7 @@ scenarios:
         assert_eq!(monte_carlo.component_values[0].field, "value_ohm");
         assert_eq!(monte_carlo.component_values[0].nominal, 1000.0);
         assert_eq!(monte_carlo.component_values[0].tolerance_percent, 5.0);
+        assert_eq!(monte_carlo.component_values[0].distribution, "uniform");
         let criteria = monte_carlo.criteria.as_ref().unwrap();
         assert_eq!(criteria.min_yield_percent, Some(95.0));
         assert_eq!(criteria.min_p5_margin, Some(0.1));

@@ -10,6 +10,7 @@ pub(super) struct AnalogMonteCarloComponentValueDraft {
     pub(super) field: String,
     pub(super) nominal: String,
     pub(super) tolerance_percent: String,
+    pub(super) distribution: String,
 }
 
 struct ParsedMonteCarloComponentValue<'a> {
@@ -17,6 +18,7 @@ struct ParsedMonteCarloComponentValue<'a> {
     field: &'a str,
     nominal: f64,
     tolerance_percent: f64,
+    distribution: &'a str,
 }
 
 pub(super) fn append_analog_sweep_with_monte_carlo(
@@ -183,6 +185,7 @@ fn monte_carlo_component_value_entry(
         key("tolerance_percent"),
         serde_yaml_ng::Value::Number(component_value.tolerance_percent.into()),
     );
+    insert_string(&mut mapping, "distribution", component_value.distribution);
     serde_yaml_ng::Value::Mapping(mapping)
 }
 
@@ -197,12 +200,14 @@ fn parsed_component_value(
     if tolerance_percent < 0.0 {
         anyhow::bail!("Monte Carlo tolerance percent must be zero or greater.");
     }
+    let distribution = validated_distribution(&draft.distribution)?;
     validate_component_value_range(field, nominal)?;
     Ok(ParsedMonteCarloComponentValue {
         component,
         field,
         nominal,
         tolerance_percent,
+        distribution,
     })
 }
 
@@ -273,6 +278,14 @@ fn validate_component_value_range(field: &str, nominal: f64) -> Result<()> {
         anyhow::bail!("Passive Monte Carlo component values must use positive nominals.");
     }
     Ok(())
+}
+
+fn validated_distribution(value: &str) -> Result<&str> {
+    let value = value.trim();
+    match value {
+        "uniform" | "normal" => Ok(value),
+        _ => anyhow::bail!("Monte Carlo distribution must be uniform or normal."),
+    }
 }
 
 fn validate_updated_yaml(yaml: serde_yaml_ng::Value) -> Result<String> {
@@ -448,6 +461,7 @@ scenarios:
             field: "value_ohm".to_string(),
             nominal: "1000".to_string(),
             tolerance_percent: "5".to_string(),
+            distribution: "uniform".to_string(),
         }
     }
 
@@ -477,6 +491,29 @@ scenarios:
         assert_eq!(monte_carlo.component_values[0].field.as_str(), "value_ohm");
         assert_eq!(monte_carlo.component_values[0].nominal, 1000.0);
         assert_eq!(monte_carlo.component_values[0].tolerance_percent, 5.0);
+        assert_eq!(
+            monte_carlo.component_values[0].distribution.as_str(),
+            "uniform"
+        );
+    }
+
+    #[test]
+    fn append_monte_carlo_sweep_accepts_normal_distribution() {
+        let draft = AnalogMonteCarloComponentValueDraft {
+            distribution: "normal".to_string(),
+            ..rload_draft()
+        };
+        let edited =
+            append_analog_sweep_with_monte_carlo(generated_load_project_yaml(), &draft).unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let distribution = &project.scenarios[0].analog.as_ref().unwrap().sweeps[0]
+            .monte_carlo
+            .as_ref()
+            .unwrap()
+            .component_values[0]
+            .distribution;
+        assert_eq!(distribution.as_str(), "normal");
     }
 
     #[test]

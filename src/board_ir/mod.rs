@@ -1160,6 +1160,16 @@ pub struct AnalogMonteCarloComponentValue {
 pub enum AnalogMonteCarloDistribution {
     #[default]
     Uniform,
+    Normal,
+}
+
+impl AnalogMonteCarloDistribution {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Uniform => "uniform",
+            Self::Normal => "normal",
+        }
+    }
 }
 
 fn default_monte_carlo_seed() -> u64 {

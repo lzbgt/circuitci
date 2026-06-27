@@ -85,6 +85,13 @@ impl CircuitCiApp {
                     ui.text_edit_singleline(&mut self.analog_sweep_monte_carlo_tolerance_percent);
                     ui.end_row();
 
+                    ui.label("MC distribution");
+                    monte_carlo_distribution_combo(
+                        ui,
+                        &mut self.analog_sweep_monte_carlo_distribution,
+                    );
+                    ui.end_row();
+
                     ui.label("Model file");
                     ui.text_edit_singleline(&mut self.analog_sweep_model_path);
                     ui.end_row();
@@ -591,6 +598,7 @@ impl CircuitCiApp {
             field: self.analog_sweep_component_field.clone(),
             nominal: self.analog_sweep_monte_carlo_nominal.clone(),
             tolerance_percent: self.analog_sweep_monte_carlo_tolerance_percent.clone(),
+            distribution: self.analog_sweep_monte_carlo_distribution.clone(),
         }
     }
 }
@@ -636,6 +644,18 @@ fn analog_sweep_scenario_combo(
             for scenario in scenarios {
                 ui.selectable_value(selected_scenario, scenario.name.clone(), &scenario.name);
             }
+        });
+}
+
+fn monte_carlo_distribution_combo(ui: &mut egui::Ui, selected_distribution: &mut String) {
+    if selected_distribution.trim().is_empty() {
+        *selected_distribution = "uniform".to_string();
+    }
+    egui::ComboBox::from_id_salt("analog_sweep_monte_carlo_distribution")
+        .selected_text(selected_distribution.as_str())
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected_distribution, "uniform".to_string(), "uniform");
+            ui.selectable_value(selected_distribution, "normal".to_string(), "normal");
         });
 }
 
@@ -741,11 +761,12 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
             .iter()
             .map(|component_value| {
                 format!(
-                    "{}.{} {:.6} +/-{:.3}%",
+                    "{}.{} {:.6} +/-{:.3}% {}",
                     component_value.component,
                     component_value.field,
                     component_value.nominal,
-                    component_value.tolerance_percent
+                    component_value.tolerance_percent,
+                    component_value.distribution
                 )
             })
             .collect::<Vec<_>>()
@@ -934,6 +955,7 @@ scenarios:
             analog_sweep_monte_carlo_seed: "77".to_string(),
             analog_sweep_monte_carlo_nominal: "1000".to_string(),
             analog_sweep_monte_carlo_tolerance_percent: "5".to_string(),
+            analog_sweep_monte_carlo_distribution: "normal".to_string(),
             ..Default::default()
         };
 
@@ -952,5 +974,9 @@ scenarios:
         assert_eq!(monte_carlo.component_values[0].component, "RLOAD");
         assert_eq!(monte_carlo.component_values[0].nominal, 1000.0);
         assert_eq!(monte_carlo.component_values[0].tolerance_percent, 5.0);
+        assert_eq!(
+            monte_carlo.component_values[0].distribution.as_str(),
+            "normal"
+        );
     }
 }

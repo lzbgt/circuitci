@@ -1609,7 +1609,7 @@
                                 "minimum": 0
                               },
                               "distribution": {
-                                "enum": ["uniform"]
+                                "enum": ["uniform", "normal"]
                               }
                             },
                             "additionalProperties": false

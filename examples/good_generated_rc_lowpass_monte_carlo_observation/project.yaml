@@ -89,6 +89,7 @@ scenarios:
                 field: value_f
                 nominal: 0.0000001
                 tolerance_percent: 10.0
+                distribution: normal
       probes:
         - name: input
           expression: V(input)

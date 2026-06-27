@@ -226,7 +226,10 @@ be driven from Board IR component names instead of hand-written SPICE parameter
 names. `monte_carlo` sweep blocks deterministically sample generated component
 fields around a nominal value and tolerance using the declared seed; sampled
 values are expanded into the same component-value override path, so artifacts
-and margin summaries remain reproducible. Swept assertions emit
+and margin summaries remain reproducible. Monte Carlo component entries support
+`distribution: uniform` and `distribution: normal`; normal sampling treats the
+declared tolerance as +/-3 sigma and clamps generated z-scores to that span.
+Swept assertions emit
 `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify the worst evaluated
 corner, parameter values, component value inputs, selected model-library
 sections, measured value, limit, relation, and numeric margin for each
