@@ -104,7 +104,10 @@ Current analog support:
   transient and AC/Bode workflows. The GUI run-setup editor can author
   generated DC operating-point observations directly, and the check editor
   offers ordinary assertion presets for 3.3 V rails, 5 V rails, and 2.5 V
-  midpoint bias windows.
+  midpoint bias windows. Scopes loads `operating_point.csv` artifacts into a
+  compact DC table with scenario, sweep, corner, probe, value, worst-corner
+  marker, artifact label, and Copy CSV action, so bias runs are inspectable
+  without opening report files.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

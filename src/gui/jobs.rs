@@ -1,6 +1,7 @@
 use super::project::{optional_path, sanitized_project_name};
 use super::waveform::{
-    WaveformLoadDiagnostic, WaveformLoadRequest, WaveformView,
+    OperatingPointView, WaveformLoadDiagnostic, WaveformLoadRequest, WaveformView,
+    load_report_operating_points_with_progress_and_cancel,
     load_report_waveforms_with_progress_and_cancel,
     load_waveform_requests_with_progress_and_cancel, merge_waveform_load_diagnostics,
     waveform_load_deferred_paths,
@@ -72,6 +73,7 @@ struct ValidationJobOutput {
     report: ValidationReport,
     markdown: String,
     waveforms: Vec<WaveformView>,
+    operating_points: Vec<OperatingPointView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
 }
 
@@ -148,10 +150,16 @@ impl CircuitCiApp {
                             || cancel_token.load(Ordering::Relaxed),
                             defer_large_waveforms,
                         )?;
+                    let operating_points = load_report_operating_points_with_progress_and_cancel(
+                        &report,
+                        |stage, detail| send_background_progress(&sender, stage, detail),
+                        || cancel_token.load(Ordering::Relaxed),
+                    )?;
                     Ok(ValidationJobOutput {
                         report,
                         markdown,
                         waveforms,
+                        operating_points,
                         waveform_load_diagnostics,
                     })
                 });
@@ -613,12 +621,15 @@ impl CircuitCiApp {
             Ok(output) => {
                 let waveforms = output.waveforms;
                 let waveform_count = waveforms.len();
+                let operating_point_count = output.operating_points.len();
                 let deferred_count =
                     waveform_load_deferred_paths(&output.waveform_load_diagnostics).len();
-                self.status = format!("Validation {}", output.report.result);
+                let validation_status = format!("Validation {}", output.report.result);
+                self.status = validation_status.clone();
                 self.report_markdown = output.markdown;
                 self.report = Some(output.report);
                 self.waveforms = waveforms;
+                self.operating_points = output.operating_points;
                 self.waveform_load_diagnostics = output.waveform_load_diagnostics;
                 self.waveform_plot_cache.clear();
                 self.waveform_pinned_traces.clear();
@@ -638,25 +649,28 @@ impl CircuitCiApp {
                 self.waveform_value_max = None;
                 self.clear_waveform_view_history();
                 self.waveform_trigger_threshold = 0.0;
-                self.stage = if waveform_count == 0 && deferred_count == 0 {
-                    Stage::Reports
-                } else {
-                    Stage::Simulation
-                };
+                let next_stage =
+                    if waveform_count == 0 && deferred_count == 0 && operating_point_count == 0 {
+                        Stage::Reports
+                    } else {
+                        Stage::Simulation
+                    };
                 self.push_diagnostic(&format!(
-                    "Background validation report written; loaded {waveform_count} waveform view(s), deferred {deferred_count} artifact(s)."
+                    "Background validation report written; loaded {waveform_count} waveform view(s), {operating_point_count} DC operating-point table(s), deferred {deferred_count} artifact(s)."
                 ));
                 self.push_background_job_record(
                     "validation",
                     "completed",
                     elapsed_secs,
                     format!(
-                        "Validation {}; loaded {waveform_count} waveform view(s), deferred {deferred_count} artifact(s).",
+                        "Validation {}; loaded {waveform_count} waveform view(s), {operating_point_count} DC operating-point table(s), deferred {deferred_count} artifact(s).",
                         self.status.trim_start_matches("Validation ")
                     ),
                     Some(result.output_dir.to_string_lossy().into_owned()),
                 );
                 self.load_project_summary_unchecked();
+                self.stage = next_stage;
+                self.status = validation_status;
             }
             Err(error) => {
                 if cancellation::is_canceled(&error) {

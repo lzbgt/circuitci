@@ -92,7 +92,7 @@ use sketch_navigator::SketchNavigatorTarget;
 use sketch_scope_tools::SketchScopeProbeTool;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
-    ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
+    OperatingPointView, ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
     ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformFootprintSortKey,
     WaveformFootprintSourceFilter, WaveformFootprintUnloadTarget, WaveformLoadDiagnostic,
     WaveformLoadPreviewFilter, WaveformLoadStatusFilter, WaveformPlotCache, WaveformTracePreset,
@@ -437,6 +437,7 @@ pub struct CircuitCiApp {
     sketch_component_label_drag: Option<SketchComponentLabelDrag>,
     sketch_probe_element_drag: Option<SketchProbeElementDrag>,
     waveforms: Vec<WaveformView>,
+    operating_points: Vec<OperatingPointView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
     waveform_load_filter: String,
     waveform_load_status_filter: WaveformLoadStatusFilter,
@@ -679,6 +680,7 @@ impl Default for CircuitCiApp {
             sketch_component_label_drag: None,
             sketch_probe_element_drag: None,
             waveforms: Vec::new(),
+            operating_points: Vec::new(),
             waveform_load_diagnostics: Vec::new(),
             waveform_load_filter: String::new(),
             waveform_load_status_filter: WaveformLoadStatusFilter::All,

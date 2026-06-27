@@ -17,6 +17,7 @@ mod waveform_footprint;
 mod waveform_io;
 mod waveform_load;
 mod waveform_load_diagnostics;
+mod waveform_operating_point;
 mod waveform_plot;
 mod waveform_runtime;
 mod waveform_snapshots;
@@ -79,6 +80,9 @@ use waveform_load_diagnostics::{
     waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
     waveform_load_diagnostics_csv,
 };
+pub(super) use waveform_operating_point::{
+    OperatingPointView, load_report_operating_points_with_progress_and_cancel,
+};
 pub(super) use waveform_plot::{WaveformCursorTarget, WaveformPlotCache};
 #[cfg(test)]
 use waveform_plot::{
@@ -117,6 +121,7 @@ impl CircuitCiApp {
     pub(super) fn waveform_scope_view(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
         self.waveform_scope_header(ui);
         self.waveform_load_diagnostics_panel(ui);
+        self.operating_point_results_panel(ui);
         if self.waveforms.is_empty() {
             self.waveform_selector(ui);
             return;
@@ -133,7 +138,11 @@ impl CircuitCiApp {
 
     pub(super) fn waveform_controls_panel(&mut self, ui: &mut egui::Ui) {
         if self.waveforms.is_empty() {
-            ui.label("Run creates a default transient voltage probe when the schematic has no analog probes.");
+            if self.operating_points.is_empty() {
+                ui.label("Run creates a default transient voltage probe when the schematic has no analog probes.");
+            } else {
+                ui.label("DC operating-point values are shown in the main results table.");
+            }
             ui.label("For explicit traces, select a net/component in Schematic and add Probe V, Probe I, or Probe P.");
             return;
         }
