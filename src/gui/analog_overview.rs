@@ -2,7 +2,11 @@ use anyhow::{Context, Result};
 use eframe::egui;
 use std::collections::BTreeSet;
 
+use crate::reports::{Finding, ValidationReport};
+
 use super::CircuitCiApp;
+
+const ANALOG_SWEEP_MARGIN_SUMMARY: &str = "ANALOG_SWEEP_MARGIN_SUMMARY";
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogGeneratedOverview {
@@ -25,6 +29,13 @@ pub(super) struct AnalogOverviewRow {
     pub(super) name: String,
     pub(super) detail: String,
     action: Option<AnalogOverviewAction>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct AnalogSweepMarginRow {
+    pub(super) assertion: String,
+    pub(super) detail: String,
+    pub(super) passed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -187,6 +198,8 @@ impl CircuitCiApp {
                 });
             ui.add_space(6.0);
             self.analog_readiness_rows(ui, selected);
+            let sweep_margins = analog_sweep_margin_rows(self.report.as_ref(), &selected.name);
+            analog_sweep_margin_rows_ui(ui, &sweep_margins);
             analog_overview_rows(ui, "Sources", &selected.source_rows);
             analog_overview_rows(ui, "Probes", &selected.probe_rows);
             analog_overview_rows(ui, "Checks", &selected.assertion_rows);
@@ -321,6 +334,103 @@ fn analog_overview_rows(ui: &mut egui::Ui, label: &str, rows: &[AnalogOverviewRo
                 ui.end_row();
             }
         });
+}
+
+pub(super) fn analog_sweep_margin_rows(
+    report: Option<&ValidationReport>,
+    scenario_name: &str,
+) -> Vec<AnalogSweepMarginRow> {
+    report
+        .into_iter()
+        .flat_map(|report| report.infos.iter())
+        .filter(|finding| {
+            finding.id == ANALOG_SWEEP_MARGIN_SUMMARY && finding.scenario == scenario_name
+        })
+        .filter_map(sweep_margin_row)
+        .collect()
+}
+
+fn analog_sweep_margin_rows_ui(ui: &mut egui::Ui, rows: &[AnalogSweepMarginRow]) {
+    if rows.is_empty() {
+        return;
+    }
+    ui.strong("Sweep margins");
+    egui::Grid::new("analog_generated_overview_sweep_margins")
+        .num_columns(3)
+        .striped(true)
+        .show(ui, |ui| {
+            for row in rows {
+                ui.monospace(&row.assertion);
+                ui.label(if row.passed { "pass" } else { "fail" });
+                ui.label(&row.detail);
+                ui.end_row();
+            }
+        });
+}
+
+fn sweep_margin_row(finding: &Finding) -> Option<AnalogSweepMarginRow> {
+    let assertion = json_string(&finding.measured, "assertion")?;
+    let sweep =
+        json_string(&finding.measured, "analog_sweep").unwrap_or_else(|| "sweep".to_string());
+    let corner =
+        json_string(&finding.measured, "analog_corner").unwrap_or_else(|| "corner".to_string());
+    let relation = json_string(&finding.limit, "relation").unwrap_or_else(|| "limit".to_string());
+    let unit = json_string(&finding.measured, "measured_unit")
+        .or_else(|| json_string(&finding.limit, "limit_unit"))
+        .unwrap_or_default();
+    let measured = json_f64(&finding.measured, "measured_value")
+        .map(|value| {
+            format!("{} {}", compact_number(value), unit)
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_else(|| "measured n/a".to_string());
+    let limit = json_f64(&finding.limit, "limit_value")
+        .map(|value| {
+            format!("{} {}", compact_number(value), unit)
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_else(|| "limit n/a".to_string());
+    let margin = json_f64(&finding.measured, "margin")
+        .map(|value| {
+            format!("{} {}", compact_number(value), unit)
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_else(|| "n/a".to_string());
+    let corners = json_u64(&finding.measured, "evaluated_corners").unwrap_or(0);
+    let params = sweep_parameter_summary(finding);
+    let passed = json_bool(&finding.measured, "passed").unwrap_or(false);
+    Some(AnalogSweepMarginRow {
+        assertion,
+        passed,
+        detail: format!(
+            "{sweep}/{corner}{params}: {measured} {relation} {limit}, margin {margin}, {corners} corners"
+        ),
+    })
+}
+
+fn sweep_parameter_summary(finding: &Finding) -> String {
+    let Some(value) = finding.measured.get("analog_parameters") else {
+        return String::new();
+    };
+    let Some(parameters) = value.as_object() else {
+        return String::new();
+    };
+    if parameters.is_empty() {
+        return String::new();
+    }
+    let parts: Vec<String> = parameters
+        .iter()
+        .filter_map(|(name, value)| value.as_f64().map(|number| (name, number)))
+        .map(|(name, number)| format!("{name}={}", compact_number(number)))
+        .collect();
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", parts.join(", "))
+    }
 }
 
 fn readiness_diagnostics(
@@ -789,9 +899,41 @@ fn compact_number(value: f64) -> String {
         .to_string()
 }
 
+fn json_string(
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Option<String> {
+    values.get(key)?.as_str().map(ToString::to_string)
+}
+
+fn json_f64(
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Option<f64> {
+    values.get(key)?.as_f64()
+}
+
+fn json_u64(
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Option<u64> {
+    values.get(key)?.as_u64()
+}
+
+fn json_bool(
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Option<bool> {
+    values.get(key)?.as_bool()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AnalogOverviewAction, generated_analog_overviews};
+    use serde_json::json;
+
+    use crate::reports::{Finding, ValidationReport};
+
+    use super::{AnalogOverviewAction, analog_sweep_margin_rows, generated_analog_overviews};
 
     fn project_yaml() -> &'static str {
         "project:
@@ -959,5 +1101,75 @@ scenarios:
             .label(),
             "Open binding"
         );
+    }
+
+    #[test]
+    fn analog_sweep_margin_rows_project_worst_corner_findings() {
+        let mut finding = Finding::info("ANALOG_SWEEP_MARGIN_SUMMARY", "gui_transient", "summary");
+        finding
+            .measured
+            .insert("analog_sweep".to_string(), json!("rc_tolerance"));
+        finding
+            .measured
+            .insert("analog_corner".to_string(), json!("slow_c"));
+        finding.measured.insert(
+            "analog_parameters".to_string(),
+            json!({"RLOAD": 1050.0, "CLOAD": 0.000000105}),
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("filtered_rms_attenuated"));
+        finding
+            .measured
+            .insert("measured_value".to_string(), json!(0.60732));
+        finding
+            .measured
+            .insert("measured_unit".to_string(), json!("V"));
+        finding
+            .measured
+            .insert("margin".to_string(), json!(0.01268));
+        finding.measured.insert("passed".to_string(), json!(true));
+        finding
+            .measured
+            .insert("evaluated_corners".to_string(), json!(9));
+        finding.limit.insert("relation".to_string(), json!("below"));
+        finding.limit.insert("limit_value".to_string(), json!(0.62));
+        finding.limit.insert("limit_unit".to_string(), json!("V"));
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            vec![finding],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        );
+
+        let rows = analog_sweep_margin_rows(Some(&report), "gui_transient");
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].assertion, "filtered_rms_attenuated");
+        assert!(rows[0].passed);
+        assert!(rows[0].detail.contains("rc_tolerance/slow_c"));
+        assert!(rows[0].detail.contains("RLOAD=1050"));
+        assert!(rows[0].detail.contains("0.60732 V below 0.62 V"));
+        assert!(rows[0].detail.contains("margin 0.01268 V"));
+        assert!(rows[0].detail.contains("9 corners"));
+    }
+
+    #[test]
+    fn analog_sweep_margin_rows_filter_to_selected_scenario() {
+        let finding = Finding::info("ANALOG_SWEEP_MARGIN_SUMMARY", "other_transient", "summary");
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            vec![finding],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        );
+
+        assert!(analog_sweep_margin_rows(Some(&report), "gui_transient").is_empty());
     }
 }

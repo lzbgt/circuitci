@@ -98,6 +98,9 @@ Current analog support:
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter, extra parameter add/remove controls, and
   declared corner-count summaries without editing YAML by hand.
+- GUI generated run-setup overview rows for completed sweep worst-corner
+  assertion margins, including limiting corner, parameter values, measured
+  value, limit, margin, pass/fail state, and evaluated corner count.
 - Required model-file existence and SHA-256 checks.
 - Voltage/current/power probes and waveform assertions, including single-point
   samples, min/max/mean/RMS windows, signed voltage/current/power integration

@@ -309,7 +309,10 @@ while extra parameters can be added or removed without editing YAML.
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
 read-only generated run-setup audit snapshot, readiness diagnostics, and quick
-editor navigation actions shown before edit panels.
+editor navigation actions shown before edit panels. When a completed run emits
+analog sweep margin summaries, the same overview shows the selected run setup's
+worst-corner assertion margins with the limiting sweep corner, parameter values,
+measured value, limit, margin, and evaluated corner count.
 `src/gui/waveform.rs` owns Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, trigger-event, and Scope Activity sample and frequency measurement snapshots with editable labels/notes, search/source filters for Scope Activity samples and frequency rows, sort/group controls, plot markers, and filtered CSV/Markdown copy/export, GUI-only

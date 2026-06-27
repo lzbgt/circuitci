@@ -404,6 +404,9 @@ run-setup/model/source/check editors and their Board IR YAML mutation helpers.
 SPICE `.param` run-input sweeps. The GUI creates a sweep together with its
 first parameter so edited projects stay executable, and it prevents removing the
 last parameter from a sweep unless the whole sweep is removed.
+`src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
+findings back into the selected generated run-setup overview so users can see
+worst-corner assertion margins without opening raw report findings.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form
 defaults, combo widgets, stimulus field loading, and status-color helpers for
 those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
