@@ -704,7 +704,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_create_library_observation_preset(&mut self, component_id: &str) {
+    pub(super) fn apply_create_library_observation_preset(&mut self, component_id: &str) -> bool {
         match create_component_observation_preset(
             &self.project_yaml,
             Path::new(&self.project_path),
@@ -719,8 +719,12 @@ impl CircuitCiApp {
                         result.scenario_name, result.probe_count
                     ),
                 );
+                true
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                self.record_error(error);
+                false
+            }
         }
     }
 }

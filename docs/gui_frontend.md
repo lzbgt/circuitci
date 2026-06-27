@@ -299,7 +299,10 @@ observation preset: it infers the ground net, creates a generated-from-board
 run setup, voltage-probes the component's non-ground pin nets in SPICE pin
 order, reuses the generated model-file inference path for SHA-pinned
 `analog.model_files`, and adds model-aware default checks when metadata supports
-them. Regulator presets check output min/max voltage from the output port
+them. The op-amp buffer and comparator scope examples expose the same generator
+as a compact `Create Checks` workflow action, so users can regenerate useful
+observations from the example schematic without navigating the full model
+browser. Regulator presets check output min/max voltage from the output port
 electrical limits; reset-supervisor presets add active/released output samples
 when the monitored rail is driven by a detectable pulse source; op-amp presets
 add follower tracking checks when feedback ties the inverting input to the
@@ -462,7 +465,10 @@ form:
   readable connected network. When a scope-ready fixture is active, the Project
   overlay also shows a workflow status with direct `Run + Scopes` / `Open Scope
   Activity` actions, and the Sketch side dock mirrors those compact workflow
-  actions above Run Readiness.
+  actions above Run Readiness. Examples that contain a known SPICE-ready
+  function block, such as the comparator threshold and op-amp buffer fixtures,
+  also show `Create Checks` to append a generated run setup with model-aware
+  probes and observation checks for the placed component.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native

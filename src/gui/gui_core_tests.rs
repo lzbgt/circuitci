@@ -659,6 +659,7 @@ fn gui_project_example_registry_lists_comparator_threshold_scope_fixture() {
         example.expected_frequency,
         "80 us input pulse crossing a 1.2 V reference"
     );
+    assert_eq!(example.observation_preset_component, Some("XU1"));
 }
 
 #[test]
@@ -685,6 +686,7 @@ fn gui_project_example_registry_lists_opamp_buffer_scope_fixture() {
         example.expected_frequency,
         "80 us input pulse through unity feedback"
     );
+    assert_eq!(example.observation_preset_component, Some("XU1"));
 }
 
 #[test]
@@ -692,8 +694,16 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     let mut app = CircuitCiApp::default();
 
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
+    assert_eq!(
+        app.selected_project_example().observation_preset_component,
+        None
+    );
     app.selected_project_example_id = "rc_lowpass_scope".to_string();
     assert_eq!(app.selected_project_example().id, "rc_lowpass_scope");
+    assert_eq!(
+        app.selected_project_example().observation_preset_component,
+        None
+    );
     app.selected_project_example_id = "comparator_threshold_scope".to_string();
     assert_eq!(
         app.selected_project_example().id,
@@ -703,6 +713,83 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     assert_eq!(app.selected_project_example().id, "opamp_buffer_scope");
     app.selected_project_example_id = "deleted_example".to_string();
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
+}
+
+#[test]
+fn opamp_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("opamp_buffer_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert!(app.project_yaml_dirty);
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("XU1".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "xu1_observation");
+    assert!(app.status.contains("Generated observation preset"));
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "xu1_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_xu1_inn"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_xu1_inn_tracks_input_high_below")
+    );
+}
+
+#[test]
+fn comparator_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(
+        gui_project_example_by_id("comparator_threshold_scope"),
+        None,
+    );
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(app.analog_generated_scenario, "xu1_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "xu1_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_xu1_out"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_xu1_out_positive_input_low_state")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_xu1_out_positive_input_high_state")
+    );
+}
+
+#[test]
+fn ne555_scope_example_workflow_declines_observation_preset_without_model_target() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
+
+    assert!(!app.create_scope_example_observation_preset());
+    assert!(!app.project_yaml_dirty);
+    assert!(app.status.contains("does not declare"));
 }
 
 #[test]

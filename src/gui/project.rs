@@ -1,5 +1,6 @@
 use super::sketch::{
-    load_project_snapshot, load_project_snapshot_from_yaml, validate_board_ir_yaml_text,
+    SketchSelection, load_project_snapshot, load_project_snapshot_from_yaml,
+    validate_board_ir_yaml_text,
 };
 use super::{CircuitCiApp, SketchViewportCommand, Stage};
 use anyhow::Context;
@@ -39,6 +40,7 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: NE555_SCOPE_EXAMPLE_NAME,
         expected_traces: NE555_SCOPE_EXPECTED_TRACES,
         expected_frequency: NE555_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
     },
     GuiProjectExample {
         id: "rc_lowpass_scope",
@@ -51,6 +53,7 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: RC_LOWPASS_SCOPE_EXAMPLE_NAME,
         expected_traces: RC_LOWPASS_SCOPE_EXPECTED_TRACES,
         expected_frequency: RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
     },
     GuiProjectExample {
         id: "comparator_threshold_scope",
@@ -63,6 +66,7 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_NAME,
         expected_traces: COMPARATOR_THRESHOLD_SCOPE_EXPECTED_TRACES,
         expected_frequency: COMPARATOR_THRESHOLD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("XU1"),
     },
     GuiProjectExample {
         id: "opamp_buffer_scope",
@@ -75,6 +79,7 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: OPAMP_BUFFER_SCOPE_EXAMPLE_NAME,
         expected_traces: OPAMP_BUFFER_SCOPE_EXPECTED_TRACES,
         expected_frequency: OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("XU1"),
     },
 ];
 
@@ -90,6 +95,7 @@ pub(super) struct GuiProjectExample {
     pub(super) project_name: &'static str,
     pub(super) expected_traces: &'static [&'static str],
     pub(super) expected_frequency: &'static str,
+    pub(super) observation_preset_component: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,13 +229,49 @@ impl CircuitCiApp {
         true
     }
 
+    pub(super) fn create_scope_example_observation_preset(&mut self) -> bool {
+        let Some(example) = self.active_scope_project_example() else {
+            self.status =
+                "Open a scope-ready example before using this workflow action.".to_string();
+            return false;
+        };
+        let Some(component_id) = example.observation_preset_component else {
+            self.status = format!(
+                "{} does not declare a model-aware observation preset shortcut.",
+                example.project_name
+            );
+            return false;
+        };
+        let changed = self.apply_create_library_observation_preset(component_id);
+        if changed {
+            self.stage = Stage::Sketch;
+            self.set_single_sketch_selection(Some(SketchSelection::Component(
+                component_id.to_string(),
+            )));
+            self.push_diagnostic(&format!(
+                "Example workflow created model-aware observation checks for {component_id}."
+            ));
+        }
+        changed
+    }
+
     pub(super) fn scope_example_workflow_action_buttons(&mut self, ui: &mut egui::Ui) {
         let can_start_run = self.background_job_elapsed_secs().is_none();
+        let can_create_checks = self
+            .active_scope_project_example()
+            .and_then(|example| example.observation_preset_component)
+            .is_some();
         if ui
             .add_enabled(can_start_run, egui::Button::new("Run + Scopes"))
             .clicked()
         {
             self.run_scope_example_workflow_scopes();
+        }
+        if ui
+            .add_enabled(can_create_checks, egui::Button::new("Create Checks"))
+            .clicked()
+        {
+            self.create_scope_example_observation_preset();
         }
         if ui.button("Open Scope Activity").clicked() {
             self.open_scope_example_workflow_activity();
