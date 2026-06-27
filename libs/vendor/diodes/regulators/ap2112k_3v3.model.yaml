@@ -30,6 +30,17 @@ power_conversion:
   max_output_current_A: 0.6
   input_capacitance_min_F: 0.000001
   output_capacitance_min_F: 0.000001
+simulation:
+  spice:
+    model_name: CIRCUITCI_IDEAL_LDO_3V3
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, EN, GND, VOUT]
+    valid_operating_notes:
+      - Uses AP2112K-3.3 datasheet pinout and board-level voltage/current/dropout limits, but the transient waveform source is CircuitCI's generic enabled 3.3 V LDO macro-model.
+      - Suitable for generated-SPICE workflow checks, enabled-rail observation, probe/assertion/sweep authoring, and preliminary load wiring smoke tests.
+      - Omits AP2112K loop stability, load transient response, output capacitor ESR/DC-bias effects, current limit, thermal shutdown, PSRR, noise, quiescent current waveform, and startup timing accuracy.
 datasheet:
   manufacturer: Diodes Incorporated
   part_number: AP2112K-3.3
@@ -95,6 +106,7 @@ model_quality:
     - power_tree_validation
     - regulator_static_screening
     - common_iot_3v3_rail_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - regulator_transient_or_stability_signoff
     - regulator_thermal_signoff

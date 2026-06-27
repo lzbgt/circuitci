@@ -1,0 +1,190 @@
+project:
+  name: good_ap2112k_3v3_ldo_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/diodes/regulators
+
+board:
+  schematic:
+    component_symbols:
+      VUSB: Simulation_SPICE:VDC
+      VEN: Simulation_SPICE:VDC
+      UREG: Regulator_Linear:AP2112K-3.3
+      RLOAD: Device:R
+    node_styles:
+      component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UREG: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VUSB: { x: 64.0, y: 176.0 }
+      component:VEN: { x: 64.0, y: 320.0 }
+      component:UREG: { x: 304.0, y: 208.0 }
+      component:RLOAD: { x: 544.0, y: 320.0 }
+      net:usb_5v: { x: 176.0, y: 176.0 }
+      net:regulator_en: { x: 176.0, y: 272.0 }
+      net:rail_3v3: { x: 448.0, y: 176.0 }
+      net:gnd: { x: 320.0, y: 496.0 }
+    wire_routes:
+      VUSB.P->usb_5v:
+        points:
+          - { x: 160.0, y: 192.0 }
+      VUSB.N->gnd:
+        points:
+          - { x: 112.0, y: 512.0 }
+      VEN.P->regulator_en:
+        points:
+          - { x: 160.0, y: 336.0 }
+      VEN.N->gnd:
+        points:
+          - { x: 112.0, y: 512.0 }
+      UREG.VIN->usb_5v:
+        points:
+          - { x: 240.0, y: 192.0 }
+      UREG.EN->regulator_en:
+        points:
+          - { x: 240.0, y: 288.0 }
+      UREG.VOUT->rail_3v3:
+        points:
+          - { x: 464.0, y: 192.0 }
+      UREG.GND->gnd:
+        points:
+          - { x: 320.0, y: 512.0 }
+      RLOAD.A->rail_3v3:
+        points:
+          - { x: 592.0, y: 192.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 592.0, y: 512.0 }
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: usb_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    VEN:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: regulator_en
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    UREG:
+      model: vendor.diodes.ap2112k_3v3
+      part_number: AP2112K-3.3TRG1
+      power_domains:
+        VIN: usb_5v
+        VOUT: rail_3v3
+      pins:
+        VIN: usb_5v
+        EN: regulator_en
+        GND: gnd
+        VOUT: rail_3v3
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: rail_3v3
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 3300.0
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    regulator_en:
+      kind: power
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ap2112k_enabled_load_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VUSB
+          - VEN
+          - UREG
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 7872b453d85cec24216861e3d51326c477d056225617d029a8f03fde00dbb670
+      node_bindings:
+        - { node: vusb, net: usb_5v }
+        - { node: en, net: regulator_en }
+        - { node: rail3v3, net: rail_3v3 }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vusb, endpoint: { component: VUSB, pin: P } }
+        - { node: "0", endpoint: { component: VUSB, pin: N } }
+        - { node: en, endpoint: { component: VEN, pin: P } }
+        - { node: "0", endpoint: { component: VEN, pin: N } }
+        - { node: vusb, endpoint: { component: UREG, pin: VIN } }
+        - { node: en, endpoint: { component: UREG, pin: EN } }
+        - { node: "0", endpoint: { component: UREG, pin: GND } }
+        - { node: rail3v3, endpoint: { component: UREG, pin: VOUT } }
+        - { node: rail3v3, endpoint: { component: RLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 50.0
+        max_step_us: 0.2
+      stimuli:
+        - name: enabled_usb_input
+          description: 5 V sources drive VIN and EN; AP2112K behavioral output feeds a 3.3 kOhm load.
+      probes:
+        - name: v_usb
+          expression: V(vusb)
+        - name: v_en
+          expression: V(en)
+        - name: v_rail3v3
+          expression: V(rail3v3)
+        - name: i_load
+          expression: I(VCCI_RLOAD)
+          quantity: current
+      assertions:
+        - name: rail_above_min
+          probe: v_rail3v3
+          aggregation: min
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_v: 3.25
+        - name: rail_below_max
+          probe: v_rail3v3
+          aggregation: max
+          start_us: 5.0
+          end_us: 50.0
+          relation: below
+          threshold_v: 3.35
+        - name: load_current_not_over_1p1ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: below
+          threshold_a: 0.0011
+        - name: load_current_not_under_0p9ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_a: 0.0009

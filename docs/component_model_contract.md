@@ -638,6 +638,15 @@ vendor-part sign-off, op-amp stability/noise/slew/current analysis,
 comparator propagation-delay/hysteresis/open-drain sign-off, or regulator
 loop-stability/current-limit/thermal/PSRR analysis.
 
+Vendor component models may also point at these shared behavioral subcircuits
+when the datasheet-backed package/pin/limit metadata is still explicit and the
+simulation notes state the reduced fidelity. For example,
+`vendor.diodes.ap2112k_3v3` uses AP2112K datasheet voltage, dropout, current,
+enable, and capacitor metadata while its generated-SPICE face points at
+`CIRCUITCI_IDEAL_LDO_3V3`. That lets users place and observe the real part in
+Sketch/Scopes without pretending the generic subcircuit is a vendor transient,
+thermal, stability, or PSRR model.
+
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital
 output/input pairs and:

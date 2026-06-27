@@ -32,7 +32,20 @@ common fixed 3.3 V SOT25 LDO:
 - `VOUT` rail nominal voltage must remain inside the modeled fixed-output
   tolerance range.
 
-This model is not a SPICE regulator macromodel. It is not valid for output
-capacitor ESR/ESL/DC-bias stability, thermal derating, load-transient behavior,
-short-circuit foldback, startup waveform, or detailed load-dependent dropout
-sign-off.
+The model also declares `simulation.spice` metadata for generated Board IR
+transient workflows. That simulation face uses the shared
+`CIRCUITCI_IDEAL_LDO_3V3` subcircuit from
+`models/spice/generic/analog_behavioral.lib` with AP2112K pin order:
+
+```text
+VIN, EN, GND, VOUT
+```
+
+`examples/good_ap2112k_3v3_ldo_observation` proves the AP2112K model can
+participate in generated-SPICE observation, with SHA-pinned model-file evidence,
+voltage probes, current probes, and executable rail/load checks.
+
+This simulation face is still a conservative workflow/topology macro-model. It
+is not valid for output capacitor ESR/ESL/DC-bias stability, thermal derating,
+load-transient behavior, current limit, short-circuit foldback, PSRR, noise,
+startup waveform, or detailed load-dependent dropout sign-off.

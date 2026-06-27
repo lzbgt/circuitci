@@ -126,6 +126,10 @@ Current analog support:
   and enabled 3.3 V regulator rails through explicit `simulation.spice`
   subcircuits. These models are low-confidence workflow/topology aids, not
   vendor sign-off evidence.
+- The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
+  SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
+  metadata and pin order while using the reduced-fidelity generic enabled
+  3.3 V LDO macro-model for preliminary rail observation.
 - GUI generated run-setup creation and generated component inclusion infer
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned
