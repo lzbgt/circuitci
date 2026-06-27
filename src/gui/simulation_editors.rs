@@ -631,6 +631,9 @@ impl CircuitCiApp {
                             "rms",
                             "rising_crossing_time",
                             "falling_crossing_time",
+                            "min_high_pulse_width",
+                            "min_low_pulse_width",
+                            "duty_cycle",
                         ],
                     );
                     ui.end_row();
@@ -695,7 +698,10 @@ impl CircuitCiApp {
 
                         if matches!(
                             self.analog_assertion_aggregation.as_str(),
-                            "rising_crossing_time" | "falling_crossing_time"
+                            "rising_crossing_time"
+                                | "falling_crossing_time"
+                                | "min_high_pulse_width"
+                                | "min_low_pulse_width"
                         ) {
                             ui.label("Time limit");
                             ui.add(
@@ -703,6 +709,15 @@ impl CircuitCiApp {
                                     .speed(1.0)
                                     .range(0.0..=1_000_000.0)
                                     .suffix(" us"),
+                            );
+                            ui.end_row();
+                        } else if self.analog_assertion_aggregation == "duty_cycle" {
+                            ui.label("Duty limit");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_assertion_duty_limit_percent)
+                                    .speed(0.5)
+                                    .range(0.0..=100.0)
+                                    .suffix("%"),
                             );
                             ui.end_row();
                         }
@@ -843,6 +858,7 @@ impl CircuitCiApp {
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
+            duty_limit_percent: self.analog_assertion_duty_limit_percent,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => self.apply_edited_project_yaml(
@@ -1037,6 +1053,7 @@ impl CircuitCiApp {
                 start_us: self.analog_assertion_start_us,
                 end_us: self.analog_assertion_end_us,
                 time_limit_us: self.analog_assertion_time_limit_us,
+                duty_limit_percent: self.analog_assertion_duty_limit_percent,
             },
         };
         match replace_analog_assertion(&self.project_yaml, &draft) {
@@ -1063,6 +1080,7 @@ impl CircuitCiApp {
         self.analog_assertion_start_us = draft.start_us;
         self.analog_assertion_end_us = draft.end_us;
         self.analog_assertion_time_limit_us = draft.time_limit_us;
+        self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
         self.status = format!("Editing analog assertion {original_name}.");
     }
 
@@ -1124,6 +1142,7 @@ impl CircuitCiApp {
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
+            duty_limit_percent: self.analog_assertion_duty_limit_percent,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -1191,6 +1210,7 @@ impl CircuitCiApp {
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
+            duty_limit_percent: self.analog_assertion_duty_limit_percent,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -1203,6 +1223,7 @@ impl CircuitCiApp {
                 self.analog_assertion_threshold = draft.threshold;
                 self.analog_assertion_at_us = draft.at_us;
                 self.analog_assertion_time_limit_us = draft.time_limit_us;
+                self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(

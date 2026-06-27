@@ -48,9 +48,10 @@ missing-file diagnostics during bring-up.
 
 Assertions can sample a named probe at `at_us`, evaluate
 `min`/`max`/`mean`/`rms` over a `start_us` to `end_us` window, or measure the
-first rising/falling threshold-crossing time in a window. If a requested
-boundary or crossing is between solver samples, CircuitCI uses linear
-interpolation between adjacent samples. Probe
+first rising/falling threshold-crossing time, minimum high/low pulse width, or
+duty cycle in a window. If a requested boundary or threshold event is between
+solver samples, CircuitCI uses linear interpolation between adjacent samples.
+Probe
 `quantity` selects the required threshold unit:
 
 - `voltage`: `threshold_v`
@@ -64,8 +65,12 @@ declare `at_us`. Mean and RMS are time-weighted over the linearly interpolated
 waveform segment, so nonuniform solver sample spacing does not bias the
 measurement. Crossing-time assertions use
 `aggregation: rising_crossing_time|falling_crossing_time`, `start_us`,
-`end_us`, and `time_limit_us`; the voltage/current/power threshold is the
-crossing level, while `time_limit_us` is compared with `relation`.
+`end_us`, and `time_limit_us`; pulse-width assertions use
+`aggregation: min_high_pulse_width|min_low_pulse_width`, `start_us`, `end_us`,
+and `time_limit_us`; duty-cycle assertions use `aggregation: duty_cycle`,
+`start_us`, `end_us`, and `duty_limit_percent`. For all timing/duty assertions,
+the voltage/current/power threshold is the decision level, while
+`time_limit_us` or `duty_limit_percent` is compared with `relation`.
 
 Assertions may optionally declare `suggested_fixes`. When that assertion fails,
 the strings are copied into the emitted `SPICE_TRANSIENT_ANALYSIS` finding. If
@@ -98,7 +103,7 @@ The runner fails closed. These conditions are critical failures:
 - declared model-file SHA-256 mismatch.
 
 This is intentionally minimal but real. Later assertion forms must add
-setup/hold, no-recross, pulse-width, integration/energy, and corner sweeps.
+setup/hold, no-recross, integration/energy, and corner sweeps.
 
 ## Evidence Requirements
 

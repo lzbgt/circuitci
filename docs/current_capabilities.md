@@ -94,7 +94,8 @@ Current analog support:
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Required model-file existence and SHA-256 checks.
 - Voltage/current/power probes and waveform assertions, including single-point
-  samples, min/max/mean/RMS windows, and rising/falling crossing-time checks.
+  samples, min/max/mean/RMS windows, rising/falling crossing-time checks,
+  minimum high/low pulse-width checks, and duty-cycle checks.
 - Automatic `SPICE_OPERATING_LIMIT` checks for supported generated Board IR
   semiconductor stress limits, including selected derating, pulse, and SOA
   metadata paths.

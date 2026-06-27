@@ -58,7 +58,7 @@ pub(super) fn evaluate_waveform_assertions(
                 findings,
                 scenario,
                 format!(
-                    "Analog assertion {} is missing a finite time_limit_us.",
+                    "Analog assertion {} is missing a finite comparison limit.",
                     assertion.name
                 ),
             );
@@ -124,16 +124,16 @@ pub(super) fn evaluate_waveform_assertions(
                 format!("{}_quantity", assertion.probe),
                 json!(measured_quantity_name(assertion, &probe.quantity)),
             );
-            if is_crossing_aggregation(&assertion.aggregation) {
+            if uses_signal_threshold_as_level(&assertion.aggregation) {
                 finding.measured.insert(
                     format!(
-                        "{}_crossing_threshold{}",
+                        "{}_decision_threshold{}",
                         assertion.probe, signal_threshold.limit_key
                     ),
                     json!(signal_threshold.value),
                 );
                 finding.measured.insert(
-                    format!("{}_crossing_threshold_unit", assertion.probe),
+                    format!("{}_decision_threshold_unit", assertion.probe),
                     json!(signal_threshold.unit),
                 );
             }
@@ -196,6 +196,9 @@ pub(super) fn validate_assertion_contract(
             if assertion.time_limit_us.is_some() {
                 return Err("sample aggregation must not declare time_limit_us".to_string());
             }
+            if assertion.duty_limit_percent.is_some() {
+                return Err("sample aggregation must not declare duty_limit_percent".to_string());
+            }
             let Some(at_us) = assertion.at_us else {
                 return Err("requires at_us for sample aggregation".to_string());
             };
@@ -210,7 +213,10 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
         | AnalogAggregation::RisingCrossingTime
-        | AnalogAggregation::FallingCrossingTime => {
+        | AnalogAggregation::FallingCrossingTime
+        | AnalogAggregation::MinHighPulseWidth
+        | AnalogAggregation::MinLowPulseWidth
+        | AnalogAggregation::DutyCycle => {
             if assertion.at_us.is_some() {
                 return Err("window/crossing aggregation must not declare at_us".to_string());
             }
@@ -230,19 +236,42 @@ pub(super) fn validate_assertion_contract(
                         .to_string(),
                 );
             }
-            if is_crossing_aggregation(&assertion.aggregation) {
+            if requires_time_limit(&assertion.aggregation) {
                 let Some(time_limit_us) = assertion.time_limit_us else {
-                    return Err("requires time_limit_us for crossing-time aggregation".to_string());
+                    return Err("requires time_limit_us for timing aggregation".to_string());
                 };
                 if !time_limit_us.is_finite() || time_limit_us < 0.0 || time_limit_us > stop_time_us
                 {
                     return Err(
-                        "crossing time limit must be finite and within the transient stop time"
+                        "timing limit must be finite and within the transient stop time"
                             .to_string(),
                     );
                 }
+                if assertion.duty_limit_percent.is_some() {
+                    return Err(
+                        "timing aggregation must not declare duty_limit_percent".to_string()
+                    );
+                }
+            } else if matches!(assertion.aggregation, AnalogAggregation::DutyCycle) {
+                let Some(duty_limit_percent) = assertion.duty_limit_percent else {
+                    return Err(
+                        "requires duty_limit_percent for duty-cycle aggregation".to_string()
+                    );
+                };
+                if !duty_limit_percent.is_finite() || !(0.0..=100.0).contains(&duty_limit_percent) {
+                    return Err(
+                        "duty limit must be finite and between 0 and 100 percent".to_string()
+                    );
+                }
+                if assertion.time_limit_us.is_some() {
+                    return Err("duty-cycle aggregation must not declare time_limit_us".to_string());
+                }
             } else if assertion.time_limit_us.is_some() {
-                return Err("non-crossing aggregation must not declare time_limit_us".to_string());
+                return Err("non-timing aggregation must not declare time_limit_us".to_string());
+            } else if assertion.duty_limit_percent.is_some() {
+                return Err(
+                    "non-duty-cycle aggregation must not declare duty_limit_percent".to_string(),
+                );
             }
         }
     }
@@ -280,12 +309,19 @@ fn comparison_threshold_for(
     assertion: &AnalogAssertion,
     signal_threshold: &AssertionThreshold,
 ) -> Option<AssertionThreshold> {
-    if is_crossing_aggregation(&assertion.aggregation) {
+    if requires_time_limit(&assertion.aggregation) {
         let value = assertion.time_limit_us?;
         value.is_finite().then_some(AssertionThreshold {
             value,
             unit: "us",
             limit_key: "_time_us",
+        })
+    } else if matches!(assertion.aggregation, AnalogAggregation::DutyCycle) {
+        let value = assertion.duty_limit_percent?;
+        value.is_finite().then_some(AssertionThreshold {
+            value,
+            unit: "%",
+            limit_key: "_duty_percent",
         })
     } else {
         Some(AssertionThreshold {
@@ -316,6 +352,16 @@ fn measured_assertion_value(
             let start = assertion.start_us? / 1_000_000.0;
             let end = assertion.end_us? / 1_000_000.0;
             crossing_time_us(times, values, start, end, threshold, &assertion.aggregation)
+        }
+        AnalogAggregation::MinHighPulseWidth | AnalogAggregation::MinLowPulseWidth => {
+            let start = assertion.start_us? / 1_000_000.0;
+            let end = assertion.end_us? / 1_000_000.0;
+            min_pulse_width_us(times, values, start, end, threshold, &assertion.aggregation)
+        }
+        AnalogAggregation::DutyCycle => {
+            let start = assertion.start_us? / 1_000_000.0;
+            let end = assertion.end_us? / 1_000_000.0;
+            duty_cycle_percent(times, values, start, end, threshold)
         }
     }
 }
@@ -372,7 +418,10 @@ fn aggregate_window(
         }
         AnalogAggregation::Sample
         | AnalogAggregation::RisingCrossingTime
-        | AnalogAggregation::FallingCrossingTime => None,
+        | AnalogAggregation::FallingCrossingTime
+        | AnalogAggregation::MinHighPulseWidth
+        | AnalogAggregation::MinLowPulseWidth
+        | AnalogAggregation::DutyCycle => None,
     }
 }
 
@@ -419,6 +468,120 @@ fn crossing_time_us(
     None
 }
 
+fn min_pulse_width_us(
+    times: &[f64],
+    values: &[f64],
+    start: f64,
+    end: f64,
+    threshold: f64,
+    aggregation: &AnalogAggregation,
+) -> Option<f64> {
+    let intervals = threshold_intervals(times, values, start, end, threshold)?;
+    let want_high = matches!(aggregation, AnalogAggregation::MinHighPulseWidth);
+    intervals
+        .into_iter()
+        .filter(|interval| {
+            interval.high == want_high && interval.started_at_edge && interval.ended_at_edge
+        })
+        .map(|interval| (interval.end - interval.start) * 1_000_000.0)
+        .filter(|width| width.is_finite() && *width >= 0.0)
+        .reduce(f64::min)
+}
+
+fn duty_cycle_percent(
+    times: &[f64],
+    values: &[f64],
+    start: f64,
+    end: f64,
+    threshold: f64,
+) -> Option<f64> {
+    if end <= start {
+        return None;
+    }
+    let high_time: f64 = threshold_intervals(times, values, start, end, threshold)?
+        .into_iter()
+        .filter(|interval| interval.high)
+        .map(|interval| interval.end - interval.start)
+        .sum();
+    Some((high_time / (end - start)) * 100.0)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ThresholdInterval {
+    high: bool,
+    start: f64,
+    end: f64,
+    started_at_edge: bool,
+    ended_at_edge: bool,
+}
+
+fn threshold_intervals(
+    times: &[f64],
+    values: &[f64],
+    start: f64,
+    end: f64,
+    threshold: f64,
+) -> Option<Vec<ThresholdInterval>> {
+    if start > end || !threshold.is_finite() {
+        return None;
+    }
+    let mut selected = Vec::new();
+    selected.push((start, interpolate_at(times, values, start)?));
+    for (time, value) in times.iter().copied().zip(values.iter().copied()) {
+        if time > start && time < end {
+            selected.push((time, value));
+        }
+    }
+    selected.push((end, interpolate_at(times, values, end)?));
+
+    let mut intervals = Vec::new();
+    let mut state_high = selected.first()?.1 >= threshold;
+    let mut state_start = start;
+    let mut started_at_edge = false;
+    for segment in selected.windows(2) {
+        let (t0, y0) = segment[0];
+        let (t1, y1) = segment[1];
+        let crossing = threshold_crossing_between(t0, y0, t1, y1, threshold);
+        if let Some(crossing_time) = crossing {
+            if crossing_time >= state_start {
+                intervals.push(ThresholdInterval {
+                    high: state_high,
+                    start: state_start,
+                    end: crossing_time,
+                    started_at_edge,
+                    ended_at_edge: true,
+                });
+            }
+            state_high = !state_high;
+            state_start = crossing_time;
+            started_at_edge = true;
+        }
+    }
+    intervals.push(ThresholdInterval {
+        high: state_high,
+        start: state_start,
+        end,
+        started_at_edge,
+        ended_at_edge: false,
+    });
+    Some(intervals)
+}
+
+fn threshold_crossing_between(t0: f64, y0: f64, t1: f64, y1: f64, threshold: f64) -> Option<f64> {
+    let crosses = (y0 < threshold && y1 >= threshold) || (y0 > threshold && y1 <= threshold);
+    if !crosses {
+        return None;
+    }
+    let dy = y1 - y0;
+    if dy.abs() <= f64::EPSILON {
+        return Some(t1);
+    }
+    let fraction = (threshold - y0) / dy;
+    (0.0..=1.0)
+        .contains(&fraction)
+        .then_some(t0 + fraction * (t1 - t0))
+}
+
 fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
     match aggregation {
         AnalogAggregation::Sample => "sampled",
@@ -428,6 +591,9 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::Rms => "RMS",
         AnalogAggregation::RisingCrossingTime => "rising crossing-time",
         AnalogAggregation::FallingCrossingTime => "falling crossing-time",
+        AnalogAggregation::MinHighPulseWidth => "minimum high pulse width",
+        AnalogAggregation::MinLowPulseWidth => "minimum low pulse width",
+        AnalogAggregation::DutyCycle => "duty cycle",
     }
 }
 
@@ -443,7 +609,9 @@ fn measured_quantity_name(
     assertion: &AnalogAssertion,
     probe_quantity: &AnalogQuantity,
 ) -> &'static str {
-    if is_crossing_aggregation(&assertion.aggregation) {
+    if matches!(assertion.aggregation, AnalogAggregation::DutyCycle) {
+        "duty cycle"
+    } else if uses_signal_threshold_as_level(&assertion.aggregation) {
         "time"
     } else {
         quantity_name(probe_quantity)
@@ -458,7 +626,10 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
         | AnalogAggregation::RisingCrossingTime
-        | AnalogAggregation::FallingCrossingTime => format!(
+        | AnalogAggregation::FallingCrossingTime
+        | AnalogAggregation::MinHighPulseWidth
+        | AnalogAggregation::MinLowPulseWidth
+        | AnalogAggregation::DutyCycle => format!(
             " from {} us to {} us",
             assertion.start_us.unwrap_or_default(),
             assertion.end_us.unwrap_or_default()
@@ -480,7 +651,10 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
         | AnalogAggregation::RisingCrossingTime
-        | AnalogAggregation::FallingCrossingTime => {
+        | AnalogAggregation::FallingCrossingTime
+        | AnalogAggregation::MinHighPulseWidth
+        | AnalogAggregation::MinLowPulseWidth
+        | AnalogAggregation::DutyCycle => {
             if let Some(start_us) = assertion.start_us {
                 finding
                     .limit
@@ -493,6 +667,11 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                 finding
                     .limit
                     .insert("time_limit_us".to_string(), json!(time_limit_us));
+            }
+            if let Some(duty_limit_percent) = assertion.duty_limit_percent {
+                finding
+                    .limit
+                    .insert("duty_limit_percent".to_string(), json!(duty_limit_percent));
             }
         }
     }
@@ -512,7 +691,10 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
         | AnalogAggregation::RisingCrossingTime
-        | AnalogAggregation::FallingCrossingTime => {
+        | AnalogAggregation::FallingCrossingTime
+        | AnalogAggregation::MinHighPulseWidth
+        | AnalogAggregation::MinLowPulseWidth
+        | AnalogAggregation::DutyCycle => {
             if let Some(start_us) = assertion.start_us {
                 finding
                     .measured
@@ -525,10 +707,24 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
     }
 }
 
-fn is_crossing_aggregation(aggregation: &AnalogAggregation) -> bool {
+fn requires_time_limit(aggregation: &AnalogAggregation) -> bool {
     matches!(
         aggregation,
-        AnalogAggregation::RisingCrossingTime | AnalogAggregation::FallingCrossingTime
+        AnalogAggregation::RisingCrossingTime
+            | AnalogAggregation::FallingCrossingTime
+            | AnalogAggregation::MinHighPulseWidth
+            | AnalogAggregation::MinLowPulseWidth
+    )
+}
+
+fn uses_signal_threshold_as_level(aggregation: &AnalogAggregation) -> bool {
+    matches!(
+        aggregation,
+        AnalogAggregation::RisingCrossingTime
+            | AnalogAggregation::FallingCrossingTime
+            | AnalogAggregation::MinHighPulseWidth
+            | AnalogAggregation::MinLowPulseWidth
+            | AnalogAggregation::DutyCycle
     )
 }
 
@@ -558,8 +754,8 @@ pub(super) fn interpolate_at(times: &[f64], values: &[f64], target: f64) -> Opti
 #[cfg(test)]
 mod tests {
     use super::{
-        aggregate_window, crossing_time_us, threshold_count, validate_assertion_contract,
-        validate_probe_contract,
+        aggregate_window, crossing_time_us, duty_cycle_percent, min_pulse_width_us,
+        threshold_count, validate_assertion_contract, validate_probe_contract,
     };
     use crate::board_ir::{
         AnalogAggregation, AnalogAssertion, AnalogProbe, AnalogQuantity, AnalogRelation,
@@ -641,6 +837,43 @@ mod tests {
     }
 
     #[test]
+    fn pulse_width_measures_min_complete_high_and_low_pulses() {
+        let times = [0.0, 0.5e-6, 1.5e-6, 2.5e-6, 3.0e-6, 4.0e-6, 5.0e-6, 6.0e-6];
+        let values = [0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0];
+
+        let high = min_pulse_width_us(
+            &times,
+            &values,
+            0.0,
+            6.0e-6,
+            0.5,
+            &AnalogAggregation::MinHighPulseWidth,
+        )
+        .unwrap();
+        let low = min_pulse_width_us(
+            &times,
+            &values,
+            0.0,
+            6.0e-6,
+            0.5,
+            &AnalogAggregation::MinLowPulseWidth,
+        )
+        .unwrap();
+
+        assert!((high - 1.75).abs() < 1.0e-12);
+        assert!((low - 1.5).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn duty_cycle_integrates_threshold_clipped_high_time() {
+        let times = [0.0, 1.0e-6, 2.0e-6, 4.0e-6];
+        let values = [0.0, 1.0, 1.0, 0.0];
+        let duty = duty_cycle_percent(&times, &values, 0.0, 4.0e-6, 0.5).unwrap();
+
+        assert!((duty - 62.5).abs() < 1.0e-12);
+    }
+
+    #[test]
     fn probe_contract_rejects_mismatched_quantity_expression() {
         let probe = AnalogProbe {
             name: "bad_current".to_string(),
@@ -666,6 +899,7 @@ mod tests {
             start_us: Some(0.0),
             end_us: None,
             time_limit_us: None,
+            duty_limit_percent: None,
             aggregation: AnalogAggregation::Sample,
             relation: AnalogRelation::Above,
             threshold_v: Some(1.0),
@@ -682,6 +916,7 @@ mod tests {
             start_us: None,
             end_us: None,
             time_limit_us: None,
+            duty_limit_percent: None,
             aggregation: AnalogAggregation::Sample,
             relation: AnalogRelation::Above,
             threshold_v: Some(1.0),
@@ -698,7 +933,25 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(1000.0),
             time_limit_us: None,
+            duty_limit_percent: None,
             aggregation: AnalogAggregation::RisingCrossingTime,
+            relation: AnalogRelation::Below,
+            threshold_v: Some(1.0),
+            threshold_a: None,
+            threshold_w: None,
+            suggested_fixes: Vec::new(),
+        };
+        assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
+
+        let assertion = AnalogAssertion {
+            name: "bad_duty".to_string(),
+            probe: "nrst".to_string(),
+            at_us: None,
+            start_us: Some(0.0),
+            end_us: Some(1000.0),
+            time_limit_us: None,
+            duty_limit_percent: Some(101.0),
+            aggregation: AnalogAggregation::DutyCycle,
             relation: AnalogRelation::Below,
             threshold_v: Some(1.0),
             threshold_a: None,

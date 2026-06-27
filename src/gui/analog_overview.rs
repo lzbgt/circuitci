@@ -653,12 +653,24 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
             assertion.aggregation,
             crate::board_ir::AnalogAggregation::RisingCrossingTime
                 | crate::board_ir::AnalogAggregation::FallingCrossingTime
+                | crate::board_ir::AnalogAggregation::MinHighPulseWidth
+                | crate::board_ir::AnalogAggregation::MinLowPulseWidth
         ) {
             format!(
                 "from {} us to {} us, limit {} us",
                 compact_number(start_us),
                 compact_number(end_us),
                 compact_number(assertion.time_limit_us.unwrap_or_default())
+            )
+        } else if matches!(
+            assertion.aggregation,
+            crate::board_ir::AnalogAggregation::DutyCycle
+        ) {
+            format!(
+                "from {} us to {} us, limit {}%",
+                compact_number(start_us),
+                compact_number(end_us),
+                compact_number(assertion.duty_limit_percent.unwrap_or_default())
             )
         } else {
             format!(
@@ -681,6 +693,9 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Rms => "rms",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising crossing",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling crossing",
+        crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min high pulse",
+        crate::board_ir::AnalogAggregation::MinLowPulseWidth => "min low pulse",
+        crate::board_ir::AnalogAggregation::DutyCycle => "duty cycle",
     }
 }
 

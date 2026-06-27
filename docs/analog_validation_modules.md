@@ -14,8 +14,8 @@ engine can grow without returning to a monolithic validator.
 - `src/validation/analog_assertions.rs` owns user-declared waveform contracts:
   probe expression validation, assertion contract validation, interpolation,
   time-weighted window aggregation for min/max/mean/RMS measurements, first
-  rising/falling threshold-crossing timing, and `SPICE_TRANSIENT_ANALYSIS`
-  assertion findings.
+  rising/falling threshold-crossing timing, threshold-derived pulse-width and
+  duty-cycle timing, and `SPICE_TRANSIENT_ANALYSIS` assertion findings.
 - `src/validation/analog_operating_limits.rs` owns automatic datasheet-derived
   semiconductor stress checks for MOSFETs, BJTs, diodes, temperature derating,
   scalar pulse qualifier checks, shared operating-limit probe metadata, and

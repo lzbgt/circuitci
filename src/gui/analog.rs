@@ -25,6 +25,7 @@ pub(super) struct AnalogAssertionDraft {
     pub(super) start_us: f64,
     pub(super) end_us: f64,
     pub(super) time_limit_us: f64,
+    pub(super) duty_limit_percent: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -255,6 +256,7 @@ pub(super) fn analog_probe_assertion_summaries(
                     start_us: assertion.start_us.unwrap_or_default(),
                     end_us: assertion.end_us.unwrap_or_default(),
                     time_limit_us: assertion.time_limit_us.unwrap_or_default(),
+                    duty_limit_percent: assertion.duty_limit_percent.unwrap_or_default(),
                 },
                 status,
                 failure_message: failure.map(|finding| finding.message.clone()),
@@ -854,6 +856,9 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "rms"
             | "rising_crossing_time"
             | "falling_crossing_time"
+            | "min_high_pulse_width"
+            | "min_low_pulse_width"
+            | "duty_cycle"
     ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
@@ -1030,7 +1035,10 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
-        "rising_crossing_time" | "falling_crossing_time" => {
+        "rising_crossing_time"
+        | "falling_crossing_time"
+        | "min_high_pulse_width"
+        | "min_low_pulse_width" => {
             if !draft.start_us.is_finite()
                 || !draft.end_us.is_finite()
                 || draft.start_us < 0.0
@@ -1041,7 +1049,21 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 || draft.time_limit_us > stop_time_us
             {
                 anyhow::bail!(
-                    "Crossing-time assertion bounds and time limit must be finite, ordered, and within the scenario stop time."
+                    "Timing assertion bounds and time limit must be finite, ordered, and within the scenario stop time."
+                );
+            }
+        }
+        "duty_cycle" => {
+            if !draft.start_us.is_finite()
+                || !draft.end_us.is_finite()
+                || draft.start_us < 0.0
+                || draft.end_us < draft.start_us
+                || draft.end_us > stop_time_us
+                || !draft.duty_limit_percent.is_finite()
+                || !(0.0..=100.0).contains(&draft.duty_limit_percent)
+            {
+                anyhow::bail!(
+                    "Duty-cycle assertion bounds must be finite and ordered, and duty limit must be 0..100%."
                 );
             }
         }
@@ -1059,6 +1081,9 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Rms => "rms",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising_crossing_time",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling_crossing_time",
+        crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min_high_pulse_width",
+        crate::board_ir::AnalogAggregation::MinLowPulseWidth => "min_low_pulse_width",
+        crate::board_ir::AnalogAggregation::DutyCycle => "duty_cycle",
     }
 }
 
@@ -1116,12 +1141,22 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
             )
         }
         crate::board_ir::AnalogAggregation::RisingCrossingTime
-        | crate::board_ir::AnalogAggregation::FallingCrossingTime => {
+        | crate::board_ir::AnalogAggregation::FallingCrossingTime
+        | crate::board_ir::AnalogAggregation::MinHighPulseWidth
+        | crate::board_ir::AnalogAggregation::MinLowPulseWidth => {
             format!(
                 "{:.6}..{:.6} us, limit {:.6} us",
                 assertion.start_us.unwrap_or_default(),
                 assertion.end_us.unwrap_or_default(),
                 assertion.time_limit_us.unwrap_or_default()
+            )
+        }
+        crate::board_ir::AnalogAggregation::DutyCycle => {
+            format!(
+                "{:.6}..{:.6} us, limit {:.6}%",
+                assertion.start_us.unwrap_or_default(),
+                assertion.end_us.unwrap_or_default(),
+                assertion.duty_limit_percent.unwrap_or_default()
             )
         }
     }
@@ -1332,10 +1367,22 @@ fn assertion_value(
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
         }
-        "rising_crossing_time" | "falling_crossing_time" => {
+        "rising_crossing_time"
+        | "falling_crossing_time"
+        | "min_high_pulse_width"
+        | "min_low_pulse_width" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
             insert_number(&mut assertion, "time_limit_us", draft.time_limit_us)?;
+        }
+        "duty_cycle" => {
+            insert_number(&mut assertion, "start_us", draft.start_us)?;
+            insert_number(&mut assertion, "end_us", draft.end_us)?;
+            insert_number(
+                &mut assertion,
+                "duty_limit_percent",
+                draft.duty_limit_percent,
+            )?;
         }
         _ => unreachable!("aggregation was validated"),
     }

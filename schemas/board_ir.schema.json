@@ -1500,7 +1500,8 @@
                     "start_us": { "type": "number", "minimum": 0 },
                     "end_us": { "type": "number", "minimum": 0 },
                     "time_limit_us": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "rising_crossing_time", "falling_crossing_time"] },
+                    "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1521,27 +1522,49 @@
                         "not": {
                           "anyOf": [
                             { "required": ["at_us"] },
-                            { "required": ["time_limit_us"] }
+                            { "required": ["time_limit_us"] },
+                            { "required": ["duty_limit_percent"] }
                           ]
                         }
                       },
                       "else": {
                         "if": {
                           "required": ["aggregation"],
-                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time"] } }
+                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width"] } }
                         },
                         "then": {
                           "required": ["start_us", "end_us", "time_limit_us"],
-                          "not": { "required": ["at_us"] }
-                        },
-                        "else": {
-                          "required": ["at_us"],
                           "not": {
                             "anyOf": [
-                              { "required": ["start_us"] },
-                              { "required": ["end_us"] },
-                              { "required": ["time_limit_us"] }
+                              { "required": ["at_us"] },
+                              { "required": ["duty_limit_percent"] }
                             ]
+                          }
+                        },
+                        "else": {
+                          "if": {
+                            "required": ["aggregation"],
+                            "properties": { "aggregation": { "const": "duty_cycle" } }
+                          },
+                          "then": {
+                            "required": ["start_us", "end_us", "duty_limit_percent"],
+                            "not": {
+                              "anyOf": [
+                                { "required": ["at_us"] },
+                                { "required": ["time_limit_us"] }
+                              ]
+                            }
+                          },
+                          "else": {
+                            "required": ["at_us"],
+                            "not": {
+                              "anyOf": [
+                                { "required": ["start_us"] },
+                                { "required": ["end_us"] },
+                                { "required": ["time_limit_us"] },
+                                { "required": ["duty_limit_percent"] }
+                              ]
+                            }
                           }
                         }
                       }

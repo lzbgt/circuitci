@@ -180,3 +180,19 @@ scenarios:
           start_us: 0.0
           end_us: 20.0
           time_limit_us: 2.0
+        - name: output_min_high_width_above_300us
+          probe: v_out
+          aggregation: min_high_pulse_width
+          relation: above
+          threshold_v: 2.5
+          start_us: 0.0
+          end_us: 5000.0
+          time_limit_us: 300.0
+        - name: output_duty_below_50_percent
+          probe: v_out
+          aggregation: duty_cycle
+          relation: below
+          threshold_v: 2.5
+          start_us: 0.0
+          end_us: 5000.0
+          duty_limit_percent: 50.0
