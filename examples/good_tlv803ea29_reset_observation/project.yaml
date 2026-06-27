@@ -1,0 +1,150 @@
+project:
+  name: good_tlv803ea29_reset_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/reset_supervisors
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VPULSE
+      URESET: Supervisor:TLV803E
+      RPU: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:URESET: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RPU: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 64.0, y: 224.0 }
+      component:URESET: { x: 336.0, y: 256.0 }
+      component:RPU: { x: 560.0, y: 208.0 }
+      net:rail_3v3: { x: 208.0, y: 176.0 }
+      net:reset_n: { x: 560.0, y: 320.0 }
+      net:gnd: { x: 336.0, y: 512.0 }
+    wire_routes:
+      VDD.P->rail_3v3:
+        points:
+          - { x: 160.0, y: 192.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 112.0, y: 512.0 }
+      URESET.VDD->rail_3v3:
+        points:
+          - { x: 256.0, y: 192.0 }
+      URESET.GND->gnd:
+        points:
+          - { x: 336.0, y: 512.0 }
+      URESET.RESET->reset_n:
+        points:
+          - { x: 496.0, y: 320.0 }
+      RPU.A->rail_3v3:
+        points:
+          - { x: 608.0, y: 192.0 }
+      RPU.B->reset_n:
+        points:
+          - { x: 608.0, y: 320.0 }
+  components:
+    VDD:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: rail_3v3
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0.0
+          pulsed_v: 3.3
+          delay_us: 10.0
+          rise_us: 1.0
+          fall_us: 1.0
+          width_us: 80.0
+          period_us: 160.0
+    URESET:
+      model: vendor.ti.tlv803ea29
+      part_number: TLV803EA29DBZR
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        RESET: reset_n
+    RPU:
+      model: generic.analog.resistor
+      pins:
+        A: rail_3v3
+        B: reset_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    reset_n:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tlv803ea29_threshold_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - URESET
+          - RPU
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: e396cd27587ff3c9faca57a4b9f64bee0f3c7c4c58f33a532a8607e8c8c5023a
+      node_bindings:
+        - { node: rail3v3, net: rail_3v3 }
+        - { node: reset_n, net: reset_n }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: rail3v3, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: rail3v3, endpoint: { component: URESET, pin: VDD } }
+        - { node: "0", endpoint: { component: URESET, pin: GND } }
+        - { node: reset_n, endpoint: { component: URESET, pin: RESET } }
+        - { node: rail3v3, endpoint: { component: RPU, pin: A } }
+        - { node: reset_n, endpoint: { component: RPU, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.1
+      stimuli:
+        - name: rail_ramp
+          description: 3.3 V rail rises after 10 us; TLV803EA29 behavioral open-drain output releases the reset pull-up after its threshold.
+      probes:
+        - name: v_rail
+          expression: V(rail3v3)
+        - name: reset_n
+          expression: V(reset_n)
+      assertions:
+        - name: reset_asserted_before_threshold
+          probe: reset_n
+          at_us: 5.0
+          relation: below
+          threshold_v: 0.3
+        - name: reset_released_after_rail_high
+          probe: reset_n
+          at_us: 30.0
+          relation: above
+          threshold_v: 3.0
+        - name: reset_crosses_midrail_after_power
+          probe: reset_n
+          aggregation: rising_crossing_time
+          start_us: 8.0
+          end_us: 30.0
+          relation: below
+          threshold_v: 1.65
+          time_limit_us: 20.0

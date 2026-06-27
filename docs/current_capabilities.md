@@ -130,6 +130,11 @@ Current analog support:
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
   3.3 V LDO macro-model for preliminary rail observation.
+- The TI TLV803EA29 reset-supervisor pack now has a datasheet-backed generated
+  SPICE observation face for active-low open-drain threshold behavior with an
+  external pull-up. Datasheet delay and threshold metadata remain available for
+  static reset timing suggestions, while the transient face stays explicitly
+  reduced-fidelity.
 - GUI generated run-setup creation and generated component inclusion infer
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned

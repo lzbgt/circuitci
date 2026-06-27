@@ -75,7 +75,7 @@ scenarios:
           - RLOAD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: 7872b453d85cec24216861e3d51326c477d056225617d029a8f03fde00dbb670
+          sha256: e396cd27587ff3c9faca57a4b9f64bee0f3c7c4c58f33a532a8607e8c8c5023a
       node_bindings:
         - node: vcc
           net: vcc_5v

@@ -21,3 +21,12 @@ ROUT OUT VEE 1G
 BOUT VOUT GND V={3.3/(1+exp(-20*(v(EN,GND)-1)))}
 ROUT VOUT GND 1G
 .ends CIRCUITCI_IDEAL_LDO_3V3
+
+.subckt CIRCUITCI_TLV803EA29_RESET_SUPERVISOR VDD GND RESET
+* Reduced TLV803EA29 active-low open-drain threshold behavior.
+* RESET is strongly pulled low while VDD is below the nominal 2.93 V threshold
+* and otherwise relies on an external pull-up resistor in the circuit. The
+* logistic conductance avoids hard switching discontinuities.
+BRESET RESET GND I={v(RESET,GND)*(1e-9 + 1/(1+exp(80*(v(VDD,GND)-2.93))))}
+RLEAK RESET GND 1G
+.ends CIRCUITCI_TLV803EA29_RESET_SUPERVISOR

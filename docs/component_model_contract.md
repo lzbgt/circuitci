@@ -646,6 +646,12 @@ enable, and capacitor metadata while its generated-SPICE face points at
 `CIRCUITCI_IDEAL_LDO_3V3`. That lets users place and observe the real part in
 Sketch/Scopes without pretending the generic subcircuit is a vendor transient,
 thermal, stability, or PSRR model.
+`vendor.ti.tlv803ea29` follows the same pattern for reset-supervisor threshold
+observation: its datasheet threshold, delay, active-low open-drain topology, and
+pin metadata remain source-backed, while its generated-SPICE face points at a
+reduced nominal-threshold open-drain behavioral subcircuit. That model can
+exercise reset pull-up wiring and assertions, but not reset-delay, hysteresis,
+glitch-immunity, propagation-delay, or leakage sign-off.
 
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital

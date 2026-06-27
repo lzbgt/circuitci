@@ -22,6 +22,17 @@ reset_supervisor:
   threshold_min_V: 2.8714
   threshold_max_V: 2.9886
   reset_release_delay_us: 270000
+simulation:
+  spice:
+    model_name: CIRCUITCI_TLV803EA29_RESET_SUPERVISOR
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, GND, RESET]
+    valid_operating_notes:
+      - Uses TLV803EA29 datasheet pinout, active-low open-drain topology, and nominal 2.93 V falling-threshold behavior.
+      - Suitable for generated-SPICE threshold/pull-up wiring observation and preliminary reset-net probe/assertion workflows.
+      - Omits reset-release delay, hysteresis band spread, low-VDD output-valid details, propagation delay, glitch immunity, transient noise immunity, leakage variation, and pull-up timing sign-off.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TLV803EA29
@@ -75,6 +86,7 @@ model_quality:
     - power_tree_validation
     - reset_supervisor_threshold_screening
     - reset_release_timing_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - open_drain_pullup_timing
     - reset_output_waveform_shape

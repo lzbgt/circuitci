@@ -39,6 +39,20 @@ The model can also provide conservative delay metadata to generated
 the supervisor uniquely monitors the target rail and drives the target reset
 net. See `examples/scenario_suggestions_tlv803_reset_release/`.
 
-This model is not a reset waveform model. It is not valid for open-drain pull-up
-timing, glitch immunity, transient noise immunity, propagation-delay sign-off,
-or final low-voltage reset-output behavior.
+The model also declares `simulation.spice` metadata for generated Board IR
+transient workflows. That simulation face uses the reduced
+`CIRCUITCI_TLV803EA29_RESET_SUPERVISOR` subcircuit from
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+```text
+VDD, GND, RESET
+```
+
+`examples/good_tlv803ea29_reset_observation` proves the TLV803EA29 model can
+participate in generated-SPICE reset-threshold observation with an external
+pull-up resistor, voltage probes, and executable reset checks.
+
+This simulation face is still a conservative workflow/topology macro-model. It
+is not valid for reset-release delay, hysteresis spread, open-drain pull-up
+timing sign-off, glitch immunity, transient noise immunity, propagation-delay
+sign-off, leakage variation, or final low-voltage reset-output behavior.
