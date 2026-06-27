@@ -394,6 +394,10 @@ when no analog probes exist, Run may add a generated transient voltage probe
 or add a voltage probe to the first analog run setup with node bindings before
 saving and validating. `src/gui/simulation_editors.rs` owns the docked
 run-setup/model/source/check editors and their Board IR YAML mutation helpers.
+`src/gui/analog_sweeps.rs` owns GUI projection and mutation helpers for bounded
+SPICE `.param` run-input sweeps. The GUI creates a sweep together with its
+first parameter so edited projects stay executable, and it prevents removing the
+last parameter from a sweep unless the whole sweep is removed.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form
 defaults, combo widgets, stimulus field loading, and status-color helpers for
 those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback

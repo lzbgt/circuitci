@@ -301,7 +301,10 @@ orientation under `board.schematic.node_styles`.
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
 `src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
-editors and their Board IR YAML mutation helpers.
+editors and their Board IR YAML mutation helpers, including the user-facing
+Run Input Sweeps panel. Sweep creation is valid-by-construction: adding a new
+sweep also adds its first SPICE `.param` input and comma-separated value list,
+while extra parameters can be added or removed without editing YAML.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
@@ -656,31 +659,34 @@ The supported desktop simulation path is:
 32. add sample, windowed min/max/mean/RMS, rising/falling crossing-time,
    minimum high/low pulse-width, duty-cycle, or crossing-count waveform
    observation checks against declared probes,
-33. load, edit, save, and rerun file-backed SPICE decks from declared analog
+33. author bounded SPICE `.param` run-input sweeps from the Observations
+   overlay, including executable first-parameter creation, extra parameter
+   add/remove controls, declared corner counts, and Board IR YAML persistence,
+34. load, edit, save, and rerun file-backed SPICE decks from declared analog
    run setups,
-34. browse, hash, add, and remove SHA-backed SPICE model/include files for
+35. browse, hash, add, and remove SHA-backed SPICE model/include files for
    declared analog scenarios,
-35. run KiCad/SPICE imports, scenario suggestions, declared validation, and
+36. run KiCad/SPICE imports, scenario suggestions, declared validation, and
    `analog_transient` scenarios in background workers while the desktop shell
    remains responsive,
-36. cancel a running background job from the Observe menu, left project
+37. cancel a running background job from the Observe menu, left project
    panel, or status panel; external ngspice validation subprocesses are
    terminated where possible, scenario suggestions and importers stop at safe
    phase checkpoints, and embedded backend calls still finish before their
    result is ignored; supported checkpoint stops are recorded as canceled job
    outcomes instead of failed job outcomes,
-37. review recent background job outcomes in the status panel, including
+38. review recent background job outcomes in the status panel, including
    elapsed time, output path, and a compact diagnostic detail,
-38. watch active background job stages in the status panel as imports,
+39. watch active background job stages in the status panel as imports,
    suggestions, validation, and analog simulation advance; KiCad/SPICE imports
    report parser, mapping/load, Board IR build/merge, and write phases, while
    validation reports project loading, model loading/binding, scenario
    execution, analog transient scenario/deck/backend/waveform phases, profile
    coverage, report assembly, report writing, and markdown report loading,
-39. scrub or play the simulation time cursor to drive graph runtime tinting,
-40. hover graph nodes to inspect matching voltage/current/power probe values at
+40. scrub or play the simulation time cursor to drive graph runtime tinting,
+41. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-41. add schematic probes from the primary toolbar for the selected net or
+42. add schematic probes from the primary toolbar for the selected net or
    component, use visible schematic probe elements to find voltage/current/power
    probes, see latest check pass/fail/unknown/unasserted status, jump to
    their Observations-stage scope trace and selected-probe check panel after
@@ -690,15 +696,15 @@ The supported desktop simulation path is:
    below-current-sample check with Shift+B, clear checks for the probe with
    `X`, use the right-click probe menu for the same probe actions, or remove a
    hovered probe element with Delete/Backspace,
-42. use right-click component, net, and wire menus for common sketch actions
+43. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, place local/off-page net labels, and delete
    through the same validated Board IR mutation paths as the inspector and
    keyboard actions,
-43. observe generated decks, plotted CSV waveforms, derived waveform math
+44. observe generated decks, plotted CSV waveforms, derived waveform math
    channels, promote representable derived channels to persistent probes/assertions,
    cursor values, min/max measurements, findings, and report artifacts,
-44. edit the project/model evidence and rerun.
+45. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, persisted
 hierarchical schematic sheets, advanced multi-channel waveform-analysis sign-off, advanced SPICE source

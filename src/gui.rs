@@ -12,6 +12,7 @@ mod analog_generated;
 mod analog_models;
 mod analog_overview;
 mod analog_stimulus;
+mod analog_sweeps;
 #[cfg(test)]
 mod analog_tests;
 mod file_dialogs;
@@ -343,6 +344,10 @@ pub struct CircuitCiApp {
     analog_generated_max_step_us: f64,
     analog_generated_node_net: String,
     analog_generated_node_name: String,
+    analog_sweep_scenario: String,
+    analog_sweep_name: String,
+    analog_sweep_parameter_name: String,
+    analog_sweep_parameter_values: String,
     analog_model_scenario: String,
     analog_model_path: String,
     analog_model_sha256: String,
@@ -560,6 +565,10 @@ impl Default for CircuitCiApp {
             analog_generated_max_step_us: 1.0,
             analog_generated_node_net: String::new(),
             analog_generated_node_name: String::new(),
+            analog_sweep_scenario: String::new(),
+            analog_sweep_name: "input_sweep".to_string(),
+            analog_sweep_parameter_name: "PARAM_NAME".to_string(),
+            analog_sweep_parameter_values: "0.9, 1.0, 1.1".to_string(),
             analog_model_scenario: String::new(),
             analog_model_path: String::new(),
             analog_model_sha256: String::new(),

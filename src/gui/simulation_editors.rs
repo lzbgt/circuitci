@@ -19,6 +19,11 @@ use super::analog_stimulus::{
     AnalogStimulusDraft, AnalogStimulusKind, AnalogStimulusPulseDraft, analog_stimulus_choices,
     replace_analog_stimulus,
 };
+use super::analog_sweeps::{
+    AnalogSweepDraft, AnalogSweepParameterDraft, AnalogSweepScenario, AnalogSweepSummary,
+    analog_sweep_scenarios, append_analog_sweep_parameter, append_analog_sweep_with_parameter,
+    remove_analog_sweep, remove_analog_sweep_parameter,
+};
 use super::simulation_forms::*;
 use super::sketch::ProjectSnapshot;
 use super::sketch_probes::SketchProbe;
@@ -758,6 +763,89 @@ impl CircuitCiApp {
         });
     }
 
+    pub(super) fn analog_sweep_editor(&mut self, ui: &mut egui::Ui) {
+        let scenarios = match analog_sweep_scenarios(&self.project_yaml) {
+            Ok(scenarios) => scenarios,
+            Err(error) => {
+                ui.collapsing("Run Input Sweeps", |ui| {
+                    ui.label(format!("Run input sweeps unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("Run Input Sweeps", |ui| {
+            if scenarios.is_empty() {
+                ui.label("No analog run setup is available. Add one first.");
+                return;
+            }
+            initialize_analog_sweep_defaults(
+                &scenarios,
+                &mut self.analog_sweep_scenario,
+                &mut self.analog_sweep_name,
+            );
+            egui::Grid::new("analog_sweep_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Run setup");
+                    analog_sweep_scenario_combo(ui, &scenarios, &mut self.analog_sweep_scenario);
+                    ui.end_row();
+
+                    ui.label("Sweep");
+                    ui.text_edit_singleline(&mut self.analog_sweep_name);
+                    ui.end_row();
+
+                    ui.label("Parameter");
+                    ui.text_edit_singleline(&mut self.analog_sweep_parameter_name);
+                    ui.end_row();
+
+                    ui.label("Values");
+                    ui.text_edit_singleline(&mut self.analog_sweep_parameter_values);
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Add Sweep + Parameter").clicked() {
+                    self.apply_add_analog_sweep();
+                }
+                let selected_sweep = selected_analog_sweep(
+                    &scenarios,
+                    &self.analog_sweep_scenario,
+                    &self.analog_sweep_name,
+                );
+                if ui
+                    .add_enabled(selected_sweep.is_some(), egui::Button::new("Remove Sweep"))
+                    .clicked()
+                {
+                    self.apply_remove_analog_sweep();
+                }
+            });
+
+            if let Some(selected_scenario) =
+                selected_analog_sweep_scenario(&scenarios, &self.analog_sweep_scenario)
+            {
+                analog_sweep_rows(ui, selected_scenario, &mut self.analog_sweep_name);
+            }
+
+            if selected_analog_sweep(
+                &scenarios,
+                &self.analog_sweep_scenario,
+                &self.analog_sweep_name,
+            )
+            .is_some()
+            {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Add Parameter").clicked() {
+                        self.apply_add_analog_sweep_parameter();
+                    }
+                    if ui.button("Remove Parameter").clicked() {
+                        self.apply_remove_analog_sweep_parameter();
+                    }
+                });
+            }
+        });
+    }
+
     pub(super) fn selected_probe_assertions_panel(&mut self, ui: &mut egui::Ui) {
         ui.collapsing("Selected Probe Checks", |ui| {
             if self.analog_assertion_scenario.trim().is_empty()
@@ -878,6 +966,80 @@ impl CircuitCiApp {
                 &format!(
                     "Observation check {} added.",
                     self.analog_assertion_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_sweep(&mut self) {
+        let draft = AnalogSweepParameterDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            parameter_name: self.analog_sweep_parameter_name.clone(),
+            values_csv: self.analog_sweep_parameter_values.clone(),
+        };
+        match append_analog_sweep_with_parameter(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Run input sweep {} added with parameter {}.",
+                    draft.sweep_name.trim(),
+                    draft.parameter_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_analog_sweep(&mut self) {
+        let draft = AnalogSweepDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+        };
+        match remove_analog_sweep(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!("Run input sweep {} removed.", draft.sweep_name.trim()),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_sweep_parameter(&mut self) {
+        let draft = AnalogSweepParameterDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            parameter_name: self.analog_sweep_parameter_name.clone(),
+            values_csv: self.analog_sweep_parameter_values.clone(),
+        };
+        match append_analog_sweep_parameter(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Run input parameter {} added to sweep {}.",
+                    draft.parameter_name.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_analog_sweep_parameter(&mut self) {
+        let draft = AnalogSweepParameterDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            parameter_name: self.analog_sweep_parameter_name.clone(),
+            values_csv: String::new(),
+        };
+        match remove_analog_sweep_parameter(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Run input parameter {} removed from sweep {}.",
+                    draft.parameter_name.trim(),
+                    draft.sweep_name.trim()
                 ),
             ),
             Err(error) => self.record_error(error),
@@ -1282,4 +1444,123 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+}
+
+fn initialize_analog_sweep_defaults(
+    scenarios: &[AnalogSweepScenario],
+    selected_scenario: &mut String,
+    selected_sweep: &mut String,
+) {
+    let scenario_stale = selected_scenario.trim().is_empty()
+        || !scenarios
+            .iter()
+            .any(|scenario| scenario.name == *selected_scenario);
+    if let (true, Some(scenario)) = (scenario_stale, scenarios.first()) {
+        *selected_scenario = scenario.name.clone();
+    }
+    let Some(scenario) = selected_analog_sweep_scenario(scenarios, selected_scenario) else {
+        return;
+    };
+    let sweep_stale = selected_sweep.trim().is_empty()
+        || (!scenario.sweeps.is_empty()
+            && !scenario
+                .sweeps
+                .iter()
+                .any(|sweep| sweep.name == *selected_sweep));
+    if let (true, Some(sweep)) = (sweep_stale, scenario.sweeps.first()) {
+        *selected_sweep = sweep.name.clone();
+    }
+}
+
+fn analog_sweep_scenario_combo(
+    ui: &mut egui::Ui,
+    scenarios: &[AnalogSweepScenario],
+    selected_scenario: &mut String,
+) {
+    egui::ComboBox::from_id_salt("analog_sweep_scenario")
+        .selected_text(if selected_scenario.is_empty() {
+            "select run setup"
+        } else {
+            selected_scenario.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for scenario in scenarios {
+                ui.selectable_value(selected_scenario, scenario.name.clone(), &scenario.name);
+            }
+        });
+}
+
+fn analog_sweep_rows(
+    ui: &mut egui::Ui,
+    scenario: &AnalogSweepScenario,
+    selected_sweep: &mut String,
+) {
+    if scenario.sweeps.is_empty() {
+        ui.label("No parameter sweeps are declared for this run setup.");
+        return;
+    }
+    ui.add_space(4.0);
+    ui.strong("Declared sweeps");
+    egui::Grid::new("analog_sweep_rows")
+        .num_columns(4)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.strong("Sweep");
+            ui.strong("Parameters");
+            ui.strong("Corners");
+            ui.strong("Use");
+            ui.end_row();
+            for sweep in &scenario.sweeps {
+                ui.monospace(&sweep.name);
+                ui.label(parameter_summary(sweep));
+                ui.label(sweep.corner_count.to_string());
+                if ui.button("Select").clicked() {
+                    *selected_sweep = sweep.name.clone();
+                }
+                ui.end_row();
+            }
+        });
+}
+
+fn selected_analog_sweep_scenario<'a>(
+    scenarios: &'a [AnalogSweepScenario],
+    selected_scenario: &str,
+) -> Option<&'a AnalogSweepScenario> {
+    scenarios
+        .iter()
+        .find(|scenario| scenario.name == selected_scenario)
+}
+
+fn selected_analog_sweep<'a>(
+    scenarios: &'a [AnalogSweepScenario],
+    selected_scenario: &str,
+    selected_sweep: &str,
+) -> Option<&'a AnalogSweepSummary> {
+    selected_analog_sweep_scenario(scenarios, selected_scenario)?
+        .sweeps
+        .iter()
+        .find(|sweep| sweep.name == selected_sweep)
+}
+
+fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
+    if sweep.parameters.is_empty() {
+        return "none".to_string();
+    }
+    sweep
+        .parameters
+        .iter()
+        .map(|parameter| {
+            format!(
+                "{} [{}]",
+                parameter.name,
+                parameter
+                    .values
+                    .iter()
+                    .map(|value| format!("{value:.6}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
 }

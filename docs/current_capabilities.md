@@ -94,6 +94,9 @@ Current analog support:
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Bounded SPICE `.param` sweeps for analog run inputs, with each sweep corner
   exported as its own waveform/artifact set and tagged on findings.
+- GUI Run Input Sweeps editing for analog run setups, including sweep creation
+  with an executable first parameter, extra parameter add/remove controls, and
+  declared corner-count summaries without editing YAML by hand.
 - Required model-file existence and SHA-256 checks.
 - Voltage/current/power probes and waveform assertions, including single-point
   samples, min/max/mean/RMS windows, rising/falling crossing-time checks,

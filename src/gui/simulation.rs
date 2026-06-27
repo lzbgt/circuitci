@@ -151,6 +151,7 @@ impl CircuitCiApp {
             ui.separator();
             if let Some(snapshot) = self.project_snapshot.clone() {
                 self.analog_scenario_editor(ui, &snapshot);
+                self.analog_sweep_editor(ui);
                 self.analog_generated_overview_panel(ui);
                 self.analog_generated_settings_editor(ui);
                 self.analog_generated_components_editor(ui);
