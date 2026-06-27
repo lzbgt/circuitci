@@ -476,10 +476,11 @@ form:
   using native file/folder pickers, then load or validate it. The File menu has
   a registry-backed `Examples` command menu, and the Project overlay has a
   compact example picker that shows each entry's category, purpose, expected
-  traces, and expected frequency before `Open` or `Run + Scopes`. The current
-  entries cover the checked-in NE555 astable-style fixture, RC low-pass sine
-  fixture, comparator threshold fixture, op-amp buffer fixture, AP2112K LDO
-  rail fixture, TLV803 reset-supervisor fixture, and loop-stability Bode
+  traces or observations, and expected frequency or operating point before
+  `Open` or `Run + Scopes`. The current entries cover the checked-in NE555
+  astable-style fixture, RC low-pass sine fixture, comparator threshold
+  fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TLV803
+  reset-supervisor fixture, loop-stability Bode fixture, and DC divider-bias
   fixture; all direct-open projects include display-only routed schematic
   waypoints. Opening one lands directly in Sketch with a deferred Fit All, so
   the first view is the readable connected network. When a scope-ready fixture

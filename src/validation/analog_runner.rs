@@ -388,20 +388,20 @@ where
     Ok(NgspiceAcRun { artifacts, bode })
 }
 
-struct SolverOutput {
-    status: SolverStatus,
-    command: String,
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
+pub(super) struct SolverOutput {
+    pub(super) status: SolverStatus,
+    pub(super) command: String,
+    pub(super) stdout: Vec<u8>,
+    pub(super) stderr: Vec<u8>,
 }
 
-enum SolverStatus {
+pub(super) enum SolverStatus {
     External(ExitStatus),
     Embedded(i32),
 }
 
 impl SolverStatus {
-    fn success(&self) -> bool {
+    pub(super) fn success(&self) -> bool {
         match self {
             Self::External(status) => status.success(),
             Self::Embedded(code) => *code == 0,
@@ -409,7 +409,7 @@ impl SolverStatus {
     }
 }
 
-struct EmbeddedCommands {
+pub(super) struct EmbeddedCommands {
     tran: String,
     wrdata: String,
 }
@@ -459,7 +459,7 @@ impl std::fmt::Display for SolverStatus {
     }
 }
 
-fn run_solver_with_timeout(
+pub(super) fn run_solver_with_timeout(
     backend: &str,
     wrapper: &Path,
     timeout: Duration,
@@ -866,14 +866,17 @@ fn c_string(text: *mut c_char) -> Option<&'static str> {
     unsafe { CStr::from_ptr(text) }.to_str().ok()
 }
 
-fn ngspice_error(message: impl Into<String>, artifacts: Vec<PathBuf>) -> NgspiceRunError {
+pub(super) fn ngspice_error(
+    message: impl Into<String>,
+    artifacts: Vec<PathBuf>,
+) -> NgspiceRunError {
     NgspiceRunError {
         message: message.into(),
         artifacts,
     }
 }
 
-fn detect_nonconvergence(log: &str) -> Option<&'static str> {
+pub(super) fn detect_nonconvergence(log: &str) -> Option<&'static str> {
     let lower = log.to_ascii_lowercase();
     for (pattern, reason) in [
         ("timestep too small", "timestep too small"),
@@ -1183,7 +1186,7 @@ fn sanitize_csv_column(name: &str) -> String {
     }
 }
 
-fn sweep_temperature_c(parameter_overrides: &[ParameterOverride]) -> Option<f64> {
+pub(super) fn sweep_temperature_c(parameter_overrides: &[ParameterOverride]) -> Option<f64> {
     parameter_overrides
         .iter()
         .find(|override_| {
@@ -1214,7 +1217,7 @@ fn uses_capacitor_initial_conditions(bound: &BoundBoard<'_>, scenario: &Scenario
     })
 }
 
-fn rewrite_include_line(line: &str, source_dir: &Path) -> String {
+pub(super) fn rewrite_include_line(line: &str, source_dir: &Path) -> String {
     let trimmed = line.trim_start();
     let lowercase = trimmed.to_ascii_lowercase();
     if !lowercase.starts_with(".include ") && !lowercase.starts_with(".lib ") {

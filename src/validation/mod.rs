@@ -1,5 +1,8 @@
 mod analog_ac_assertions;
 mod analog_assertions;
+mod analog_dc_assertions;
+mod analog_dc_runner;
+mod analog_dc_spice;
 mod analog_operating_limits;
 mod analog_runner;
 mod analog_soa;
@@ -80,6 +83,7 @@ pub(super) const USB_VBUS_ROUTE_VALID: &str = "USB_VBUS_ROUTE_VALID";
 pub(super) const USB_RETURN_PATH_VALID: &str = "USB_RETURN_PATH_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_AC_ANALYSIS: &str = "SPICE_AC_ANALYSIS";
+pub(super) const SPICE_DC_ANALYSIS: &str = "SPICE_DC_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
@@ -111,6 +115,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "clock",
     "analog_transient",
     "analog_ac",
+    "analog_dc",
     "motor_drive",
     "load_budget",
     "model_quality",
@@ -529,6 +534,20 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_DC_ANALYSIS if scenario.scenario_type == "analog_dc" => {
+                    let mut sinks = analog_dc_spice::AnalogDcSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_dc_spice::validate_spice_dc_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
                 }
@@ -655,6 +674,7 @@ where
                 | USB_RETURN_PATH_VALID
                 | SPICE_TRANSIENT_ANALYSIS
                 | SPICE_AC_ANALYSIS
+                | SPICE_DC_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_BRIDGE_SWITCHING_VALID

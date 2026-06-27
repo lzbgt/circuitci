@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 7);
+    assert_eq!(examples.len(), 8);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -763,6 +763,30 @@ fn gui_project_example_registry_lists_loop_stability_bode_fixture() {
     assert_eq!(
         example.expected_frequency,
         "Bode loop gain with phase margin >45 deg and gain margin >6 dB"
+    );
+    assert_eq!(example.observation_preset_component, None);
+}
+
+#[test]
+fn gui_project_example_registry_lists_dc_bias_fixture() {
+    let example = gui_project_example_by_id("dc_bias_observation");
+
+    assert_eq!(example.category, "Bias");
+    assert_eq!(example.open_label, "Open DC Bias Example");
+    assert_eq!(example.run_label, "Open DC Bias + Run Observations");
+    assert_eq!(
+        example.summary,
+        "Generated operating-point divider bias with resistor-tolerance margin checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_dc_bias_observation/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_dc_bias_observation");
+    assert_eq!(example.expected_traces, &["vin", "midpoint"]);
+    assert_eq!(
+        example.expected_frequency,
+        "DC operating point with 9 divider-tolerance corners"
     );
     assert_eq!(example.observation_preset_component, None);
 }

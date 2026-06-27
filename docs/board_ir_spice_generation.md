@@ -32,8 +32,8 @@ failures. They must not be silently omitted.
 
 ## Project Contract
 
-An `analog_transient` or `analog_ac` scenario can use either a hand-authored
-deck or generated Board IR source:
+An `analog_transient`, `analog_ac`, or `analog_dc` scenario can use either a
+hand-authored deck or generated Board IR source:
 
 ```yaml
 analog:

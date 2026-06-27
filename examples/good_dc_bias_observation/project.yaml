@@ -1,0 +1,137 @@
+project:
+  name: good_dc_bias_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  schematic:
+    component_symbols:
+      V1: Simulation_SPICE:VDC
+      R1: Device:R
+      R2: Device:R
+    node_styles:
+      component:V1: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:R1: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:R2: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:V1: { x: 32.0, y: 240.0 }
+      component:R1: { x: 288.0, y: 176.0 }
+      component:R2: { x: 288.0, y: 368.0 }
+      net:vin: { x: 176.0, y: 176.0 }
+      net:midpoint: { x: 416.0, y: 272.0 }
+      net:gnd: { x: 176.0, y: 528.0 }
+    wire_routes:
+      V1.P->vin:
+        points:
+          - { x: 160.0, y: 304.0 }
+      V1.N->gnd:
+        points:
+          - { x: 80.0, y: 528.0 }
+      R1.A->vin:
+        points:
+          - { x: 336.0, y: 176.0 }
+      R1.B->midpoint:
+        points:
+          - { x: 336.0, y: 272.0 }
+      R2.A->midpoint:
+        points:
+          - { x: 336.0, y: 336.0 }
+      R2.B->gnd:
+        points:
+          - { x: 336.0, y: 528.0 }
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: vin
+        B: midpoint
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    R2:
+      model: generic.analog.resistor
+      pins:
+        A: midpoint
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    vin:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    midpoint:
+      kind: digital_or_analog
+      nominal_voltage: 2.5
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: divider_dc_bias
+    type: analog_dc
+    checks:
+      - SPICE_DC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, R2]
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: vin, net: vin }
+        - { node: midpoint, net: midpoint }
+      pin_bindings:
+        - { node: vin, endpoint: { component: V1, pin: P } }
+        - { node: "0", endpoint: { component: V1, pin: N } }
+        - { node: vin, endpoint: { component: R1, pin: A } }
+        - { node: midpoint, endpoint: { component: R1, pin: B } }
+        - { node: midpoint, endpoint: { component: R2, pin: A } }
+        - { node: "0", endpoint: { component: R2, pin: B } }
+      analysis:
+        type: op
+      stimuli:
+        - name: dc_divider_bias
+          description: V1 biases a 10 kOhm / 10 kOhm divider from 5 V.
+      sweeps:
+        - name: divider_tolerance
+          component_values:
+            - component: R1
+              field: value_ohm
+              values: [9500.0, 10000.0, 10500.0]
+            - component: R2
+              field: value_ohm
+              values: [9500.0, 10000.0, 10500.0]
+      probes:
+        - name: vin
+          expression: V(vin)
+        - name: midpoint
+          expression: V(midpoint)
+      assertions:
+        - name: vin_above_4_9v
+          probe: vin
+          aggregation: operating_point
+          relation: above
+          threshold_v: 4.9
+        - name: midpoint_above_2_35v
+          probe: midpoint
+          aggregation: operating_point
+          relation: above
+          threshold_v: 2.35
+        - name: midpoint_below_2_65v
+          probe: midpoint
+          aggregation: operating_point
+          relation: below
+          threshold_v: 2.65

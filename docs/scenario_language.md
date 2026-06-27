@@ -75,6 +75,7 @@ Executable scenario types:
 - `manufacturing`
 - `analog_transient`
 - `analog_ac`
+- `analog_dc`
 - `motor_drive`
 - `load_budget`
 - `model_quality`
@@ -146,6 +147,7 @@ Canonical executable check IDs:
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_AC_ANALYSIS`
+- `SPICE_DC_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
 automatic critical finding emitted by `SPICE_TRANSIENT_ANALYSIS` when generated
@@ -2691,6 +2693,63 @@ assertions are:
 - `gain_margin_db`: requires `threshold_db`; finds the first falling
   -180 degree phase crossing, interpolates `{probe}_mag_db` at that frequency,
   and compares `-gain_db` as the gain margin.
+
+## Analog DC Operating-Point Scenario Shape
+
+`analog_dc` scenarios use the same Board IR binding, model-file, generated
+netlist, and run-input sweep contract as transient and AC/Bode scenarios, but
+run an ngspice `.op` analysis and export one `operating_point.csv` row per
+corner:
+
+```yaml
+scenarios:
+  - name: divider_dc_bias
+    type: analog_dc
+    checks:
+      - SPICE_DC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, R2]
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: vin, net: vin }
+        - { node: midpoint, net: midpoint }
+      pin_bindings:
+        - { node: vin, endpoint: { component: V1, pin: P } }
+        - { node: "0", endpoint: { component: V1, pin: N } }
+      analysis:
+        type: op
+      stimuli:
+        - name: dc_divider_bias
+          description: V1 biases a resistor divider from 5 V.
+      sweeps:
+        - name: divider_tolerance
+          component_values:
+            - component: R1
+              field: value_ohm
+              values: [9500.0, 10000.0, 10500.0]
+      probes:
+        - name: midpoint
+          expression: V(midpoint)
+      assertions:
+        - name: midpoint_above_2_35v
+          probe: midpoint
+          aggregation: operating_point
+          relation: above
+          threshold_v: 2.35
+```
+
+`SPICE_DC_ANALYSIS` currently uses external ngspice export. It emits
+`operating_point_raw.csv`, normalized `operating_point.csv`, wrapper deck, and
+solver log artifacts. `operating_point` assertions compare the checked probe's
+DC value against the probe-unit threshold (`threshold_v`, `threshold_a`, or
+`threshold_w`) without time or frequency fields. DC scenarios participate in
+the same `analog.sweeps` expansion and `ANALOG_SWEEP_MARGIN_SUMMARY` worst
+corner reports as transient and AC/Bode scenarios.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

@@ -43,6 +43,10 @@ const LOOP_STABILITY_BODE_EXAMPLE_NAME: &str = "loop_stability_bode_scope";
 const LOOP_STABILITY_BODE_EXPECTED_TRACES: &[&str] = &["loop_mag_db", "loop_phase_deg", "loop_mag"];
 const LOOP_STABILITY_BODE_EXPECTED_FREQUENCY: &str =
     "Bode loop gain with phase margin >45 deg and gain margin >6 dB";
+const DC_BIAS_EXAMPLE_PROJECT: &str = "examples/good_dc_bias_observation/project.yaml";
+const DC_BIAS_EXAMPLE_NAME: &str = "good_dc_bias_observation";
+const DC_BIAS_EXPECTED_TRACES: &[&str] = &["vin", "midpoint"];
+const DC_BIAS_EXPECTED_FREQUENCY: &str = "DC operating point with 9 divider-tolerance corners";
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
@@ -133,6 +137,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: LOOP_STABILITY_BODE_EXAMPLE_NAME,
         expected_traces: LOOP_STABILITY_BODE_EXPECTED_TRACES,
         expected_frequency: LOOP_STABILITY_BODE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
+    },
+    GuiProjectExample {
+        id: "dc_bias_observation",
+        category: "Bias",
+        open_label: "Open DC Bias Example",
+        run_label: "Open DC Bias + Run Observations",
+        workflow_title: "DC Bias Observation Workflow",
+        summary: "Generated operating-point divider bias with resistor-tolerance margin checks.",
+        project_path: DC_BIAS_EXAMPLE_PROJECT,
+        project_name: DC_BIAS_EXAMPLE_NAME,
+        expected_traces: DC_BIAS_EXPECTED_TRACES,
+        expected_frequency: DC_BIAS_EXPECTED_FREQUENCY,
         observation_preset_component: None,
     },
 ];

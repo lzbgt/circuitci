@@ -58,6 +58,7 @@ pub(super) fn measured_assertion_value(
         | AnalogAggregation::RisingHoldTime
         | AnalogAggregation::FallingSetupTime
         | AnalogAggregation::FallingHoldTime
+        | AnalogAggregation::OperatingPoint
         | AnalogAggregation::GainDbAtFrequency
         | AnalogAggregation::PhaseDegAtFrequency
         | AnalogAggregation::RisingGainCrossingFrequency
@@ -205,6 +206,7 @@ fn aggregate_window(
             }
         }
         AnalogAggregation::Sample
+        | AnalogAggregation::OperatingPoint
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth

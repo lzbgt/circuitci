@@ -327,6 +327,11 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::GainMarginDb => {
             return Err("AC aggregations are only valid for analog_ac scenarios".to_string());
         }
+        AnalogAggregation::OperatingPoint => {
+            return Err(
+                "operating_point aggregation is only valid for analog_dc scenarios".to_string(),
+            );
+        }
         AnalogAggregation::Sample => {
             if assertion.start_us.is_some() || assertion.end_us.is_some() {
                 return Err("sample aggregation must not declare start_us or end_us".to_string());
@@ -752,6 +757,7 @@ fn signal_threshold_for(
 fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
     match aggregation {
         AnalogAggregation::Sample => "sampled",
+        AnalogAggregation::OperatingPoint => "operating point",
         AnalogAggregation::Min => "minimum",
         AnalogAggregation::Max => "maximum",
         AnalogAggregation::Mean => "mean",
@@ -823,6 +829,7 @@ fn measured_quantity_name(
 fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
     match assertion.aggregation {
         AnalogAggregation::Sample => format!(" at {} us", assertion.at_us.unwrap_or_default()),
+        AnalogAggregation::OperatingPoint => String::new(),
         AnalogAggregation::Min
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
@@ -873,6 +880,7 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("sample_time_us".to_string(), json!(at_us));
             }
         }
+        AnalogAggregation::OperatingPoint => {}
         AnalogAggregation::Min
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
@@ -1032,6 +1040,7 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("sample_time_us".to_string(), json!(at_us));
             }
         }
+        AnalogAggregation::OperatingPoint => {}
         AnalogAggregation::Min
         | AnalogAggregation::Max
         | AnalogAggregation::Mean

@@ -52,7 +52,9 @@ mode?"
 
 An `analog_transient` scenario owns a SPICE deck and waveform assertions.
 An `analog_ac` scenario owns a small-signal SPICE deck, Bode response exports,
-and AC assertions for frequency-domain design observation.
+and AC assertions for frequency-domain design observation. An `analog_dc`
+scenario owns a SPICE deck, `.op` operating-point export, and DC bias
+assertions.
 
 Required fields:
 
@@ -61,13 +63,14 @@ Required fields:
 - `model_files`: SPICE model-card or subcircuit files used by the deck.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
-- `analysis`: transient settings, including stop time and maximum step, or AC
-  settings with start/stop frequency and optional points per decade.
+- `analysis`: transient settings with stop time and maximum step, AC settings
+  with start/stop frequency and optional points per decade, or `type: op` for
+  DC operating-point analysis.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
-- `assertions`: threshold checks over transient waveform samples or AC Bode
-  response values.
+- `assertions`: threshold checks over transient waveform samples, AC Bode
+  response values, or DC operating-point values.
 
 The first Rust implementation may support hand-authored SPICE decks before full
 netlist generation. That is acceptable only if the deck is explicitly bound
@@ -136,6 +139,23 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
 7. Preserve `bode.csv` paths in the report `waveforms` list so the GUI Scopes
    view can load them as frequency-axis traces with magnitude/phase lanes and
    sweep-corner comparison support.
+
+For a scenario with check `SPICE_DC_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as
+   transient and AC validation.
+2. Require `analysis.type: op` and at least one operating-point probe.
+3. Select external `ngspice`; DC export currently fails closed for embedded
+   ngspice and Xyce until equivalent export paths are implemented.
+4. Expand bounded run-input sweeps exactly like transient and AC validation.
+5. Run `.op`, export ngspice probe data, and normalize it to
+   `operating_point.csv` with one column per declared probe.
+6. Evaluate `operating_point` assertions over the normalized CSV. Failed
+   assertions emit critical `SPICE_DC_ANALYSIS` findings with measured value,
+   limit, relation, and artifact path.
+7. Emit sweep worst-corner margin summaries for DC assertions, so bias and
+   quiescent operating margins can be reviewed across tolerance, temperature,
+   load, and model-section corners.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

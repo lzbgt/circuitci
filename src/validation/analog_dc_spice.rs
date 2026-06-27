@@ -1,0 +1,352 @@
+use crate::board_ir::{AnalogRelation, Scenario};
+use crate::library::BoundBoard;
+use crate::reports::Finding;
+use serde_json::json;
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::Path;
+
+use super::SPICE_DC_ANALYSIS;
+use super::analog_assertions::validate_probe_contract;
+use super::analog_dc_assertions::{evaluate_dc_assertions, validate_dc_assertion_contract};
+use super::analog_dc_runner::{NgspiceDcRunOptions, run_ngspice_dc};
+use super::analog_runner::{
+    BackendSelection, backend_name, embedded_solver_unavailable, external_backend_unavailable,
+    select_backend,
+};
+use super::analog_spice::{
+    analog_run_plans, prepare_source_netlist, push_canceled_finding, push_sweep_margin_summaries,
+    record_sweep_measurements, tag_corner_finding, tag_corner_findings, validate_netlist_source,
+};
+use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::common::validation_input_missing;
+
+pub(super) struct AnalogDcSinks<'a> {
+    pub(super) findings: &'a mut Vec<Finding>,
+    pub(super) artifacts: &'a mut Vec<String>,
+}
+
+pub(super) fn validate_spice_dc_with_progress<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    sinks: &mut AnalogDcSinks<'_>,
+    output: &Path,
+    mut on_progress: F,
+    should_cancel: C,
+) where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let findings = &mut *sinks.findings;
+    let artifacts = &mut *sinks.artifacts;
+    on_progress(
+        "Preparing analog DC operating point",
+        format!("Checking analog scenario {}.", scenario.name),
+    );
+    let Some(analog) = &scenario.analog else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_dc scenario requires an analog block.",
+        );
+        return;
+    };
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
+    }
+
+    if let Some(finding) = validate_netlist_source(bound, scenario, artifacts) {
+        findings.push(finding);
+        return;
+    }
+    for model_file in &analog.model_files {
+        let path = bound.project.source_dir.join(&model_file.path);
+        if !path.is_file() {
+            let mut finding = Finding::critical(
+                "ANALOG_MODEL_UNAVAILABLE",
+                &scenario.name,
+                format!(
+                    "SPICE model file {} is required for physical analog DC simulation.",
+                    path.display()
+                ),
+            );
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_model_file"));
+            findings.push(finding);
+            return;
+        }
+        if let Some(expected) = &model_file.sha256 {
+            match file_sha256_hex(&path) {
+                Ok(actual) if actual.eq_ignore_ascii_case(expected) => {}
+                Ok(actual) => {
+                    let mut finding = Finding::critical(
+                        "ANALOG_MODEL_HASH_MISMATCH",
+                        &scenario.name,
+                        format!(
+                            "SPICE model file {} does not match the declared SHA-256.",
+                            path.display()
+                        ),
+                    );
+                    finding.measured.insert("sha256".to_string(), json!(actual));
+                    finding
+                        .limit
+                        .insert("expected_sha256".to_string(), json!(expected));
+                    findings.push(finding);
+                    return;
+                }
+                Err(message) => {
+                    validation_input_missing(findings, scenario, message);
+                    return;
+                }
+            }
+        }
+        push_artifact(artifacts, &path);
+    }
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
+    }
+
+    if analog.node_bindings.is_empty() || analog.pin_bindings.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_dc requires node_bindings and pin_bindings.",
+        );
+        return;
+    }
+    let mut bound_nodes = BTreeSet::new();
+    for binding in &analog.node_bindings {
+        if !bound.project.board.nets.contains_key(&binding.net) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog DC node binding {} references unknown board net {}.",
+                    binding.node, binding.net
+                ),
+            );
+            return;
+        }
+        bound_nodes.insert(binding.node.as_str());
+    }
+    for binding in &analog.pin_bindings {
+        if !bound_nodes.contains(binding.node.as_str()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog DC pin binding references unbound SPICE node {}.",
+                    binding.node
+                ),
+            );
+            return;
+        }
+    }
+
+    if analog.analysis.analysis_type != "op" {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "Unsupported analog analysis type {}; only op is accepted for this check.",
+                analog.analysis.analysis_type
+            ),
+        );
+        return;
+    }
+    if analog.probes.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SPICE_DC_ANALYSIS requires at least one operating-point probe.",
+        );
+        return;
+    }
+    for probe in &analog.probes {
+        if let Err(message) = validate_probe_contract(probe) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("Analog DC probe {} {message}.", probe.name),
+            );
+            return;
+        }
+    }
+    for assertion in &analog.assertions {
+        if !analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == assertion.probe)
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog DC assertion {} references unknown probe {}.",
+                    assertion.name, assertion.probe
+                ),
+            );
+            return;
+        }
+        if let Err(message) = validate_dc_assertion_contract(assertion) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("Analog DC assertion {} {message}.", assertion.name),
+            );
+            return;
+        }
+        match assertion.relation {
+            AnalogRelation::Below | AnalogRelation::Above => {}
+        }
+    }
+    if analog.assertions.is_empty() {
+        let mut finding = Finding::info(
+            "ANALOG_ASSERTIONS_ABSENT",
+            &scenario.name,
+            "SPICE DC operating point solved and exported probes, but no quantitative operating-point assertions were declared.",
+        );
+        finding.limit.insert(
+            "required_for_signoff".to_string(),
+            json!("Add voltage/current/power operating-point assertions for the board bias behavior being verified."),
+        );
+        findings.push(finding);
+    }
+    let run_plans = match analog_run_plans(analog) {
+        Ok(run_plans) => run_plans,
+        Err(message) => {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    };
+
+    let run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Err(error) = fs::create_dir_all(&run_dir) {
+        findings.push(Finding::critical(
+            SPICE_DC_ANALYSIS,
+            &scenario.name,
+            format!(
+                "Failed to create analog DC run directory {}: {error}",
+                run_dir.display()
+            ),
+        ));
+        return;
+    }
+    let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => {
+            push_artifact(artifacts, &source_netlist);
+            source_netlist
+        }
+        Err(message) => {
+            let mut finding = Finding::critical(SPICE_DC_ANALYSIS, &scenario.name, message);
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_netlist"));
+            findings.push(finding);
+            return;
+        }
+    };
+
+    on_progress(
+        "Selecting analog DC backend",
+        format!("Requested backend {}.", backend_name(&analog.backend)),
+    );
+    let selected = select_backend(&analog.backend);
+    let BackendSelection::Selected(backend) = selected else {
+        let mut finding = match selected {
+            BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),
+            BackendSelection::Unavailable => {
+                external_backend_unavailable(&scenario.name, &analog.backend)
+            }
+            BackendSelection::Selected(_) => unreachable!("handled by let-else pattern"),
+        };
+        finding.measured.insert(
+            "requested_backend".to_string(),
+            json!(backend_name(&analog.backend)),
+        );
+        findings.push(finding);
+        return;
+    };
+    if backend != "ngspice" {
+        let mut finding = Finding::critical(
+            SPICE_DC_ANALYSIS,
+            &scenario.name,
+            format!(
+                "Backend {backend} was detected, but DC operating-point export is currently implemented for external ngspice."
+            ),
+        );
+        finding
+            .measured
+            .insert("selected_backend".to_string(), json!(backend));
+        finding
+            .limit
+            .insert("implemented_backend".to_string(), json!("ngspice"));
+        findings.push(finding);
+        return;
+    }
+
+    let mut sweep_measurements = Vec::new();
+    for run_plan in run_plans {
+        if should_cancel() {
+            push_canceled_finding(findings, scenario);
+            return;
+        }
+        on_progress("Running analog DC input corner", run_plan.progress_label());
+        let parameter_overrides = run_plan.parameter_overrides_for_solver();
+        match run_ngspice_dc(
+            bound,
+            scenario,
+            backend,
+            &source_netlist,
+            NgspiceDcRunOptions {
+                output,
+                run_subdir: run_plan.run_subdir.as_deref(),
+                parameter_overrides: &parameter_overrides,
+                model_section_overrides: &run_plan.model_section_overrides,
+                on_progress: &mut on_progress,
+                should_cancel: &should_cancel,
+            },
+        ) {
+            Ok(run) => {
+                let finding_start = findings.len();
+                for artifact in &run.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                let assertion_measurements =
+                    evaluate_dc_assertions(scenario, &run.operating_point, findings);
+                record_sweep_measurements(
+                    &mut sweep_measurements,
+                    &run_plan,
+                    assertion_measurements,
+                );
+                tag_corner_findings(findings, finding_start, &run_plan);
+            }
+            Err(error) => {
+                for artifact in &error.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                let mut finding =
+                    Finding::critical(SPICE_DC_ANALYSIS, &scenario.name, error.message);
+                finding
+                    .measured
+                    .insert("selected_backend".to_string(), json!(backend));
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!("ngspice_operating_point_csv"),
+                );
+                tag_corner_finding(&mut finding, &run_plan);
+                finding.suggested_fixes.push(
+                    "Inspect the generated ngspice operating-point wrapper deck and solver log artifacts."
+                        .to_string(),
+                );
+                findings.push(finding);
+            }
+        }
+    }
+    push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
+}

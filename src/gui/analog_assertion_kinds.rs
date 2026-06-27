@@ -7,12 +7,19 @@ pub(super) fn validate_assertion_scenario_type(
     scenario_type: &str,
 ) -> Result<()> {
     let ac_aggregation = is_ac_assertion_aggregation_name(&draft.aggregation);
+    let dc_aggregation = is_dc_assertion_aggregation_name(&draft.aggregation);
     match scenario_type {
         "analog_ac" if !ac_aggregation => {
             anyhow::bail!("analog_ac run setups require AC/Bode observation checks.");
         }
-        "analog_transient" if ac_aggregation => {
+        "analog_dc" if !dc_aggregation => {
+            anyhow::bail!("analog_dc run setups require DC operating-point observation checks.");
+        }
+        "analog_transient" if ac_aggregation || dc_aggregation => {
             anyhow::bail!("AC/Bode observation checks require an analog_ac run setup.");
+        }
+        "analog_ac" if dc_aggregation => {
+            anyhow::bail!("DC operating-point observation checks require an analog_dc run setup.");
         }
         _ => Ok(()),
     }
@@ -28,4 +35,8 @@ pub(super) fn is_ac_assertion_aggregation_name(aggregation: &str) -> bool {
             | "phase_margin_deg"
             | "gain_margin_db"
     )
+}
+
+pub(super) fn is_dc_assertion_aggregation_name(aggregation: &str) -> bool {
+    aggregation == "operating_point"
 }

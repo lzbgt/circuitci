@@ -1200,6 +1200,7 @@ pub struct AnalogAssertion {
 pub enum AnalogAggregation {
     #[default]
     Sample,
+    OperatingPoint,
     Min,
     Max,
     Mean,

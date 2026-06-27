@@ -1161,6 +1161,7 @@ fn reference_timing_quantity(
 fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'static str {
     match aggregation {
         crate::board_ir::AnalogAggregation::Sample => "sample",
+        crate::board_ir::AnalogAggregation::OperatingPoint => "operating_point",
         crate::board_ir::AnalogAggregation::Min => "min",
         crate::board_ir::AnalogAggregation::Max => "max",
         crate::board_ir::AnalogAggregation::Mean => "mean",
@@ -1383,6 +1384,7 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         crate::board_ir::AnalogAggregation::Sample => {
             format!("at {:.6} us", assertion.at_us.unwrap_or_default())
         }
+        crate::board_ir::AnalogAggregation::OperatingPoint => "DC operating point".to_string(),
         crate::board_ir::AnalogAggregation::Min
         | crate::board_ir::AnalogAggregation::Max
         | crate::board_ir::AnalogAggregation::Mean

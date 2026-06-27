@@ -302,6 +302,61 @@ fn generated_rc_lowpass_bode_observation_validates_with_bode_artifact() {
 }
 
 #[test]
+fn generated_dc_bias_observation_validates_with_operating_point_artifacts() {
+    let report = run_validation("examples/good_dc_bias_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert_eq!(
+            artifacts
+                .iter()
+                .filter(|artifact| artifact.as_str().unwrap().ends_with("operating_point.csv"))
+                .count(),
+            9
+        );
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+        let sweep_summaries: Vec<&Value> = report["infos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|info| info["id"] == "ANALOG_SWEEP_MARGIN_SUMMARY")
+            .collect();
+        assert_eq!(sweep_summaries.len(), 3);
+        for summary in &sweep_summaries {
+            assert_eq!(summary["measured"]["analog_sweep"], "divider_tolerance");
+            assert_eq!(summary["measured"]["evaluated_corners"], 9);
+            assert!(
+                summary["measured"]["margin"].as_f64().unwrap() > 0.0,
+                "expected passing DC sweep margin summary, got {summary:#?}"
+            );
+        }
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "vin_above_4_9v"
+                && summary["limit"]["relation"] == "above"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "midpoint_above_2_35v"
+                && summary["limit"]["relation"] == "above"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "midpoint_below_2_65v"
+                && summary["limit"]["relation"] == "below"
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn loop_stability_bode_scope_validates_with_margin_checks() {
     let report = run_validation("examples/loop_stability_bode_scope/project.yaml");
     if binary_available("ngspice") {

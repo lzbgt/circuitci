@@ -91,6 +91,8 @@ declare them:
 - `SOLDER_PASTE_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
+- `SPICE_AC_ANALYSIS`
+- `SPICE_DC_ANALYSIS`
 
 `circuitci suggest-scenarios` can propose missing `power_tree`, reset timing,
 boot-strap, UART bootloader, GPIO backdrive, and interface-protection scenario

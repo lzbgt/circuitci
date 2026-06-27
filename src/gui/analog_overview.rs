@@ -913,6 +913,7 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
 fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'static str {
     match aggregation {
         crate::board_ir::AnalogAggregation::Sample => "sample",
+        crate::board_ir::AnalogAggregation::OperatingPoint => "operating point",
         crate::board_ir::AnalogAggregation::Min => "min",
         crate::board_ir::AnalogAggregation::Max => "max",
         crate::board_ir::AnalogAggregation::Mean => "mean",

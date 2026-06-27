@@ -104,6 +104,7 @@ pub(super) fn validate_ac_assertion_contract(
             reject_field(assertion.threshold_deg, "threshold_deg")?;
         }
         AnalogAggregation::Sample
+        | AnalogAggregation::OperatingPoint
         | AnalogAggregation::Min
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
@@ -335,6 +336,7 @@ fn measure_ac_assertion(
         AnalogAggregation::PhaseMarginDeg => phase_margin_deg(response, &probe_key),
         AnalogAggregation::GainMarginDb => gain_margin_db(response, &probe_key),
         AnalogAggregation::Sample
+        | AnalogAggregation::OperatingPoint
         | AnalogAggregation::Min
         | AnalogAggregation::Max
         | AnalogAggregation::Mean

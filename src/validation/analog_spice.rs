@@ -900,7 +900,7 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
     push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
 }
 
-fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {
+pub(super) fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {
     findings.push(Finding::critical(
         "VALIDATION_CANCELED",
         &scenario.name,
@@ -909,17 +909,17 @@ fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {
 }
 
 #[derive(Debug, Clone)]
-struct AnalogRunPlan {
-    sweep_name: Option<String>,
-    corner_name: String,
-    run_subdir: Option<String>,
-    parameter_overrides: Vec<ParameterOverride>,
-    component_value_overrides: Vec<ComponentValueOverride>,
-    model_section_overrides: Vec<ModelSectionOverride>,
+pub(super) struct AnalogRunPlan {
+    pub(super) sweep_name: Option<String>,
+    pub(super) corner_name: String,
+    pub(super) run_subdir: Option<String>,
+    pub(super) parameter_overrides: Vec<ParameterOverride>,
+    pub(super) component_value_overrides: Vec<ComponentValueOverride>,
+    pub(super) model_section_overrides: Vec<ModelSectionOverride>,
 }
 
 #[derive(Debug, Clone)]
-struct ComponentValueOverride {
+pub(super) struct ComponentValueOverride {
     component: String,
     field: AnalogSweepComponentField,
     parameter_name: String,
@@ -938,7 +938,7 @@ impl AnalogRunPlan {
         }
     }
 
-    fn progress_label(&self) -> String {
+    pub(super) fn progress_label(&self) -> String {
         if let Some(sweep_name) = &self.sweep_name {
             let override_count = self.parameter_overrides.len()
                 + self.component_value_overrides.len()
@@ -952,7 +952,7 @@ impl AnalogRunPlan {
         }
     }
 
-    fn parameter_overrides_for_solver(&self) -> Vec<ParameterOverride> {
+    pub(super) fn parameter_overrides_for_solver(&self) -> Vec<ParameterOverride> {
         let mut overrides = self.parameter_overrides.clone();
         overrides.extend(self.component_value_overrides.iter().map(|override_| {
             ParameterOverride {
@@ -964,7 +964,7 @@ impl AnalogRunPlan {
     }
 }
 
-fn analog_run_plans(
+pub(super) fn analog_run_plans(
     analog: &crate::board_ir::AnalogScenario,
 ) -> Result<Vec<AnalogRunPlan>, String> {
     if analog.sweeps.is_empty() {
@@ -1242,13 +1242,17 @@ fn valid_spice_model_section_name(name: &str) -> bool {
             .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.' | ':'))
 }
 
-fn tag_corner_findings(findings: &mut [Finding], start: usize, run_plan: &AnalogRunPlan) {
+pub(super) fn tag_corner_findings(
+    findings: &mut [Finding],
+    start: usize,
+    run_plan: &AnalogRunPlan,
+) {
     for finding in findings.iter_mut().skip(start) {
         tag_corner_finding(finding, run_plan);
     }
 }
 
-fn tag_corner_finding(finding: &mut Finding, run_plan: &AnalogRunPlan) {
+pub(super) fn tag_corner_finding(finding: &mut Finding, run_plan: &AnalogRunPlan) {
     if let Some(sweep_name) = &run_plan.sweep_name {
         finding
             .measured
@@ -1302,7 +1306,7 @@ fn component_value_override_map(overrides: &[ComponentValueOverride]) -> BTreeMa
 }
 
 #[derive(Debug, Clone)]
-struct SweepAssertionMeasurement {
+pub(super) struct SweepAssertionMeasurement {
     sweep_name: String,
     corner_name: String,
     parameters: BTreeMap<String, f64>,
@@ -1311,7 +1315,7 @@ struct SweepAssertionMeasurement {
     assertion: AnalogAssertionMeasurement,
 }
 
-fn record_sweep_measurements(
+pub(super) fn record_sweep_measurements(
     output: &mut Vec<SweepAssertionMeasurement>,
     run_plan: &AnalogRunPlan,
     measurements: Vec<AnalogAssertionMeasurement>,
@@ -1336,7 +1340,7 @@ fn record_sweep_measurements(
     );
 }
 
-fn push_sweep_margin_summaries(
+pub(super) fn push_sweep_margin_summaries(
     findings: &mut Vec<Finding>,
     scenario: &Scenario,
     measurements: &[SweepAssertionMeasurement],
@@ -1436,7 +1440,7 @@ fn netlist_source_name(source: &AnalogNetlistSource) -> &'static str {
     }
 }
 
-fn validate_netlist_source(
+pub(super) fn validate_netlist_source(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     artifacts: &mut Vec<String>,
@@ -1493,7 +1497,7 @@ fn validate_netlist_source(
     }
 }
 
-fn prepare_source_netlist(
+pub(super) fn prepare_source_netlist(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     run_dir: &Path,

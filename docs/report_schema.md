@@ -160,6 +160,8 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
 - `LOAD_CABLE_VOLTAGE_DROP_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
+- `SPICE_AC_ANALYSIS`
+- `SPICE_DC_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
 Reports must include `scenario`, `component` when applicable, measured timing values in `measured`, limits or expected states in `limit`, and concrete suggested fixes.

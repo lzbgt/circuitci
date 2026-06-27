@@ -96,6 +96,12 @@ Current analog support:
   pinning for Bode corners. The GUI observation-check editor also offers
   low-pass, unity-gain, and loop-stability Bode check presets that write
   normal AC assertions.
+- `analog_dc` scenarios with `SPICE_DC_ANALYSIS` for external-ngspice
+  operating-point exports. DC runs write normalized `operating_point.csv`
+  artifacts with one column per declared probe, support generated-from-board
+  and file-backed decks, and evaluate `operating_point` assertions for bias,
+  rail, and quiescent checks across the same run-input sweep corners used by
+  transient and AC/Bode workflows.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
@@ -108,9 +114,9 @@ Current analog support:
   unity small-signal `AC 1` drive while preserving their DC or pulse operating
   point.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
-  waveform or Bode artifact set, tagged on findings, and summarized with
-  per-assertion worst-corner margin info findings for transient and AC/Bode
-  assertions.
+  waveform, Bode, or operating-point artifact set, tagged on findings, and
+  summarized with per-assertion worst-corner margin info findings for
+  transient, AC/Bode, and DC operating-point assertions.
   Sweeps can use raw SPICE `.param` values, generated component value inputs
   such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`, and vendor model-library
   sections through section-specific ngspice `.lib` cards.
@@ -142,8 +148,9 @@ Current analog support:
   and enabled 3.3 V regulator rails through explicit `simulation.spice`
   subcircuits. These models are low-confidence workflow/topology aids, not
   vendor sign-off evidence. The GUI Examples picker includes direct-open
-  scope fixtures for NE555, RC low-pass, comparator threshold, op-amp buffer,
-  AP2112K LDO rail, TLV803 reset-supervisor, and loop-stability Bode workflows.
+  observation fixtures for NE555, RC low-pass, comparator threshold, op-amp
+  buffer, AP2112K LDO rail, TLV803 reset-supervisor, loop-stability Bode, and
+  DC divider-bias workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
