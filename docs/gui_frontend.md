@@ -320,7 +320,9 @@ orientation under `board.schematic.node_styles`.
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
 `src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
-editors and their Board IR YAML mutation helpers. `src/gui/simulation_sweeps.rs`
+editors. `src/gui/analog_run_setup.rs` owns generated transient and AC/Bode
+run-setup YAML creation, including model-file inference and generated SPICE
+node/pin bindings. `src/gui/simulation_sweeps.rs`
 owns the user-facing Run Input Sweeps panel. Sweep creation is
 valid-by-construction: adding a new
 sweep also adds its first SPICE `.param` input or generated component value
@@ -332,6 +334,12 @@ Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
 The same panel exposes one-click corner presets for supply, load, temperature,
 model-selector, and RC-tolerance sweeps, all persisted as ordinary
 `analog.sweeps` data.
+The run-setup editor can create either generated transient observations or
+generated AC/Bode observations. AC/Bode creation writes a normal `analog_ac`
+scenario with start/stop frequency, points per decade, generated board
+component inclusion, ground binding, and an initial voltage probe, so a
+frequency-response observation can be authored from the GUI without a
+hand-authored SPICE deck.
 The check editor can author transient assertions and AC/Bode assertions. AC
 checks expose frequency fields for gain or phase at a frequency and gain
 crossing-frequency limits, then serialize normal `analog.assertions` entries

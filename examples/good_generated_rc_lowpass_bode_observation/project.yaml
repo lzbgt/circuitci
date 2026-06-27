@@ -1,0 +1,98 @@
+project:
+  name: good_generated_rc_lowpass_bode_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: input
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 1.0
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: input
+        B: filtered
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+    C1:
+      model: generic.analog.capacitor
+      pins:
+        A: filtered
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.0000001
+  nets:
+    input:
+      kind: power
+      nominal_voltage: 1.0
+      powered: true
+    filtered:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: generated_rc_bode
+    type: analog_ac
+    checks:
+      - SPICE_AC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, C1]
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: input, net: input }
+        - { node: filtered, net: filtered }
+      pin_bindings:
+        - { node: input, endpoint: { component: V1, pin: P } }
+        - { node: "0", endpoint: { component: V1, pin: N } }
+        - { node: input, endpoint: { component: R1, pin: A } }
+        - { node: filtered, endpoint: { component: R1, pin: B } }
+        - { node: filtered, endpoint: { component: C1, pin: A } }
+        - { node: "0", endpoint: { component: C1, pin: B } }
+      analysis:
+        type: ac
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+      stimuli:
+        - name: unity_ac_drive
+          description: Generated source V1 emits a 1 V small-signal AC drive for Bode analysis.
+      probes:
+        - name: input
+          expression: V(input)
+        - name: filtered
+          expression: V(filtered)
+      assertions:
+        - name: filtered_gain_at_1khz_below_minus_1db
+          probe: filtered
+          aggregation: gain_db_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_db: -1.0
+        - name: filtered_phase_at_1khz_below_minus_20deg
+          probe: filtered
+          aggregation: phase_deg_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_deg: -20.0
+        - name: filtered_cutoff_above_1_4khz
+          probe: filtered
+          aggregation: falling_gain_crossing_frequency
+          relation: above
+          threshold_db: -3.0
+          frequency_limit_hz: 1400.0

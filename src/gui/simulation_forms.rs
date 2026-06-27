@@ -130,6 +130,9 @@ pub(super) fn initialize_generated_settings_defaults(
     ground_net: &mut String,
     stop_time_us: &mut f64,
     max_step_us: &mut f64,
+    start_frequency_hz: &mut f64,
+    stop_frequency_hz: &mut f64,
+    points_per_decade: &mut u32,
     node_net: &mut String,
     node_name: &mut String,
 ) {
@@ -140,11 +143,16 @@ pub(super) fn initialize_generated_settings_defaults(
         *scenario_name = scenario.name.clone();
         load_generated_settings_values(
             scenario,
-            ground_net,
-            stop_time_us,
-            max_step_us,
-            node_net,
-            node_name,
+            GeneratedSettingsFormValues {
+                ground_net,
+                stop_time_us,
+                max_step_us,
+                start_frequency_hz,
+                stop_frequency_hz,
+                points_per_decade,
+                node_net,
+                node_name,
+            },
         );
         return;
     }
@@ -163,24 +171,42 @@ pub(super) fn initialize_generated_settings_defaults(
         *stop_time_us = scenario.stop_time_us;
         *max_step_us = scenario.max_step_us;
     }
+    if *start_frequency_hz <= 0.0
+        || *stop_frequency_hz <= *start_frequency_hz
+        || *points_per_decade == 0
+    {
+        *start_frequency_hz = scenario.start_frequency_hz;
+        *stop_frequency_hz = scenario.stop_frequency_hz;
+        *points_per_decade = scenario.points_per_decade;
+    }
     let node_net_missing = !scenario.board_nets.iter().any(|net| net.id == *node_net);
     if node_net.is_empty() || node_net_missing {
         load_generated_node_binding_values(scenario, node_net, node_name);
     }
 }
 
+pub(super) struct GeneratedSettingsFormValues<'a> {
+    pub(super) ground_net: &'a mut String,
+    pub(super) stop_time_us: &'a mut f64,
+    pub(super) max_step_us: &'a mut f64,
+    pub(super) start_frequency_hz: &'a mut f64,
+    pub(super) stop_frequency_hz: &'a mut f64,
+    pub(super) points_per_decade: &'a mut u32,
+    pub(super) node_net: &'a mut String,
+    pub(super) node_name: &'a mut String,
+}
+
 pub(super) fn load_generated_settings_values(
     scenario: &AnalogGeneratedScenario,
-    ground_net: &mut String,
-    stop_time_us: &mut f64,
-    max_step_us: &mut f64,
-    node_net: &mut String,
-    node_name: &mut String,
+    values: GeneratedSettingsFormValues<'_>,
 ) {
-    *ground_net = scenario.ground_net.clone();
-    *stop_time_us = scenario.stop_time_us;
-    *max_step_us = scenario.max_step_us;
-    load_generated_node_binding_values(scenario, node_net, node_name);
+    *values.ground_net = scenario.ground_net.clone();
+    *values.stop_time_us = scenario.stop_time_us;
+    *values.max_step_us = scenario.max_step_us;
+    *values.start_frequency_hz = scenario.start_frequency_hz;
+    *values.stop_frequency_hz = scenario.stop_frequency_hz;
+    *values.points_per_decade = scenario.points_per_decade;
+    load_generated_node_binding_values(scenario, values.node_net, values.node_name);
 }
 
 pub(super) fn load_generated_node_binding_values(

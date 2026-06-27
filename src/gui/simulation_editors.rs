@@ -1,8 +1,9 @@
 use super::CircuitCiApp;
 use super::analog::{
-    AnalogAssertionDraft, AnalogAssertionRemoveDraft, AnalogAssertionReplaceDraft,
-    AnalogProbeAssertionsRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    analog_scenario_choices, append_analog_assertion,
+    AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionRemoveDraft,
+    AnalogAssertionReplaceDraft, AnalogProbeAssertionsRemoveDraft, AnalogScenarioDraft,
+    analog_probe_assertion_summaries, analog_scenario_choices,
+    append_analog_ac_scenario_with_project_path, append_analog_assertion,
     append_analog_transient_scenario_with_project_path, remove_analog_assertion,
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
@@ -39,6 +40,26 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
+                    ui.label("Observation");
+                    egui::ComboBox::from_id_salt("analog_run_setup_kind")
+                        .selected_text(match self.analog_run_setup_kind.as_str() {
+                            "ac" => "AC/Bode",
+                            _ => "Transient",
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "transient".to_string(),
+                                "Transient",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "ac".to_string(),
+                                "AC/Bode",
+                            );
+                        });
+                    ui.end_row();
+
                     ui.label("Input set");
                     ui.text_edit_singleline(&mut self.analog_scenario_name);
                     ui.end_row();
@@ -60,23 +81,51 @@ impl CircuitCiApp {
                     ui.text_edit_singleline(&mut self.analog_probe_name);
                     ui.end_row();
 
-                    ui.label("Stop time");
-                    ui.add(
-                        egui::DragValue::new(&mut self.analog_stop_time_us)
-                            .speed(1.0)
-                            .range(0.001..=1_000_000.0)
-                            .suffix(" us"),
-                    );
-                    ui.end_row();
+                    if self.analog_run_setup_kind == "ac" {
+                        ui.label("Start frequency");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_start_frequency_hz)
+                                .speed(10.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
 
-                    ui.label("Max step");
-                    ui.add(
-                        egui::DragValue::new(&mut self.analog_max_step_us)
-                            .speed(0.1)
-                            .range(0.001..=1_000_000.0)
-                            .suffix(" us"),
-                    );
-                    ui.end_row();
+                        ui.label("Stop frequency");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stop_frequency_hz)
+                                .speed(100.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Points/decade");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_points_per_decade)
+                                .speed(1.0)
+                                .range(1..=1000),
+                        );
+                        ui.end_row();
+                    } else {
+                        ui.label("Stop time");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stop_time_us)
+                                .speed(1.0)
+                                .range(0.001..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Max step");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_max_step_us)
+                                .speed(0.1)
+                                .range(0.001..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+                    }
                 });
             if ui.button("Add Run Setup").clicked() {
                 self.apply_add_analog_scenario();
@@ -205,6 +254,9 @@ impl CircuitCiApp {
                 &mut self.analog_generated_ground_net,
                 &mut self.analog_generated_stop_time_us,
                 &mut self.analog_generated_max_step_us,
+                &mut self.analog_generated_start_frequency_hz,
+                &mut self.analog_generated_stop_frequency_hz,
+                &mut self.analog_generated_points_per_decade,
                 &mut self.analog_generated_node_net,
                 &mut self.analog_generated_node_name,
             );
@@ -229,11 +281,16 @@ impl CircuitCiApp {
                             )
                             .or_else(|| scenarios.first())
                             .expect("scenarios is not empty"),
-                            &mut self.analog_generated_ground_net,
-                            &mut self.analog_generated_stop_time_us,
-                            &mut self.analog_generated_max_step_us,
-                            &mut self.analog_generated_node_net,
-                            &mut self.analog_generated_node_name,
+                            GeneratedSettingsFormValues {
+                                ground_net: &mut self.analog_generated_ground_net,
+                                stop_time_us: &mut self.analog_generated_stop_time_us,
+                                max_step_us: &mut self.analog_generated_max_step_us,
+                                start_frequency_hz: &mut self.analog_generated_start_frequency_hz,
+                                stop_frequency_hz: &mut self.analog_generated_stop_frequency_hz,
+                                points_per_decade: &mut self.analog_generated_points_per_decade,
+                                node_net: &mut self.analog_generated_node_net,
+                                node_name: &mut self.analog_generated_node_name,
+                            },
                         );
                     }
                     ui.end_row();
@@ -247,23 +304,51 @@ impl CircuitCiApp {
                     );
                     ui.end_row();
 
-                    ui.label("Stop time");
-                    ui.add(
-                        egui::DragValue::new(&mut self.analog_generated_stop_time_us)
-                            .speed(1.0)
-                            .range(0.001..=1_000_000.0)
-                            .suffix(" us"),
-                    );
-                    ui.end_row();
+                    if selected_scenario.scenario_type == "analog_ac" {
+                        ui.label("Start frequency");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_generated_start_frequency_hz)
+                                .speed(10.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
 
-                    ui.label("Max step");
-                    ui.add(
-                        egui::DragValue::new(&mut self.analog_generated_max_step_us)
-                            .speed(0.1)
-                            .range(0.001..=1_000_000.0)
-                            .suffix(" us"),
-                    );
-                    ui.end_row();
+                        ui.label("Stop frequency");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_generated_stop_frequency_hz)
+                                .speed(100.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Points/decade");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_generated_points_per_decade)
+                                .speed(1.0)
+                                .range(1..=1000),
+                        );
+                        ui.end_row();
+                    } else {
+                        ui.label("Stop time");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_generated_stop_time_us)
+                                .speed(1.0)
+                                .range(0.001..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Max step");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_generated_max_step_us)
+                                .speed(0.1)
+                                .range(0.001..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+                    }
 
                     ui.label("Node net");
                     generated_net_combo(
@@ -288,11 +373,16 @@ impl CircuitCiApp {
                 if ui.button("Reload Selected").clicked() {
                     load_generated_settings_values(
                         selected_scenario,
-                        &mut self.analog_generated_ground_net,
-                        &mut self.analog_generated_stop_time_us,
-                        &mut self.analog_generated_max_step_us,
-                        &mut self.analog_generated_node_net,
-                        &mut self.analog_generated_node_name,
+                        GeneratedSettingsFormValues {
+                            ground_net: &mut self.analog_generated_ground_net,
+                            stop_time_us: &mut self.analog_generated_stop_time_us,
+                            max_step_us: &mut self.analog_generated_max_step_us,
+                            start_frequency_hz: &mut self.analog_generated_start_frequency_hz,
+                            stop_frequency_hz: &mut self.analog_generated_stop_frequency_hz,
+                            points_per_decade: &mut self.analog_generated_points_per_decade,
+                            node_net: &mut self.analog_generated_node_net,
+                            node_name: &mut self.analog_generated_node_name,
+                        },
                     );
                 }
             });
@@ -982,24 +1072,50 @@ impl CircuitCiApp {
     }
 
     fn apply_add_analog_scenario(&mut self) {
-        let draft = AnalogScenarioDraft {
-            name: self.analog_scenario_name.clone(),
-            ground_net: self.analog_ground_net.clone(),
-            probe_net: self.analog_probe_net.clone(),
-            probe_name: self.analog_probe_name.clone(),
-            stop_time_us: self.analog_stop_time_us,
-            max_step_us: self.analog_max_step_us,
-        };
-        match append_analog_transient_scenario_with_project_path(
-            &self.project_yaml,
-            Path::new(&self.project_path),
-            &draft,
-        ) {
-            Ok(updated) => self.apply_edited_project_yaml(
-                updated,
-                &format!("Run setup {} added.", self.analog_scenario_name.trim()),
-            ),
-            Err(error) => self.record_error(error),
+        if self.analog_run_setup_kind == "ac" {
+            let draft = AnalogAcScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                start_frequency_hz: self.analog_start_frequency_hz,
+                stop_frequency_hz: self.analog_stop_frequency_hz,
+                points_per_decade: self.analog_points_per_decade,
+            };
+            match append_analog_ac_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "AC/Bode run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else {
+            let draft = AnalogScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                stop_time_us: self.analog_stop_time_us,
+                max_step_us: self.analog_max_step_us,
+            };
+            match append_analog_transient_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Run setup {} added.", self.analog_scenario_name.trim()),
+                ),
+                Err(error) => self.record_error(error),
+            }
         }
     }
 
@@ -1093,6 +1209,9 @@ impl CircuitCiApp {
             ground_net: self.analog_generated_ground_net.clone(),
             stop_time_us: self.analog_generated_stop_time_us,
             max_step_us: self.analog_generated_max_step_us,
+            start_frequency_hz: self.analog_generated_start_frequency_hz,
+            stop_frequency_hz: self.analog_generated_stop_frequency_hz,
+            points_per_decade: self.analog_generated_points_per_decade,
         };
         match replace_generated_settings(&self.project_yaml, &draft) {
             Ok(updated) => self.apply_edited_project_yaml(

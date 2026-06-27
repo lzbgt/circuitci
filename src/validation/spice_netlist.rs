@@ -170,7 +170,7 @@ fn generate_component_line(
                 None,
             ),
             SpicePrimitive::DcVoltageSource => Ok(format!(
-                "{} {} {} DC {}",
+                "{} {} {} DC {}{}",
                 element_name("V", component_id),
                 pin_node(component_id, component, node_by_net, "P")?,
                 pin_node(component_id, component, node_by_net, "N")?,
@@ -179,16 +179,23 @@ fn generate_component_line(
                     component_id,
                     AnalogSweepComponentField::DcV,
                     finite(spice.dc_v, component_id, "spice.dc_v")?,
-                )
+                ),
+                ac_source_suffix(analog),
             )),
             SpicePrimitive::PulseVoltageSource => {
                 let pulse = spice.pulse.as_ref().ok_or_else(|| {
                     format!("Component {component_id} pulse_voltage_source requires spice.pulse.")
                 })?;
-                voltage_pulse_line(component_id, component, node_by_net, pulse)
+                voltage_pulse_line(
+                    component_id,
+                    component,
+                    node_by_net,
+                    pulse,
+                    ac_source_suffix(analog),
+                )
             }
             SpicePrimitive::DcCurrentSource => Ok(format!(
-                "{} {} {} DC {}",
+                "{} {} {} DC {}{}",
                 element_name("I", component_id),
                 pin_node(component_id, component, node_by_net, "P")?,
                 pin_node(component_id, component, node_by_net, "N")?,
@@ -197,7 +204,8 @@ fn generate_component_line(
                     component_id,
                     AnalogSweepComponentField::DcA,
                     finite(spice.dc_a, component_id, "spice.dc_a")?,
-                )
+                ),
+                ac_source_suffix(analog),
             )),
             SpicePrimitive::PulseCurrentSource => {
                 let pulse = spice.current_pulse.as_ref().ok_or_else(|| {
@@ -205,7 +213,13 @@ fn generate_component_line(
                         "Component {component_id} pulse_current_source requires spice.current_pulse."
                     )
                 })?;
-                current_pulse_line(component_id, component, node_by_net, pulse)
+                current_pulse_line(
+                    component_id,
+                    component,
+                    node_by_net,
+                    pulse,
+                    ac_source_suffix(analog),
+                )
             }
         };
     }
@@ -471,6 +485,7 @@ fn voltage_pulse_line(
     component: &ComponentSpec,
     node_by_net: &BTreeMap<String, String>,
     pulse: &SpicePulseSpec,
+    ac_suffix: &str,
 ) -> Result<String, String> {
     let fields = [
         ("initial_v", pulse.initial_v),
@@ -492,7 +507,7 @@ fn voltage_pulse_line(
         }
     }
     Ok(format!(
-        "{} {} {} PULSE({} {} {}u {}u {}u {}u {}u)",
+        "{} {} {} PULSE({} {} {}u {}u {}u {}u {}u){}",
         element_name("V", component_id),
         pin_node(component_id, component, node_by_net, "P")?,
         pin_node(component_id, component, node_by_net, "N")?,
@@ -502,7 +517,8 @@ fn voltage_pulse_line(
         pulse.rise_us,
         pulse.fall_us,
         pulse.width_us,
-        pulse.period_us
+        pulse.period_us,
+        ac_suffix
     ))
 }
 
@@ -511,6 +527,7 @@ fn current_pulse_line(
     component: &ComponentSpec,
     node_by_net: &BTreeMap<String, String>,
     pulse: &crate::board_ir::SpiceCurrentPulseSpec,
+    ac_suffix: &str,
 ) -> Result<String, String> {
     let fields = [
         ("initial_a", pulse.initial_a),
@@ -532,7 +549,7 @@ fn current_pulse_line(
         }
     }
     Ok(format!(
-        "{} {} {} PULSE({} {} {}u {}u {}u {}u {}u)",
+        "{} {} {} PULSE({} {} {}u {}u {}u {}u {}u){}",
         element_name("I", component_id),
         pin_node(component_id, component, node_by_net, "P")?,
         pin_node(component_id, component, node_by_net, "N")?,
@@ -542,8 +559,17 @@ fn current_pulse_line(
         pulse.rise_us,
         pulse.fall_us,
         pulse.width_us,
-        pulse.period_us
+        pulse.period_us,
+        ac_suffix
     ))
+}
+
+fn ac_source_suffix(analog: &AnalogScenario) -> &'static str {
+    if analog.analysis.analysis_type == "ac" {
+        " AC 1"
+    } else {
+        ""
+    }
 }
 
 fn pin_node(
@@ -804,6 +830,86 @@ scenarios:
         let sense = text.find("VCCI_R1 in cci_r1_a 0").unwrap();
         let resistor = text.find("R1 cci_r1_a out 1000").unwrap();
         assert!(sense < resistor);
+    }
+
+    #[test]
+    fn generated_ac_sources_emit_unity_small_signal_drive() {
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(
+            "project:
+  name: generated_ac_source_drive_test
+  version: 0.1.0
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 1.0
+      pins:
+        P: input
+        N: gnd
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: input
+        B: filtered
+    C1:
+      model: generic.analog.capacitor
+      spice:
+        primitive: capacitor
+        value_f: 0.0000001
+      pins:
+        A: filtered
+        B: gnd
+  nets:
+    input: {kind: digital_or_analog}
+    filtered: {kind: digital_or_analog}
+    gnd: {kind: ground}
+scenarios:
+  - name: bode
+    type: analog_ac
+    checks: [SPICE_AC_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, C1]
+      model_files: []
+      node_bindings:
+        - { net: input, node: input }
+        - { net: filtered, node: filtered }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: V1, pin: P }, node: input }
+        - { endpoint: { component: V1, pin: N }, node: '0' }
+        - { endpoint: { component: R1, pin: A }, node: input }
+        - { endpoint: { component: R1, pin: B }, node: filtered }
+        - { endpoint: { component: C1, pin: A }, node: filtered }
+        - { endpoint: { component: C1, pin: B }, node: '0' }
+      analysis: { type: ac, start_frequency_hz: 10, stop_frequency_hz: 100000, points_per_decade: 20 }
+      stimuli: []
+      probes:
+        - { name: filtered, expression: V(filtered) }
+      assertions: []
+",
+        )
+        .unwrap();
+        let (library, findings) = load_library(Path::new("project.yaml"), &project);
+        let bound = bind_project(&project, library, findings);
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("generated.cir");
+
+        generate_board_netlist(&bound, analog, &deck).unwrap();
+
+        let text = std::fs::read_to_string(deck).unwrap();
+        assert!(text.contains("V1 input 0 DC 1 AC 1"), "{text}");
+        assert!(text.contains("R1 input filtered 1000"), "{text}");
+        assert!(text.contains("C1 filtered 0 0.0000001"), "{text}");
     }
 
     #[test]

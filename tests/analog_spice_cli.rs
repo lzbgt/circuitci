@@ -279,6 +279,29 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
 }
 
 #[test]
+fn generated_rc_lowpass_bode_observation_validates_with_bode_artifact() {
+    let report = run_validation("examples/good_generated_rc_lowpass_bode_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        let waveforms = report["waveforms"].as_array().unwrap();
+        assert_eq!(waveforms.len(), 1);
+        assert!(waveforms[0].as_str().unwrap().ends_with("bode.csv"));
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn comparator_threshold_scope_direct_project_validates_with_waveforms() {
     let report = run_validation("examples/comparator_threshold_scope/project.yaml");
     if binary_available("ngspice") {

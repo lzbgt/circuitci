@@ -98,8 +98,12 @@ Current analog support:
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
-- Generated Board IR transient decks for passives, independent voltage and
-  current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
+- Generated Board IR transient and AC/Bode decks for passives, independent
+  voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
+  GUI run-setup creation can author generated AC/Bode observations with
+  frequency limits and an initial voltage probe; generated AC sources emit a
+  unity small-signal `AC 1` drive while preserving their DC or pulse operating
+  point.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform or Bode artifact set, tagged on findings, and summarized with
   per-assertion worst-corner margin info findings for transient and AC/Bode

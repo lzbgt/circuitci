@@ -7,7 +7,7 @@ from Board IR and component model metadata.
 
 ## Scope
 
-This slice adds generated transient decks for board-local analog subcircuits.
+This slice adds generated transient and AC/Bode decks for board-local analog subcircuits.
 It is not a new simulator and must not implement SPICE numerics in Rust. Rust
 only translates audited Board IR into a solver deck, records artifacts, invokes
 the mature backend, and evaluates waveform assertions.
@@ -32,8 +32,8 @@ failures. They must not be silently omitted.
 
 ## Project Contract
 
-An `analog_transient` scenario can use either a hand-authored deck or generated
-Board IR source:
+An `analog_transient` or `analog_ac` scenario can use either a hand-authored
+deck or generated Board IR source:
 
 ```yaml
 analog:
@@ -77,6 +77,11 @@ ILOAD:
   pins: {P: rail_3v3, N: gnd}
   spice: {primitive: dc_current_source, dc_a: 0.1}
 ```
+
+For generated `analog_ac` scenarios, independent voltage and current source
+primitives emit a unity small-signal source suffix (`AC 1`) in addition to
+their declared DC or pulse operating point. This makes GUI-created Bode
+observations executable without requiring users to hand-author source cards.
 
 Capacitors may optionally declare `initial_v`. Generated ngspice wrappers add
 `UIC` automatically when any selected generated capacitor has an initial

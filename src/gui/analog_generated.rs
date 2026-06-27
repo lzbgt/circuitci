@@ -16,6 +16,9 @@ pub(super) struct AnalogGeneratedSettingsDraft {
     pub(super) ground_net: String,
     pub(super) stop_time_us: f64,
     pub(super) max_step_us: f64,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -28,9 +31,13 @@ pub(super) struct AnalogGeneratedNodeBindingDraft {
 #[derive(Debug, Clone)]
 pub(super) struct AnalogGeneratedScenario {
     pub(super) name: String,
+    pub(super) scenario_type: String,
     pub(super) ground_net: String,
     pub(super) stop_time_us: f64,
     pub(super) max_step_us: f64,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
     pub(super) components: Vec<String>,
     pub(super) board_nets: Vec<AnalogGeneratedNetChoice>,
     pub(super) node_bindings: Vec<AnalogGeneratedNodeBindingChoice>,
@@ -83,9 +90,13 @@ pub(super) fn analog_generated_scenarios(text: &str) -> Result<Vec<AnalogGenerat
                 generated.components.iter().map(String::as_str).collect();
             Some(AnalogGeneratedScenario {
                 name: scenario.name.clone(),
+                scenario_type: scenario.scenario_type.clone(),
                 ground_net: generated.ground_net.clone(),
                 stop_time_us: analog.analysis.stop_time_us,
                 max_step_us: analog.analysis.max_step_us,
+                start_frequency_hz: analog.analysis.start_frequency_hz.unwrap_or(10.0),
+                stop_frequency_hz: analog.analysis.stop_frequency_hz.unwrap_or(100_000.0),
+                points_per_decade: analog.analysis.points_per_decade.unwrap_or(20),
                 components: generated.components.clone(),
                 board_nets: project
                     .board
@@ -153,8 +164,30 @@ pub(super) fn replace_generated_settings(
     let generated_mapping = child_mapping_mut(analog_mapping, "generated", "analog.generated")?;
     insert_string(generated_mapping, "ground_net", ground_net);
     let analysis_mapping = child_mapping_mut(analog_mapping, "analysis", "analog analysis")?;
-    insert_number(analysis_mapping, "stop_time_us", draft.stop_time_us)?;
-    insert_number(analysis_mapping, "max_step_us", draft.max_step_us)?;
+    if scenario.scenario_type == "analog_ac" {
+        validate_ac_settings(draft)?;
+        insert_string(analysis_mapping, "type", "ac");
+        insert_number(
+            analysis_mapping,
+            "start_frequency_hz",
+            draft.start_frequency_hz,
+        )?;
+        insert_number(
+            analysis_mapping,
+            "stop_frequency_hz",
+            draft.stop_frequency_hz,
+        )?;
+        analysis_mapping.insert(
+            key("points_per_decade"),
+            serde_yaml_ng::to_value(draft.points_per_decade)
+                .context("Failed to encode AC points_per_decade.")?,
+        );
+    } else {
+        validate_transient_settings(draft)?;
+        insert_string(analysis_mapping, "type", "tran");
+        insert_number(analysis_mapping, "stop_time_us", draft.stop_time_us)?;
+        insert_number(analysis_mapping, "max_step_us", draft.max_step_us)?;
+    }
 
     let mut used_nodes: BTreeSet<String> = analog
         .node_bindings
@@ -173,6 +206,35 @@ pub(super) fn replace_generated_settings(
         yaml,
         "Edited generated settings YAML is not valid Board IR.",
     )
+}
+
+fn validate_ac_settings(draft: &AnalogGeneratedSettingsDraft) -> Result<()> {
+    if !draft.start_frequency_hz.is_finite()
+        || !draft.stop_frequency_hz.is_finite()
+        || draft.start_frequency_hz <= 0.0
+        || draft.stop_frequency_hz <= draft.start_frequency_hz
+        || draft.points_per_decade == 0
+        || draft.points_per_decade > 1000
+    {
+        anyhow::bail!(
+            "Generated AC/Bode settings require positive start/stop frequencies, stop greater than start, and points per decade in 1..=1000."
+        );
+    }
+    Ok(())
+}
+
+fn validate_transient_settings(draft: &AnalogGeneratedSettingsDraft) -> Result<()> {
+    if !draft.stop_time_us.is_finite()
+        || !draft.max_step_us.is_finite()
+        || draft.stop_time_us <= 0.0
+        || draft.max_step_us <= 0.0
+        || draft.max_step_us > draft.stop_time_us
+    {
+        anyhow::bail!(
+            "Stop time and max step must be finite positive values, with max step no larger than stop time."
+        );
+    }
+    Ok(())
 }
 
 pub(super) fn replace_generated_node_binding(
@@ -417,16 +479,6 @@ fn validate_generated_component_draft(draft: &AnalogGeneratedComponentDraft) -> 
 fn validate_generated_settings_draft(draft: &AnalogGeneratedSettingsDraft) -> Result<()> {
     validated_id(&draft.scenario_name, "scenario name")?;
     validated_id(&draft.ground_net, "ground net")?;
-    if !draft.stop_time_us.is_finite()
-        || !draft.max_step_us.is_finite()
-        || draft.stop_time_us <= 0.0
-        || draft.max_step_us <= 0.0
-        || draft.max_step_us > draft.stop_time_us
-    {
-        anyhow::bail!(
-            "Stop time and max step must be finite positive values, with max step no larger than stop time."
-        );
-    }
     Ok(())
 }
 
@@ -953,6 +1005,43 @@ scenarios:
     }
 
     #[test]
+    fn generated_settings_supports_ac_bode_analysis() {
+        let yaml = project_yaml()
+            .replace("generated_transient", "generated_bode")
+            .replace("type: analog_transient", "type: analog_ac")
+            .replace(
+                "analysis: {type: tran, stop_time_us: 100.0, max_step_us: 1.0}",
+                "analysis: {type: ac, start_frequency_hz: 10.0, stop_frequency_hz: 100000.0, points_per_decade: 20}",
+            );
+        let scenarios = analog_generated_scenarios(&yaml).unwrap();
+        assert_eq!(scenarios.len(), 1);
+        assert_eq!(scenarios[0].scenario_type, "analog_ac");
+        assert_eq!(scenarios[0].start_frequency_hz, 10.0);
+        assert_eq!(scenarios[0].stop_frequency_hz, 100_000.0);
+        assert_eq!(scenarios[0].points_per_decade, 20);
+
+        let edited = replace_generated_settings(
+            &yaml,
+            &AnalogGeneratedSettingsDraft {
+                scenario_name: "generated_bode".to_string(),
+                ground_net: "gnd".to_string(),
+                stop_time_us: -1.0,
+                max_step_us: -1.0,
+                start_frequency_hz: 100.0,
+                stop_frequency_hz: 1_000_000.0,
+                points_per_decade: 40,
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        assert_eq!(analog.analysis.analysis_type, "ac");
+        assert_eq!(analog.analysis.start_frequency_hz, Some(100.0));
+        assert_eq!(analog.analysis.stop_frequency_hz, Some(1_000_000.0));
+        assert_eq!(analog.analysis.points_per_decade, Some(40));
+    }
+
+    #[test]
     fn include_generated_component_adds_component_and_pin_bindings() {
         let edited = include_generated_component(
             project_yaml(),
@@ -1071,6 +1160,9 @@ scenarios:
                 ground_net: "out".to_string(),
                 stop_time_us: 250.0,
                 max_step_us: 2.5,
+                start_frequency_hz: 10.0,
+                stop_frequency_hz: 100_000.0,
+                points_per_decade: 20,
             },
         )
         .unwrap_err();
@@ -1084,6 +1176,9 @@ scenarios:
                 ground_net: "out".to_string(),
                 stop_time_us: 250.0,
                 max_step_us: 2.5,
+                start_frequency_hz: 10.0,
+                stop_frequency_hz: 100_000.0,
+                points_per_decade: 20,
             },
         )
         .unwrap();
@@ -1115,6 +1210,9 @@ scenarios:
                 ground_net: "gnd".to_string(),
                 stop_time_us: 1.0,
                 max_step_us: 2.0,
+                start_frequency_hz: 10.0,
+                stop_frequency_hz: 100_000.0,
+                points_per_decade: 20,
             },
         )
         .unwrap_err();

@@ -13,6 +13,7 @@ mod analog_generated;
 mod analog_model_files;
 mod analog_models;
 mod analog_overview;
+mod analog_run_setup;
 mod analog_stimulus;
 mod analog_sweeps;
 #[cfg(test)]
@@ -317,12 +318,16 @@ pub struct CircuitCiApp {
     wire_pin_id: String,
     wire_from_component: Option<String>,
     sketch_wire_draft: sketch_wire_draft::SketchWireDraft,
+    analog_run_setup_kind: String,
     analog_scenario_name: String,
     analog_ground_net: String,
     analog_probe_net: String,
     analog_probe_name: String,
     analog_stop_time_us: f64,
     analog_max_step_us: f64,
+    analog_start_frequency_hz: f64,
+    analog_stop_frequency_hz: f64,
+    analog_points_per_decade: u32,
     analog_assertion_scenario: String,
     analog_assertion_name: String,
     analog_assertion_edit_original: String,
@@ -353,6 +358,9 @@ pub struct CircuitCiApp {
     analog_generated_ground_net: String,
     analog_generated_stop_time_us: f64,
     analog_generated_max_step_us: f64,
+    analog_generated_start_frequency_hz: f64,
+    analog_generated_stop_frequency_hz: f64,
+    analog_generated_points_per_decade: u32,
     analog_generated_node_net: String,
     analog_generated_node_name: String,
     analog_sweep_scenario: String,
@@ -550,12 +558,16 @@ impl Default for CircuitCiApp {
             wire_pin_id: "P1".to_string(),
             wire_from_component: None,
             sketch_wire_draft: Default::default(),
+            analog_run_setup_kind: "transient".to_string(),
             analog_scenario_name: "gui_transient".to_string(),
             analog_ground_net: String::new(),
             analog_probe_net: String::new(),
             analog_probe_name: "probe_voltage".to_string(),
             analog_stop_time_us: 100.0,
             analog_max_step_us: 1.0,
+            analog_start_frequency_hz: 10.0,
+            analog_stop_frequency_hz: 100_000.0,
+            analog_points_per_decade: 20,
             analog_assertion_scenario: String::new(),
             analog_assertion_name: "probe_above_min".to_string(),
             analog_assertion_edit_original: String::new(),
@@ -586,6 +598,9 @@ impl Default for CircuitCiApp {
             analog_generated_ground_net: String::new(),
             analog_generated_stop_time_us: 100.0,
             analog_generated_max_step_us: 1.0,
+            analog_generated_start_frequency_hz: 10.0,
+            analog_generated_stop_frequency_hz: 100_000.0,
+            analog_generated_points_per_decade: 20,
             analog_generated_node_net: String::new(),
             analog_generated_node_name: String::new(),
             analog_sweep_scenario: String::new(),
