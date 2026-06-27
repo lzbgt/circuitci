@@ -15,6 +15,10 @@ This is useful for generated-SPICE workflow, probe placement, assertion, and GUI
 model-pack checks. It is not an AP2112K transient, stability, thermal, PSRR,
 noise, startup, current-limit, or output-capacitor ESR sign-off model.
 
+The fixture is registered in the GUI Examples picker as `AP2112K LDO`. Opening
+it lands in Sketch with the routed schematic, and `Create Checks` regenerates a
+model-aware observation preset for `UREG`.
+
 Sources:
 
 - `docs/research/datasheets/diodes/ap2112.pdf`

@@ -28,6 +28,16 @@ const OPAMP_BUFFER_SCOPE_EXAMPLE_PROJECT: &str = "examples/good_ideal_opamp_buff
 const OPAMP_BUFFER_SCOPE_EXAMPLE_NAME: &str = "good_ideal_opamp_buffer";
 const OPAMP_BUFFER_SCOPE_EXPECTED_TRACES: &[&str] = &["v(input)", "v(output)", "v(vcc)"];
 const OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY: &str = "80 us input pulse through unity feedback";
+const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
+const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
+const AP2112K_LDO_SCOPE_EXPECTED_TRACES: &[&str] = &["v_usb", "v_en", "v_rail3v3", "i_load"];
+const AP2112K_LDO_SCOPE_EXPECTED_FREQUENCY: &str = "5 V enabled input, 3.3 V regulated load rail";
+const TLV803_RESET_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tlv803ea29_reset_observation/project.yaml";
+const TLV803_RESET_SCOPE_EXAMPLE_NAME: &str = "good_tlv803ea29_reset_observation";
+const TLV803_RESET_SCOPE_EXPECTED_TRACES: &[&str] = &["v_rail", "reset_n"];
+const TLV803_RESET_SCOPE_EXPECTED_FREQUENCY: &str = "3.3 V rail ramp with reset release";
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
@@ -80,6 +90,32 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: OPAMP_BUFFER_SCOPE_EXPECTED_TRACES,
         expected_frequency: OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("XU1"),
+    },
+    GuiProjectExample {
+        id: "ap2112k_ldo_scope",
+        category: "Regulator",
+        open_label: "Open AP2112K LDO Example",
+        run_label: "Open AP2112K + Run Scopes",
+        workflow_title: "AP2112K LDO Workflow",
+        summary: "Enabled 3.3 V LDO rail with load-current and output-window checks.",
+        project_path: AP2112K_LDO_SCOPE_EXAMPLE_PROJECT,
+        project_name: AP2112K_LDO_SCOPE_EXAMPLE_NAME,
+        expected_traces: AP2112K_LDO_SCOPE_EXPECTED_TRACES,
+        expected_frequency: AP2112K_LDO_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UREG"),
+    },
+    GuiProjectExample {
+        id: "tlv803_reset_scope",
+        category: "Reset",
+        open_label: "Open TLV803 Reset Example",
+        run_label: "Open TLV803 + Run Scopes",
+        workflow_title: "TLV803 Reset Workflow",
+        summary: "Reset-supervisor threshold release from a pulsed 3.3 V rail.",
+        project_path: TLV803_RESET_SCOPE_EXAMPLE_PROJECT,
+        project_name: TLV803_RESET_SCOPE_EXAMPLE_NAME,
+        expected_traces: TLV803_RESET_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TLV803_RESET_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("URESET"),
     },
 ];
 

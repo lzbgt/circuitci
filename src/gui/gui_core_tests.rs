@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 4);
+    assert_eq!(examples.len(), 6);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -690,6 +690,57 @@ fn gui_project_example_registry_lists_opamp_buffer_scope_fixture() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_ap2112k_ldo_scope_fixture() {
+    let example = gui_project_example_by_id("ap2112k_ldo_scope");
+
+    assert_eq!(example.category, "Regulator");
+    assert_eq!(example.open_label, "Open AP2112K LDO Example");
+    assert_eq!(example.run_label, "Open AP2112K + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Enabled 3.3 V LDO rail with load-current and output-window checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_ap2112k_3v3_ldo_observation/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_ap2112k_3v3_ldo_observation");
+    assert_eq!(
+        example.expected_traces,
+        &["v_usb", "v_en", "v_rail3v3", "i_load"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "5 V enabled input, 3.3 V regulated load rail"
+    );
+    assert_eq!(example.observation_preset_component, Some("UREG"));
+}
+
+#[test]
+fn gui_project_example_registry_lists_tlv803_reset_scope_fixture() {
+    let example = gui_project_example_by_id("tlv803_reset_scope");
+
+    assert_eq!(example.category, "Reset");
+    assert_eq!(example.open_label, "Open TLV803 Reset Example");
+    assert_eq!(example.run_label, "Open TLV803 + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Reset-supervisor threshold release from a pulsed 3.3 V rail."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_tlv803ea29_reset_observation/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_tlv803ea29_reset_observation");
+    assert_eq!(example.expected_traces, &["v_rail", "reset_n"]);
+    assert_eq!(
+        example.expected_frequency,
+        "3.3 V rail ramp with reset release"
+    );
+    assert_eq!(example.observation_preset_component, Some("URESET"));
+}
+
+#[test]
 fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     let mut app = CircuitCiApp::default();
 
@@ -711,6 +762,10 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     );
     app.selected_project_example_id = "opamp_buffer_scope".to_string();
     assert_eq!(app.selected_project_example().id, "opamp_buffer_scope");
+    app.selected_project_example_id = "ap2112k_ldo_scope".to_string();
+    assert_eq!(app.selected_project_example().id, "ap2112k_ldo_scope");
+    app.selected_project_example_id = "tlv803_reset_scope".to_string();
+    assert_eq!(app.selected_project_example().id, "tlv803_reset_scope");
     app.selected_project_example_id = "deleted_example".to_string();
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
 }
@@ -778,6 +833,86 @@ fn comparator_scope_example_workflow_creates_model_aware_observation_checks() {
             .assertions
             .iter()
             .any(|assertion| assertion.name == "v_xu1_out_positive_input_high_state")
+    );
+}
+
+#[test]
+fn ap2112k_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("ap2112k_ldo_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UREG".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "ureg_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "ureg_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_ureg_vout")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ureg_vout_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ureg_vout_max_voltage")
+    );
+}
+
+#[test]
+fn tlv803_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tlv803_reset_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("URESET".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "ureset_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "ureset_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_ureset_reset")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ureset_reset_asserted_low")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ureset_reset_released_high")
     );
 }
 

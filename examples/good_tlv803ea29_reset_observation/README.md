@@ -17,6 +17,10 @@ schematic observation workflows. It is not a reset-release delay, hysteresis,
 glitch-immunity, low-VDD output-validity, leakage, or pull-up RC timing
 sign-off model.
 
+The fixture is registered in the GUI Examples picker as `TLV803 Reset`. Opening
+it lands in Sketch with the routed schematic, and `Create Checks` regenerates a
+model-aware observation preset for `URESET`.
+
 Sources:
 
 - `docs/research/datasheets/ti/tlv803e-tlv809e-tlv810e.pdf`
