@@ -11,12 +11,19 @@ pub(super) struct AnalogSweepSummary {
     pub(super) name: String,
     pub(super) corner_count: usize,
     pub(super) parameters: Vec<AnalogSweepParameterSummary>,
+    pub(super) model_sections: Vec<AnalogSweepModelSectionSummary>,
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogSweepParameterSummary {
     pub(super) name: String,
     pub(super) values: Vec<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogSweepModelSectionSummary {
+    pub(super) path: String,
+    pub(super) sections: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +38,14 @@ pub(super) struct AnalogSweepParameterDraft {
     pub(super) sweep_name: String,
     pub(super) parameter_name: String,
     pub(super) values_csv: String,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogSweepModelSectionDraft {
+    pub(super) scenario_name: String,
+    pub(super) sweep_name: String,
+    pub(super) path: String,
+    pub(super) sections_csv: String,
 }
 
 #[derive(Debug, Clone)]
@@ -140,17 +155,27 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
                                 values: parameter.values.clone(),
                             })
                             .collect();
+                        let model_sections: Vec<_> = sweep
+                            .model_sections
+                            .iter()
+                            .map(|model_section| AnalogSweepModelSectionSummary {
+                                path: model_section.path.clone(),
+                                sections: model_section.sections.clone(),
+                            })
+                            .collect();
+                        let parameter_corners: usize = parameters
+                            .iter()
+                            .map(|parameter| parameter.values.len().max(1))
+                            .product();
+                        let model_section_corners: usize = model_sections
+                            .iter()
+                            .map(|model_section| model_section.sections.len().max(1))
+                            .product();
                         AnalogSweepSummary {
                             name: sweep.name.clone(),
-                            corner_count: if parameters.is_empty() {
-                                0
-                            } else {
-                                parameters
-                                    .iter()
-                                    .map(|parameter| parameter.values.len().max(1))
-                                    .product()
-                            },
+                            corner_count: parameter_corners * model_section_corners,
                             parameters,
+                            model_sections,
                         }
                     })
                     .collect(),
@@ -206,6 +231,43 @@ pub(super) fn append_analog_sweep_preset(
                 .map(preset_parameter_value)
                 .collect(),
         ),
+    );
+    sweeps.push(serde_yaml_ng::Value::Mapping(sweep));
+    validate_updated_yaml(yaml)
+}
+
+pub(super) fn append_analog_sweep_with_model_section(
+    text: &str,
+    draft: &AnalogSweepModelSectionDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let path = validated_model_section_path(&draft.path)?;
+    let sections = parse_model_sections(&draft.sections_csv)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Run setup {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Run setup {scenario_name} is not analog."))?;
+    if analog.sweeps.iter().any(|sweep| sweep.name == sweep_name) {
+        anyhow::bail!("Sweep {sweep_name} already exists in run setup {scenario_name}.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let analog_mapping = analog_mapping_mut(&mut yaml, scenario_name)?;
+    let sweeps = ensure_child_sequence_mut(analog_mapping, "sweeps", "analog sweeps")?;
+    let mut sweep = serde_yaml_ng::Mapping::new();
+    insert_string(&mut sweep, "name", sweep_name);
+    sweep.insert(
+        key("model_sections"),
+        serde_yaml_ng::Value::Sequence(vec![model_section_value(path, &sections)]),
     );
     sweeps.push(serde_yaml_ng::Value::Mapping(sweep));
     validate_updated_yaml(yaml)
@@ -331,6 +393,83 @@ pub(super) fn append_analog_sweep_parameter(
     validate_updated_yaml(yaml)
 }
 
+pub(super) fn append_analog_sweep_model_section(
+    text: &str,
+    draft: &AnalogSweepModelSectionDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let path = validated_model_section_path(&draft.path)?;
+    let sections = parse_model_sections(&draft.sections_csv)?;
+
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Run setup {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Run setup {scenario_name} is not analog."))?;
+    let sweep = analog
+        .sweeps
+        .iter()
+        .find(|sweep| sweep.name == sweep_name)
+        .with_context(|| format!("Sweep {sweep_name} was not found."))?;
+    if sweep
+        .model_sections
+        .iter()
+        .any(|model_section| model_section.path == path)
+    {
+        anyhow::bail!("Model file {path} already exists in sweep {sweep_name}.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let sweep_mapping = sweep_mapping_mut(&mut yaml, scenario_name, sweep_name)?;
+    let model_sections =
+        ensure_child_sequence_mut(sweep_mapping, "model_sections", "sweep model sections")?;
+    model_sections.push(model_section_value(path, &sections));
+    validate_updated_yaml(yaml)
+}
+
+pub(super) fn remove_analog_sweep_model_section(
+    text: &str,
+    draft: &AnalogSweepModelSectionDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let path = validated_model_section_path(&draft.path)?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let sweep_mapping = sweep_mapping_mut(&mut yaml, scenario_name, sweep_name)?;
+    let before_has_parameters = sweep_mapping
+        .get(key("parameters"))
+        .and_then(serde_yaml_ng::Value::as_sequence)
+        .is_some_and(|parameters| !parameters.is_empty());
+    let model_sections =
+        ensure_child_sequence_mut(sweep_mapping, "model_sections", "sweep model sections")?;
+    let before = model_sections.len();
+    model_sections.retain(|model_section| {
+        model_section
+            .as_mapping()
+            .and_then(|mapping| mapping.get(key("path")))
+            .and_then(serde_yaml_ng::Value::as_str)
+            != Some(path)
+    });
+    if model_sections.len() == before {
+        anyhow::bail!("Model file {path} was not found in sweep {sweep_name}.");
+    }
+    if model_sections.is_empty() && !before_has_parameters {
+        anyhow::bail!(
+            "Sweep {sweep_name} must keep at least one parameter or model section. Remove the sweep instead."
+        );
+    }
+    validate_updated_yaml(yaml)
+}
+
 pub(super) fn remove_analog_sweep_parameter(
     text: &str,
     draft: &AnalogSweepParameterDraft,
@@ -340,7 +479,12 @@ pub(super) fn remove_analog_sweep_parameter(
     let parameter_name = validated_spice_parameter_name(&draft.parameter_name)?;
     let mut yaml: serde_yaml_ng::Value =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
-    let parameters = sweep_parameters_mut(&mut yaml, scenario_name, sweep_name)?;
+    let sweep_mapping = sweep_mapping_mut(&mut yaml, scenario_name, sweep_name)?;
+    let before_has_model_sections = sweep_mapping
+        .get(key("model_sections"))
+        .and_then(serde_yaml_ng::Value::as_sequence)
+        .is_some_and(|model_sections| !model_sections.is_empty());
+    let parameters = ensure_child_sequence_mut(sweep_mapping, "parameters", "sweep parameters")?;
     let before = parameters.len();
     parameters.retain(|parameter| {
         parameter
@@ -352,9 +496,9 @@ pub(super) fn remove_analog_sweep_parameter(
     if parameters.len() == before {
         anyhow::bail!("Parameter {parameter_name} was not found in sweep {sweep_name}.");
     }
-    if parameters.is_empty() {
+    if parameters.is_empty() && !before_has_model_sections {
         anyhow::bail!(
-            "Sweep {sweep_name} must keep at least one parameter. Remove the sweep instead."
+            "Sweep {sweep_name} must keep at least one parameter or model section. Remove the sweep instead."
         );
     }
     validate_updated_yaml(yaml)
@@ -370,6 +514,21 @@ fn preset_parameter_value(parameter: &AnalogSweepPresetParameter) -> serde_yaml_
                 .values
                 .iter()
                 .map(|value| serde_yaml_ng::Value::Number((*value).into()))
+                .collect(),
+        ),
+    );
+    serde_yaml_ng::Value::Mapping(mapping)
+}
+
+fn model_section_value(path: &str, sections: &[String]) -> serde_yaml_ng::Value {
+    let mut mapping = serde_yaml_ng::Mapping::new();
+    insert_string(&mut mapping, "path", path);
+    mapping.insert(
+        key("sections"),
+        serde_yaml_ng::Value::Sequence(
+            sections
+                .iter()
+                .map(|section| serde_yaml_ng::Value::String(section.clone()))
                 .collect(),
         ),
     );
@@ -397,6 +556,24 @@ fn parse_sweep_values(text: &str) -> Result<Vec<f64>> {
     Ok(values)
 }
 
+fn parse_model_sections(text: &str) -> Result<Vec<String>> {
+    let mut sections = Vec::new();
+    for raw in text.split(',') {
+        let raw = raw.trim();
+        if raw.is_empty() {
+            continue;
+        }
+        if !valid_model_section_name(raw) {
+            anyhow::bail!("Model section {raw} contains unsupported characters.");
+        }
+        sections.push(raw.to_string());
+    }
+    if sections.is_empty() {
+        anyhow::bail!("Model section list must include at least one section.");
+    }
+    Ok(sections)
+}
+
 fn validated_id<'a>(value: &'a str, label: &str) -> Result<&'a str> {
     let value = value.trim();
     if value.is_empty() {
@@ -407,6 +584,14 @@ fn validated_id<'a>(value: &'a str, label: &str) -> Result<&'a str> {
         .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.'))
     {
         anyhow::bail!("{label} {value} contains unsupported characters.");
+    }
+    Ok(value)
+}
+
+fn validated_model_section_path(value: &str) -> Result<&str> {
+    let value = value.trim();
+    if value.is_empty() {
+        anyhow::bail!("Model file path must not be blank.");
     }
     Ok(value)
 }
@@ -424,6 +609,13 @@ fn validated_spice_parameter_name(value: &str) -> Result<&str> {
     } else {
         anyhow::bail!("SPICE parameter name {value} must match [A-Za-z_][A-Za-z0-9_]*.")
     }
+}
+
+fn valid_model_section_name(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.' | ':'))
 }
 
 fn validate_updated_yaml(yaml: serde_yaml_ng::Value) -> Result<String> {
@@ -469,6 +661,15 @@ fn sweep_parameters_mut<'a>(
     scenario_name: &str,
     sweep_name: &str,
 ) -> Result<&'a mut Vec<serde_yaml_ng::Value>> {
+    let sweep = sweep_mapping_mut(yaml, scenario_name, sweep_name)?;
+    ensure_child_sequence_mut(sweep, "parameters", "sweep parameters")
+}
+
+fn sweep_mapping_mut<'a>(
+    yaml: &'a mut serde_yaml_ng::Value,
+    scenario_name: &str,
+    sweep_name: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
     let analog = analog_mapping_mut(yaml, scenario_name)?;
     let sweeps = ensure_child_sequence_mut(analog, "sweeps", "analog sweeps")?;
     for sweep in sweeps {
@@ -480,7 +681,7 @@ fn sweep_parameters_mut<'a>(
             .and_then(serde_yaml_ng::Value::as_str)
             == Some(sweep_name);
         if is_target {
-            return ensure_child_sequence_mut(mapping, "parameters", "sweep parameters");
+            return Ok(mapping);
         }
     }
     anyhow::bail!("Sweep {sweep_name} was not found in run setup {scenario_name}.");
@@ -516,8 +717,10 @@ fn key(value: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogSweepParameterDraft, analog_sweep_scenarios, append_analog_sweep_parameter,
-        append_analog_sweep_preset, append_analog_sweep_with_parameter,
+        AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, analog_sweep_scenarios,
+        append_analog_sweep_model_section, append_analog_sweep_parameter,
+        append_analog_sweep_preset, append_analog_sweep_with_model_section,
+        append_analog_sweep_with_parameter, remove_analog_sweep_model_section,
         remove_analog_sweep_parameter,
     };
 
@@ -612,6 +815,107 @@ scenarios:
 
         let scenarios = analog_sweep_scenarios(&edited).unwrap();
         assert_eq!(scenarios[0].sweeps[0].corner_count, 9);
+    }
+
+    #[test]
+    fn append_model_section_emits_valid_corner_sweep() {
+        let edited = append_analog_sweep_with_parameter(
+            project_yaml(),
+            &AnalogSweepParameterDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "model_corner".to_string(),
+                parameter_name: "RIN_VALUE".to_string(),
+                values_csv: "950, 1050".to_string(),
+            },
+        )
+        .unwrap();
+        let edited = append_analog_sweep_model_section(
+            &edited,
+            &AnalogSweepModelSectionDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "model_corner".to_string(),
+                path: "models/vendor.lib".to_string(),
+                sections_csv: "typ, slow, fast".to_string(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let sweep = &project.scenarios[0].analog.as_ref().unwrap().sweeps[0];
+        assert_eq!(sweep.model_sections[0].path, "models/vendor.lib");
+        assert_eq!(
+            sweep.model_sections[0].sections,
+            vec!["typ", "slow", "fast"]
+        );
+
+        let scenarios = analog_sweep_scenarios(&edited).unwrap();
+        assert_eq!(scenarios[0].sweeps[0].corner_count, 6);
+        assert_eq!(
+            scenarios[0].sweeps[0].model_sections[0].path,
+            "models/vendor.lib"
+        );
+    }
+
+    #[test]
+    fn append_sweep_with_model_section_emits_model_only_sweep() {
+        let edited = append_analog_sweep_with_model_section(
+            project_yaml(),
+            &AnalogSweepModelSectionDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "model_corner".to_string(),
+                path: "models/vendor.lib".to_string(),
+                sections_csv: "typ, slow, fast".to_string(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let sweep = &project.scenarios[0].analog.as_ref().unwrap().sweeps[0];
+        assert!(sweep.parameters.is_empty());
+        assert_eq!(sweep.model_sections[0].path, "models/vendor.lib");
+
+        let scenarios = analog_sweep_scenarios(&edited).unwrap();
+        assert_eq!(scenarios[0].sweeps[0].corner_count, 3);
+    }
+
+    #[test]
+    fn remove_model_section_preserves_sweep_when_parameter_remains() {
+        let edited = append_analog_sweep_with_parameter(
+            project_yaml(),
+            &AnalogSweepParameterDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "model_corner".to_string(),
+                parameter_name: "RIN_VALUE".to_string(),
+                values_csv: "950, 1050".to_string(),
+            },
+        )
+        .unwrap();
+        let edited = append_analog_sweep_model_section(
+            &edited,
+            &AnalogSweepModelSectionDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "model_corner".to_string(),
+                path: "models/vendor.lib".to_string(),
+                sections_csv: "typ, slow".to_string(),
+            },
+        )
+        .unwrap();
+
+        let edited = remove_analog_sweep_model_section(
+            &edited,
+            &AnalogSweepModelSectionDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "model_corner".to_string(),
+                path: "models/vendor.lib".to_string(),
+                sections_csv: String::new(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let sweep = &project.scenarios[0].analog.as_ref().unwrap().sweeps[0];
+        assert!(sweep.model_sections.is_empty());
+        assert_eq!(sweep.parameters.len(), 1);
     }
 
     #[test]

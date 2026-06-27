@@ -94,15 +94,17 @@ Current analog support:
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Bounded SPICE `.param` sweeps for analog run inputs, with each sweep corner
   exported as its own waveform/artifact set, tagged on findings, and summarized
-  with per-assertion worst-corner margin info findings.
+  with per-assertion worst-corner margin info findings. Sweeps can also select
+  vendor model-library sections through section-specific ngspice `.lib` cards.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter, extra parameter add/remove controls, and
   declared corner-count summaries without editing YAML by hand. Built-in corner
   presets add common supply, load, temperature, model-selector, and RC-tolerance
   sweeps; `TEMP_C` and `TEMPERATURE_C` also drive ngspice `.temp`.
 - GUI generated run-setup overview rows for completed sweep worst-corner
-  assertion margins, including limiting corner, parameter values, measured
-  value, limit, margin, pass/fail state, and evaluated corner count.
+  assertion margins, including limiting corner, parameter values, selected
+  model sections, measured value, limit, margin, pass/fail state, and evaluated
+  corner count.
 - Required model-file existence and SHA-256 checks.
 - Voltage/current/power probes and waveform assertions, including single-point
   samples, min/max/mean/RMS windows, signed voltage/current/power integration

@@ -405,8 +405,9 @@ SPICE `.param` run-input sweeps. The GUI creates a sweep together with its
 first parameter so edited projects stay executable, and it prevents removing the
 last parameter from a sweep unless the whole sweep is removed. It also owns the
 small preset catalog for common supply, load, temperature, model-selector, and
-RC-tolerance corner sweeps; presets are serialized through the same
-`analog.sweeps` structure rather than a separate GUI-only model.
+RC-tolerance corner sweeps plus vendor model-section corner editing; presets
+and model-section lists are serialized through the same `analog.sweeps`
+structure rather than a separate GUI-only model.
 `src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
 findings back into the selected generated run-setup overview so users can see
 worst-corner assertion margins without opening raw report findings.

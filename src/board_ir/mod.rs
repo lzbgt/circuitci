@@ -1052,13 +1052,22 @@ pub struct AnalogStimulus {
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnalogParameterSweep {
     pub name: String,
+    #[serde(default)]
     pub parameters: Vec<AnalogSweepParameter>,
+    #[serde(default)]
+    pub model_sections: Vec<AnalogModelSectionSweep>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnalogSweepParameter {
     pub name: String,
     pub values: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogModelSectionSweep {
+    pub path: String,
+    pub sections: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

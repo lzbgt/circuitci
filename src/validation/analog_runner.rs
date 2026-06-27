@@ -23,6 +23,12 @@ pub(super) struct ParameterOverride {
     pub(super) value: f64,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct ModelSectionOverride {
+    pub(super) path: String,
+    pub(super) section: String,
+}
+
 pub(super) struct NgspiceRun {
     pub(super) artifacts: Vec<PathBuf>,
     pub(super) waveform: PathBuf,
@@ -49,6 +55,7 @@ where
     pub(super) output: &'a Path,
     pub(super) run_subdir: Option<&'a str>,
     pub(super) parameter_overrides: &'a [ParameterOverride],
+    pub(super) model_section_overrides: &'a [ModelSectionOverride],
     pub(super) operating_probe_expressions: &'a [String],
     pub(super) on_progress: F,
     pub(super) should_cancel: C,
@@ -56,6 +63,7 @@ where
 
 struct NgspiceWrapperOptions<'a> {
     parameter_overrides: &'a [ParameterOverride],
+    model_section_overrides: &'a [ModelSectionOverride],
     operating_probe_expressions: &'a [String],
     include_control: bool,
     include_quit: bool,
@@ -76,6 +84,7 @@ where
         output,
         run_subdir,
         parameter_overrides,
+        model_section_overrides,
         operating_probe_expressions,
         mut on_progress,
         should_cancel,
@@ -115,6 +124,7 @@ where
         Path::new("waveform.csv"),
         NgspiceWrapperOptions {
             parameter_overrides,
+            model_section_overrides,
             operating_probe_expressions,
             include_control: !embedded_backend,
             include_quit: !embedded_backend,
@@ -730,6 +740,7 @@ fn build_ngspice_wrapper(
 ) -> Result<String, String> {
     let NgspiceWrapperOptions {
         parameter_overrides,
+        model_section_overrides,
         operating_probe_expressions,
         include_control,
         include_quit,
@@ -772,6 +783,23 @@ fn build_ngspice_wrapper(
         if let Some(temperature_c) = sweep_temperature_c(parameter_overrides) {
             text.push_str(".temp ");
             text.push_str(&format!("{:.12e}", temperature_c));
+            text.push('\n');
+        }
+    }
+    if !model_section_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep model section overrides.\n");
+        for override_ in model_section_overrides {
+            let path = Path::new(&override_.path);
+            let absolute = if path.is_absolute() {
+                normalize_path(path)
+            } else {
+                absolute_path(&bound.project.source_dir.join(path))
+                    .unwrap_or_else(|_| normalize_path(&bound.project.source_dir.join(path)))
+            };
+            text.push_str(".lib \"");
+            text.push_str(&absolute.to_string_lossy());
+            text.push_str("\" ");
+            text.push_str(&override_.section);
             text.push('\n');
         }
     }
@@ -1044,8 +1072,8 @@ pub(super) fn backend_name(backend: &AnalogBackend) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        NgspiceWrapperOptions, ParameterOverride, build_ngspice_wrapper, detect_nonconvergence,
-        parse_waveform_csv, rewrite_include_line,
+        ModelSectionOverride, NgspiceWrapperOptions, ParameterOverride, build_ngspice_wrapper,
+        detect_nonconvergence, parse_waveform_csv, rewrite_include_line,
     };
     use crate::board_ir::load_project;
     use crate::library::{bind_project, load_library};
@@ -1133,6 +1161,7 @@ mod tests {
             Path::new("waveform.csv"),
             NgspiceWrapperOptions {
                 parameter_overrides: &[],
+                model_section_overrides: &[],
                 operating_probe_expressions: &operating_expressions,
                 include_control: true,
                 include_quit: true,
@@ -1170,6 +1199,7 @@ mod tests {
                     name: "R_LOAD".to_string(),
                     value: 1234.0,
                 }],
+                model_section_overrides: &[],
                 operating_probe_expressions: &[],
                 include_control: true,
                 include_quit: true,
@@ -1202,6 +1232,7 @@ mod tests {
                     name: "TEMP_C".to_string(),
                     value: 85.0,
                 }],
+                model_section_overrides: &[],
                 operating_probe_expressions: &[],
                 include_control: true,
                 include_quit: true,
@@ -1210,6 +1241,40 @@ mod tests {
         .unwrap();
         assert!(wrapper.contains(".param TEMP_C=8.500000000000e1"));
         assert!(wrapper.contains(".temp 8.500000000000e1"));
+    }
+
+    #[test]
+    fn wrapper_injects_model_section_overrides() {
+        let project_path = Path::new("examples/rc_lowpass_scope/project.yaml");
+        let project = load_project(project_path).unwrap();
+        let (library, findings) = load_library(project_path, &project);
+        assert!(findings.is_empty());
+        let bound = bind_project(&project, library, findings);
+        let scenario = &project.scenarios[0];
+
+        let dir = tempfile::tempdir().unwrap();
+        let netlist = dir.path().join("source.cir");
+        std::fs::write(&netlist, "X1 in out vendor_device\n.end\n").unwrap();
+        let wrapper = build_ngspice_wrapper(
+            &bound,
+            scenario,
+            &netlist,
+            Path::new("waveform.csv"),
+            NgspiceWrapperOptions {
+                parameter_overrides: &[],
+                model_section_overrides: &[ModelSectionOverride {
+                    path: "models/vendor.lib".to_string(),
+                    section: "slow".to_string(),
+                }],
+                operating_probe_expressions: &[],
+                include_control: true,
+                include_quit: true,
+            },
+        )
+        .unwrap();
+        assert!(wrapper.lines().any(|line| {
+            line.starts_with(".lib \"") && line.ends_with("models/vendor.lib\" slow")
+        }));
     }
 
     #[test]

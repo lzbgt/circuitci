@@ -304,10 +304,11 @@ scope-run preparation.
 editors and their Board IR YAML mutation helpers, including the user-facing
 Run Input Sweeps panel. Sweep creation is valid-by-construction: adding a new
 sweep also adds its first SPICE `.param` input and comma-separated value list,
-while extra parameters can be added or removed without editing YAML. The same
-panel exposes one-click corner presets for supply, load, temperature,
-model-selector, and RC-tolerance sweeps, all persisted as ordinary
-`analog.sweeps` data.
+while extra parameters and vendor model-library section lists can be added or
+removed without editing YAML. Model-section sweeps emit `.lib "path" section`
+cards during ngspice execution. The same panel exposes one-click corner presets
+for supply, load, temperature, model-selector, and RC-tolerance sweeps, all
+persisted as ordinary `analog.sweeps` data.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the

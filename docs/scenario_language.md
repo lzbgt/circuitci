@@ -2582,13 +2582,16 @@ available, or if the runtime cannot execute the deck and evaluate waveforms, the
 scenario must fail with a critical analog finding.
 
 The optional `analog.sweeps` list runs the same deck and assertions across a
-bounded Cartesian product of explicit SPICE parameter values. Parameter names
-must be valid SPICE `.param` identifiers, and sweep execution is capped to keep
-GUI and CI runs predictable. Each corner writes separate waveform artifacts and
-tags assertion findings with the sweep name, corner name, and parameter values.
-For every assertion that is evaluated across a sweep, the report also emits an
+bounded Cartesian product of explicit SPICE parameter values and/or vendor
+model-library sections. Parameter names must be valid SPICE `.param`
+identifiers. Model sections use `model_sections[].path` plus a non-empty
+`sections` list; each selected corner emits an ngspice `.lib "path" section`
+line. Sweep execution is capped to keep GUI and CI runs predictable. Each corner
+writes separate waveform artifacts and tags assertion findings with the sweep
+name, corner name, parameter values, and selected model sections. For every
+assertion that is evaluated across a sweep, the report also emits an
 `ANALOG_SWEEP_MARGIN_SUMMARY` info finding that points at the worst margin
-corner, measured value, limit, relation, and parameter values.
+corner, measured value, limit, relation, parameters, and model sections.
 GUI Run Inputs expose presets that persist as this same `analog.sweeps`
 structure: supply (`SUPPLY_V`), load (`LOAD_OHM`), temperature (`TEMP_C`),
 model-selector (`MODEL_CORNER`), and RC tolerance (`RIN_VALUE` x

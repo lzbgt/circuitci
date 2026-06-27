@@ -20,10 +20,11 @@ use super::analog_stimulus::{
     replace_analog_stimulus,
 };
 use super::analog_sweeps::{
-    AnalogSweepDraft, AnalogSweepParameterDraft, AnalogSweepScenario, AnalogSweepSummary,
-    analog_sweep_presets, analog_sweep_scenarios, append_analog_sweep_parameter,
-    append_analog_sweep_preset, append_analog_sweep_with_parameter, remove_analog_sweep,
-    remove_analog_sweep_parameter,
+    AnalogSweepDraft, AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, AnalogSweepScenario,
+    AnalogSweepSummary, analog_sweep_presets, analog_sweep_scenarios,
+    append_analog_sweep_model_section, append_analog_sweep_parameter, append_analog_sweep_preset,
+    append_analog_sweep_with_model_section, append_analog_sweep_with_parameter,
+    remove_analog_sweep, remove_analog_sweep_model_section, remove_analog_sweep_parameter,
 };
 use super::simulation_forms::*;
 use super::sketch::ProjectSnapshot;
@@ -901,10 +902,21 @@ impl CircuitCiApp {
                     ui.label("Values");
                     ui.text_edit_singleline(&mut self.analog_sweep_parameter_values);
                     ui.end_row();
+
+                    ui.label("Model file");
+                    ui.text_edit_singleline(&mut self.analog_sweep_model_path);
+                    ui.end_row();
+
+                    ui.label("Sections");
+                    ui.text_edit_singleline(&mut self.analog_sweep_model_sections);
+                    ui.end_row();
                 });
             ui.horizontal(|ui| {
                 if ui.button("Add Sweep + Parameter").clicked() {
                     self.apply_add_analog_sweep();
+                }
+                if ui.button("Add Sweep + Model Sections").clicked() {
+                    self.apply_add_analog_sweep_with_model_section();
                 }
                 let selected_sweep = selected_analog_sweep(
                     &scenarios,
@@ -958,6 +970,12 @@ impl CircuitCiApp {
                     }
                     if ui.button("Remove Parameter").clicked() {
                         self.apply_remove_analog_sweep_parameter();
+                    }
+                    if ui.button("Add Model Sections").clicked() {
+                        self.apply_add_analog_sweep_model_section();
+                    }
+                    if ui.button("Remove Model Sections").clicked() {
+                        self.apply_remove_analog_sweep_model_section();
                     }
                 });
             }
@@ -1115,6 +1133,26 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_sweep_with_model_section(&mut self) {
+        let draft = AnalogSweepModelSectionDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            path: self.analog_sweep_model_path.clone(),
+            sections_csv: self.analog_sweep_model_sections.clone(),
+        };
+        match append_analog_sweep_with_model_section(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Run input sweep {} added with model section file {}.",
+                    draft.sweep_name.trim(),
+                    draft.path.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_add_analog_sweep_preset(&mut self, preset_id: &str, sweep_name: &str) {
         match append_analog_sweep_preset(&self.project_yaml, &self.analog_sweep_scenario, preset_id)
         {
@@ -1163,6 +1201,26 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_sweep_model_section(&mut self) {
+        let draft = AnalogSweepModelSectionDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            path: self.analog_sweep_model_path.clone(),
+            sections_csv: self.analog_sweep_model_sections.clone(),
+        };
+        match append_analog_sweep_model_section(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Model section corner file {} added to sweep {}.",
+                    draft.path.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_remove_analog_sweep_parameter(&mut self) {
         let draft = AnalogSweepParameterDraft {
             scenario_name: self.analog_sweep_scenario.clone(),
@@ -1176,6 +1234,26 @@ impl CircuitCiApp {
                 &format!(
                     "Run input parameter {} removed from sweep {}.",
                     draft.parameter_name.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_analog_sweep_model_section(&mut self) {
+        let draft = AnalogSweepModelSectionDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            path: self.analog_sweep_model_path.clone(),
+            sections_csv: String::new(),
+        };
+        match remove_analog_sweep_model_section(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Model section corner file {} removed from sweep {}.",
+                    draft.path.trim(),
                     draft.sweep_name.trim()
                 ),
             ),
@@ -1705,10 +1783,10 @@ fn selected_analog_sweep<'a>(
 }
 
 fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
-    if sweep.parameters.is_empty() {
+    if sweep.parameters.is_empty() && sweep.model_sections.is_empty() {
         return "none".to_string();
     }
-    sweep
+    let mut parts: Vec<String> = sweep
         .parameters
         .iter()
         .map(|parameter| {
@@ -1723,6 +1801,13 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
                     .join(", ")
             )
         })
-        .collect::<Vec<_>>()
-        .join("; ")
+        .collect();
+    parts.extend(sweep.model_sections.iter().map(|model_section| {
+        format!(
+            "{} sections [{}]",
+            model_section.path,
+            model_section.sections.join(", ")
+        )
+    }));
+    parts.join("; ")
 }

@@ -400,7 +400,7 @@ fn sweep_margin_row(finding: &Finding) -> Option<AnalogSweepMarginRow> {
         })
         .unwrap_or_else(|| "n/a".to_string());
     let corners = json_u64(&finding.measured, "evaluated_corners").unwrap_or(0);
-    let params = sweep_parameter_summary(finding);
+    let params = sweep_corner_input_summary(finding);
     let passed = json_bool(&finding.measured, "passed").unwrap_or(false);
     Some(AnalogSweepMarginRow {
         assertion,
@@ -411,15 +411,26 @@ fn sweep_margin_row(finding: &Finding) -> Option<AnalogSweepMarginRow> {
     })
 }
 
-fn sweep_parameter_summary(finding: &Finding) -> String {
-    let Some(value) = finding.measured.get("analog_parameters") else {
-        return String::new();
-    };
-    let Some(parameters) = value.as_object() else {
-        return String::new();
-    };
+fn sweep_corner_input_summary(finding: &Finding) -> String {
+    let mut parts = Vec::new();
+    if let Some(parameters) = sweep_parameter_summary(finding) {
+        parts.push(parameters);
+    }
+    if let Some(model_sections) = sweep_model_section_summary(finding) {
+        parts.push(model_sections);
+    }
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", parts.join("; "))
+    }
+}
+
+fn sweep_parameter_summary(finding: &Finding) -> Option<String> {
+    let value = finding.measured.get("analog_parameters")?;
+    let parameters = value.as_object()?;
     if parameters.is_empty() {
-        return String::new();
+        return None;
     }
     let parts: Vec<String> = parameters
         .iter()
@@ -427,9 +438,27 @@ fn sweep_parameter_summary(finding: &Finding) -> String {
         .map(|(name, number)| format!("{name}={}", compact_number(number)))
         .collect();
     if parts.is_empty() {
-        String::new()
+        None
     } else {
-        format!(" ({})", parts.join(", "))
+        Some(parts.join(", "))
+    }
+}
+
+fn sweep_model_section_summary(finding: &Finding) -> Option<String> {
+    let value = finding.measured.get("analog_model_sections")?;
+    let model_sections = value.as_object()?;
+    if model_sections.is_empty() {
+        return None;
+    }
+    let parts: Vec<String> = model_sections
+        .iter()
+        .filter_map(|(path, section)| section.as_str().map(|section| (path, section)))
+        .map(|(path, section)| format!("{path}:{section}"))
+        .collect();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(", "))
     }
 }
 
@@ -1116,6 +1145,10 @@ scenarios:
             "analog_parameters".to_string(),
             json!({"RLOAD": 1050.0, "CLOAD": 0.000000105}),
         );
+        finding.measured.insert(
+            "analog_model_sections".to_string(),
+            json!({"models/vendor.lib": "slow"}),
+        );
         finding
             .measured
             .insert("assertion".to_string(), json!("filtered_rms_attenuated"));
@@ -1152,6 +1185,7 @@ scenarios:
         assert!(rows[0].passed);
         assert!(rows[0].detail.contains("rc_tolerance/slow_c"));
         assert!(rows[0].detail.contains("RLOAD=1050"));
+        assert!(rows[0].detail.contains("models/vendor.lib:slow"));
         assert!(rows[0].detail.contains("0.60732 V below 0.62 V"));
         assert!(rows[0].detail.contains("margin 0.01268 V"));
         assert!(rows[0].detail.contains("9 corners"));
