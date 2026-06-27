@@ -1,4 +1,6 @@
-use crate::board_ir::{AnalogAggregation, AnalogNetlistSource, AnalogRelation, Scenario};
+use crate::board_ir::{
+    AnalogAggregation, AnalogNetlistSource, AnalogRelation, AnalogSweepComponentField, Scenario,
+};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -19,7 +21,9 @@ use super::analog_runner::{
     embedded_solver_unavailable, external_backend_unavailable, run_ngspice, select_backend,
 };
 use super::analog_soa::evaluate_soa_limits;
-use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::analog_util::{
+    component_value_parameter_name, file_sha256_hex, push_artifact, safe_artifact_name,
+};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
 
@@ -470,6 +474,7 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
             return;
         }
         on_progress("Running analog input corner", run_plan.progress_label());
+        let parameter_overrides = run_plan.parameter_overrides_for_solver();
         match run_ngspice(
             bound,
             scenario,
@@ -478,7 +483,7 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
             NgspiceRunOptions {
                 output,
                 run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &run_plan.parameter_overrides,
+                parameter_overrides: &parameter_overrides,
                 model_section_overrides: &run_plan.model_section_overrides,
                 operating_probe_expressions: &operating_expressions,
                 on_progress: &mut on_progress,
@@ -560,7 +565,16 @@ struct AnalogRunPlan {
     corner_name: String,
     run_subdir: Option<String>,
     parameter_overrides: Vec<ParameterOverride>,
+    component_value_overrides: Vec<ComponentValueOverride>,
     model_section_overrides: Vec<ModelSectionOverride>,
+}
+
+#[derive(Debug, Clone)]
+struct ComponentValueOverride {
+    component: String,
+    field: AnalogSweepComponentField,
+    parameter_name: String,
+    value: f64,
 }
 
 impl AnalogRunPlan {
@@ -570,14 +584,16 @@ impl AnalogRunPlan {
             corner_name: "nominal".to_string(),
             run_subdir: None,
             parameter_overrides: Vec::new(),
+            component_value_overrides: Vec::new(),
             model_section_overrides: Vec::new(),
         }
     }
 
     fn progress_label(&self) -> String {
         if let Some(sweep_name) = &self.sweep_name {
-            let override_count =
-                self.parameter_overrides.len() + self.model_section_overrides.len();
+            let override_count = self.parameter_overrides.len()
+                + self.component_value_overrides.len()
+                + self.model_section_overrides.len();
             format!(
                 "{} / {} with {} override(s).",
                 sweep_name, self.corner_name, override_count
@@ -585,6 +601,17 @@ impl AnalogRunPlan {
         } else {
             "nominal input set.".to_string()
         }
+    }
+
+    fn parameter_overrides_for_solver(&self) -> Vec<ParameterOverride> {
+        let mut overrides = self.parameter_overrides.clone();
+        overrides.extend(self.component_value_overrides.iter().map(|override_| {
+            ParameterOverride {
+                name: override_.parameter_name.clone(),
+                value: override_.value,
+            }
+        }));
+        overrides
     }
 }
 
@@ -599,9 +626,12 @@ fn analog_run_plans(
         if sweep.name.trim().is_empty() {
             return Err("analog sweep names must not be empty.".to_string());
         }
-        if sweep.parameters.is_empty() && sweep.model_sections.is_empty() {
+        if sweep.parameters.is_empty()
+            && sweep.component_values.is_empty()
+            && sweep.model_sections.is_empty()
+        {
             return Err(format!(
-                "Analog sweep {} must declare at least one parameter or model section.",
+                "Analog sweep {} must declare at least one parameter, component value, or model section.",
                 sweep.name
             ));
         }
@@ -633,6 +663,50 @@ fn analog_run_plans(
                 ));
             }
             parameter_values.push((parameter.name.clone(), parameter.values.clone()));
+        }
+        let mut component_value_seen = BTreeSet::new();
+        let mut component_value_values = Vec::new();
+        for component_value in &sweep.component_values {
+            let component = component_value.component.trim();
+            if component.is_empty() {
+                return Err(format!(
+                    "Analog sweep {} has a component value entry with an empty component.",
+                    sweep.name
+                ));
+            }
+            let key = (component.to_string(), component_value.field);
+            if !component_value_seen.insert(key.clone()) {
+                return Err(format!(
+                    "Analog sweep {} declares component value {}.{} more than once.",
+                    sweep.name,
+                    key.0,
+                    key.1.as_str()
+                ));
+            }
+            if component_value.values.is_empty() {
+                return Err(format!(
+                    "Analog sweep {} component value {}.{} must declare at least one value.",
+                    sweep.name,
+                    component,
+                    component_value.field.as_str()
+                ));
+            }
+            if component_value.values.iter().any(|value| {
+                !value.is_finite()
+                    || component_value.field.requires_positive_value() && *value <= 0.0
+            }) {
+                return Err(format!(
+                    "Analog sweep {} component value {}.{} contains a non-finite or out-of-range value.",
+                    sweep.name,
+                    component,
+                    component_value.field.as_str()
+                ));
+            }
+            component_value_values.push((
+                component.to_string(),
+                component_value.field,
+                component_value.values.clone(),
+            ));
         }
         let mut model_section_values = Vec::new();
         for model_section in &sweep.model_sections {
@@ -672,17 +746,36 @@ fn analog_run_plans(
             Vec::new(),
             &mut model_section_combinations,
         )?;
-        for (index, (parameter_overrides, model_section_overrides)) in parameter_combinations
-            .into_iter()
-            .flat_map(|parameter_overrides| {
-                model_section_combinations
-                    .iter()
-                    .cloned()
-                    .map(move |model_section_overrides| {
-                        (parameter_overrides.clone(), model_section_overrides)
-                    })
-            })
-            .enumerate()
+        let mut component_value_combinations = Vec::new();
+        expand_component_value_combinations(
+            &component_value_values,
+            0,
+            Vec::new(),
+            &mut component_value_combinations,
+        )?;
+        for (index, (parameter_overrides, component_value_overrides, model_section_overrides)) in
+            parameter_combinations
+                .into_iter()
+                .flat_map(|parameter_overrides| {
+                    component_value_combinations.iter().cloned().map(
+                        move |component_value_overrides| {
+                            (parameter_overrides.clone(), component_value_overrides)
+                        },
+                    )
+                })
+                .flat_map(|(parameter_overrides, component_value_overrides)| {
+                    model_section_combinations
+                        .iter()
+                        .cloned()
+                        .map(move |model_section_overrides| {
+                            (
+                                parameter_overrides.clone(),
+                                component_value_overrides.clone(),
+                                model_section_overrides,
+                            )
+                        })
+                })
+                .enumerate()
         {
             if plans.len() >= MAX_ANALOG_SWEEP_CORNERS {
                 return Err(format!(
@@ -695,11 +788,40 @@ fn analog_run_plans(
                 run_subdir: Some(format!("{}_{}", sweep.name, corner_name)),
                 corner_name,
                 parameter_overrides,
+                component_value_overrides,
                 model_section_overrides,
             });
         }
     }
     Ok(plans)
+}
+
+fn expand_component_value_combinations(
+    component_values: &[(String, AnalogSweepComponentField, Vec<f64>)],
+    index: usize,
+    current: Vec<ComponentValueOverride>,
+    output: &mut Vec<Vec<ComponentValueOverride>>,
+) -> Result<(), String> {
+    if output.len() >= MAX_ANALOG_SWEEP_CORNERS {
+        return Err(format!(
+            "Analog sweeps exceed the {MAX_ANALOG_SWEEP_CORNERS}-corner execution cap."
+        ));
+    }
+    let Some((component, field, values)) = component_values.get(index) else {
+        output.push(current);
+        return Ok(());
+    };
+    for value in values {
+        let mut next = current.clone();
+        next.push(ComponentValueOverride {
+            component: component.clone(),
+            field: *field,
+            parameter_name: component_value_parameter_name(component, field.as_str()),
+            value: *value,
+        });
+        expand_component_value_combinations(component_values, index + 1, next, output)?;
+    }
+    Ok(())
 }
 
 fn expand_parameter_combinations(
@@ -795,6 +917,12 @@ fn tag_corner_finding(finding: &mut Finding, run_plan: &AnalogRunPlan) {
                 &run_plan.model_section_overrides
             )),
         );
+        finding.measured.insert(
+            "analog_component_values".to_string(),
+            json!(component_value_override_map(
+                &run_plan.component_value_overrides
+            )),
+        );
     }
 }
 
@@ -812,11 +940,24 @@ fn model_section_override_map(overrides: &[ModelSectionOverride]) -> BTreeMap<St
         .collect()
 }
 
+fn component_value_override_map(overrides: &[ComponentValueOverride]) -> BTreeMap<String, f64> {
+    overrides
+        .iter()
+        .map(|override_| {
+            (
+                format!("{}.{}", override_.component, override_.field.as_str()),
+                override_.value,
+            )
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone)]
 struct SweepAssertionMeasurement {
     sweep_name: String,
     corner_name: String,
     parameters: BTreeMap<String, f64>,
+    component_values: BTreeMap<String, f64>,
     model_sections: BTreeMap<String, String>,
     assertion: AnalogAssertionMeasurement,
 }
@@ -830,6 +971,7 @@ fn record_sweep_measurements(
         return;
     };
     let parameters = parameter_override_map(&run_plan.parameter_overrides);
+    let component_values = component_value_override_map(&run_plan.component_value_overrides);
     let model_sections = model_section_override_map(&run_plan.model_section_overrides);
     output.extend(
         measurements
@@ -838,6 +980,7 @@ fn record_sweep_measurements(
                 sweep_name: sweep_name.clone(),
                 corner_name: run_plan.corner_name.clone(),
                 parameters: parameters.clone(),
+                component_values: component_values.clone(),
                 model_sections: model_sections.clone(),
                 assertion,
             }),
@@ -891,6 +1034,10 @@ fn push_sweep_margin_summaries(
         finding.measured.insert(
             "analog_model_sections".to_string(),
             json!(worst.model_sections.clone()),
+        );
+        finding.measured.insert(
+            "analog_component_values".to_string(),
+            json!(worst.component_values.clone()),
         );
         finding
             .measured
@@ -1025,11 +1172,12 @@ fn prepare_source_netlist(
 #[cfg(test)]
 mod tests {
     use super::{
-        ANALOG_SWEEP_MARGIN_SUMMARY, AnalogRunPlan, MAX_ANALOG_SWEEP_CORNERS, ModelSectionOverride,
-        ParameterOverride, SweepAssertionMeasurement, analog_run_plans,
-        push_sweep_margin_summaries, tag_corner_finding,
+        ANALOG_SWEEP_MARGIN_SUMMARY, AnalogRunPlan, ComponentValueOverride,
+        MAX_ANALOG_SWEEP_CORNERS, ModelSectionOverride, ParameterOverride,
+        SweepAssertionMeasurement, analog_run_plans, push_sweep_margin_summaries,
+        tag_corner_finding,
     };
-    use crate::board_ir::BoardProject;
+    use crate::board_ir::{AnalogSweepComponentField, BoardProject};
     use crate::reports::Finding;
     use crate::validation::analog_assertions::AnalogAssertionMeasurement;
     use std::collections::BTreeMap;
@@ -1198,6 +1346,41 @@ scenarios:
     }
 
     #[test]
+    fn analog_run_plans_expand_component_value_sweeps() {
+        let yaml = model_section_sweep_project_yaml(
+            r#"          component_values:
+            - component: RLOAD
+              field: value_ohm
+              values: [900.0, 1000.0]
+            - component: ILOAD
+              field: dc_a
+              values: [0.01, 0.02]
+"#,
+        );
+        let project: BoardProject = serde_yaml_ng::from_str(&yaml).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+
+        let plans = analog_run_plans(analog).unwrap();
+
+        assert_eq!(plans.len(), 4);
+        assert!(plans[0].parameter_overrides.is_empty());
+        assert_eq!(
+            plans[0].component_value_overrides[0].parameter_name,
+            "CCI_RLOAD_VALUE_OHM"
+        );
+        assert_eq!(plans[0].component_value_overrides[0].value, 900.0);
+        assert_eq!(
+            plans[0].component_value_overrides[1].parameter_name,
+            "CCI_ILOAD_DC_A"
+        );
+        assert_eq!(plans[3].component_value_overrides[0].value, 1000.0);
+        assert_eq!(plans[3].component_value_overrides[1].value, 0.02);
+        let solver_overrides = plans[0].parameter_overrides_for_solver();
+        assert_eq!(solver_overrides.len(), 2);
+        assert_eq!(solver_overrides[0].name, "CCI_RLOAD_VALUE_OHM");
+    }
+
+    #[test]
     fn analog_run_plans_reject_invalid_parameter_names() {
         let yaml = rc_sweep_project_yaml(
             r#"            - name: 1BAD
@@ -1241,6 +1424,12 @@ scenarios:
                 name: "RIN_VALUE".to_string(),
                 value: 1050.0,
             }],
+            component_value_overrides: vec![ComponentValueOverride {
+                component: "RLOAD".to_string(),
+                field: AnalogSweepComponentField::ValueOhm,
+                parameter_name: "CCI_RLOAD_VALUE_OHM".to_string(),
+                value: 1100.0,
+            }],
             model_section_overrides: vec![ModelSectionOverride {
                 path: "models/vendor.lib".to_string(),
                 section: "slow".to_string(),
@@ -1260,6 +1449,10 @@ scenarios:
         assert_eq!(
             finding.measured["analog_model_sections"]["models/vendor.lib"],
             "slow"
+        );
+        assert_eq!(
+            finding.measured["analog_component_values"]["RLOAD.value_ohm"],
+            1100.0
         );
     }
 
@@ -1291,6 +1484,10 @@ scenarios:
             summary.measured["analog_model_sections"]["models/vendor.lib"],
             "typ"
         );
+        assert_eq!(
+            summary.measured["analog_component_values"]["RLOAD.value_ohm"],
+            1100.0
+        );
         assert_eq!(summary.measured["assertion"], "filtered_rms_below");
         assert_eq!(summary.measured["evaluated_corners"], 3);
         assert_eq!(summary.measured["passed"], false);
@@ -1309,6 +1506,7 @@ scenarios:
             sweep_name: "rc_tolerance".to_string(),
             corner_name: corner_name.to_string(),
             parameters: BTreeMap::from([("RIN_VALUE".to_string(), parameter_value)]),
+            component_values: BTreeMap::from([("RLOAD.value_ohm".to_string(), 1100.0)]),
             model_sections: BTreeMap::from([("models/vendor.lib".to_string(), "typ".to_string())]),
             assertion: AnalogAssertionMeasurement {
                 assertion_name: "filtered_rms_below".to_string(),

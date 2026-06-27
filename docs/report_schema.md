@@ -107,6 +107,8 @@ Typical fields:
 - `measured.analog_sweep`: sweep name.
 - `measured.analog_corner`: corner label such as `corner_003`.
 - `measured.analog_parameters`: parameter/value map used for that corner.
+- `measured.analog_component_values`: generated component field/value map such
+  as `RLOAD.value_ohm` or `VSUPPLY.dc_v` used for that corner.
 - `measured.analog_model_sections`: model-file path to selected `.lib` section
   map used for that corner.
 - `measured.assertion`, `measured.probe`, `measured.measured_value`,

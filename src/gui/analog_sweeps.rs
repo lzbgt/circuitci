@@ -11,6 +11,7 @@ pub(super) struct AnalogSweepSummary {
     pub(super) name: String,
     pub(super) corner_count: usize,
     pub(super) parameters: Vec<AnalogSweepParameterSummary>,
+    pub(super) component_values: Vec<AnalogSweepComponentValueSummary>,
     pub(super) model_sections: Vec<AnalogSweepModelSectionSummary>,
 }
 
@@ -21,9 +22,24 @@ pub(super) struct AnalogSweepParameterSummary {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogSweepComponentValueSummary {
+    pub(super) component: String,
+    pub(super) field: String,
+    pub(super) values: Vec<f64>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogSweepModelSectionSummary {
     pub(super) path: String,
     pub(super) sections: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogLoadSweepCandidate {
+    pub(super) component: String,
+    pub(super) field: String,
+    pub(super) nominal: f64,
+    pub(super) values_csv: String,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +62,15 @@ pub(super) struct AnalogSweepModelSectionDraft {
     pub(super) sweep_name: String,
     pub(super) path: String,
     pub(super) sections_csv: String,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogSweepComponentValueDraft {
+    pub(super) scenario_name: String,
+    pub(super) sweep_name: String,
+    pub(super) component: String,
+    pub(super) field: String,
+    pub(super) values_csv: String,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +180,15 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
                                 values: parameter.values.clone(),
                             })
                             .collect();
+                        let component_values: Vec<_> = sweep
+                            .component_values
+                            .iter()
+                            .map(|component_value| AnalogSweepComponentValueSummary {
+                                component: component_value.component.clone(),
+                                field: component_value.field.as_str().to_string(),
+                                values: component_value.values.clone(),
+                            })
+                            .collect();
                         let model_sections: Vec<_> = sweep
                             .model_sections
                             .iter()
@@ -167,14 +201,21 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
                             .iter()
                             .map(|parameter| parameter.values.len().max(1))
                             .product();
+                        let component_value_corners: usize = component_values
+                            .iter()
+                            .map(|component_value| component_value.values.len().max(1))
+                            .product();
                         let model_section_corners: usize = model_sections
                             .iter()
                             .map(|model_section| model_section.sections.len().max(1))
                             .product();
                         AnalogSweepSummary {
                             name: sweep.name.clone(),
-                            corner_count: parameter_corners * model_section_corners,
+                            corner_count: parameter_corners
+                                * component_value_corners
+                                * model_section_corners,
                             parameters,
+                            component_values,
                             model_sections,
                         }
                     })
@@ -182,6 +223,106 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
             })
         })
         .collect())
+}
+
+pub(super) fn analog_load_sweep_candidates(
+    text: &str,
+    scenario_name: &str,
+) -> Result<Vec<AnalogLoadSweepCandidate>> {
+    let scenario_name = scenario_name.trim();
+    if scenario_name.is_empty() {
+        return Ok(Vec::new());
+    }
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Run setup {scenario_name} was not found."))?;
+    let Some(analog) = &scenario.analog else {
+        return Ok(Vec::new());
+    };
+    let Some(generated) = &analog.generated else {
+        return Ok(Vec::new());
+    };
+    let mut candidates = Vec::new();
+    for component_id in &generated.components {
+        let Some(component) = project.board.components.get(component_id) else {
+            continue;
+        };
+        let Some(spice) = &component.spice else {
+            continue;
+        };
+        match spice.primitive {
+            crate::board_ir::SpicePrimitive::Resistor => {
+                push_candidate(
+                    &mut candidates,
+                    component_id,
+                    "value_ohm",
+                    spice.value_ohm,
+                    true,
+                );
+            }
+            crate::board_ir::SpicePrimitive::Capacitor => {
+                push_candidate(
+                    &mut candidates,
+                    component_id,
+                    "value_f",
+                    spice.value_f,
+                    true,
+                );
+            }
+            crate::board_ir::SpicePrimitive::Inductor => {
+                push_candidate(
+                    &mut candidates,
+                    component_id,
+                    "value_h",
+                    spice.value_h,
+                    true,
+                );
+            }
+            crate::board_ir::SpicePrimitive::DcVoltageSource => {
+                push_candidate(&mut candidates, component_id, "dc_v", spice.dc_v, false);
+            }
+            crate::board_ir::SpicePrimitive::DcCurrentSource => {
+                push_candidate(&mut candidates, component_id, "dc_a", spice.dc_a, false);
+            }
+            crate::board_ir::SpicePrimitive::PulseVoltageSource
+            | crate::board_ir::SpicePrimitive::PulseCurrentSource => {}
+        }
+    }
+    Ok(candidates)
+}
+
+fn push_candidate(
+    candidates: &mut Vec<AnalogLoadSweepCandidate>,
+    component: &str,
+    field: &str,
+    nominal: Option<f64>,
+    positive: bool,
+) {
+    let Some(nominal) = nominal else {
+        return;
+    };
+    if !nominal.is_finite() || positive && nominal <= 0.0 {
+        return;
+    }
+    let values = if nominal == 0.0 {
+        vec![-0.1, 0.0, 0.1]
+    } else {
+        vec![nominal * 0.9, nominal, nominal * 1.1]
+    };
+    candidates.push(AnalogLoadSweepCandidate {
+        component: component.to_string(),
+        field: field.to_string(),
+        nominal,
+        values_csv: values
+            .iter()
+            .map(|value| format_sweep_number(*value))
+            .collect::<Vec<_>>()
+            .join(", "),
+    });
 }
 
 pub(super) fn append_analog_sweep_preset(
@@ -321,6 +462,45 @@ pub(super) fn append_analog_sweep_with_parameter(
     validate_updated_yaml(yaml)
 }
 
+pub(super) fn append_analog_sweep_with_component_value(
+    text: &str,
+    draft: &AnalogSweepComponentValueDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let component = validated_component_id(&draft.component)?;
+    let field = validated_component_value_field(&draft.field)?;
+    let values = parse_sweep_values(&draft.values_csv)?;
+    validate_component_value_range(field, &values)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Run setup {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Run setup {scenario_name} is not analog."))?;
+    if analog.sweeps.iter().any(|sweep| sweep.name == sweep_name) {
+        anyhow::bail!("Sweep {sweep_name} already exists in run setup {scenario_name}.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let analog_mapping = analog_mapping_mut(&mut yaml, scenario_name)?;
+    let sweeps = ensure_child_sequence_mut(analog_mapping, "sweeps", "analog sweeps")?;
+    let mut sweep = serde_yaml_ng::Mapping::new();
+    insert_string(&mut sweep, "name", sweep_name);
+    sweep.insert(
+        key("component_values"),
+        serde_yaml_ng::Value::Sequence(vec![component_value_entry(component, field, &values)]),
+    );
+    sweeps.push(serde_yaml_ng::Value::Mapping(sweep));
+    validate_updated_yaml(yaml)
+}
+
 pub(super) fn remove_analog_sweep(text: &str, draft: &AnalogSweepDraft) -> Result<String> {
     let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
     let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
@@ -435,6 +615,50 @@ pub(super) fn append_analog_sweep_model_section(
     validate_updated_yaml(yaml)
 }
 
+pub(super) fn append_analog_sweep_component_value(
+    text: &str,
+    draft: &AnalogSweepComponentValueDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let component = validated_component_id(&draft.component)?;
+    let field = validated_component_value_field(&draft.field)?;
+    let values = parse_sweep_values(&draft.values_csv)?;
+    validate_component_value_range(field, &values)?;
+
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Run setup {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Run setup {scenario_name} is not analog."))?;
+    let sweep = analog
+        .sweeps
+        .iter()
+        .find(|sweep| sweep.name == sweep_name)
+        .with_context(|| format!("Sweep {sweep_name} was not found."))?;
+    if sweep
+        .component_values
+        .iter()
+        .any(|entry| entry.component == component && entry.field.as_str() == field)
+    {
+        anyhow::bail!("Component value {component}.{field} already exists in sweep {sweep_name}.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let sweep_mapping = sweep_mapping_mut(&mut yaml, scenario_name, sweep_name)?;
+    let component_values =
+        ensure_child_sequence_mut(sweep_mapping, "component_values", "sweep component values")?;
+    component_values.push(component_value_entry(component, field, &values));
+    validate_updated_yaml(yaml)
+}
+
 pub(super) fn remove_analog_sweep_model_section(
     text: &str,
     draft: &AnalogSweepModelSectionDraft,
@@ -449,6 +673,10 @@ pub(super) fn remove_analog_sweep_model_section(
         .get(key("parameters"))
         .and_then(serde_yaml_ng::Value::as_sequence)
         .is_some_and(|parameters| !parameters.is_empty());
+    let before_has_component_values = sweep_mapping
+        .get(key("component_values"))
+        .and_then(serde_yaml_ng::Value::as_sequence)
+        .is_some_and(|component_values| !component_values.is_empty());
     let model_sections =
         ensure_child_sequence_mut(sweep_mapping, "model_sections", "sweep model sections")?;
     let before = model_sections.len();
@@ -462,9 +690,56 @@ pub(super) fn remove_analog_sweep_model_section(
     if model_sections.len() == before {
         anyhow::bail!("Model file {path} was not found in sweep {sweep_name}.");
     }
-    if model_sections.is_empty() && !before_has_parameters {
+    if model_sections.is_empty() && !before_has_parameters && !before_has_component_values {
         anyhow::bail!(
-            "Sweep {sweep_name} must keep at least one parameter or model section. Remove the sweep instead."
+            "Sweep {sweep_name} must keep at least one parameter, component value, or model section. Remove the sweep instead."
+        );
+    }
+    validate_updated_yaml(yaml)
+}
+
+pub(super) fn remove_analog_sweep_component_value(
+    text: &str,
+    draft: &AnalogSweepComponentValueDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let component = validated_component_id(&draft.component)?;
+    let field = validated_component_value_field(&draft.field)?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let sweep_mapping = sweep_mapping_mut(&mut yaml, scenario_name, sweep_name)?;
+    let before_has_parameters = sweep_mapping
+        .get(key("parameters"))
+        .and_then(serde_yaml_ng::Value::as_sequence)
+        .is_some_and(|parameters| !parameters.is_empty());
+    let before_has_model_sections = sweep_mapping
+        .get(key("model_sections"))
+        .and_then(serde_yaml_ng::Value::as_sequence)
+        .is_some_and(|model_sections| !model_sections.is_empty());
+    let component_values =
+        ensure_child_sequence_mut(sweep_mapping, "component_values", "sweep component values")?;
+    let before = component_values.len();
+    component_values.retain(|component_value| {
+        let Some(mapping) = component_value.as_mapping() else {
+            return true;
+        };
+        let same_component = mapping
+            .get(key("component"))
+            .and_then(serde_yaml_ng::Value::as_str)
+            == Some(component);
+        let same_field = mapping
+            .get(key("field"))
+            .and_then(serde_yaml_ng::Value::as_str)
+            == Some(field);
+        !(same_component && same_field)
+    });
+    if component_values.len() == before {
+        anyhow::bail!("Component value {component}.{field} was not found in sweep {sweep_name}.");
+    }
+    if component_values.is_empty() && !before_has_parameters && !before_has_model_sections {
+        anyhow::bail!(
+            "Sweep {sweep_name} must keep at least one parameter, component value, or model section. Remove the sweep instead."
         );
     }
     validate_updated_yaml(yaml)
@@ -484,6 +759,10 @@ pub(super) fn remove_analog_sweep_parameter(
         .get(key("model_sections"))
         .and_then(serde_yaml_ng::Value::as_sequence)
         .is_some_and(|model_sections| !model_sections.is_empty());
+    let before_has_component_values = sweep_mapping
+        .get(key("component_values"))
+        .and_then(serde_yaml_ng::Value::as_sequence)
+        .is_some_and(|component_values| !component_values.is_empty());
     let parameters = ensure_child_sequence_mut(sweep_mapping, "parameters", "sweep parameters")?;
     let before = parameters.len();
     parameters.retain(|parameter| {
@@ -496,9 +775,9 @@ pub(super) fn remove_analog_sweep_parameter(
     if parameters.len() == before {
         anyhow::bail!("Parameter {parameter_name} was not found in sweep {sweep_name}.");
     }
-    if parameters.is_empty() && !before_has_model_sections {
+    if parameters.is_empty() && !before_has_model_sections && !before_has_component_values {
         anyhow::bail!(
-            "Sweep {sweep_name} must keep at least one parameter or model section. Remove the sweep instead."
+            "Sweep {sweep_name} must keep at least one parameter, component value, or model section. Remove the sweep instead."
         );
     }
     validate_updated_yaml(yaml)
@@ -535,6 +814,22 @@ fn model_section_value(path: &str, sections: &[String]) -> serde_yaml_ng::Value 
     serde_yaml_ng::Value::Mapping(mapping)
 }
 
+fn component_value_entry(component: &str, field: &str, values: &[f64]) -> serde_yaml_ng::Value {
+    let mut mapping = serde_yaml_ng::Mapping::new();
+    insert_string(&mut mapping, "component", component);
+    insert_string(&mut mapping, "field", field);
+    mapping.insert(
+        key("values"),
+        serde_yaml_ng::Value::Sequence(
+            values
+                .iter()
+                .map(|value| serde_yaml_ng::Value::Number((*value).into()))
+                .collect(),
+        ),
+    );
+    serde_yaml_ng::Value::Mapping(mapping)
+}
+
 fn parse_sweep_values(text: &str) -> Result<Vec<f64>> {
     let mut values = Vec::new();
     for raw in text.split(',') {
@@ -554,6 +849,11 @@ fn parse_sweep_values(text: &str) -> Result<Vec<f64>> {
         anyhow::bail!("Sweep parameter values must include at least one number.");
     }
     Ok(values)
+}
+
+fn format_sweep_number(value: f64) -> String {
+    let text = format!("{value:.12}");
+    text.trim_end_matches('0').trim_end_matches('.').to_string()
 }
 
 fn parse_model_sections(text: &str) -> Result<Vec<String>> {
@@ -594,6 +894,33 @@ fn validated_model_section_path(value: &str) -> Result<&str> {
         anyhow::bail!("Model file path must not be blank.");
     }
     Ok(value)
+}
+
+fn validated_component_id(value: &str) -> Result<&str> {
+    let value = value.trim();
+    if value.is_empty() {
+        anyhow::bail!("Component value sweep target must not be blank.");
+    }
+    Ok(value)
+}
+
+fn validated_component_value_field(value: &str) -> Result<&str> {
+    let value = value.trim();
+    match value {
+        "value_ohm" | "value_f" | "value_h" | "dc_v" | "dc_a" => Ok(value),
+        _ => anyhow::bail!(
+            "Component value field {value} must be one of value_ohm, value_f, value_h, dc_v, or dc_a."
+        ),
+    }
+}
+
+fn validate_component_value_range(field: &str, values: &[f64]) -> Result<()> {
+    if matches!(field, "value_ohm" | "value_f" | "value_h")
+        && values.iter().any(|value| *value <= 0.0)
+    {
+        anyhow::bail!("Passive component value sweeps must use positive values.");
+    }
+    Ok(())
 }
 
 fn validated_spice_parameter_name(value: &str) -> Result<&str> {
@@ -717,10 +1044,12 @@ fn key(value: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, analog_sweep_scenarios,
+        AnalogSweepComponentValueDraft, AnalogSweepModelSectionDraft, AnalogSweepParameterDraft,
+        analog_load_sweep_candidates, analog_sweep_scenarios, append_analog_sweep_component_value,
         append_analog_sweep_model_section, append_analog_sweep_parameter,
-        append_analog_sweep_preset, append_analog_sweep_with_model_section,
-        append_analog_sweep_with_parameter, remove_analog_sweep_model_section,
+        append_analog_sweep_preset, append_analog_sweep_with_component_value,
+        append_analog_sweep_with_model_section, append_analog_sweep_with_parameter,
+        remove_analog_sweep_component_value, remove_analog_sweep_model_section,
         remove_analog_sweep_parameter,
     };
 
@@ -742,6 +1071,59 @@ scenarios:
       netlist: deck.cir
       model_files: []
       node_bindings:
+        - { node: '0', net: gnd }
+      pin_bindings: []
+      analysis:
+        type: tran
+        stop_time_us: 1000
+        max_step_us: 1
+      stimuli: []
+      probes:
+        - name: v_out
+          expression: V(out)
+      assertions: []
+"
+    }
+
+    fn generated_load_project_yaml() -> &'static str {
+        "project:
+  name: gui_load_sweep_test
+  version: 0.1.0
+board:
+  components:
+    RLOAD:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: out
+        B: gnd
+    ILOAD:
+      model: generic.analog.dc_current_source
+      spice:
+        primitive: dc_current_source
+        dc_a: 0.01
+      pins:
+        P: out
+        N: gnd
+  nets:
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: load_run
+    type: analog_transient
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [RLOAD, ILOAD]
+      model_files: []
+      node_bindings:
+        - { node: out, net: out }
         - { node: '0', net: gnd }
       pin_bindings: []
       analysis:
@@ -815,6 +1197,99 @@ scenarios:
 
         let scenarios = analog_sweep_scenarios(&edited).unwrap();
         assert_eq!(scenarios[0].sweeps[0].corner_count, 9);
+    }
+
+    #[test]
+    fn append_component_value_sweep_emits_valid_yaml() {
+        let edited = append_analog_sweep_with_component_value(
+            project_yaml(),
+            &AnalogSweepComponentValueDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "load_corner".to_string(),
+                component: "RLOAD".to_string(),
+                field: "value_ohm".to_string(),
+                values_csv: "900, 1000, 1100".to_string(),
+            },
+        )
+        .unwrap();
+        let edited = append_analog_sweep_component_value(
+            &edited,
+            &AnalogSweepComponentValueDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "load_corner".to_string(),
+                component: "ILOAD".to_string(),
+                field: "dc_a".to_string(),
+                values_csv: "0.005, 0.01".to_string(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let sweep = &project.scenarios[0].analog.as_ref().unwrap().sweeps[0];
+        assert_eq!(sweep.component_values.len(), 2);
+        assert_eq!(sweep.component_values[0].component, "RLOAD");
+
+        let scenarios = analog_sweep_scenarios(&edited).unwrap();
+        assert_eq!(scenarios[0].sweeps[0].corner_count, 6);
+        assert_eq!(
+            scenarios[0].sweeps[0].component_values[0].field,
+            "value_ohm"
+        );
+    }
+
+    #[test]
+    fn generated_load_sweep_candidates_project_component_fields() {
+        let candidates =
+            analog_load_sweep_candidates(generated_load_project_yaml(), "load_run").unwrap();
+
+        assert_eq!(candidates.len(), 2);
+        assert_eq!(candidates[0].component, "RLOAD");
+        assert_eq!(candidates[0].field, "value_ohm");
+        assert_eq!(candidates[0].values_csv, "900, 1000, 1100");
+        assert_eq!(candidates[1].component, "ILOAD");
+        assert_eq!(candidates[1].field, "dc_a");
+        assert_eq!(candidates[1].values_csv, "0.009, 0.01, 0.011");
+    }
+
+    #[test]
+    fn remove_component_value_preserves_sweep_when_parameter_remains() {
+        let edited = append_analog_sweep_with_parameter(
+            project_yaml(),
+            &AnalogSweepParameterDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "mixed_corner".to_string(),
+                parameter_name: "RIN_VALUE".to_string(),
+                values_csv: "950, 1050".to_string(),
+            },
+        )
+        .unwrap();
+        let edited = append_analog_sweep_component_value(
+            &edited,
+            &AnalogSweepComponentValueDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "mixed_corner".to_string(),
+                component: "RLOAD".to_string(),
+                field: "value_ohm".to_string(),
+                values_csv: "900, 1100".to_string(),
+            },
+        )
+        .unwrap();
+
+        let edited = remove_analog_sweep_component_value(
+            &edited,
+            &AnalogSweepComponentValueDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "mixed_corner".to_string(),
+                component: "RLOAD".to_string(),
+                field: "value_ohm".to_string(),
+                values_csv: String::new(),
+            },
+        )
+        .unwrap();
+
+        let scenarios = analog_sweep_scenarios(&edited).unwrap();
+        assert_eq!(scenarios[0].sweeps[0].parameters.len(), 1);
+        assert!(scenarios[0].sweeps[0].component_values.is_empty());
     }
 
     #[test]

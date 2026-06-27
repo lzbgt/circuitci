@@ -303,12 +303,15 @@ scope-run preparation.
 `src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
 editors and their Board IR YAML mutation helpers, including the user-facing
 Run Input Sweeps panel. Sweep creation is valid-by-construction: adding a new
-sweep also adds its first SPICE `.param` input and comma-separated value list,
-while extra parameters and vendor model-library section lists can be added or
-removed without editing YAML. Model-section sweeps emit `.lib "path" section`
-cards during ngspice execution. The same panel exposes one-click corner presets
-for supply, load, temperature, model-selector, and RC-tolerance sweeps, all
-persisted as ordinary `analog.sweeps` data.
+sweep also adds its first SPICE `.param` input or generated component value
+input plus a comma-separated value list, while extra parameters, component
+values, and vendor model-library section lists can be added or removed without
+editing YAML. Generated run setups show inferred load/source candidates such as
+`RLOAD.value_ohm` and `VSUPPLY.dc_v` that fill the component-value sweep fields.
+Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
+The same panel exposes one-click corner presets for supply, load, temperature,
+model-selector, and RC-tolerance sweeps, all persisted as ordinary
+`analog.sweeps` data.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
@@ -316,7 +319,8 @@ read-only generated run-setup audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels. When a completed run emits
 analog sweep margin summaries, the same overview shows the selected run setup's
 worst-corner assertion margins with the limiting sweep corner, parameter values,
-measured value, limit, margin, and evaluated corner count.
+component value inputs, measured value, limit, margin, and evaluated corner
+count.
 `src/gui/waveform.rs` owns Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, trigger-event, and Scope Activity sample and frequency measurement snapshots with editable labels/notes, search/source filters for Scope Activity samples and frequency rows, sort/group controls, plot markers, and filtered CSV/Markdown copy/export, GUI-only
@@ -667,10 +671,11 @@ The supported desktop simulation path is:
    crossing-time, minimum high/low pulse-width, duty-cycle, crossing-count,
    settling-time, overshoot, two-probe phase-delay, or setup/hold waveform
    observation checks against declared probes,
-33. author bounded SPICE `.param` run-input sweeps from the Observations
-   overlay, including executable first-parameter creation, supply/load/
-   temperature/model-selector/RC corner presets, extra parameter add/remove
-   controls, declared corner counts, and Board IR YAML persistence,
+33. author bounded run-input sweeps from the Observations overlay, including
+   executable first-parameter or first-component-value creation, generated
+   load/source candidate selection, supply/load/temperature/model-selector/RC
+   corner presets, extra parameter/component/model-section add/remove controls,
+   declared corner counts, and Board IR YAML persistence,
 34. load, edit, save, and rerun file-backed SPICE decks from declared analog
    run setups,
 35. browse, hash, add, and remove SHA-backed SPICE model/include files for

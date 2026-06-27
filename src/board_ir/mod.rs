@@ -1055,6 +1055,8 @@ pub struct AnalogParameterSweep {
     #[serde(default)]
     pub parameters: Vec<AnalogSweepParameter>,
     #[serde(default)]
+    pub component_values: Vec<AnalogSweepComponentValue>,
+    #[serde(default)]
     pub model_sections: Vec<AnalogModelSectionSweep>,
 }
 
@@ -1062,6 +1064,39 @@ pub struct AnalogParameterSweep {
 pub struct AnalogSweepParameter {
     pub name: String,
     pub values: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogSweepComponentValue {
+    pub component: String,
+    pub field: AnalogSweepComponentField,
+    pub values: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogSweepComponentField {
+    ValueOhm,
+    ValueF,
+    ValueH,
+    DcV,
+    DcA,
+}
+
+impl AnalogSweepComponentField {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ValueOhm => "value_ohm",
+            Self::ValueF => "value_f",
+            Self::ValueH => "value_h",
+            Self::DcV => "dc_v",
+            Self::DcA => "dc_a",
+        }
+    }
+
+    pub fn requires_positive_value(self) -> bool {
+        matches!(self, Self::ValueOhm | Self::ValueF | Self::ValueH)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

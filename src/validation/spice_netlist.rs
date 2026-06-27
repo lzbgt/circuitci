@@ -1,5 +1,8 @@
-use crate::board_ir::{AnalogScenario, ComponentSpec, SpicePrimitive, SpicePulseSpec};
+use crate::board_ir::{
+    AnalogScenario, AnalogSweepComponentField, ComponentSpec, SpicePrimitive, SpicePulseSpec,
+};
 use crate::library::{BoundBoard, ComponentModel, SpiceModel, SpiceModelType};
+use crate::validation::analog_util::component_value_parameter_name;
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -46,6 +49,16 @@ pub(super) fn generate_board_netlist(
         text.push_str("\"\n");
     }
     text.push('\n');
+    for (name, value) in generated_component_value_parameters(bound, analog)? {
+        text.push_str(".param ");
+        text.push_str(&name);
+        text.push('=');
+        text.push_str(&value.to_string());
+        text.push('\n');
+    }
+    if !generated.components.is_empty() {
+        text.push('\n');
+    }
 
     for component_id in &generated.components {
         let component = bound
@@ -108,7 +121,12 @@ fn generate_component_line(
                 component,
                 node_by_net,
                 "R",
-                positive(spice.value_ohm, component_id, "spice.value_ohm")?,
+                component_value_expression(
+                    analog,
+                    component_id,
+                    AnalogSweepComponentField::ValueOhm,
+                    positive(spice.value_ohm, component_id, "spice.value_ohm")?,
+                ),
                 None,
             ),
             SpicePrimitive::Capacitor => {
@@ -128,7 +146,12 @@ fn generate_component_line(
                     component,
                     node_by_net,
                     "C",
-                    positive(spice.value_f, component_id, "spice.value_f")?,
+                    component_value_expression(
+                        analog,
+                        component_id,
+                        AnalogSweepComponentField::ValueF,
+                        positive(spice.value_f, component_id, "spice.value_f")?,
+                    ),
                     initial_condition.as_deref(),
                 )
             }
@@ -138,7 +161,12 @@ fn generate_component_line(
                 component,
                 node_by_net,
                 "L",
-                positive(spice.value_h, component_id, "spice.value_h")?,
+                component_value_expression(
+                    analog,
+                    component_id,
+                    AnalogSweepComponentField::ValueH,
+                    positive(spice.value_h, component_id, "spice.value_h")?,
+                ),
                 None,
             ),
             SpicePrimitive::DcVoltageSource => Ok(format!(
@@ -146,7 +174,12 @@ fn generate_component_line(
                 element_name("V", component_id),
                 pin_node(component_id, component, node_by_net, "P")?,
                 pin_node(component_id, component, node_by_net, "N")?,
-                finite(spice.dc_v, component_id, "spice.dc_v")?
+                component_value_expression(
+                    analog,
+                    component_id,
+                    AnalogSweepComponentField::DcV,
+                    finite(spice.dc_v, component_id, "spice.dc_v")?,
+                )
             )),
             SpicePrimitive::PulseVoltageSource => {
                 let pulse = spice.pulse.as_ref().ok_or_else(|| {
@@ -159,7 +192,12 @@ fn generate_component_line(
                 element_name("I", component_id),
                 pin_node(component_id, component, node_by_net, "P")?,
                 pin_node(component_id, component, node_by_net, "N")?,
-                finite(spice.dc_a, component_id, "spice.dc_a")?
+                component_value_expression(
+                    analog,
+                    component_id,
+                    AnalogSweepComponentField::DcA,
+                    finite(spice.dc_a, component_id, "spice.dc_a")?,
+                )
             )),
             SpicePrimitive::PulseCurrentSource => {
                 let pulse = spice.current_pulse.as_ref().ok_or_else(|| {
@@ -239,7 +277,7 @@ fn passive_two_pin_line(
     component: &ComponentSpec,
     node_by_net: &BTreeMap<String, String>,
     prefix: &str,
-    value: f64,
+    value: String,
     suffix: Option<&str>,
 ) -> Result<String, String> {
     let node_a = pin_node(component_id, component, node_by_net, "A")?;
@@ -275,6 +313,93 @@ fn passive_two_pin_line(
         }
         Ok(line)
     }
+}
+
+fn generated_component_value_parameters(
+    bound: &BoundBoard<'_>,
+    analog: &AnalogScenario,
+) -> Result<BTreeMap<String, f64>, String> {
+    let Some(generated) = analog.generated.as_ref() else {
+        return Ok(BTreeMap::new());
+    };
+    let mut parameters = BTreeMap::new();
+    for component_id in &generated.components {
+        let Some(component) = bound.project.board.components.get(component_id) else {
+            continue;
+        };
+        let Some(spice) = &component.spice else {
+            continue;
+        };
+        for field in swept_component_fields(analog, component_id) {
+            let nominal = match (&spice.primitive, field) {
+                (SpicePrimitive::Resistor, AnalogSweepComponentField::ValueOhm) => {
+                    positive(spice.value_ohm, component_id, "spice.value_ohm")?
+                }
+                (SpicePrimitive::Capacitor, AnalogSweepComponentField::ValueF) => {
+                    positive(spice.value_f, component_id, "spice.value_f")?
+                }
+                (SpicePrimitive::Inductor, AnalogSweepComponentField::ValueH) => {
+                    positive(spice.value_h, component_id, "spice.value_h")?
+                }
+                (SpicePrimitive::DcVoltageSource, AnalogSweepComponentField::DcV) => {
+                    finite(spice.dc_v, component_id, "spice.dc_v")?
+                }
+                (SpicePrimitive::DcCurrentSource, AnalogSweepComponentField::DcA) => {
+                    finite(spice.dc_a, component_id, "spice.dc_a")?
+                }
+                _ => continue,
+            };
+            parameters.insert(
+                component_value_parameter_name(component_id, field.as_str()),
+                nominal,
+            );
+        }
+    }
+    Ok(parameters)
+}
+
+fn component_value_expression(
+    analog: &AnalogScenario,
+    component_id: &str,
+    field: AnalogSweepComponentField,
+    nominal: f64,
+) -> String {
+    if component_value_swept(analog, component_id, field) {
+        format!(
+            "{{{}}}",
+            component_value_parameter_name(component_id, field.as_str())
+        )
+    } else {
+        nominal.to_string()
+    }
+}
+
+fn component_value_swept(
+    analog: &AnalogScenario,
+    component_id: &str,
+    field: AnalogSweepComponentField,
+) -> bool {
+    analog.sweeps.iter().any(|sweep| {
+        sweep.component_values.iter().any(|component_value| {
+            component_value.component == component_id && component_value.field == field
+        })
+    })
+}
+
+fn swept_component_fields(
+    analog: &AnalogScenario,
+    component_id: &str,
+) -> Vec<AnalogSweepComponentField> {
+    let mut fields = Vec::new();
+    for sweep in &analog.sweeps {
+        for component_value in &sweep.component_values {
+            if component_value.component == component_id && !fields.contains(&component_value.field)
+            {
+                fields.push(component_value.field);
+            }
+        }
+    }
+    fields
 }
 
 fn passive_current_sense_requested(
@@ -743,6 +868,82 @@ scenarios:
         let text = std::fs::read_to_string(deck).unwrap();
         assert!(!text.contains("VCCI_R1"));
         assert!(text.contains("R1 in out 1000"));
+    }
+
+    #[test]
+    fn generated_component_value_sweep_parameterizes_supported_primitives() {
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(
+            "project:
+  name: component_value_sweep_test
+  version: 0.1.0
+board:
+  components:
+    RLOAD:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: out
+        B: gnd
+    ILOAD:
+      model: generic.analog.dc_current_source
+      spice:
+        primitive: dc_current_source
+        dc_a: 0.01
+      pins:
+        P: out
+        N: gnd
+  nets:
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: load_sweep
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [RLOAD, ILOAD]
+      model_files: []
+      node_bindings:
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: RLOAD, pin: A }, node: out }
+        - { endpoint: { component: RLOAD, pin: B }, node: '0' }
+        - { endpoint: { component: ILOAD, pin: P }, node: out }
+        - { endpoint: { component: ILOAD, pin: N }, node: '0' }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      sweeps:
+        - name: load_corner
+          component_values:
+            - { component: RLOAD, field: value_ohm, values: [900, 1000, 1100] }
+            - { component: ILOAD, field: dc_a, values: [0.005, 0.01, 0.02] }
+      probes:
+        - { name: out_voltage, expression: V(out), quantity: voltage }
+      assertions: []
+",
+        )
+        .unwrap();
+        let (library, findings) = load_library(Path::new("project.yaml"), &project);
+        let bound = bind_project(&project, library, findings);
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("generated.cir");
+
+        generate_board_netlist(&bound, analog, &deck).unwrap();
+
+        let text = std::fs::read_to_string(deck).unwrap();
+        assert!(text.contains(".param CCI_RLOAD_VALUE_OHM=1000"));
+        assert!(text.contains(".param CCI_ILOAD_DC_A=0.01"));
+        assert!(text.contains("RLOAD out 0 {CCI_RLOAD_VALUE_OHM}"));
+        assert!(text.contains("ILOAD out 0 DC {CCI_ILOAD_DC_A}"));
     }
 
     #[test]

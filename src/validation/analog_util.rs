@@ -3,6 +3,33 @@ use std::env;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
+pub(super) fn component_value_parameter_name(component: &str, field: &str) -> String {
+    let mut name = String::from("CCI_");
+    push_spice_name_part(&mut name, component);
+    name.push('_');
+    push_spice_name_part(&mut name, field);
+    if name == "CCI__" {
+        "CCI_COMPONENT_VALUE".to_string()
+    } else {
+        name
+    }
+}
+
+fn push_spice_name_part(output: &mut String, value: &str) {
+    let mut wrote = false;
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() {
+            output.push(character.to_ascii_uppercase());
+            wrote = true;
+        } else {
+            output.push('_');
+        }
+    }
+    if !wrote {
+        output.push_str("VALUE");
+    }
+}
+
 pub(super) fn executable_on_path(binary: &str) -> bool {
     let candidate = Path::new(binary);
     if candidate.components().count() > 1 {

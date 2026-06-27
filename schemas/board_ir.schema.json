@@ -1484,6 +1484,7 @@
                   "required": ["name"],
                   "anyOf": [
                     { "required": ["parameters"] },
+                    { "required": ["component_values"] },
                     { "required": ["model_sections"] }
                   ],
                   "properties": {
@@ -1498,6 +1499,26 @@
                           "name": {
                             "type": "string",
                             "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                          },
+                          "values": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": { "type": "number" }
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "component_values": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "required": ["component", "field", "values"],
+                        "properties": {
+                          "component": { "type": "string", "minLength": 1 },
+                          "field": {
+                            "enum": ["value_ohm", "value_f", "value_h", "dc_v", "dc_a"]
                           },
                           "values": {
                             "type": "array",

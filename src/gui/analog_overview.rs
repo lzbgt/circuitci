@@ -416,6 +416,9 @@ fn sweep_corner_input_summary(finding: &Finding) -> String {
     if let Some(parameters) = sweep_parameter_summary(finding) {
         parts.push(parameters);
     }
+    if let Some(component_values) = sweep_component_value_summary(finding) {
+        parts.push(component_values);
+    }
     if let Some(model_sections) = sweep_model_section_summary(finding) {
         parts.push(model_sections);
     }
@@ -433,6 +436,24 @@ fn sweep_parameter_summary(finding: &Finding) -> Option<String> {
         return None;
     }
     let parts: Vec<String> = parameters
+        .iter()
+        .filter_map(|(name, value)| value.as_f64().map(|number| (name, number)))
+        .map(|(name, number)| format!("{name}={}", compact_number(number)))
+        .collect();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(", "))
+    }
+}
+
+fn sweep_component_value_summary(finding: &Finding) -> Option<String> {
+    let value = finding.measured.get("analog_component_values")?;
+    let component_values = value.as_object()?;
+    if component_values.is_empty() {
+        return None;
+    }
+    let parts: Vec<String> = component_values
         .iter()
         .filter_map(|(name, value)| value.as_f64().map(|number| (name, number)))
         .map(|(name, number)| format!("{name}={}", compact_number(number)))

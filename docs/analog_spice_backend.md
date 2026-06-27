@@ -135,17 +135,22 @@ crossing-count checks for no-recross or ringing budgets, plus settling-time and
 overshoot-percent checks against voltage/current/power targets and tolerances,
 phase-delay checks between two probes, and setup/hold timing checks that measure
 checked-signal stability around reference probe edges.
-Analog run
-setups can also declare bounded SPICE `.param` sweeps; each corner records the
-sweep name, corner name, and parameter values on generated findings. Swept
-assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify
-the worst evaluated corner, parameter values, selected model-library sections,
-measured value, limit, relation, and numeric margin for each assertion. Sweeps
-can select vendor model-library sections through `model_sections`; CircuitCI
-emits section-specific ngspice `.lib "path" section` cards for each corner. A
-complete physical acceptance language still needs richer load-source inference.
-When a sweep declares `TEMP_C` or `TEMPERATURE_C`, CircuitCI emits both the
-matching `.param` and an ngspice `.temp` card for that corner.
+Analog run setups can declare bounded run-input sweeps; each corner records the
+sweep name, corner name, raw parameter values, generated component value inputs,
+and selected model sections on generated findings. Raw `parameters` still emit
+ordinary ngspice `.param` cards. `component_values` entries target generated
+primitive fields such as `RLOAD.value_ohm`, `CLOAD.value_f`, `VSUPPLY.dc_v`, or
+`ILOAD.dc_a`; CircuitCI emits a nominal generated `.param` for that field and
+uses the generated parameter in the primitive line, so load/source corners can
+be driven from Board IR component names instead of hand-written SPICE parameter
+names. Swept assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings
+that identify the worst evaluated corner, parameter values, component value
+inputs, selected model-library sections, measured value, limit, relation, and
+numeric margin for each assertion. Sweeps can select vendor model-library
+sections through `model_sections`; CircuitCI emits section-specific ngspice
+`.lib "path" section` cards for each corner. When a sweep declares `TEMP_C` or
+`TEMPERATURE_C`, CircuitCI emits both the matching `.param` and an ngspice
+`.temp` card for that corner.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode

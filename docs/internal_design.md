@@ -401,13 +401,14 @@ or add a voltage probe to the first analog run setup with node bindings before
 saving and validating. `src/gui/simulation_editors.rs` owns the docked
 run-setup/model/source/check editors and their Board IR YAML mutation helpers.
 `src/gui/analog_sweeps.rs` owns GUI projection and mutation helpers for bounded
-SPICE `.param` run-input sweeps. The GUI creates a sweep together with its
-first parameter so edited projects stay executable, and it prevents removing the
-last parameter from a sweep unless the whole sweep is removed. It also owns the
-small preset catalog for common supply, load, temperature, model-selector, and
-RC-tolerance corner sweeps plus vendor model-section corner editing; presets
-and model-section lists are serialized through the same `analog.sweeps`
-structure rather than a separate GUI-only model.
+analog run-input sweeps. The GUI creates a sweep together with its first raw
+SPICE parameter or generated component value so edited projects stay executable,
+and it prevents removing the last sweep dimension unless the whole sweep is
+removed. It also owns generated load/source candidate inference, the small
+preset catalog for common supply, load, temperature, model-selector, and
+RC-tolerance corner sweeps, and vendor model-section corner editing; all are
+serialized through the same `analog.sweeps` structure rather than a separate
+GUI-only model.
 `src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
 findings back into the selected generated run-setup overview so users can see
 worst-corner assertion margins without opening raw report findings.

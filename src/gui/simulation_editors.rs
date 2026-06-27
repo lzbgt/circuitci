@@ -20,11 +20,14 @@ use super::analog_stimulus::{
     replace_analog_stimulus,
 };
 use super::analog_sweeps::{
-    AnalogSweepDraft, AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, AnalogSweepScenario,
-    AnalogSweepSummary, analog_sweep_presets, analog_sweep_scenarios,
-    append_analog_sweep_model_section, append_analog_sweep_parameter, append_analog_sweep_preset,
-    append_analog_sweep_with_model_section, append_analog_sweep_with_parameter,
-    remove_analog_sweep, remove_analog_sweep_model_section, remove_analog_sweep_parameter,
+    AnalogSweepComponentValueDraft, AnalogSweepDraft, AnalogSweepModelSectionDraft,
+    AnalogSweepParameterDraft, AnalogSweepScenario, AnalogSweepSummary,
+    analog_load_sweep_candidates, analog_sweep_presets, analog_sweep_scenarios,
+    append_analog_sweep_component_value, append_analog_sweep_model_section,
+    append_analog_sweep_parameter, append_analog_sweep_preset,
+    append_analog_sweep_with_component_value, append_analog_sweep_with_model_section,
+    append_analog_sweep_with_parameter, remove_analog_sweep, remove_analog_sweep_component_value,
+    remove_analog_sweep_model_section, remove_analog_sweep_parameter,
 };
 use super::simulation_forms::*;
 use super::sketch::ProjectSnapshot;
@@ -903,6 +906,18 @@ impl CircuitCiApp {
                     ui.text_edit_singleline(&mut self.analog_sweep_parameter_values);
                     ui.end_row();
 
+                    ui.label("Component");
+                    ui.text_edit_singleline(&mut self.analog_sweep_component);
+                    ui.end_row();
+
+                    ui.label("Component field");
+                    ui.text_edit_singleline(&mut self.analog_sweep_component_field);
+                    ui.end_row();
+
+                    ui.label("Component values");
+                    ui.text_edit_singleline(&mut self.analog_sweep_component_values);
+                    ui.end_row();
+
                     ui.label("Model file");
                     ui.text_edit_singleline(&mut self.analog_sweep_model_path);
                     ui.end_row();
@@ -918,6 +933,9 @@ impl CircuitCiApp {
                 if ui.button("Add Sweep + Model Sections").clicked() {
                     self.apply_add_analog_sweep_with_model_section();
                 }
+                if ui.button("Add Sweep + Component Values").clicked() {
+                    self.apply_add_analog_sweep_with_component_value();
+                }
                 let selected_sweep = selected_analog_sweep(
                     &scenarios,
                     &self.analog_sweep_scenario,
@@ -930,6 +948,36 @@ impl CircuitCiApp {
                     self.apply_remove_analog_sweep();
                 }
             });
+            ui.add_space(4.0);
+            if let Ok(candidates) =
+                analog_load_sweep_candidates(&self.project_yaml, &self.analog_sweep_scenario)
+                && !candidates.is_empty()
+            {
+                ui.strong("Generated load/source candidates");
+                egui::Grid::new("analog_sweep_load_candidates")
+                    .num_columns(5)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.strong("Component");
+                        ui.strong("Field");
+                        ui.strong("Nominal");
+                        ui.strong("Values");
+                        ui.strong("Use");
+                        ui.end_row();
+                        for candidate in candidates {
+                            ui.label(&candidate.component);
+                            ui.label(&candidate.field);
+                            ui.label(format!("{:.6}", candidate.nominal));
+                            ui.label(&candidate.values_csv);
+                            if ui.button("Use").clicked() {
+                                self.analog_sweep_component = candidate.component;
+                                self.analog_sweep_component_field = candidate.field;
+                                self.analog_sweep_component_values = candidate.values_csv;
+                            }
+                            ui.end_row();
+                        }
+                    });
+            }
             ui.add_space(4.0);
             ui.strong("Corner presets");
             egui::Grid::new("analog_sweep_presets")
@@ -976,6 +1024,12 @@ impl CircuitCiApp {
                     }
                     if ui.button("Remove Model Sections").clicked() {
                         self.apply_remove_analog_sweep_model_section();
+                    }
+                    if ui.button("Add Component Values").clicked() {
+                        self.apply_add_analog_sweep_component_value();
+                    }
+                    if ui.button("Remove Component Values").clicked() {
+                        self.apply_remove_analog_sweep_component_value();
                     }
                 });
             }
@@ -1153,6 +1207,28 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_sweep_with_component_value(&mut self) {
+        let draft = AnalogSweepComponentValueDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            component: self.analog_sweep_component.clone(),
+            field: self.analog_sweep_component_field.clone(),
+            values_csv: self.analog_sweep_component_values.clone(),
+        };
+        match append_analog_sweep_with_component_value(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Run input sweep {} added with component value {}.{}.",
+                    draft.sweep_name.trim(),
+                    draft.component.trim(),
+                    draft.field.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_add_analog_sweep_preset(&mut self, preset_id: &str, sweep_name: &str) {
         match append_analog_sweep_preset(&self.project_yaml, &self.analog_sweep_scenario, preset_id)
         {
@@ -1221,6 +1297,28 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_sweep_component_value(&mut self) {
+        let draft = AnalogSweepComponentValueDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            component: self.analog_sweep_component.clone(),
+            field: self.analog_sweep_component_field.clone(),
+            values_csv: self.analog_sweep_component_values.clone(),
+        };
+        match append_analog_sweep_component_value(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component value {}.{} added to sweep {}.",
+                    draft.component.trim(),
+                    draft.field.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_remove_analog_sweep_parameter(&mut self) {
         let draft = AnalogSweepParameterDraft {
             scenario_name: self.analog_sweep_scenario.clone(),
@@ -1254,6 +1352,28 @@ impl CircuitCiApp {
                 &format!(
                     "Model section corner file {} removed from sweep {}.",
                     draft.path.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_analog_sweep_component_value(&mut self) {
+        let draft = AnalogSweepComponentValueDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            component: self.analog_sweep_component.clone(),
+            field: self.analog_sweep_component_field.clone(),
+            values_csv: String::new(),
+        };
+        match remove_analog_sweep_component_value(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component value {}.{} removed from sweep {}.",
+                    draft.component.trim(),
+                    draft.field.trim(),
                     draft.sweep_name.trim()
                 ),
             ),
@@ -1783,7 +1903,10 @@ fn selected_analog_sweep<'a>(
 }
 
 fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
-    if sweep.parameters.is_empty() && sweep.model_sections.is_empty() {
+    if sweep.parameters.is_empty()
+        && sweep.component_values.is_empty()
+        && sweep.model_sections.is_empty()
+    {
         return "none".to_string();
     }
     let mut parts: Vec<String> = sweep
@@ -1802,6 +1925,19 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
             )
         })
         .collect();
+    parts.extend(sweep.component_values.iter().map(|component_value| {
+        format!(
+            "{}.{} [{}]",
+            component_value.component,
+            component_value.field,
+            component_value
+                .values
+                .iter()
+                .map(|value| format!("{value:.6}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }));
     parts.extend(sweep.model_sections.iter().map(|model_section| {
         format!(
             "{} sections [{}]",
