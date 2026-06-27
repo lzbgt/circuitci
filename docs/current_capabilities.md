@@ -88,7 +88,8 @@ Current analog support:
 - `analog_ac` scenarios with `SPICE_AC_ANALYSIS` for external-ngspice
   small-signal Bode exports. AC runs write `bode.csv` artifacts with
   frequency, per-probe magnitude in dB, phase in degrees, and linear
-  magnitude. AC-specific assertions are not yet supported.
+  magnitude. AC assertions support gain and phase at a frequency plus rising
+  or falling gain-crossing frequency checks.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

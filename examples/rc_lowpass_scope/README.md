@@ -19,7 +19,10 @@ zero-crossing phase delay from `v(input)` to `v(filtered)` must stay below
 observation check: the filtered output must remain stable for at least `50 us`
 after each rising input reference edge. AC corners export `bode.csv` files with
 frequency, magnitude in dB, phase in degrees, and linear magnitude for the input
-and filtered output probes.
+and filtered output probes. The AC observation also checks that the filtered
+output is attenuated below `-1 dB` at `1 kHz`, has more than `20 deg` of phase
+lag at `1 kHz`, and keeps its falling `-3 dB` cutoff above `1.4 kHz` across the
+tolerance sweep.
 
 Expected workflow:
 

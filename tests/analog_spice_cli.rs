@@ -218,7 +218,7 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
             .iter()
             .filter(|info| info["id"] == "ANALOG_SWEEP_MARGIN_SUMMARY")
             .collect();
-        assert_eq!(sweep_summaries.len(), 4);
+        assert_eq!(sweep_summaries.len(), 7);
         for summary in &sweep_summaries {
             assert_eq!(summary["measured"]["analog_sweep"], "rc_tolerance");
             assert_eq!(summary["measured"]["evaluated_corners"], 9);
@@ -241,6 +241,18 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
         }));
         assert!(sweep_summaries.iter().any(|summary| {
             summary["measured"]["assertion"] == "filtered_rising_hold_above_50us"
+                && summary["limit"]["relation"] == "above"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "filtered_gain_at_1khz_below_minus_1db"
+                && summary["limit"]["relation"] == "below"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "filtered_phase_at_1khz_below_minus_20deg"
+                && summary["limit"]["relation"] == "below"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "filtered_cutoff_above_1_4khz"
                 && summary["limit"]["relation"] == "above"
         }));
         let artifacts = report["artifacts"].as_array().unwrap();

@@ -7,6 +7,7 @@ use std::path::Path;
 mod analog;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
+mod analog_assertion_kinds;
 mod analog_branches;
 mod analog_generated;
 mod analog_model_files;
@@ -334,9 +335,11 @@ pub struct CircuitCiApp {
     analog_assertion_target: f64,
     analog_assertion_tolerance: f64,
     analog_assertion_at_us: f64,
+    analog_assertion_at_hz: f64,
     analog_assertion_start_us: f64,
     analog_assertion_end_us: f64,
     analog_assertion_time_limit_us: f64,
+    analog_assertion_frequency_limit_hz: f64,
     analog_assertion_duty_limit_percent: f64,
     analog_assertion_count_limit: f64,
     analog_assertion_overshoot_limit_percent: f64,
@@ -565,9 +568,11 @@ impl Default for CircuitCiApp {
             analog_assertion_target: 0.0,
             analog_assertion_tolerance: 0.1,
             analog_assertion_at_us: 50.0,
+            analog_assertion_at_hz: 1000.0,
             analog_assertion_start_us: 0.0,
             analog_assertion_end_us: 100.0,
             analog_assertion_time_limit_us: 50.0,
+            analog_assertion_frequency_limit_hz: 1000.0,
             analog_assertion_duty_limit_percent: 50.0,
             analog_assertion_count_limit: 1.0,
             analog_assertion_overshoot_limit_percent: 10.0,

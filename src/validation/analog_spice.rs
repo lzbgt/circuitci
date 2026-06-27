@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::analog_ac_assertions::{evaluate_ac_assertions, validate_ac_assertion_contract};
 use super::analog_assertions::{
     AnalogAssertionMeasurement, assertion_reference_contract_is_complete,
     evaluate_waveform_assertions, validate_assertion_contract, validate_probe_contract,
@@ -739,13 +740,30 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
             return;
         }
     }
-    if !analog.assertions.is_empty() {
-        validation_input_missing(
-            findings,
-            scenario,
-            "analog_ac does not yet evaluate waveform assertions; keep assertions empty until AC magnitude/phase assertions are added.",
-        );
-        return;
+    for assertion in &analog.assertions {
+        if !analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == assertion.probe)
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog AC assertion {} references unknown probe {}.",
+                    assertion.name, assertion.probe
+                ),
+            );
+            return;
+        }
+        if let Err(message) = validate_ac_assertion_contract(assertion, start_hz, stop_hz) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("Analog AC assertion {} {message}.", assertion.name),
+            );
+            return;
+        }
     }
     let run_plans = match analog_run_plans(analog) {
         Ok(run_plans) => run_plans,
@@ -822,6 +840,7 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
         return;
     }
 
+    let mut sweep_measurements = Vec::new();
     for run_plan in run_plans {
         if should_cancel() {
             push_canceled_finding(findings, scenario);
@@ -849,6 +868,12 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
                     push_artifact(artifacts, artifact);
                 }
                 push_artifact(waveforms, &run.bode);
+                let assertion_measurements = evaluate_ac_assertions(scenario, &run.bode, findings);
+                record_sweep_measurements(
+                    &mut sweep_measurements,
+                    &run_plan,
+                    assertion_measurements,
+                );
                 tag_corner_findings(findings, finding_start, &run_plan);
             }
             Err(error) => {
@@ -872,6 +897,7 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
             }
         }
     }
+    push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
 }
 
 fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {

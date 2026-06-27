@@ -319,6 +319,12 @@ pub(super) fn validate_assertion_contract(
     stop_time_us: f64,
 ) -> Result<(), String> {
     match assertion.aggregation {
+        AnalogAggregation::GainDbAtFrequency
+        | AnalogAggregation::PhaseDegAtFrequency
+        | AnalogAggregation::RisingGainCrossingFrequency
+        | AnalogAggregation::FallingGainCrossingFrequency => {
+            return Err("AC aggregations are only valid for analog_ac scenarios".to_string());
+        }
         AnalogAggregation::Sample => {
             if assertion.start_us.is_some() || assertion.end_us.is_some() {
                 return Err("sample aggregation must not declare start_us or end_us".to_string());
@@ -766,6 +772,10 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::CrossingCount => "crossing count",
         AnalogAggregation::RisingCrossingCount => "rising crossing count",
         AnalogAggregation::FallingCrossingCount => "falling crossing count",
+        AnalogAggregation::GainDbAtFrequency => "gain at frequency",
+        AnalogAggregation::PhaseDegAtFrequency => "phase at frequency",
+        AnalogAggregation::RisingGainCrossingFrequency => "rising gain crossing frequency",
+        AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing frequency",
     }
 }
 
@@ -835,6 +845,16 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
             assertion.start_us.unwrap_or_default(),
             assertion.end_us.unwrap_or_default()
         ),
+        AnalogAggregation::GainDbAtFrequency | AnalogAggregation::PhaseDegAtFrequency => {
+            format!(" at {} Hz", assertion.at_hz.unwrap_or_default())
+        }
+        AnalogAggregation::RisingGainCrossingFrequency
+        | AnalogAggregation::FallingGainCrossingFrequency => {
+            format!(
+                " at {} dB crossing",
+                assertion.threshold_db.unwrap_or_default()
+            )
+        }
     }
 }
 
@@ -952,6 +972,34 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("tolerance_w".to_string(), json!(tolerance_w));
             }
         }
+        AnalogAggregation::GainDbAtFrequency | AnalogAggregation::PhaseDegAtFrequency => {
+            if let Some(at_hz) = assertion.at_hz {
+                finding.limit.insert("at_hz".to_string(), json!(at_hz));
+            }
+            if let Some(threshold_db) = assertion.threshold_db {
+                finding
+                    .limit
+                    .insert("threshold_db".to_string(), json!(threshold_db));
+            }
+            if let Some(threshold_deg) = assertion.threshold_deg {
+                finding
+                    .limit
+                    .insert("threshold_deg".to_string(), json!(threshold_deg));
+            }
+        }
+        AnalogAggregation::RisingGainCrossingFrequency
+        | AnalogAggregation::FallingGainCrossingFrequency => {
+            if let Some(threshold_db) = assertion.threshold_db {
+                finding
+                    .limit
+                    .insert("threshold_db".to_string(), json!(threshold_db));
+            }
+            if let Some(frequency_limit_hz) = assertion.frequency_limit_hz {
+                finding
+                    .limit
+                    .insert("frequency_limit_hz".to_string(), json!(frequency_limit_hz));
+            }
+        }
     }
 }
 
@@ -993,6 +1041,19 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
             }
             if let Some(end_us) = assertion.end_us {
                 finding.measured.insert("end_us".to_string(), json!(end_us));
+            }
+        }
+        AnalogAggregation::GainDbAtFrequency | AnalogAggregation::PhaseDegAtFrequency => {
+            if let Some(at_hz) = assertion.at_hz {
+                finding.measured.insert("at_hz".to_string(), json!(at_hz));
+            }
+        }
+        AnalogAggregation::RisingGainCrossingFrequency
+        | AnalogAggregation::FallingGainCrossingFrequency => {
+            if let Some(threshold_db) = assertion.threshold_db {
+                finding
+                    .measured
+                    .insert("threshold_db".to_string(), json!(threshold_db));
             }
         }
     }
@@ -1095,6 +1156,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(100.0),
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::Integral,
@@ -1105,6 +1168,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: Some(1.0e-6),
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1134,6 +1199,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(100.0),
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::Energy,
@@ -1144,6 +1211,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1186,6 +1255,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: None,
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::Sample,
@@ -1196,6 +1267,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1218,6 +1291,8 @@ mod tests {
             start_us: None,
             end_us: None,
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::Sample,
@@ -1228,6 +1303,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1250,6 +1327,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(1000.0),
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::RisingCrossingTime,
@@ -1260,6 +1339,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1282,6 +1363,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(1000.0),
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: Some(101.0),
             count_limit: None,
             aggregation: AnalogAggregation::DutyCycle,
@@ -1292,6 +1375,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1314,6 +1399,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(1000.0),
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::CrossingCount,
@@ -1324,6 +1411,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1346,6 +1435,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(1000.0),
             time_limit_us: Some(20.0),
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::SettlingTime,
@@ -1356,6 +1447,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1380,6 +1473,8 @@ mod tests {
             start_us: Some(0.0),
             end_us: Some(1000.0),
             time_limit_us: None,
+            at_hz: None,
+            frequency_limit_hz: None,
             duty_limit_percent: None,
             count_limit: None,
             aggregation: AnalogAggregation::OvershootPercent,
@@ -1390,6 +1485,8 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            threshold_db: None,
+            threshold_deg: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,

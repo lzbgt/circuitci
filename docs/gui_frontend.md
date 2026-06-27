@@ -332,6 +332,10 @@ Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
 The same panel exposes one-click corner presets for supply, load, temperature,
 model-selector, and RC-tolerance sweeps, all persisted as ordinary
 `analog.sweeps` data.
+The check editor can author transient assertions and AC/Bode assertions. AC
+checks expose frequency fields for gain or phase at a frequency and gain
+crossing-frequency limits, then serialize normal `analog.assertions` entries
+with `at_hz`, `frequency_limit_hz`, `threshold_db`, or `threshold_deg`.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the

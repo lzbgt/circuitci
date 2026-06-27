@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
+use super::analog_assertion_kinds::validate_assertion_scenario_type;
 use super::analog_branches::{current_probe_expression, power_probe_expression};
 use super::analog_model_files::model_file_values_for_generated_components;
 
@@ -27,9 +28,11 @@ pub(super) struct AnalogAssertionDraft {
     pub(super) target: f64,
     pub(super) tolerance: f64,
     pub(super) at_us: f64,
+    pub(super) at_hz: f64,
     pub(super) start_us: f64,
     pub(super) end_us: f64,
     pub(super) time_limit_us: f64,
+    pub(super) frequency_limit_hz: f64,
     pub(super) duty_limit_percent: f64,
     pub(super) count_limit: f64,
     pub(super) overshoot_limit_percent: f64,
@@ -92,6 +95,7 @@ pub(super) struct AnalogAssertionReplaceDraft {
 #[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioChoice {
     pub(super) name: String,
+    pub(super) scenario_type: String,
     pub(super) stop_time_us: f64,
     pub(super) probes: Vec<AnalogProbeChoice>,
 }
@@ -196,6 +200,7 @@ pub(super) fn analog_scenario_choices(text: &str) -> Result<Vec<AnalogScenarioCh
             let analog = scenario.analog.as_ref()?;
             Some(AnalogScenarioChoice {
                 name: scenario.name.clone(),
+                scenario_type: scenario.scenario_type.clone(),
                 stop_time_us: analog.analysis.stop_time_us,
                 probes: analog
                     .probes
@@ -280,9 +285,11 @@ pub(super) fn analog_probe_assertion_summaries(
                     tolerance: assertion_tolerance_value(assertion, &probe.quantity)
                         .unwrap_or_default(),
                     at_us: assertion.at_us.unwrap_or_default(),
+                    at_hz: assertion.at_hz.unwrap_or_default(),
                     start_us: assertion.start_us.unwrap_or_default(),
                     end_us: assertion.end_us.unwrap_or_default(),
                     time_limit_us: assertion.time_limit_us.unwrap_or_default(),
+                    frequency_limit_hz: assertion.frequency_limit_hz.unwrap_or_default(),
                     duty_limit_percent: assertion.duty_limit_percent.unwrap_or_default(),
                     count_limit: assertion.count_limit.unwrap_or_default(),
                     overshoot_limit_percent: assertion.overshoot_limit_percent.unwrap_or_default(),
@@ -307,6 +314,7 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
         .analog
         .as_ref()
         .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    validate_assertion_scenario_type(draft, &scenario.scenario_type)?;
     if analog
         .assertions
         .iter()
@@ -754,6 +762,7 @@ pub(super) fn replace_analog_assertion(
         .analog
         .as_ref()
         .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    validate_assertion_scenario_type(&draft.replacement, &scenario.scenario_type)?;
     if !analog
         .assertions
         .iter()
@@ -913,6 +922,10 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "crossing_count"
             | "rising_crossing_count"
             | "falling_crossing_count"
+            | "gain_db_at_frequency"
+            | "phase_deg_at_frequency"
+            | "rising_gain_crossing_frequency"
+            | "falling_gain_crossing_frequency"
     ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
@@ -1170,6 +1183,16 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
+        "gain_db_at_frequency" | "phase_deg_at_frequency" => {
+            if !draft.at_hz.is_finite() || draft.at_hz <= 0.0 {
+                anyhow::bail!("AC sample frequency must be finite and positive.");
+            }
+        }
+        "rising_gain_crossing_frequency" | "falling_gain_crossing_frequency" => {
+            if !draft.frequency_limit_hz.is_finite() || draft.frequency_limit_hz <= 0.0 {
+                anyhow::bail!("AC crossing frequency limit must be finite and positive.");
+            }
+        }
         _ => unreachable!("aggregation was validated"),
     }
     Ok(())
@@ -1239,6 +1262,14 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::CrossingCount => "crossing_count",
         crate::board_ir::AnalogAggregation::RisingCrossingCount => "rising_crossing_count",
         crate::board_ir::AnalogAggregation::FallingCrossingCount => "falling_crossing_count",
+        crate::board_ir::AnalogAggregation::GainDbAtFrequency => "gain_db_at_frequency",
+        crate::board_ir::AnalogAggregation::PhaseDegAtFrequency => "phase_deg_at_frequency",
+        crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency => {
+            "rising_gain_crossing_frequency"
+        }
+        crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => {
+            "falling_gain_crossing_frequency"
+        }
     }
 }
 
@@ -1253,6 +1284,26 @@ fn assertion_threshold_label(
     assertion: &crate::board_ir::AnalogAssertion,
     quantity: &crate::board_ir::AnalogQuantity,
 ) -> String {
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::GainDbAtFrequency
+            | crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
+            | crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency
+    ) {
+        return assertion
+            .threshold_db
+            .map(|value| format!("{value:.6} dB"))
+            .unwrap_or_else(|| "missing gain threshold".to_string());
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::PhaseDegAtFrequency
+    ) {
+        return assertion
+            .threshold_deg
+            .map(|value| format!("{value:.6} deg"))
+            .unwrap_or_else(|| "missing phase threshold".to_string());
+    }
     if matches!(
         assertion.aggregation,
         crate::board_ir::AnalogAggregation::Energy
@@ -1321,6 +1372,20 @@ fn assertion_threshold_value(
     assertion: &crate::board_ir::AnalogAssertion,
     quantity: &crate::board_ir::AnalogQuantity,
 ) -> Option<f64> {
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::GainDbAtFrequency
+            | crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
+            | crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency
+    ) {
+        return assertion.threshold_db;
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::PhaseDegAtFrequency
+    ) {
+        return assertion.threshold_deg;
+    }
     if matches!(
         assertion.aggregation,
         crate::board_ir::AnalogAggregation::Energy
@@ -1445,6 +1510,18 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
                 assertion.start_us.unwrap_or_default(),
                 assertion.end_us.unwrap_or_default(),
                 assertion.count_limit.unwrap_or_default()
+            )
+        }
+        crate::board_ir::AnalogAggregation::GainDbAtFrequency
+        | crate::board_ir::AnalogAggregation::PhaseDegAtFrequency => {
+            format!("{:.6} Hz", assertion.at_hz.unwrap_or_default())
+        }
+        crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
+        | crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => {
+            format!(
+                "threshold {:.6} dB, limit {:.6} Hz",
+                assertion.threshold_db.unwrap_or_default(),
+                assertion.frequency_limit_hz.unwrap_or_default()
             )
         }
     }
@@ -1701,6 +1778,16 @@ fn assertion_value(
                 draft.overshoot_limit_percent,
             )?;
         }
+        "gain_db_at_frequency" | "phase_deg_at_frequency" => {
+            insert_number(&mut assertion, "at_hz", draft.at_hz)?;
+        }
+        "rising_gain_crossing_frequency" | "falling_gain_crossing_frequency" => {
+            insert_number(
+                &mut assertion,
+                "frequency_limit_hz",
+                draft.frequency_limit_hz,
+            )?;
+        }
         _ => unreachable!("aggregation was validated"),
     }
     insert_string(&mut assertion, "relation", &draft.relation);
@@ -1746,6 +1833,17 @@ fn assertion_value(
 }
 
 fn threshold_field(aggregation: &str, quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    if matches!(
+        aggregation,
+        "gain_db_at_frequency"
+            | "rising_gain_crossing_frequency"
+            | "falling_gain_crossing_frequency"
+    ) {
+        return "threshold_db";
+    }
+    if aggregation == "phase_deg_at_frequency" {
+        return "threshold_deg";
+    }
     if aggregation == "energy" {
         return "threshold_j";
     }

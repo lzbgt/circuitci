@@ -910,6 +910,10 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::CrossingCount => "crossing count",
         crate::board_ir::AnalogAggregation::RisingCrossingCount => "rising count",
         crate::board_ir::AnalogAggregation::FallingCrossingCount => "falling count",
+        crate::board_ir::AnalogAggregation::GainDbAtFrequency => "gain at frequency",
+        crate::board_ir::AnalogAggregation::PhaseDegAtFrequency => "phase at frequency",
+        crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency => "rising gain crossing",
+        crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing",
     }
 }
 

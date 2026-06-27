@@ -193,4 +193,22 @@ scenarios:
           expression: V(input)
         - name: filtered
           expression: V(filtered)
-      assertions: []
+      assertions:
+        - name: filtered_gain_at_1khz_below_minus_1db
+          probe: filtered
+          aggregation: gain_db_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_db: -1.0
+        - name: filtered_phase_at_1khz_below_minus_20deg
+          probe: filtered
+          aggregation: phase_deg_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_deg: -20.0
+        - name: filtered_cutoff_above_1_4khz
+          probe: filtered
+          aggregation: falling_gain_crossing_frequency
+          relation: above
+          threshold_db: -3.0
+          frequency_limit_hz: 1400.0

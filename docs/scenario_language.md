@@ -2612,8 +2612,8 @@ the corner's `.temp` card.
 ## Analog AC Scenario Shape
 
 `analog_ac` scenarios use the same Board IR binding and model-file contract as
-`analog_transient`, but run a small-signal AC sweep and export Bode observation
-artifacts instead of time-domain assertion measurements:
+`analog_transient`, but run a small-signal AC sweep, export Bode observation
+artifacts, and evaluate frequency-domain assertions:
 
 ```yaml
 scenarios:
@@ -2647,17 +2647,41 @@ scenarios:
           expression: V(input)
         - name: filtered
           expression: V(filtered)
-      assertions: []
+      assertions:
+        - name: filtered_gain_at_1khz_below_minus_1db
+          probe: filtered
+          aggregation: gain_db_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_db: -1.0
+        - name: filtered_phase_at_1khz_below_minus_20deg
+          probe: filtered
+          aggregation: phase_deg_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_deg: -20.0
+        - name: filtered_cutoff_above_1_4khz
+          probe: filtered
+          aggregation: falling_gain_crossing_frequency
+          relation: above
+          threshold_db: -3.0
+          frequency_limit_hz: 1400.0
 ```
 
 The deck must contain an AC-capable source such as `VIN in 0 AC 1`; transient
 `SIN(...)` sources alone do not define small-signal AC magnitude for ngspice.
 Each run writes `bode.csv` with `frequency_hz`, `{probe}_mag_db`,
 `{probe}_phase_deg`, and `{probe}_mag` columns. `analog.sweeps` work the same
-way as transient sweeps and create one Bode artifact per corner. AC-specific
-gain, bandwidth, phase-margin, and peaking assertions are intentionally not part
-of this first slice; keep `assertions: []` until those sign-off checks are
-implemented.
+way as transient sweeps and create one Bode artifact per corner. Supported AC
+assertions are:
+
+- `gain_db_at_frequency`: requires `at_hz` and `threshold_db`; compares the
+  selected probe's `{probe}_mag_db` at the interpolated frequency.
+- `phase_deg_at_frequency`: requires `at_hz` and `threshold_deg`; compares
+  `{probe}_phase_deg` at the interpolated frequency.
+- `rising_gain_crossing_frequency` and `falling_gain_crossing_frequency`:
+  require `threshold_db` and `frequency_limit_hz`; compare the first
+  interpolated gain crossing frequency against the frequency limit.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

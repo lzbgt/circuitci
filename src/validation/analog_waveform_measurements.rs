@@ -57,7 +57,11 @@ pub(super) fn measured_assertion_value(
         | AnalogAggregation::RisingSetupTime
         | AnalogAggregation::RisingHoldTime
         | AnalogAggregation::FallingSetupTime
-        | AnalogAggregation::FallingHoldTime => None,
+        | AnalogAggregation::FallingHoldTime
+        | AnalogAggregation::GainDbAtFrequency
+        | AnalogAggregation::PhaseDegAtFrequency
+        | AnalogAggregation::RisingGainCrossingFrequency
+        | AnalogAggregation::FallingGainCrossingFrequency => None,
     }
 }
 
@@ -214,7 +218,11 @@ fn aggregate_window(
         | AnalogAggregation::FallingHoldTime
         | AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
-        | AnalogAggregation::FallingCrossingCount => None,
+        | AnalogAggregation::FallingCrossingCount
+        | AnalogAggregation::GainDbAtFrequency
+        | AnalogAggregation::PhaseDegAtFrequency
+        | AnalogAggregation::RisingGainCrossingFrequency
+        | AnalogAggregation::FallingGainCrossingFrequency => None,
     }
 }
 

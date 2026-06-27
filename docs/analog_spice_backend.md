@@ -51,8 +51,8 @@ mode?"
 ## Backend Contract
 
 An `analog_transient` scenario owns a SPICE deck and waveform assertions.
-An `analog_ac` scenario owns a small-signal SPICE deck and Bode response
-exports for frequency-domain design observation.
+An `analog_ac` scenario owns a small-signal SPICE deck, Bode response exports,
+and AC assertions for frequency-domain design observation.
 
 Required fields:
 
@@ -66,7 +66,8 @@ Required fields:
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
-- `assertions`: threshold checks over waveform samples.
+- `assertions`: threshold checks over transient waveform samples or AC Bode
+  response values.
 
 The first Rust implementation may support hand-authored SPICE decks before full
 netlist generation. That is acceptable only if the deck is explicitly bound

@@ -619,10 +619,16 @@ impl CircuitCiApp {
                     ui.end_row();
 
                     ui.label("Aggregation");
-                    string_combo(
-                        ui,
-                        "analog_assertion_aggregation",
-                        &mut self.analog_assertion_aggregation,
+                    let aggregation_options = if selected_scenario
+                        .is_some_and(|scenario| scenario.scenario_type == "analog_ac")
+                    {
+                        &[
+                            "gain_db_at_frequency",
+                            "phase_deg_at_frequency",
+                            "rising_gain_crossing_frequency",
+                            "falling_gain_crossing_frequency",
+                        ][..]
+                    } else {
                         &[
                             "sample",
                             "min",
@@ -647,7 +653,16 @@ impl CircuitCiApp {
                             "crossing_count",
                             "rising_crossing_count",
                             "falling_crossing_count",
-                        ],
+                        ][..]
+                    };
+                    if !aggregation_options.contains(&self.analog_assertion_aggregation.as_str()) {
+                        self.analog_assertion_aggregation = aggregation_options[0].to_string();
+                    }
+                    string_combo(
+                        ui,
+                        "analog_assertion_aggregation",
+                        &mut self.analog_assertion_aggregation,
+                        aggregation_options,
                     );
                     ui.end_row();
 
@@ -727,6 +742,10 @@ impl CircuitCiApp {
                             Some("power") => " J",
                             _ => " V*s",
                         },
+                        "gain_db_at_frequency"
+                        | "rising_gain_crossing_frequency"
+                        | "falling_gain_crossing_frequency" => " dB",
+                        "phase_deg_at_frequency" => " deg",
                         _ => unit,
                     };
                     ui.add(
@@ -751,7 +770,31 @@ impl CircuitCiApp {
                         ui.end_row();
                     }
 
-                    if self.analog_assertion_aggregation == "sample" {
+                    if matches!(
+                        self.analog_assertion_aggregation.as_str(),
+                        "gain_db_at_frequency" | "phase_deg_at_frequency"
+                    ) {
+                        ui.label("At");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_at_hz)
+                                .speed(10.0)
+                                .range(0.000001..=1.0e12)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+                    } else if matches!(
+                        self.analog_assertion_aggregation.as_str(),
+                        "rising_gain_crossing_frequency" | "falling_gain_crossing_frequency"
+                    ) {
+                        ui.label("Frequency limit");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_frequency_limit_hz)
+                                .speed(10.0)
+                                .range(0.000001..=1.0e12)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+                    } else if self.analog_assertion_aggregation == "sample" {
                         ui.label("At");
                         ui.add(
                             egui::DragValue::new(&mut self.analog_assertion_at_us)
@@ -973,9 +1016,11 @@ impl CircuitCiApp {
             target: self.analog_assertion_target,
             tolerance: self.analog_assertion_tolerance,
             at_us: self.analog_assertion_at_us,
+            at_hz: self.analog_assertion_at_hz,
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
+            frequency_limit_hz: self.analog_assertion_frequency_limit_hz,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
             count_limit: self.analog_assertion_count_limit,
             overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
@@ -1178,9 +1223,11 @@ impl CircuitCiApp {
                 target: self.analog_assertion_target,
                 tolerance: self.analog_assertion_tolerance,
                 at_us: self.analog_assertion_at_us,
+                at_hz: self.analog_assertion_at_hz,
                 start_us: self.analog_assertion_start_us,
                 end_us: self.analog_assertion_end_us,
                 time_limit_us: self.analog_assertion_time_limit_us,
+                frequency_limit_hz: self.analog_assertion_frequency_limit_hz,
                 duty_limit_percent: self.analog_assertion_duty_limit_percent,
                 count_limit: self.analog_assertion_count_limit,
                 overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
@@ -1211,9 +1258,11 @@ impl CircuitCiApp {
         self.analog_assertion_target = draft.target;
         self.analog_assertion_tolerance = draft.tolerance;
         self.analog_assertion_at_us = draft.at_us;
+        self.analog_assertion_at_hz = draft.at_hz;
         self.analog_assertion_start_us = draft.start_us;
         self.analog_assertion_end_us = draft.end_us;
         self.analog_assertion_time_limit_us = draft.time_limit_us;
+        self.analog_assertion_frequency_limit_hz = draft.frequency_limit_hz;
         self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
         self.analog_assertion_count_limit = draft.count_limit;
         self.analog_assertion_overshoot_limit_percent = draft.overshoot_limit_percent;
@@ -1279,9 +1328,11 @@ impl CircuitCiApp {
             target: self.analog_assertion_target,
             tolerance: self.analog_assertion_tolerance,
             at_us: self.waveform_cursor_a_us,
+            at_hz: self.analog_assertion_at_hz,
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
+            frequency_limit_hz: self.analog_assertion_frequency_limit_hz,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
             count_limit: self.analog_assertion_count_limit,
             overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
@@ -1353,9 +1404,11 @@ impl CircuitCiApp {
             target: self.analog_assertion_target,
             tolerance: self.analog_assertion_tolerance,
             at_us: self.waveform_cursor_a_us,
+            at_hz: self.analog_assertion_at_hz,
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
+            frequency_limit_hz: self.analog_assertion_frequency_limit_hz,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
             count_limit: self.analog_assertion_count_limit,
             overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,

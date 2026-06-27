@@ -38,6 +38,35 @@ board:
 "
 }
 
+fn editable_ac_project_yaml() -> String {
+    format!(
+        "{}scenarios:
+  - name: gui_ac
+    type: analog_ac
+    checks:
+      - SPICE_AC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck_ac.cir
+      model_files: []
+      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: ac
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+      stimuli: []
+      probes:
+        - name: out_voltage
+          expression: V(out)
+      assertions: []
+",
+        editable_project_yaml()
+    )
+}
+
 fn scenario_draft() -> AnalogScenarioDraft {
     AnalogScenarioDraft {
         name: "gui_transient".to_string(),
@@ -62,9 +91,11 @@ fn assertion_draft(name: &str, threshold: f64) -> AnalogAssertionDraft {
         target: 0.0,
         tolerance: 0.1,
         at_us: 50.0,
+        at_hz: 1000.0,
         start_us: 0.0,
         end_us: 100.0,
         time_limit_us: 50.0,
+        frequency_limit_hz: 1000.0,
         duty_limit_percent: 50.0,
         count_limit: 1.0,
         overshoot_limit_percent: 10.0,
@@ -78,6 +109,27 @@ fn project_with_two_assertions() -> String {
         .expect("first assertion should be valid");
     append_analog_assertion(&edited, &assertion_draft("out_above_warn", 2.0))
         .expect("second assertion should be valid")
+}
+
+#[test]
+fn append_ac_gain_assertion_emits_frequency_fields() {
+    let mut draft = assertion_draft("filtered_gain_at_1khz", -1.0);
+    draft.scenario_name = "gui_ac".to_string();
+    draft.aggregation = "gain_db_at_frequency".to_string();
+    draft.relation = "below".to_string();
+    draft.at_hz = 1000.0;
+    let edited =
+        append_analog_assertion(&editable_ac_project_yaml(), &draft).expect("AC assertion draft");
+
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = project.scenarios[0].analog.as_ref().unwrap().assertions[0].clone();
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::GainDbAtFrequency
+    );
+    assert_eq!(assertion.at_hz, Some(1000.0));
+    assert_eq!(assertion.threshold_db, Some(-1.0));
+    assert_eq!(assertion.threshold_v, None);
 }
 
 #[test]

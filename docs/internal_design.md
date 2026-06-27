@@ -409,7 +409,9 @@ removed. It also owns generated load/source candidate inference, the small
 preset catalog for common supply, load, temperature, model-selector, and
 RC-tolerance corner sweeps, and vendor model-section corner editing; all are
 serialized through the same `analog.sweeps` structure rather than a separate
-GUI-only model.
+GUI-only model. `src/gui/simulation_editors.rs` also owns AC check authoring for
+Bode observations, mapping gain/phase/cutoff controls to `at_hz`,
+`frequency_limit_hz`, `threshold_db`, and `threshold_deg`.
 `src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
 findings back into the selected generated run-setup overview so users can see
 worst-corner assertion margins without opening raw report findings.

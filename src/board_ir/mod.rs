@@ -1144,6 +1144,10 @@ pub struct AnalogAssertion {
     pub end_us: Option<f64>,
     #[serde(default, rename = "time_limit_us")]
     pub time_limit_us: Option<f64>,
+    #[serde(default, rename = "at_hz")]
+    pub at_hz: Option<f64>,
+    #[serde(default, rename = "frequency_limit_hz")]
+    pub frequency_limit_hz: Option<f64>,
     #[serde(default, rename = "duty_limit_percent")]
     pub duty_limit_percent: Option<f64>,
     #[serde(default, rename = "count_limit")]
@@ -1163,6 +1167,10 @@ pub struct AnalogAssertion {
     pub threshold_c: Option<f64>,
     #[serde(default, rename = "threshold_j")]
     pub threshold_j: Option<f64>,
+    #[serde(default, rename = "threshold_db")]
+    pub threshold_db: Option<f64>,
+    #[serde(default, rename = "threshold_deg")]
+    pub threshold_deg: Option<f64>,
     #[serde(default)]
     pub reference_threshold_v: Option<f64>,
     #[serde(default)]
@@ -1214,6 +1222,10 @@ pub enum AnalogAggregation {
     CrossingCount,
     RisingCrossingCount,
     FallingCrossingCount,
+    GainDbAtFrequency,
+    PhaseDegAtFrequency,
+    RisingGainCrossingFrequency,
+    FallingGainCrossingFrequency,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

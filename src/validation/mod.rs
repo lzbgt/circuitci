@@ -1,3 +1,4 @@
+mod analog_ac_assertions;
 mod analog_assertions;
 mod analog_operating_limits;
 mod analog_runner;
