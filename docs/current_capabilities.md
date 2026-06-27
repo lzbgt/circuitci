@@ -145,7 +145,10 @@ Current analog support:
   the user places the part on the schematic.
 - For a selected placed SPICE-ready component, the GUI can create a generated
   observation preset that includes the board context, binds ground, voltage
-  probes the component's non-ground pin nets, and infers required model files.
+  probes the component's non-ground pin nets, infers required model files, and
+  adds model-aware default checks for regulator output voltage limits or
+  pulse-driven reset-supervisor output behavior when the needed metadata is
+  present.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.
