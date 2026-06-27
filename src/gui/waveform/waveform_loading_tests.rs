@@ -139,6 +139,22 @@ fn waveform_request_loader_selects_raw_bode_header_names() {
 }
 
 #[test]
+fn waveform_loader_reads_noise_spectrum_as_frequency_density_traces() {
+    let waveform = parse_waveform_csv_text(
+        "frequency_hz,onoise_v_per_sqrt_hz,inoise_v_per_sqrt_hz\n10,2e-9,4e-9\n1000,3e-9,6e-9\n",
+        "noise_spectrum.csv",
+    )
+    .unwrap();
+
+    assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveform.probes.len(), 2);
+    assert_eq!(waveform.probes[0].label, "output noise density");
+    assert_eq!(waveform.probes[1].label, "input noise density");
+    assert_eq!(waveform.probes[0].values, vec![2.0e-9, 3.0e-9]);
+    assert_eq!(super::probe_unit(&waveform.probes[0].label), "V/sqrt(Hz)");
+}
+
+#[test]
 fn waveform_request_loader_rejects_missing_selected_probe_columns() {
     let mut file = tempfile::NamedTempFile::new().unwrap();
     use std::io::Write;

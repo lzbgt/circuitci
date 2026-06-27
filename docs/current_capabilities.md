@@ -114,7 +114,11 @@ Current analog support:
   input-referred noise density, plus `noise_total.csv` artifacts with
   integrated RMS output and input-referred noise over the declared frequency
   band. Noise assertions support output/input density at a frequency and
-  integrated output/input RMS noise checks.
+  integrated output/input RMS noise checks. The GUI run-setup editor can author
+  generated noise observations directly by choosing an output net, input source,
+  and frequency band. Scopes plots `noise_spectrum.csv` as frequency-axis
+  output/input density traces and loads `noise_total.csv` into a compact
+  integrated-RMS noise table with CSV/Markdown copy actions.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
@@ -127,8 +131,9 @@ Current analog support:
   frequency limits and an initial voltage probe; generated AC sources emit a
   unity small-signal `AC 1` drive while preserving their DC or pulse operating
   point. GUI-created generated DC observations write `.op` analysis setups
-  with an initial voltage probe and reuse the same ground/node/component
-  editors.
+  with an initial voltage probe; GUI-created generated noise observations write
+  `.noise` analysis setups with output/input noise probes. All generated
+  observation types reuse the same ground/node/component editors.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform, Bode, or operating-point artifact set, tagged on findings, and
   summarized with per-assertion worst-corner margin info findings for

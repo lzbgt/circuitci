@@ -92,11 +92,12 @@ use sketch_navigator::SketchNavigatorTarget;
 use sketch_scope_tools::SketchScopeProbeTool;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
-    OperatingPointView, ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
-    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformFootprintSortKey,
-    WaveformFootprintSourceFilter, WaveformFootprintUnloadTarget, WaveformLoadDiagnostic,
-    WaveformLoadPreviewFilter, WaveformLoadStatusFilter, WaveformPlotCache, WaveformTracePreset,
-    WaveformTraceRef, WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
+    NoiseTotalView, OperatingPointView, ScopePlotSvgSizePreset, ScopeSnapshotGroupMode,
+    ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, WaveformCursorTarget,
+    WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformFootprintUnloadTarget,
+    WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadStatusFilter, WaveformPlotCache,
+    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
+    waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -330,6 +331,7 @@ pub struct CircuitCiApp {
     analog_start_frequency_hz: f64,
     analog_stop_frequency_hz: f64,
     analog_points_per_decade: u32,
+    analog_noise_input_source: String,
     analog_assertion_scenario: String,
     analog_assertion_name: String,
     analog_assertion_edit_original: String,
@@ -363,6 +365,7 @@ pub struct CircuitCiApp {
     analog_generated_start_frequency_hz: f64,
     analog_generated_stop_frequency_hz: f64,
     analog_generated_points_per_decade: u32,
+    analog_generated_noise_input_source: String,
     analog_generated_node_net: String,
     analog_generated_node_name: String,
     analog_sweep_scenario: String,
@@ -438,6 +441,7 @@ pub struct CircuitCiApp {
     sketch_probe_element_drag: Option<SketchProbeElementDrag>,
     waveforms: Vec<WaveformView>,
     operating_points: Vec<OperatingPointView>,
+    noise_totals: Vec<NoiseTotalView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
     waveform_load_filter: String,
     waveform_load_status_filter: WaveformLoadStatusFilter,
@@ -571,6 +575,7 @@ impl Default for CircuitCiApp {
             analog_start_frequency_hz: 10.0,
             analog_stop_frequency_hz: 100_000.0,
             analog_points_per_decade: 20,
+            analog_noise_input_source: "V1".to_string(),
             analog_assertion_scenario: String::new(),
             analog_assertion_name: "probe_above_min".to_string(),
             analog_assertion_edit_original: String::new(),
@@ -604,6 +609,7 @@ impl Default for CircuitCiApp {
             analog_generated_start_frequency_hz: 10.0,
             analog_generated_stop_frequency_hz: 100_000.0,
             analog_generated_points_per_decade: 20,
+            analog_generated_noise_input_source: "V1".to_string(),
             analog_generated_node_net: String::new(),
             analog_generated_node_name: String::new(),
             analog_sweep_scenario: String::new(),
@@ -681,6 +687,7 @@ impl Default for CircuitCiApp {
             sketch_probe_element_drag: None,
             waveforms: Vec::new(),
             operating_points: Vec::new(),
+            noise_totals: Vec::new(),
             waveform_load_diagnostics: Vec::new(),
             waveform_load_filter: String::new(),
             waveform_load_status_filter: WaveformLoadStatusFilter::All,

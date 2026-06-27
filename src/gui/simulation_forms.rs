@@ -133,6 +133,7 @@ pub(super) fn initialize_generated_settings_defaults(
     start_frequency_hz: &mut f64,
     stop_frequency_hz: &mut f64,
     points_per_decade: &mut u32,
+    noise_input_source: &mut String,
     node_net: &mut String,
     node_name: &mut String,
 ) {
@@ -150,6 +151,7 @@ pub(super) fn initialize_generated_settings_defaults(
                 start_frequency_hz,
                 stop_frequency_hz,
                 points_per_decade,
+                noise_input_source,
                 node_net,
                 node_name,
             },
@@ -179,6 +181,16 @@ pub(super) fn initialize_generated_settings_defaults(
         *stop_frequency_hz = scenario.stop_frequency_hz;
         *points_per_decade = scenario.points_per_decade;
     }
+    if scenario.scenario_type == "analog_noise"
+        && (noise_input_source.is_empty()
+            || !scenario
+                .board_components
+                .iter()
+                .any(|component| component.id == *noise_input_source))
+        && let Some(input_source) = &scenario.noise_input_source
+    {
+        *noise_input_source = input_source.clone();
+    }
     let node_net_missing = !scenario.board_nets.iter().any(|net| net.id == *node_net);
     if node_net.is_empty() || node_net_missing {
         load_generated_node_binding_values(scenario, node_net, node_name);
@@ -192,6 +204,7 @@ pub(super) struct GeneratedSettingsFormValues<'a> {
     pub(super) start_frequency_hz: &'a mut f64,
     pub(super) stop_frequency_hz: &'a mut f64,
     pub(super) points_per_decade: &'a mut u32,
+    pub(super) noise_input_source: &'a mut String,
     pub(super) node_net: &'a mut String,
     pub(super) node_name: &'a mut String,
 }
@@ -206,6 +219,9 @@ pub(super) fn load_generated_settings_values(
     *values.start_frequency_hz = scenario.start_frequency_hz;
     *values.stop_frequency_hz = scenario.stop_frequency_hz;
     *values.points_per_decade = scenario.points_per_decade;
+    if let Some(input_source) = &scenario.noise_input_source {
+        *values.noise_input_source = input_source.clone();
+    }
     load_generated_node_binding_values(scenario, values.node_net, values.node_name);
 }
 

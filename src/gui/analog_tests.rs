@@ -1,11 +1,12 @@
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
-    AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogPowerProbeDraft,
-    AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
-    AnalogScenarioDraft, analog_probe_assertion_summaries,
+    AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogNoiseScenarioDraft,
+    AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
+    AnalogProbeRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
     append_analog_ac_scenario_with_project_path, append_analog_assertion,
     append_analog_current_probe, append_analog_dc_scenario_with_project_path,
-    append_analog_expression_probe, append_analog_power_probe, append_analog_transient_scenario,
+    append_analog_expression_probe, append_analog_noise_scenario_with_project_path,
+    append_analog_power_probe, append_analog_transient_scenario,
     append_analog_transient_scenario_with_project_path, append_analog_voltage_probe,
     remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
 };
@@ -250,6 +251,46 @@ fn append_analog_dc_scenario_emits_valid_yaml() {
     assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
     assert_eq!(analog.analysis.analysis_type, "op");
     assert_eq!(analog.probes[0].expression, "V(out)");
+    assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_noise_scenario_emits_valid_yaml() {
+    let draft = AnalogNoiseScenarioDraft {
+        name: "gui_noise".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        output_probe_name: "onoise".to_string(),
+        input_probe_name: "inoise".to_string(),
+        input_source: "V1".to_string(),
+        start_frequency_hz: 10.0,
+        stop_frequency_hz: 100_000.0,
+        points_per_decade: 20,
+    };
+    let edited = append_analog_noise_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_noise/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(project.scenarios.len(), 1);
+    let scenario = &project.scenarios[0];
+    assert_eq!(scenario.name, "gui_noise");
+    assert_eq!(scenario.scenario_type, "analog_noise");
+    assert_eq!(scenario.checks, vec!["SPICE_NOISE_ANALYSIS".to_string()]);
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
+    assert_eq!(analog.analysis.analysis_type, "noise");
+    assert_eq!(analog.analysis.start_frequency_hz, Some(10.0));
+    assert_eq!(analog.analysis.stop_frequency_hz, Some(100_000.0));
+    assert_eq!(analog.analysis.points_per_decade, Some(20));
+    assert_eq!(analog.analysis.noise_output_node.as_deref(), Some("out"));
+    assert_eq!(analog.analysis.noise_input_source.as_deref(), Some("V1"));
+    assert_eq!(analog.probes[0].name, "onoise");
+    assert_eq!(analog.probes[0].expression, "V(out)");
+    assert_eq!(analog.probes[1].name, "inoise");
+    assert_eq!(analog.probes[1].expression, "V(rail_5v)");
     assert!(analog.assertions.is_empty());
 }
 

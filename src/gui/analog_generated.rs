@@ -19,6 +19,7 @@ pub(super) struct AnalogGeneratedSettingsDraft {
     pub(super) start_frequency_hz: f64,
     pub(super) stop_frequency_hz: f64,
     pub(super) points_per_decade: u32,
+    pub(super) noise_input_source: String,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,8 @@ pub(super) struct AnalogGeneratedScenario {
     pub(super) start_frequency_hz: f64,
     pub(super) stop_frequency_hz: f64,
     pub(super) points_per_decade: u32,
+    pub(super) noise_output_node: Option<String>,
+    pub(super) noise_input_source: Option<String>,
     pub(super) components: Vec<String>,
     pub(super) board_nets: Vec<AnalogGeneratedNetChoice>,
     pub(super) node_bindings: Vec<AnalogGeneratedNodeBindingChoice>,
@@ -97,6 +100,8 @@ pub(super) fn analog_generated_scenarios(text: &str) -> Result<Vec<AnalogGenerat
                 start_frequency_hz: analog.analysis.start_frequency_hz.unwrap_or(10.0),
                 stop_frequency_hz: analog.analysis.stop_frequency_hz.unwrap_or(100_000.0),
                 points_per_decade: analog.analysis.points_per_decade.unwrap_or(20),
+                noise_output_node: analog.analysis.noise_output_node.clone(),
+                noise_input_source: analog.analysis.noise_input_source.clone(),
                 components: generated.components.clone(),
                 board_nets: project
                     .board
@@ -189,6 +194,42 @@ pub(super) fn replace_generated_settings(
         analysis_mapping.remove(key("start_frequency_hz"));
         analysis_mapping.remove(key("stop_frequency_hz"));
         analysis_mapping.remove(key("points_per_decade"));
+        analysis_mapping.remove(key("noise_output_node"));
+        analysis_mapping.remove(key("noise_reference_node"));
+        analysis_mapping.remove(key("noise_input_source"));
+    } else if scenario.scenario_type == "analog_noise" {
+        validate_ac_settings(draft)?;
+        let input_source = draft.noise_input_source.trim();
+        if !noise_input_source_exists(&project, input_source) {
+            anyhow::bail!(
+                "Noise input source {input_source} must be an included voltage or current source component."
+            );
+        }
+        let output_node = analog
+            .analysis
+            .noise_output_node
+            .as_deref()
+            .context("Generated noise settings require an existing noise_output_node.")?;
+        insert_string(analysis_mapping, "type", "noise");
+        insert_number(
+            analysis_mapping,
+            "start_frequency_hz",
+            draft.start_frequency_hz,
+        )?;
+        insert_number(
+            analysis_mapping,
+            "stop_frequency_hz",
+            draft.stop_frequency_hz,
+        )?;
+        analysis_mapping.insert(
+            key("points_per_decade"),
+            serde_yaml_ng::to_value(draft.points_per_decade)
+                .context("Failed to encode noise points_per_decade.")?,
+        );
+        insert_string(analysis_mapping, "noise_output_node", output_node);
+        insert_string(analysis_mapping, "noise_input_source", input_source);
+        analysis_mapping.remove(key("stop_time_us"));
+        analysis_mapping.remove(key("max_step_us"));
     } else {
         validate_transient_settings(draft)?;
         insert_string(analysis_mapping, "type", "tran");
@@ -213,6 +254,23 @@ pub(super) fn replace_generated_settings(
         yaml,
         "Edited generated settings YAML is not valid Board IR.",
     )
+}
+
+fn noise_input_source_exists(project: &crate::board_ir::BoardProject, input_source: &str) -> bool {
+    project
+        .board
+        .components
+        .get(input_source)
+        .and_then(|component| component.spice.as_ref())
+        .is_some_and(|spice| {
+            matches!(
+                spice.primitive,
+                crate::board_ir::SpicePrimitive::DcVoltageSource
+                    | crate::board_ir::SpicePrimitive::PulseVoltageSource
+                    | crate::board_ir::SpicePrimitive::DcCurrentSource
+                    | crate::board_ir::SpicePrimitive::PulseCurrentSource
+            )
+        })
 }
 
 fn validate_ac_settings(draft: &AnalogGeneratedSettingsDraft) -> Result<()> {
@@ -1037,6 +1095,7 @@ scenarios:
                 start_frequency_hz: 100.0,
                 stop_frequency_hz: 1_000_000.0,
                 points_per_decade: 40,
+                noise_input_source: "V1".to_string(),
             },
         )
         .unwrap();
@@ -1170,6 +1229,7 @@ scenarios:
                 start_frequency_hz: 10.0,
                 stop_frequency_hz: 100_000.0,
                 points_per_decade: 20,
+                noise_input_source: "V1".to_string(),
             },
         )
         .unwrap_err();
@@ -1186,6 +1246,7 @@ scenarios:
                 start_frequency_hz: 10.0,
                 stop_frequency_hz: 100_000.0,
                 points_per_decade: 20,
+                noise_input_source: "V1".to_string(),
             },
         )
         .unwrap();
@@ -1226,6 +1287,7 @@ scenarios:
                 start_frequency_hz: 100.0,
                 stop_frequency_hz: 100_000.0,
                 points_per_decade: 40,
+                noise_input_source: "V1".to_string(),
             },
         )
         .unwrap();
@@ -1242,6 +1304,42 @@ scenarios:
     }
 
     #[test]
+    fn replace_generated_settings_preserves_noise_analysis() {
+        let yaml = project_yaml()
+            .replace("type: analog_transient", "type: analog_noise")
+            .replace(
+                "analysis: {type: tran, stop_time_us: 100.0, max_step_us: 1.0}",
+                "analysis: {type: noise, start_frequency_hz: 10.0, stop_frequency_hz: 100000.0, points_per_decade: 20, noise_output_node: out, noise_input_source: V1}",
+            );
+        let edited = replace_generated_settings(
+            &yaml,
+            &AnalogGeneratedSettingsDraft {
+                scenario_name: "generated_transient".to_string(),
+                ground_net: "gnd".to_string(),
+                stop_time_us: 250.0,
+                max_step_us: 2.5,
+                start_frequency_hz: 100.0,
+                stop_frequency_hz: 1_000_000.0,
+                points_per_decade: 40,
+                noise_input_source: "V1".to_string(),
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let scenario = &project.scenarios[0];
+        assert_eq!(scenario.scenario_type, "analog_noise");
+        let analog = scenario.analog.as_ref().unwrap();
+        assert_eq!(analog.analysis.analysis_type, "noise");
+        assert_eq!(analog.analysis.start_frequency_hz, Some(100.0));
+        assert_eq!(analog.analysis.stop_frequency_hz, Some(1_000_000.0));
+        assert_eq!(analog.analysis.points_per_decade, Some(40));
+        assert_eq!(analog.analysis.noise_output_node.as_deref(), Some("out"));
+        assert_eq!(analog.analysis.noise_input_source.as_deref(), Some("V1"));
+        assert_eq!(analog.analysis.stop_time_us, 0.0);
+        assert_eq!(analog.analysis.max_step_us, 0.0);
+    }
+
+    #[test]
     fn replace_generated_settings_rejects_invalid_timing() {
         let error = replace_generated_settings(
             project_yaml(),
@@ -1253,6 +1351,7 @@ scenarios:
                 start_frequency_hz: 10.0,
                 stop_frequency_hz: 100_000.0,
                 points_per_decade: 20,
+                noise_input_source: "V1".to_string(),
             },
         )
         .unwrap_err();

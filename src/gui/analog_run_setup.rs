@@ -32,6 +32,19 @@ pub(super) struct AnalogDcScenarioDraft {
     pub(super) probe_name: String,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AnalogNoiseScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) output_probe_name: String,
+    pub(super) input_probe_name: String,
+    pub(super) input_source: String,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
+}
+
 #[cfg(test)]
 pub(super) fn append_analog_transient_scenario(
     text: &str,
@@ -98,6 +111,29 @@ pub(super) fn append_analog_dc_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_noise_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogNoiseScenarioDraft,
+) -> Result<String> {
+    validate_noise_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.output_probe_name,
+        GeneratedAnalogScenarioKind::Noise {
+            start_frequency_hz: draft.start_frequency_hz,
+            stop_frequency_hz: draft.stop_frequency_hz,
+            points_per_decade: draft.points_per_decade,
+            input_source: draft.input_source.trim().to_string(),
+            input_probe_name: draft.input_probe_name.trim().to_string(),
+        },
+    )
+}
+
 fn append_generated_analog_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -126,6 +162,13 @@ fn append_generated_analog_scenario_with_project_path(
     }
     if !project.board.nets.contains_key(probe_net) {
         anyhow::bail!("Probe net {} was not found.", probe_net);
+    }
+    if let GeneratedAnalogScenarioKind::Noise { input_source, .. } = &kind
+        && !noise_input_source_exists(&project, input_source)
+    {
+        anyhow::bail!(
+            "Noise input source {input_source} must be an included voltage or current source component."
+        );
     }
     if project.board.components.is_empty() {
         anyhow::bail!("Generated analog scenarios require at least one component.");
@@ -208,6 +251,45 @@ fn validate_dc_draft(draft: &AnalogDcScenarioDraft) -> Result<()> {
     }
     if draft.probe_net.trim().is_empty() {
         anyhow::bail!("Probe net must not be blank.");
+    }
+    Ok(())
+}
+
+fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.output_probe_name, "output noise probe name")?;
+    validated_id(&draft.input_probe_name, "input noise probe name")?;
+    validated_id(&draft.input_source, "noise input source")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    validate_frequency_range(
+        draft.start_frequency_hz,
+        draft.stop_frequency_hz,
+        draft.points_per_decade,
+        "Analog noise",
+    )
+}
+
+fn validate_frequency_range(
+    start_frequency_hz: f64,
+    stop_frequency_hz: f64,
+    points_per_decade: u32,
+    label: &str,
+) -> Result<()> {
+    if !start_frequency_hz.is_finite()
+        || !stop_frequency_hz.is_finite()
+        || start_frequency_hz <= 0.0
+        || stop_frequency_hz <= start_frequency_hz
+        || points_per_decade == 0
+        || points_per_decade > 1000
+    {
+        anyhow::bail!(
+            "{label} start and stop frequencies must be finite and positive, stop must exceed start, and points per decade must be in 1..=1000."
+        );
     }
     Ok(())
 }
@@ -299,7 +381,7 @@ fn analog_scenario_value(
     Ok(serde_yaml_ng::Value::Mapping(value))
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct GeneratedAnalogScenarioSpec<'a> {
     name: &'a str,
     ground_net: &'a str,
@@ -308,7 +390,7 @@ struct GeneratedAnalogScenarioSpec<'a> {
     kind: GeneratedAnalogScenarioKind,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum GeneratedAnalogScenarioKind {
     Transient {
         stop_time_us: f64,
@@ -320,22 +402,31 @@ enum GeneratedAnalogScenarioKind {
         points_per_decade: u32,
     },
     Dc,
+    Noise {
+        start_frequency_hz: f64,
+        stop_frequency_hz: f64,
+        points_per_decade: u32,
+        input_source: String,
+        input_probe_name: String,
+    },
 }
 
 impl GeneratedAnalogScenarioKind {
-    fn scenario_type(self) -> &'static str {
+    fn scenario_type(&self) -> &'static str {
         match self {
             Self::Transient { .. } => "analog_transient",
             Self::Ac { .. } => "analog_ac",
             Self::Dc => "analog_dc",
+            Self::Noise { .. } => "analog_noise",
         }
     }
 
-    fn check_id(self) -> &'static str {
+    fn check_id(&self) -> &'static str {
         match self {
             Self::Transient { .. } => "SPICE_TRANSIENT_ANALYSIS",
             Self::Ac { .. } => "SPICE_AC_ANALYSIS",
             Self::Dc => "SPICE_DC_ANALYSIS",
+            Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
         }
     }
 }
@@ -391,14 +482,14 @@ fn analog_block(
     );
 
     let mut analysis = serde_yaml_ng::Mapping::new();
-    match scenario.kind {
+    match &scenario.kind {
         GeneratedAnalogScenarioKind::Transient {
             stop_time_us,
             max_step_us,
         } => {
             insert_string(&mut analysis, "type", "tran");
-            insert_number(&mut analysis, "stop_time_us", stop_time_us)?;
-            insert_number(&mut analysis, "max_step_us", max_step_us)?;
+            insert_number(&mut analysis, "stop_time_us", *stop_time_us)?;
+            insert_number(&mut analysis, "max_step_us", *max_step_us)?;
         }
         GeneratedAnalogScenarioKind::Ac {
             start_frequency_hz,
@@ -406,8 +497,8 @@ fn analog_block(
             points_per_decade,
         } => {
             insert_string(&mut analysis, "type", "ac");
-            insert_number(&mut analysis, "start_frequency_hz", start_frequency_hz)?;
-            insert_number(&mut analysis, "stop_frequency_hz", stop_frequency_hz)?;
+            insert_number(&mut analysis, "start_frequency_hz", *start_frequency_hz)?;
+            insert_number(&mut analysis, "stop_frequency_hz", *stop_frequency_hz)?;
             analysis.insert(
                 key("points_per_decade"),
                 serde_yaml_ng::to_value(points_per_decade)
@@ -416,6 +507,30 @@ fn analog_block(
         }
         GeneratedAnalogScenarioKind::Dc => {
             insert_string(&mut analysis, "type", "op");
+        }
+        GeneratedAnalogScenarioKind::Noise {
+            start_frequency_hz,
+            stop_frequency_hz,
+            points_per_decade,
+            input_source,
+            ..
+        } => {
+            insert_string(&mut analysis, "type", "noise");
+            insert_number(&mut analysis, "start_frequency_hz", *start_frequency_hz)?;
+            insert_number(&mut analysis, "stop_frequency_hz", *stop_frequency_hz)?;
+            analysis.insert(
+                key("points_per_decade"),
+                serde_yaml_ng::to_value(points_per_decade)
+                    .context("Failed to encode noise points_per_decade.")?,
+            );
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Noise output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(&mut analysis, "noise_output_node", output_node);
+            insert_string(&mut analysis, "noise_input_source", input_source);
         }
     }
     analog.insert(key("analysis"), serde_yaml_ng::Value::Mapping(analysis));
@@ -427,18 +542,70 @@ fn analog_block(
             scenario.probe_net
         )
     })?;
-    let mut probe = serde_yaml_ng::Mapping::new();
-    insert_string(&mut probe, "name", scenario.probe_name.trim());
-    insert_string(&mut probe, "expression", &format!("V({probe_node})"));
-    analog.insert(
-        key("probes"),
-        serde_yaml_ng::Value::Sequence(vec![serde_yaml_ng::Value::Mapping(probe)]),
-    );
+    let probes = match &scenario.kind {
+        GeneratedAnalogScenarioKind::Noise {
+            input_source,
+            input_probe_name,
+            ..
+        } => {
+            let input_node = noise_input_source_positive_node(project, input_source, node_by_net)
+                .unwrap_or(probe_node);
+            vec![
+                probe_value(scenario.probe_name.trim(), &format!("V({probe_node})")),
+                probe_value(input_probe_name, &format!("V({input_node})")),
+            ]
+        }
+        _ => vec![probe_value(
+            scenario.probe_name.trim(),
+            &format!("V({probe_node})"),
+        )],
+    };
+    analog.insert(key("probes"), serde_yaml_ng::Value::Sequence(probes));
     analog.insert(
         key("assertions"),
         serde_yaml_ng::Value::Sequence(Vec::new()),
     );
     Ok(analog)
+}
+
+fn probe_value(name: &str, expression: &str) -> serde_yaml_ng::Value {
+    let mut probe = serde_yaml_ng::Mapping::new();
+    insert_string(&mut probe, "name", name);
+    insert_string(&mut probe, "expression", expression);
+    serde_yaml_ng::Value::Mapping(probe)
+}
+
+fn noise_input_source_exists(project: &crate::board_ir::BoardProject, input_source: &str) -> bool {
+    project
+        .board
+        .components
+        .get(input_source)
+        .and_then(|component| component.spice.as_ref())
+        .is_some_and(|spice| {
+            matches!(
+                spice.primitive,
+                crate::board_ir::SpicePrimitive::DcVoltageSource
+                    | crate::board_ir::SpicePrimitive::PulseVoltageSource
+                    | crate::board_ir::SpicePrimitive::DcCurrentSource
+                    | crate::board_ir::SpicePrimitive::PulseCurrentSource
+            )
+        })
+}
+
+fn noise_input_source_positive_node<'a>(
+    project: &crate::board_ir::BoardProject,
+    input_source: &str,
+    node_by_net: &'a std::collections::BTreeMap<String, String>,
+) -> Option<&'a str> {
+    let component = project.board.components.get(input_source)?;
+    let positive_net = component.pins.get("P").or_else(|| {
+        component
+            .pins
+            .iter()
+            .find(|(_, net)| *net != "gnd")
+            .map(|(_, net)| net)
+    })?;
+    node_by_net.get(positive_net).map(String::as_str)
 }
 
 fn pin_bindings(

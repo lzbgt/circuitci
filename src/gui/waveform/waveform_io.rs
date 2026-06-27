@@ -511,6 +511,10 @@ fn waveform_probe_label_from_header(header: &str) -> String {
         format!("{stem} phase deg")
     } else if let Some(stem) = label.strip_suffix("_mag") {
         format!("{stem} linear magnitude")
+    } else if label == "onoise_v_per_sqrt_hz" {
+        "output noise density".to_string()
+    } else if label == "inoise_v_per_sqrt_hz" {
+        "input noise density".to_string()
     } else {
         label.to_string()
     }

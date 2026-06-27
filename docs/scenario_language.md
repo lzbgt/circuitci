@@ -2811,7 +2811,10 @@ normalized `noise_total.csv`, wrapper deck, and solver log artifacts. Density
 assertions use `output_noise_density_at_frequency` or
 `input_noise_density_at_frequency` with `at_hz` and
 `threshold_v_per_sqrt_hz`. Integrated RMS checks use
-`integrated_output_noise` or `integrated_input_noise` with `threshold_v`.
+`integrated_output_noise` or `integrated_input_noise` with `threshold_v`. The
+GUI run-setup editor can create generated-from-board noise observations by
+choosing the output net, input source, and frequency band, and Scopes plots the
+normalized density artifact while showing integrated totals in a compact table.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

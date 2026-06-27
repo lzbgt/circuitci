@@ -1,10 +1,10 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionRemoveDraft,
-    AnalogAssertionReplaceDraft, AnalogDcScenarioDraft, AnalogProbeAssertionsRemoveDraft,
-    AnalogScenarioDraft, analog_probe_assertion_summaries, analog_scenario_choices,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_dc_scenario_with_project_path,
+    AnalogAssertionReplaceDraft, AnalogDcScenarioDraft, AnalogNoiseScenarioDraft,
+    AnalogProbeAssertionsRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
+    analog_scenario_choices, append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_dc_scenario_with_project_path, append_analog_noise_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, remove_analog_assertion,
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
@@ -27,6 +27,7 @@ use super::analog_stimulus::{
 use super::simulation_forms::*;
 use super::sketch::ProjectSnapshot;
 use super::sketch_probes::SketchProbe;
+use super::sketch_spice::SketchSpiceKind;
 use super::waveform::{format_value, quick_assertion_margin, waveform_probe_value_for_badge};
 use eframe::egui;
 use std::path::Path;
@@ -48,6 +49,7 @@ impl CircuitCiApp {
                         .selected_text(match self.analog_run_setup_kind.as_str() {
                             "ac" => "AC/Bode",
                             "dc" => "DC operating point",
+                            "noise" => "Noise",
                             _ => "Transient",
                         })
                         .show_ui(ui, |ui| {
@@ -65,6 +67,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "dc".to_string(),
                                 "DC operating point",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "noise".to_string(),
+                                "Noise",
                             );
                         });
                     ui.end_row();
@@ -90,7 +97,7 @@ impl CircuitCiApp {
                     ui.text_edit_singleline(&mut self.analog_probe_name);
                     ui.end_row();
 
-                    if self.analog_run_setup_kind == "ac" {
+                    if matches!(self.analog_run_setup_kind.as_str(), "ac" | "noise") {
                         ui.label("Start frequency");
                         ui.add(
                             egui::DragValue::new(&mut self.analog_start_frequency_hz)
@@ -116,6 +123,20 @@ impl CircuitCiApp {
                                 .range(1..=1000),
                         );
                         ui.end_row();
+                        if self.analog_run_setup_kind == "noise" {
+                            initialize_noise_source_default(
+                                snapshot,
+                                &mut self.analog_noise_input_source,
+                            );
+                            ui.label("Input source");
+                            noise_source_combo(
+                                ui,
+                                "analog_noise_input_source",
+                                &mut self.analog_noise_input_source,
+                                snapshot,
+                            );
+                            ui.end_row();
+                        }
                     } else if self.analog_run_setup_kind == "dc" {
                         ui.label("Analysis");
                         ui.label("Operating point");
@@ -270,6 +291,7 @@ impl CircuitCiApp {
                 &mut self.analog_generated_start_frequency_hz,
                 &mut self.analog_generated_stop_frequency_hz,
                 &mut self.analog_generated_points_per_decade,
+                &mut self.analog_generated_noise_input_source,
                 &mut self.analog_generated_node_net,
                 &mut self.analog_generated_node_name,
             );
@@ -301,6 +323,7 @@ impl CircuitCiApp {
                                 start_frequency_hz: &mut self.analog_generated_start_frequency_hz,
                                 stop_frequency_hz: &mut self.analog_generated_stop_frequency_hz,
                                 points_per_decade: &mut self.analog_generated_points_per_decade,
+                                noise_input_source: &mut self.analog_generated_noise_input_source,
                                 node_net: &mut self.analog_generated_node_net,
                                 node_name: &mut self.analog_generated_node_name,
                             },
@@ -317,7 +340,10 @@ impl CircuitCiApp {
                     );
                     ui.end_row();
 
-                    if selected_scenario.scenario_type == "analog_ac" {
+                    if matches!(
+                        selected_scenario.scenario_type.as_str(),
+                        "analog_ac" | "analog_noise"
+                    ) {
                         ui.label("Start frequency");
                         ui.add(
                             egui::DragValue::new(&mut self.analog_generated_start_frequency_hz)
@@ -343,6 +369,24 @@ impl CircuitCiApp {
                                 .range(1..=1000),
                         );
                         ui.end_row();
+                        if selected_scenario.scenario_type == "analog_noise" {
+                            ui.label("Output node");
+                            ui.monospace(
+                                selected_scenario
+                                    .noise_output_node
+                                    .as_deref()
+                                    .unwrap_or("unbound"),
+                            );
+                            ui.end_row();
+
+                            ui.label("Input source");
+                            generated_noise_source_combo(
+                                ui,
+                                selected_scenario,
+                                &mut self.analog_generated_noise_input_source,
+                            );
+                            ui.end_row();
+                        }
                     } else if selected_scenario.scenario_type == "analog_dc" {
                         ui.label("Analysis");
                         ui.label("Operating point");
@@ -397,6 +441,7 @@ impl CircuitCiApp {
                             start_frequency_hz: &mut self.analog_generated_start_frequency_hz,
                             stop_frequency_hz: &mut self.analog_generated_stop_frequency_hz,
                             points_per_decade: &mut self.analog_generated_points_per_decade,
+                            noise_input_source: &mut self.analog_generated_noise_input_source,
                             node_net: &mut self.analog_generated_node_net,
                             node_name: &mut self.analog_generated_node_name,
                         },
@@ -1200,6 +1245,33 @@ impl CircuitCiApp {
                 ),
                 Err(error) => self.record_error(error),
             }
+        } else if self.analog_run_setup_kind == "noise" {
+            let input_probe = format!("{}_input", self.analog_probe_name.trim());
+            let draft = AnalogNoiseScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                output_probe_name: self.analog_probe_name.clone(),
+                input_probe_name: input_probe,
+                input_source: self.analog_noise_input_source.clone(),
+                start_frequency_hz: self.analog_start_frequency_hz,
+                stop_frequency_hz: self.analog_stop_frequency_hz,
+                points_per_decade: self.analog_points_per_decade,
+            };
+            match append_analog_noise_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Noise run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
         } else {
             let draft = AnalogScenarioDraft {
                 name: self.analog_scenario_name.clone(),
@@ -1352,6 +1424,7 @@ impl CircuitCiApp {
             start_frequency_hz: self.analog_generated_start_frequency_hz,
             stop_frequency_hz: self.analog_generated_stop_frequency_hz,
             points_per_decade: self.analog_generated_points_per_decade,
+            noise_input_source: self.analog_generated_noise_input_source.clone(),
         };
         match replace_generated_settings(&self.project_yaml, &draft) {
             Ok(updated) => self.apply_edited_project_yaml(
@@ -1731,4 +1804,85 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+}
+
+fn initialize_noise_source_default(snapshot: &ProjectSnapshot, selected: &mut String) {
+    if !selected.is_empty()
+        && snapshot
+            .components_detail
+            .iter()
+            .any(|component| component.id == *selected)
+    {
+        return;
+    }
+    if let Some(component) = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.spice.as_ref().is_some_and(is_noise_source_spice))
+        .or_else(|| snapshot.components_detail.first())
+    {
+        *selected = component.id.clone();
+    }
+}
+
+fn noise_source_combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    selected: &mut String,
+    snapshot: &ProjectSnapshot,
+) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(if selected.is_empty() {
+            "select source"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for component in snapshot
+                .components_detail
+                .iter()
+                .filter(|component| component.spice.as_ref().is_some_and(is_noise_source_spice))
+                .chain(snapshot.components_detail.iter().filter(|component| {
+                    component
+                        .spice
+                        .as_ref()
+                        .is_none_or(|spice| !is_noise_source_spice(spice))
+                }))
+            {
+                ui.selectable_value(selected, component.id.clone(), &component.id);
+            }
+        });
+}
+
+fn generated_noise_source_combo(
+    ui: &mut egui::Ui,
+    scenario: &super::analog_generated::AnalogGeneratedScenario,
+    selected: &mut String,
+) {
+    if selected.is_empty()
+        && let Some(input_source) = &scenario.noise_input_source
+    {
+        *selected = input_source.clone();
+    }
+    egui::ComboBox::from_id_salt("analog_generated_noise_input_source")
+        .selected_text(if selected.is_empty() {
+            "select source"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for component in &scenario.board_components {
+                ui.selectable_value(selected, component.id.clone(), &component.id);
+            }
+        });
+}
+
+fn is_noise_source_spice(spice: &super::sketch_spice::SketchComponentSpice) -> bool {
+    matches!(
+        spice.kind,
+        SketchSpiceKind::DcVoltageSource
+            | SketchSpiceKind::PulseVoltageSource
+            | SketchSpiceKind::DcCurrentSource
+            | SketchSpiceKind::PulseCurrentSource
+    )
 }

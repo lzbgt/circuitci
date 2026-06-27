@@ -320,7 +320,8 @@ orientation under `board.schematic.node_styles`.
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
 `src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
-editors. `src/gui/analog_run_setup.rs` owns generated transient and AC/Bode
+editors. `src/gui/analog_run_setup.rs` owns generated transient, AC/Bode,
+DC operating-point, and noise
 run-setup YAML creation, including model-file inference and generated SPICE
 node/pin bindings. `src/gui/simulation_sweeps.rs`
 owns the user-facing Run Input Sweeps panel. Sweep creation is
@@ -334,14 +335,17 @@ Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
 The same panel exposes one-click corner presets for supply, load, temperature,
 model-selector, and RC-tolerance sweeps, all persisted as ordinary
 `analog.sweeps` data.
-The run-setup editor can create generated transient, AC/Bode, or DC
-operating-point observations. AC/Bode creation writes a normal `analog_ac`
+The run-setup editor can create generated transient, AC/Bode, DC
+operating-point, or noise observations. AC/Bode creation writes a normal `analog_ac`
 scenario with start/stop frequency, points per decade, generated board
 component inclusion, ground binding, and an initial voltage probe. DC creation
 writes a normal `analog_dc` scenario with `analysis: {type: op}`, generated
 board component inclusion, ground binding, and an initial voltage probe, so
 bias observations can be authored from the GUI without a hand-authored SPICE
-deck.
+deck. Noise creation writes a normal `analog_noise` scenario with
+`analysis: {type: noise}`, a selected output net, selected input source,
+start/stop frequency, points per decade, output/input noise probes, generated
+board component inclusion, ground binding, and model-file inference.
 The check editor can author transient, AC/Bode, and DC operating-point
 assertions. AC checks expose frequency fields for gain or phase at a
 frequency, gain crossing-frequency limits, and threshold-only phase/gain
@@ -380,7 +384,7 @@ be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
 report. Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces, mark loaded preview labels, skip already loaded columns, and preserve the full
 deferred artifact placeholder for later all-column loading. Loaded full artifacts and selected-column loads can be inspected through footprint readouts with compact source memory totals that can be copied as CSV or Markdown, classified/grouped/filtered as full CSV, selected-column, or runtime-only views, sorted/filtered by runtime cost, copied/exported as visible-row CSV memory diagnostics, warned when the estimated f64 data footprint exceeds the runtime budget, and unloaded individually or through guarded visible-row/largest-first preview/confirmation from the runtime Scopes state to free memory; full loads become deferred reload placeholders again, and selected-column loads mark those preview columns unloaded without changing Board IR or reports.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. It recognizes `bode.csv` headers with `frequency_hz`, converts them into frequency-axis Scopes artifacts, and maps AC magnitude/phase/linear columns into unit-aware trace labels so Bode output reuses the same plot, compare, and bundle pipeline as transient waveform CSVs. `src/gui/waveform/waveform_operating_point.rs` owns DC `operating_point.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, probe, value, worst-corner marking, artifact label, and Copy CSV action. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. It recognizes `bode.csv` and `noise_spectrum.csv` headers with `frequency_hz`, converts them into frequency-axis Scopes artifacts, maps AC magnitude/phase/linear columns into unit-aware trace labels, and maps output/input noise-density columns into `V/sqrt(Hz)` labels so frequency-domain output reuses the same plot, compare, and bundle pipeline as transient waveform CSVs. `src/gui/waveform/waveform_operating_point.rs` owns DC `operating_point.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, probe, value, worst-corner marking, artifact label, and Copy CSV action. `src/gui/waveform/waveform_noise.rs` owns `noise_total.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, output/input integrated RMS noise, artifact label, and CSV/Markdown copy actions. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
 row/visible/all, matching-column, remaining-preview-column, or exact
@@ -608,7 +612,10 @@ form:
   DC operating-point runs show a compact table above the waveform selector
   when `operating_point.csv` artifacts are present; pure DC runs stay in
   Observations instead of falling through to Reports, and sweep margin
-  summaries mark the limiting table rows directly. If a schematic has no analog scope probes, `Run` prepares the Scopes workflow
+  summaries mark the limiting table rows directly. Noise runs show
+  `noise_spectrum.csv` as frequency-axis output/input density traces and
+  `noise_total.csv` as a compact integrated output/input RMS noise table with
+  CSV/Markdown copy actions. If a schematic has no analog scope probes, `Run` prepares the Scopes workflow
   by adding a generated transient voltage probe on the default non-ground net
   before validation. The selected trace side dock also includes a bounded
   frequency-domain peak readout derived from the loaded transient waveform.

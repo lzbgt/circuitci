@@ -1,6 +1,7 @@
 use super::project::{optional_path, sanitized_project_name};
 use super::waveform::{
-    OperatingPointView, WaveformLoadDiagnostic, WaveformLoadRequest, WaveformView,
+    NoiseTotalView, OperatingPointView, WaveformLoadDiagnostic, WaveformLoadRequest, WaveformView,
+    load_report_noise_totals_with_progress_and_cancel,
     load_report_operating_points_with_progress_and_cancel,
     load_report_waveforms_with_progress_and_cancel,
     load_waveform_requests_with_progress_and_cancel, merge_waveform_load_diagnostics,
@@ -74,6 +75,7 @@ struct ValidationJobOutput {
     markdown: String,
     waveforms: Vec<WaveformView>,
     operating_points: Vec<OperatingPointView>,
+    noise_totals: Vec<NoiseTotalView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
 }
 
@@ -155,11 +157,17 @@ impl CircuitCiApp {
                         |stage, detail| send_background_progress(&sender, stage, detail),
                         || cancel_token.load(Ordering::Relaxed),
                     )?;
+                    let noise_totals = load_report_noise_totals_with_progress_and_cancel(
+                        &report,
+                        |stage, detail| send_background_progress(&sender, stage, detail),
+                        || cancel_token.load(Ordering::Relaxed),
+                    )?;
                     Ok(ValidationJobOutput {
                         report,
                         markdown,
                         waveforms,
                         operating_points,
+                        noise_totals,
                         waveform_load_diagnostics,
                     })
                 });
@@ -622,6 +630,7 @@ impl CircuitCiApp {
                 let waveforms = output.waveforms;
                 let waveform_count = waveforms.len();
                 let operating_point_count = output.operating_points.len();
+                let noise_total_count = output.noise_totals.len();
                 let deferred_count =
                     waveform_load_deferred_paths(&output.waveform_load_diagnostics).len();
                 let validation_status = format!("Validation {}", output.report.result);
@@ -630,6 +639,7 @@ impl CircuitCiApp {
                 self.report = Some(output.report);
                 self.waveforms = waveforms;
                 self.operating_points = output.operating_points;
+                self.noise_totals = output.noise_totals;
                 self.waveform_load_diagnostics = output.waveform_load_diagnostics;
                 self.waveform_plot_cache.clear();
                 self.waveform_pinned_traces.clear();
@@ -649,21 +659,24 @@ impl CircuitCiApp {
                 self.waveform_value_max = None;
                 self.clear_waveform_view_history();
                 self.waveform_trigger_threshold = 0.0;
-                let next_stage =
-                    if waveform_count == 0 && deferred_count == 0 && operating_point_count == 0 {
-                        Stage::Reports
-                    } else {
-                        Stage::Simulation
-                    };
+                let next_stage = if waveform_count == 0
+                    && deferred_count == 0
+                    && operating_point_count == 0
+                    && noise_total_count == 0
+                {
+                    Stage::Reports
+                } else {
+                    Stage::Simulation
+                };
                 self.push_diagnostic(&format!(
-                    "Background validation report written; loaded {waveform_count} waveform view(s), {operating_point_count} DC operating-point table(s), deferred {deferred_count} artifact(s)."
+                    "Background validation report written; loaded {waveform_count} waveform view(s), {operating_point_count} DC operating-point table(s), {noise_total_count} noise-total table(s), deferred {deferred_count} artifact(s)."
                 ));
                 self.push_background_job_record(
                     "validation",
                     "completed",
                     elapsed_secs,
                     format!(
-                        "Validation {}; loaded {waveform_count} waveform view(s), {operating_point_count} DC operating-point table(s), deferred {deferred_count} artifact(s).",
+                        "Validation {}; loaded {waveform_count} waveform view(s), {operating_point_count} DC operating-point table(s), {noise_total_count} noise-total table(s), deferred {deferred_count} artifact(s).",
                         self.status.trim_start_matches("Validation ")
                     ),
                     Some(result.output_dir.to_string_lossy().into_owned()),

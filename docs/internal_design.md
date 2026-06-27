@@ -409,8 +409,11 @@ removed. It also owns generated load/source candidate inference, the small
 preset catalog for common supply, load, temperature, model-selector, and
 RC-tolerance corner sweeps, and vendor model-section corner editing; all are
 serialized through the same `analog.sweeps` structure rather than a separate
-GUI-only model. `src/gui/simulation_editors.rs` also owns AC check authoring for
-Bode observations, mapping gain/phase/cutoff controls to `at_hz`,
+GUI-only model. `src/gui/simulation_editors.rs` also owns generated noise
+run-setup authoring, mapping the selected output net, input source, start/stop
+frequency, and points-per-decade controls to normal `analog_noise`
+`SPICE_NOISE_ANALYSIS` Board IR. It also owns AC check authoring for Bode
+observations, mapping gain/phase/cutoff controls to `at_hz`,
 `frequency_limit_hz`, `threshold_db`, and `threshold_deg`.
 `src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
 findings back into the selected generated run-setup overview so users can see
@@ -492,7 +495,7 @@ outlive its report. Deferred artifacts are parsed only through the same
 background waveform-loader path when the user explicitly loads them.
 Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces and diagnostics, mark loaded preview labels, skip already loaded columns, and preserve
 the original full deferred placeholder until a full-column load succeeds. Loaded full artifacts and selected-column loads can be inspected through footprint readouts with compact source memory totals that can be copied as CSV or Markdown, classified/grouped/filtered as full CSV, selected-column, or runtime-only views, sorted/filtered by runtime cost, copied/exported as visible-row CSV memory diagnostics, warned when the estimated f64 data footprint exceeds the runtime budget, and unloaded individually or through guarded visible-row/largest-first preview/confirmation from runtime Scopes memory; full loads become deferred reload placeholders again, and selected-column loads remove their selected diagnostics so preview columns become available to reload.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows. `src/gui/waveform/waveform_deferred.rs` owns the selector-side deferred placeholder UI plus remaining-preview and searchable exact preview-column picking/loading actions.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. It treats `bode.csv` and `noise_spectrum.csv` as frequency-axis artifacts when their first column is `frequency_hz`; noise-density columns are labeled as output/input `V/sqrt(Hz)` traces. `src/gui/waveform/waveform_noise.rs` owns scalar `noise_total.csv` loading and the Scopes integrated output/input RMS noise table. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows. `src/gui/waveform/waveform_deferred.rs` owns the selector-side deferred placeholder UI plus remaining-preview and searchable exact preview-column picking/loading actions.
 Focused waveform and Scopes regressions are split into
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helpers,
 `src/gui/waveform/waveform_loading_tests.rs` for waveform loading, deferred-artifact, diagnostics, and footprint behavior,
@@ -572,9 +575,10 @@ source primitive, probe, check, model SHA, node binding, and pin binding
 coverage. Readiness actions may preselect existing Observations-stage editor
 fields for those gaps, but they must not mutate Board IR by themselves. It must
 not introduce a second analog netlist or sign-off model.
-`src/gui/analog_run_setup.rs` owns generated-from-Board analog transient and
-AC/Bode scenario creation, including derived node/pin bindings and generated
-model-file inference. `src/gui/analog_ac_presets.rs` owns GUI Bode check
+`src/gui/analog_run_setup.rs` owns generated-from-Board analog transient,
+AC/Bode, DC operating-point, and noise scenario creation, including derived
+node/pin bindings, generated model-file inference, `.op` analysis settings,
+and `.noise` output/input source settings. `src/gui/analog_ac_presets.rs` owns GUI Bode check
 presets that append ordinary AC assertion rows for common low-pass and
 unity-gain observations plus loop-stability phase/gain margin checks.
 `src/gui/analog.rs` owns selected-net voltage-probe
