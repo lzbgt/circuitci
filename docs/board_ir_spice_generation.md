@@ -178,6 +178,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
 - `examples/good_ideal_opamp_buffer` proves reusable generic behavioral
   macro-model packs can drive generated Board IR decks through the same
   subcircuit, model-file, and SHA-pinned artifact path used by vendor models.
+- `examples/comparator_threshold_scope` proves the generic comparator
+  macro-model in a direct-open GUI example with routed schematic metadata,
+  named scope probes, and executable threshold/output-state waveform checks.
 - `examples/bad_mosfet_missing_body_policy` proves a three-pin MOSFET fails
   closed when the model does not explicitly allow body-to-source tying.
 - `examples/bad_mosfet_model_missing_sha` proves generated device models must

@@ -1,0 +1,216 @@
+# Scope-ready comparator threshold GUI example.
+#
+# This direct-open Board IR project uses the generic behavioral comparator
+# model pack to demonstrate threshold observation presets and oscilloscope
+# inspection from Sketch/Scopes.
+project:
+  name: comparator_threshold_scope
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      VIN: Simulation_SPICE:VPULSE
+      VREF: Simulation_SPICE:VDC
+      XU1: Comparator:LMV331
+      RLOAD: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VREF: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:XU1: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 48.0, y: 80.0 }
+      component:VIN: { x: 48.0, y: 240.0 }
+      component:VREF: { x: 48.0, y: 368.0 }
+      component:XU1: { x: 384.0, y: 256.0 }
+      component:RLOAD: { x: 560.0, y: 376.0 }
+      net:vcc_5v: { x: 192.0, y: 64.0 }
+      net:input: { x: 224.0, y: 224.0 }
+      net:reference: { x: 224.0, y: 352.0 }
+      net:output: { x: 544.0, y: 240.0 }
+      net:gnd: { x: 256.0, y: 528.0 }
+    wire_routes:
+      VCC.P->vcc_5v:
+        points:
+          - { x: 192.0, y: 112.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 96.0, y: 528.0 }
+      VIN.P->input:
+        points:
+          - { x: 224.0, y: 272.0 }
+      VIN.N->gnd:
+        points:
+          - { x: 96.0, y: 528.0 }
+      VREF.P->reference:
+        points:
+          - { x: 224.0, y: 400.0 }
+      VREF.N->gnd:
+        points:
+          - { x: 96.0, y: 528.0 }
+      XU1.INP->input:
+        points:
+          - { x: 320.0, y: 224.0 }
+      XU1.INN->reference:
+        points:
+          - { x: 320.0, y: 352.0 }
+      XU1.VCC->vcc_5v:
+        points:
+          - { x: 384.0, y: 64.0 }
+      XU1.VEE->gnd:
+        points:
+          - { x: 384.0, y: 528.0 }
+      XU1.OUT->output:
+        points:
+          - { x: 544.0, y: 272.0 }
+      RLOAD.A->output:
+        points:
+          - { x: 608.0, y: 272.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 528.0 }
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vcc_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    VIN:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: input
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0.5
+          pulsed_v: 2.5
+          delay_us: 10.0
+          rise_us: 1.0
+          fall_us: 1.0
+          width_us: 40.0
+          period_us: 80.0
+    VREF:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: reference
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 1.2
+    XU1:
+      model: generic.analog.ideal_comparator
+      pins:
+        INP: input
+        INN: reference
+        VCC: vcc_5v
+        VEE: gnd
+        OUT: output
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: output
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    vcc_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    input:
+      kind: digital_or_analog
+    reference:
+      kind: power
+      nominal_voltage: 1.2
+    output:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: comparator_threshold_step
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [VCC, VIN, VREF, XU1, RLOAD]
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: e396cd27587ff3c9faca57a4b9f64bee0f3c7c4c58f33a532a8607e8c8c5023a
+      node_bindings:
+        - { node: vcc, net: vcc_5v }
+        - { node: in, net: input }
+        - { node: ref, net: reference }
+        - { node: out, net: output }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VCC, pin: P } }
+        - { node: "0", endpoint: { component: VCC, pin: N } }
+        - { node: in, endpoint: { component: VIN, pin: P } }
+        - { node: "0", endpoint: { component: VIN, pin: N } }
+        - { node: ref, endpoint: { component: VREF, pin: P } }
+        - { node: "0", endpoint: { component: VREF, pin: N } }
+        - { node: in, endpoint: { component: XU1, pin: INP } }
+        - { node: ref, endpoint: { component: XU1, pin: INN } }
+        - { node: vcc, endpoint: { component: XU1, pin: VCC } }
+        - { node: "0", endpoint: { component: XU1, pin: VEE } }
+        - { node: out, endpoint: { component: XU1, pin: OUT } }
+        - { node: out, endpoint: { component: RLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 60.0
+        max_step_us: 0.1
+      stimuli:
+        - name: input_threshold_step
+          description: Input pulse steps from 0.5 V to 2.5 V across a 1.2 V reference.
+      probes:
+        - name: v_input
+          expression: V(in)
+        - name: v_reference
+          expression: V(ref)
+        - name: v_output
+          expression: V(out)
+        - name: v_vcc
+          expression: V(vcc)
+      assertions:
+        - name: output_low_before_input_crosses_reference
+          probe: v_output
+          at_us: 5.0
+          relation: below
+          threshold_v: 0.5
+        - name: output_high_after_input_crosses_reference
+          probe: v_output
+          at_us: 31.0
+          relation: above
+          threshold_v: 4.5
+        - name: reference_stays_near_threshold
+          probe: v_reference
+          aggregation: mean
+          start_us: 0.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 1.19
+        - name: output_reaches_high_before_12us
+          probe: v_output
+          aggregation: rising_crossing_time
+          start_us: 10.0
+          end_us: 20.0
+          relation: below
+          threshold_v: 2.5
+          time_limit_us: 12.0

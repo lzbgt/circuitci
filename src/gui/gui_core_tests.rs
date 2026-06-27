@@ -509,13 +509,51 @@ fn scope_examples_load_routed_schematic_edges() {
             pin_side: SketchPinSide::Auto,
         }
     );
+
+    app.request_project_example_load(
+        gui_project_example_by_id("comparator_threshold_scope"),
+        None,
+    );
+    let snapshot = app.project_snapshot.as_ref().unwrap();
+
+    assert_eq!(snapshot.wire_routes.len(), 13);
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(
+        app.sketch_viewport_command,
+        Some(SketchViewportCommand::FitAll)
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("XU1.OUT", "output"))
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("VREF.P", "reference"))
+    );
+    let comparator = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "XU1")
+        .unwrap();
+    assert_eq!(
+        comparator.kicad_symbol_id.as_deref(),
+        Some("Comparator:LMV331")
+    );
+    let load = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "RLOAD")
+        .unwrap();
+    assert_eq!(load.kicad_symbol_id.as_deref(), Some("Device:R"));
 }
 
 #[test]
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 2);
+    assert_eq!(examples.len(), 3);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -563,12 +601,43 @@ fn gui_project_example_registry_lists_rc_lowpass_scope_fixture() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_comparator_threshold_scope_fixture() {
+    let example = gui_project_example_by_id("comparator_threshold_scope");
+
+    assert_eq!(example.category, "Comparator");
+    assert_eq!(example.open_label, "Open Comparator Threshold Example");
+    assert_eq!(example.run_label, "Open Comparator + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Pulse input against a DC reference for output-state threshold checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/comparator_threshold_scope/project.yaml"
+    );
+    assert_eq!(example.project_name, "comparator_threshold_scope");
+    assert_eq!(
+        example.expected_traces,
+        &["v(input)", "v(reference)", "v(output)", "v(vcc)"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "80 us input pulse crossing a 1.2 V reference"
+    );
+}
+
+#[test]
 fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     let mut app = CircuitCiApp::default();
 
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
     app.selected_project_example_id = "rc_lowpass_scope".to_string();
     assert_eq!(app.selected_project_example().id, "rc_lowpass_scope");
+    app.selected_project_example_id = "comparator_threshold_scope".to_string();
+    assert_eq!(
+        app.selected_project_example().id,
+        "comparator_threshold_scope"
+    );
     app.selected_project_example_id = "deleted_example".to_string();
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
 }

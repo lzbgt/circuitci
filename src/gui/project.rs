@@ -16,6 +16,13 @@ const RC_LOWPASS_SCOPE_EXAMPLE_PROJECT: &str = "examples/rc_lowpass_scope/projec
 const RC_LOWPASS_SCOPE_EXAMPLE_NAME: &str = "rc_lowpass_scope";
 const RC_LOWPASS_SCOPE_EXPECTED_TRACES: &[&str] = &["v(input)", "v(filtered)", "i(VSIN)"];
 const RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY: &str = "1.00 kHz sine, fc about 1.59 kHz";
+const COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/comparator_threshold_scope/project.yaml";
+const COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_NAME: &str = "comparator_threshold_scope";
+const COMPARATOR_THRESHOLD_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v(input)", "v(reference)", "v(output)", "v(vcc)"];
+const COMPARATOR_THRESHOLD_SCOPE_EXPECTED_FREQUENCY: &str =
+    "80 us input pulse crossing a 1.2 V reference";
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
@@ -40,6 +47,18 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: RC_LOWPASS_SCOPE_EXAMPLE_NAME,
         expected_traces: RC_LOWPASS_SCOPE_EXPECTED_TRACES,
         expected_frequency: RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY,
+    },
+    GuiProjectExample {
+        id: "comparator_threshold_scope",
+        category: "Comparator",
+        open_label: "Open Comparator Threshold Example",
+        run_label: "Open Comparator + Run Scopes",
+        workflow_title: "Comparator Threshold Workflow",
+        summary: "Pulse input against a DC reference for output-state threshold checks.",
+        project_path: COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_PROJECT,
+        project_name: COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_NAME,
+        expected_traces: COMPARATOR_THRESHOLD_SCOPE_EXPECTED_TRACES,
+        expected_frequency: COMPARATOR_THRESHOLD_SCOPE_EXPECTED_FREQUENCY,
     },
 ];
 
