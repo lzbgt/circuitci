@@ -80,6 +80,8 @@ use waveform_load_diagnostics::{
     waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
     waveform_load_diagnostics_csv,
 };
+#[cfg(test)]
+use waveform_operating_point::parse_operating_point_csv_text;
 pub(super) use waveform_operating_point::{
     OperatingPointView, load_report_operating_points_with_progress_and_cancel,
 };

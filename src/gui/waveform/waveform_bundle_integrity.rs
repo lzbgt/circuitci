@@ -4,11 +4,13 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-pub(super) const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 8] = [
+pub(super) const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 10] = [
     ("index.html", "index.html"),
     ("scope_plot.svg", "scope_plot.svg"),
     ("measurement_snapshots.csv", "measurement_snapshots.csv"),
     ("measurement_snapshots.md", "measurement_snapshots.md"),
+    ("operating_points.csv", "operating_points.csv"),
+    ("operating_points.md", "operating_points.md"),
     ("sweep_margin_summaries.csv", "sweep_margin_summaries.csv"),
     ("sweep_margin_summaries.md", "sweep_margin_summaries.md"),
     ("README.md", "README.md"),
@@ -112,6 +114,8 @@ pub(super) fn scope_report_bundle_content_metadata(
     scope_plot_svg: &str,
     measurement_snapshots_csv: &str,
     measurement_snapshots_markdown: &str,
+    operating_points_csv: &str,
+    operating_points_markdown: &str,
     sweep_margin_summaries_csv: &str,
     sweep_margin_summaries_markdown: &str,
 ) -> Vec<ScopeReportBundleArtifactMetadata> {
@@ -125,6 +129,8 @@ pub(super) fn scope_report_bundle_content_metadata(
             "measurement_snapshots.md",
             measurement_snapshots_markdown.as_bytes(),
         ),
+        artifact_metadata_for_bytes("operating_points.csv", operating_points_csv.as_bytes()),
+        artifact_metadata_for_bytes("operating_points.md", operating_points_markdown.as_bytes()),
         artifact_metadata_for_bytes(
             "sweep_margin_summaries.csv",
             sweep_margin_summaries_csv.as_bytes(),

@@ -11,6 +11,9 @@ use super::waveform_footprint::{
     waveform_footprint_summary_markdown,
 };
 use super::waveform_load::format_waveform_load_bytes;
+use super::waveform_operating_point::{
+    operating_point_views_csv, operating_point_views_html, operating_point_views_markdown,
+};
 use super::waveform_snapshots::{markdown_escape, scope_snapshots_csv, scope_snapshots_markdown};
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use crate::reports::{Finding, ValidationReport};
@@ -27,6 +30,8 @@ pub(super) struct ScopeReportBundleFiles {
     index_html: String,
     measurement_snapshots_csv: String,
     measurement_snapshots_markdown: String,
+    operating_points_csv: String,
+    operating_points_markdown: String,
     sweep_margin_summaries_csv: String,
     sweep_margin_summaries_markdown: String,
     readme: String,
@@ -61,8 +66,13 @@ impl CircuitCiApp {
         match write_scope_report_bundle_files(&bundle_dir, &files) {
             Ok(()) => {
                 self.push_recent_scope_report_bundle(bundle_dir.to_string_lossy().into_owned());
+                let operating_point_values = self
+                    .operating_points
+                    .iter()
+                    .map(|view| view.values.len())
+                    .sum::<usize>();
                 self.status = format!(
-                    "Exported scope report bundle with {} snapshot row(s) to {}.",
+                    "Exported scope report bundle with {} snapshot row(s) and {operating_point_values} DC value row(s) to {}.",
                     snapshots.len(),
                     bundle_dir.display()
                 );
@@ -119,17 +129,24 @@ impl CircuitCiApp {
         &mut self,
         snapshots: &[ScopeMeasurementSnapshot],
     ) -> Option<ScopeReportBundleFiles> {
-        if snapshots.is_empty() {
-            self.status =
-                "No scope measurement snapshots match the current bundle filters.".to_string();
+        if snapshots.is_empty() && self.operating_points.is_empty() {
+            self.status = "No scope measurement snapshots or DC operating-point rows are available to bundle.".to_string();
             return None;
         }
-        let Some(scope_plot_svg) = self.current_scope_plot_svg() else {
+        let scope_plot_svg = if let Some(scope_plot_svg) = self.current_scope_plot_svg() {
+            scope_plot_svg
+        } else if !self.operating_points.is_empty() {
+            dc_operating_point_placeholder_svg()
+        } else {
             self.status = "No scope plot is available to include in the report bundle.".to_string();
             return None;
         };
         let measurement_snapshots_csv = scope_snapshots_csv(snapshots);
         let measurement_snapshots_markdown = scope_snapshots_markdown(snapshots);
+        let operating_points_csv =
+            operating_point_views_csv(&self.operating_points, self.report.as_ref());
+        let operating_points_markdown =
+            operating_point_views_markdown(&self.operating_points, self.report.as_ref());
         let sweep_margin_rows = scope_sweep_margin_summary_rows(self.report.as_ref());
         let sweep_margin_summaries_csv = scope_sweep_margin_summaries_csv(&sweep_margin_rows);
         let sweep_margin_summaries_markdown =
@@ -138,6 +155,8 @@ impl CircuitCiApp {
             &scope_plot_svg,
             &measurement_snapshots_csv,
             &measurement_snapshots_markdown,
+            &operating_points_csv,
+            &operating_points_markdown,
             &sweep_margin_summaries_csv,
             &sweep_margin_summaries_markdown,
         );
@@ -150,6 +169,8 @@ impl CircuitCiApp {
             ),
             measurement_snapshots_csv,
             measurement_snapshots_markdown,
+            operating_points_csv,
+            operating_points_markdown,
             sweep_margin_summaries_csv,
             sweep_margin_summaries_markdown,
             readme: self.scope_report_bundle_readme(snapshots, &sweep_margin_rows, &metadata),
@@ -180,6 +201,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - `index.html` - local bundle index page with links and summary context.
 - `measurement_snapshots.csv` - filtered measurement snapshot rows.
 - `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
+- `operating_points.csv` - loaded DC operating-point rows.
+- `operating_points.md` - loaded DC operating-point rows as Markdown.
 - `sweep_margin_summaries.csv` - worst-corner sweep margin summary rows from the loaded validation report.
 - `sweep_margin_summaries.md` - worst-corner sweep margin summary rows as Markdown.
 - `README.md` - this manifest.
@@ -202,6 +225,13 @@ report conveniences and are not part of the manifest they describe.
 - Source: {}
 - Sort: {}
 - Group: {}
+
+## DC Operating Points
+
+- Artifacts: {}
+- Values: {}
+
+{}
 
 ## Sweep Margin Summaries
 
@@ -231,6 +261,12 @@ report conveniences and are not part of the manifest they describe.
             self.waveform_snapshot_source_filter.label(),
             self.waveform_snapshot_sort_key.label(),
             self.waveform_snapshot_group_mode.label(),
+            self.operating_points.len(),
+            self.operating_points
+                .iter()
+                .map(|view| view.values.len())
+                .sum::<usize>(),
+            operating_point_views_markdown(&self.operating_points, self.report.as_ref()),
             sweep_margin_rows.len(),
             scope_sweep_margin_summaries_markdown(sweep_margin_rows),
             self.waveform_plot_export_size.label(),
@@ -285,6 +321,8 @@ report conveniences and are not part of the manifest they describe.
     <li><a href=\"scope_plot.svg\">scope_plot.svg</a> - configured Scopes plot SVG.</li>
     <li><a href=\"measurement_snapshots.csv\">measurement_snapshots.csv</a> - filtered measurement snapshot rows.</li>
     <li><a href=\"measurement_snapshots.md\">measurement_snapshots.md</a> - filtered measurement snapshot rows as Markdown.</li>
+    <li><a href=\"operating_points.csv\">operating_points.csv</a> - loaded DC operating-point rows.</li>
+    <li><a href=\"operating_points.md\">operating_points.md</a> - loaded DC operating-point rows as Markdown.</li>
     <li><a href=\"sweep_margin_summaries.csv\">sweep_margin_summaries.csv</a> - worst-corner sweep margin summary rows from the loaded validation report.</li>
     <li><a href=\"sweep_margin_summaries.md\">sweep_margin_summaries.md</a> - worst-corner sweep margin summary rows as Markdown.</li>
     <li><a href=\"README.md\">README.md</a> - text manifest.</li>
@@ -305,6 +343,15 @@ report conveniences and are not part of the manifest they describe.
       <tr><th>Group</th><td>{}</td></tr>
     </tbody>
   </table>
+  <h2>DC Operating Points</h2>
+  <p><a href=\"operating_points.csv\">CSV</a> | <a href=\"operating_points.md\">Markdown</a></p>
+  <table>
+    <tbody>
+      <tr><th>Artifacts</th><td class=\"number\">{}</td></tr>
+      <tr><th>Values</th><td class=\"number\">{}</td></tr>
+    </tbody>
+  </table>
+  {}
   <h2>Sweep Margin Summaries</h2>
   <p><a href=\"sweep_margin_summaries.csv\">CSV</a> | <a href=\"sweep_margin_summaries.md\">Markdown</a></p>
   {}
@@ -337,6 +384,12 @@ report conveniences and are not part of the manifest they describe.
             html_escape(self.waveform_snapshot_source_filter.label()),
             html_escape(self.waveform_snapshot_sort_key.label()),
             html_escape(self.waveform_snapshot_group_mode.label()),
+            self.operating_points.len(),
+            self.operating_points
+                .iter()
+                .map(|view| view.values.len())
+                .sum::<usize>(),
+            operating_point_views_html(&self.operating_points, self.report.as_ref()),
             scope_sweep_margin_summaries_html(sweep_margin_rows),
             html_escape(self.waveform_plot_export_size.label()),
             yes_no(self.waveform_plot_export_cursors),
@@ -434,6 +487,18 @@ pub(super) fn write_scope_report_bundle_files(
             fs::write(
                 bundle_dir.join("measurement_snapshots.md"),
                 &files.measurement_snapshots_markdown,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("operating_points.csv"),
+                &files.operating_points_csv,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("operating_points.md"),
+                &files.operating_points_markdown,
             )
         })
         .and_then(|()| {
@@ -700,6 +765,19 @@ fn compact_number(value: f64) -> String {
         let text = format!("{value:.6}");
         text.trim_end_matches('0').trim_end_matches('.').to_string()
     }
+}
+
+fn dc_operating_point_placeholder_svg() -> String {
+    "\
+<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"960\" height=\"240\" viewBox=\"0 0 960 240\" role=\"img\" aria-label=\"CircuitCI DC operating-point bundle\">
+  <rect width=\"960\" height=\"240\" fill=\"#ffffff\"/>
+  <rect x=\"24\" y=\"24\" width=\"912\" height=\"192\" fill=\"#f6f8fa\" stroke=\"#d0d7de\"/>
+  <text x=\"48\" y=\"92\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"28\" fill=\"#202124\">CircuitCI DC Operating-Point Bundle</text>
+  <text x=\"48\" y=\"136\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"18\" fill=\"#57606a\">No time or frequency trace plot was loaded for this export.</text>
+  <text x=\"48\" y=\"168\" font-family=\"system-ui, -apple-system, Segoe UI, sans-serif\" font-size=\"18\" fill=\"#57606a\">See operating_points.csv and operating_points.md for bias evidence.</text>
+</svg>
+"
+    .to_string()
 }
 
 fn csv_escape(value: String) -> String {

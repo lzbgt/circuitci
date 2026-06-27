@@ -934,13 +934,15 @@ ephemeral selected/pinned cursor rows for the active compare view, then export
 the same bundle format so nominal, all-corner, or worst-corner overlays can be
 preserved with the limiting sweep-margin rows as design evidence without first
 adding persistent measurement snapshot rows.
-The index links the plot SVG, snapshot CSV/Markdown, README, manifest, and
-optional integrity detail files while surfacing the same snapshot, sweep-margin,
-plot, selected-trace, generated content artifact size/SHA-256 metadata, and
-loaded-waveform footprint summary context for quick browser review. The README
-records active snapshot filters, sweep-margin row counts, plot SVG options,
-selected trace context, loaded-waveform footprint source totals, generated
-files, and human-readable artifact size/SHA-256 metadata; the CSV manifest records expected size/SHA-256
+The index links the plot SVG, snapshot CSV/Markdown, DC operating-point
+CSV/Markdown, sweep-margin CSV/Markdown, README, manifest, and optional
+integrity detail files while surfacing the same snapshot, DC bias,
+sweep-margin, plot, selected-trace, generated content artifact size/SHA-256
+metadata, and loaded-waveform footprint summary context for quick browser
+review. The README records active snapshot filters, DC operating-point row
+counts, sweep-margin row counts, plot SVG options, selected trace context,
+loaded-waveform footprint source totals, generated files, and human-readable
+artifact size/SHA-256 metadata; the CSV manifest records expected size/SHA-256
 metadata for required bundle files so the GUI can distinguish changed artifacts
 from merely present artifacts. The optional integrity detail files are derived
 from that manifest and intentionally not included in the manifest they
@@ -959,8 +961,9 @@ untracked problem artifacts, and can copy the current detail projection as CSV
 or Markdown for troubleshooting reports. If a recent bundle is missing required
 files or has files
 that no longer match the manifest, `Preview Refresh` / `Confirm Refresh`
-regenerates the plot SVG, snapshot CSV/Markdown, index, README, and manifest
-from the current filtered Scopes state into that same
+regenerates the plot SVG, snapshot CSV/Markdown, operating-point CSV/Markdown,
+sweep-margin CSV/Markdown, index, README, and manifest from the current
+filtered Scopes state into that same
 `scope_report_bundle_*` folder. `Clean Old Bundles` previews older direct child directories named
 `scope_report_bundle_*` under the configured output directory; `Confirm Cleanup`
 then removes only those previewed bundle folders, preserving the newest bounded

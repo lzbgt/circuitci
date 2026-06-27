@@ -1,9 +1,9 @@
 use super::{
     WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
-    parse_waveform_csv_text, scope_report_bundle_artifact_detail_rows,
-    scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
-    scope_report_bundle_integrity_details, scope_report_bundle_integrity_details_csv,
-    scope_report_bundle_integrity_details_markdown,
+    parse_operating_point_csv_text, parse_waveform_csv_text,
+    scope_report_bundle_artifact_detail_rows, scope_report_bundle_changed_artifacts,
+    scope_report_bundle_index_path, scope_report_bundle_integrity_details,
+    scope_report_bundle_integrity_details_csv, scope_report_bundle_integrity_details_markdown,
     scope_report_bundle_integrity_projected_details, scope_report_bundle_missing_artifacts,
     unique_scope_report_bundle_dir,
 };
@@ -150,6 +150,73 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
 }
 
 #[test]
+fn scope_report_bundle_exports_dc_operating_points_without_waveforms() {
+    let operating_point = parse_operating_point_csv_text(
+        "vin,midpoint\n5.0,2.375\n",
+        "out/analog/divider_dc_bias/divider_tolerance_corner_007/operating_point.csv",
+    )
+    .unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_dc_bundle_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        operating_points: vec![operating_point],
+        report: Some(report(vec![dc_sweep_margin(
+            "divider_dc_bias",
+            "midpoint_low",
+            "midpoint",
+            "divider_tolerance",
+            "corner_007",
+        )])),
+        ..Default::default()
+    };
+
+    app.export_scope_report_bundle(&[]);
+
+    let bundle = std::path::Path::new(&app.waveform_recent_report_bundles[0]);
+    let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
+    let snapshot_csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
+    let op_csv = fs::read_to_string(bundle.join("operating_points.csv")).unwrap();
+    let op_markdown = fs::read_to_string(bundle.join("operating_points.md")).unwrap();
+    let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
+    let index = fs::read_to_string(bundle.join("index.html")).unwrap();
+    let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
+
+    assert!(svg.contains("CircuitCI DC Operating-Point Bundle"));
+    assert!(snapshot_csv.starts_with("label,note,source,trace"));
+    assert!(op_csv.starts_with("scenario,sweep,corner,probe,value,worst,artifact\n"));
+    assert!(op_csv.contains("divider_dc_bias,divider_tolerance,corner_007,midpoint"));
+    assert!(op_csv.contains(",limiting,"));
+    assert!(op_markdown.contains("| divider_dc_bias | divider_tolerance | corner_007 |"));
+    assert!(op_markdown.contains("| midpoint |"));
+    assert!(op_markdown.contains("| limiting |"));
+    assert!(readme.contains("## DC Operating Points"));
+    assert!(readme.contains("- Artifacts: 1"));
+    assert!(readme.contains("- Values: 2"));
+    assert!(readme.contains("- Rows: 0"));
+    assert!(index.contains("<h2>DC Operating Points</h2>"));
+    assert!(index.contains("href=\"operating_points.csv\""));
+    assert!(index.contains("<td>midpoint</td>"));
+    assert!(index.contains("<td>limiting</td>"));
+    assert!(manifest.contains("operating_points.csv,operating_points.csv"));
+    assert!(manifest.contains("operating_points.md,operating_points.md"));
+    assert!(scope_report_bundle_missing_artifacts(bundle).is_empty());
+    assert!(
+        scope_report_bundle_changed_artifacts(bundle)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(app.status.contains("Exported scope report bundle"));
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
 fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     let nominal = parse_waveform_csv_text(
         "time,v(filtered)\n0,0\n0.000001,0.5\n",
@@ -283,6 +350,20 @@ fn sweep_margin(
     finding.limit.insert("relation".to_string(), json!("below"));
     finding.limit.insert("limit_value".to_string(), json!(0.62));
     finding.limit.insert("limit_unit".to_string(), json!("V"));
+    finding
+}
+
+fn dc_sweep_margin(
+    scenario: &str,
+    assertion: &str,
+    probe: &str,
+    sweep: &str,
+    corner: &str,
+) -> Finding {
+    let mut finding = sweep_margin(scenario, assertion, probe, sweep, corner);
+    finding
+        .measured
+        .insert("quantity".to_string(), json!("operating point"));
     finding
 }
 
