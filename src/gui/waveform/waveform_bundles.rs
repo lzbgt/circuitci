@@ -13,16 +13,39 @@ use super::waveform_footprint::{
 use super::waveform_load::format_waveform_load_bytes;
 use super::waveform_snapshots::{markdown_escape, scope_snapshots_csv, scope_snapshots_markdown};
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
+use crate::reports::{Finding, ValidationReport};
+use serde_json::Value;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+const ANALOG_SWEEP_MARGIN_SUMMARY: &str = "ANALOG_SWEEP_MARGIN_SUMMARY";
 
 pub(super) struct ScopeReportBundleFiles {
     scope_plot_svg: String,
     index_html: String,
     measurement_snapshots_csv: String,
     measurement_snapshots_markdown: String,
+    sweep_margin_summaries_csv: String,
+    sweep_margin_summaries_markdown: String,
     readme: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct ScopeSweepMarginSummaryRow {
+    scenario: String,
+    assertion: String,
+    probe: String,
+    sweep: String,
+    corner: String,
+    inputs: String,
+    passed: bool,
+    measured: String,
+    relation: String,
+    limit: String,
+    margin: String,
+    evaluated_corners: u64,
 }
 
 impl CircuitCiApp {
@@ -107,23 +130,36 @@ impl CircuitCiApp {
         };
         let measurement_snapshots_csv = scope_snapshots_csv(snapshots);
         let measurement_snapshots_markdown = scope_snapshots_markdown(snapshots);
+        let sweep_margin_rows = scope_sweep_margin_summary_rows(self.report.as_ref());
+        let sweep_margin_summaries_csv = scope_sweep_margin_summaries_csv(&sweep_margin_rows);
+        let sweep_margin_summaries_markdown =
+            scope_sweep_margin_summaries_markdown(&sweep_margin_rows);
         let metadata = scope_report_bundle_content_metadata(
             &scope_plot_svg,
             &measurement_snapshots_csv,
             &measurement_snapshots_markdown,
+            &sweep_margin_summaries_csv,
+            &sweep_margin_summaries_markdown,
         );
         Some(ScopeReportBundleFiles {
             scope_plot_svg,
-            index_html: self.scope_report_bundle_index_html(snapshots, &metadata),
+            index_html: self.scope_report_bundle_index_html(
+                snapshots,
+                &sweep_margin_rows,
+                &metadata,
+            ),
             measurement_snapshots_csv,
             measurement_snapshots_markdown,
-            readme: self.scope_report_bundle_readme(snapshots, &metadata),
+            sweep_margin_summaries_csv,
+            sweep_margin_summaries_markdown,
+            readme: self.scope_report_bundle_readme(snapshots, &sweep_margin_rows, &metadata),
         })
     }
 
     fn scope_report_bundle_readme(
         &self,
         snapshots: &[ScopeMeasurementSnapshot],
+        sweep_margin_rows: &[ScopeSweepMarginSummaryRow],
         metadata: &[ScopeReportBundleArtifactMetadata],
     ) -> String {
         let selected_context = self
@@ -144,6 +180,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - `index.html` - local bundle index page with links and summary context.
 - `measurement_snapshots.csv` - filtered measurement snapshot rows.
 - `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
+- `sweep_margin_summaries.csv` - worst-corner sweep margin summary rows from the loaded validation report.
+- `sweep_margin_summaries.md` - worst-corner sweep margin summary rows as Markdown.
 - `README.md` - this manifest.
 - `artifact_manifest.csv` - expected size and SHA-256 metadata for required bundle artifacts.
 - `artifact_integrity_details.csv` - artifact integrity detail rows as CSV.
@@ -164,6 +202,12 @@ report conveniences and are not part of the manifest they describe.
 - Source: {}
 - Sort: {}
 - Group: {}
+
+## Sweep Margin Summaries
+
+- Rows: {}
+
+{}
 
 ## Plot Export Options
 
@@ -187,6 +231,8 @@ report conveniences and are not part of the manifest they describe.
             self.waveform_snapshot_source_filter.label(),
             self.waveform_snapshot_sort_key.label(),
             self.waveform_snapshot_group_mode.label(),
+            sweep_margin_rows.len(),
+            scope_sweep_margin_summaries_markdown(sweep_margin_rows),
             self.waveform_plot_export_size.label(),
             yes_no(self.waveform_plot_export_cursors),
             yes_no(self.waveform_plot_export_trigger),
@@ -202,6 +248,7 @@ report conveniences and are not part of the manifest they describe.
     fn scope_report_bundle_index_html(
         &self,
         snapshots: &[ScopeMeasurementSnapshot],
+        sweep_margin_rows: &[ScopeSweepMarginSummaryRow],
         metadata: &[ScopeReportBundleArtifactMetadata],
     ) -> String {
         let selected_context = self
@@ -238,6 +285,8 @@ report conveniences and are not part of the manifest they describe.
     <li><a href=\"scope_plot.svg\">scope_plot.svg</a> - configured Scopes plot SVG.</li>
     <li><a href=\"measurement_snapshots.csv\">measurement_snapshots.csv</a> - filtered measurement snapshot rows.</li>
     <li><a href=\"measurement_snapshots.md\">measurement_snapshots.md</a> - filtered measurement snapshot rows as Markdown.</li>
+    <li><a href=\"sweep_margin_summaries.csv\">sweep_margin_summaries.csv</a> - worst-corner sweep margin summary rows from the loaded validation report.</li>
+    <li><a href=\"sweep_margin_summaries.md\">sweep_margin_summaries.md</a> - worst-corner sweep margin summary rows as Markdown.</li>
     <li><a href=\"README.md\">README.md</a> - text manifest.</li>
     <li><a href=\"artifact_manifest.csv\">artifact_manifest.csv</a> - expected size and SHA-256 metadata.</li>
     <li><a href=\"artifact_integrity_details.csv\">artifact_integrity_details.csv</a> - artifact integrity detail rows as CSV.</li>
@@ -256,6 +305,9 @@ report conveniences and are not part of the manifest they describe.
       <tr><th>Group</th><td>{}</td></tr>
     </tbody>
   </table>
+  <h2>Sweep Margin Summaries</h2>
+  <p><a href=\"sweep_margin_summaries.csv\">CSV</a> | <a href=\"sweep_margin_summaries.md\">Markdown</a></p>
+  {}
   <h2>Plot Export Options</h2>
   <table>
     <tbody>
@@ -285,6 +337,7 @@ report conveniences and are not part of the manifest they describe.
             html_escape(self.waveform_snapshot_source_filter.label()),
             html_escape(self.waveform_snapshot_sort_key.label()),
             html_escape(self.waveform_snapshot_group_mode.label()),
+            scope_sweep_margin_summaries_html(sweep_margin_rows),
             html_escape(self.waveform_plot_export_size.label()),
             yes_no(self.waveform_plot_export_cursors),
             yes_no(self.waveform_plot_export_trigger),
@@ -383,6 +436,18 @@ pub(super) fn write_scope_report_bundle_files(
                 &files.measurement_snapshots_markdown,
             )
         })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("sweep_margin_summaries.csv"),
+                &files.sweep_margin_summaries_csv,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("sweep_margin_summaries.md"),
+                &files.sweep_margin_summaries_markdown,
+            )
+        })
         .and_then(|()| fs::write(bundle_dir.join("README.md"), &files.readme))
         .and_then(|()| {
             let manifest = scope_report_bundle_artifact_manifest_csv(bundle_dir)?;
@@ -429,6 +494,220 @@ pub(super) fn unique_scope_report_bundle_dir(base_dir: &Path, unix_millis: u128)
 
 pub(super) fn scope_report_bundle_index_path(bundle_dir: &Path) -> PathBuf {
     bundle_dir.join("index.html")
+}
+
+pub(super) fn scope_sweep_margin_summary_rows(
+    report: Option<&ValidationReport>,
+) -> Vec<ScopeSweepMarginSummaryRow> {
+    report
+        .into_iter()
+        .flat_map(|report| report.infos.iter())
+        .filter(|finding| finding.id == ANALOG_SWEEP_MARGIN_SUMMARY)
+        .filter_map(scope_sweep_margin_summary_row)
+        .collect()
+}
+
+fn scope_sweep_margin_summary_row(finding: &Finding) -> Option<ScopeSweepMarginSummaryRow> {
+    let assertion = json_string(&finding.measured, "assertion")?;
+    let sweep =
+        json_string(&finding.measured, "analog_sweep").unwrap_or_else(|| "sweep".to_string());
+    let corner =
+        json_string(&finding.measured, "analog_corner").unwrap_or_else(|| "corner".to_string());
+    let probe = json_string(&finding.measured, "probe").unwrap_or_default();
+    let unit = json_string(&finding.measured, "measured_unit")
+        .or_else(|| json_string(&finding.limit, "limit_unit"))
+        .unwrap_or_default();
+    let measured = format_numeric_with_unit(
+        json_f64(&finding.measured, "measured_value"),
+        &unit,
+        "measured n/a",
+    );
+    let limit =
+        format_numeric_with_unit(json_f64(&finding.limit, "limit_value"), &unit, "limit n/a");
+    let margin = format_numeric_with_unit(json_f64(&finding.measured, "margin"), &unit, "n/a");
+    Some(ScopeSweepMarginSummaryRow {
+        scenario: finding.scenario.clone(),
+        assertion,
+        probe,
+        sweep,
+        corner,
+        inputs: scope_sweep_margin_input_summary(finding),
+        passed: json_bool(&finding.measured, "passed").unwrap_or(false),
+        measured,
+        relation: json_string(&finding.limit, "relation").unwrap_or_else(|| "limit".to_string()),
+        limit,
+        margin,
+        evaluated_corners: json_u64(&finding.measured, "evaluated_corners").unwrap_or(0),
+    })
+}
+
+pub(super) fn scope_sweep_margin_summaries_csv(rows: &[ScopeSweepMarginSummaryRow]) -> String {
+    let mut csv = String::from(
+        "scenario,assertion,probe,sweep,corner,inputs,passed,measured,relation,limit,margin,evaluated_corners\n",
+    );
+    for row in rows {
+        let fields = [
+            row.scenario.clone(),
+            row.assertion.clone(),
+            row.probe.clone(),
+            row.sweep.clone(),
+            row.corner.clone(),
+            row.inputs.clone(),
+            row.passed.to_string(),
+            row.measured.clone(),
+            row.relation.clone(),
+            row.limit.clone(),
+            row.margin.clone(),
+            row.evaluated_corners.to_string(),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    csv
+}
+
+pub(super) fn scope_sweep_margin_summaries_markdown(rows: &[ScopeSweepMarginSummaryRow]) -> String {
+    let mut markdown = String::from(
+        "| Scenario | Assertion | Probe | Sweep | Corner | Inputs | Pass | Measured | Relation | Limit | Margin | Corners |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: |\n",
+    );
+    for row in rows {
+        markdown.push_str(&format!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            markdown_escape(&row.scenario),
+            markdown_escape(&row.assertion),
+            markdown_escape(&row.probe),
+            markdown_escape(&row.sweep),
+            markdown_escape(&row.corner),
+            markdown_escape(&row.inputs),
+            if row.passed { "pass" } else { "fail" },
+            markdown_escape(&row.measured),
+            markdown_escape(&row.relation),
+            markdown_escape(&row.limit),
+            markdown_escape(&row.margin),
+            row.evaluated_corners
+        ));
+    }
+    markdown
+}
+
+fn scope_sweep_margin_summaries_html(rows: &[ScopeSweepMarginSummaryRow]) -> String {
+    let mut html = String::from(
+        "\
+<table>
+  <thead>
+    <tr><th>Scenario</th><th>Assertion</th><th>Probe</th><th>Sweep</th><th>Corner</th><th>Inputs</th><th>Pass</th><th>Measured</th><th>Relation</th><th>Limit</th><th>Margin</th><th>Corners</th></tr>
+  </thead>
+  <tbody>
+",
+    );
+    for row in rows {
+        html.push_str(&format!(
+            "    <tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{}</td></tr>\n",
+            html_escape(&row.scenario),
+            html_escape(&row.assertion),
+            html_escape(&row.probe),
+            html_escape(&row.sweep),
+            html_escape(&row.corner),
+            html_escape(&row.inputs),
+            if row.passed { "pass" } else { "fail" },
+            html_escape(&row.measured),
+            html_escape(&row.relation),
+            html_escape(&row.limit),
+            html_escape(&row.margin),
+            row.evaluated_corners
+        ));
+    }
+    html.push_str("  </tbody>\n</table>");
+    html
+}
+
+fn scope_sweep_margin_input_summary(finding: &Finding) -> String {
+    let mut parts = Vec::new();
+    if let Some(parameters) = json_number_map_summary(&finding.measured, "analog_parameters") {
+        parts.push(parameters);
+    }
+    if let Some(component_values) =
+        json_number_map_summary(&finding.measured, "analog_component_values")
+    {
+        parts.push(component_values);
+    }
+    if let Some(model_sections) =
+        json_string_map_summary(&finding.measured, "analog_model_sections")
+    {
+        parts.push(model_sections);
+    }
+    parts.join("; ")
+}
+
+fn json_number_map_summary(map: &BTreeMap<String, Value>, key: &str) -> Option<String> {
+    let values = map.get(key)?.as_object()?;
+    let parts: Vec<String> = values
+        .iter()
+        .filter_map(|(name, value)| value.as_f64().map(|number| (name, number)))
+        .map(|(name, number)| format!("{name}={}", compact_number(number)))
+        .collect();
+    (!parts.is_empty()).then(|| parts.join(", "))
+}
+
+fn json_string_map_summary(map: &BTreeMap<String, Value>, key: &str) -> Option<String> {
+    let values = map.get(key)?.as_object()?;
+    let parts: Vec<String> = values
+        .iter()
+        .filter_map(|(name, value)| value.as_str().map(|string| (name, string)))
+        .map(|(name, string)| format!("{name}:{string}"))
+        .collect();
+    (!parts.is_empty()).then(|| parts.join(", "))
+}
+
+fn json_string(map: &BTreeMap<String, Value>, key: &str) -> Option<String> {
+    map.get(key)?.as_str().map(str::to_string)
+}
+
+fn json_f64(map: &BTreeMap<String, Value>, key: &str) -> Option<f64> {
+    map.get(key)?.as_f64()
+}
+
+fn json_u64(map: &BTreeMap<String, Value>, key: &str) -> Option<u64> {
+    map.get(key)?.as_u64()
+}
+
+fn json_bool(map: &BTreeMap<String, Value>, key: &str) -> Option<bool> {
+    map.get(key)?.as_bool()
+}
+
+fn format_numeric_with_unit(value: Option<f64>, unit: &str, fallback: &str) -> String {
+    value
+        .map(|value| {
+            format!("{} {}", compact_number(value), unit)
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+fn compact_number(value: f64) -> String {
+    if value == 0.0 {
+        "0".to_string()
+    } else if value.abs() >= 1.0e4 || value.abs() < 1.0e-3 {
+        format!("{value:.6e}")
+    } else {
+        let text = format!("{value:.6}");
+        text.trim_end_matches('0').trim_end_matches('.').to_string()
+    }
+}
+
+fn csv_escape(value: String) -> String {
+    if value.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value
+    }
 }
 
 fn current_unix_millis() -> u128 {

@@ -8,6 +8,8 @@ use super::{
     unique_scope_report_bundle_dir,
 };
 use crate::gui::CircuitCiApp;
+use crate::reports::{Finding, ValidationReport};
+use serde_json::json;
 use std::fs;
 
 #[test]
@@ -58,6 +60,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
     let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
+    let margin_csv = fs::read_to_string(bundle.join("sweep_margin_summaries.csv")).unwrap();
+    let margin_markdown = fs::read_to_string(bundle.join("sweep_margin_summaries.md")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
     let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
     let integrity_csv = fs::read_to_string(bundle.join("artifact_integrity_details.csv")).unwrap();
@@ -71,6 +75,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(csv.contains("v(out)"));
     assert!(!csv.contains("i(load)"));
     assert!(markdown.contains("| Cursor 1 |"));
+    assert!(margin_csv.starts_with("scenario,assertion,probe,sweep,corner,inputs,passed"));
+    assert!(margin_markdown.contains("| Scenario | Assertion | Probe | Sweep | Corner |"));
     assert!(readme.contains("# CircuitCI Scope Report Bundle"));
     assert!(readme.contains("- Rows: 1"));
     assert!(readme.contains("- Search: v(out)"));
@@ -82,6 +88,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("| Runtime Only | 1 | 48 | 48 B |"));
     assert!(readme.contains("- `index.html`"));
     assert!(readme.contains("- `scope_plot.svg`"));
+    assert!(readme.contains("- `sweep_margin_summaries.csv`"));
+    assert!(readme.contains("- Rows: 0"));
     assert!(readme.contains("- `artifact_manifest.csv`"));
     assert!(readme.contains("- `artifact_integrity_details.csv`"));
     assert!(readme.contains("- `artifact_integrity_details.md`"));
@@ -89,11 +97,14 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("## Artifact Metadata"));
     assert!(readme.contains("| scope_plot.svg |"));
     assert!(readme.contains("| measurement_snapshots.csv |"));
+    assert!(readme.contains("| sweep_margin_summaries.csv |"));
     assert!(readme.contains("SHA-256"));
     assert!(index.contains("<title>CircuitCI Scope Report Bundle</title>"));
     assert!(index.contains("href=\"scope_plot.svg\""));
     assert!(index.contains("href=\"measurement_snapshots.csv\""));
     assert!(index.contains("href=\"measurement_snapshots.md\""));
+    assert!(index.contains("href=\"sweep_margin_summaries.csv\""));
+    assert!(index.contains("href=\"sweep_margin_summaries.md\""));
     assert!(index.contains("href=\"README.md\""));
     assert!(index.contains("href=\"artifact_manifest.csv\""));
     assert!(index.contains("href=\"artifact_integrity_details.csv\""));
@@ -104,6 +115,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(index.contains("<td>Runtime Only</td><td class=\"number\">1</td>"));
     assert!(manifest.contains("path,label,size_bytes,sha256"));
     assert!(manifest.contains("scope_plot.svg,scope_plot.svg"));
+    assert!(manifest.contains("sweep_margin_summaries.csv,sweep_margin_summaries.csv"));
+    assert!(manifest.contains("sweep_margin_summaries.md,sweep_margin_summaries.md"));
     assert!(manifest.contains("index.html,index.html"));
     assert!(manifest.contains("README.md,README.md"));
     assert!(!manifest.contains("artifact_integrity_details.csv"));
@@ -166,6 +179,13 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
             waveform_index: 1,
             probe_index: 0,
         }],
+        report: Some(report(vec![sweep_margin(
+            "rc_run",
+            "v_filtered_rms",
+            "v_filtered",
+            "rc_tolerance",
+            "corner_009",
+        )])),
         ..Default::default()
     };
 
@@ -175,7 +195,11 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     let bundle = std::path::Path::new(&app.waveform_recent_report_bundles[0]);
     let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
+    let margin_csv = fs::read_to_string(bundle.join("sweep_margin_summaries.csv")).unwrap();
+    let margin_markdown = fs::read_to_string(bundle.join("sweep_margin_summaries.md")).unwrap();
     let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
+    let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
+    let index = fs::read_to_string(bundle.join("index.html")).unwrap();
 
     assert!(csv.contains("Compare Set"));
     assert!(csv.contains("compare selected"));
@@ -183,6 +207,15 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     assert!(csv.contains("Runtime compare bundle row"));
     assert!(csv.contains("v(filtered)"));
     assert!(markdown.contains("| Compare Set |"));
+    assert!(margin_csv.contains("rc_run,v_filtered_rms,v_filtered,rc_tolerance,corner_009"));
+    assert!(margin_csv.contains("R1.value_ohm=1050"));
+    assert!(margin_csv.contains("0.01 V"));
+    assert!(margin_markdown.contains("| rc_run | v_filtered_rms | v_filtered |"));
+    assert!(margin_markdown.contains("R1.value_ohm=1050"));
+    assert!(readme.contains("## Sweep Margin Summaries"));
+    assert!(readme.contains("- Rows: 1"));
+    assert!(index.contains("<h2>Sweep Margin Summaries</h2>"));
+    assert!(index.contains("rc_tolerance"));
     assert!(svg.contains("CircuitCI Scope Plot"));
     assert!(app.status.contains("Exported scope compare report bundle"));
 
@@ -212,6 +245,57 @@ fn scope_compare_report_bundle_requires_multiple_traces() {
     assert!(app.status.contains("pin at least two visible scope traces"));
 
     fs::remove_dir_all(&base_dir).unwrap();
+}
+
+fn sweep_margin(
+    scenario: &str,
+    assertion: &str,
+    probe: &str,
+    sweep: &str,
+    corner: &str,
+) -> Finding {
+    let mut finding = Finding::info("ANALOG_SWEEP_MARGIN_SUMMARY", scenario, "summary");
+    finding
+        .measured
+        .insert("assertion".to_string(), json!(assertion));
+    finding.measured.insert("probe".to_string(), json!(probe));
+    finding
+        .measured
+        .insert("analog_sweep".to_string(), json!(sweep));
+    finding
+        .measured
+        .insert("analog_corner".to_string(), json!(corner));
+    finding.measured.insert(
+        "analog_component_values".to_string(),
+        json!({ "R1.value_ohm": 1050.0 }),
+    );
+    finding
+        .measured
+        .insert("measured_value".to_string(), json!(0.61));
+    finding
+        .measured
+        .insert("measured_unit".to_string(), json!("V"));
+    finding.measured.insert("margin".to_string(), json!(0.01));
+    finding.measured.insert("passed".to_string(), json!(true));
+    finding
+        .measured
+        .insert("evaluated_corners".to_string(), json!(9));
+    finding.limit.insert("relation".to_string(), json!("below"));
+    finding.limit.insert("limit_value".to_string(), json!(0.62));
+    finding.limit.insert("limit_unit".to_string(), json!("V"));
+    finding
+}
+
+fn report(infos: Vec<Finding>) -> ValidationReport {
+    ValidationReport::from_parts(
+        "project".to_string(),
+        "profile".to_string(),
+        infos,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        "validate".to_string(),
+    )
 }
 
 #[test]

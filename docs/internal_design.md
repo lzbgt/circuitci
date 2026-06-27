@@ -464,7 +464,10 @@ restore, schematic Focus, and rendering over loaded waveform artifacts.
 with the configured plot SVG, local index page, README manifest,
 optional artifact integrity detail files, loaded-waveform footprint source
 totals, and compare-set bundle export that synthesizes runtime selected/pinned
-cursor rows without mutating saved measurement snapshots.
+cursor rows without mutating saved measurement snapshots. It also projects
+loaded `ANALOG_SWEEP_MARGIN_SUMMARY` findings into bundle-local
+`sweep_margin_summaries.csv` and `.md` artifacts so waveform evidence and
+limiting design margins travel together.
 `src/gui/waveform/waveform_bundle_recent.rs` owns recent-bundle
 folder/index/integrity-audit opening, path copy actions, missing-folder
 pruning, integrity problem filtering, guarded refresh, and

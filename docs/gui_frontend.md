@@ -893,7 +893,8 @@ can omit cursor, trigger, or snapshot annotations for cleaner report figures
 without changing the live Scopes view. Long traces are exported as bounded
 min/max decimated polylines so report SVG files do not scale linearly with every
 loaded waveform sample.
-Export Bundle writes the same filtered snapshot CSV and Markdown plus the
+Export Bundle writes the same filtered snapshot CSV and Markdown, sweep
+worst-corner margin CSV and Markdown from the loaded validation report, the
 configured plot SVG, a local `index.html`, a README manifest, and
 `artifact_manifest.csv` plus optional artifact integrity detail CSV/Markdown
 audit files into a timestamped output folder,
@@ -901,15 +902,15 @@ keeping report artifacts together while still avoiding persisted project truth.
 Compare Sets also provide `Bundle Set` and `Bundle + Open`; these create
 ephemeral selected/pinned cursor rows for the active compare view, then export
 the same bundle format so nominal, all-corner, or worst-corner overlays can be
-preserved as design-margin evidence without first adding persistent measurement
-snapshot rows.
+preserved with the limiting sweep-margin rows as design evidence without first
+adding persistent measurement snapshot rows.
 The index links the plot SVG, snapshot CSV/Markdown, README, manifest, and
-optional integrity detail files while surfacing the same snapshot, plot,
-selected-trace, generated content artifact size/SHA-256 metadata, and
+optional integrity detail files while surfacing the same snapshot, sweep-margin,
+plot, selected-trace, generated content artifact size/SHA-256 metadata, and
 loaded-waveform footprint summary context for quick browser review. The README
-records active snapshot filters, plot SVG options, selected trace context,
-loaded-waveform footprint source totals, generated files, and human-readable
-artifact size/SHA-256 metadata; the CSV manifest records expected size/SHA-256
+records active snapshot filters, sweep-margin row counts, plot SVG options,
+selected trace context, loaded-waveform footprint source totals, generated
+files, and human-readable artifact size/SHA-256 metadata; the CSV manifest records expected size/SHA-256
 metadata for required bundle files so the GUI can distinguish changed artifacts
 from merely present artifacts. The optional integrity detail files are derived
 from that manifest and intentionally not included in the manifest they
