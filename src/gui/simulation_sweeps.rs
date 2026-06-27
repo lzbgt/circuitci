@@ -1,4 +1,8 @@
 use super::CircuitCiApp;
+use super::analog_sweep_monte_carlo::{
+    AnalogMonteCarloComponentValueDraft, append_analog_monte_carlo_component_value,
+    append_analog_sweep_with_monte_carlo, remove_analog_monte_carlo_component_value,
+};
 use super::analog_sweeps::{
     AnalogMonteCarloCriteriaDraft, AnalogSweepComponentValueDraft, AnalogSweepDraft,
     AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, AnalogSweepScenario,
@@ -65,6 +69,22 @@ impl CircuitCiApp {
                     ui.text_edit_singleline(&mut self.analog_sweep_component_values);
                     ui.end_row();
 
+                    ui.label("MC samples");
+                    ui.text_edit_singleline(&mut self.analog_sweep_monte_carlo_samples);
+                    ui.end_row();
+
+                    ui.label("MC seed");
+                    ui.text_edit_singleline(&mut self.analog_sweep_monte_carlo_seed);
+                    ui.end_row();
+
+                    ui.label("MC nominal");
+                    ui.text_edit_singleline(&mut self.analog_sweep_monte_carlo_nominal);
+                    ui.end_row();
+
+                    ui.label("MC tolerance %");
+                    ui.text_edit_singleline(&mut self.analog_sweep_monte_carlo_tolerance_percent);
+                    ui.end_row();
+
                     ui.label("Model file");
                     ui.text_edit_singleline(&mut self.analog_sweep_model_path);
                     ui.end_row();
@@ -108,6 +128,9 @@ impl CircuitCiApp {
                 if ui.button("Add Sweep + Component Values").clicked() {
                     self.apply_add_analog_sweep_with_component_value();
                 }
+                if ui.button("Add Sweep + Monte Carlo").clicked() {
+                    self.apply_add_analog_sweep_with_monte_carlo();
+                }
                 if ui
                     .add_enabled(selected_sweep.is_some(), egui::Button::new("Remove Sweep"))
                     .clicked()
@@ -122,7 +145,7 @@ impl CircuitCiApp {
             {
                 ui.strong("Generated load/source candidates");
                 egui::Grid::new("analog_sweep_load_candidates")
-                    .num_columns(5)
+                    .num_columns(6)
                     .striped(true)
                     .show(ui, |ui| {
                         ui.strong("Component");
@@ -130,6 +153,7 @@ impl CircuitCiApp {
                         ui.strong("Nominal");
                         ui.strong("Values");
                         ui.strong("Use");
+                        ui.strong("Use MC");
                         ui.end_row();
                         for candidate in candidates {
                             ui.label(&candidate.component);
@@ -137,9 +161,19 @@ impl CircuitCiApp {
                             ui.label(format!("{:.6}", candidate.nominal));
                             ui.label(&candidate.values_csv);
                             if ui.button("Use").clicked() {
+                                self.analog_sweep_component = candidate.component.clone();
+                                self.analog_sweep_component_field = candidate.field.clone();
+                                self.analog_sweep_component_values = candidate.values_csv.clone();
+                            }
+                            if ui.button("Use MC").clicked() {
                                 self.analog_sweep_component = candidate.component;
                                 self.analog_sweep_component_field = candidate.field;
                                 self.analog_sweep_component_values = candidate.values_csv;
+                                self.analog_sweep_monte_carlo_nominal =
+                                    format!("{:.12}", candidate.nominal)
+                                        .trim_end_matches('0')
+                                        .trim_end_matches('.')
+                                        .to_string();
                             }
                             ui.end_row();
                         }
@@ -200,6 +234,24 @@ impl CircuitCiApp {
                     if ui
                         .add_enabled(
                             has_monte_carlo,
+                            egui::Button::new("Add MC Component"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_add_analog_monte_carlo_component_value();
+                    }
+                    if ui
+                        .add_enabled(
+                            has_monte_carlo,
+                            egui::Button::new("Remove MC Component"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_remove_analog_monte_carlo_component_value();
+                    }
+                    if ui
+                        .add_enabled(
+                            has_monte_carlo,
                             egui::Button::new("Set Monte Carlo Criteria"),
                         )
                         .clicked()
@@ -217,7 +269,7 @@ impl CircuitCiApp {
                     }
                 });
                 if !has_monte_carlo {
-                    ui.label("Monte Carlo criteria controls apply only to Monte Carlo sweeps.");
+                    ui.label("Monte Carlo component and criteria controls apply only to Monte Carlo sweeps.");
                 }
             }
         });
@@ -276,6 +328,22 @@ impl CircuitCiApp {
                 updated,
                 &format!(
                     "Run input sweep {} added with component value {}.{}.",
+                    draft.sweep_name.trim(),
+                    draft.component.trim(),
+                    draft.field.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_sweep_with_monte_carlo(&mut self) {
+        let draft = self.analog_monte_carlo_component_value_draft();
+        match append_analog_sweep_with_monte_carlo(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Run input sweep {} added with Monte Carlo component value {}.{}.",
                     draft.sweep_name.trim(),
                     draft.component.trim(),
                     draft.field.trim()
@@ -375,6 +443,22 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_monte_carlo_component_value(&mut self) {
+        let draft = self.analog_monte_carlo_component_value_draft();
+        match append_analog_monte_carlo_component_value(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Monte Carlo component value {}.{} added to sweep {}.",
+                    draft.component.trim(),
+                    draft.field.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_remove_analog_sweep_parameter(&mut self) {
         let draft = AnalogSweepParameterDraft {
             scenario_name: self.analog_sweep_scenario.clone(),
@@ -437,6 +521,22 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_remove_analog_monte_carlo_component_value(&mut self) {
+        let draft = self.analog_monte_carlo_component_value_draft();
+        match remove_analog_monte_carlo_component_value(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Monte Carlo component value {}.{} removed from sweep {}.",
+                    draft.component.trim(),
+                    draft.field.trim(),
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_set_analog_monte_carlo_criteria(&mut self) {
         let draft = AnalogMonteCarloCriteriaDraft {
             scenario_name: self.analog_sweep_scenario.clone(),
@@ -478,6 +578,19 @@ impl CircuitCiApp {
                 ),
             ),
             Err(error) => self.record_error(error),
+        }
+    }
+
+    fn analog_monte_carlo_component_value_draft(&self) -> AnalogMonteCarloComponentValueDraft {
+        AnalogMonteCarloComponentValueDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            samples: self.analog_sweep_monte_carlo_samples.clone(),
+            seed: self.analog_sweep_monte_carlo_seed.clone(),
+            component: self.analog_sweep_component.clone(),
+            field: self.analog_sweep_component_field.clone(),
+            nominal: self.analog_sweep_monte_carlo_nominal.clone(),
+            tolerance_percent: self.analog_sweep_monte_carlo_tolerance_percent.clone(),
         }
     }
 }
@@ -719,6 +832,51 @@ scenarios:
 "
     }
 
+    fn generated_load_project_yaml() -> &'static str {
+        "project:
+  name: gui_monte_carlo_action_test
+  version: 0.1.0
+board:
+  components:
+    RLOAD:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: out
+        B: gnd
+  nets:
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: load_run
+    type: analog_transient
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [RLOAD]
+      model_files: []
+      node_bindings:
+        - { node: out, net: out }
+        - { node: '0', net: gnd }
+      pin_bindings: []
+      analysis:
+        type: tran
+        stop_time_us: 1000
+        max_step_us: 1
+      stimuli: []
+      probes:
+        - name: v_out
+          expression: V(out)
+      assertions: []
+"
+    }
+
     #[test]
     fn app_action_sets_and_clears_monte_carlo_criteria() {
         let mut app = CircuitCiApp {
@@ -762,5 +920,37 @@ scenarios:
                 .criteria
                 .is_none()
         );
+    }
+
+    #[test]
+    fn app_action_adds_monte_carlo_component_value_sweep() {
+        let mut app = CircuitCiApp {
+            project_yaml: generated_load_project_yaml().to_string(),
+            analog_sweep_scenario: "load_run".to_string(),
+            analog_sweep_name: "load_monte_carlo".to_string(),
+            analog_sweep_component: "RLOAD".to_string(),
+            analog_sweep_component_field: "value_ohm".to_string(),
+            analog_sweep_monte_carlo_samples: "16".to_string(),
+            analog_sweep_monte_carlo_seed: "77".to_string(),
+            analog_sweep_monte_carlo_nominal: "1000".to_string(),
+            analog_sweep_monte_carlo_tolerance_percent: "5".to_string(),
+            ..Default::default()
+        };
+
+        app.apply_add_analog_sweep_with_monte_carlo();
+
+        assert!(app.project_yaml_dirty);
+        assert!(app.status.contains("added with Monte Carlo"));
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+        let monte_carlo = project.scenarios[0].analog.as_ref().unwrap().sweeps[0]
+            .monte_carlo
+            .as_ref()
+            .unwrap();
+        assert_eq!(monte_carlo.samples, 16);
+        assert_eq!(monte_carlo.seed, 77);
+        assert_eq!(monte_carlo.component_values[0].component, "RLOAD");
+        assert_eq!(monte_carlo.component_values[0].nominal, 1000.0);
+        assert_eq!(monte_carlo.component_values[0].tolerance_percent, 5.0);
     }
 }

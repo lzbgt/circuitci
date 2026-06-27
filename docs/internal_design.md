@@ -403,15 +403,18 @@ run-setup/model/source/check editors and their Board IR YAML mutation helpers.
 `src/gui/simulation_sweeps.rs` owns the Run Input Sweeps UI surface, while
 `src/gui/analog_sweeps.rs` owns GUI projection and mutation helpers for bounded
 analog run-input sweeps. The GUI creates a sweep together with its first raw
-SPICE parameter or generated component value so edited projects stay executable,
+SPICE parameter, generated component value, or sampled Monte Carlo component
+value so edited projects stay executable,
 and it prevents removing the last sweep dimension unless the whole sweep is
 removed. It also owns generated load/source candidate inference, the small
 preset catalog for common supply, load, temperature, model-selector, and
 RC-tolerance corner sweeps, vendor model-section corner editing, and declared
-Monte Carlo sample-count summaries plus criteria set/clear editing for minimum
-yield percent and P1/P5/P50/P95 sampled-margin targets; all are serialized
-through the same `analog.sweeps` structure rather than a separate GUI-only
-model.
+Monte Carlo sampled component-value editing plus criteria set/clear editing for
+minimum yield percent and P1/P5/P50/P95 sampled-margin targets; all are
+serialized through the same `analog.sweeps` structure rather than a separate
+GUI-only model. `src/gui/analog_sweep_monte_carlo.rs` keeps the Monte Carlo
+YAML mutation helpers separate from the general sweep projection/preset helper
+so the GUI can grow without pushing either module over the source-size guard.
 `src/validation/analog_sweep_sampling.rs` owns deterministic Monte Carlo
 component-value sample generation so sampled tolerance runs expand into normal
 sweep corners before any transient, AC, DC, or noise backend is invoked.

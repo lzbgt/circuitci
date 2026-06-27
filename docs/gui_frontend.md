@@ -334,9 +334,12 @@ editing YAML. Generated run setups show inferred load/source candidates such as
 Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
 The same panel exposes one-click corner presets for supply, load, temperature,
 model-selector, and RC-tolerance sweeps, all persisted as ordinary
-`analog.sweeps` data. Monte Carlo sweeps can also set or clear minimum yield
-percent and P1/P5/P50/P95 margin criteria from the same panel; those criteria
-remain ordinary `analog.sweeps[].monte_carlo.criteria` data.
+`analog.sweeps` data. Monte Carlo sweeps can be created from generated
+component-value candidates by choosing sample count, seed, nominal value, and
+tolerance percent; extra sampled component targets can be added or removed while
+keeping at least one target. The same panel can set or clear minimum yield
+percent and P1/P5/P50/P95 margin criteria, all serialized as ordinary
+`analog.sweeps[].monte_carlo` data.
 The run-setup editor can create generated transient, AC/Bode, DC
 operating-point, or noise observations. AC/Bode creation writes a normal `analog_ac`
 scenario with start/stop frequency, points per decade, generated board

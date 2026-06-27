@@ -18,6 +18,7 @@ mod analog_noise_presets;
 mod analog_overview;
 mod analog_run_setup;
 mod analog_stimulus;
+mod analog_sweep_monte_carlo;
 mod analog_sweeps;
 #[cfg(test)]
 mod analog_tests;
@@ -376,6 +377,10 @@ pub struct CircuitCiApp {
     analog_sweep_component: String,
     analog_sweep_component_field: String,
     analog_sweep_component_values: String,
+    analog_sweep_monte_carlo_samples: String,
+    analog_sweep_monte_carlo_seed: String,
+    analog_sweep_monte_carlo_nominal: String,
+    analog_sweep_monte_carlo_tolerance_percent: String,
     analog_sweep_model_path: String,
     analog_sweep_model_sections: String,
     analog_sweep_min_yield_percent: String,
@@ -625,6 +630,10 @@ impl Default for CircuitCiApp {
             analog_sweep_component: "RLOAD".to_string(),
             analog_sweep_component_field: "value_ohm".to_string(),
             analog_sweep_component_values: "900, 1000, 1100".to_string(),
+            analog_sweep_monte_carlo_samples: "32".to_string(),
+            analog_sweep_monte_carlo_seed: "42".to_string(),
+            analog_sweep_monte_carlo_nominal: "1000".to_string(),
+            analog_sweep_monte_carlo_tolerance_percent: "5".to_string(),
             analog_sweep_model_path: "models/vendor.lib".to_string(),
             analog_sweep_model_sections: "typ, slow, fast".to_string(),
             analog_sweep_min_yield_percent: "95".to_string(),

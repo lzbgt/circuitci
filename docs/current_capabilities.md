@@ -161,13 +161,15 @@ Current analog support:
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter or component value, generated load/source
   candidate selection, extra parameter/component/model-section add/remove
-  controls, Monte Carlo criteria set/clear controls, and declared corner-count
-  summaries without editing YAML by hand.
+  controls, Monte Carlo sampled component-value creation/editing, Monte Carlo
+  criteria set/clear controls, and declared corner-count summaries without
+  editing YAML by hand.
   Built-in corner presets add common supply, load, temperature, model-selector,
   and RC-tolerance sweeps; `TEMP_C` and `TEMPERATURE_C` also drive ngspice
   `.temp`. Declared Monte Carlo sweeps are shown with their sample counts and
-  sampled component fields in the same table, and users can author minimum
-  yield percent plus P1/P5/P50/P95 margin targets for them from the GUI.
+  sampled component fields in the same table, and users can author sample
+  count, seed, nominal/tolerance targets, minimum yield percent, and
+  P1/P5/P50/P95 margin targets from the GUI.
 - GUI generated run-setup overview rows for completed sweep worst-corner
   assertion margins, including limiting corner, parameter values, component
   value inputs, selected model sections, measured value, limit, margin,
