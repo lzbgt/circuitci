@@ -4,6 +4,8 @@ use super::{
     scope_visible_trace_refs,
 };
 use crate::gui::{CircuitCiApp, ScopeProbeTarget, Stage};
+use crate::reports::{Finding, ValidationReport};
+use serde_json::json;
 
 #[test]
 fn scope_probe_target_pin_for_compare_adds_loaded_trace_once() {
@@ -115,6 +117,133 @@ fn clear_scope_compare_pins_from_sketch_removes_all_pins() {
 }
 
 #[test]
+fn pin_selected_sweep_corner_traces_pins_matching_probe_from_loaded_corners() {
+    let corner_001 = parse_waveform_csv_text(
+        "time,v(filtered),i(load)
+0,0,0.1
+0.000001,1,0.2
+",
+        "out/analog/rc_lowpass_sine_transient/rc_tolerance_corner_001/waveform.csv",
+    )
+    .unwrap();
+    let corner_002 = parse_waveform_csv_text(
+        "time,v(filtered),i(load)
+0,0,0.1
+0.000001,2,0.2
+",
+        "out/analog/rc_lowpass_sine_transient/rc_tolerance_corner_002/waveform.csv",
+    )
+    .unwrap();
+    let other_sweep = parse_waveform_csv_text(
+        "time,v(filtered),i(load)
+0,0,0.1
+0.000001,3,0.2
+",
+        "out/analog/rc_lowpass_sine_transient/load_corner_001/waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![corner_001, corner_002, other_sweep],
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    assert!(app.pin_selected_sweep_corner_traces());
+
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0
+        }]
+    );
+    assert!(app.status.contains("1 loaded sweep-corner"));
+}
+
+#[test]
+fn pin_selected_sweep_worst_corner_traces_uses_report_margin_probe_and_corner() {
+    let corner_001 = parse_waveform_csv_text(
+        "time,v(filtered),i(load)
+0,0,0.1
+0.000001,1,0.2
+",
+        "out/analog/rc_lowpass_sine_transient/rc_tolerance_corner_001/waveform.csv",
+    )
+    .unwrap();
+    let corner_002 = parse_waveform_csv_text(
+        "time,v(filtered),i(load)
+0,0,0.1
+0.000001,2,0.2
+",
+        "out/analog/rc_lowpass_sine_transient/rc_tolerance_corner_002/waveform.csv",
+    )
+    .unwrap();
+    let corner_003 = parse_waveform_csv_text(
+        "time,v(filtered),i(load)
+0,0,0.1
+0.000001,3,0.2
+",
+        "out/analog/rc_lowpass_sine_transient/rc_tolerance_corner_003/waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![corner_001, corner_002, corner_003],
+        selected_waveform: 0,
+        selected_probe: 0,
+        report: Some(report(vec![
+            sweep_margin(
+                "rc_lowpass_sine_transient",
+                "rc_tolerance",
+                "corner_002",
+                "v_filtered",
+            ),
+            sweep_margin(
+                "rc_lowpass_sine_transient",
+                "rc_tolerance",
+                "corner_003",
+                "i_load",
+            ),
+        ])),
+        ..Default::default()
+    };
+
+    assert!(app.pin_selected_sweep_worst_corner_traces());
+
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0
+        }]
+    );
+    assert!(app.status.contains("1 worst-corner"));
+}
+
+#[test]
+fn pin_selected_sweep_worst_corner_traces_reports_missing_summary() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(filtered)
+0,0
+0.000001,1
+",
+        "out/analog/rc_lowpass_sine_transient/rc_tolerance_corner_001/waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    assert!(!app.pin_selected_sweep_worst_corner_traces());
+
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.status.contains("No loaded worst-corner trace"));
+}
+
+#[test]
 fn save_pinned_scope_compare_from_sketch_saves_pinned_traces_only() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),i(load),v(ref)
@@ -164,6 +293,30 @@ fn save_pinned_scope_compare_from_sketch_saves_pinned_traces_only() {
         app.status
             .contains("Saved scope compare set sketch compare")
     );
+}
+
+fn sweep_margin(scenario: &str, sweep: &str, corner: &str, probe: &str) -> Finding {
+    let mut finding = Finding::info("ANALOG_SWEEP_MARGIN_SUMMARY", scenario, "summary");
+    finding
+        .measured
+        .insert("analog_sweep".to_string(), json!(sweep));
+    finding
+        .measured
+        .insert("analog_corner".to_string(), json!(corner));
+    finding.measured.insert("probe".to_string(), json!(probe));
+    finding
+}
+
+fn report(infos: Vec<Finding>) -> ValidationReport {
+    ValidationReport::from_parts(
+        "project".to_string(),
+        "profile".to_string(),
+        infos,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        "validate".to_string(),
+    )
 }
 
 #[test]

@@ -6,6 +6,7 @@ use super::{
     CircuitCiApp, WaveformProbe, WaveformProbeQuantity, WaveformTraceColor, WaveformTracePreset,
     WaveformTraceRef, WaveformTraceStyle, WaveformView, waveform_load_deferred_artifacts,
 };
+use crate::reports::{Finding, ValidationReport};
 use eframe::egui;
 
 impl CircuitCiApp {
@@ -205,6 +206,28 @@ impl CircuitCiApp {
                     self.waveform_pinned_traces.len()
                 ));
             }
+            let can_compare_sweep = selected_waveform_sweep_corner(
+                &self.waveforms,
+                self.selected_waveform,
+                self.selected_probe,
+            )
+            .is_some();
+            if ui
+                .add_enabled(can_compare_sweep, egui::Button::new("Pin Sweep Corners"))
+                .on_hover_text("Pin the selected trace from every loaded corner of this sweep.")
+                .clicked()
+            {
+                self.pin_selected_sweep_corner_traces();
+            }
+            if ui
+                .add_enabled(can_compare_sweep, egui::Button::new("Pin Worst Corner"))
+                .on_hover_text(
+                    "Pin loaded worst-corner trace(s) for the selected probe from sweep margin summaries.",
+                )
+                .clicked()
+            {
+                self.pin_selected_sweep_worst_corner_traces();
+            }
             if ui
                 .add_enabled(can_focus_schematic, egui::Button::new("Focus Schematic"))
                 .clicked()
@@ -401,6 +424,54 @@ impl CircuitCiApp {
             self.selected_probe,
             &self.waveform_pinned_traces,
         )
+    }
+
+    pub(super) fn pin_selected_sweep_corner_traces(&mut self) -> bool {
+        let traces = selected_sweep_corner_trace_refs(
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+        );
+        if traces.is_empty() {
+            self.status =
+                "No other loaded sweep-corner traces match the selected probe.".to_string();
+            return false;
+        }
+        self.waveform_pinned_traces = traces;
+        self.waveform_trace_styles.clear();
+        self.waveform_value_min = None;
+        self.waveform_value_max = None;
+        self.clear_waveform_view_history();
+        self.status = format!(
+            "Pinned {} loaded sweep-corner trace(s) for comparison.",
+            self.waveform_pinned_traces.len()
+        );
+        true
+    }
+
+    pub(super) fn pin_selected_sweep_worst_corner_traces(&mut self) -> bool {
+        let traces = selected_sweep_worst_corner_trace_refs(
+            self.report.as_ref(),
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+        );
+        if traces.is_empty() {
+            self.status =
+                "No loaded worst-corner trace matches the selected probe and report summaries."
+                    .to_string();
+            return false;
+        }
+        self.waveform_pinned_traces = traces;
+        self.waveform_trace_styles.clear();
+        self.waveform_value_min = None;
+        self.waveform_value_max = None;
+        self.clear_waveform_view_history();
+        self.status = format!(
+            "Pinned {} worst-corner trace(s) for the selected probe.",
+            self.waveform_pinned_traces.len()
+        );
+        true
     }
 
     fn scope_trace_display_label(&self, trace: WaveformTraceRef) -> String {
@@ -744,5 +815,185 @@ pub(super) fn waveform_probe_group_choices(
                 .collect();
             (!group_choices.is_empty()).then_some((group, group_choices))
         })
+        .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WaveformSweepCorner {
+    scenario: String,
+    sweep: String,
+    corner: String,
+}
+
+fn selected_waveform_sweep_corner(
+    waveforms: &[WaveformView],
+    selected_waveform: usize,
+    selected_probe: usize,
+) -> Option<WaveformSweepCorner> {
+    let waveform = waveforms.get(selected_waveform)?;
+    waveform.probes.get(selected_probe)?;
+    waveform_sweep_corner(&waveform.path)
+}
+
+fn selected_sweep_corner_trace_refs(
+    waveforms: &[WaveformView],
+    selected_waveform: usize,
+    selected_probe: usize,
+) -> Vec<WaveformTraceRef> {
+    let Some(selected_waveform_view) = waveforms.get(selected_waveform) else {
+        return Vec::new();
+    };
+    let Some(selected_probe_view) = selected_waveform_view.probes.get(selected_probe) else {
+        return Vec::new();
+    };
+    let Some(selected_corner) = waveform_sweep_corner(&selected_waveform_view.path) else {
+        return Vec::new();
+    };
+    let mut traces = Vec::new();
+    for (waveform_index, waveform) in waveforms.iter().enumerate() {
+        if waveform_index == selected_waveform {
+            continue;
+        }
+        if waveform_sweep_corner(&waveform.path).is_some_and(|corner| {
+            corner.scenario == selected_corner.scenario && corner.sweep == selected_corner.sweep
+        }) && let Some(probe_index) = matching_probe_index(waveform, selected_probe_view)
+        {
+            traces.push(WaveformTraceRef {
+                waveform_index,
+                probe_index,
+            });
+        }
+    }
+    traces
+}
+
+fn selected_sweep_worst_corner_trace_refs(
+    report: Option<&ValidationReport>,
+    waveforms: &[WaveformView],
+    selected_waveform: usize,
+    selected_probe: usize,
+) -> Vec<WaveformTraceRef> {
+    let Some(report) = report else {
+        return Vec::new();
+    };
+    let Some(selected_waveform_view) = waveforms.get(selected_waveform) else {
+        return Vec::new();
+    };
+    let Some(selected_probe_view) = selected_waveform_view.probes.get(selected_probe) else {
+        return Vec::new();
+    };
+    let Some(selected_corner) = waveform_sweep_corner(&selected_waveform_view.path) else {
+        return Vec::new();
+    };
+    let mut corners = Vec::new();
+    for finding in report.infos.iter().filter(|finding| {
+        finding.id == "ANALOG_SWEEP_MARGIN_SUMMARY" && finding.scenario == selected_corner.scenario
+    }) {
+        if !sweep_margin_finding_matches_probe(finding, selected_probe_view) {
+            continue;
+        }
+        let Some(sweep) = json_string(&finding.measured, "analog_sweep") else {
+            continue;
+        };
+        if sweep != selected_corner.sweep {
+            continue;
+        }
+        let Some(corner) = json_string(&finding.measured, "analog_corner") else {
+            continue;
+        };
+        if !corners.contains(&corner) {
+            corners.push(corner);
+        }
+    }
+    let mut traces = Vec::new();
+    for corner in corners {
+        for (waveform_index, waveform) in waveforms.iter().enumerate() {
+            if waveform_index == selected_waveform {
+                continue;
+            }
+            if waveform_sweep_corner(&waveform.path).is_some_and(|waveform_corner| {
+                waveform_corner.scenario == selected_corner.scenario
+                    && waveform_corner.sweep == selected_corner.sweep
+                    && waveform_corner.corner == corner
+            }) && let Some(probe_index) = matching_probe_index(waveform, selected_probe_view)
+            {
+                let trace = WaveformTraceRef {
+                    waveform_index,
+                    probe_index,
+                };
+                if !traces.contains(&trace) {
+                    traces.push(trace);
+                }
+            }
+        }
+    }
+    traces
+}
+
+fn waveform_sweep_corner(path: &str) -> Option<WaveformSweepCorner> {
+    let normalized = path.replace('\\', "/");
+    let parts: Vec<_> = normalized
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect();
+    if parts.len() < 4 || parts.last().copied()? != "waveform.csv" {
+        return None;
+    }
+    let corner_dir = parts.get(parts.len() - 2)?;
+    let scenario = parts.get(parts.len() - 3)?;
+    let (sweep, corner_suffix) = corner_dir.rsplit_once("_corner_")?;
+    if sweep.is_empty() || corner_suffix.is_empty() {
+        return None;
+    }
+    Some(WaveformSweepCorner {
+        scenario: (*scenario).to_string(),
+        sweep: sweep.to_string(),
+        corner: format!("corner_{corner_suffix}"),
+    })
+}
+
+fn matching_probe_index(waveform: &WaveformView, selected_probe: &WaveformProbe) -> Option<usize> {
+    waveform
+        .probes
+        .iter()
+        .position(|probe| waveform_probe_labels_match(probe, selected_probe))
+}
+
+fn waveform_probe_labels_match(left: &WaveformProbe, right: &WaveformProbe) -> bool {
+    normalized_probe_label(&left.label) == normalized_probe_label(&right.label)
+        || left.expression.as_deref().is_some_and(|expression| {
+            normalized_probe_label(expression) == normalized_probe_label(&right.label)
+        })
+        || right.expression.as_deref().is_some_and(|expression| {
+            normalized_probe_label(&left.label) == normalized_probe_label(expression)
+        })
+}
+
+fn sweep_margin_finding_matches_probe(finding: &Finding, selected_probe: &WaveformProbe) -> bool {
+    json_string(&finding.measured, "probe").is_some_and(|probe| {
+        normalized_probe_label(&probe) == normalized_probe_label(&selected_probe.label)
+            || selected_probe
+                .expression
+                .as_deref()
+                .is_some_and(|expression| {
+                    normalized_probe_label(&probe) == normalized_probe_label(expression)
+                })
+    })
+}
+
+fn json_string(
+    map: &std::collections::BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Option<String> {
+    map.get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(ToOwned::to_owned)
+}
+
+fn normalized_probe_label(label: &str) -> String {
+    label
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
         .collect()
 }

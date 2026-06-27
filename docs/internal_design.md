@@ -429,7 +429,8 @@ reloads, and keep full deferred artifacts available after partial column
 loads.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, transient saved compare sets, transient
-trace-style controls, split-unit lane toggling, and selected-trace reset
+trace-style controls, sweep-corner and worst-corner trace pinning for loaded
+analog sweep artifacts, split-unit lane toggling, and selected-trace reset
 behavior, including loaded-artifact unload actions that drop or shift transient trace references. `src/gui/waveform/waveform_footprint.rs` owns loaded-waveform footprint readouts, compact source memory summaries with CSV/Markdown copy helpers, diagnostics-derived source classification/grouping/filtering, sort/filter projection, visible-row CSV copy/export, memory-budget warnings, and guarded visible-row or largest-first bulk unload preview/confirmation.
 `src/gui/waveform/waveform_context.rs` owns
 pending schematic probe-to-scope focus, runtime trace/event-to-schematic cross-focus selection, selected-trace

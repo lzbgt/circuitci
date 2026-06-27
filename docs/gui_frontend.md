@@ -598,9 +598,10 @@ form:
   file-backed SPICE decks declared by analog run setups, run validation through
   the engine, plot emitted CSV waveforms, add GUI-only derived
   difference/sum/product/ratio channels, promote representable derived channels
-  to explicit analog probes or probes plus checks, and inspect generated
-  SPICE decks, artifacts, findings, and limitations without turning the scope
-  view into a form-first page.
+  to explicit analog probes or probes plus checks, pin the selected trace across
+  all loaded sweep corners, pin report-identified worst-corner traces for the
+  selected probe, and inspect generated SPICE decks, artifacts, findings, and
+  limitations without turning the scope view into a form-first page.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. Load, import,
