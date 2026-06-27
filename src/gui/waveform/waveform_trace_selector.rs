@@ -275,6 +275,7 @@ impl CircuitCiApp {
 
     fn waveform_compare_presets_ui(&mut self, ui: &mut egui::Ui) {
         let current_traces = self.current_scope_compare_traces();
+        let can_bundle_compare = current_traces.len() > 1;
         let mut load_preset = None;
         let mut delete_preset = None;
 
@@ -290,6 +291,24 @@ impl CircuitCiApp {
                 .clicked()
             {
                 self.save_current_scope_compare_preset(current_traces.clone());
+            }
+            if ui
+                .add_enabled(can_bundle_compare, egui::Button::new("Bundle Set"))
+                .on_hover_text(
+                    "Export the selected and pinned compare traces as a scope report bundle.",
+                )
+                .clicked()
+            {
+                self.export_scope_compare_report_bundle(false);
+            }
+            if ui
+                .add_enabled(can_bundle_compare, egui::Button::new("Bundle + Open"))
+                .on_hover_text(
+                    "Export the selected and pinned compare traces and open the bundle index.",
+                )
+                .clicked()
+            {
+                self.export_scope_compare_report_bundle(true);
             }
             ui.menu_button(
                 format!("Saved ({})", self.waveform_trace_presets.len()),

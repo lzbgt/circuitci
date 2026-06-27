@@ -898,6 +898,11 @@ configured plot SVG, a local `index.html`, a README manifest, and
 `artifact_manifest.csv` plus optional artifact integrity detail CSV/Markdown
 audit files into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.
+Compare Sets also provide `Bundle Set` and `Bundle + Open`; these create
+ephemeral selected/pinned cursor rows for the active compare view, then export
+the same bundle format so nominal, all-corner, or worst-corner overlays can be
+preserved as design-margin evidence without first adding persistent measurement
+snapshot rows.
 The index links the plot SVG, snapshot CSV/Markdown, README, manifest, and
 optional integrity detail files while surfacing the same snapshot, plot,
 selected-trace, generated content artifact size/SHA-256 metadata, and

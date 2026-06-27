@@ -63,8 +63,11 @@ artifact integrity detail CSV/Markdown files while surfacing the same runtime
 loaded-waveform footprint source summary and generated content artifact
 size/SHA-256 metadata, so exported folders can be audited for Full CSV,
 Selected Columns, Runtime Only memory distribution, and report-artifact
-integrity without persisting that diagnostic state into Board IR. Each bundle
-also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
+integrity without persisting that diagnostic state into Board IR. Compare-set
+bundle export reuses this path with ephemeral selected/pinned cursor rows, so
+sweep nominal/all-corner/worst-corner overlays can be captured as the same
+auditable artifact bundle without mutating saved measurement snapshots. Each
+bundle also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
 required bundle files; the optional integrity detail files are derived from that
 manifest and are not part of the manifest they describe. The recent-bundle UI prunes entries whose folders no longer exist, checks required artifact presence
 and manifest mismatches before opening, can show an integrity details table with

@@ -560,6 +560,32 @@ impl CircuitCiApp {
         )
     }
 
+    pub(super) fn current_scope_compare_cursor_snapshots(
+        &self,
+        label: &str,
+        note: &str,
+    ) -> Vec<ScopeMeasurementSnapshot> {
+        self.current_scope_cursor_snapshot_rows()
+            .into_iter()
+            .map(|row| {
+                let mut snapshot = cursor_snapshot(
+                    label,
+                    Some(row.trace),
+                    self.waveform_cursor_a_us,
+                    self.waveform_cursor_b_us,
+                    &row,
+                );
+                snapshot.source = if row.selected {
+                    "compare selected".to_string()
+                } else {
+                    "compare pinned".to_string()
+                };
+                snapshot.note = note.to_string();
+                snapshot
+            })
+            .collect()
+    }
+
     pub(super) fn scope_snapshot_markers(
         &self,
         visible_traces: &[WaveformTraceRef],

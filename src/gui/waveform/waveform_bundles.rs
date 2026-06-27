@@ -53,6 +53,45 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn export_scope_compare_report_bundle(&mut self, open_index: bool) -> usize {
+        if self.current_scope_compare_traces().len() < 2 {
+            self.status =
+                "Select and pin at least two visible scope traces before bundling a comparison."
+                    .to_string();
+            return 0;
+        }
+        let snapshots = self.current_scope_compare_cursor_snapshots(
+            "Compare Set",
+            "Runtime compare bundle row generated from selected and pinned Scopes traces.",
+        );
+        if snapshots.len() < 2 {
+            self.status =
+                "No visible scope comparison measurements are available to bundle.".to_string();
+            return 0;
+        }
+        let count = snapshots.len();
+        self.export_scope_report_bundle(&snapshots);
+        if self.status.contains("Exported scope report bundle") {
+            self.status = format!(
+                "Exported scope compare report bundle with {count} trace row(s). {}",
+                self.status
+            );
+        }
+        if open_index {
+            let export_status = self.status.clone();
+            if let Some(bundle) = self.waveform_recent_report_bundles.first().cloned() {
+                if self.open_scope_report_bundle_index(&bundle) {
+                    self.status = format!("{export_status} {}", self.status);
+                }
+            } else {
+                self.status = format!(
+                    "{export_status} No recent compare report bundle was available to open."
+                );
+            }
+        }
+        count
+    }
+
     pub(super) fn prepare_scope_report_bundle_files(
         &mut self,
         snapshots: &[ScopeMeasurementSnapshot],

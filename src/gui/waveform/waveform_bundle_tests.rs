@@ -137,6 +137,84 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
 }
 
 #[test]
+fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
+    let nominal = parse_waveform_csv_text(
+        "time,v(filtered)\n0,0\n0.000001,0.5\n",
+        "rc_nominal/waveform.csv",
+    )
+    .unwrap();
+    let worst = parse_waveform_csv_text(
+        "time,v(filtered)\n0,0\n0.000001,0.44\n",
+        "rc_worst/waveform.csv",
+    )
+    .unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_compare_bundle_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        waveforms: vec![nominal, worst],
+        selected_waveform: 0,
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0,
+        }],
+        ..Default::default()
+    };
+
+    assert_eq!(app.export_scope_compare_report_bundle(false), 2);
+    assert_eq!(app.waveform_recent_report_bundles.len(), 1);
+
+    let bundle = std::path::Path::new(&app.waveform_recent_report_bundles[0]);
+    let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
+    let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
+    let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
+
+    assert!(csv.contains("Compare Set"));
+    assert!(csv.contains("compare selected"));
+    assert!(csv.contains("compare pinned"));
+    assert!(csv.contains("Runtime compare bundle row"));
+    assert!(csv.contains("v(filtered)"));
+    assert!(markdown.contains("| Compare Set |"));
+    assert!(svg.contains("CircuitCI Scope Plot"));
+    assert!(app.status.contains("Exported scope compare report bundle"));
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
+fn scope_compare_report_bundle_requires_multiple_traces() {
+    let waveform =
+        parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,1\n", "waveform.csv").unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_compare_bundle_guard_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    assert_eq!(app.export_scope_compare_report_bundle(false), 0);
+    assert!(app.waveform_recent_report_bundles.is_empty());
+    assert!(app.status.contains("pin at least two visible scope traces"));
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
 fn scope_report_bundle_refresh_recreates_missing_artifacts() {
     let waveform =
         parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,2\n", "waveform.csv").unwrap();
