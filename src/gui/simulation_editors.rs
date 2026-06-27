@@ -7,6 +7,7 @@ use super::analog::{
     append_analog_transient_scenario_with_project_path, remove_analog_assertion,
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
+use super::analog_ac_presets::{analog_ac_assertion_presets, append_analog_ac_assertion_preset};
 use super::analog_generated::{
     AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft, AnalogGeneratedSettingsDraft,
     analog_generated_scenarios, exclude_generated_component,
@@ -969,6 +970,33 @@ impl CircuitCiApp {
                         }
                     }
                 });
+            if selected_scenario.is_some_and(|scenario| scenario.scenario_type == "analog_ac") {
+                ui.separator();
+                ui.strong("Bode check presets");
+                egui::Grid::new("analog_ac_assertion_presets")
+                    .num_columns(3)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.strong("Preset");
+                        ui.strong("Checks");
+                        ui.strong("Add");
+                        ui.end_row();
+                        for preset in analog_ac_assertion_presets() {
+                            ui.label(preset.label);
+                            ui.label(preset.summary);
+                            if ui
+                                .add_enabled(
+                                    !self.analog_assertion_probe.trim().is_empty(),
+                                    egui::Button::new("Add"),
+                                )
+                                .clicked()
+                            {
+                                self.apply_add_analog_ac_assertion_preset(preset.id, preset.label);
+                            }
+                            ui.end_row();
+                        }
+                    });
+            }
             if self.analog_assertion_edit_original.trim().is_empty() {
                 if ui.button("Add Check").clicked() {
                     self.apply_add_analog_assertion();
@@ -1147,6 +1175,24 @@ impl CircuitCiApp {
                 &format!(
                     "Observation check {} added.",
                     self.analog_assertion_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_ac_assertion_preset(&mut self, preset_id: &str, preset_label: &str) {
+        match append_analog_ac_assertion_preset(
+            &self.project_yaml,
+            &self.analog_assertion_scenario,
+            &self.analog_assertion_probe,
+            preset_id,
+        ) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "AC/Bode check preset {preset_label} added for {}.",
+                    self.analog_assertion_probe.trim()
                 ),
             ),
             Err(error) => self.record_error(error),

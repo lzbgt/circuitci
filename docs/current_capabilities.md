@@ -92,7 +92,8 @@ Current analog support:
   or falling gain-crossing frequency checks. The GUI Scopes loader treats
   `bode.csv` as a frequency-axis artifact, shows magnitude/phase/linear
   traces in unit-aware lanes, and reuses sweep-corner and worst-corner compare
-  pinning for Bode corners.
+  pinning for Bode corners. The GUI observation-check editor also offers
+  low-pass and unity-gain Bode check presets that write normal AC assertions.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

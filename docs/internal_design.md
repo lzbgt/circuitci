@@ -561,7 +561,7 @@ model-file inference for generated run setups: it looks up included components
 in the active component library, reads `simulation.spice.model_path`, resolves
 the path from the project directory or an ancestor exactly like validation, and
 writes missing SHA-pinned `analog.model_files` entries. Scenario creation in
-`src/gui/analog.rs` and generated component inclusion in
+`src/gui/analog_run_setup.rs` and generated component inclusion in
 `src/gui/analog_generated.rs` should call that helper instead of duplicating
 path resolution or hashing.
 `src/gui/analog_overview.rs` owns read-only generated analog run-setup audit
@@ -572,14 +572,17 @@ source primitive, probe, check, model SHA, node binding, and pin binding
 coverage. Readiness actions may preselect existing Observations-stage editor
 fields for those gaps, but they must not mutate Board IR by themselves. It must
 not introduce a second analog netlist or sign-off model.
-`src/gui/analog.rs` owns generated-from-Board analog transient scenario creation,
-selected-net voltage-probe insertion, selected-component source, passive, and
-semiconductor current-probe insertion, selected-component source, passive, and
-semiconductor power-probe insertion into existing analog scenarios, and
-structured sample/window/timing/duty/count/settling/overshoot/phase-delay/setup-hold check authoring. Its focused regression tests live
-in `src/gui/analog_tests.rs` so the production module stays below the source
-line guard. It may derive node and pin bindings from Board IR for observation
-scenarios. Selected-net probe insertion must fail
+`src/gui/analog_run_setup.rs` owns generated-from-Board analog transient and
+AC/Bode scenario creation, including derived node/pin bindings and generated
+model-file inference. `src/gui/analog_ac_presets.rs` owns GUI Bode check
+presets that append ordinary AC assertion rows for common low-pass and
+unity-gain observations. `src/gui/analog.rs` owns selected-net voltage-probe
+insertion, selected-component source/passive/semiconductor current-probe
+insertion, selected-component source/passive/semiconductor power-probe
+insertion into existing analog scenarios, and structured
+sample/window/timing/duty/count/settling/overshoot/phase-delay/setup-hold check
+authoring. Its focused regression tests live in `src/gui/analog_tests.rs` so
+the production module stays below the source line guard. Selected-net probe insertion must fail
 closed when the target scenario has no node binding for the selected Board IR
 net. Selected-component current-probe insertion must fail closed unless the
 target scenario is `generated_from_board`, includes the component, and the

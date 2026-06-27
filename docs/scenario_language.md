@@ -2668,8 +2668,11 @@ scenarios:
           frequency_limit_hz: 1400.0
 ```
 
-The deck must contain an AC-capable source such as `VIN in 0 AC 1`; transient
-`SIN(...)` sources alone do not define small-signal AC magnitude for ngspice.
+File-backed decks must contain an AC-capable source such as `VIN in 0 AC 1`;
+transient `SIN(...)` sources alone do not define small-signal AC magnitude for
+ngspice. Generated-from-board `analog_ac` scenarios add a unity small-signal
+`AC 1` suffix to independent voltage/current source primitives while retaining
+their declared DC or pulse operating point.
 Each run writes `bode.csv` with `frequency_hz`, `{probe}_mag_db`,
 `{probe}_phase_deg`, and `{probe}_mag` columns. `analog.sweeps` work the same
 way as transient sweeps and create one Bode artifact per corner. Supported AC

@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 mod analog;
+mod analog_ac_presets;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
 mod analog_assertion_kinds;
