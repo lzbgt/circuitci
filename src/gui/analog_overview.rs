@@ -7,6 +7,7 @@ use crate::reports::{Finding, ValidationReport};
 use super::CircuitCiApp;
 
 const ANALOG_SWEEP_MARGIN_SUMMARY: &str = "ANALOG_SWEEP_MARGIN_SUMMARY";
+const ANALOG_MONTE_CARLO_YIELD_SUMMARY: &str = "ANALOG_MONTE_CARLO_YIELD_SUMMARY";
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogGeneratedOverview {
@@ -33,6 +34,13 @@ pub(super) struct AnalogOverviewRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct AnalogSweepMarginRow {
+    pub(super) assertion: String,
+    pub(super) detail: String,
+    pub(super) passed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct AnalogMonteCarloYieldRow {
     pub(super) assertion: String,
     pub(super) detail: String,
     pub(super) passed: bool,
@@ -200,6 +208,9 @@ impl CircuitCiApp {
             self.analog_readiness_rows(ui, selected);
             let sweep_margins = analog_sweep_margin_rows(self.report.as_ref(), &selected.name);
             analog_sweep_margin_rows_ui(ui, &sweep_margins);
+            let monte_carlo_yields =
+                analog_monte_carlo_yield_rows(self.report.as_ref(), &selected.name);
+            analog_monte_carlo_yield_rows_ui(ui, &monte_carlo_yields);
             analog_overview_rows(ui, "Sources", &selected.source_rows);
             analog_overview_rows(ui, "Probes", &selected.probe_rows);
             analog_overview_rows(ui, "Checks", &selected.assertion_rows);
@@ -411,6 +422,68 @@ fn sweep_margin_row(finding: &Finding) -> Option<AnalogSweepMarginRow> {
     })
 }
 
+pub(super) fn analog_monte_carlo_yield_rows(
+    report: Option<&ValidationReport>,
+    scenario_name: &str,
+) -> Vec<AnalogMonteCarloYieldRow> {
+    report
+        .into_iter()
+        .flat_map(|report| report.infos.iter())
+        .filter(|finding| {
+            finding.id == ANALOG_MONTE_CARLO_YIELD_SUMMARY && finding.scenario == scenario_name
+        })
+        .filter_map(monte_carlo_yield_row)
+        .collect()
+}
+
+fn analog_monte_carlo_yield_rows_ui(ui: &mut egui::Ui, rows: &[AnalogMonteCarloYieldRow]) {
+    if rows.is_empty() {
+        return;
+    }
+    ui.strong("Monte Carlo yield");
+    egui::Grid::new("analog_generated_overview_monte_carlo_yield")
+        .num_columns(3)
+        .striped(true)
+        .show(ui, |ui| {
+            for row in rows {
+                ui.monospace(&row.assertion);
+                ui.label(if row.passed { "pass" } else { "fail" });
+                ui.label(&row.detail);
+                ui.end_row();
+            }
+        });
+}
+
+fn monte_carlo_yield_row(finding: &Finding) -> Option<AnalogMonteCarloYieldRow> {
+    let assertion = json_string(&finding.measured, "assertion")?;
+    let sweep =
+        json_string(&finding.measured, "analog_sweep").unwrap_or_else(|| "monte_carlo".to_string());
+    let sample =
+        json_string(&finding.measured, "analog_corner").unwrap_or_else(|| "sample".to_string());
+    let unit = json_string(&finding.measured, "measured_unit")
+        .or_else(|| json_string(&finding.limit, "limit_unit"))
+        .unwrap_or_default();
+    let evaluated = json_u64(&finding.measured, "evaluated_samples").unwrap_or(0);
+    let passed_samples = json_u64(&finding.measured, "passed_samples").unwrap_or(0);
+    let failed_samples = json_u64(&finding.measured, "failed_samples").unwrap_or(0);
+    let yield_percent = json_f64(&finding.measured, "yield_percent")
+        .map(compact_number)
+        .unwrap_or_else(|| "n/a".to_string());
+    let mean_margin = format_optional_unit(json_f64(&finding.measured, "mean_margin"), &unit);
+    let stddev_margin = format_optional_unit(json_f64(&finding.measured, "stddev_margin"), &unit);
+    let min_margin = format_optional_unit(json_f64(&finding.measured, "min_margin"), &unit);
+    let max_margin = format_optional_unit(json_f64(&finding.measured, "max_margin"), &unit);
+    let params = sweep_corner_input_summary(finding);
+    let passed = json_bool(&finding.measured, "passed").unwrap_or(failed_samples == 0);
+    Some(AnalogMonteCarloYieldRow {
+        assertion,
+        passed,
+        detail: format!(
+            "{sweep}/{sample}{params}: yield {yield_percent}% ({passed_samples}/{evaluated} pass, {failed_samples} fail), margin mean {mean_margin}, sigma {stddev_margin}, range {min_margin}..{max_margin}"
+        ),
+    })
+}
+
 fn sweep_corner_input_summary(finding: &Finding) -> String {
     let mut parts = Vec::new();
     if let Some(parameters) = sweep_parameter_summary(finding) {
@@ -427,6 +500,16 @@ fn sweep_corner_input_summary(finding: &Finding) -> String {
     } else {
         format!(" ({})", parts.join("; "))
     }
+}
+
+fn format_optional_unit(value: Option<f64>, unit: &str) -> String {
+    value
+        .map(|value| {
+            format!("{} {}", compact_number(value), unit)
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_else(|| "n/a".to_string())
 }
 
 fn sweep_parameter_summary(finding: &Finding) -> Option<String> {
@@ -1021,7 +1104,10 @@ mod tests {
 
     use crate::reports::{Finding, ValidationReport};
 
-    use super::{AnalogOverviewAction, analog_sweep_margin_rows, generated_analog_overviews};
+    use super::{
+        AnalogOverviewAction, analog_monte_carlo_yield_rows, analog_sweep_margin_rows,
+        generated_analog_overviews,
+    };
 
     fn project_yaml() -> &'static str {
         "project:
@@ -1264,5 +1350,77 @@ scenarios:
         );
 
         assert!(analog_sweep_margin_rows(Some(&report), "gui_transient").is_empty());
+    }
+
+    #[test]
+    fn analog_monte_carlo_yield_rows_project_sample_statistics() {
+        let mut finding = Finding::info(
+            "ANALOG_MONTE_CARLO_YIELD_SUMMARY",
+            "gui_transient",
+            "summary",
+        );
+        finding
+            .measured
+            .insert("analog_sweep".to_string(), json!("rc_monte_carlo"));
+        finding
+            .measured
+            .insert("analog_corner".to_string(), json!("sample_007"));
+        finding.measured.insert(
+            "analog_component_values".to_string(),
+            json!({"RLOAD.value_ohm": 982.5, "CLOAD.value_f": 0.000000101}),
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("cutoff_below_limit"));
+        finding
+            .measured
+            .insert("measured_unit".to_string(), json!("Hz"));
+        finding.measured.insert("passed".to_string(), json!(false));
+        finding
+            .measured
+            .insert("evaluated_samples".to_string(), json!(32));
+        finding
+            .measured
+            .insert("passed_samples".to_string(), json!(31));
+        finding
+            .measured
+            .insert("failed_samples".to_string(), json!(1));
+        finding
+            .measured
+            .insert("yield_percent".to_string(), json!(96.875));
+        finding
+            .measured
+            .insert("mean_margin".to_string(), json!(142.25));
+        finding
+            .measured
+            .insert("stddev_margin".to_string(), json!(12.5));
+        finding
+            .measured
+            .insert("min_margin".to_string(), json!(-1.25));
+        finding
+            .measured
+            .insert("max_margin".to_string(), json!(180.0));
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            vec![finding],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        );
+
+        let rows = analog_monte_carlo_yield_rows(Some(&report), "gui_transient");
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].assertion, "cutoff_below_limit");
+        assert!(!rows[0].passed);
+        assert!(rows[0].detail.contains("rc_monte_carlo/sample_007"));
+        assert!(rows[0].detail.contains("RLOAD.value_ohm=982.5"));
+        assert!(rows[0].detail.contains("yield 96.875%"));
+        assert!(rows[0].detail.contains("31/32 pass, 1 fail"));
+        assert!(rows[0].detail.contains("margin mean 142.25 Hz"));
+        assert!(rows[0].detail.contains("sigma 12.5 Hz"));
+        assert!(rows[0].detail.contains("range -1.25 Hz..180 Hz"));
     }
 }

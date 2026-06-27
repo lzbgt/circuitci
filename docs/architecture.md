@@ -59,8 +59,9 @@ targets.
 
 Scopes report bundles include a local `index.html` plus README manifest. The
 index links the plot SVG, snapshot CSV/Markdown artifacts, sweep
-worst-corner margin CSV/Markdown artifacts, and optional artifact integrity
-detail CSV/Markdown files while surfacing the same runtime
+worst-corner margin CSV/Markdown artifacts, Monte Carlo yield-summary
+CSV/Markdown artifacts, and optional artifact integrity detail CSV/Markdown
+files while surfacing the same runtime
 loaded-waveform footprint source summary and generated content artifact
 size/SHA-256 metadata, so exported folders can be audited for Full CSV,
 Selected Columns, Runtime Only memory distribution, and report-artifact
@@ -68,7 +69,8 @@ integrity without persisting that diagnostic state into Board IR. Compare-set
 bundle export reuses this path with ephemeral selected/pinned cursor rows, so
 sweep nominal/all-corner/worst-corner overlays can be captured as the same
 auditable artifact bundle without mutating saved measurement snapshots while
-still preserving the limiting assertion margin rows from the loaded report.
+still preserving the limiting assertion margin and Monte Carlo yield rows from
+the loaded report.
 Each bundle also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
 required bundle files; the optional integrity detail files are derived from that
 manifest and are not part of the manifest they describe. The recent-bundle UI prunes entries whose folders no longer exist, checks required artifact presence

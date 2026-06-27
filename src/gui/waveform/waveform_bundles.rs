@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const ANALOG_SWEEP_MARGIN_SUMMARY: &str = "ANALOG_SWEEP_MARGIN_SUMMARY";
+const ANALOG_MONTE_CARLO_YIELD_SUMMARY: &str = "ANALOG_MONTE_CARLO_YIELD_SUMMARY";
 
 pub(super) struct ScopeReportBundleFiles {
     scope_plot_svg: String,
@@ -39,6 +40,8 @@ pub(super) struct ScopeReportBundleFiles {
     noise_totals_markdown: String,
     sweep_margin_summaries_csv: String,
     sweep_margin_summaries_markdown: String,
+    monte_carlo_yield_summaries_csv: String,
+    monte_carlo_yield_summaries_markdown: String,
     readme: String,
 }
 
@@ -56,6 +59,25 @@ pub(super) struct ScopeSweepMarginSummaryRow {
     limit: String,
     margin: String,
     evaluated_corners: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct ScopeMonteCarloYieldSummaryRow {
+    scenario: String,
+    assertion: String,
+    probe: String,
+    sweep: String,
+    limiting_sample: String,
+    inputs: String,
+    passed: bool,
+    yield_percent: String,
+    passed_samples: u64,
+    failed_samples: u64,
+    evaluated_samples: u64,
+    mean_margin: String,
+    stddev_margin: String,
+    min_margin: String,
+    max_margin: String,
 }
 
 impl CircuitCiApp {
@@ -163,6 +185,11 @@ impl CircuitCiApp {
         let sweep_margin_summaries_csv = scope_sweep_margin_summaries_csv(&sweep_margin_rows);
         let sweep_margin_summaries_markdown =
             scope_sweep_margin_summaries_markdown(&sweep_margin_rows);
+        let monte_carlo_yield_rows = scope_monte_carlo_yield_summary_rows(self.report.as_ref());
+        let monte_carlo_yield_summaries_csv =
+            scope_monte_carlo_yield_summaries_csv(&monte_carlo_yield_rows);
+        let monte_carlo_yield_summaries_markdown =
+            scope_monte_carlo_yield_summaries_markdown(&monte_carlo_yield_rows);
         let metadata = scope_report_bundle_content_metadata(&[
             ("scope_plot.svg", &scope_plot_svg),
             ("measurement_snapshots.csv", &measurement_snapshots_csv),
@@ -176,12 +203,21 @@ impl CircuitCiApp {
                 "sweep_margin_summaries.md",
                 &sweep_margin_summaries_markdown,
             ),
+            (
+                "monte_carlo_yield_summaries.csv",
+                &monte_carlo_yield_summaries_csv,
+            ),
+            (
+                "monte_carlo_yield_summaries.md",
+                &monte_carlo_yield_summaries_markdown,
+            ),
         ]);
         Some(ScopeReportBundleFiles {
             scope_plot_svg,
             index_html: self.scope_report_bundle_index_html(
                 snapshots,
                 &sweep_margin_rows,
+                &monte_carlo_yield_rows,
                 &metadata,
             ),
             measurement_snapshots_csv,
@@ -192,7 +228,14 @@ impl CircuitCiApp {
             noise_totals_markdown,
             sweep_margin_summaries_csv,
             sweep_margin_summaries_markdown,
-            readme: self.scope_report_bundle_readme(snapshots, &sweep_margin_rows, &metadata),
+            monte_carlo_yield_summaries_csv,
+            monte_carlo_yield_summaries_markdown,
+            readme: self.scope_report_bundle_readme(
+                snapshots,
+                &sweep_margin_rows,
+                &monte_carlo_yield_rows,
+                &metadata,
+            ),
         })
     }
 
@@ -200,6 +243,7 @@ impl CircuitCiApp {
         &self,
         snapshots: &[ScopeMeasurementSnapshot],
         sweep_margin_rows: &[ScopeSweepMarginSummaryRow],
+        monte_carlo_yield_rows: &[ScopeMonteCarloYieldSummaryRow],
         metadata: &[ScopeReportBundleArtifactMetadata],
     ) -> String {
         let selected_context = self
@@ -226,6 +270,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - `noise_totals.md` - loaded integrated output/input RMS noise rows as Markdown.
 - `sweep_margin_summaries.csv` - worst-corner sweep margin summary rows from the loaded validation report.
 - `sweep_margin_summaries.md` - worst-corner sweep margin summary rows as Markdown.
+- `monte_carlo_yield_summaries.csv` - Monte Carlo yield and margin-distribution rows from the loaded validation report.
+- `monte_carlo_yield_summaries.md` - Monte Carlo yield and margin-distribution rows as Markdown.
 - `README.md` - this manifest.
 - `artifact_manifest.csv` - expected size and SHA-256 metadata for required bundle artifacts.
 - `artifact_integrity_details.csv` - artifact integrity detail rows as CSV.
@@ -267,6 +313,12 @@ report conveniences and are not part of the manifest they describe.
 
 {}
 
+## Monte Carlo Yield Summaries
+
+- Rows: {}
+
+{}
+
 ## Plot Export Options
 
 - Size: {}
@@ -300,6 +352,8 @@ report conveniences and are not part of the manifest they describe.
             noise_total_views_markdown(&self.noise_totals, self.report.as_ref()),
             sweep_margin_rows.len(),
             scope_sweep_margin_summaries_markdown(sweep_margin_rows),
+            monte_carlo_yield_rows.len(),
+            scope_monte_carlo_yield_summaries_markdown(monte_carlo_yield_rows),
             self.waveform_plot_export_size.label(),
             yes_no(self.waveform_plot_export_cursors),
             yes_no(self.waveform_plot_export_trigger),
@@ -316,6 +370,7 @@ report conveniences and are not part of the manifest they describe.
         &self,
         snapshots: &[ScopeMeasurementSnapshot],
         sweep_margin_rows: &[ScopeSweepMarginSummaryRow],
+        monte_carlo_yield_rows: &[ScopeMonteCarloYieldSummaryRow],
         metadata: &[ScopeReportBundleArtifactMetadata],
     ) -> String {
         let selected_context = self
@@ -358,6 +413,8 @@ report conveniences and are not part of the manifest they describe.
     <li><a href=\"noise_totals.md\">noise_totals.md</a> - loaded integrated output/input RMS noise rows as Markdown.</li>
     <li><a href=\"sweep_margin_summaries.csv\">sweep_margin_summaries.csv</a> - worst-corner sweep margin summary rows from the loaded validation report.</li>
     <li><a href=\"sweep_margin_summaries.md\">sweep_margin_summaries.md</a> - worst-corner sweep margin summary rows as Markdown.</li>
+    <li><a href=\"monte_carlo_yield_summaries.csv\">monte_carlo_yield_summaries.csv</a> - Monte Carlo yield and margin-distribution rows from the loaded validation report.</li>
+    <li><a href=\"monte_carlo_yield_summaries.md\">monte_carlo_yield_summaries.md</a> - Monte Carlo yield and margin-distribution rows as Markdown.</li>
     <li><a href=\"README.md\">README.md</a> - text manifest.</li>
     <li><a href=\"artifact_manifest.csv\">artifact_manifest.csv</a> - expected size and SHA-256 metadata.</li>
     <li><a href=\"artifact_integrity_details.csv\">artifact_integrity_details.csv</a> - artifact integrity detail rows as CSV.</li>
@@ -396,6 +453,9 @@ report conveniences and are not part of the manifest they describe.
   {}
   <h2>Sweep Margin Summaries</h2>
   <p><a href=\"sweep_margin_summaries.csv\">CSV</a> | <a href=\"sweep_margin_summaries.md\">Markdown</a></p>
+  {}
+  <h2>Monte Carlo Yield Summaries</h2>
+  <p><a href=\"monte_carlo_yield_summaries.csv\">CSV</a> | <a href=\"monte_carlo_yield_summaries.md\">Markdown</a></p>
   {}
   <h2>Plot Export Options</h2>
   <table>
@@ -436,6 +496,7 @@ report conveniences and are not part of the manifest they describe.
             self.noise_totals.len() * 2,
             noise_total_views_html(&self.noise_totals, self.report.as_ref()),
             scope_sweep_margin_summaries_html(sweep_margin_rows),
+            scope_monte_carlo_yield_summaries_html(monte_carlo_yield_rows),
             html_escape(self.waveform_plot_export_size.label()),
             yes_no(self.waveform_plot_export_cursors),
             yes_no(self.waveform_plot_export_trigger),
@@ -563,6 +624,18 @@ pub(super) fn write_scope_report_bundle_files(
             fs::write(
                 bundle_dir.join("sweep_margin_summaries.md"),
                 &files.sweep_margin_summaries_markdown,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("monte_carlo_yield_summaries.csv"),
+                &files.monte_carlo_yield_summaries_csv,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("monte_carlo_yield_summaries.md"),
+                &files.monte_carlo_yield_summaries_markdown,
             )
         })
         .and_then(|()| fs::write(bundle_dir.join("README.md"), &files.readme))
@@ -738,6 +811,162 @@ fn scope_sweep_margin_summaries_html(rows: &[ScopeSweepMarginSummaryRow]) -> Str
             html_escape(&row.limit),
             html_escape(&row.margin),
             row.evaluated_corners
+        ));
+    }
+    html.push_str("  </tbody>\n</table>");
+    html
+}
+
+pub(super) fn scope_monte_carlo_yield_summary_rows(
+    report: Option<&ValidationReport>,
+) -> Vec<ScopeMonteCarloYieldSummaryRow> {
+    report
+        .into_iter()
+        .flat_map(|report| report.infos.iter())
+        .filter(|finding| finding.id == ANALOG_MONTE_CARLO_YIELD_SUMMARY)
+        .filter_map(scope_monte_carlo_yield_summary_row)
+        .collect()
+}
+
+fn scope_monte_carlo_yield_summary_row(
+    finding: &Finding,
+) -> Option<ScopeMonteCarloYieldSummaryRow> {
+    let assertion = json_string(&finding.measured, "assertion")?;
+    let unit = json_string(&finding.measured, "measured_unit")
+        .or_else(|| json_string(&finding.limit, "limit_unit"))
+        .unwrap_or_default();
+    Some(ScopeMonteCarloYieldSummaryRow {
+        scenario: finding.scenario.clone(),
+        assertion,
+        probe: json_string(&finding.measured, "probe").unwrap_or_default(),
+        sweep: json_string(&finding.measured, "analog_sweep")
+            .unwrap_or_else(|| "monte_carlo".to_string()),
+        limiting_sample: json_string(&finding.measured, "analog_corner")
+            .unwrap_or_else(|| "sample".to_string()),
+        inputs: scope_sweep_margin_input_summary(finding),
+        passed: json_bool(&finding.measured, "passed").unwrap_or(false),
+        yield_percent: json_f64(&finding.measured, "yield_percent")
+            .map(compact_number)
+            .unwrap_or_else(|| "n/a".to_string()),
+        passed_samples: json_u64(&finding.measured, "passed_samples").unwrap_or(0),
+        failed_samples: json_u64(&finding.measured, "failed_samples").unwrap_or(0),
+        evaluated_samples: json_u64(&finding.measured, "evaluated_samples").unwrap_or(0),
+        mean_margin: format_numeric_with_unit(
+            json_f64(&finding.measured, "mean_margin"),
+            &unit,
+            "n/a",
+        ),
+        stddev_margin: format_numeric_with_unit(
+            json_f64(&finding.measured, "stddev_margin"),
+            &unit,
+            "n/a",
+        ),
+        min_margin: format_numeric_with_unit(
+            json_f64(&finding.measured, "min_margin"),
+            &unit,
+            "n/a",
+        ),
+        max_margin: format_numeric_with_unit(
+            json_f64(&finding.measured, "max_margin"),
+            &unit,
+            "n/a",
+        ),
+    })
+}
+
+pub(super) fn scope_monte_carlo_yield_summaries_csv(
+    rows: &[ScopeMonteCarloYieldSummaryRow],
+) -> String {
+    let mut csv = String::from(
+        "scenario,assertion,probe,sweep,limiting_sample,inputs,passed,yield_percent,passed_samples,failed_samples,evaluated_samples,mean_margin,stddev_margin,min_margin,max_margin\n",
+    );
+    for row in rows {
+        let fields = [
+            row.scenario.clone(),
+            row.assertion.clone(),
+            row.probe.clone(),
+            row.sweep.clone(),
+            row.limiting_sample.clone(),
+            row.inputs.clone(),
+            row.passed.to_string(),
+            row.yield_percent.clone(),
+            row.passed_samples.to_string(),
+            row.failed_samples.to_string(),
+            row.evaluated_samples.to_string(),
+            row.mean_margin.clone(),
+            row.stddev_margin.clone(),
+            row.min_margin.clone(),
+            row.max_margin.clone(),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    csv
+}
+
+pub(super) fn scope_monte_carlo_yield_summaries_markdown(
+    rows: &[ScopeMonteCarloYieldSummaryRow],
+) -> String {
+    let mut markdown = String::from(
+        "| Scenario | Assertion | Probe | Sweep | Limiting sample | Inputs | Pass | Yield % | Passed | Failed | Samples | Mean margin | Sigma margin | Min margin | Max margin |\n| --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- | --- |\n",
+    );
+    for row in rows {
+        markdown.push_str(&format!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            markdown_escape(&row.scenario),
+            markdown_escape(&row.assertion),
+            markdown_escape(&row.probe),
+            markdown_escape(&row.sweep),
+            markdown_escape(&row.limiting_sample),
+            markdown_escape(&row.inputs),
+            if row.passed { "pass" } else { "fail" },
+            markdown_escape(&row.yield_percent),
+            row.passed_samples,
+            row.failed_samples,
+            row.evaluated_samples,
+            markdown_escape(&row.mean_margin),
+            markdown_escape(&row.stddev_margin),
+            markdown_escape(&row.min_margin),
+            markdown_escape(&row.max_margin)
+        ));
+    }
+    markdown
+}
+
+fn scope_monte_carlo_yield_summaries_html(rows: &[ScopeMonteCarloYieldSummaryRow]) -> String {
+    let mut html = String::from(
+        "\
+<table>
+  <thead>
+    <tr><th>Scenario</th><th>Assertion</th><th>Probe</th><th>Sweep</th><th>Limiting sample</th><th>Inputs</th><th>Pass</th><th>Yield %</th><th>Passed</th><th>Failed</th><th>Samples</th><th>Mean margin</th><th>Sigma margin</th><th>Min margin</th><th>Max margin</th></tr>
+  </thead>
+  <tbody>
+",
+    );
+    for row in rows {
+        html.push_str(&format!(
+            "    <tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
+            html_escape(&row.scenario),
+            html_escape(&row.assertion),
+            html_escape(&row.probe),
+            html_escape(&row.sweep),
+            html_escape(&row.limiting_sample),
+            html_escape(&row.inputs),
+            if row.passed { "pass" } else { "fail" },
+            html_escape(&row.yield_percent),
+            row.passed_samples,
+            row.failed_samples,
+            row.evaluated_samples,
+            html_escape(&row.mean_margin),
+            html_escape(&row.stddev_margin),
+            html_escape(&row.min_margin),
+            html_escape(&row.max_margin)
         ));
     }
     html.push_str("  </tbody>\n</table>");

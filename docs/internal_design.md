@@ -420,11 +420,10 @@ frequency, and points-per-decade controls to normal `analog_noise`
 observations, mapping gain/phase/cutoff controls to `at_hz`,
 `frequency_limit_hz`, `threshold_db`, and `threshold_deg`.
 `src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
-findings back into the selected generated run-setup overview so users can see
-worst-corner assertion margins without opening raw report findings. Monte Carlo
-yield rows are emitted as normal `ANALOG_MONTE_CARLO_YIELD_SUMMARY` report
-findings from `src/validation/analog_sweep_reports.rs`; GUI-specific
-projection can consume the same fields without re-running simulations.
+and `ANALOG_MONTE_CARLO_YIELD_SUMMARY` findings back into the selected
+generated run-setup overview so users can see worst-corner assertion margins
+and Monte Carlo yield/margin-distribution rows without opening raw report
+findings.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form
 defaults, combo widgets, stimulus field loading, and status-color helpers for
 those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
@@ -478,8 +477,10 @@ optional artifact integrity detail files, loaded-waveform footprint source
 totals, and compare-set bundle export that synthesizes runtime selected/pinned
 cursor rows without mutating saved measurement snapshots. It also projects
 loaded `ANALOG_SWEEP_MARGIN_SUMMARY` findings into bundle-local
-`sweep_margin_summaries.csv` and `.md` artifacts so waveform evidence and
-limiting design margins travel together.
+`sweep_margin_summaries.csv` and `.md` artifacts, and loaded
+`ANALOG_MONTE_CARLO_YIELD_SUMMARY` findings into
+`monte_carlo_yield_summaries.csv` and `.md` artifacts, so waveform evidence,
+limiting design margins, and sampled-yield statistics travel together.
 `src/gui/waveform/waveform_bundle_recent.rs` owns recent-bundle
 folder/index/integrity-audit opening, path copy actions, missing-folder
 pruning, integrity problem filtering, guarded refresh, and

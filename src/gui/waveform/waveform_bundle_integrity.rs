@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-pub(super) const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 12] = [
+pub(super) const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 14] = [
     ("index.html", "index.html"),
     ("scope_plot.svg", "scope_plot.svg"),
     ("measurement_snapshots.csv", "measurement_snapshots.csv"),
@@ -15,6 +15,14 @@ pub(super) const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 12] = [
     ("noise_totals.md", "noise_totals.md"),
     ("sweep_margin_summaries.csv", "sweep_margin_summaries.csv"),
     ("sweep_margin_summaries.md", "sweep_margin_summaries.md"),
+    (
+        "monte_carlo_yield_summaries.csv",
+        "monte_carlo_yield_summaries.csv",
+    ),
+    (
+        "monte_carlo_yield_summaries.md",
+        "monte_carlo_yield_summaries.md",
+    ),
     ("README.md", "README.md"),
     ("artifact_manifest.csv", "artifact_manifest.csv"),
 ];

@@ -62,6 +62,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
     let margin_csv = fs::read_to_string(bundle.join("sweep_margin_summaries.csv")).unwrap();
     let margin_markdown = fs::read_to_string(bundle.join("sweep_margin_summaries.md")).unwrap();
+    let yield_csv = fs::read_to_string(bundle.join("monte_carlo_yield_summaries.csv")).unwrap();
+    let yield_markdown = fs::read_to_string(bundle.join("monte_carlo_yield_summaries.md")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
     let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
     let integrity_csv = fs::read_to_string(bundle.join("artifact_integrity_details.csv")).unwrap();
@@ -77,6 +79,12 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(markdown.contains("| Cursor 1 |"));
     assert!(margin_csv.starts_with("scenario,assertion,probe,sweep,corner,inputs,passed"));
     assert!(margin_markdown.contains("| Scenario | Assertion | Probe | Sweep | Corner |"));
+    assert!(
+        yield_csv.starts_with(
+            "scenario,assertion,probe,sweep,limiting_sample,inputs,passed,yield_percent"
+        )
+    );
+    assert!(yield_markdown.contains("| Scenario | Assertion | Probe | Sweep | Limiting sample |"));
     assert!(readme.contains("# CircuitCI Scope Report Bundle"));
     assert!(readme.contains("- Rows: 1"));
     assert!(readme.contains("- Search: v(out)"));
@@ -89,6 +97,7 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("- `index.html`"));
     assert!(readme.contains("- `scope_plot.svg`"));
     assert!(readme.contains("- `sweep_margin_summaries.csv`"));
+    assert!(readme.contains("- `monte_carlo_yield_summaries.csv`"));
     assert!(readme.contains("- Rows: 0"));
     assert!(readme.contains("- `artifact_manifest.csv`"));
     assert!(readme.contains("- `artifact_integrity_details.csv`"));
@@ -98,6 +107,7 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("| scope_plot.svg |"));
     assert!(readme.contains("| measurement_snapshots.csv |"));
     assert!(readme.contains("| sweep_margin_summaries.csv |"));
+    assert!(readme.contains("| monte_carlo_yield_summaries.csv |"));
     assert!(readme.contains("SHA-256"));
     assert!(index.contains("<title>CircuitCI Scope Report Bundle</title>"));
     assert!(index.contains("href=\"scope_plot.svg\""));
@@ -105,6 +115,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(index.contains("href=\"measurement_snapshots.md\""));
     assert!(index.contains("href=\"sweep_margin_summaries.csv\""));
     assert!(index.contains("href=\"sweep_margin_summaries.md\""));
+    assert!(index.contains("href=\"monte_carlo_yield_summaries.csv\""));
+    assert!(index.contains("href=\"monte_carlo_yield_summaries.md\""));
     assert!(index.contains("href=\"README.md\""));
     assert!(index.contains("href=\"artifact_manifest.csv\""));
     assert!(index.contains("href=\"artifact_integrity_details.csv\""));
@@ -117,6 +129,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(manifest.contains("scope_plot.svg,scope_plot.svg"));
     assert!(manifest.contains("sweep_margin_summaries.csv,sweep_margin_summaries.csv"));
     assert!(manifest.contains("sweep_margin_summaries.md,sweep_margin_summaries.md"));
+    assert!(manifest.contains("monte_carlo_yield_summaries.csv,monte_carlo_yield_summaries.csv"));
+    assert!(manifest.contains("monte_carlo_yield_summaries.md,monte_carlo_yield_summaries.md"));
     assert!(manifest.contains("index.html,index.html"));
     assert!(manifest.contains("README.md,README.md"));
     assert!(!manifest.contains("artifact_integrity_details.csv"));
@@ -316,13 +330,22 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
             waveform_index: 1,
             probe_index: 0,
         }],
-        report: Some(report(vec![sweep_margin(
-            "rc_run",
-            "v_filtered_rms",
-            "v_filtered",
-            "rc_tolerance",
-            "corner_009",
-        )])),
+        report: Some(report(vec![
+            sweep_margin(
+                "rc_run",
+                "v_filtered_rms",
+                "v_filtered",
+                "rc_tolerance",
+                "corner_009",
+            ),
+            monte_carlo_yield(
+                "rc_run",
+                "cutoff_below_limit",
+                "v_filtered",
+                "rc_monte_carlo",
+                "sample_012",
+            ),
+        ])),
         ..Default::default()
     };
 
@@ -334,6 +357,8 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
     let margin_csv = fs::read_to_string(bundle.join("sweep_margin_summaries.csv")).unwrap();
     let margin_markdown = fs::read_to_string(bundle.join("sweep_margin_summaries.md")).unwrap();
+    let yield_csv = fs::read_to_string(bundle.join("monte_carlo_yield_summaries.csv")).unwrap();
+    let yield_markdown = fs::read_to_string(bundle.join("monte_carlo_yield_summaries.md")).unwrap();
     let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
     let index = fs::read_to_string(bundle.join("index.html")).unwrap();
@@ -349,10 +374,18 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     assert!(margin_csv.contains("0.01 V"));
     assert!(margin_markdown.contains("| rc_run | v_filtered_rms | v_filtered |"));
     assert!(margin_markdown.contains("R1.value_ohm=1050"));
+    assert!(yield_csv.contains("rc_run,cutoff_below_limit,v_filtered,rc_monte_carlo,sample_012"));
+    assert!(yield_csv.contains("96.875"));
+    assert!(yield_csv.contains("31,1,32"));
+    assert!(yield_markdown.contains("| rc_run | cutoff_below_limit | v_filtered |"));
+    assert!(yield_markdown.contains("12.5 Hz"));
     assert!(readme.contains("## Sweep Margin Summaries"));
     assert!(readme.contains("- Rows: 1"));
+    assert!(readme.contains("## Monte Carlo Yield Summaries"));
     assert!(index.contains("<h2>Sweep Margin Summaries</h2>"));
+    assert!(index.contains("<h2>Monte Carlo Yield Summaries</h2>"));
     assert!(index.contains("rc_tolerance"));
+    assert!(index.contains("rc_monte_carlo"));
     assert!(svg.contains("CircuitCI Scope Plot"));
     assert!(app.status.contains("Exported scope compare report bundle"));
 
@@ -420,6 +453,59 @@ fn sweep_margin(
     finding.limit.insert("relation".to_string(), json!("below"));
     finding.limit.insert("limit_value".to_string(), json!(0.62));
     finding.limit.insert("limit_unit".to_string(), json!("V"));
+    finding
+}
+
+fn monte_carlo_yield(
+    scenario: &str,
+    assertion: &str,
+    probe: &str,
+    sweep: &str,
+    sample: &str,
+) -> Finding {
+    let mut finding = Finding::info("ANALOG_MONTE_CARLO_YIELD_SUMMARY", scenario, "summary");
+    finding
+        .measured
+        .insert("assertion".to_string(), json!(assertion));
+    finding.measured.insert("probe".to_string(), json!(probe));
+    finding
+        .measured
+        .insert("analog_sweep".to_string(), json!(sweep));
+    finding
+        .measured
+        .insert("analog_corner".to_string(), json!(sample));
+    finding.measured.insert(
+        "analog_component_values".to_string(),
+        json!({ "R1.value_ohm": 982.5 }),
+    );
+    finding
+        .measured
+        .insert("measured_unit".to_string(), json!("Hz"));
+    finding.measured.insert("passed".to_string(), json!(false));
+    finding
+        .measured
+        .insert("yield_percent".to_string(), json!(96.875));
+    finding
+        .measured
+        .insert("passed_samples".to_string(), json!(31));
+    finding
+        .measured
+        .insert("failed_samples".to_string(), json!(1));
+    finding
+        .measured
+        .insert("evaluated_samples".to_string(), json!(32));
+    finding
+        .measured
+        .insert("mean_margin".to_string(), json!(142.25));
+    finding
+        .measured
+        .insert("stddev_margin".to_string(), json!(12.5));
+    finding
+        .measured
+        .insert("min_margin".to_string(), json!(-1.25));
+    finding
+        .measured
+        .insert("max_margin".to_string(), json!(180.0));
     finding
 }
 
