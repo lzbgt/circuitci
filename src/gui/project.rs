@@ -23,6 +23,10 @@ const COMPARATOR_THRESHOLD_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v(input)", "v(reference)", "v(output)", "v(vcc)"];
 const COMPARATOR_THRESHOLD_SCOPE_EXPECTED_FREQUENCY: &str =
     "80 us input pulse crossing a 1.2 V reference";
+const OPAMP_BUFFER_SCOPE_EXAMPLE_PROJECT: &str = "examples/good_ideal_opamp_buffer/project.yaml";
+const OPAMP_BUFFER_SCOPE_EXAMPLE_NAME: &str = "good_ideal_opamp_buffer";
+const OPAMP_BUFFER_SCOPE_EXPECTED_TRACES: &[&str] = &["v(input)", "v(output)", "v(vcc)"];
+const OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY: &str = "80 us input pulse through unity feedback";
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
@@ -59,6 +63,18 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_NAME,
         expected_traces: COMPARATOR_THRESHOLD_SCOPE_EXPECTED_TRACES,
         expected_frequency: COMPARATOR_THRESHOLD_SCOPE_EXPECTED_FREQUENCY,
+    },
+    GuiProjectExample {
+        id: "opamp_buffer_scope",
+        category: "Op-Amp",
+        open_label: "Open Op-Amp Buffer Example",
+        run_label: "Open Op-Amp Buffer + Run Scopes",
+        workflow_title: "Op-Amp Buffer Workflow",
+        summary: "Unity-gain buffer tracking a pulse input with output settling checks.",
+        project_path: OPAMP_BUFFER_SCOPE_EXAMPLE_PROJECT,
+        project_name: OPAMP_BUFFER_SCOPE_EXAMPLE_NAME,
+        expected_traces: OPAMP_BUFFER_SCOPE_EXPECTED_TRACES,
+        expected_frequency: OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY,
     },
 ];
 

@@ -547,13 +547,48 @@ fn scope_examples_load_routed_schematic_edges() {
         .find(|component| component.id == "RLOAD")
         .unwrap();
     assert_eq!(load.kicad_symbol_id.as_deref(), Some("Device:R"));
+
+    app.request_project_example_load(gui_project_example_by_id("opamp_buffer_scope"), None);
+    let snapshot = app.project_snapshot.as_ref().unwrap();
+
+    assert_eq!(snapshot.wire_routes.len(), 11);
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(
+        app.sketch_viewport_command,
+        Some(SketchViewportCommand::FitAll)
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("XU1.OUT", "output"))
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("XU1.INN", "output"))
+    );
+    let opamp = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "XU1")
+        .unwrap();
+    assert_eq!(
+        opamp.kicad_symbol_id.as_deref(),
+        Some("Amplifier_Operational:LMV321")
+    );
+    let load = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "RLOAD")
+        .unwrap();
+    assert_eq!(load.kicad_symbol_id.as_deref(), Some("Device:R"));
 }
 
 #[test]
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 3);
+    assert_eq!(examples.len(), 4);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -627,6 +662,32 @@ fn gui_project_example_registry_lists_comparator_threshold_scope_fixture() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_opamp_buffer_scope_fixture() {
+    let example = gui_project_example_by_id("opamp_buffer_scope");
+
+    assert_eq!(example.category, "Op-Amp");
+    assert_eq!(example.open_label, "Open Op-Amp Buffer Example");
+    assert_eq!(example.run_label, "Open Op-Amp Buffer + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Unity-gain buffer tracking a pulse input with output settling checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_ideal_opamp_buffer/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_ideal_opamp_buffer");
+    assert_eq!(
+        example.expected_traces,
+        &["v(input)", "v(output)", "v(vcc)"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "80 us input pulse through unity feedback"
+    );
+}
+
+#[test]
 fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     let mut app = CircuitCiApp::default();
 
@@ -638,6 +699,8 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
         app.selected_project_example().id,
         "comparator_threshold_scope"
     );
+    app.selected_project_example_id = "opamp_buffer_scope".to_string();
+    assert_eq!(app.selected_project_example().id, "opamp_buffer_scope");
     app.selected_project_example_id = "deleted_example".to_string();
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
 }

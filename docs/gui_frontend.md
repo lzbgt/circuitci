@@ -456,13 +456,13 @@ form:
   compact example picker that shows each entry's category, purpose, expected
   traces, and expected frequency before `Open` or `Run + Scopes`. The current
   entries cover the checked-in NE555 astable-style fixture, RC low-pass sine
-  fixture, and comparator threshold fixture; all direct-open projects include
-  display-only routed schematic waypoints. Opening one lands directly in Sketch
-  with a deferred Fit All, so the first view is the readable connected network.
-  When a scope-ready fixture is active, the Project overlay also shows a
-  workflow status with direct `Run + Scopes` / `Open Scope Activity` actions,
-  and the Sketch side dock mirrors those compact workflow actions above Run
-  Readiness.
+  fixture, comparator threshold fixture, and op-amp buffer fixture; all
+  direct-open projects include display-only routed schematic waypoints. Opening
+  one lands directly in Sketch with a deferred Fit All, so the first view is the
+  readable connected network. When a scope-ready fixture is active, the Project
+  overlay also shows a workflow status with direct `Run + Scopes` / `Open Scope
+  Activity` actions, and the Sketch side dock mirrors those compact workflow
+  actions above Run Readiness.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native

@@ -6,6 +6,61 @@ libraries:
   - ../../libs/generic/analog
 
 board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      VIN: Simulation_SPICE:VPULSE
+      XU1: Amplifier_Operational:LMV321
+      RLOAD: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:XU1: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 48.0, y: 80.0 }
+      component:VIN: { x: 48.0, y: 240.0 }
+      component:XU1: { x: 384.0, y: 256.0 }
+      component:RLOAD: { x: 560.0, y: 376.0 }
+      net:vcc_5v: { x: 192.0, y: 64.0 }
+      net:input: { x: 224.0, y: 224.0 }
+      net:output: { x: 544.0, y: 240.0 }
+      net:gnd: { x: 256.0, y: 528.0 }
+    wire_routes:
+      VCC.P->vcc_5v:
+        points:
+          - { x: 192.0, y: 112.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 96.0, y: 528.0 }
+      VIN.P->input:
+        points:
+          - { x: 224.0, y: 272.0 }
+      VIN.N->gnd:
+        points:
+          - { x: 96.0, y: 528.0 }
+      XU1.INP->input:
+        points:
+          - { x: 320.0, y: 224.0 }
+      XU1.INN->output:
+        points:
+          - { x: 320.0, y: 352.0 }
+          - { x: 544.0, y: 352.0 }
+      XU1.VCC->vcc_5v:
+        points:
+          - { x: 384.0, y: 64.0 }
+      XU1.VEE->gnd:
+        points:
+          - { x: 384.0, y: 528.0 }
+      XU1.OUT->output:
+        points:
+          - { x: 544.0, y: 272.0 }
+      RLOAD.A->output:
+        points:
+          - { x: 608.0, y: 272.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 528.0 }
   components:
     VCC:
       model: generic.analog.dc_voltage_source
@@ -118,6 +173,8 @@ scenarios:
           expression: V(in)
         - name: output
           expression: V(out)
+        - name: vcc
+          expression: V(vcc)
       assertions:
         - name: output_tracks_low_input
           probe: output
