@@ -1,5 +1,8 @@
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
+
+use super::analog_model_files::add_missing_generated_model_files;
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogGeneratedComponentDraft {
@@ -233,8 +236,17 @@ pub(super) fn replace_generated_node_binding(
     )
 }
 
+#[cfg(test)]
 pub(super) fn include_generated_component(
     text: &str,
+    draft: &AnalogGeneratedComponentDraft,
+) -> Result<String> {
+    include_generated_component_with_project_path(text, Path::new("project.yaml"), draft)
+}
+
+pub(super) fn include_generated_component_with_project_path(
+    text: &str,
+    project_path: &Path,
     draft: &AnalogGeneratedComponentDraft,
 ) -> Result<String> {
     validate_generated_component_draft(draft)?;
@@ -312,10 +324,11 @@ pub(super) fn include_generated_component(
         }
     }
 
-    serialize_validated(
+    let updated = serialize_validated(
         yaml,
         "Edited generated component YAML is not valid Board IR.",
-    )
+    )?;
+    add_missing_generated_model_files(&updated, project_path, &draft.scenario_name)
 }
 
 pub(super) fn exclude_generated_component(
@@ -806,8 +819,10 @@ mod tests {
     use super::{
         AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft,
         AnalogGeneratedSettingsDraft, analog_generated_scenarios, exclude_generated_component,
-        include_generated_component, replace_generated_node_binding, replace_generated_settings,
+        include_generated_component, include_generated_component_with_project_path,
+        replace_generated_node_binding, replace_generated_settings,
     };
+    use std::path::Path;
 
     fn project_yaml() -> &'static str {
         "project:
@@ -857,6 +872,64 @@ scenarios:
 "
     }
 
+    fn model_pack_project_yaml() -> &'static str {
+        r#"
+project:
+  name: gui_generated_model_file_test
+  version: 0.1.0
+libraries:
+  - ../../libs/generic/analog
+board:
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins: {P: vcc_5v, N: gnd}
+      spice: {primitive: dc_voltage_source, dc_v: 5.0}
+    VIN:
+      model: generic.analog.dc_voltage_source
+      pins: {P: input, N: gnd}
+      spice: {primitive: dc_voltage_source, dc_v: 1.0}
+    XU1:
+      model: generic.analog.ideal_opamp
+      pins: {INP: input, INN: output, VCC: vcc_5v, VEE: gnd, OUT: output}
+    RLOAD:
+      model: generic.analog.resistor
+      pins: {A: output, B: gnd}
+      spice: {primitive: resistor, value_ohm: 10000.0}
+  nets:
+    vcc_5v: {kind: power, nominal_voltage: 5.0, powered: true}
+    input: {kind: digital_or_analog}
+    output: {kind: digital_or_analog}
+    gnd: {kind: ground}
+scenarios:
+  - name: generated_transient
+    type: analog_transient
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        components: [VCC, VIN, RLOAD]
+        ground_net: gnd
+      model_files: []
+      node_bindings:
+        - {node: '0', net: gnd}
+        - {node: vcc, net: vcc_5v}
+        - {node: in, net: input}
+        - {node: out, net: output}
+      pin_bindings:
+        - {node: vcc, endpoint: {component: VCC, pin: P}}
+        - {node: '0', endpoint: {component: VCC, pin: N}}
+        - {node: in, endpoint: {component: VIN, pin: P}}
+        - {node: '0', endpoint: {component: VIN, pin: N}}
+        - {node: out, endpoint: {component: RLOAD, pin: A}}
+        - {node: '0', endpoint: {component: RLOAD, pin: B}}
+      analysis: {type: tran, stop_time_us: 10.0, max_step_us: 0.1}
+      stimuli: []
+      probes: []
+      assertions: []
+"#
+    }
+
     #[test]
     fn analog_generated_scenarios_lists_included_and_available_components() {
         let scenarios = analog_generated_scenarios(project_yaml()).unwrap();
@@ -904,6 +977,39 @@ scenarios:
                 .pin_bindings
                 .iter()
                 .any(|binding| binding.endpoint.component == "C1" && binding.endpoint.pin == "A")
+        );
+    }
+
+    #[test]
+    fn include_generated_component_adds_required_model_file() {
+        let edited = include_generated_component_with_project_path(
+            model_pack_project_yaml(),
+            Path::new("examples/good_ideal_opamp_buffer/project.yaml"),
+            &AnalogGeneratedComponentDraft {
+                scenario_name: "generated_transient".to_string(),
+                component_id: "XU1".to_string(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        assert!(
+            analog
+                .generated
+                .as_ref()
+                .unwrap()
+                .components
+                .contains(&"XU1".to_string())
+        );
+        assert_eq!(analog.model_files.len(), 1);
+        assert_eq!(
+            analog.model_files[0].path,
+            "../../models/spice/generic/analog_behavioral.lib"
+        );
+        assert_eq!(
+            analog.model_files[0].sha256.as_deref(),
+            Some("7872b453d85cec24216861e3d51326c477d056225617d029a8f03fde00dbb670")
         );
     }
 

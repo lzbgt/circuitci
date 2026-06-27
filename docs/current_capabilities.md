@@ -126,6 +126,10 @@ Current analog support:
   and enabled 3.3 V regulator rails through explicit `simulation.spice`
   subcircuits. These models are low-confidence workflow/topology aids, not
   vendor sign-off evidence.
+- GUI generated run-setup creation and generated component inclusion infer
+  required `simulation.spice.model_path` files from active component-library
+  metadata, resolve them the same way validation does, and write SHA-256-pinned
+  `analog.model_files` entries automatically when missing.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.

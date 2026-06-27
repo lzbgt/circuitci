@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 use super::analog_branches::{current_probe_expression, power_probe_expression};
+use super::analog_model_files::model_file_values_for_generated_components;
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioDraft {
@@ -130,8 +131,17 @@ pub(super) struct AnalogProbeAssertionSummary {
     pub(super) failure_message: Option<String>,
 }
 
+#[cfg(test)]
 pub(super) fn append_analog_transient_scenario(
     text: &str,
+    draft: &AnalogScenarioDraft,
+) -> Result<String> {
+    append_analog_transient_scenario_with_project_path(text, Path::new("project.yaml"), draft)
+}
+
+pub(super) fn append_analog_transient_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
     draft: &AnalogScenarioDraft,
 ) -> Result<String> {
     validate_draft(draft)?;
@@ -163,7 +173,12 @@ pub(super) fn append_analog_transient_scenario(
     let mut yaml: serde_yaml_ng::Value =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
     let scenarios = ensure_sequence_field_mut(&mut yaml, "scenarios")?;
-    scenarios.push(analog_scenario_value(&project, draft, &node_by_net)?);
+    scenarios.push(analog_scenario_value(
+        project_path,
+        &project,
+        draft,
+        &node_by_net,
+    )?);
     let updated =
         serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
     let _: crate::board_ir::BoardProject =
@@ -1513,6 +1528,7 @@ fn sanitize_spice_node(value: &str) -> String {
 }
 
 fn analog_scenario_value(
+    project_path: &Path,
     project: &crate::board_ir::BoardProject,
     draft: &AnalogScenarioDraft,
     node_by_net: &std::collections::BTreeMap<String, String>,
@@ -1528,12 +1544,13 @@ fn analog_scenario_value(
     );
     scenario.insert(
         key("analog"),
-        serde_yaml_ng::Value::Mapping(analog_block(project, draft, node_by_net)?),
+        serde_yaml_ng::Value::Mapping(analog_block(project_path, project, draft, node_by_net)?),
     );
     Ok(serde_yaml_ng::Value::Mapping(scenario))
 }
 
 fn analog_block(
+    project_path: &Path,
     project: &crate::board_ir::BoardProject,
     draft: &AnalogScenarioDraft,
     node_by_net: &std::collections::BTreeMap<String, String>,
@@ -1556,9 +1573,14 @@ fn analog_block(
         ),
     );
     analog.insert(key("generated"), serde_yaml_ng::Value::Mapping(generated));
+    let component_ids = project.board.components.keys().cloned().collect::<Vec<_>>();
     analog.insert(
         key("model_files"),
-        serde_yaml_ng::Value::Sequence(Vec::new()),
+        serde_yaml_ng::Value::Sequence(model_file_values_for_generated_components(
+            project_path,
+            project,
+            &component_ids,
+        )?),
     );
 
     analog.insert(

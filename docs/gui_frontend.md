@@ -403,7 +403,11 @@ trace styles, and saved compare-set coverage so interaction work can grow
 without turning the runtime module into a test fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
-scenarios.
+scenarios. Generated run-setup creation and generated component inclusion use
+`src/gui/analog_model_files.rs` to infer required model files from active
+component-library `simulation.spice.model_path` metadata, resolve paths from
+the project directory and its ancestors, and add missing SHA-pinned entries
+without requiring manual path/hash entry.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
 generation for generated-from-Board simulations, with focused regression
 coverage split into `src/gui/analog_tests.rs`. `src/gui/analog_generated.rs`

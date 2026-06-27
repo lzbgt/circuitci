@@ -4,8 +4,8 @@ use super::analog::{
     AnalogProbeDraft, AnalogProbeRemoveDraft, AnalogScenarioDraft,
     analog_probe_assertion_summaries, append_analog_assertion, append_analog_current_probe,
     append_analog_expression_probe, append_analog_power_probe, append_analog_transient_scenario,
-    append_analog_voltage_probe, remove_analog_assertions_for_probe, remove_analog_probe,
-    unique_analog_assertion_name,
+    append_analog_transient_scenario_with_project_path, append_analog_voltage_probe,
+    remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
 };
 use crate::reports::{Finding, ValidationReport};
 use std::path::Path;
@@ -187,6 +187,66 @@ fn append_analog_transient_scenario_emits_valid_yaml() {
     assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
     assert_eq!(analog.probes[0].expression, "V(out)");
     assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_transient_scenario_infers_model_pack_file() {
+    let yaml = r#"
+project:
+  name: gui_model_pack_setup_test
+  version: 0.1.0
+libraries:
+  - ../../libs/generic/analog
+board:
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins: {P: vcc_5v, N: gnd}
+      spice: {primitive: dc_voltage_source, dc_v: 5.0}
+    VIN:
+      model: generic.analog.dc_voltage_source
+      pins: {P: input, N: gnd}
+      spice: {primitive: dc_voltage_source, dc_v: 1.0}
+    XU1:
+      model: generic.analog.ideal_opamp
+      pins: {INP: input, INN: output, VCC: vcc_5v, VEE: gnd, OUT: output}
+    RLOAD:
+      model: generic.analog.resistor
+      pins: {A: output, B: gnd}
+      spice: {primitive: resistor, value_ohm: 10000.0}
+  nets:
+    vcc_5v: {kind: power, nominal_voltage: 5.0, powered: true}
+    input: {kind: digital_or_analog}
+    output: {kind: digital_or_analog}
+    gnd: {kind: ground}
+"#;
+    let draft = AnalogScenarioDraft {
+        name: "generated_model_pack".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "output".to_string(),
+        probe_name: "output_voltage".to_string(),
+        stop_time_us: 10.0,
+        max_step_us: 0.1,
+    };
+
+    let edited = append_analog_transient_scenario_with_project_path(
+        yaml,
+        Path::new("examples/good_ideal_opamp_buffer/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let model_files = &project.scenarios[0].analog.as_ref().unwrap().model_files;
+    assert_eq!(model_files.len(), 1);
+    assert_eq!(
+        model_files[0].path,
+        "../../models/spice/generic/analog_behavioral.lib"
+    );
+    assert_eq!(
+        model_files[0].sha256.as_deref(),
+        Some("7872b453d85cec24216861e3d51326c477d056225617d029a8f03fde00dbb670")
+    );
 }
 
 #[test]

@@ -1,10 +1,11 @@
 use super::CircuitCiApp;
 use super::analog::{
-    AnalogProbeDraft, AnalogScenarioDraft, append_analog_transient_scenario,
+    AnalogProbeDraft, AnalogScenarioDraft, append_analog_transient_scenario_with_project_path,
     append_analog_voltage_probe,
 };
 use anyhow::{Context, Result};
 use eframe::egui;
+use std::path::Path;
 
 impl CircuitCiApp {
     pub(super) fn simulation_stage(&mut self, ui: &mut egui::Ui) {
@@ -129,6 +130,7 @@ impl CircuitCiApp {
     fn prepare_scope_run_inputs(&mut self) -> Result<bool> {
         let preparation = prepare_scope_run_yaml(
             &self.project_yaml,
+            Path::new(&self.project_path),
             &self.analog_scenario_name,
             &self.analog_probe_name,
             self.analog_stop_time_us,
@@ -255,6 +257,7 @@ impl ScopeRunPreparation {
 
 fn prepare_scope_run_yaml(
     text: &str,
+    project_path: &Path,
     preferred_scenario_name: &str,
     preferred_probe_name: &str,
     stop_time_us: f64,
@@ -302,7 +305,7 @@ fn prepare_scope_run_yaml(
         stop_time_us,
         max_step_us,
     };
-    let updated = append_analog_transient_scenario(text, &draft)?;
+    let updated = append_analog_transient_scenario_with_project_path(text, project_path, &draft)?;
     Ok(Some((
         updated,
         ScopeRunPreparation::AddedScenario {
@@ -423,6 +426,7 @@ fn nonblank_id(preferred: &str, fallback: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{ScopeRunPreparation, prepare_scope_run_yaml};
+    use std::path::Path;
 
     const BASE_PROJECT: &str = "project:
   name: scope_run_auto_probe_test
@@ -462,10 +466,16 @@ scenarios: []
 
     #[test]
     fn scope_run_preparation_adds_generated_scenario_and_probe() {
-        let (updated, preparation) =
-            prepare_scope_run_yaml(BASE_PROJECT, "gui_transient", "probe_voltage", 100.0, 1.0)
-                .unwrap()
-                .unwrap();
+        let (updated, preparation) = prepare_scope_run_yaml(
+            BASE_PROJECT,
+            Path::new("project.yaml"),
+            "gui_transient",
+            "probe_voltage",
+            100.0,
+            1.0,
+        )
+        .unwrap()
+        .unwrap();
 
         assert_eq!(
             preparation,
@@ -510,10 +520,16 @@ scenarios: []
       assertions: []
 ",
         );
-        let (updated, preparation) =
-            prepare_scope_run_yaml(&project, "gui_transient", "probe_voltage", 100.0, 1.0)
-                .unwrap()
-                .unwrap();
+        let (updated, preparation) = prepare_scope_run_yaml(
+            &project,
+            Path::new("project.yaml"),
+            "gui_transient",
+            "probe_voltage",
+            100.0,
+            1.0,
+        )
+        .unwrap()
+        .unwrap();
 
         assert_eq!(
             preparation,
@@ -552,9 +568,16 @@ scenarios: []
         );
 
         assert!(
-            prepare_scope_run_yaml(&project, "gui_transient", "probe_voltage", 100.0, 1.0)
-                .unwrap()
-                .is_none()
+            prepare_scope_run_yaml(
+                &project,
+                Path::new("project.yaml"),
+                "gui_transient",
+                "probe_voltage",
+                100.0,
+                1.0,
+            )
+            .unwrap()
+            .is_none()
         );
     }
 }

@@ -2,14 +2,15 @@ use super::CircuitCiApp;
 use super::analog::{
     AnalogAssertionDraft, AnalogAssertionRemoveDraft, AnalogAssertionReplaceDraft,
     AnalogProbeAssertionsRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    analog_scenario_choices, append_analog_assertion, append_analog_transient_scenario,
-    remove_analog_assertion, remove_analog_assertions_for_probe, replace_analog_assertion,
-    unique_analog_assertion_name,
+    analog_scenario_choices, append_analog_assertion,
+    append_analog_transient_scenario_with_project_path, remove_analog_assertion,
+    remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
 use super::analog_generated::{
     AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft, AnalogGeneratedSettingsDraft,
-    analog_generated_scenarios, exclude_generated_component, include_generated_component,
-    replace_generated_node_binding, replace_generated_settings,
+    analog_generated_scenarios, exclude_generated_component,
+    include_generated_component_with_project_path, replace_generated_node_binding,
+    replace_generated_settings,
 };
 use super::analog_models::{
     AnalogModelFileDraft, AnalogModelFileRemoveDraft, analog_model_file_scenarios,
@@ -946,7 +947,11 @@ impl CircuitCiApp {
             stop_time_us: self.analog_stop_time_us,
             max_step_us: self.analog_max_step_us,
         };
-        match append_analog_transient_scenario(&self.project_yaml, &draft) {
+        match append_analog_transient_scenario_with_project_path(
+            &self.project_yaml,
+            Path::new(&self.project_path),
+            &draft,
+        ) {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!("Run setup {} added.", self.analog_scenario_name.trim()),
@@ -998,7 +1003,11 @@ impl CircuitCiApp {
             scenario_name: scenario_name.to_string(),
             component_id: component_id.to_string(),
         };
-        match include_generated_component(&self.project_yaml, &draft) {
+        match include_generated_component_with_project_path(
+            &self.project_yaml,
+            Path::new(&self.project_path),
+            &draft,
+        ) {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(

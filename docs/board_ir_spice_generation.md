@@ -86,7 +86,12 @@ without a hand-authored raw netlist.
 Discrete semiconductors should derive their SPICE model name/type/path from the
 component model's `simulation.spice` metadata. The scenario still declares
 `model_files` with SHA-256 pins so a physical result is tied to exact model
-artifacts.
+artifacts. GUI generated run-setup creation and generated component inclusion
+infer missing `model_files` entries from active component-library
+`simulation.spice.model_path` metadata and write portable relative paths plus
+SHA-256 pins when the files can be resolved from the project directory or an
+ancestor. Hand-authored YAML and CLI validation still fail closed if required
+model files are missing or unpinned.
 
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear

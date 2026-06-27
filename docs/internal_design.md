@@ -549,7 +549,14 @@ context menu pointer.
 `src/gui/analog_models.rs` owns analog `model_files` listing and mutation. GUI
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the
-target analog scenario.
+target analog scenario. `src/gui/analog_model_files.rs` owns automatic
+model-file inference for generated run setups: it looks up included components
+in the active component library, reads `simulation.spice.model_path`, resolves
+the path from the project directory or an ancestor exactly like validation, and
+writes missing SHA-pinned `analog.model_files` entries. Scenario creation in
+`src/gui/analog.rs` and generated component inclusion in
+`src/gui/analog_generated.rs` should call that helper instead of duplicating
+path resolution or hashing.
 `src/gui/analog_overview.rs` owns read-only generated analog run-setup audit
 snapshots for Observations-stage display. It may summarize timing/backend,
 included components, source primitives, probes, checks, model files, and
@@ -582,7 +589,9 @@ Generated run-setup settings and component membership editing lives in
 component pins. Ground edits must keep the selected ground net bound to SPICE
 node `0`, node edits must keep node names unique per scenario, component edits
 must keep at least one generated component, and all edits must reject unknown
-board nets or components.
+board nets or components. Including a component may also add missing
+SHA-pinned model-file entries required by that component's active-library
+`simulation.spice` metadata.
 The branch expression derivation itself lives in `src/gui/analog_branches.rs`
 and must fail closed for unsupported subcircuits, file-backed deck internals, or
 components that lack the required model/pin evidence.

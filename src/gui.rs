@@ -9,6 +9,7 @@ mod analog;
 mod analog_assertion_edit_tests;
 mod analog_branches;
 mod analog_generated;
+mod analog_model_files;
 mod analog_models;
 mod analog_overview;
 mod analog_stimulus;
