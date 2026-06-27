@@ -17,6 +17,7 @@ mod waveform_footprint;
 mod waveform_io;
 mod waveform_load;
 mod waveform_load_diagnostics;
+mod waveform_monte_carlo;
 mod waveform_noise;
 mod waveform_operating_point;
 mod waveform_plot;
@@ -129,6 +130,7 @@ impl CircuitCiApp {
     pub(super) fn waveform_scope_view(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
         self.waveform_scope_header(ui);
         self.waveform_load_diagnostics_panel(ui);
+        self.monte_carlo_yield_results_panel(ui);
         self.operating_point_results_panel(ui);
         self.noise_total_results_panel(ui);
         if self.waveforms.is_empty() {
@@ -147,8 +149,16 @@ impl CircuitCiApp {
 
     pub(super) fn waveform_controls_panel(&mut self, ui: &mut egui::Ui) {
         if self.waveforms.is_empty() {
-            if self.operating_points.is_empty() && self.noise_totals.is_empty() {
+            if self.operating_points.is_empty()
+                && self.noise_totals.is_empty()
+                && !self.has_monte_carlo_yield_summaries()
+            {
                 ui.label("Run creates a default transient voltage probe when the schematic has no analog probes.");
+            } else if self.has_monte_carlo_yield_summaries()
+                && self.operating_points.is_empty()
+                && self.noise_totals.is_empty()
+            {
+                ui.label("Monte Carlo yield summaries are shown in the main results table.");
             } else if !self.noise_totals.is_empty() {
                 ui.label("Noise integrated RMS values are shown in the main results table.");
             } else {

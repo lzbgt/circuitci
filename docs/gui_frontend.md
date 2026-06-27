@@ -386,7 +386,7 @@ be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
 report. Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces, mark loaded preview labels, skip already loaded columns, and preserve the full
 deferred artifact placeholder for later all-column loading. Loaded full artifacts and selected-column loads can be inspected through footprint readouts with compact source memory totals that can be copied as CSV or Markdown, classified/grouped/filtered as full CSV, selected-column, or runtime-only views, sorted/filtered by runtime cost, copied/exported as visible-row CSV memory diagnostics, warned when the estimated f64 data footprint exceeds the runtime budget, and unloaded individually or through guarded visible-row/largest-first preview/confirmation from the runtime Scopes state to free memory; full loads become deferred reload placeholders again, and selected-column loads mark those preview columns unloaded without changing Board IR or reports.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. It recognizes `bode.csv` and `noise_spectrum.csv` headers with `frequency_hz`, converts them into frequency-axis Scopes artifacts, maps AC magnitude/phase/linear columns into unit-aware trace labels, and maps output/input noise-density columns into `V/sqrt(Hz)` labels so frequency-domain output reuses the same plot, compare, and bundle pipeline as transient waveform CSVs. `src/gui/waveform/waveform_operating_point.rs` owns DC `operating_point.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, probe, value, worst-corner marking, artifact label, and Copy CSV action. `src/gui/waveform/waveform_noise.rs` owns `noise_total.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, output/input integrated RMS noise, output/input worst-corner marking, artifact label, CSV/Markdown copy actions, and noise-only report-bundle export. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. It recognizes `bode.csv` and `noise_spectrum.csv` headers with `frequency_hz`, converts them into frequency-axis Scopes artifacts, maps AC magnitude/phase/linear columns into unit-aware trace labels, and maps output/input noise-density columns into `V/sqrt(Hz)` labels so frequency-domain output reuses the same plot, compare, and bundle pipeline as transient waveform CSVs. `src/gui/waveform/waveform_monte_carlo.rs` owns the Scopes Monte Carlo yield table with scenario, sweep, limiting sample, check, probe, pass state, yield percent, pass/fail sample counts, mean/sigma/worst margins, input summary, and CSV/Markdown copy actions. `src/gui/waveform/waveform_operating_point.rs` owns DC `operating_point.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, probe, value, worst-corner marking, artifact label, and Copy CSV action. `src/gui/waveform/waveform_noise.rs` owns `noise_total.csv` artifact loading and the compact Scopes table with scenario, sweep, corner, output/input integrated RMS noise, output/input worst-corner marking, artifact label, CSV/Markdown copy actions, and noise-only report-bundle export. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
 row/visible/all, matching-column, remaining-preview-column, or exact
@@ -935,7 +935,7 @@ min/max decimated polylines so report SVG files do not scale linearly with every
 loaded waveform sample.
 Export Bundle writes the same filtered snapshot CSV and Markdown, loaded DC
 operating-point CSV/Markdown, loaded noise-total CSV/Markdown, sweep
-worst-corner margin CSV and Markdown from the loaded validation report, the
+worst-corner margin CSV/Markdown and Monte Carlo yield CSV/Markdown from the loaded validation report, the
 configured or scalar-observation placeholder plot SVG, a local `index.html`, a
 README manifest, and `artifact_manifest.csv` plus optional artifact integrity
 detail CSV/Markdown audit files into a timestamped output folder,
@@ -946,12 +946,13 @@ the same bundle format so nominal, all-corner, or worst-corner overlays can be
 preserved with the limiting sweep-margin rows as design evidence without first
 adding persistent measurement snapshot rows.
 The index links the plot SVG, snapshot CSV/Markdown, DC operating-point
-CSV/Markdown, sweep-margin CSV/Markdown, README, manifest, and optional
-integrity detail files while surfacing the same snapshot, DC bias,
-sweep-margin, plot, selected-trace, generated content artifact size/SHA-256
-metadata, and loaded-waveform footprint summary context for quick browser
-review. The README records active snapshot filters, DC operating-point row
-counts, sweep-margin row counts, plot SVG options, selected trace context,
+CSV/Markdown, sweep-margin CSV/Markdown, Monte Carlo yield CSV/Markdown,
+README, manifest, and optional integrity detail files while surfacing the same
+snapshot, DC bias, sweep-margin, Monte Carlo yield, plot, selected-trace,
+generated content artifact size/SHA-256 metadata, and loaded-waveform footprint
+summary context for quick browser review. The README records active snapshot
+filters, DC operating-point row counts, sweep-margin row counts, Monte Carlo
+yield row counts, plot SVG options, selected trace context,
 loaded-waveform footprint source totals, generated files, and human-readable
 artifact size/SHA-256 metadata; the CSV manifest records expected size/SHA-256
 metadata for required bundle files so the GUI can distinguish changed artifacts

@@ -63,21 +63,21 @@ pub(super) struct ScopeSweepMarginSummaryRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct ScopeMonteCarloYieldSummaryRow {
-    scenario: String,
-    assertion: String,
-    probe: String,
-    sweep: String,
-    limiting_sample: String,
-    inputs: String,
-    passed: bool,
-    yield_percent: String,
-    passed_samples: u64,
-    failed_samples: u64,
-    evaluated_samples: u64,
-    mean_margin: String,
-    stddev_margin: String,
-    min_margin: String,
-    max_margin: String,
+    pub(super) scenario: String,
+    pub(super) assertion: String,
+    pub(super) probe: String,
+    pub(super) sweep: String,
+    pub(super) limiting_sample: String,
+    pub(super) inputs: String,
+    pub(super) passed: bool,
+    pub(super) yield_percent: String,
+    pub(super) passed_samples: u64,
+    pub(super) failed_samples: u64,
+    pub(super) evaluated_samples: u64,
+    pub(super) mean_margin: String,
+    pub(super) stddev_margin: String,
+    pub(super) min_margin: String,
+    pub(super) max_margin: String,
 }
 
 impl CircuitCiApp {

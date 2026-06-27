@@ -121,9 +121,10 @@ Current analog support:
   frequency-axis output/input density traces and loads `noise_total.csv` into a
   compact integrated-RMS noise table with CSV/Markdown copy actions and
   report-bundle export. Sweep margin summaries mark the limiting output or
-  input integrated-RMS noise total directly in Scopes and exported tables, and
-  Monte Carlo yield summaries are exported beside scope evidence when the
-  loaded report contains sampled tolerance runs.
+  input integrated-RMS noise total directly in Scopes and exported tables.
+  Monte Carlo yield summaries appear as a Scopes table with CSV/Markdown copy
+  actions and are exported beside scope evidence when the loaded report contains
+  sampled tolerance runs.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
