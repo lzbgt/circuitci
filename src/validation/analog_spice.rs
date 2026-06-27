@@ -1,4 +1,4 @@
-use crate::board_ir::{AnalogNetlistSource, AnalogRelation, Scenario};
+use crate::board_ir::{AnalogAggregation, AnalogNetlistSource, AnalogRelation, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -284,6 +284,37 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
                 format!("Analog assertion {} {message}.", assertion.name),
             );
             return;
+        }
+        if matches!(
+            assertion.aggregation,
+            AnalogAggregation::RisingPhaseDelay | AnalogAggregation::FallingPhaseDelay
+        ) {
+            let Some(reference_probe) = assertion.reference_probe.as_deref() else {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "Analog assertion {} is missing a reference probe.",
+                        assertion.name
+                    ),
+                );
+                return;
+            };
+            if analog
+                .probes
+                .iter()
+                .all(|probe| probe.name != reference_probe)
+            {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "Analog assertion {} references unknown reference probe {}.",
+                        assertion.name, reference_probe
+                    ),
+                );
+                return;
+            }
         }
         let probe = analog
             .probes

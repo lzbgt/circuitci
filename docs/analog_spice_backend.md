@@ -132,7 +132,8 @@ Executable assertions now support single-point samples, min/max/mean/RMS
 windows, signed integration/energy windows, rising/falling crossing-time checks,
 minimum high/low pulse-width checks, duty-cycle checks, and threshold
 crossing-count checks for no-recross or ringing budgets, plus settling-time and
-overshoot-percent checks against voltage/current/power targets and tolerances.
+overshoot-percent checks against voltage/current/power targets and tolerances,
+and rising/falling phase-delay checks between two probes.
 Analog run
 setups can also declare bounded SPICE `.param` sweeps; each corner records the
 sweep name, corner name, and parameter values on generated findings. Swept

@@ -133,3 +133,13 @@ scenarios:
           threshold_v: 0.62
           start_us: 5000.0
           end_us: 10000.0
+        - name: filtered_rising_lag_below_150us
+          probe: v_filtered
+          aggregation: rising_phase_delay
+          relation: below
+          threshold_v: 0.0
+          reference_probe: v_input
+          reference_threshold_v: 0.0
+          start_us: 5000.0
+          end_us: 10000.0
+          time_limit_us: 150.0

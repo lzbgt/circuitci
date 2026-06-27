@@ -668,6 +668,8 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
                 | crate::board_ir::AnalogAggregation::MinHighPulseWidth
                 | crate::board_ir::AnalogAggregation::MinLowPulseWidth
                 | crate::board_ir::AnalogAggregation::SettlingTime
+                | crate::board_ir::AnalogAggregation::RisingPhaseDelay
+                | crate::board_ir::AnalogAggregation::FallingPhaseDelay
         ) {
             format!(
                 "from {} us to {} us, limit {} us",
@@ -730,6 +732,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Energy => "energy",
         crate::board_ir::AnalogAggregation::SettlingTime => "settling time",
         crate::board_ir::AnalogAggregation::OvershootPercent => "overshoot",
+        crate::board_ir::AnalogAggregation::RisingPhaseDelay => "rising phase delay",
+        crate::board_ir::AnalogAggregation::FallingPhaseDelay => "falling phase delay",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising crossing",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling crossing",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min high pulse",

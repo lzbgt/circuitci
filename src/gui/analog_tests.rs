@@ -60,9 +60,11 @@ fn assertion_draft() -> AnalogAssertionDraft {
         scenario_name: "gui_transient".to_string(),
         assertion_name: "out_above_min".to_string(),
         probe_name: "out_voltage".to_string(),
+        reference_probe: String::new(),
         aggregation: "sample".to_string(),
         relation: "above".to_string(),
         threshold: 1.0,
+        reference_threshold: 0.0,
         target: 0.0,
         tolerance: 0.1,
         at_us: 50.0,
@@ -73,6 +75,43 @@ fn assertion_draft() -> AnalogAssertionDraft {
         count_limit: 1.0,
         overshoot_limit_percent: 10.0,
     }
+}
+
+#[test]
+fn append_analog_assertion_emits_phase_delay_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let edited = append_analog_voltage_probe(
+        &edited,
+        &AnalogProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            net_id: "rail_5v".to_string(),
+            probe_name: "input_voltage".to_string(),
+        },
+    )
+    .unwrap();
+    let mut assertion = assertion_draft();
+    assertion.assertion_name = "out_lags_input".to_string();
+    assertion.aggregation = "rising_phase_delay".to_string();
+    assertion.relation = "below".to_string();
+    assertion.probe_name = "out_voltage".to_string();
+    assertion.reference_probe = "input_voltage".to_string();
+    assertion.threshold = 0.0;
+    assertion.reference_threshold = 0.0;
+    assertion.start_us = 0.0;
+    assertion.end_us = 100.0;
+    assertion.time_limit_us = 10.0;
+
+    let edited = append_analog_assertion(&edited, &assertion).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::RisingPhaseDelay
+    );
+    assert_eq!(assertion.reference_probe.as_deref(), Some("input_voltage"));
+    assert_eq!(assertion.reference_threshold_v, Some(0.0));
+    assert_eq!(assertion.threshold_v, Some(0.0));
+    assert_eq!(assertion.time_limit_us, Some(10.0));
 }
 
 fn probe_draft() -> AnalogProbeDraft {

@@ -758,6 +758,14 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
         .into_iter()
         .filter(|value| value.is_some_and(|value| value.is_finite() && value >= 0.0))
         .count();
+        let reference_threshold_count = [
+            assertion.reference_threshold_v,
+            assertion.reference_threshold_a,
+            assertion.reference_threshold_w,
+        ]
+        .into_iter()
+        .filter(|value| value.is_some_and(f64::is_finite))
+        .count();
         let is_settling = matches!(
             assertion.aggregation,
             Some(AssertionAggregationYaml::SettlingTime)
@@ -765,6 +773,13 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
         let is_overshoot = matches!(
             assertion.aggregation,
             Some(AssertionAggregationYaml::OvershootPercent)
+        );
+        let is_phase_delay = matches!(
+            assertion.aggregation,
+            Some(
+                AssertionAggregationYaml::RisingPhaseDelay
+                    | AssertionAggregationYaml::FallingPhaseDelay
+            )
         );
         if is_settling {
             if threshold_count != 0 || target_count != 1 || tolerance_count != 1 {
@@ -782,9 +797,30 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     assertion.name
                 );
             }
-        } else if threshold_count != 1 || target_count != 0 || tolerance_count != 0 {
+        } else if is_phase_delay {
+            if threshold_count != 1
+                || target_count != 0
+                || tolerance_count != 0
+                || reference_threshold_count != 1
+                || assertion
+                    .reference_probe
+                    .as_deref()
+                    .is_none_or(|reference_probe| !probes.contains(reference_probe))
+            {
+                bail!(
+                    "KiCad analog scenario {} assertion {} must declare one checked threshold, one reference probe, and one reference threshold for phase-delay checks.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
+        } else if threshold_count != 1
+            || target_count != 0
+            || tolerance_count != 0
+            || reference_threshold_count != 0
+            || assertion.reference_probe.is_some()
+        {
             bail!(
-                "KiCad analog scenario {} assertion {} must declare exactly one finite threshold and no target/tolerance fields.",
+                "KiCad analog scenario {} assertion {} must declare exactly one finite threshold and no target/tolerance/reference fields.",
                 scenario.name,
                 assertion.name
             );
@@ -808,6 +844,8 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     | AssertionAggregationYaml::MinHighPulseWidth
                     | AssertionAggregationYaml::MinLowPulseWidth
                     | AssertionAggregationYaml::SettlingTime
+                    | AssertionAggregationYaml::RisingPhaseDelay
+                    | AssertionAggregationYaml::FallingPhaseDelay
             )
         );
         let is_duty = matches!(

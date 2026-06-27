@@ -1082,6 +1082,8 @@ pub enum AnalogQuantity {
 pub struct AnalogAssertion {
     pub name: String,
     pub probe: String,
+    #[serde(default)]
+    pub reference_probe: Option<String>,
     #[serde(default, rename = "at_us")]
     pub at_us: Option<f64>,
     #[serde(default, rename = "start_us")]
@@ -1109,6 +1111,12 @@ pub struct AnalogAssertion {
     pub threshold_c: Option<f64>,
     #[serde(default, rename = "threshold_j")]
     pub threshold_j: Option<f64>,
+    #[serde(default)]
+    pub reference_threshold_v: Option<f64>,
+    #[serde(default)]
+    pub reference_threshold_a: Option<f64>,
+    #[serde(default)]
+    pub reference_threshold_w: Option<f64>,
     #[serde(default)]
     pub target_v: Option<f64>,
     #[serde(default)]
@@ -1140,6 +1148,8 @@ pub enum AnalogAggregation {
     Energy,
     SettlingTime,
     OvershootPercent,
+    RisingPhaseDelay,
+    FallingPhaseDelay,
     RisingCrossingTime,
     FallingCrossingTime,
     MinHighPulseWidth,

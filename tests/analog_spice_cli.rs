@@ -203,7 +203,7 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
             .iter()
             .filter(|info| info["id"] == "ANALOG_SWEEP_MARGIN_SUMMARY")
             .collect();
-        assert_eq!(sweep_summaries.len(), 2);
+        assert_eq!(sweep_summaries.len(), 3);
         for summary in &sweep_summaries {
             assert_eq!(summary["measured"]["analog_sweep"], "rc_tolerance");
             assert_eq!(summary["measured"]["evaluated_corners"], 9);
@@ -218,6 +218,10 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
         }));
         assert!(sweep_summaries.iter().any(|summary| {
             summary["measured"]["assertion"] == "filtered_rms_attenuated"
+                && summary["limit"]["relation"] == "below"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "filtered_rising_lag_below_150us"
                 && summary["limit"]["relation"] == "below"
         }));
         let artifacts = report["artifacts"].as_array().unwrap();

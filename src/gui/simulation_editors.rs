@@ -637,6 +637,8 @@ impl CircuitCiApp {
                             "energy",
                             "settling_time",
                             "overshoot_percent",
+                            "rising_phase_delay",
+                            "falling_phase_delay",
                             "rising_crossing_time",
                             "falling_crossing_time",
                             "min_high_pulse_width",
@@ -657,6 +659,41 @@ impl CircuitCiApp {
                         &["above", "below"],
                     );
                     ui.end_row();
+
+                    let phase_delay = matches!(
+                        self.analog_assertion_aggregation.as_str(),
+                        "rising_phase_delay" | "falling_phase_delay"
+                    );
+                    if phase_delay {
+                        ui.label("Reference");
+                        analog_probe_combo(
+                            ui,
+                            "analog_assertion_reference_probe",
+                            &mut self.analog_assertion_reference_probe,
+                            selected_scenario,
+                        );
+                        ui.end_row();
+
+                        ui.label("Reference threshold");
+                        let reference_unit = selected_scenario
+                            .and_then(|scenario| {
+                                scenario.probes.iter().find(|probe| {
+                                    probe.name == self.analog_assertion_reference_probe
+                                })
+                            })
+                            .map(|probe| match probe.quantity.as_str() {
+                                "current" => " A",
+                                "power" => " W",
+                                _ => " V",
+                            })
+                            .unwrap_or(" V");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_reference_threshold)
+                                .speed(0.1)
+                                .suffix(reference_unit),
+                        );
+                        ui.end_row();
+                    }
 
                     let target_based = matches!(
                         self.analog_assertion_aggregation.as_str(),
@@ -744,6 +781,8 @@ impl CircuitCiApp {
                                 | "min_high_pulse_width"
                                 | "min_low_pulse_width"
                                 | "settling_time"
+                                | "rising_phase_delay"
+                                | "falling_phase_delay"
                         ) {
                             ui.label("Time limit");
                             ui.add(
@@ -996,9 +1035,11 @@ impl CircuitCiApp {
             scenario_name: self.analog_assertion_scenario.clone(),
             assertion_name: self.analog_assertion_name.clone(),
             probe_name: self.analog_assertion_probe.clone(),
+            reference_probe: self.analog_assertion_reference_probe.clone(),
             aggregation: self.analog_assertion_aggregation.clone(),
             relation: self.analog_assertion_relation.clone(),
             threshold: self.analog_assertion_threshold,
+            reference_threshold: self.analog_assertion_reference_threshold,
             target: self.analog_assertion_target,
             tolerance: self.analog_assertion_tolerance,
             at_us: self.analog_assertion_at_us,
@@ -1269,9 +1310,11 @@ impl CircuitCiApp {
                 scenario_name: self.analog_assertion_scenario.clone(),
                 assertion_name: self.analog_assertion_name.clone(),
                 probe_name: self.analog_assertion_probe.clone(),
+                reference_probe: self.analog_assertion_reference_probe.clone(),
                 aggregation: self.analog_assertion_aggregation.clone(),
                 relation: self.analog_assertion_relation.clone(),
                 threshold: self.analog_assertion_threshold,
+                reference_threshold: self.analog_assertion_reference_threshold,
                 target: self.analog_assertion_target,
                 tolerance: self.analog_assertion_tolerance,
                 at_us: self.analog_assertion_at_us,
@@ -1300,9 +1343,11 @@ impl CircuitCiApp {
         self.analog_assertion_name = draft.assertion_name.clone();
         self.analog_assertion_edit_original = original_name.to_string();
         self.analog_assertion_probe = draft.probe_name.clone();
+        self.analog_assertion_reference_probe = draft.reference_probe.clone();
         self.analog_assertion_aggregation = draft.aggregation.clone();
         self.analog_assertion_relation = draft.relation.clone();
         self.analog_assertion_threshold = draft.threshold;
+        self.analog_assertion_reference_threshold = draft.reference_threshold;
         self.analog_assertion_target = draft.target;
         self.analog_assertion_tolerance = draft.tolerance;
         self.analog_assertion_at_us = draft.at_us;
@@ -1366,9 +1411,11 @@ impl CircuitCiApp {
             scenario_name: scenario_name.to_string(),
             assertion_name: assertion_name.clone(),
             probe_name: probe_name.to_string(),
+            reference_probe: self.analog_assertion_reference_probe.clone(),
             aggregation: self.analog_assertion_aggregation.clone(),
             relation: self.analog_assertion_relation.clone(),
             threshold: self.analog_assertion_threshold,
+            reference_threshold: self.analog_assertion_reference_threshold,
             target: self.analog_assertion_target,
             tolerance: self.analog_assertion_tolerance,
             at_us: self.waveform_cursor_a_us,
@@ -1438,9 +1485,11 @@ impl CircuitCiApp {
             scenario_name: probe.scenario_name.clone(),
             assertion_name: assertion_name.clone(),
             probe_name: probe.probe_name.clone(),
+            reference_probe: self.analog_assertion_reference_probe.clone(),
             aggregation: "sample".to_string(),
             relation: relation.to_string(),
             threshold,
+            reference_threshold: self.analog_assertion_reference_threshold,
             target: self.analog_assertion_target,
             tolerance: self.analog_assertion_tolerance,
             at_us: self.waveform_cursor_a_us,
@@ -1457,9 +1506,11 @@ impl CircuitCiApp {
                 self.analog_assertion_name = assertion_name.clone();
                 self.analog_assertion_edit_original.clear();
                 self.analog_assertion_probe = draft.probe_name.clone();
+                self.analog_assertion_reference_probe = draft.reference_probe.clone();
                 self.analog_assertion_aggregation = draft.aggregation.clone();
                 self.analog_assertion_relation = draft.relation.clone();
                 self.analog_assertion_threshold = draft.threshold;
+                self.analog_assertion_reference_threshold = draft.reference_threshold;
                 self.analog_assertion_target = draft.target;
                 self.analog_assertion_tolerance = draft.tolerance;
                 self.analog_assertion_at_us = draft.at_us;

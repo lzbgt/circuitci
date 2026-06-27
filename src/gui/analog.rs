@@ -18,9 +18,11 @@ pub(super) struct AnalogAssertionDraft {
     pub(super) scenario_name: String,
     pub(super) assertion_name: String,
     pub(super) probe_name: String,
+    pub(super) reference_probe: String,
     pub(super) aggregation: String,
     pub(super) relation: String,
     pub(super) threshold: f64,
+    pub(super) reference_threshold: f64,
     pub(super) target: f64,
     pub(super) tolerance: f64,
     pub(super) at_us: f64,
@@ -252,9 +254,12 @@ pub(super) fn analog_probe_assertion_summaries(
                     scenario_name: scenario_name.to_string(),
                     assertion_name: assertion.name.clone(),
                     probe_name: assertion.probe.clone(),
+                    reference_probe: assertion.reference_probe.clone().unwrap_or_default(),
                     aggregation: aggregation_label(&assertion.aggregation).to_string(),
                     relation: relation_label(&assertion.relation).to_string(),
                     threshold: assertion_threshold_value(assertion, &probe.quantity)
+                        .unwrap_or_default(),
+                    reference_threshold: assertion_reference_threshold_value(assertion)
                         .unwrap_or_default(),
                     target: assertion_target_value(assertion, &probe.quantity).unwrap_or_default(),
                     tolerance: assertion_tolerance_value(assertion, &probe.quantity)
@@ -308,6 +313,7 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
                 draft.probe_name, scenario.name
             )
         })?;
+    let reference_quantity = phase_reference_quantity(draft, analog)?;
     validate_assertion_probe_quantity(draft, &probe.quantity)?;
     validate_assertion_timing(draft, analog.analysis.stop_time_us)?;
 
@@ -316,7 +322,11 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
     let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
     let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
     let assertions = ensure_child_sequence_mut(analog_mapping, "assertions", "analog assertions")?;
-    assertions.push(assertion_value(draft, &probe.quantity)?);
+    assertions.push(assertion_value(
+        draft,
+        &probe.quantity,
+        reference_quantity.as_ref(),
+    )?);
     let updated =
         serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
     let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
@@ -762,6 +772,7 @@ pub(super) fn replace_analog_assertion(
                 draft.replacement.probe_name, scenario.name
             )
         })?;
+    let reference_quantity = phase_reference_quantity(&draft.replacement, analog)?;
     validate_assertion_probe_quantity(&draft.replacement, &probe.quantity)?;
     validate_assertion_timing(&draft.replacement, analog.analysis.stop_time_us)?;
 
@@ -778,7 +789,11 @@ pub(super) fn replace_analog_assertion(
             .and_then(serde_yaml_ng::Value::as_str)
             == Some(draft.original_assertion_name.as_str());
         if is_target {
-            *assertion = assertion_value(&draft.replacement, &probe.quantity)?;
+            *assertion = assertion_value(
+                &draft.replacement,
+                &probe.quantity,
+                reference_quantity.as_ref(),
+            )?;
             replaced = true;
             break;
         }
@@ -869,6 +884,8 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "energy"
             | "settling_time"
             | "overshoot_percent"
+            | "rising_phase_delay"
+            | "falling_phase_delay"
             | "rising_crossing_time"
             | "falling_crossing_time"
             | "min_high_pulse_width"
@@ -891,6 +908,15 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
     }
     if !draft.threshold.is_finite() {
         anyhow::bail!("Analog assertion threshold must be finite.");
+    }
+    if matches!(
+        draft.aggregation.as_str(),
+        "rising_phase_delay" | "falling_phase_delay"
+    ) {
+        validated_id(&draft.reference_probe, "reference probe")?;
+        if !draft.reference_threshold.is_finite() {
+            anyhow::bail!("Analog assertion reference threshold must be finite.");
+        }
     }
     Ok(())
 }
@@ -1057,7 +1083,9 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
         | "falling_crossing_time"
         | "min_high_pulse_width"
         | "min_low_pulse_width"
-        | "settling_time" => {
+        | "settling_time"
+        | "rising_phase_delay"
+        | "falling_phase_delay" => {
             if !draft.start_us.is_finite()
                 || !draft.end_us.is_finite()
                 || draft.start_us < 0.0
@@ -1130,6 +1158,29 @@ fn validate_assertion_probe_quantity(
     Ok(())
 }
 
+fn phase_reference_quantity(
+    draft: &AnalogAssertionDraft,
+    analog: &crate::board_ir::AnalogScenario,
+) -> Result<Option<crate::board_ir::AnalogQuantity>> {
+    if !matches!(
+        draft.aggregation.as_str(),
+        "rising_phase_delay" | "falling_phase_delay"
+    ) {
+        return Ok(None);
+    }
+    let reference_probe = analog
+        .probes
+        .iter()
+        .find(|probe| probe.name == draft.reference_probe)
+        .with_context(|| {
+            format!(
+                "Reference probe {} was not found in scenario {}.",
+                draft.reference_probe, draft.scenario_name
+            )
+        })?;
+    Ok(Some(reference_probe.quantity.clone()))
+}
+
 fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'static str {
     match aggregation {
         crate::board_ir::AnalogAggregation::Sample => "sample",
@@ -1141,6 +1192,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Energy => "energy",
         crate::board_ir::AnalogAggregation::SettlingTime => "settling_time",
         crate::board_ir::AnalogAggregation::OvershootPercent => "overshoot_percent",
+        crate::board_ir::AnalogAggregation::RisingPhaseDelay => "rising_phase_delay",
+        crate::board_ir::AnalogAggregation::FallingPhaseDelay => "falling_phase_delay",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising_crossing_time",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling_crossing_time",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min_high_pulse_width",
@@ -1276,6 +1329,15 @@ fn assertion_target_value(
     }
 }
 
+fn assertion_reference_threshold_value(
+    assertion: &crate::board_ir::AnalogAssertion,
+) -> Option<f64> {
+    assertion
+        .reference_threshold_v
+        .or(assertion.reference_threshold_a)
+        .or(assertion.reference_threshold_w)
+}
+
 fn assertion_tolerance_value(
     assertion: &crate::board_ir::AnalogAssertion,
     quantity: &crate::board_ir::AnalogQuantity,
@@ -1308,7 +1370,9 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         | crate::board_ir::AnalogAggregation::FallingCrossingTime
         | crate::board_ir::AnalogAggregation::MinHighPulseWidth
         | crate::board_ir::AnalogAggregation::MinLowPulseWidth
-        | crate::board_ir::AnalogAggregation::SettlingTime => {
+        | crate::board_ir::AnalogAggregation::SettlingTime
+        | crate::board_ir::AnalogAggregation::RisingPhaseDelay
+        | crate::board_ir::AnalogAggregation::FallingPhaseDelay => {
             format!(
                 "{:.6}..{:.6} us, limit {:.6} us",
                 assertion.start_us.unwrap_or_default(),
@@ -1537,6 +1601,7 @@ fn pin_bindings(
 fn assertion_value(
     draft: &AnalogAssertionDraft,
     quantity: &crate::board_ir::AnalogQuantity,
+    reference_quantity: Option<&crate::board_ir::AnalogQuantity>,
 ) -> Result<serde_yaml_ng::Value> {
     let mut assertion = serde_yaml_ng::Mapping::new();
     insert_string(&mut assertion, "name", draft.assertion_name.trim());
@@ -1554,7 +1619,9 @@ fn assertion_value(
         | "falling_crossing_time"
         | "min_high_pulse_width"
         | "min_low_pulse_width"
-        | "settling_time" => {
+        | "settling_time"
+        | "rising_phase_delay"
+        | "falling_phase_delay" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
             insert_number(&mut assertion, "time_limit_us", draft.time_limit_us)?;
@@ -1590,6 +1657,27 @@ fn assertion_value(
         insert_number(&mut assertion, tolerance_field(quantity), draft.tolerance)?;
     } else if draft.aggregation == "overshoot_percent" {
         insert_number(&mut assertion, target_field(quantity), draft.target)?;
+    } else if matches!(
+        draft.aggregation.as_str(),
+        "rising_phase_delay" | "falling_phase_delay"
+    ) {
+        let reference_quantity = reference_quantity
+            .context("Phase-delay assertions require a resolved reference probe quantity.")?;
+        insert_string(
+            &mut assertion,
+            "reference_probe",
+            draft.reference_probe.trim(),
+        );
+        insert_number(
+            &mut assertion,
+            reference_threshold_field(reference_quantity),
+            draft.reference_threshold,
+        )?;
+        insert_number(
+            &mut assertion,
+            threshold_field(&draft.aggregation, quantity),
+            draft.threshold,
+        )?;
     } else {
         insert_number(
             &mut assertion,
@@ -1631,6 +1719,14 @@ fn tolerance_field(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
         crate::board_ir::AnalogQuantity::Voltage => "tolerance_v",
         crate::board_ir::AnalogQuantity::Current => "tolerance_a",
         crate::board_ir::AnalogQuantity::Power => "tolerance_w",
+    }
+}
+
+fn reference_threshold_field(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => "reference_threshold_v",
+        crate::board_ir::AnalogQuantity::Current => "reference_threshold_a",
+        crate::board_ir::AnalogQuantity::Power => "reference_threshold_w",
     }
 }
 

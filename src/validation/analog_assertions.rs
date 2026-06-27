@@ -55,6 +55,50 @@ pub(super) fn evaluate_waveform_assertions(
             continue;
         };
         let probe = &analog.probes[probe_index];
+        let phase_reference = if is_phase_delay_aggregation(&assertion.aggregation) {
+            let Some(reference_probe_name) = assertion.reference_probe.as_deref() else {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "Analog assertion {} is missing a reference probe.",
+                        assertion.name
+                    ),
+                );
+                continue;
+            };
+            let Some(reference_probe_index) = analog
+                .probes
+                .iter()
+                .position(|probe| probe.name == reference_probe_name)
+            else {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "Analog assertion {} references unknown reference probe {}.",
+                        assertion.name, reference_probe_name
+                    ),
+                );
+                continue;
+            };
+            let reference_probe = &analog.probes[reference_probe_index];
+            let Some(reference_threshold) = reference_threshold_for(assertion, reference_probe)
+            else {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "Analog assertion {} is missing a reference threshold for probe {}.",
+                        assertion.name, reference_probe_name
+                    ),
+                );
+                continue;
+            };
+            Some((reference_probe_index, reference_threshold))
+        } else {
+            None
+        };
         let Some(signal_threshold) = signal_threshold_for(assertion, probe) else {
             validation_input_missing(
                 findings,
@@ -96,13 +140,28 @@ pub(super) fn evaluate_waveform_assertions(
         } else {
             None
         };
-        let measured = match measured_assertion_value(
-            assertion,
-            &run.series.time_s,
-            &run.series.values_by_probe[probe_index],
-            signal_threshold.value,
-            tolerance.as_ref().map(|threshold| threshold.value),
-        ) {
+        let measured = if let Some((reference_probe_index, reference_threshold)) = phase_reference {
+            phase_delay_us(
+                &run.series.time_s,
+                &run.series.values_by_probe[reference_probe_index],
+                &run.series.values_by_probe[probe_index],
+                (
+                    assertion.start_us.unwrap_or_default() / 1_000_000.0,
+                    assertion.end_us.unwrap_or_default() / 1_000_000.0,
+                ),
+                (reference_threshold.value, signal_threshold.value),
+                &assertion.aggregation,
+            )
+        } else {
+            measured_assertion_value(
+                assertion,
+                &run.series.time_s,
+                &run.series.values_by_probe[probe_index],
+                signal_threshold.value,
+                tolerance.as_ref().map(|threshold| threshold.value),
+            )
+        };
+        let measured = match measured {
             Some(value) => value,
             None => {
                 let mut finding = Finding::critical(
@@ -184,6 +243,11 @@ pub(super) fn evaluate_waveform_assertions(
                     format!("{}_decision_threshold_unit", assertion.probe),
                     json!(signal_threshold.unit),
                 );
+                if let Some(reference_probe_name) = assertion.reference_probe.as_deref() {
+                    finding
+                        .measured
+                        .insert("reference_probe".to_string(), json!(reference_probe_name));
+                }
             }
             insert_measured_time(assertion, &mut finding);
             finding.limit.insert(
@@ -193,7 +257,7 @@ pub(super) fn evaluate_waveform_assertions(
             if assertion.suggested_fixes.is_empty() {
                 finding
                     .suggested_fixes
-                    .push("Adjust the circuit or device model so the simulated waveform meets the declared physical threshold.".to_string());
+                    .push("Adjust the circuit or device model so the simulated waveform meets the declared physical timing or threshold limit.".to_string());
             } else {
                 finding
                     .suggested_fixes
@@ -251,6 +315,9 @@ pub(super) fn validate_assertion_contract(
             if assertion.count_limit.is_some() {
                 return Err("sample aggregation must not declare count_limit".to_string());
             }
+            if assertion.reference_probe.is_some() {
+                return Err("sample aggregation must not declare reference_probe".to_string());
+            }
             let Some(at_us) = assertion.at_us else {
                 return Err("requires at_us for sample aggregation".to_string());
             };
@@ -268,6 +335,8 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::Energy
         | AnalogAggregation::SettlingTime
         | AnalogAggregation::OvershootPercent
+        | AnalogAggregation::RisingPhaseDelay
+        | AnalogAggregation::FallingPhaseDelay
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -402,6 +471,29 @@ pub(super) fn validate_assertion_contract(
             }
         }
     }
+    if is_phase_delay_aggregation(&assertion.aggregation) {
+        let Some(reference_probe) = assertion.reference_probe.as_deref() else {
+            return Err("phase-delay aggregation must declare reference_probe".to_string());
+        };
+        if reference_probe.trim().is_empty() {
+            return Err("phase-delay reference_probe must not be blank".to_string());
+        }
+        if reference_threshold_count(assertion) != 1 {
+            return Err(
+                "phase-delay aggregation must declare exactly one finite reference threshold unit"
+                    .to_string(),
+            );
+        }
+    } else {
+        if assertion.reference_probe.is_some() {
+            return Err("non-phase aggregation must not declare reference_probe".to_string());
+        }
+        if reference_threshold_count(assertion) != 0 {
+            return Err(
+                "non-phase aggregation must not declare reference threshold fields".to_string(),
+            );
+        }
+    }
     if uses_target_as_reference(&assertion.aggregation) {
         if threshold_count(assertion) != 0 {
             return Err("target-based aggregation must not declare threshold_* fields".to_string());
@@ -437,6 +529,17 @@ pub(super) fn threshold_count(assertion: &AnalogAssertion) -> usize {
         assertion.threshold_vs,
         assertion.threshold_c,
         assertion.threshold_j,
+    ]
+    .into_iter()
+    .filter(|threshold| threshold.is_some_and(f64::is_finite))
+    .count()
+}
+
+pub(super) fn reference_threshold_count(assertion: &AnalogAssertion) -> usize {
+    [
+        assertion.reference_threshold_v,
+        assertion.reference_threshold_a,
+        assertion.reference_threshold_w,
     ]
     .into_iter()
     .filter(|threshold| threshold.is_some_and(f64::is_finite))
@@ -522,6 +625,22 @@ pub(super) fn tolerance_for(
     })
 }
 
+pub(super) fn reference_threshold_for(
+    assertion: &AnalogAssertion,
+    probe: &AnalogProbe,
+) -> Option<AssertionThreshold> {
+    let (value, unit, limit_key) = match probe.quantity {
+        AnalogQuantity::Voltage => (assertion.reference_threshold_v?, "V", "_reference_V"),
+        AnalogQuantity::Current => (assertion.reference_threshold_a?, "A", "_reference_A"),
+        AnalogQuantity::Power => (assertion.reference_threshold_w?, "W", "_reference_W"),
+    };
+    value.is_finite().then_some(AssertionThreshold {
+        value,
+        unit,
+        limit_key,
+    })
+}
+
 pub(super) fn assertion_reference_contract_is_complete(
     assertion: &AnalogAssertion,
     probe: &AnalogProbe,
@@ -534,6 +653,13 @@ pub(super) fn assertion_reference_contract_is_complete(
         target_for(assertion, probe).is_some()
             && tolerance_count(assertion) == 0
             && threshold_count(assertion) == 0
+    } else if is_phase_delay_aggregation(&assertion.aggregation) {
+        threshold_for(assertion, probe).is_some()
+            && assertion
+                .reference_probe
+                .as_deref()
+                .is_some_and(|name| !name.trim().is_empty())
+            && reference_threshold_count(assertion) == 1
     } else {
         threshold_count(assertion) == 1 && threshold_for(assertion, probe).is_some()
     }
@@ -643,6 +769,7 @@ fn measured_assertion_value(
             crossing_count(times, values, start, end, threshold, &assertion.aggregation)
                 .map(|count| count as f64)
         }
+        AnalogAggregation::RisingPhaseDelay | AnalogAggregation::FallingPhaseDelay => None,
     }
 }
 
@@ -708,6 +835,8 @@ fn aggregate_window(
         | AnalogAggregation::DutyCycle
         | AnalogAggregation::SettlingTime
         | AnalogAggregation::OvershootPercent
+        | AnalogAggregation::RisingPhaseDelay
+        | AnalogAggregation::FallingPhaseDelay
         | AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
         | AnalogAggregation::FallingCrossingCount => None,
@@ -808,6 +937,34 @@ fn overshoot_percent(
         .map(|(_, value)| value)
         .reduce(f64::max)?;
     Some(((max_value - target).max(0.0) / target.abs()) * 100.0)
+}
+
+fn phase_delay_us(
+    times: &[f64],
+    reference_values: &[f64],
+    values: &[f64],
+    window: (f64, f64),
+    thresholds: (f64, f64),
+    aggregation: &AnalogAggregation,
+) -> Option<f64> {
+    let (start, end) = window;
+    let (reference_threshold, threshold) = thresholds;
+    let edge = match aggregation {
+        AnalogAggregation::RisingPhaseDelay => AnalogAggregation::RisingCrossingTime,
+        AnalogAggregation::FallingPhaseDelay => AnalogAggregation::FallingCrossingTime,
+        _ => return None,
+    };
+    let reference_time_us = crossing_time_us(
+        times,
+        reference_values,
+        start,
+        end,
+        reference_threshold,
+        &edge,
+    )?;
+    let reference_time = reference_time_us / 1_000_000.0;
+    let target_time_us = crossing_time_us(times, values, reference_time, end, threshold, &edge)?;
+    Some(target_time_us - reference_time_us)
 }
 
 fn window_samples(times: &[f64], values: &[f64], start: f64, end: f64) -> Option<Vec<(f64, f64)>> {
@@ -994,6 +1151,8 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::Energy => "energy",
         AnalogAggregation::SettlingTime => "settling time",
         AnalogAggregation::OvershootPercent => "overshoot",
+        AnalogAggregation::RisingPhaseDelay => "rising phase-delay",
+        AnalogAggregation::FallingPhaseDelay => "falling phase-delay",
         AnalogAggregation::RisingCrossingTime => "rising crossing-time",
         AnalogAggregation::FallingCrossingTime => "falling crossing-time",
         AnalogAggregation::MinHighPulseWidth => "minimum high pulse width",
@@ -1023,6 +1182,8 @@ fn measured_quantity_name(
         "time"
     } else if matches!(assertion.aggregation, AnalogAggregation::OvershootPercent) {
         "overshoot"
+    } else if is_phase_delay_aggregation(&assertion.aggregation) {
+        "time"
     } else if matches!(assertion.aggregation, AnalogAggregation::Integral) {
         match probe_quantity {
             AnalogQuantity::Voltage => "voltage integral",
@@ -1051,6 +1212,8 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
         | AnalogAggregation::Energy
         | AnalogAggregation::SettlingTime
         | AnalogAggregation::OvershootPercent
+        | AnalogAggregation::RisingPhaseDelay
+        | AnalogAggregation::FallingPhaseDelay
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -1083,6 +1246,8 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Energy
         | AnalogAggregation::SettlingTime
         | AnalogAggregation::OvershootPercent
+        | AnalogAggregation::RisingPhaseDelay
+        | AnalogAggregation::FallingPhaseDelay
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -1118,6 +1283,29 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                 finding.limit.insert(
                     "overshoot_limit_percent".to_string(),
                     json!(overshoot_limit_percent),
+                );
+            }
+            if let Some(reference_probe) = assertion.reference_probe.as_deref() {
+                finding
+                    .limit
+                    .insert("reference_probe".to_string(), json!(reference_probe));
+            }
+            if let Some(reference_threshold_v) = assertion.reference_threshold_v {
+                finding.limit.insert(
+                    "reference_threshold_v".to_string(),
+                    json!(reference_threshold_v),
+                );
+            }
+            if let Some(reference_threshold_a) = assertion.reference_threshold_a {
+                finding.limit.insert(
+                    "reference_threshold_a".to_string(),
+                    json!(reference_threshold_a),
+                );
+            }
+            if let Some(reference_threshold_w) = assertion.reference_threshold_w {
+                finding.limit.insert(
+                    "reference_threshold_w".to_string(),
+                    json!(reference_threshold_w),
                 );
             }
             if let Some(target_v) = assertion.target_v {
@@ -1171,6 +1359,8 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Energy
         | AnalogAggregation::SettlingTime
         | AnalogAggregation::OvershootPercent
+        | AnalogAggregation::RisingPhaseDelay
+        | AnalogAggregation::FallingPhaseDelay
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -1208,6 +1398,8 @@ fn requires_time_limit(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::MinHighPulseWidth
             | AnalogAggregation::MinLowPulseWidth
             | AnalogAggregation::SettlingTime
+            | AnalogAggregation::RisingPhaseDelay
+            | AnalogAggregation::FallingPhaseDelay
     )
 }
 
@@ -1218,6 +1410,8 @@ fn uses_signal_threshold_as_level(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::FallingCrossingTime
             | AnalogAggregation::MinHighPulseWidth
             | AnalogAggregation::MinLowPulseWidth
+            | AnalogAggregation::RisingPhaseDelay
+            | AnalogAggregation::FallingPhaseDelay
             | AnalogAggregation::DutyCycle
             | AnalogAggregation::CrossingCount
             | AnalogAggregation::RisingCrossingCount
@@ -1229,6 +1423,13 @@ fn uses_target_as_reference(aggregation: &AnalogAggregation) -> bool {
     matches!(
         aggregation,
         AnalogAggregation::SettlingTime | AnalogAggregation::OvershootPercent
+    )
+}
+
+fn is_phase_delay_aggregation(aggregation: &AnalogAggregation) -> bool {
+    matches!(
+        aggregation,
+        AnalogAggregation::RisingPhaseDelay | AnalogAggregation::FallingPhaseDelay
     )
 }
 
@@ -1259,8 +1460,8 @@ pub(super) fn interpolate_at(times: &[f64], values: &[f64], target: f64) -> Opti
 mod tests {
     use super::{
         aggregate_window, crossing_count, crossing_time_us, duty_cycle_percent, min_pulse_width_us,
-        overshoot_percent, settling_time_us, target_count, threshold_count, threshold_for,
-        tolerance_count, validate_assertion_contract, validate_probe_contract,
+        overshoot_percent, phase_delay_us, settling_time_us, target_count, threshold_count,
+        threshold_for, tolerance_count, validate_assertion_contract, validate_probe_contract,
     };
     use crate::board_ir::{
         AnalogAggregation, AnalogAssertion, AnalogProbe, AnalogQuantity, AnalogRelation,
@@ -1410,6 +1611,24 @@ mod tests {
     }
 
     #[test]
+    fn phase_delay_measures_reference_to_probe_crossing_time() {
+        let times = [0.0, 1.0e-6, 2.0e-6, 3.0e-6];
+        let reference = [-1.0, 1.0, 1.0, 1.0];
+        let delayed = [-1.0, -1.0, 1.0, 1.0];
+        let delay = phase_delay_us(
+            &times,
+            &reference,
+            &delayed,
+            (0.0, 3.0e-6),
+            (0.0, 0.0),
+            &AnalogAggregation::RisingPhaseDelay,
+        )
+        .unwrap();
+
+        assert!((delay - 1.0).abs() < 1.0e-12);
+    }
+
+    #[test]
     fn crossing_count_counts_any_or_directed_threshold_edges() {
         let times = [0.0, 1.0e-6, 2.0e-6, 3.0e-6, 4.0e-6];
         let values = [0.0, 1.0, 0.0, 1.0, 0.0];
@@ -1457,6 +1676,7 @@ mod tests {
         let current_integral = AnalogAssertion {
             name: "charge_limit".to_string(),
             probe: "load_current".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(100.0),
@@ -1471,6 +1691,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: Some(1.0e-6),
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1492,6 +1715,7 @@ mod tests {
         let energy = AnalogAssertion {
             name: "energy_limit".to_string(),
             probe: "load_power".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(100.0),
@@ -1506,6 +1730,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1540,6 +1767,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "bad_sample".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: Some(100.0),
             start_us: Some(0.0),
             end_us: None,
@@ -1554,6 +1782,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1568,6 +1799,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "bad_units".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: Some(100.0),
             start_us: None,
             end_us: None,
@@ -1582,6 +1814,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1596,6 +1831,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "bad_crossing".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(1000.0),
@@ -1610,6 +1846,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1624,6 +1863,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "bad_duty".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(1000.0),
@@ -1638,6 +1878,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1652,6 +1895,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "bad_count".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(1000.0),
@@ -1666,6 +1910,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: None,
             target_a: None,
             target_w: None,
@@ -1680,6 +1927,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "bad_settling_reference".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(1000.0),
@@ -1694,6 +1942,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: Some(3.3),
             target_a: None,
             target_w: None,
@@ -1710,6 +1961,7 @@ mod tests {
         let assertion = AnalogAssertion {
             name: "good_overshoot_reference".to_string(),
             probe: "nrst".to_string(),
+            reference_probe: None,
             at_us: None,
             start_us: Some(0.0),
             end_us: Some(1000.0),
@@ -1724,6 +1976,9 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            reference_threshold_v: None,
+            reference_threshold_a: None,
+            reference_threshold_w: None,
             target_v: Some(3.3),
             target_a: None,
             target_w: None,

@@ -473,6 +473,8 @@ pub(super) enum ProbeQuantityYaml {
 pub(super) struct AssertionYaml {
     pub(super) name: String,
     pub(super) probe: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) reference_probe: Option<String>,
     pub(super) relation: AssertionRelationYaml,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) at_us: Option<f64>,
@@ -500,6 +502,12 @@ pub(super) struct AssertionYaml {
     pub(super) threshold_c: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) threshold_j: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) reference_threshold_v: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) reference_threshold_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) reference_threshold_w: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) target_v: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -535,6 +543,8 @@ pub(super) enum AssertionAggregationYaml {
     Energy,
     SettlingTime,
     OvershootPercent,
+    RisingPhaseDelay,
+    FallingPhaseDelay,
     RisingCrossingTime,
     FallingCrossingTime,
     MinHighPulseWidth,

@@ -2609,4 +2609,9 @@ provide `target_v`/`target_a`/`target_w`, matching
 last time the waveform leaves or crosses the target band within the window.
 `overshoot_percent` uses `target_v`/`target_a`/`target_w` plus
 `overshoot_limit_percent` and reports the peak positive excursion above the
-target as a percent of the target magnitude.
+target as a percent of the target magnitude. `rising_phase_delay` and
+`falling_phase_delay` compare two probes: provide `reference_probe`, one
+`reference_threshold_v`/`reference_threshold_a`/`reference_threshold_w`, the
+checked probe threshold, and `time_limit_us`. The measured value is the delay
+from the reference probe's first matching threshold crossing to the checked
+probe's first matching threshold crossing after it.
