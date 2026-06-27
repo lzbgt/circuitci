@@ -15,8 +15,10 @@ use super::analog_runner::{
     select_backend,
 };
 use super::analog_spice::{
-    analog_run_plans, prepare_source_netlist, push_canceled_finding, push_sweep_margin_summaries,
-    record_sweep_measurements, tag_corner_finding, tag_corner_findings, validate_netlist_source,
+    analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
+};
+use super::analog_sweep_reports::{
+    push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
 };
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;

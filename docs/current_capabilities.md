@@ -140,13 +140,14 @@ Current analog support:
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform, Bode, or operating-point artifact set, tagged on findings, and
   summarized with per-assertion worst-corner margin info findings for
-  transient, AC/Bode, and DC operating-point assertions.
+  transient, AC/Bode, DC operating-point, and noise assertions.
   Sweeps can use raw SPICE `.param` values, generated component value inputs
   such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`, and vendor model-library
   sections through section-specific ngspice `.lib` cards. They can also use
   deterministic Monte Carlo component-value samples for generated-board
   tolerance observations, with sampled values represented as normal component
-  value corners.
+  value corners and summarized with per-assertion yield percent, pass/fail
+  counts, mean margin, margin standard deviation, and min/max margin.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter or component value, generated load/source
   candidate selection, extra parameter/component/model-section add/remove

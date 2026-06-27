@@ -10,6 +10,7 @@ mod analog_operating_limits;
 mod analog_runner;
 mod analog_soa;
 mod analog_spice;
+mod analog_sweep_reports;
 mod analog_sweep_sampling;
 mod analog_util;
 mod analog_waveform_measurements;

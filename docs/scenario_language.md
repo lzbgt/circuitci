@@ -2606,7 +2606,11 @@ and `component_values[]` entries containing `component`, `field`, `nominal`,
 deterministic: the same seed, sample count, and target list produce the same
 sampled component values, corner names, artifacts, and worst-corner summaries on
 every run. Monte Carlo samples are still ordinary sweep corners, so they work
-with transient, AC/Bode, DC operating-point, and noise observations.
+with transient, AC/Bode, DC operating-point, and noise observations. For every
+assertion evaluated across a Monte Carlo sweep, the report also emits an
+`ANALOG_MONTE_CARLO_YIELD_SUMMARY` info finding with evaluated sample count,
+pass/fail counts, yield percent, mean margin, margin standard deviation, and the
+limiting sampled corner.
 
 Sweep execution is capped to keep GUI and CI runs predictable. Each corner
 writes separate waveform/artifact outputs and tags assertion findings with the

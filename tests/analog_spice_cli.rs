@@ -332,6 +332,20 @@ fn generated_rc_lowpass_monte_carlo_observation_validates_with_bode_artifacts() 
                         values.contains_key("R1.value_ohm") && values.contains_key("C1.value_f")
                     })
         }));
+        let yield_summaries: Vec<_> = report["infos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|finding| finding["id"] == "ANALOG_MONTE_CARLO_YIELD_SUMMARY")
+            .collect();
+        assert_eq!(yield_summaries.len(), 2);
+        assert!(yield_summaries.iter().all(|summary| {
+            summary["measured"]["analog_sweep"] == "rc_monte_carlo"
+                && summary["measured"]["evaluated_samples"] == 5
+                && summary["measured"]["passed_samples"] == 5
+                && summary["measured"]["yield_percent"] == 100.0
+                && summary["measured"]["stddev_margin"].as_f64().is_some()
+        }));
     } else {
         assert_eq!(report["result"], "fail");
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");

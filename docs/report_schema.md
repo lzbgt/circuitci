@@ -122,6 +122,25 @@ Typical fields:
 - `limit.relation`, `limit.limit_value`, `limit.limit_unit`, and
   `limit.minimum_margin`.
 
+### `ANALOG_MONTE_CARLO_YIELD_SUMMARY`
+
+Monte Carlo sweeps additionally emit one informational summary per evaluated
+assertion. These findings preserve the same `measured.analog_sweep`,
+`measured.analog_corner`, assertion, probe, quantity, component-value, parameter,
+and model-section fields as `ANALOG_SWEEP_MARGIN_SUMMARY`, but the limiting
+corner is the worst sampled margin and the aggregate fields describe the sampled
+distribution:
+
+- `measured.evaluated_samples`: number of sampled corners with assertion
+  measurements.
+- `measured.passed_samples` and `measured.failed_samples`: assertion pass/fail
+  counts across the sampled corners.
+- `measured.yield_percent`: `passed_samples / evaluated_samples * 100`.
+- `measured.mean_margin`, `measured.stddev_margin`, `measured.min_margin`, and
+  `measured.max_margin`: margin distribution in the assertion unit.
+- `limit.minimum_margin`: always `0.0`; sample failures are already represented
+  by the underlying assertion findings and by `failed_samples`.
+
 Reset/boot/download rules use the same finding object. Required IDs:
 
 - `RESET_RELEASE_AFTER_POWER_VALID`

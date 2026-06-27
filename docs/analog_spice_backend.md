@@ -226,11 +226,14 @@ be driven from Board IR component names instead of hand-written SPICE parameter
 names. `monte_carlo` sweep blocks deterministically sample generated component
 fields around a nominal value and tolerance using the declared seed; sampled
 values are expanded into the same component-value override path, so artifacts
-and margin summaries remain reproducible. Swept assertions also emit
+and margin summaries remain reproducible. Swept assertions emit
 `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify the worst evaluated
 corner, parameter values, component value inputs, selected model-library
 sections, measured value, limit, relation, and numeric margin for each
-assertion. Sweeps can select vendor model-library sections through
+assertion. Monte Carlo sweeps also emit `ANALOG_MONTE_CARLO_YIELD_SUMMARY`
+findings with pass/fail sample counts, yield percent, mean margin, standard
+deviation, min/max margin, and the limiting sample. Sweeps can select vendor
+model-library sections through
 `model_sections`; CircuitCI emits section-specific ngspice `.lib "path" section`
 cards for each corner. When a sweep declares `TEMP_C` or `TEMPERATURE_C`,
 CircuitCI emits both the matching `.param` and an ngspice `.temp` card for that

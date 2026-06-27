@@ -4,14 +4,14 @@ use crate::board_ir::{
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::analog_ac_assertions::{evaluate_ac_assertions, validate_ac_assertion_contract};
 use super::analog_assertions::{
-    AnalogAssertionMeasurement, assertion_reference_contract_is_complete,
-    evaluate_waveform_assertions, validate_assertion_contract, validate_probe_contract,
+    assertion_reference_contract_is_complete, evaluate_waveform_assertions,
+    validate_assertion_contract, validate_probe_contract,
 };
 use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
@@ -22,6 +22,9 @@ use super::analog_runner::{
     run_ngspice, run_ngspice_ac, select_backend,
 };
 use super::analog_soa::evaluate_soa_limits;
+use super::analog_sweep_reports::{
+    push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
+};
 use super::analog_sweep_sampling::monte_carlo_component_value_samples;
 use super::analog_util::{
     component_value_parameter_name, file_sha256_hex, push_artifact, safe_artifact_name,
@@ -31,7 +34,6 @@ use super::spice_netlist::generate_board_netlist;
 use super::{SPICE_AC_ANALYSIS, SPICE_TRANSIENT_ANALYSIS};
 
 const MAX_ANALOG_SWEEP_CORNERS: usize = 64;
-const ANALOG_SWEEP_MARGIN_SUMMARY: &str = "ANALOG_SWEEP_MARGIN_SUMMARY";
 
 pub(super) struct AnalogTransientSinks<'a> {
     pub(super) findings: &'a mut Vec<Finding>,
@@ -921,10 +923,10 @@ pub(super) struct AnalogRunPlan {
 
 #[derive(Debug, Clone)]
 pub(super) struct ComponentValueOverride {
-    component: String,
-    field: AnalogSweepComponentField,
-    parameter_name: String,
-    value: f64,
+    pub(super) component: String,
+    pub(super) field: AnalogSweepComponentField,
+    pub(super) parameter_name: String,
+    pub(super) value: f64,
 }
 
 impl AnalogRunPlan {
@@ -1293,197 +1295,6 @@ fn valid_spice_model_section_name(name: &str) -> bool {
             .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.' | ':'))
 }
 
-pub(super) fn tag_corner_findings(
-    findings: &mut [Finding],
-    start: usize,
-    run_plan: &AnalogRunPlan,
-) {
-    for finding in findings.iter_mut().skip(start) {
-        tag_corner_finding(finding, run_plan);
-    }
-}
-
-pub(super) fn tag_corner_finding(finding: &mut Finding, run_plan: &AnalogRunPlan) {
-    if let Some(sweep_name) = &run_plan.sweep_name {
-        finding
-            .measured
-            .insert("analog_sweep".to_string(), json!(sweep_name));
-        finding
-            .measured
-            .insert("analog_corner".to_string(), json!(run_plan.corner_name));
-        finding.measured.insert(
-            "analog_parameters".to_string(),
-            json!(parameter_override_map(&run_plan.parameter_overrides)),
-        );
-        finding.measured.insert(
-            "analog_model_sections".to_string(),
-            json!(model_section_override_map(
-                &run_plan.model_section_overrides
-            )),
-        );
-        finding.measured.insert(
-            "analog_component_values".to_string(),
-            json!(component_value_override_map(
-                &run_plan.component_value_overrides
-            )),
-        );
-    }
-}
-
-fn parameter_override_map(overrides: &[ParameterOverride]) -> BTreeMap<String, f64> {
-    overrides
-        .iter()
-        .map(|override_| (override_.name.clone(), override_.value))
-        .collect()
-}
-
-fn model_section_override_map(overrides: &[ModelSectionOverride]) -> BTreeMap<String, String> {
-    overrides
-        .iter()
-        .map(|override_| (override_.path.clone(), override_.section.clone()))
-        .collect()
-}
-
-fn component_value_override_map(overrides: &[ComponentValueOverride]) -> BTreeMap<String, f64> {
-    overrides
-        .iter()
-        .map(|override_| {
-            (
-                format!("{}.{}", override_.component, override_.field.as_str()),
-                override_.value,
-            )
-        })
-        .collect()
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct SweepAssertionMeasurement {
-    sweep_name: String,
-    corner_name: String,
-    parameters: BTreeMap<String, f64>,
-    component_values: BTreeMap<String, f64>,
-    model_sections: BTreeMap<String, String>,
-    assertion: AnalogAssertionMeasurement,
-}
-
-pub(super) fn record_sweep_measurements(
-    output: &mut Vec<SweepAssertionMeasurement>,
-    run_plan: &AnalogRunPlan,
-    measurements: Vec<AnalogAssertionMeasurement>,
-) {
-    let Some(sweep_name) = &run_plan.sweep_name else {
-        return;
-    };
-    let parameters = parameter_override_map(&run_plan.parameter_overrides);
-    let component_values = component_value_override_map(&run_plan.component_value_overrides);
-    let model_sections = model_section_override_map(&run_plan.model_section_overrides);
-    output.extend(
-        measurements
-            .into_iter()
-            .map(|assertion| SweepAssertionMeasurement {
-                sweep_name: sweep_name.clone(),
-                corner_name: run_plan.corner_name.clone(),
-                parameters: parameters.clone(),
-                component_values: component_values.clone(),
-                model_sections: model_sections.clone(),
-                assertion,
-            }),
-    );
-}
-
-pub(super) fn push_sweep_margin_summaries(
-    findings: &mut Vec<Finding>,
-    scenario: &Scenario,
-    measurements: &[SweepAssertionMeasurement],
-) {
-    let mut worst_by_assertion: BTreeMap<(String, String), &SweepAssertionMeasurement> =
-        BTreeMap::new();
-    let mut counts_by_assertion: BTreeMap<(String, String), usize> = BTreeMap::new();
-    for measurement in measurements {
-        let key = (
-            measurement.sweep_name.clone(),
-            measurement.assertion.assertion_name.clone(),
-        );
-        *counts_by_assertion.entry(key.clone()).or_default() += 1;
-        let replace = worst_by_assertion
-            .get(&key)
-            .is_none_or(|current| measurement.assertion.margin < current.assertion.margin);
-        if replace {
-            worst_by_assertion.insert(key, measurement);
-        }
-    }
-    for ((sweep_name, assertion_name), worst) in worst_by_assertion {
-        let evaluated_corners = counts_by_assertion
-            .get(&(sweep_name.clone(), assertion_name.clone()))
-            .copied()
-            .unwrap_or(0);
-        let mut finding = Finding::info(
-            ANALOG_SWEEP_MARGIN_SUMMARY,
-            &scenario.name,
-            format!(
-                "Analog sweep {sweep_name} worst margin for assertion {assertion_name} is {:.6} {} at {}.",
-                worst.assertion.margin, worst.assertion.unit, worst.corner_name
-            ),
-        );
-        finding
-            .measured
-            .insert("analog_sweep".to_string(), json!(sweep_name));
-        finding
-            .measured
-            .insert("analog_corner".to_string(), json!(worst.corner_name));
-        finding.measured.insert(
-            "analog_parameters".to_string(),
-            json!(worst.parameters.clone()),
-        );
-        finding.measured.insert(
-            "analog_model_sections".to_string(),
-            json!(worst.model_sections.clone()),
-        );
-        finding.measured.insert(
-            "analog_component_values".to_string(),
-            json!(worst.component_values.clone()),
-        );
-        finding
-            .measured
-            .insert("assertion".to_string(), json!(assertion_name));
-        finding
-            .measured
-            .insert("probe".to_string(), json!(&worst.assertion.probe_name));
-        finding
-            .measured
-            .insert("quantity".to_string(), json!(&worst.assertion.quantity));
-        finding.measured.insert(
-            "measured_value".to_string(),
-            json!(worst.assertion.measured),
-        );
-        finding
-            .measured
-            .insert("measured_unit".to_string(), json!(worst.assertion.unit));
-        finding
-            .measured
-            .insert("margin".to_string(), json!(worst.assertion.margin));
-        finding
-            .measured
-            .insert("passed".to_string(), json!(worst.assertion.passed));
-        finding
-            .measured
-            .insert("evaluated_corners".to_string(), json!(evaluated_corners));
-        finding
-            .limit
-            .insert("relation".to_string(), json!(worst.assertion.relation));
-        finding
-            .limit
-            .insert("limit_value".to_string(), json!(worst.assertion.limit));
-        finding
-            .limit
-            .insert("limit_unit".to_string(), json!(worst.assertion.unit));
-        finding
-            .limit
-            .insert("minimum_margin".to_string(), json!(0.0));
-        findings.push(finding);
-    }
-}
-
 fn netlist_source_name(source: &AnalogNetlistSource) -> &'static str {
     match source {
         AnalogNetlistSource::File => "file-backed",
@@ -1575,16 +1386,8 @@ pub(super) fn prepare_source_netlist(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        ANALOG_SWEEP_MARGIN_SUMMARY, AnalogRunPlan, ComponentValueOverride,
-        MAX_ANALOG_SWEEP_CORNERS, ModelSectionOverride, ParameterOverride,
-        SweepAssertionMeasurement, analog_run_plans, push_sweep_margin_summaries,
-        tag_corner_finding,
-    };
-    use crate::board_ir::{AnalogSweepComponentField, BoardProject};
-    use crate::reports::Finding;
-    use crate::validation::analog_assertions::AnalogAssertionMeasurement;
-    use std::collections::BTreeMap;
+    use super::{MAX_ANALOG_SWEEP_CORNERS, analog_run_plans};
+    use crate::board_ir::BoardProject;
 
     fn rc_sweep_project_yaml(parameter_yaml: &str) -> String {
         format!(
@@ -1853,113 +1656,5 @@ scenarios:
         let error = analog_run_plans(analog).unwrap_err();
 
         assert!(error.contains("64-corner execution cap"));
-    }
-
-    #[test]
-    fn sweep_corner_tags_findings_with_parameter_values() {
-        let run_plan = AnalogRunPlan {
-            sweep_name: Some("rc_tolerance".to_string()),
-            corner_name: "corner_007".to_string(),
-            run_subdir: Some("rc_tolerance_corner_007".to_string()),
-            parameter_overrides: vec![ParameterOverride {
-                name: "RIN_VALUE".to_string(),
-                value: 1050.0,
-            }],
-            component_value_overrides: vec![ComponentValueOverride {
-                component: "RLOAD".to_string(),
-                field: AnalogSweepComponentField::ValueOhm,
-                parameter_name: "CCI_RLOAD_VALUE_OHM".to_string(),
-                value: 1100.0,
-            }],
-            model_section_overrides: vec![ModelSectionOverride {
-                path: "models/vendor.lib".to_string(),
-                section: "slow".to_string(),
-            }],
-        };
-        let mut finding = Finding::critical(
-            "SPICE_TRANSIENT_ANALYSIS",
-            "rc_lowpass",
-            "filtered output exceeded the attenuation limit",
-        );
-
-        tag_corner_finding(&mut finding, &run_plan);
-
-        assert_eq!(finding.measured["analog_sweep"], "rc_tolerance");
-        assert_eq!(finding.measured["analog_corner"], "corner_007");
-        assert_eq!(finding.measured["analog_parameters"]["RIN_VALUE"], 1050.0);
-        assert_eq!(
-            finding.measured["analog_model_sections"]["models/vendor.lib"],
-            "slow"
-        );
-        assert_eq!(
-            finding.measured["analog_component_values"]["RLOAD.value_ohm"],
-            1100.0
-        );
-    }
-
-    #[test]
-    fn sweep_margin_summary_reports_worst_assertion_corner() {
-        let project: BoardProject = serde_yaml_ng::from_str(&rc_sweep_project_yaml(
-            r#"            - name: RIN_VALUE
-              values: [950.0, 1000.0, 1050.0]
-"#,
-        ))
-        .unwrap();
-        let scenario = &project.scenarios[0];
-        let measurements = vec![
-            sweep_measurement("corner_001", 950.0, 0.12, 0.52, true),
-            sweep_measurement("corner_002", 1000.0, 0.04, 0.60, true),
-            sweep_measurement("corner_003", 1050.0, -0.02, 0.66, false),
-        ];
-        let mut findings = Vec::new();
-
-        push_sweep_margin_summaries(&mut findings, scenario, &measurements);
-
-        assert_eq!(findings.len(), 1);
-        let summary = &findings[0];
-        assert_eq!(summary.id, ANALOG_SWEEP_MARGIN_SUMMARY);
-        assert_eq!(summary.measured["analog_sweep"], "rc_tolerance");
-        assert_eq!(summary.measured["analog_corner"], "corner_003");
-        assert_eq!(summary.measured["analog_parameters"]["RIN_VALUE"], 1050.0);
-        assert_eq!(
-            summary.measured["analog_model_sections"]["models/vendor.lib"],
-            "typ"
-        );
-        assert_eq!(
-            summary.measured["analog_component_values"]["RLOAD.value_ohm"],
-            1100.0
-        );
-        assert_eq!(summary.measured["assertion"], "filtered_rms_below");
-        assert_eq!(summary.measured["evaluated_corners"], 3);
-        assert_eq!(summary.measured["passed"], false);
-        assert_eq!(summary.limit["relation"], "below");
-        assert_eq!(summary.limit["minimum_margin"], 0.0);
-    }
-
-    fn sweep_measurement(
-        corner_name: &str,
-        parameter_value: f64,
-        margin: f64,
-        measured: f64,
-        passed: bool,
-    ) -> SweepAssertionMeasurement {
-        SweepAssertionMeasurement {
-            sweep_name: "rc_tolerance".to_string(),
-            corner_name: corner_name.to_string(),
-            parameters: BTreeMap::from([("RIN_VALUE".to_string(), parameter_value)]),
-            component_values: BTreeMap::from([("RLOAD.value_ohm".to_string(), 1100.0)]),
-            model_sections: BTreeMap::from([("models/vendor.lib".to_string(), "typ".to_string())]),
-            assertion: AnalogAssertionMeasurement {
-                assertion_name: "filtered_rms_below".to_string(),
-                probe_name: "v_filtered".to_string(),
-                measured,
-                limit: 0.64,
-                margin,
-                relation: "below",
-                unit: "V",
-                quantity: "rms voltage".to_string(),
-                passed,
-            },
-        }
     }
 }
