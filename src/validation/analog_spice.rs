@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 
 use super::SPICE_TRANSIENT_ANALYSIS;
 use super::analog_assertions::{
-    AnalogAssertionMeasurement, evaluate_waveform_assertions, quantity_name, threshold_count,
-    threshold_for, validate_assertion_contract, validate_probe_contract,
+    AnalogAssertionMeasurement, assertion_reference_contract_is_complete,
+    evaluate_waveform_assertions, validate_assertion_contract, validate_probe_contract,
 };
 use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
@@ -285,31 +285,18 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
             );
             return;
         }
-        if threshold_count(assertion) != 1 {
-            validation_input_missing(
-                findings,
-                scenario,
-                format!(
-                    "Analog assertion {} must declare exactly one finite threshold unit.",
-                    assertion.name
-                ),
-            );
-            return;
-        }
         let probe = analog
             .probes
             .iter()
             .find(|probe| probe.name == assertion.probe)
             .expect("probe existence was checked above");
-        if threshold_for(assertion, probe).is_none() {
+        if !assertion_reference_contract_is_complete(assertion, probe) {
             validation_input_missing(
                 findings,
                 scenario,
                 format!(
-                    "Analog assertion {} is missing a finite threshold for {} probe {}.",
-                    assertion.name,
-                    quantity_name(&probe.quantity),
-                    probe.name
+                    "Analog assertion {} is missing finite reference fields for probe {}.",
+                    assertion.name, probe.name
                 ),
             );
             return;

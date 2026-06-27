@@ -746,9 +746,45 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
         .into_iter()
         .filter(|value| value.is_some_and(f64::is_finite))
         .count();
-        if threshold_count != 1 {
+        let target_count = [assertion.target_v, assertion.target_a, assertion.target_w]
+            .into_iter()
+            .filter(|value| value.is_some_and(f64::is_finite))
+            .count();
+        let tolerance_count = [
+            assertion.tolerance_v,
+            assertion.tolerance_a,
+            assertion.tolerance_w,
+        ]
+        .into_iter()
+        .filter(|value| value.is_some_and(|value| value.is_finite() && value >= 0.0))
+        .count();
+        let is_settling = matches!(
+            assertion.aggregation,
+            Some(AssertionAggregationYaml::SettlingTime)
+        );
+        let is_overshoot = matches!(
+            assertion.aggregation,
+            Some(AssertionAggregationYaml::OvershootPercent)
+        );
+        if is_settling {
+            if threshold_count != 0 || target_count != 1 || tolerance_count != 1 {
+                bail!(
+                    "KiCad analog scenario {} assertion {} must declare exactly one finite target and tolerance for settling-time checks.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
+        } else if is_overshoot {
+            if threshold_count != 0 || target_count != 1 || tolerance_count != 0 {
+                bail!(
+                    "KiCad analog scenario {} assertion {} must declare exactly one finite target and no tolerance for overshoot checks.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
+        } else if threshold_count != 1 || target_count != 0 || tolerance_count != 0 {
             bail!(
-                "KiCad analog scenario {} assertion {} must declare exactly one finite threshold.",
+                "KiCad analog scenario {} assertion {} must declare exactly one finite threshold and no target/tolerance fields.",
                 scenario.name,
                 assertion.name
             );
@@ -760,6 +796,8 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     | AssertionAggregationYaml::Max
                     | AssertionAggregationYaml::Mean
                     | AssertionAggregationYaml::Rms
+                    | AssertionAggregationYaml::Integral
+                    | AssertionAggregationYaml::Energy
             )
         );
         let is_crossing = matches!(
@@ -769,6 +807,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     | AssertionAggregationYaml::FallingCrossingTime
                     | AssertionAggregationYaml::MinHighPulseWidth
                     | AssertionAggregationYaml::MinLowPulseWidth
+                    | AssertionAggregationYaml::SettlingTime
             )
         );
         let is_duty = matches!(
@@ -790,6 +829,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                 || assertion.time_limit_us.is_some()
                 || assertion.duty_limit_percent.is_some()
                 || assertion.count_limit.is_some()
+                || assertion.overshoot_limit_percent.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid window/sample timing contract.",
@@ -804,6 +844,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                 || assertion.at_us.is_some()
                 || assertion.duty_limit_percent.is_some()
                 || assertion.count_limit.is_some()
+                || assertion.overshoot_limit_percent.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid timing assertion contract.",
@@ -818,6 +859,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                 || assertion.at_us.is_some()
                 || assertion.time_limit_us.is_some()
                 || assertion.count_limit.is_some()
+                || assertion.overshoot_limit_percent.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid duty-cycle assertion contract.",
@@ -832,9 +874,25 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                 || assertion.at_us.is_some()
                 || assertion.time_limit_us.is_some()
                 || assertion.duty_limit_percent.is_some()
+                || assertion.overshoot_limit_percent.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid crossing-count assertion contract.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
+        } else if is_overshoot {
+            if assertion.start_us.is_none()
+                || assertion.end_us.is_none()
+                || assertion.overshoot_limit_percent.is_none()
+                || assertion.at_us.is_some()
+                || assertion.time_limit_us.is_some()
+                || assertion.duty_limit_percent.is_some()
+                || assertion.count_limit.is_some()
+            {
+                bail!(
+                    "KiCad analog scenario {} assertion {} has an invalid overshoot assertion contract.",
                     scenario.name,
                     assertion.name
                 );
@@ -845,6 +903,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
             || assertion.time_limit_us.is_some()
             || assertion.duty_limit_percent.is_some()
             || assertion.count_limit.is_some()
+            || assertion.overshoot_limit_percent.is_some()
         {
             bail!(
                 "KiCad analog scenario {} assertion {} has an invalid sample timing contract.",

@@ -21,12 +21,15 @@ pub(super) struct AnalogAssertionDraft {
     pub(super) aggregation: String,
     pub(super) relation: String,
     pub(super) threshold: f64,
+    pub(super) target: f64,
+    pub(super) tolerance: f64,
     pub(super) at_us: f64,
     pub(super) start_us: f64,
     pub(super) end_us: f64,
     pub(super) time_limit_us: f64,
     pub(super) duty_limit_percent: f64,
     pub(super) count_limit: f64,
+    pub(super) overshoot_limit_percent: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -253,12 +256,16 @@ pub(super) fn analog_probe_assertion_summaries(
                     relation: relation_label(&assertion.relation).to_string(),
                     threshold: assertion_threshold_value(assertion, &probe.quantity)
                         .unwrap_or_default(),
+                    target: assertion_target_value(assertion, &probe.quantity).unwrap_or_default(),
+                    tolerance: assertion_tolerance_value(assertion, &probe.quantity)
+                        .unwrap_or_default(),
                     at_us: assertion.at_us.unwrap_or_default(),
                     start_us: assertion.start_us.unwrap_or_default(),
                     end_us: assertion.end_us.unwrap_or_default(),
                     time_limit_us: assertion.time_limit_us.unwrap_or_default(),
                     duty_limit_percent: assertion.duty_limit_percent.unwrap_or_default(),
                     count_limit: assertion.count_limit.unwrap_or_default(),
+                    overshoot_limit_percent: assertion.overshoot_limit_percent.unwrap_or_default(),
                 },
                 status,
                 failure_message: failure.map(|finding| finding.message.clone()),
@@ -860,6 +867,8 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "rms"
             | "integral"
             | "energy"
+            | "settling_time"
+            | "overshoot_percent"
             | "rising_crossing_time"
             | "falling_crossing_time"
             | "min_high_pulse_width"
@@ -1047,7 +1056,8 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
         "rising_crossing_time"
         | "falling_crossing_time"
         | "min_high_pulse_width"
-        | "min_low_pulse_width" => {
+        | "min_low_pulse_width"
+        | "settling_time" => {
             if !draft.start_us.is_finite()
                 || !draft.end_us.is_finite()
                 || draft.start_us < 0.0
@@ -1090,6 +1100,20 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
+        "overshoot_percent" => {
+            if !draft.start_us.is_finite()
+                || !draft.end_us.is_finite()
+                || draft.start_us < 0.0
+                || draft.end_us < draft.start_us
+                || draft.end_us > stop_time_us
+                || !draft.overshoot_limit_percent.is_finite()
+                || draft.overshoot_limit_percent < 0.0
+            {
+                anyhow::bail!(
+                    "Overshoot assertion bounds must be finite and ordered, and overshoot limit must be nonnegative."
+                );
+            }
+        }
         _ => unreachable!("aggregation was validated"),
     }
     Ok(())
@@ -1115,6 +1139,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Rms => "rms",
         crate::board_ir::AnalogAggregation::Integral => "integral",
         crate::board_ir::AnalogAggregation::Energy => "energy",
+        crate::board_ir::AnalogAggregation::SettlingTime => "settling_time",
+        crate::board_ir::AnalogAggregation::OvershootPercent => "overshoot_percent",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising_crossing_time",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling_crossing_time",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min_high_pulse_width",
@@ -1165,6 +1191,26 @@ fn assertion_threshold_label(
                 .unwrap_or_else(|| "missing energy threshold".to_string()),
         };
     }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::SettlingTime
+            | crate::board_ir::AnalogAggregation::OvershootPercent
+    ) {
+        return match quantity {
+            crate::board_ir::AnalogQuantity::Voltage => assertion
+                .target_v
+                .map(|value| format!("target {value:.6} V"))
+                .unwrap_or_else(|| "missing voltage target".to_string()),
+            crate::board_ir::AnalogQuantity::Current => assertion
+                .target_a
+                .map(|value| format!("target {value:.6} A"))
+                .unwrap_or_else(|| "missing current target".to_string()),
+            crate::board_ir::AnalogQuantity::Power => assertion
+                .target_w
+                .map(|value| format!("target {value:.6} W"))
+                .unwrap_or_else(|| "missing power target".to_string()),
+        };
+    }
     match quantity {
         crate::board_ir::AnalogQuantity::Voltage => assertion
             .threshold_v
@@ -1201,10 +1247,43 @@ fn assertion_threshold_value(
             crate::board_ir::AnalogQuantity::Power => assertion.threshold_j,
         };
     }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::SettlingTime
+            | crate::board_ir::AnalogAggregation::OvershootPercent
+    ) {
+        return match quantity {
+            crate::board_ir::AnalogQuantity::Voltage => assertion.target_v,
+            crate::board_ir::AnalogQuantity::Current => assertion.target_a,
+            crate::board_ir::AnalogQuantity::Power => assertion.target_w,
+        };
+    }
     match quantity {
         crate::board_ir::AnalogQuantity::Voltage => assertion.threshold_v,
         crate::board_ir::AnalogQuantity::Current => assertion.threshold_a,
         crate::board_ir::AnalogQuantity::Power => assertion.threshold_w,
+    }
+}
+
+fn assertion_target_value(
+    assertion: &crate::board_ir::AnalogAssertion,
+    quantity: &crate::board_ir::AnalogQuantity,
+) -> Option<f64> {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => assertion.target_v,
+        crate::board_ir::AnalogQuantity::Current => assertion.target_a,
+        crate::board_ir::AnalogQuantity::Power => assertion.target_w,
+    }
+}
+
+fn assertion_tolerance_value(
+    assertion: &crate::board_ir::AnalogAssertion,
+    quantity: &crate::board_ir::AnalogQuantity,
+) -> Option<f64> {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => assertion.tolerance_v,
+        crate::board_ir::AnalogQuantity::Current => assertion.tolerance_a,
+        crate::board_ir::AnalogQuantity::Power => assertion.tolerance_w,
     }
 }
 
@@ -1228,12 +1307,21 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         crate::board_ir::AnalogAggregation::RisingCrossingTime
         | crate::board_ir::AnalogAggregation::FallingCrossingTime
         | crate::board_ir::AnalogAggregation::MinHighPulseWidth
-        | crate::board_ir::AnalogAggregation::MinLowPulseWidth => {
+        | crate::board_ir::AnalogAggregation::MinLowPulseWidth
+        | crate::board_ir::AnalogAggregation::SettlingTime => {
             format!(
                 "{:.6}..{:.6} us, limit {:.6} us",
                 assertion.start_us.unwrap_or_default(),
                 assertion.end_us.unwrap_or_default(),
                 assertion.time_limit_us.unwrap_or_default()
+            )
+        }
+        crate::board_ir::AnalogAggregation::OvershootPercent => {
+            format!(
+                "{:.6}..{:.6} us, limit {:.6}%",
+                assertion.start_us.unwrap_or_default(),
+                assertion.end_us.unwrap_or_default(),
+                assertion.overshoot_limit_percent.unwrap_or_default()
             )
         }
         crate::board_ir::AnalogAggregation::DutyCycle => {
@@ -1465,7 +1553,8 @@ fn assertion_value(
         "rising_crossing_time"
         | "falling_crossing_time"
         | "min_high_pulse_width"
-        | "min_low_pulse_width" => {
+        | "min_low_pulse_width"
+        | "settling_time" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
             insert_number(&mut assertion, "time_limit_us", draft.time_limit_us)?;
@@ -1484,14 +1573,30 @@ fn assertion_value(
             insert_number(&mut assertion, "end_us", draft.end_us)?;
             insert_number(&mut assertion, "count_limit", draft.count_limit)?;
         }
+        "overshoot_percent" => {
+            insert_number(&mut assertion, "start_us", draft.start_us)?;
+            insert_number(&mut assertion, "end_us", draft.end_us)?;
+            insert_number(
+                &mut assertion,
+                "overshoot_limit_percent",
+                draft.overshoot_limit_percent,
+            )?;
+        }
         _ => unreachable!("aggregation was validated"),
     }
     insert_string(&mut assertion, "relation", &draft.relation);
-    insert_number(
-        &mut assertion,
-        threshold_field(&draft.aggregation, quantity),
-        draft.threshold,
-    )?;
+    if draft.aggregation == "settling_time" {
+        insert_number(&mut assertion, target_field(quantity), draft.target)?;
+        insert_number(&mut assertion, tolerance_field(quantity), draft.tolerance)?;
+    } else if draft.aggregation == "overshoot_percent" {
+        insert_number(&mut assertion, target_field(quantity), draft.target)?;
+    } else {
+        insert_number(
+            &mut assertion,
+            threshold_field(&draft.aggregation, quantity),
+            draft.threshold,
+        )?;
+    }
     Ok(serde_yaml_ng::Value::Mapping(assertion))
 }
 
@@ -1510,6 +1615,22 @@ fn threshold_field(aggregation: &str, quantity: &crate::board_ir::AnalogQuantity
         crate::board_ir::AnalogQuantity::Voltage => "threshold_v",
         crate::board_ir::AnalogQuantity::Current => "threshold_a",
         crate::board_ir::AnalogQuantity::Power => "threshold_w",
+    }
+}
+
+fn target_field(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => "target_v",
+        crate::board_ir::AnalogQuantity::Current => "target_a",
+        crate::board_ir::AnalogQuantity::Power => "target_w",
+    }
+}
+
+fn tolerance_field(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => "tolerance_v",
+        crate::board_ir::AnalogQuantity::Current => "tolerance_a",
+        crate::board_ir::AnalogQuantity::Power => "tolerance_w",
     }
 }
 

@@ -1540,7 +1540,8 @@
                     "time_limit_us": { "type": "number", "minimum": 0 },
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
                     "count_limit": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
+                    "overshoot_limit_percent": { "type": "number", "minimum": 0 },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1548,6 +1549,12 @@
                     "threshold_vs": { "type": "number" },
                     "threshold_c": { "type": "number" },
                     "threshold_j": { "type": "number" },
+                    "target_v": { "type": "number" },
+                    "target_a": { "type": "number" },
+                    "target_w": { "type": "number" },
+                    "tolerance_v": { "type": "number", "minimum": 0 },
+                    "tolerance_a": { "type": "number", "minimum": 0 },
+                    "tolerance_w": { "type": "number", "minimum": 0 },
                     "suggested_fixes": {
                       "type": "array",
                       "items": { "type": "string", "minLength": 1 }
@@ -1573,7 +1580,7 @@
                       "else": {
                         "if": {
                           "required": ["aggregation"],
-                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width"] } }
+                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "settling_time"] } }
                         },
                         "then": {
                           "required": ["start_us", "end_us", "time_limit_us"],
@@ -1581,7 +1588,8 @@
                             "anyOf": [
                               { "required": ["at_us"] },
                               { "required": ["duty_limit_percent"] },
-                              { "required": ["count_limit"] }
+                              { "required": ["count_limit"] },
+                              { "required": ["overshoot_limit_percent"] }
                             ]
                           }
                         },
@@ -1611,20 +1619,39 @@
                                 "anyOf": [
                                   { "required": ["at_us"] },
                                   { "required": ["time_limit_us"] },
-                                  { "required": ["duty_limit_percent"] }
+                                  { "required": ["duty_limit_percent"] },
+                                  { "required": ["overshoot_limit_percent"] }
                                 ]
                               }
                             },
                             "else": {
-                              "required": ["at_us"],
-                              "not": {
-                                "anyOf": [
-                                  { "required": ["start_us"] },
-                                  { "required": ["end_us"] },
-                                  { "required": ["time_limit_us"] },
-                                  { "required": ["duty_limit_percent"] },
-                                  { "required": ["count_limit"] }
-                                ]
+                              "if": {
+                                "required": ["aggregation"],
+                                "properties": { "aggregation": { "const": "overshoot_percent" } }
+                              },
+                              "then": {
+                                "required": ["start_us", "end_us", "overshoot_limit_percent"],
+                                "not": {
+                                  "anyOf": [
+                                    { "required": ["at_us"] },
+                                    { "required": ["time_limit_us"] },
+                                    { "required": ["duty_limit_percent"] },
+                                    { "required": ["count_limit"] }
+                                  ]
+                                }
+                              },
+                              "else": {
+                                "required": ["at_us"],
+                                "not": {
+                                  "anyOf": [
+                                    { "required": ["start_us"] },
+                                    { "required": ["end_us"] },
+                                    { "required": ["time_limit_us"] },
+                                    { "required": ["duty_limit_percent"] },
+                                    { "required": ["count_limit"] },
+                                    { "required": ["overshoot_limit_percent"] }
+                                  ]
+                                }
                               }
                             }
                           }
@@ -1638,7 +1665,10 @@
                         { "required": ["threshold_w"] },
                         { "required": ["threshold_vs"] },
                         { "required": ["threshold_c"] },
-                        { "required": ["threshold_j"] }
+                        { "required": ["threshold_j"] },
+                        { "required": ["target_v"] },
+                        { "required": ["target_a"] },
+                        { "required": ["target_w"] }
                       ]
                     }
                   ],

@@ -1110,6 +1110,20 @@ pub struct AnalogAssertion {
     #[serde(default, rename = "threshold_j")]
     pub threshold_j: Option<f64>,
     #[serde(default)]
+    pub target_v: Option<f64>,
+    #[serde(default)]
+    pub target_a: Option<f64>,
+    #[serde(default)]
+    pub target_w: Option<f64>,
+    #[serde(default)]
+    pub tolerance_v: Option<f64>,
+    #[serde(default)]
+    pub tolerance_a: Option<f64>,
+    #[serde(default)]
+    pub tolerance_w: Option<f64>,
+    #[serde(default, rename = "overshoot_limit_percent")]
+    pub overshoot_limit_percent: Option<f64>,
+    #[serde(default)]
     pub suggested_fixes: Vec<String>,
 }
 
@@ -1124,6 +1138,8 @@ pub enum AnalogAggregation {
     Rms,
     Integral,
     Energy,
+    SettlingTime,
+    OvershootPercent,
     RisingCrossingTime,
     FallingCrossingTime,
     MinHighPulseWidth,

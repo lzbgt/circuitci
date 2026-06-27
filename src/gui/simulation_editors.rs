@@ -635,6 +635,8 @@ impl CircuitCiApp {
                             "rms",
                             "integral",
                             "energy",
+                            "settling_time",
+                            "overshoot_percent",
                             "rising_crossing_time",
                             "falling_crossing_time",
                             "min_high_pulse_width",
@@ -656,7 +658,11 @@ impl CircuitCiApp {
                     );
                     ui.end_row();
 
-                    ui.label("Threshold");
+                    let target_based = matches!(
+                        self.analog_assertion_aggregation.as_str(),
+                        "settling_time" | "overshoot_percent"
+                    );
+                    ui.label(if target_based { "Target" } else { "Threshold" });
                     let probe_quantity = selected_scenario
                         .and_then(|scenario| {
                             scenario
@@ -682,11 +688,26 @@ impl CircuitCiApp {
                         _ => unit,
                     };
                     ui.add(
-                        egui::DragValue::new(&mut self.analog_assertion_threshold)
-                            .speed(0.1)
-                            .suffix(unit),
+                        egui::DragValue::new(if target_based {
+                            &mut self.analog_assertion_target
+                        } else {
+                            &mut self.analog_assertion_threshold
+                        })
+                        .speed(0.1)
+                        .suffix(unit),
                     );
                     ui.end_row();
+
+                    if self.analog_assertion_aggregation == "settling_time" {
+                        ui.label("Tolerance");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_tolerance)
+                                .speed(0.01)
+                                .range(0.0..=1_000_000.0)
+                                .suffix(unit),
+                        );
+                        ui.end_row();
+                    }
 
                     if self.analog_assertion_aggregation == "sample" {
                         ui.label("At");
@@ -722,6 +743,7 @@ impl CircuitCiApp {
                                 | "falling_crossing_time"
                                 | "min_high_pulse_width"
                                 | "min_low_pulse_width"
+                                | "settling_time"
                         ) {
                             ui.label("Time limit");
                             ui.add(
@@ -750,6 +772,17 @@ impl CircuitCiApp {
                                     .speed(1.0)
                                     .range(0.0..=1_000_000.0)
                                     .suffix(" crossings"),
+                            );
+                            ui.end_row();
+                        } else if self.analog_assertion_aggregation == "overshoot_percent" {
+                            ui.label("Overshoot limit");
+                            ui.add(
+                                egui::DragValue::new(
+                                    &mut self.analog_assertion_overshoot_limit_percent,
+                                )
+                                .speed(0.5)
+                                .range(0.0..=1_000_000.0)
+                                .suffix("%"),
                             );
                             ui.end_row();
                         }
@@ -966,12 +999,15 @@ impl CircuitCiApp {
             aggregation: self.analog_assertion_aggregation.clone(),
             relation: self.analog_assertion_relation.clone(),
             threshold: self.analog_assertion_threshold,
+            target: self.analog_assertion_target,
+            tolerance: self.analog_assertion_tolerance,
             at_us: self.analog_assertion_at_us,
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
             count_limit: self.analog_assertion_count_limit,
+            overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => self.apply_edited_project_yaml(
@@ -1236,12 +1272,15 @@ impl CircuitCiApp {
                 aggregation: self.analog_assertion_aggregation.clone(),
                 relation: self.analog_assertion_relation.clone(),
                 threshold: self.analog_assertion_threshold,
+                target: self.analog_assertion_target,
+                tolerance: self.analog_assertion_tolerance,
                 at_us: self.analog_assertion_at_us,
                 start_us: self.analog_assertion_start_us,
                 end_us: self.analog_assertion_end_us,
                 time_limit_us: self.analog_assertion_time_limit_us,
                 duty_limit_percent: self.analog_assertion_duty_limit_percent,
                 count_limit: self.analog_assertion_count_limit,
+                overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
             },
         };
         match replace_analog_assertion(&self.project_yaml, &draft) {
@@ -1264,12 +1303,15 @@ impl CircuitCiApp {
         self.analog_assertion_aggregation = draft.aggregation.clone();
         self.analog_assertion_relation = draft.relation.clone();
         self.analog_assertion_threshold = draft.threshold;
+        self.analog_assertion_target = draft.target;
+        self.analog_assertion_tolerance = draft.tolerance;
         self.analog_assertion_at_us = draft.at_us;
         self.analog_assertion_start_us = draft.start_us;
         self.analog_assertion_end_us = draft.end_us;
         self.analog_assertion_time_limit_us = draft.time_limit_us;
         self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
         self.analog_assertion_count_limit = draft.count_limit;
+        self.analog_assertion_overshoot_limit_percent = draft.overshoot_limit_percent;
         self.status = format!("Editing observation check {original_name}.");
     }
 
@@ -1327,12 +1369,15 @@ impl CircuitCiApp {
             aggregation: self.analog_assertion_aggregation.clone(),
             relation: self.analog_assertion_relation.clone(),
             threshold: self.analog_assertion_threshold,
+            target: self.analog_assertion_target,
+            tolerance: self.analog_assertion_tolerance,
             at_us: self.waveform_cursor_a_us,
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
             count_limit: self.analog_assertion_count_limit,
+            overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -1396,12 +1441,15 @@ impl CircuitCiApp {
             aggregation: "sample".to_string(),
             relation: relation.to_string(),
             threshold,
+            target: self.analog_assertion_target,
+            tolerance: self.analog_assertion_tolerance,
             at_us: self.waveform_cursor_a_us,
             start_us: self.analog_assertion_start_us,
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
             count_limit: self.analog_assertion_count_limit,
+            overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -1412,10 +1460,13 @@ impl CircuitCiApp {
                 self.analog_assertion_aggregation = draft.aggregation.clone();
                 self.analog_assertion_relation = draft.relation.clone();
                 self.analog_assertion_threshold = draft.threshold;
+                self.analog_assertion_target = draft.target;
+                self.analog_assertion_tolerance = draft.tolerance;
                 self.analog_assertion_at_us = draft.at_us;
                 self.analog_assertion_time_limit_us = draft.time_limit_us;
                 self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
                 self.analog_assertion_count_limit = draft.count_limit;
+                self.analog_assertion_overshoot_limit_percent = draft.overshoot_limit_percent;
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(

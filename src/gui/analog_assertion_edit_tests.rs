@@ -57,12 +57,15 @@ fn assertion_draft(name: &str, threshold: f64) -> AnalogAssertionDraft {
         aggregation: "sample".to_string(),
         relation: "above".to_string(),
         threshold,
+        target: 0.0,
+        tolerance: 0.1,
         at_us: 50.0,
         start_us: 0.0,
         end_us: 100.0,
         time_limit_us: 50.0,
         duty_limit_percent: 50.0,
         count_limit: 1.0,
+        overshoot_limit_percent: 10.0,
     }
 }
 

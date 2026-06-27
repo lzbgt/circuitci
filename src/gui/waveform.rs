@@ -541,12 +541,15 @@ impl CircuitCiApp {
                 aggregation: self.analog_assertion_aggregation.clone(),
                 relation: self.analog_assertion_relation.clone(),
                 threshold: self.analog_assertion_threshold,
+                target: self.analog_assertion_target,
+                tolerance: self.analog_assertion_tolerance,
                 at_us: self.analog_assertion_at_us,
                 start_us: self.analog_assertion_start_us,
                 end_us: self.analog_assertion_end_us,
                 time_limit_us: self.analog_assertion_time_limit_us,
                 duty_limit_percent: self.analog_assertion_duty_limit_percent,
                 count_limit: self.analog_assertion_count_limit,
+                overshoot_limit_percent: self.analog_assertion_overshoot_limit_percent,
             },
         )
     }

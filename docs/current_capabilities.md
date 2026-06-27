@@ -102,8 +102,10 @@ Current analog support:
 - Voltage/current/power probes and waveform assertions, including single-point
   samples, min/max/mean/RMS windows, signed voltage/current/power integration
   windows, power-probe energy windows, rising/falling crossing-time checks,
-  minimum high/low pulse-width checks, duty-cycle checks, and threshold
-  crossing-count checks for no-recross or ringing budgets.
+  minimum high/low pulse-width checks, duty-cycle checks, threshold
+  crossing-count checks for no-recross or ringing budgets, settling-time
+  checks against target/tolerance bands, and overshoot-percent checks against
+  target values.
 - Automatic `SPICE_OPERATING_LIMIT` checks for supported generated Board IR
   semiconductor stress limits, including selected derating, pulse, and SOA
   metadata paths.

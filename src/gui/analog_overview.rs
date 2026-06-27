@@ -646,8 +646,14 @@ fn assertion_threshold_label(assertion: &crate::board_ir::AnalogAssertion) -> St
         format!("{} C", compact_number(value))
     } else if let Some(value) = assertion.threshold_j {
         format!("{} J", compact_number(value))
+    } else if let Some(value) = assertion.target_v {
+        format!("target {} V", compact_number(value))
+    } else if let Some(value) = assertion.target_a {
+        format!("target {} A", compact_number(value))
+    } else if let Some(value) = assertion.target_w {
+        format!("target {} W", compact_number(value))
     } else {
-        "missing threshold".to_string()
+        "missing reference".to_string()
     }
 }
 
@@ -661,12 +667,23 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
                 | crate::board_ir::AnalogAggregation::FallingCrossingTime
                 | crate::board_ir::AnalogAggregation::MinHighPulseWidth
                 | crate::board_ir::AnalogAggregation::MinLowPulseWidth
+                | crate::board_ir::AnalogAggregation::SettlingTime
         ) {
             format!(
                 "from {} us to {} us, limit {} us",
                 compact_number(start_us),
                 compact_number(end_us),
                 compact_number(assertion.time_limit_us.unwrap_or_default())
+            )
+        } else if matches!(
+            assertion.aggregation,
+            crate::board_ir::AnalogAggregation::OvershootPercent
+        ) {
+            format!(
+                "from {} us to {} us, limit {}%",
+                compact_number(start_us),
+                compact_number(end_us),
+                compact_number(assertion.overshoot_limit_percent.unwrap_or_default())
             )
         } else if matches!(
             assertion.aggregation,
@@ -711,6 +728,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Rms => "rms",
         crate::board_ir::AnalogAggregation::Integral => "integral",
         crate::board_ir::AnalogAggregation::Energy => "energy",
+        crate::board_ir::AnalogAggregation::SettlingTime => "settling time",
+        crate::board_ir::AnalogAggregation::OvershootPercent => "overshoot",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising crossing",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling crossing",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min high pulse",

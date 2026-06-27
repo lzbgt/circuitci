@@ -500,6 +500,20 @@ pub(super) struct AssertionYaml {
     pub(super) threshold_c: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) threshold_j: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) target_v: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) target_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) target_w: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) tolerance_v: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) tolerance_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) tolerance_w: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) overshoot_limit_percent: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -519,6 +533,8 @@ pub(super) enum AssertionAggregationYaml {
     Rms,
     Integral,
     Energy,
+    SettlingTime,
+    OvershootPercent,
     RisingCrossingTime,
     FallingCrossingTime,
     MinHighPulseWidth,

@@ -55,7 +55,7 @@ pub(super) fn evaluate_waveform_assertions(
             continue;
         };
         let probe = &analog.probes[probe_index];
-        let Some(signal_threshold) = threshold_for(assertion, probe) else {
+        let Some(signal_threshold) = signal_threshold_for(assertion, probe) else {
             validation_input_missing(
                 findings,
                 scenario,
@@ -78,11 +78,30 @@ pub(super) fn evaluate_waveform_assertions(
             );
             continue;
         };
+        let tolerance = if matches!(assertion.aggregation, AnalogAggregation::SettlingTime) {
+            match tolerance_for(assertion, probe) {
+                Some(value) => Some(value),
+                None => {
+                    validation_input_missing(
+                        findings,
+                        scenario,
+                        format!(
+                            "Analog assertion {} is missing a finite tolerance for probe {}.",
+                            assertion.name, assertion.probe
+                        ),
+                    );
+                    continue;
+                }
+            }
+        } else {
+            None
+        };
         let measured = match measured_assertion_value(
             assertion,
             &run.series.time_s,
             &run.series.values_by_probe[probe_index],
             signal_threshold.value,
+            tolerance.as_ref().map(|threshold| threshold.value),
         ) {
             Some(value) => value,
             None => {
@@ -247,6 +266,8 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::Rms
         | AnalogAggregation::Integral
         | AnalogAggregation::Energy
+        | AnalogAggregation::SettlingTime
+        | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -293,6 +314,11 @@ pub(super) fn validate_assertion_contract(
                 if assertion.count_limit.is_some() {
                     return Err("timing aggregation must not declare count_limit".to_string());
                 }
+                if assertion.overshoot_limit_percent.is_some() {
+                    return Err(
+                        "timing aggregation must not declare overshoot_limit_percent".to_string(),
+                    );
+                }
             } else if matches!(assertion.aggregation, AnalogAggregation::DutyCycle) {
                 let Some(duty_limit_percent) = assertion.duty_limit_percent else {
                     return Err(
@@ -309,6 +335,12 @@ pub(super) fn validate_assertion_contract(
                 }
                 if assertion.count_limit.is_some() {
                     return Err("duty-cycle aggregation must not declare count_limit".to_string());
+                }
+                if assertion.overshoot_limit_percent.is_some() {
+                    return Err(
+                        "duty-cycle aggregation must not declare overshoot_limit_percent"
+                            .to_string(),
+                    );
                 }
             } else if is_crossing_count_aggregation(&assertion.aggregation) {
                 let Some(count_limit) = assertion.count_limit else {
@@ -328,6 +360,32 @@ pub(super) fn validate_assertion_contract(
                             .to_string(),
                     );
                 }
+                if assertion.overshoot_limit_percent.is_some() {
+                    return Err(
+                        "crossing-count aggregation must not declare overshoot_limit_percent"
+                            .to_string(),
+                    );
+                }
+            } else if matches!(assertion.aggregation, AnalogAggregation::OvershootPercent) {
+                let Some(overshoot_limit_percent) = assertion.overshoot_limit_percent else {
+                    return Err(
+                        "requires overshoot_limit_percent for overshoot aggregation".to_string()
+                    );
+                };
+                if !overshoot_limit_percent.is_finite() || overshoot_limit_percent < 0.0 {
+                    return Err("overshoot limit must be finite and nonnegative".to_string());
+                }
+                if assertion.time_limit_us.is_some() {
+                    return Err("overshoot aggregation must not declare time_limit_us".to_string());
+                }
+                if assertion.duty_limit_percent.is_some() {
+                    return Err(
+                        "overshoot aggregation must not declare duty_limit_percent".to_string()
+                    );
+                }
+                if assertion.count_limit.is_some() {
+                    return Err("overshoot aggregation must not declare count_limit".to_string());
+                }
             } else if assertion.time_limit_us.is_some() {
                 return Err("non-timing aggregation must not declare time_limit_us".to_string());
             } else if assertion.duty_limit_percent.is_some() {
@@ -336,8 +394,37 @@ pub(super) fn validate_assertion_contract(
                 );
             } else if assertion.count_limit.is_some() {
                 return Err("non-count aggregation must not declare count_limit".to_string());
+            } else if assertion.overshoot_limit_percent.is_some() {
+                return Err(
+                    "non-overshoot aggregation must not declare overshoot_limit_percent"
+                        .to_string(),
+                );
             }
         }
+    }
+    if uses_target_as_reference(&assertion.aggregation) {
+        if threshold_count(assertion) != 0 {
+            return Err("target-based aggregation must not declare threshold_* fields".to_string());
+        }
+        if target_count(assertion) != 1 {
+            return Err(
+                "target-based aggregation must declare exactly one finite target unit".to_string(),
+            );
+        }
+        if matches!(assertion.aggregation, AnalogAggregation::SettlingTime) {
+            if tolerance_count(assertion) != 1 {
+                return Err(
+                    "settling-time aggregation must declare exactly one finite tolerance unit"
+                        .to_string(),
+                );
+            }
+        } else if tolerance_count(assertion) != 0 {
+            return Err("overshoot aggregation must not declare tolerance_* fields".to_string());
+        }
+    } else if target_count(assertion) != 0 || tolerance_count(assertion) != 0 {
+        return Err(
+            "non-target aggregation must not declare target_* or tolerance_* fields".to_string(),
+        );
     }
     Ok(())
 }
@@ -353,6 +440,24 @@ pub(super) fn threshold_count(assertion: &AnalogAssertion) -> usize {
     ]
     .into_iter()
     .filter(|threshold| threshold.is_some_and(f64::is_finite))
+    .count()
+}
+
+pub(super) fn target_count(assertion: &AnalogAssertion) -> usize {
+    [assertion.target_v, assertion.target_a, assertion.target_w]
+        .into_iter()
+        .filter(|target| target.is_some_and(f64::is_finite))
+        .count()
+}
+
+pub(super) fn tolerance_count(assertion: &AnalogAssertion) -> usize {
+    [
+        assertion.tolerance_v,
+        assertion.tolerance_a,
+        assertion.tolerance_w,
+    ]
+    .into_iter()
+    .filter(|tolerance| tolerance.is_some_and(|value| value.is_finite() && value >= 0.0))
     .count()
 }
 
@@ -385,6 +490,55 @@ pub(super) fn threshold_for(
     })
 }
 
+pub(super) fn target_for(
+    assertion: &AnalogAssertion,
+    probe: &AnalogProbe,
+) -> Option<AssertionThreshold> {
+    let (value, unit, limit_key) = match probe.quantity {
+        AnalogQuantity::Voltage => (assertion.target_v?, "V", "_target_V"),
+        AnalogQuantity::Current => (assertion.target_a?, "A", "_target_A"),
+        AnalogQuantity::Power => (assertion.target_w?, "W", "_target_W"),
+    };
+    value.is_finite().then_some(AssertionThreshold {
+        value,
+        unit,
+        limit_key,
+    })
+}
+
+pub(super) fn tolerance_for(
+    assertion: &AnalogAssertion,
+    probe: &AnalogProbe,
+) -> Option<AssertionThreshold> {
+    let (value, unit, limit_key) = match probe.quantity {
+        AnalogQuantity::Voltage => (assertion.tolerance_v?, "V", "_tolerance_V"),
+        AnalogQuantity::Current => (assertion.tolerance_a?, "A", "_tolerance_A"),
+        AnalogQuantity::Power => (assertion.tolerance_w?, "W", "_tolerance_W"),
+    };
+    (value.is_finite() && value >= 0.0).then_some(AssertionThreshold {
+        value,
+        unit,
+        limit_key,
+    })
+}
+
+pub(super) fn assertion_reference_contract_is_complete(
+    assertion: &AnalogAssertion,
+    probe: &AnalogProbe,
+) -> bool {
+    if matches!(assertion.aggregation, AnalogAggregation::SettlingTime) {
+        target_for(assertion, probe).is_some()
+            && tolerance_for(assertion, probe).is_some()
+            && threshold_count(assertion) == 0
+    } else if matches!(assertion.aggregation, AnalogAggregation::OvershootPercent) {
+        target_for(assertion, probe).is_some()
+            && tolerance_count(assertion) == 0
+            && threshold_count(assertion) == 0
+    } else {
+        threshold_count(assertion) == 1 && threshold_for(assertion, probe).is_some()
+    }
+}
+
 fn comparison_threshold_for(
     assertion: &AnalogAssertion,
     signal_threshold: &AssertionThreshold,
@@ -410,6 +564,13 @@ fn comparison_threshold_for(
             unit: "crossings",
             limit_key: "_crossings",
         })
+    } else if matches!(assertion.aggregation, AnalogAggregation::OvershootPercent) {
+        let value = assertion.overshoot_limit_percent?;
+        value.is_finite().then_some(AssertionThreshold {
+            value,
+            unit: "%",
+            limit_key: "_overshoot_percent",
+        })
     } else {
         Some(AssertionThreshold {
             value: signal_threshold.value,
@@ -419,11 +580,23 @@ fn comparison_threshold_for(
     }
 }
 
+fn signal_threshold_for(
+    assertion: &AnalogAssertion,
+    probe: &AnalogProbe,
+) -> Option<AssertionThreshold> {
+    if uses_target_as_reference(&assertion.aggregation) {
+        target_for(assertion, probe)
+    } else {
+        threshold_for(assertion, probe)
+    }
+}
+
 fn measured_assertion_value(
     assertion: &AnalogAssertion,
     times: &[f64],
     values: &[f64],
     threshold: f64,
+    tolerance: Option<f64>,
 ) -> Option<f64> {
     match assertion.aggregation {
         AnalogAggregation::Sample => interpolate_at(times, values, assertion.at_us? / 1_000_000.0),
@@ -451,6 +624,16 @@ fn measured_assertion_value(
             let start = assertion.start_us? / 1_000_000.0;
             let end = assertion.end_us? / 1_000_000.0;
             duty_cycle_percent(times, values, start, end, threshold)
+        }
+        AnalogAggregation::SettlingTime => {
+            let start = assertion.start_us? / 1_000_000.0;
+            let end = assertion.end_us? / 1_000_000.0;
+            settling_time_us(times, values, start, end, threshold, tolerance?)
+        }
+        AnalogAggregation::OvershootPercent => {
+            let start = assertion.start_us? / 1_000_000.0;
+            let end = assertion.end_us? / 1_000_000.0;
+            overshoot_percent(times, values, start, end, threshold)
         }
         AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
@@ -523,6 +706,8 @@ fn aggregate_window(
         | AnalogAggregation::MinHighPulseWidth
         | AnalogAggregation::MinLowPulseWidth
         | AnalogAggregation::DutyCycle
+        | AnalogAggregation::SettlingTime
+        | AnalogAggregation::OvershootPercent
         | AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
         | AnalogAggregation::FallingCrossingCount => None,
@@ -570,6 +755,74 @@ fn crossing_time_us(
         }
     }
     None
+}
+
+fn settling_time_us(
+    times: &[f64],
+    values: &[f64],
+    start: f64,
+    end: f64,
+    target: f64,
+    tolerance: f64,
+) -> Option<f64> {
+    if start > end || !target.is_finite() || !tolerance.is_finite() || tolerance < 0.0 {
+        return None;
+    }
+    let lower = target - tolerance;
+    let upper = target + tolerance;
+    let selected = window_samples(times, values, start, end)?;
+    let mut last_unsettled = None;
+    for segment in selected.windows(2) {
+        let (t0, y0) = segment[0];
+        let (t1, y1) = segment[1];
+        if y0 < lower || y0 > upper {
+            last_unsettled = Some(t0);
+        }
+        if y1 < lower || y1 > upper {
+            last_unsettled = Some(t1);
+        }
+        for boundary in [lower, upper] {
+            if let Some(crossing) = threshold_crossing_between(t0, y0, t1, y1, boundary)
+                && crossing > start
+                && crossing < end
+            {
+                last_unsettled = Some(crossing);
+            }
+        }
+    }
+    Some(last_unsettled.map_or(0.0, |time| (time - start) * 1_000_000.0))
+}
+
+fn overshoot_percent(
+    times: &[f64],
+    values: &[f64],
+    start: f64,
+    end: f64,
+    target: f64,
+) -> Option<f64> {
+    if start > end || !target.is_finite() || target.abs() <= f64::EPSILON {
+        return None;
+    }
+    let max_value = window_samples(times, values, start, end)?
+        .into_iter()
+        .map(|(_, value)| value)
+        .reduce(f64::max)?;
+    Some(((max_value - target).max(0.0) / target.abs()) * 100.0)
+}
+
+fn window_samples(times: &[f64], values: &[f64], start: f64, end: f64) -> Option<Vec<(f64, f64)>> {
+    if start > end {
+        return None;
+    }
+    let mut selected = Vec::new();
+    selected.push((start, interpolate_at(times, values, start)?));
+    for (time, value) in times.iter().copied().zip(values.iter().copied()) {
+        if time > start && time < end {
+            selected.push((time, value));
+        }
+    }
+    selected.push((end, interpolate_at(times, values, end)?));
+    Some(selected)
 }
 
 fn min_pulse_width_us(
@@ -739,6 +992,8 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::Rms => "RMS",
         AnalogAggregation::Integral => "integral",
         AnalogAggregation::Energy => "energy",
+        AnalogAggregation::SettlingTime => "settling time",
+        AnalogAggregation::OvershootPercent => "overshoot",
         AnalogAggregation::RisingCrossingTime => "rising crossing-time",
         AnalogAggregation::FallingCrossingTime => "falling crossing-time",
         AnalogAggregation::MinHighPulseWidth => "minimum high pulse width",
@@ -764,6 +1019,10 @@ fn measured_quantity_name(
 ) -> &'static str {
     if matches!(assertion.aggregation, AnalogAggregation::Energy) {
         "energy"
+    } else if matches!(assertion.aggregation, AnalogAggregation::SettlingTime) {
+        "time"
+    } else if matches!(assertion.aggregation, AnalogAggregation::OvershootPercent) {
+        "overshoot"
     } else if matches!(assertion.aggregation, AnalogAggregation::Integral) {
         match probe_quantity {
             AnalogQuantity::Voltage => "voltage integral",
@@ -790,6 +1049,8 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
         | AnalogAggregation::Rms
         | AnalogAggregation::Integral
         | AnalogAggregation::Energy
+        | AnalogAggregation::SettlingTime
+        | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -820,6 +1081,8 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Rms
         | AnalogAggregation::Integral
         | AnalogAggregation::Energy
+        | AnalogAggregation::SettlingTime
+        | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -851,6 +1114,42 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .limit
                     .insert("count_limit".to_string(), json!(count_limit));
             }
+            if let Some(overshoot_limit_percent) = assertion.overshoot_limit_percent {
+                finding.limit.insert(
+                    "overshoot_limit_percent".to_string(),
+                    json!(overshoot_limit_percent),
+                );
+            }
+            if let Some(target_v) = assertion.target_v {
+                finding
+                    .limit
+                    .insert("target_v".to_string(), json!(target_v));
+            }
+            if let Some(target_a) = assertion.target_a {
+                finding
+                    .limit
+                    .insert("target_a".to_string(), json!(target_a));
+            }
+            if let Some(target_w) = assertion.target_w {
+                finding
+                    .limit
+                    .insert("target_w".to_string(), json!(target_w));
+            }
+            if let Some(tolerance_v) = assertion.tolerance_v {
+                finding
+                    .limit
+                    .insert("tolerance_v".to_string(), json!(tolerance_v));
+            }
+            if let Some(tolerance_a) = assertion.tolerance_a {
+                finding
+                    .limit
+                    .insert("tolerance_a".to_string(), json!(tolerance_a));
+            }
+            if let Some(tolerance_w) = assertion.tolerance_w {
+                finding
+                    .limit
+                    .insert("tolerance_w".to_string(), json!(tolerance_w));
+            }
         }
     }
 }
@@ -870,6 +1169,8 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Rms
         | AnalogAggregation::Integral
         | AnalogAggregation::Energy
+        | AnalogAggregation::SettlingTime
+        | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -906,6 +1207,7 @@ fn requires_time_limit(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::FallingCrossingTime
             | AnalogAggregation::MinHighPulseWidth
             | AnalogAggregation::MinLowPulseWidth
+            | AnalogAggregation::SettlingTime
     )
 }
 
@@ -920,6 +1222,13 @@ fn uses_signal_threshold_as_level(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::CrossingCount
             | AnalogAggregation::RisingCrossingCount
             | AnalogAggregation::FallingCrossingCount
+    )
+}
+
+fn uses_target_as_reference(aggregation: &AnalogAggregation) -> bool {
+    matches!(
+        aggregation,
+        AnalogAggregation::SettlingTime | AnalogAggregation::OvershootPercent
     )
 }
 
@@ -950,7 +1259,8 @@ pub(super) fn interpolate_at(times: &[f64], values: &[f64], target: f64) -> Opti
 mod tests {
     use super::{
         aggregate_window, crossing_count, crossing_time_us, duty_cycle_percent, min_pulse_width_us,
-        threshold_count, threshold_for, validate_assertion_contract, validate_probe_contract,
+        overshoot_percent, settling_time_us, target_count, threshold_count, threshold_for,
+        tolerance_count, validate_assertion_contract, validate_probe_contract,
     };
     use crate::board_ir::{
         AnalogAggregation, AnalogAssertion, AnalogProbe, AnalogQuantity, AnalogRelation,
@@ -1082,6 +1392,24 @@ mod tests {
     }
 
     #[test]
+    fn settling_time_tracks_last_band_boundary_crossing() {
+        let times = [0.0, 1.0e-6, 2.0e-6, 3.0e-6, 4.0e-6];
+        let values = [0.0, 1.2, 1.05, 1.02, 1.0];
+        let settling = settling_time_us(&times, &values, 0.0, 4.0e-6, 1.0, 0.1).unwrap();
+
+        assert!((settling - (5.0 / 3.0)).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn overshoot_percent_measures_peak_above_target() {
+        let times = [0.0, 1.0e-6, 2.0e-6, 3.0e-6];
+        let values = [0.0, 1.2, 0.9, 1.0];
+        let overshoot = overshoot_percent(&times, &values, 0.0, 3.0e-6, 1.0).unwrap();
+
+        assert!((overshoot - 20.0).abs() < 1.0e-12);
+    }
+
+    #[test]
     fn crossing_count_counts_any_or_directed_threshold_edges() {
         let times = [0.0, 1.0e-6, 2.0e-6, 3.0e-6, 4.0e-6];
         let values = [0.0, 1.0, 0.0, 1.0, 0.0];
@@ -1143,6 +1471,13 @@ mod tests {
             threshold_vs: None,
             threshold_c: Some(1.0e-6),
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         let threshold = threshold_for(&current_integral, &current_probe).unwrap();
@@ -1171,6 +1506,13 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         assert!(threshold_for(&energy, &power_probe).is_none());
@@ -1212,6 +1554,13 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
@@ -1233,6 +1582,13 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         assert_eq!(threshold_count(&assertion), 2);
@@ -1254,6 +1610,13 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
@@ -1275,6 +1638,13 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
@@ -1296,8 +1666,73 @@ mod tests {
             threshold_vs: None,
             threshold_c: None,
             threshold_j: None,
+            target_v: None,
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
+
+        let assertion = AnalogAssertion {
+            name: "bad_settling_reference".to_string(),
+            probe: "nrst".to_string(),
+            at_us: None,
+            start_us: Some(0.0),
+            end_us: Some(1000.0),
+            time_limit_us: Some(20.0),
+            duty_limit_percent: None,
+            count_limit: None,
+            aggregation: AnalogAggregation::SettlingTime,
+            relation: AnalogRelation::Below,
+            threshold_v: None,
+            threshold_a: None,
+            threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
+            target_v: Some(3.3),
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: None,
+            suggested_fixes: Vec::new(),
+        };
+        assert_eq!(target_count(&assertion), 1);
+        assert_eq!(tolerance_count(&assertion), 0);
+        assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
+
+        let assertion = AnalogAssertion {
+            name: "good_overshoot_reference".to_string(),
+            probe: "nrst".to_string(),
+            at_us: None,
+            start_us: Some(0.0),
+            end_us: Some(1000.0),
+            time_limit_us: None,
+            duty_limit_percent: None,
+            count_limit: None,
+            aggregation: AnalogAggregation::OvershootPercent,
+            relation: AnalogRelation::Below,
+            threshold_v: None,
+            threshold_a: None,
+            threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
+            target_v: Some(3.3),
+            target_a: None,
+            target_w: None,
+            tolerance_v: None,
+            tolerance_a: None,
+            tolerance_w: None,
+            overshoot_limit_percent: Some(10.0),
+            suggested_fixes: Vec::new(),
+        };
+        assert!(validate_assertion_contract(&assertion, 1000.0).is_ok());
     }
 }

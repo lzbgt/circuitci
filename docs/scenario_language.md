@@ -2597,3 +2597,16 @@ integration over the interpolated waveform window and compares voltage probes
 with `threshold_vs`, current probes with `threshold_c`, and power probes with
 `threshold_j`. `energy` is power-probe-only and also compares with
 `threshold_j`.
+
+Timing and transient-quality assertions use interpolated waveform events.
+`rising_crossing_time`, `falling_crossing_time`, `min_high_pulse_width`, and
+`min_low_pulse_width` require `start_us`, `end_us`, `time_limit_us`, and the
+probe-unit decision threshold (`threshold_v`, `threshold_a`, or `threshold_w`).
+`duty_cycle` uses `duty_limit_percent`; crossing-count checks use
+`count_limit`. `settling_time` uses a target band instead of a threshold:
+provide `target_v`/`target_a`/`target_w`, matching
+`tolerance_v`/`tolerance_a`/`tolerance_w`, and `time_limit_us`. It measures the
+last time the waveform leaves or crosses the target band within the window.
+`overshoot_percent` uses `target_v`/`target_a`/`target_w` plus
+`overshoot_limit_percent` and reports the peak positive excursion above the
+target as a percent of the target magnitude.

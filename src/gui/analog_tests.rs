@@ -63,12 +63,15 @@ fn assertion_draft() -> AnalogAssertionDraft {
         aggregation: "sample".to_string(),
         relation: "above".to_string(),
         threshold: 1.0,
+        target: 0.0,
+        tolerance: 0.1,
         at_us: 50.0,
         start_us: 0.0,
         end_us: 100.0,
         time_limit_us: 50.0,
         duty_limit_percent: 50.0,
         count_limit: 1.0,
+        overshoot_limit_percent: 10.0,
     }
 }
 
@@ -134,6 +137,56 @@ fn append_analog_assertion_emits_valid_yaml() {
     assert_eq!(assertion.name, "out_above_min");
     assert_eq!(assertion.threshold_v, Some(1.0));
     assert_eq!(assertion.at_us, Some(50.0));
+}
+
+#[test]
+fn append_analog_assertion_emits_settling_time_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let mut assertion = assertion_draft();
+    assertion.assertion_name = "out_settles".to_string();
+    assertion.aggregation = "settling_time".to_string();
+    assertion.relation = "below".to_string();
+    assertion.target = 5.0;
+    assertion.tolerance = 0.05;
+    assertion.start_us = 0.0;
+    assertion.end_us = 100.0;
+    assertion.time_limit_us = 20.0;
+
+    let edited = append_analog_assertion(&edited, &assertion).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::SettlingTime
+    );
+    assert_eq!(assertion.target_v, Some(5.0));
+    assert_eq!(assertion.tolerance_v, Some(0.05));
+    assert_eq!(assertion.time_limit_us, Some(20.0));
+    assert_eq!(assertion.threshold_v, None);
+}
+
+#[test]
+fn append_analog_assertion_emits_overshoot_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let mut assertion = assertion_draft();
+    assertion.assertion_name = "out_overshoot".to_string();
+    assertion.aggregation = "overshoot_percent".to_string();
+    assertion.relation = "below".to_string();
+    assertion.target = 5.0;
+    assertion.overshoot_limit_percent = 8.0;
+    assertion.start_us = 0.0;
+    assertion.end_us = 100.0;
+
+    let edited = append_analog_assertion(&edited, &assertion).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::OvershootPercent
+    );
+    assert_eq!(assertion.target_v, Some(5.0));
+    assert_eq!(assertion.overshoot_limit_percent, Some(8.0));
+    assert_eq!(assertion.threshold_v, None);
 }
 
 #[test]
