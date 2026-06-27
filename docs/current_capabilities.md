@@ -193,7 +193,7 @@ Current analog support:
   vendor sign-off evidence. The GUI Examples picker includes direct-open
   observation fixtures for NE555, RC low-pass, comparator threshold, op-amp
   buffer, AP2112K LDO rail, TLV803 reset-supervisor, loop-stability Bode, DC
-  divider-bias, and divider-noise workflows.
+  divider-bias, divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled

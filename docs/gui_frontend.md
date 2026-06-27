@@ -497,9 +497,10 @@ form:
   astable-style fixture, RC low-pass sine fixture, comparator threshold
   fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TLV803
   reset-supervisor fixture, loop-stability Bode fixture, DC divider-bias
-  fixture, and divider-noise fixture; all direct-open projects include display-only routed schematic
-  waypoints. Opening one lands directly in Sketch with a deferred Fit All, so
-  the first view is the readable connected network. When a scope-ready fixture
+  fixture, divider-noise fixture, and RC Monte Carlo yield fixture; all
+  direct-open projects include display-only routed schematic waypoints. Opening
+  one lands directly in Sketch with a deferred Fit All, so the first view is the
+  readable connected network. When a scope-ready fixture
   is active, the Project overlay also shows
   a workflow status with direct `Run + Scopes` / `Open Scope Activity` actions,
   and the Sketch side dock mirrors those compact workflow actions above Run
@@ -750,8 +751,9 @@ The supported desktop simulation path is:
    executable first-parameter or first-component-value creation, generated
    load/source candidate selection, supply/load/temperature/model-selector/RC
    corner presets, extra parameter/component/model-section add/remove controls,
-   Monte Carlo yield/percentile criteria set/clear controls, declared corner
-   counts, and Board IR YAML persistence,
+   Monte Carlo sampled component-value creation/editing, Monte Carlo
+   yield/percentile criteria set/clear controls, declared corner counts, and
+   Board IR YAML persistence,
 34. load, edit, save, and rerun file-backed SPICE decks from declared analog
    run setups,
 35. browse, hash, add, and remove SHA-backed SPICE model/include files for

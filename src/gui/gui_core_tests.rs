@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 9);
+    assert_eq!(examples.len(), 10);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -633,6 +633,41 @@ fn gui_project_example_registry_lists_rc_lowpass_scope_fixture() {
         example.expected_frequency,
         "1.00 kHz sine, fc about 1.59 kHz"
     );
+}
+
+#[test]
+fn gui_project_example_registry_lists_rc_monte_carlo_bode_fixture() {
+    let example = gui_project_example_by_id("rc_monte_carlo_bode");
+
+    assert_eq!(example.category, "Yield");
+    assert_eq!(example.open_label, "Open RC Monte Carlo Example");
+    assert_eq!(example.run_label, "Open RC Monte Carlo + Run Observations");
+    assert_eq!(
+        example.summary,
+        "Generated RC low-pass Bode run with sampled R/C tolerances and yield checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_generated_rc_lowpass_monte_carlo_observation/project.yaml"
+    );
+    assert_eq!(
+        example.project_name,
+        "good_generated_rc_lowpass_monte_carlo_observation"
+    );
+    assert_eq!(
+        example.expected_traces,
+        &[
+            "input_gain_db",
+            "filtered_gain_db",
+            "filtered_phase_deg",
+            "filtered_mag"
+        ]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "5 sampled R/C tolerance Bode runs with yield and P5 margin criteria"
+    );
+    assert_eq!(example.observation_preset_component, None);
 }
 
 #[test]
@@ -838,6 +873,8 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
         app.selected_project_example().observation_preset_component,
         None
     );
+    app.selected_project_example_id = "rc_monte_carlo_bode".to_string();
+    assert_eq!(app.selected_project_example().id, "rc_monte_carlo_bode");
     app.selected_project_example_id = "comparator_threshold_scope".to_string();
     assert_eq!(
         app.selected_project_example().id,

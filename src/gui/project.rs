@@ -17,6 +17,17 @@ const RC_LOWPASS_SCOPE_EXAMPLE_PROJECT: &str = "examples/rc_lowpass_scope/projec
 const RC_LOWPASS_SCOPE_EXAMPLE_NAME: &str = "rc_lowpass_scope";
 const RC_LOWPASS_SCOPE_EXPECTED_TRACES: &[&str] = &["v(input)", "v(filtered)", "i(VSIN)"];
 const RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY: &str = "1.00 kHz sine, fc about 1.59 kHz";
+const RC_MONTE_CARLO_EXAMPLE_PROJECT: &str =
+    "examples/good_generated_rc_lowpass_monte_carlo_observation/project.yaml";
+const RC_MONTE_CARLO_EXAMPLE_NAME: &str = "good_generated_rc_lowpass_monte_carlo_observation";
+const RC_MONTE_CARLO_EXPECTED_TRACES: &[&str] = &[
+    "input_gain_db",
+    "filtered_gain_db",
+    "filtered_phase_deg",
+    "filtered_mag",
+];
+const RC_MONTE_CARLO_EXPECTED_FREQUENCY: &str =
+    "5 sampled R/C tolerance Bode runs with yield and P5 margin criteria";
 const COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/comparator_threshold_scope/project.yaml";
 const COMPARATOR_THRESHOLD_SCOPE_EXAMPLE_NAME: &str = "comparator_threshold_scope";
@@ -82,6 +93,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: RC_LOWPASS_SCOPE_EXAMPLE_NAME,
         expected_traces: RC_LOWPASS_SCOPE_EXPECTED_TRACES,
         expected_frequency: RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
+    },
+    GuiProjectExample {
+        id: "rc_monte_carlo_bode",
+        category: "Yield",
+        open_label: "Open RC Monte Carlo Example",
+        run_label: "Open RC Monte Carlo + Run Observations",
+        workflow_title: "RC Monte Carlo Yield Workflow",
+        summary: "Generated RC low-pass Bode run with sampled R/C tolerances and yield checks.",
+        project_path: RC_MONTE_CARLO_EXAMPLE_PROJECT,
+        project_name: RC_MONTE_CARLO_EXAMPLE_NAME,
+        expected_traces: RC_MONTE_CARLO_EXPECTED_TRACES,
+        expected_frequency: RC_MONTE_CARLO_EXPECTED_FREQUENCY,
         observation_preset_component: None,
     },
     GuiProjectExample {
