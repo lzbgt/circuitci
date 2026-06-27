@@ -1,5 +1,6 @@
 use crate::board_ir::{
-    AnalogAggregation, AnalogNetlistSource, AnalogRelation, AnalogSweepComponentField, Scenario,
+    AnalogAggregation, AnalogMonteCarloCriteria, AnalogNetlistSource, AnalogRelation,
+    AnalogSweepComponentField, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -23,7 +24,8 @@ use super::analog_runner::{
 };
 use super::analog_soa::evaluate_soa_limits;
 use super::analog_sweep_reports::{
-    push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
+    monte_carlo_criteria_enabled, push_sweep_margin_summaries, record_sweep_measurements,
+    tag_corner_finding, tag_corner_findings,
 };
 use super::analog_sweep_sampling::monte_carlo_component_value_samples;
 use super::analog_util::{
@@ -535,7 +537,12 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
                 );
                 evaluate_operating_limits(scenario, &run, &operating_limits.probes, findings);
                 evaluate_soa_limits(scenario, &run, &operating_limits, findings);
-                tag_corner_findings(findings, finding_start, &run_plan);
+                tag_corner_findings(
+                    findings,
+                    finding_start,
+                    &run_plan,
+                    monte_carlo_criteria_enabled(scenario, &run_plan),
+                );
             }
             Err(error) => {
                 for artifact in &error.artifacts {
@@ -877,7 +884,12 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
                     &run_plan,
                     assertion_measurements,
                 );
-                tag_corner_findings(findings, finding_start, &run_plan);
+                tag_corner_findings(
+                    findings,
+                    finding_start,
+                    &run_plan,
+                    monte_carlo_criteria_enabled(scenario, &run_plan),
+                );
             }
             Err(error) => {
                 for artifact in &error.artifacts {
@@ -1107,6 +1119,7 @@ pub(super) fn analog_run_plans(
             &mut component_value_combinations,
         )?;
         let monte_carlo_combinations = if let Some(monte_carlo) = &sweep.monte_carlo {
+            validate_monte_carlo_criteria(&sweep.name, monte_carlo.criteria.as_ref())?;
             monte_carlo_component_value_samples(&sweep.name, monte_carlo, &component_value_seen)?
                 .into_iter()
                 .map(|sample| {
@@ -1196,6 +1209,35 @@ pub(super) fn analog_run_plans(
         }
     }
     Ok(plans)
+}
+
+fn validate_monte_carlo_criteria(
+    sweep_name: &str,
+    criteria: Option<&AnalogMonteCarloCriteria>,
+) -> Result<(), String> {
+    let Some(criteria) = criteria else {
+        return Ok(());
+    };
+    if let Some(min_yield_percent) = criteria.min_yield_percent
+        && (!min_yield_percent.is_finite() || !(0.0..=100.0).contains(&min_yield_percent))
+    {
+        return Err(format!(
+            "Analog sweep {sweep_name} Monte Carlo min_yield_percent must be between 0 and 100."
+        ));
+    }
+    for (field, value) in [
+        ("min_p1_margin", criteria.min_p1_margin),
+        ("min_p5_margin", criteria.min_p5_margin),
+        ("min_p50_margin", criteria.min_p50_margin),
+        ("min_p95_margin", criteria.min_p95_margin),
+    ] {
+        if value.is_some_and(|value| !value.is_finite()) {
+            return Err(format!(
+                "Analog sweep {sweep_name} Monte Carlo {field} must be finite."
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn expand_component_value_combinations(
@@ -1622,6 +1664,29 @@ scenarios:
         );
         assert!((950.0..=1050.0).contains(&plans[0].component_value_overrides[0].value));
         assert!((0.00000009..=0.00000011).contains(&plans[3].component_value_overrides[1].value));
+    }
+
+    #[test]
+    fn analog_run_plans_reject_invalid_monte_carlo_criteria() {
+        let yaml = model_section_sweep_project_yaml(
+            r#"          monte_carlo:
+            samples: 4
+            seed: 42
+            criteria:
+              min_yield_percent: 101.0
+            component_values:
+              - component: RLOAD
+                field: value_ohm
+                nominal: 1000.0
+                tolerance_percent: 5.0
+"#,
+        );
+        let project: BoardProject = serde_yaml_ng::from_str(&yaml).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+
+        let error = analog_run_plans(analog).unwrap_err();
+
+        assert!(error.contains("min_yield_percent must be between 0 and 100"));
     }
 
     #[test]

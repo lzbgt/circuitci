@@ -1127,6 +1127,22 @@ pub struct AnalogMonteCarloSweep {
     #[serde(default = "default_monte_carlo_seed")]
     pub seed: u64,
     pub component_values: Vec<AnalogMonteCarloComponentValue>,
+    #[serde(default)]
+    pub criteria: Option<AnalogMonteCarloCriteria>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AnalogMonteCarloCriteria {
+    #[serde(default)]
+    pub min_yield_percent: Option<f64>,
+    #[serde(default)]
+    pub min_p1_margin: Option<f64>,
+    #[serde(default)]
+    pub min_p5_margin: Option<f64>,
+    #[serde(default)]
+    pub min_p50_margin: Option<f64>,
+    #[serde(default)]
+    pub min_p95_margin: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

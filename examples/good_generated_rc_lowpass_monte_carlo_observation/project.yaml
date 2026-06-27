@@ -77,6 +77,9 @@ scenarios:
           monte_carlo:
             samples: 5
             seed: 20260628
+            criteria:
+              min_yield_percent: 100.0
+              min_p5_margin: 0.1
             component_values:
               - component: R1
                 field: value_ohm

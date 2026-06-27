@@ -1,5 +1,5 @@
-use crate::board_ir::Scenario;
-use crate::reports::Finding;
+use crate::board_ir::{AnalogMonteCarloCriteria, Scenario};
+use crate::reports::{Finding, Severity};
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -24,10 +24,30 @@ pub(super) fn tag_corner_findings(
     findings: &mut [Finding],
     start: usize,
     run_plan: &AnalogRunPlan,
+    demote_assertion_failures: bool,
 ) {
     for finding in findings.iter_mut().skip(start) {
         tag_corner_finding(finding, run_plan);
+        if demote_assertion_failures && finding.measured.contains_key("assertion") {
+            finding.severity = Severity::Info;
+            finding.measured.insert(
+                "monte_carlo_sample_assertion_evidence".to_string(),
+                json!(true),
+            );
+        }
     }
+}
+
+pub(super) fn monte_carlo_criteria_enabled(scenario: &Scenario, run_plan: &AnalogRunPlan) -> bool {
+    let Some(sweep_name) = run_plan.sweep_name.as_deref() else {
+        return false;
+    };
+    scenario
+        .analog
+        .as_ref()
+        .and_then(|analog| analog.sweeps.iter().find(|sweep| sweep.name == sweep_name))
+        .and_then(|sweep| sweep.monte_carlo.as_ref())
+        .is_some_and(|monte_carlo| monte_carlo.criteria.is_some())
 }
 
 pub(super) fn tag_corner_finding(finding: &mut Finding, run_plan: &AnalogRunPlan) {
@@ -153,18 +173,26 @@ fn push_monte_carlo_yield_summaries(
     let Some(analog) = scenario.analog.as_ref() else {
         return;
     };
-    let monte_carlo_sweeps: std::collections::BTreeSet<&str> = analog
+    let monte_carlo_sweeps: BTreeMap<&str, Option<&AnalogMonteCarloCriteria>> = analog
         .sweeps
         .iter()
         .filter(|sweep| sweep.monte_carlo.is_some())
-        .map(|sweep| sweep.name.as_str())
+        .map(|sweep| {
+            (
+                sweep.name.as_str(),
+                sweep
+                    .monte_carlo
+                    .as_ref()
+                    .and_then(|monte_carlo| monte_carlo.criteria.as_ref()),
+            )
+        })
         .collect();
     if monte_carlo_sweeps.is_empty() {
         return;
     }
     let mut grouped: BTreeMap<(String, String), Vec<&SweepAssertionMeasurement>> = BTreeMap::new();
     for measurement in measurements {
-        if monte_carlo_sweeps.contains(measurement.sweep_name.as_str()) {
+        if monte_carlo_sweeps.contains_key(measurement.sweep_name.as_str()) {
             grouped
                 .entry((
                     measurement.sweep_name.clone(),
@@ -179,28 +207,30 @@ fn push_monte_carlo_yield_summaries(
             continue;
         };
         let worst = stats.worst;
-        let mut finding = Finding::info(
-            ANALOG_MONTE_CARLO_YIELD_SUMMARY,
-            &scenario.name,
-            format!(
-                "Monte Carlo sweep {sweep_name} yield for assertion {assertion_name} is {:.3}% ({}/{} pass); mean margin {:.6} {} with stddev {:.6} {}, p5/p50/p95 margins {:.6}/{:.6}/{:.6} {}, worst {:.6} {} at {}.",
-                stats.yield_percent,
-                stats.passed_samples,
-                stats.evaluated_samples,
-                stats.mean_margin,
-                worst.assertion.unit,
-                stats.stddev_margin,
-                worst.assertion.unit,
-                stats.p5_margin,
-                stats.p50_margin,
-                stats.p95_margin,
-                worst.assertion.unit,
-                stats.min_margin,
-                worst.assertion.unit,
-                worst.corner_name
-            ),
+        let criteria = monte_carlo_sweeps
+            .get(sweep_name.as_str())
+            .copied()
+            .flatten();
+        let criteria_result =
+            criteria.map(|criteria| MonteCarloCriteriaResult::evaluate(&stats, criteria));
+        let message = monte_carlo_summary_message(
+            &sweep_name,
+            &assertion_name,
+            &stats,
+            criteria_result.as_ref(),
         );
+        let mut finding = if criteria_result
+            .as_ref()
+            .is_some_and(|result| !result.passed)
+        {
+            Finding::critical(ANALOG_MONTE_CARLO_YIELD_SUMMARY, &scenario.name, message)
+        } else {
+            Finding::info(ANALOG_MONTE_CARLO_YIELD_SUMMARY, &scenario.name, message)
+        };
         insert_common_summary_fields(&mut finding, &sweep_name, &assertion_name, worst);
+        if let Some(result) = criteria_result {
+            result.insert_fields(&mut finding);
+        }
         finding.measured.insert(
             "evaluated_samples".to_string(),
             json!(stats.evaluated_samples),
@@ -242,6 +272,110 @@ fn push_monte_carlo_yield_summaries(
             .limit
             .insert("minimum_margin".to_string(), json!(0.0));
         findings.push(finding);
+    }
+}
+
+fn monte_carlo_summary_message(
+    sweep_name: &str,
+    assertion_name: &str,
+    stats: &MonteCarloStats<'_>,
+    criteria_result: Option<&MonteCarloCriteriaResult>,
+) -> String {
+    let worst = stats.worst;
+    let mut message = format!(
+        "Monte Carlo sweep {sweep_name} yield for assertion {assertion_name} is {:.3}% ({}/{} pass); mean margin {:.6} {} with stddev {:.6} {}, p5/p50/p95 margins {:.6}/{:.6}/{:.6} {}, worst {:.6} {} at {}.",
+        stats.yield_percent,
+        stats.passed_samples,
+        stats.evaluated_samples,
+        stats.mean_margin,
+        worst.assertion.unit,
+        stats.stddev_margin,
+        worst.assertion.unit,
+        stats.p5_margin,
+        stats.p50_margin,
+        stats.p95_margin,
+        worst.assertion.unit,
+        stats.min_margin,
+        worst.assertion.unit,
+        worst.corner_name
+    );
+    if let Some(result) = criteria_result {
+        if result.passed {
+            message.push_str(" Monte Carlo criteria passed.");
+        } else {
+            message.push_str(" Monte Carlo criteria failed: ");
+            message.push_str(&result.failures.join("; "));
+            message.push('.');
+        }
+    }
+    message
+}
+
+struct MonteCarloCriteriaResult {
+    passed: bool,
+    failures: Vec<String>,
+    min_yield_percent: Option<f64>,
+    min_p1_margin: Option<f64>,
+    min_p5_margin: Option<f64>,
+    min_p50_margin: Option<f64>,
+    min_p95_margin: Option<f64>,
+}
+
+impl MonteCarloCriteriaResult {
+    fn evaluate(stats: &MonteCarloStats<'_>, criteria: &AnalogMonteCarloCriteria) -> Self {
+        let mut failures = Vec::new();
+        if let Some(limit) = criteria.min_yield_percent
+            && stats.yield_percent < limit
+        {
+            failures.push(format!(
+                "yield {:.3}% is below required {:.3}%",
+                stats.yield_percent, limit
+            ));
+        }
+        for (label, measured, limit) in [
+            ("p1 margin", stats.p1_margin, criteria.min_p1_margin),
+            ("p5 margin", stats.p5_margin, criteria.min_p5_margin),
+            ("p50 margin", stats.p50_margin, criteria.min_p50_margin),
+            ("p95 margin", stats.p95_margin, criteria.min_p95_margin),
+        ] {
+            if let Some(limit) = limit
+                && measured < limit
+            {
+                failures.push(format!(
+                    "{label} {:.6} {} is below required {:.6} {}",
+                    measured, stats.worst.assertion.unit, limit, stats.worst.assertion.unit
+                ));
+            }
+        }
+        Self {
+            passed: failures.is_empty(),
+            failures,
+            min_yield_percent: criteria.min_yield_percent,
+            min_p1_margin: criteria.min_p1_margin,
+            min_p5_margin: criteria.min_p5_margin,
+            min_p50_margin: criteria.min_p50_margin,
+            min_p95_margin: criteria.min_p95_margin,
+        }
+    }
+
+    fn insert_fields(self, finding: &mut Finding) {
+        finding
+            .measured
+            .insert("criteria_passed".to_string(), json!(self.passed));
+        finding
+            .measured
+            .insert("passed".to_string(), json!(self.passed));
+        for (field, value) in [
+            ("minimum_yield_percent", self.min_yield_percent),
+            ("minimum_p1_margin", self.min_p1_margin),
+            ("minimum_p5_margin", self.min_p5_margin),
+            ("minimum_p50_margin", self.min_p50_margin),
+            ("minimum_p95_margin", self.min_p95_margin),
+        ] {
+            if let Some(value) = value {
+                finding.limit.insert(field.to_string(), json!(value));
+            }
+        }
     }
 }
 
@@ -428,13 +562,14 @@ fn component_value_override_map(overrides: &[ComponentValueOverride]) -> BTreeMa
 mod tests {
     use super::{
         ANALOG_MONTE_CARLO_YIELD_SUMMARY, ANALOG_SWEEP_MARGIN_SUMMARY, SweepAssertionMeasurement,
-        push_sweep_margin_summaries, tag_corner_finding,
+        push_sweep_margin_summaries, tag_corner_finding, tag_corner_findings,
     };
     use crate::board_ir::{AnalogSweepComponentField, BoardProject};
-    use crate::reports::Finding;
+    use crate::reports::{Finding, Severity};
     use crate::validation::analog_assertions::AnalogAssertionMeasurement;
     use crate::validation::analog_runner::{ModelSectionOverride, ParameterOverride};
     use crate::validation::analog_spice::{AnalogRunPlan, ComponentValueOverride};
+    use serde_json::json;
     use std::collections::BTreeMap;
 
     fn scenario_yaml(sweep_yaml: &str) -> String {
@@ -515,6 +650,35 @@ scenarios:
         assert_eq!(
             finding.measured["analog_component_values"]["RLOAD.value_ohm"],
             1100.0
+        );
+    }
+
+    #[test]
+    fn monte_carlo_criteria_mode_demotes_sample_assertion_findings() {
+        let run_plan = AnalogRunPlan {
+            sweep_name: Some("rc_monte_carlo".to_string()),
+            corner_name: "corner_002".to_string(),
+            run_subdir: Some("rc_monte_carlo_corner_002".to_string()),
+            parameter_overrides: Vec::new(),
+            component_value_overrides: Vec::new(),
+            model_section_overrides: Vec::new(),
+        };
+        let mut findings = vec![Finding::critical(
+            "SPICE_AC_ANALYSIS",
+            "rc_lowpass",
+            "AC assertion failed",
+        )];
+        findings[0]
+            .measured
+            .insert("assertion".to_string(), json!("cutoff_above"));
+
+        tag_corner_findings(&mut findings, 0, &run_plan, true);
+
+        assert_eq!(findings[0].severity, Severity::Info);
+        assert_eq!(findings[0].measured["analog_sweep"], "rc_monte_carlo");
+        assert_eq!(
+            findings[0].measured["monte_carlo_sample_assertion_evidence"],
+            true
         );
     }
 
@@ -600,6 +764,92 @@ scenarios:
         assert_close(summary.measured["p50_margin"].as_f64().unwrap(), 0.06);
         assert_close(summary.measured["p95_margin"].as_f64().unwrap(), 0.114);
         assert_eq!(summary.limit["minimum_margin"], 0.0);
+    }
+
+    #[test]
+    fn monte_carlo_yield_summary_passes_declared_criteria() {
+        let project: BoardProject = serde_yaml_ng::from_str(&scenario_yaml(
+            r#"          monte_carlo:
+            samples: 3
+            seed: 1
+            criteria:
+              min_yield_percent: 60.0
+              min_p5_margin: -0.03
+              min_p50_margin: 0.05
+            component_values:
+              - component: RLOAD
+                field: value_ohm
+                nominal: 1000.0
+                tolerance_percent: 5.0
+"#,
+        ))
+        .unwrap();
+        let scenario = &project.scenarios[0];
+        let measurements = vec![
+            sweep_measurement("corner_001", 950.0, 0.12, 0.52, true),
+            sweep_measurement("corner_002", 1000.0, -0.03, 0.67, false),
+            sweep_measurement("corner_003", 1050.0, 0.06, 0.58, true),
+        ];
+        let mut findings = Vec::new();
+
+        push_sweep_margin_summaries(&mut findings, scenario, &measurements);
+
+        let summary = findings
+            .iter()
+            .find(|finding| finding.id == ANALOG_MONTE_CARLO_YIELD_SUMMARY)
+            .unwrap();
+        assert_eq!(summary.severity, Severity::Info);
+        assert_eq!(summary.measured["criteria_passed"], true);
+        assert_eq!(summary.measured["passed"], true);
+        assert_eq!(summary.limit["minimum_yield_percent"], 60.0);
+        assert_eq!(summary.limit["minimum_p5_margin"], -0.03);
+        assert_eq!(summary.limit["minimum_p50_margin"], 0.05);
+        assert!(summary.message.contains("criteria passed"));
+    }
+
+    #[test]
+    fn monte_carlo_yield_summary_fails_declared_criteria() {
+        let project: BoardProject = serde_yaml_ng::from_str(&scenario_yaml(
+            r#"          monte_carlo:
+            samples: 3
+            seed: 1
+            criteria:
+              min_yield_percent: 95.0
+              min_p5_margin: 0.0
+            component_values:
+              - component: RLOAD
+                field: value_ohm
+                nominal: 1000.0
+                tolerance_percent: 5.0
+"#,
+        ))
+        .unwrap();
+        let scenario = &project.scenarios[0];
+        let measurements = vec![
+            sweep_measurement("corner_001", 950.0, 0.12, 0.52, true),
+            sweep_measurement("corner_002", 1000.0, -0.03, 0.67, false),
+            sweep_measurement("corner_003", 1050.0, 0.06, 0.58, true),
+        ];
+        let mut findings = Vec::new();
+
+        push_sweep_margin_summaries(&mut findings, scenario, &measurements);
+
+        let summary = findings
+            .iter()
+            .find(|finding| finding.id == ANALOG_MONTE_CARLO_YIELD_SUMMARY)
+            .unwrap();
+        assert_eq!(summary.severity, Severity::Critical);
+        assert_eq!(summary.measured["criteria_passed"], false);
+        assert_eq!(summary.measured["passed"], false);
+        assert_eq!(summary.limit["minimum_yield_percent"], 95.0);
+        assert_eq!(summary.limit["minimum_p5_margin"], 0.0);
+        assert!(summary.message.contains("criteria failed"));
+        assert!(
+            summary
+                .message
+                .contains("yield 66.667% is below required 95.000%")
+        );
+        assert!(summary.message.contains("p5 margin"));
     }
 
     fn assert_close(actual: f64, expected: f64) {

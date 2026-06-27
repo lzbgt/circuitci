@@ -413,6 +413,9 @@ Monte Carlo sample-count/target summaries; all are serialized through the same
 `src/validation/analog_sweep_sampling.rs` owns deterministic Monte Carlo
 component-value sample generation so sampled tolerance runs expand into normal
 sweep corners before any transient, AC, DC, or noise backend is invoked.
+`src/validation/analog_sweep_reports.rs` owns Monte Carlo yield and percentile
+criteria evaluation, promoting the corresponding summary finding to critical
+when declared targets are missed.
 `src/gui/simulation_editors.rs` also owns generated noise
 run-setup authoring, mapping the selected output net, input source, start/stop
 frequency, and points-per-decade controls to normal `analog_noise`

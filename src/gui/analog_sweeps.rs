@@ -39,6 +39,16 @@ pub(super) struct AnalogSweepModelSectionSummary {
 pub(super) struct AnalogMonteCarloSummary {
     pub(super) samples: usize,
     pub(super) component_values: Vec<AnalogMonteCarloComponentValueSummary>,
+    pub(super) criteria: Option<AnalogMonteCarloCriteriaSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogMonteCarloCriteriaSummary {
+    pub(super) min_yield_percent: Option<f64>,
+    pub(super) min_p1_margin: Option<f64>,
+    pub(super) min_p5_margin: Option<f64>,
+    pub(super) min_p50_margin: Option<f64>,
+    pub(super) min_p95_margin: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -243,6 +253,15 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
                                             }
                                         })
                                         .collect(),
+                                    criteria: monte_carlo.criteria.as_ref().map(|criteria| {
+                                        AnalogMonteCarloCriteriaSummary {
+                                            min_yield_percent: criteria.min_yield_percent,
+                                            min_p1_margin: criteria.min_p1_margin,
+                                            min_p5_margin: criteria.min_p5_margin,
+                                            min_p50_margin: criteria.min_p50_margin,
+                                            min_p95_margin: criteria.min_p95_margin,
+                                        }
+                                    }),
                                 });
                         let monte_carlo_corners = monte_carlo
                             .as_ref()
@@ -1224,6 +1243,9 @@ scenarios:
           monte_carlo:
             samples: 8
             seed: 7
+            criteria:
+              min_yield_percent: 95.0
+              min_p5_margin: 0.1
             component_values:
               - component: RLOAD
                 field: value_ohm
@@ -1253,6 +1275,10 @@ scenarios:
         assert_eq!(monte_carlo.component_values[0].field, "value_ohm");
         assert_eq!(monte_carlo.component_values[0].nominal, 1000.0);
         assert_eq!(monte_carlo.component_values[0].tolerance_percent, 5.0);
+        let criteria = monte_carlo.criteria.as_ref().unwrap();
+        assert_eq!(criteria.min_yield_percent, Some(95.0));
+        assert_eq!(criteria.min_p5_margin, Some(0.1));
+        assert_eq!(criteria.min_p1_margin, None);
     }
 
     #[test]

@@ -334,7 +334,9 @@ editing YAML. Generated run setups show inferred load/source candidates such as
 Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
 The same panel exposes one-click corner presets for supply, load, temperature,
 model-selector, and RC-tolerance sweeps, all persisted as ordinary
-`analog.sweeps` data.
+`analog.sweeps` data. Declared Monte Carlo criteria are shown in the sweep
+summary so YAML-authored yield and percentile-margin targets are visible in the
+Run Inputs workflow.
 The run-setup editor can create generated transient, AC/Bode, DC
 operating-point, or noise observations. AC/Bode creation writes a normal `analog_ac`
 scenario with start/stop frequency, points per decade, generated board
@@ -745,7 +747,8 @@ The supported desktop simulation path is:
    executable first-parameter or first-component-value creation, generated
    load/source candidate selection, supply/load/temperature/model-selector/RC
    corner presets, extra parameter/component/model-section add/remove controls,
-   declared corner counts, and Board IR YAML persistence,
+   declared Monte Carlo yield/percentile criteria summaries, declared corner
+   counts, and Board IR YAML persistence,
 34. load, edit, save, and rerun file-backed SPICE decks from declared analog
    run setups,
 35. browse, hash, add, and remove SHA-backed SPICE model/include files for

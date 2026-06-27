@@ -465,7 +465,7 @@ fn monte_carlo_yield(
     sweep: &str,
     sample: &str,
 ) -> Finding {
-    let mut finding = Finding::info("ANALOG_MONTE_CARLO_YIELD_SUMMARY", scenario, "summary");
+    let mut finding = Finding::critical("ANALOG_MONTE_CARLO_YIELD_SUMMARY", scenario, "summary");
     finding
         .measured
         .insert("assertion".to_string(), json!(assertion));

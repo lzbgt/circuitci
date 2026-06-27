@@ -152,7 +152,11 @@ Current analog support:
   tolerance observations, with sampled values represented as normal component
   value corners and summarized with per-assertion yield percent, pass/fail
   counts, mean margin, margin standard deviation, min/max margin, and
-  linearly interpolated P1/P5/P50/P95 sampled-margin percentiles.
+  linearly interpolated P1/P5/P50/P95 sampled-margin percentiles. Optional
+  Monte Carlo criteria can require minimum yield percent or percentile margins,
+  causing sampled tolerance observations to fail when design-yield targets are
+  missed while preserving individual sampled assertion failures as evidence rows
+  instead of direct run failures.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter or component value, generated load/source
   candidate selection, extra parameter/component/model-section add/remove

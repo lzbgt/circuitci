@@ -826,7 +826,13 @@ pub(super) fn scope_monte_carlo_yield_summary_rows(
 ) -> Vec<ScopeMonteCarloYieldSummaryRow> {
     report
         .into_iter()
-        .flat_map(|report| report.infos.iter())
+        .flat_map(|report| {
+            report
+                .failures
+                .iter()
+                .chain(report.warnings.iter())
+                .chain(report.infos.iter())
+        })
         .filter(|finding| finding.id == ANALOG_MONTE_CARLO_YIELD_SUMMARY)
         .filter_map(scope_monte_carlo_yield_summary_row)
         .collect()

@@ -164,6 +164,9 @@ pub(super) fn evaluate_noise_assertions(
             );
             finding
                 .measured
+                .insert("assertion".to_string(), json!(&assertion.name));
+            finding
+                .measured
                 .insert(assertion.probe.clone(), json!(measured));
             finding
                 .measured

@@ -2602,18 +2602,25 @@ emits an ngspice `.lib "path" section` line.
 
 Monte Carlo sweeps use a `monte_carlo` block with `samples`, optional `seed`,
 and `component_values[]` entries containing `component`, `field`, `nominal`,
-`tolerance_percent`, and optional `distribution: uniform`. The sampler is
-deterministic: the same seed, sample count, and target list produce the same
-sampled component values, corner names, artifacts, and worst-corner summaries on
-every run. Monte Carlo samples are still ordinary sweep corners, so they work
-with transient, AC/Bode, DC operating-point, and noise observations. For every
-assertion evaluated across a Monte Carlo sweep, the report also emits an
-`ANALOG_MONTE_CARLO_YIELD_SUMMARY` info finding with evaluated sample count,
-pass/fail counts, yield percent, mean margin, margin standard deviation, and the
-limiting sampled corner. The same finding includes linearly interpolated
-sampled-margin percentiles (`p1_margin`, `p5_margin`, `p50_margin`, and
-`p95_margin`) so distribution tails and median margin are visible without
-opening every sampled artifact.
+`tolerance_percent`, and optional `distribution: uniform`. A Monte Carlo block
+may also declare `criteria` with optional `min_yield_percent`,
+`min_p1_margin`, `min_p5_margin`, `min_p50_margin`, and `min_p95_margin`
+limits. The sampler is deterministic: the same seed, sample count, and target
+list produce the same sampled component values, corner names, artifacts, and
+worst-corner summaries on every run. Monte Carlo samples are still ordinary
+sweep corners, so they work with transient, AC/Bode, DC operating-point, and
+noise observations. For every assertion evaluated across a Monte Carlo sweep,
+the report also emits an `ANALOG_MONTE_CARLO_YIELD_SUMMARY` finding with
+evaluated sample count, pass/fail counts, yield percent, mean margin, margin
+standard deviation, and the limiting sampled corner. The same finding includes
+linearly interpolated sampled-margin percentiles (`p1_margin`, `p5_margin`,
+`p50_margin`, and `p95_margin`) so distribution tails and median margin are
+visible without opening every sampled artifact. Summaries are informational when
+no criteria are declared, remain informational when all declared criteria pass,
+and become critical when any declared yield or percentile margin limit fails.
+When criteria are declared, individual sampled assertion failures are retained
+as tagged evidence findings instead of directly failing the run; backend,
+netlist, solver, and non-assertion limit failures remain critical.
 
 Sweep execution is capped to keep GUI and CI runs predictable. Each corner
 writes separate waveform/artifact outputs and tags assertion findings with the

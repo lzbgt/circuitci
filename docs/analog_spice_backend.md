@@ -233,7 +233,12 @@ sections, measured value, limit, relation, and numeric margin for each
 assertion. Monte Carlo sweeps also emit `ANALOG_MONTE_CARLO_YIELD_SUMMARY`
 findings with pass/fail sample counts, yield percent, mean margin, standard
 deviation, min/max margin, p1/p5/p50/p95 sampled-margin percentiles, and the
-limiting sample. Sweeps can select vendor model-library sections through
+limiting sample. Optional `monte_carlo.criteria` limits can require minimum
+yield percent or minimum p1/p5/p50/p95 margin; failed criteria promote the
+Monte Carlo summary finding to critical. With criteria declared, per-sample
+assertion failures become tagged evidence rows so the declared yield target
+controls pass/fail, while backend and solver failures remain critical. Sweeps
+can select vendor model-library sections through
 `model_sections`; CircuitCI emits section-specific ngspice `.lib "path" section`
 cards for each corner. When a sweep declares `TEMP_C` or `TEMPERATURE_C`,
 CircuitCI emits both the matching `.param` and an ngspice `.temp` card for that

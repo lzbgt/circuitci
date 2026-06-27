@@ -124,12 +124,17 @@ Typical fields:
 
 ### `ANALOG_MONTE_CARLO_YIELD_SUMMARY`
 
-Monte Carlo sweeps additionally emit one informational summary per evaluated
-assertion. These findings preserve the same `measured.analog_sweep`,
+Monte Carlo sweeps additionally emit one summary per evaluated assertion. These
+findings preserve the same `measured.analog_sweep`,
 `measured.analog_corner`, assertion, probe, quantity, component-value, parameter,
 and model-section fields as `ANALOG_SWEEP_MARGIN_SUMMARY`, but the limiting
 corner is the worst sampled margin and the aggregate fields describe the sampled
-distribution:
+distribution. The summary is informational by default; if
+`analog.sweeps[].monte_carlo.criteria` is declared, it becomes critical when any
+declared yield or sampled-margin percentile limit fails. In criteria mode,
+per-sample assertion failures are retained as informational evidence rows with
+`measured.monte_carlo_sample_assertion_evidence: true`; backend, solver, and
+non-assertion validation failures remain critical.
 
 - `measured.evaluated_samples`: number of sampled corners with assertion
   measurements.
@@ -141,8 +146,13 @@ distribution:
 - `measured.p1_margin`, `measured.p5_margin`, `measured.p50_margin`, and
   `measured.p95_margin`: linearly interpolated sampled-margin percentiles in
   the assertion unit.
+- `measured.criteria_passed`: present only when criteria are declared; `true`
+  when every declared yield/percentile criterion passes.
 - `limit.minimum_margin`: always `0.0`; sample failures are already represented
   by the underlying assertion findings and by `failed_samples`.
+- `limit.minimum_yield_percent`, `limit.minimum_p1_margin`,
+  `limit.minimum_p5_margin`, `limit.minimum_p50_margin`, and
+  `limit.minimum_p95_margin`: present only for declared Monte Carlo criteria.
 
 Reset/boot/download rules use the same finding object. Required IDs:
 

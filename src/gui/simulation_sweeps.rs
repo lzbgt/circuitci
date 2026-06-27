@@ -556,6 +556,34 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
             "Monte Carlo {} sample(s) [{targets}]",
             monte_carlo.samples
         ));
+        if let Some(criteria) = &monte_carlo.criteria {
+            let criteria_parts = [
+                criteria
+                    .min_yield_percent
+                    .map(|value| format!("yield >= {value:.3}%")),
+                criteria
+                    .min_p1_margin
+                    .map(|value| format!("P1 >= {value:.6}")),
+                criteria
+                    .min_p5_margin
+                    .map(|value| format!("P5 >= {value:.6}")),
+                criteria
+                    .min_p50_margin
+                    .map(|value| format!("P50 >= {value:.6}")),
+                criteria
+                    .min_p95_margin
+                    .map(|value| format!("P95 >= {value:.6}")),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+            if !criteria_parts.is_empty() {
+                parts.push(format!(
+                    "Monte Carlo criteria [{}]",
+                    criteria_parts.join(", ")
+                ));
+            }
+        }
     }
     parts.join("; ")
 }

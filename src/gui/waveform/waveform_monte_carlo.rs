@@ -96,7 +96,8 @@ mod tests {
 
     #[test]
     fn monte_carlo_yield_detection_uses_loaded_report_findings() {
-        let mut finding = Finding::info("ANALOG_MONTE_CARLO_YIELD_SUMMARY", "mc_run", "summary");
+        let mut finding =
+            Finding::critical("ANALOG_MONTE_CARLO_YIELD_SUMMARY", "mc_run", "summary");
         finding
             .measured
             .insert("assertion".to_string(), json!("gain_margin"));

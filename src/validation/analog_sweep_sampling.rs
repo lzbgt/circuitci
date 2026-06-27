@@ -127,6 +127,7 @@ mod tests {
                     distribution: AnalogMonteCarloDistribution::Uniform,
                 },
             ],
+            criteria: None,
         }
     }
 

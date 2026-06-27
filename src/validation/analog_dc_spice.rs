@@ -18,7 +18,8 @@ use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
 use super::analog_sweep_reports::{
-    push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
+    monte_carlo_criteria_enabled, push_sweep_margin_summaries, record_sweep_measurements,
+    tag_corner_finding, tag_corner_findings,
 };
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
@@ -326,7 +327,12 @@ pub(super) fn validate_spice_dc_with_progress<F, C>(
                     &run_plan,
                     assertion_measurements,
                 );
-                tag_corner_findings(findings, finding_start, &run_plan);
+                tag_corner_findings(
+                    findings,
+                    finding_start,
+                    &run_plan,
+                    monte_carlo_criteria_enabled(scenario, &run_plan),
+                );
             }
             Err(error) => {
                 for artifact in &error.artifacts {

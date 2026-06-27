@@ -428,7 +428,13 @@ pub(super) fn analog_monte_carlo_yield_rows(
 ) -> Vec<AnalogMonteCarloYieldRow> {
     report
         .into_iter()
-        .flat_map(|report| report.infos.iter())
+        .flat_map(|report| {
+            report
+                .failures
+                .iter()
+                .chain(report.warnings.iter())
+                .chain(report.infos.iter())
+        })
         .filter(|finding| {
             finding.id == ANALOG_MONTE_CARLO_YIELD_SUMMARY && finding.scenario == scenario_name
         })
@@ -1357,7 +1363,7 @@ scenarios:
 
     #[test]
     fn analog_monte_carlo_yield_rows_project_sample_statistics() {
-        let mut finding = Finding::info(
+        let mut finding = Finding::critical(
             "ANALOG_MONTE_CARLO_YIELD_SUMMARY",
             "gui_transient",
             "summary",
