@@ -1,4 +1,8 @@
 use super::CircuitCiApp;
+use super::analog::{
+    AnalogProbeDraft, AnalogScenarioDraft, append_analog_transient_scenario_with_project_path,
+    append_analog_voltage_probe,
+};
 use super::kicad_symbol_library::{
     KiCadSymbolCatalogEntry, KiCadSymbolPin, import_kicad_symbol_file, kicad_symbol_catalog,
 };
@@ -9,6 +13,7 @@ use super::sketch::{
 };
 use anyhow::{Context, Result};
 use eframe::egui;
+use std::collections::BTreeSet;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -213,6 +218,23 @@ impl CircuitCiApp {
                 });
                 if let Some(note) = simulation.notes.first() {
                     ui.label(format!("Simulation note: {note}"));
+                }
+                let can_create_observation =
+                    selected_component.as_ref().is_some_and(|component_id| {
+                        component_uses_model(&self.project_yaml, component_id, &entry.id)
+                    });
+                if ui
+                    .add_enabled(
+                        can_create_observation,
+                        egui::Button::new("Create Observation Preset"),
+                    )
+                    .clicked()
+                    && let Some(component_id) = &selected_component
+                {
+                    self.apply_create_library_observation_preset(component_id);
+                }
+                if !can_create_observation {
+                    ui.label("Select a placed component using this model to create a generated observation preset.");
                 }
             } else {
                 ui.label("Selected model has no generated-SPICE simulation face.");
@@ -685,6 +707,33 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn apply_create_library_observation_preset(&mut self, component_id: &str) {
+        match create_component_observation_preset(
+            &self.project_yaml,
+            Path::new(&self.project_path),
+            component_id,
+        ) {
+            Ok(result) => {
+                self.analog_generated_scenario = result.scenario_name.clone();
+                self.apply_edited_project_yaml(
+                    result.project_yaml,
+                    &format!(
+                        "Generated observation preset {} with {} voltage probe(s).",
+                        result.scenario_name, result.probe_count
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ObservationPresetResult {
+    project_yaml: String,
+    scenario_name: String,
+    probe_count: usize,
 }
 
 fn insert_library_model_component(
@@ -716,6 +765,194 @@ fn insert_library_model_component_at(
         Ok(positioned)
     } else {
         edit_schematic_component_style(&positioned, component_id, style)
+    }
+}
+
+fn create_component_observation_preset(
+    text: &str,
+    project_path: &Path,
+    component_id: &str,
+) -> Result<ObservationPresetResult> {
+    let component_id = component_id.trim();
+    if component_id.is_empty() {
+        anyhow::bail!("Select a component before creating an observation preset.");
+    }
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let component = project
+        .board
+        .components
+        .get(component_id)
+        .with_context(|| format!("Component {component_id} was not found."))?;
+    let (library, findings) = crate::library::load_library(project_path, &project);
+    let hard_failures: Vec<_> = findings
+        .iter()
+        .filter(|finding| finding.id == "LIBRARY_NOT_FOUND" || finding.id == "MODEL_LOAD_FAILED")
+        .map(|finding| finding.message.clone())
+        .collect();
+    if !hard_failures.is_empty() {
+        anyhow::bail!("{}", hard_failures.join("; "));
+    }
+    let model = library
+        .get(&component.model)
+        .with_context(|| format!("Model {} was not found.", component.model))?;
+    if model.simulation.spice.is_none() {
+        anyhow::bail!(
+            "Component {component_id} model {} has no generated-SPICE simulation face.",
+            component.model
+        );
+    }
+    let ground_net = observation_ground_net(&project, component, model)?;
+    let probe_specs = observation_voltage_probe_specs(component_id, component, model, &ground_net)?;
+    let first = probe_specs.first().with_context(|| {
+        format!("Component {component_id} has no non-ground pin nets to probe.")
+    })?;
+    let scenario_name = unique_observation_scenario_name(&project, component_id);
+    let mut updated = append_analog_transient_scenario_with_project_path(
+        text,
+        project_path,
+        &AnalogScenarioDraft {
+            name: scenario_name.clone(),
+            ground_net,
+            probe_net: first.net.clone(),
+            probe_name: first.probe_name.clone(),
+            stop_time_us: 100.0,
+            max_step_us: 0.2,
+        },
+    )?;
+    for probe in probe_specs.iter().skip(1) {
+        updated = append_analog_voltage_probe(
+            &updated,
+            &AnalogProbeDraft {
+                scenario_name: scenario_name.clone(),
+                net_id: probe.net.clone(),
+                probe_name: probe.probe_name.clone(),
+            },
+        )?;
+    }
+    Ok(ObservationPresetResult {
+        project_yaml: updated,
+        scenario_name,
+        probe_count: probe_specs.len(),
+    })
+}
+
+#[derive(Debug, Clone)]
+struct ObservationProbeSpec {
+    probe_name: String,
+    net: String,
+}
+
+fn observation_ground_net(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+) -> Result<String> {
+    for (pin_id, port) in &model.ports {
+        if port.kind == crate::library::PortKind::ElectricalGround
+            && let Some(net) = component.pins.get(pin_id)
+        {
+            return Ok(net.clone());
+        }
+    }
+    project
+        .board
+        .nets
+        .iter()
+        .find(|(_, net)| net.kind == crate::board_ir::NetKind::Ground)
+        .map(|(net_id, _)| net_id.clone())
+        .context("Observation presets require a ground net or an electrical-ground component pin.")
+}
+
+fn observation_voltage_probe_specs(
+    component_id: &str,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    ground_net: &str,
+) -> Result<Vec<ObservationProbeSpec>> {
+    let mut probes = Vec::new();
+    let mut seen_nets = BTreeSet::new();
+    let pin_order = model
+        .simulation
+        .spice
+        .as_ref()
+        .map(|spice| spice.pin_order.as_slice())
+        .unwrap_or(&[]);
+    let mut pins = pin_order
+        .iter()
+        .filter(|pin| component.pins.contains_key(pin.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    for pin in component.pins.keys() {
+        if !pins.iter().any(|ordered| ordered == pin) {
+            pins.push(pin.clone());
+        }
+    }
+    for pin in pins {
+        let Some(net) = component.pins.get(&pin) else {
+            continue;
+        };
+        if net == ground_net {
+            continue;
+        }
+        if let Some(port) = model.ports.get(&pin)
+            && port.kind == crate::library::PortKind::ElectricalGround
+        {
+            continue;
+        }
+        if !seen_nets.insert(net.clone()) {
+            continue;
+        }
+        probes.push(ObservationProbeSpec {
+            probe_name: sanitize_observation_id(&format!("v_{component_id}_{pin}")),
+            net: net.clone(),
+        });
+    }
+    Ok(probes)
+}
+
+fn unique_observation_scenario_name(
+    project: &crate::board_ir::BoardProject,
+    component_id: &str,
+) -> String {
+    let base = sanitize_observation_id(&format!("{component_id}_observation"));
+    let existing = project
+        .scenarios
+        .iter()
+        .map(|scenario| scenario.name.as_str())
+        .collect::<BTreeSet<_>>();
+    if !existing.contains(base.as_str()) {
+        return base;
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}_{suffix}");
+        if !existing.contains(candidate.as_str()) {
+            return candidate;
+        }
+    }
+    unreachable!("unbounded suffix search must return")
+}
+
+fn sanitize_observation_id(value: &str) -> String {
+    let mut out = String::new();
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() {
+            out.push(character.to_ascii_lowercase());
+        } else if !out.ends_with('_') {
+            out.push('_');
+        }
+    }
+    let out = out.trim_matches('_');
+    if out.is_empty() {
+        "observation".to_string()
+    } else if out
+        .chars()
+        .next()
+        .is_some_and(|character| character.is_ascii_digit())
+    {
+        format!("obs_{out}")
+    } else {
+        out.to_string()
     }
 }
 
@@ -908,6 +1145,17 @@ fn selected_component_id(selection: Option<&SketchSelection>) -> Option<&str> {
         Some(SketchSelection::Component(component_id)) => Some(component_id.as_str()),
         _ => None,
     }
+}
+
+fn component_uses_model(project_yaml: &str, component_id: &str, model_id: &str) -> bool {
+    let Ok(project) = serde_yaml_ng::from_str::<crate::board_ir::BoardProject>(project_yaml) else {
+        return false;
+    };
+    project
+        .board
+        .components
+        .get(component_id)
+        .is_some_and(|component| component.model == model_id)
 }
 
 fn next_kicad_symbol_component_id(
@@ -1129,6 +1377,38 @@ board:
 "
     }
 
+    fn ap2112_project_yaml() -> &'static str {
+        "project:
+  name: ap2112_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+  - libs/vendor/diodes/regulators
+board:
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      pins: { P: usb_5v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    VEN:
+      model: generic.analog.dc_voltage_source
+      pins: { P: regulator_en, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    UREG:
+      model: vendor.diodes.ap2112k_3v3
+      pins: { VIN: usb_5v, EN: regulator_en, GND: gnd, VOUT: rail_3v3 }
+    RLOAD:
+      model: generic.analog.resistor
+      pins: { A: rail_3v3, B: gnd }
+      spice: { primitive: resistor, value_ohm: 3300.0 }
+  nets:
+    usb_5v: { kind: power, nominal_voltage: 5.0, powered: true }
+    regulator_en: { kind: power }
+    rail_3v3: { kind: power, nominal_voltage: 3.3, powered: true }
+    gnd: { kind: ground }
+"
+    }
+
     fn kicad_resistor_entry() -> KiCadSymbolCatalogEntry {
         KiCadSymbolCatalogEntry {
             id: "Device:R".to_string(),
@@ -1227,6 +1507,49 @@ board:
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].id, "vendor.ti.tlv803ea29");
+    }
+
+    #[test]
+    fn observation_preset_creates_generated_spice_setup_for_component_pins() {
+        let result = super::create_component_observation_preset(
+            ap2112_project_yaml(),
+            Path::new("."),
+            "UREG",
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "ureg_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+        let generated = analog.generated.as_ref().unwrap();
+
+        assert_eq!(result.probe_count, 3);
+        assert_eq!(generated.ground_net, "gnd");
+        assert!(
+            generated
+                .components
+                .iter()
+                .any(|component| component == "UREG")
+        );
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["v_ureg_vin", "v_ureg_en", "v_ureg_vout"]
+        );
+        assert_eq!(analog.model_files.len(), 1);
+        assert_eq!(
+            analog.model_files[0].path,
+            "models/spice/generic/analog_behavioral.lib"
+        );
+        assert!(analog.model_files[0].sha256.is_some());
+        assert!(analog.assertions.is_empty());
     }
 
     #[test]

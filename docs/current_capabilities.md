@@ -143,6 +143,9 @@ Current analog support:
   as SPICE-ready, makes that metadata searchable, and shows model type, model
   name, model file, provenance, pin order, and the first operating note before
   the user places the part on the schematic.
+- For a selected placed SPICE-ready component, the GUI can create a generated
+  observation preset that includes the board context, binds ground, voltage
+  probes the component's non-ground pin nets, and infers required model files.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.
