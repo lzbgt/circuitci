@@ -235,6 +235,14 @@ fn scope_report_bundle_exports_noise_totals_without_waveforms() {
     let mut app = CircuitCiApp {
         output_dir: base_dir.to_string_lossy().into_owned(),
         noise_totals: vec![noise_total],
+        report: Some(report(vec![noise_sweep_margin(
+            "divider_output_noise",
+            "output_rms_limit",
+            "onoise",
+            "nominal",
+            "nominal",
+            "integrated_output_noise",
+        )])),
         ..Default::default()
     };
 
@@ -249,10 +257,13 @@ fn scope_report_bundle_exports_noise_totals_without_waveforms() {
     let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
 
     assert!(svg.contains("CircuitCI Noise Total Bundle"));
-    assert!(noise_csv.starts_with("scenario,sweep,corner,output_rms_v,input_rms_v,artifact\n"));
+    assert!(noise_csv.starts_with(
+        "scenario,sweep,corner,output_rms_v,output_worst,input_rms_v,input_worst,artifact\n"
+    ));
     assert!(noise_csv.contains("divider_output_noise,nominal,nominal"));
-    assert!(noise_csv.contains("2.000000000000e-7,4.000000000000e-7"));
+    assert!(noise_csv.contains("2.000000000000e-7,limiting,4.000000000000e-7,"));
     assert!(noise_markdown.contains("| divider_output_noise | nominal | nominal |"));
+    assert!(noise_markdown.contains("| limiting |"));
     assert!(noise_markdown.contains(" V |"));
     assert!(readme.contains("## Noise Totals"));
     assert!(readme.contains("- Artifacts: 1"));
@@ -260,6 +271,7 @@ fn scope_report_bundle_exports_noise_totals_without_waveforms() {
     assert!(index.contains("<h2>Noise Totals</h2>"));
     assert!(index.contains("href=\"noise_totals.csv\""));
     assert!(index.contains("<td>divider_output_noise</td>"));
+    assert!(index.contains("<td>limiting</td>"));
     assert!(index.contains("<td class=\"number\">"));
     assert!(manifest.contains("noise_totals.csv,noise_totals.csv"));
     assert!(manifest.contains("noise_totals.md,noise_totals.md"));
@@ -422,6 +434,21 @@ fn dc_sweep_margin(
     finding
         .measured
         .insert("quantity".to_string(), json!("operating point"));
+    finding
+}
+
+fn noise_sweep_margin(
+    scenario: &str,
+    assertion: &str,
+    probe: &str,
+    sweep: &str,
+    corner: &str,
+    quantity: &str,
+) -> Finding {
+    let mut finding = sweep_margin(scenario, assertion, probe, sweep, corner);
+    finding
+        .measured
+        .insert("quantity".to_string(), json!(quantity));
     finding
 }
 

@@ -1,7 +1,8 @@
 use super::{CircuitCiApp, format_value};
-use crate::reports::ValidationReport;
+use crate::reports::{Finding, ValidationReport};
 use anyhow::{Context, Result};
 use eframe::egui;
+use std::collections::BTreeSet;
 use std::path::Path;
 use std::time::Instant;
 
@@ -24,19 +25,28 @@ impl CircuitCiApp {
         egui::CollapsingHeader::new(format!("Noise Totals ({})", self.noise_totals.len()))
             .default_open(true)
             .show(ui, |ui| {
+                let worst_keys = self
+                    .report
+                    .as_ref()
+                    .map(noise_total_worst_corner_keys)
+                    .unwrap_or_default();
                 ui.horizontal_wrapped(|ui| {
                     ui.label(format!(
                         "{} integrated-noise artifact(s)",
                         self.noise_totals.len()
                     ));
                     if ui.button("Copy CSV").clicked() {
-                        ui.ctx()
-                            .copy_text(noise_total_views_csv(&self.noise_totals));
+                        ui.ctx().copy_text(noise_total_views_csv(
+                            &self.noise_totals,
+                            self.report.as_ref(),
+                        ));
                         self.status = "Copied noise-total table CSV.".to_string();
                     }
                     if ui.button("Copy Markdown").clicked() {
-                        ui.ctx()
-                            .copy_text(noise_total_views_markdown(&self.noise_totals));
+                        ui.ctx().copy_text(noise_total_views_markdown(
+                            &self.noise_totals,
+                            self.report.as_ref(),
+                        ));
                         self.status = "Copied noise-total table Markdown.".to_string();
                     }
                     if ui.button("Export Bundle").clicked() {
@@ -44,14 +54,16 @@ impl CircuitCiApp {
                     }
                 });
                 egui::Grid::new("noise_total_results")
-                    .num_columns(6)
+                    .num_columns(8)
                     .striped(true)
                     .show(ui, |ui| {
                         ui.strong("Scenario");
                         ui.strong("Sweep");
                         ui.strong("Corner");
                         ui.strong("Output RMS");
+                        ui.strong("Output Worst");
                         ui.strong("Input RMS");
+                        ui.strong("Input Worst");
                         ui.strong("Artifact");
                         ui.end_row();
                         for view in &self.noise_totals {
@@ -59,7 +71,17 @@ impl CircuitCiApp {
                             ui.monospace(view.sweep.as_deref().unwrap_or("nominal"));
                             ui.monospace(view.corner.as_deref().unwrap_or("nominal"));
                             ui.monospace(format!("{} V", format_value(view.output_rms_v)));
+                            ui.label(worst_label(
+                                worst_keys.contains(&noise_total_row_key(
+                                    view,
+                                    "integrated_output_noise",
+                                )),
+                            ));
                             ui.monospace(format!("{} V", format_value(view.input_rms_v)));
+                            ui.label(worst_label(
+                                worst_keys
+                                    .contains(&noise_total_row_key(view, "integrated_input_noise")),
+                            ));
                             ui.monospace(&view.label);
                             ui.end_row();
                         }
@@ -222,62 +244,143 @@ fn short_artifact_label(path: &str) -> String {
     format!("{parent}/{file}")
 }
 
-pub(super) fn noise_total_views_csv(views: &[NoiseTotalView]) -> String {
-    let mut csv = String::from("scenario,sweep,corner,output_rms_v,input_rms_v,artifact\n");
+fn noise_total_worst_corner_keys(report: &ValidationReport) -> BTreeSet<String> {
+    report
+        .infos
+        .iter()
+        .filter(|finding| finding.id == "ANALOG_SWEEP_MARGIN_SUMMARY")
+        .filter_map(noise_total_finding_key)
+        .collect()
+}
+
+fn noise_total_finding_key(finding: &Finding) -> Option<String> {
+    let quantity = finding
+        .measured
+        .get("quantity")
+        .and_then(serde_json::Value::as_str)?;
+    if !matches!(
+        quantity,
+        "integrated_output_noise" | "integrated_input_noise"
+    ) {
+        return None;
+    }
+    let scenario = &finding.scenario;
+    let sweep = finding
+        .measured
+        .get("analog_sweep")
+        .and_then(serde_json::Value::as_str)?;
+    let corner = finding
+        .measured
+        .get("analog_corner")
+        .and_then(serde_json::Value::as_str)?;
+    Some(format!("{scenario}|{sweep}|{corner}|{quantity}"))
+}
+
+fn noise_total_row_key(view: &NoiseTotalView, quantity: &str) -> String {
+    format!(
+        "{}|{}|{}|{}",
+        view.scenario,
+        view.sweep.as_deref().unwrap_or("nominal"),
+        view.corner.as_deref().unwrap_or("nominal"),
+        quantity
+    )
+}
+
+pub(super) fn noise_total_views_csv(
+    views: &[NoiseTotalView],
+    report: Option<&ValidationReport>,
+) -> String {
+    let mut csv = String::from(
+        "scenario,sweep,corner,output_rms_v,output_worst,input_rms_v,input_worst,artifact\n",
+    );
+    let worst_keys = report
+        .map(noise_total_worst_corner_keys)
+        .unwrap_or_default();
     for view in views {
+        let output_worst =
+            worst_keys.contains(&noise_total_row_key(view, "integrated_output_noise"));
+        let input_worst = worst_keys.contains(&noise_total_row_key(view, "integrated_input_noise"));
         csv.push_str(&csv_row([
             view.scenario.clone(),
             view.sweep.as_deref().unwrap_or("nominal").to_string(),
             view.corner.as_deref().unwrap_or("nominal").to_string(),
             format!("{:.12e}", view.output_rms_v),
+            worst_label(output_worst).to_string(),
             format!("{:.12e}", view.input_rms_v),
+            worst_label(input_worst).to_string(),
             view.path.clone(),
         ]));
     }
     csv
 }
 
-pub(super) fn noise_total_views_markdown(views: &[NoiseTotalView]) -> String {
+pub(super) fn noise_total_views_markdown(
+    views: &[NoiseTotalView],
+    report: Option<&ValidationReport>,
+) -> String {
     let mut markdown = String::from(
-        "| Scenario | Sweep | Corner | Output RMS | Input RMS | Artifact |\n| --- | --- | --- | ---: | ---: | --- |\n",
+        "| Scenario | Sweep | Corner | Output RMS | Output Worst | Input RMS | Input Worst | Artifact |\n| --- | --- | --- | ---: | --- | ---: | --- | --- |\n",
     );
+    let worst_keys = report
+        .map(noise_total_worst_corner_keys)
+        .unwrap_or_default();
     for view in views {
+        let output_worst =
+            worst_keys.contains(&noise_total_row_key(view, "integrated_output_noise"));
+        let input_worst = worst_keys.contains(&noise_total_row_key(view, "integrated_input_noise"));
         markdown.push_str(&format!(
-            "| {} | {} | {} | {} V | {} V | {} |\n",
+            "| {} | {} | {} | {} V | {} | {} V | {} | {} |\n",
             markdown_escape(&view.scenario),
             markdown_escape(view.sweep.as_deref().unwrap_or("nominal")),
             markdown_escape(view.corner.as_deref().unwrap_or("nominal")),
             format_value(view.output_rms_v),
+            worst_label(output_worst),
             format_value(view.input_rms_v),
+            worst_label(input_worst),
             markdown_escape(&view.label),
         ));
     }
     markdown
 }
 
-pub(super) fn noise_total_views_html(views: &[NoiseTotalView]) -> String {
+pub(super) fn noise_total_views_html(
+    views: &[NoiseTotalView],
+    report: Option<&ValidationReport>,
+) -> String {
     let mut html = String::from(
         "\
 <table>
   <thead>
-    <tr><th>Scenario</th><th>Sweep</th><th>Corner</th><th>Output RMS</th><th>Input RMS</th><th>Artifact</th></tr>
+    <tr><th>Scenario</th><th>Sweep</th><th>Corner</th><th>Output RMS</th><th>Output Worst</th><th>Input RMS</th><th>Input Worst</th><th>Artifact</th></tr>
   </thead>
   <tbody>
 ",
     );
+    let worst_keys = report
+        .map(noise_total_worst_corner_keys)
+        .unwrap_or_default();
     for view in views {
+        let output_worst =
+            worst_keys.contains(&noise_total_row_key(view, "integrated_output_noise"));
+        let input_worst = worst_keys.contains(&noise_total_row_key(view, "integrated_input_noise"));
         html.push_str(&format!(
-            "    <tr><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{} V</td><td class=\"number\">{} V</td><td>{}</td></tr>\n",
+            "    <tr><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{} V</td><td>{}</td><td class=\"number\">{} V</td><td>{}</td><td>{}</td></tr>\n",
             html_escape(&view.scenario),
             html_escape(view.sweep.as_deref().unwrap_or("nominal")),
             html_escape(view.corner.as_deref().unwrap_or("nominal")),
             html_escape(&format_value(view.output_rms_v)),
+            worst_label(output_worst),
             html_escape(&format_value(view.input_rms_v)),
+            worst_label(input_worst),
             html_escape(&view.label),
         ));
     }
     html.push_str("  </tbody>\n</table>");
     html
+}
+
+fn worst_label(worst: bool) -> &'static str {
+    if worst { "limiting" } else { "" }
 }
 
 fn html_escape(value: &str) -> String {
@@ -314,7 +417,8 @@ fn csv_escape(value: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::{noise_total_views_csv, parse_noise_total_csv_text};
-    use crate::reports::ValidationReport;
+    use crate::reports::{Finding, ValidationReport};
+    use serde_json::json;
 
     #[test]
     fn noise_total_parser_reads_single_row_values_and_corner_metadata() {
@@ -337,10 +441,35 @@ mod tests {
             "out/analog/divider_output_noise/noise_total.csv",
         )
         .unwrap();
-        let csv = noise_total_views_csv(&[view]);
-        assert!(csv.starts_with("scenario,sweep,corner,output_rms_v,input_rms_v,artifact\n"));
+        let csv = noise_total_views_csv(&[view], None);
+        assert!(csv.starts_with(
+            "scenario,sweep,corner,output_rms_v,output_worst,input_rms_v,input_worst,artifact\n"
+        ));
         assert!(csv.contains("divider_output_noise,nominal,nominal"));
-        assert!(csv.contains("2.000000000000e-7,4.000000000000e-7"));
+        assert!(csv.contains("2.000000000000e-7,,4.000000000000e-7,"));
+    }
+
+    #[test]
+    fn noise_total_csv_marks_integrated_noise_worst_corners() {
+        let view = parse_noise_total_csv_text(
+            "onoise_total_v inoise_total_v\n2.0e-7 4.0e-7\n",
+            "out/analog/divider_output_noise/noise_corner_003/noise_total.csv",
+        )
+        .unwrap();
+        let report = report(vec![noise_sweep_margin(
+            "divider_output_noise",
+            "output_rms_limit",
+            "onoise",
+            "noise",
+            "corner_003",
+            "integrated_output_noise",
+        )]);
+
+        let csv = noise_total_views_csv(&[view], Some(&report));
+
+        assert!(csv.contains(
+            "divider_output_noise,noise,corner_003,2.000000000000e-7,limiting,4.000000000000e-7,"
+        ));
     }
 
     #[test]
@@ -373,5 +502,62 @@ mod tests {
         assert_eq!(views.len(), 2);
         assert_eq!(views[0].corner.as_deref(), Some("corner_001"));
         assert_eq!(views[1].input_rms_v, 4.0e-7);
+    }
+
+    fn noise_sweep_margin(
+        scenario: &str,
+        assertion: &str,
+        probe: &str,
+        sweep: &str,
+        corner: &str,
+        quantity: &str,
+    ) -> Finding {
+        let mut finding = Finding::info("ANALOG_SWEEP_MARGIN_SUMMARY", scenario, "summary");
+        finding
+            .measured
+            .insert("assertion".to_string(), json!(assertion));
+        finding.measured.insert("probe".to_string(), json!(probe));
+        finding
+            .measured
+            .insert("analog_sweep".to_string(), json!(sweep));
+        finding
+            .measured
+            .insert("analog_corner".to_string(), json!(corner));
+        finding
+            .measured
+            .insert("quantity".to_string(), json!(quantity));
+        report_fields(&mut finding);
+        finding
+    }
+
+    fn report_fields(finding: &mut Finding) {
+        finding
+            .measured
+            .insert("measured_value".to_string(), json!(2.0e-7));
+        finding
+            .measured
+            .insert("measured_unit".to_string(), json!("V"));
+        finding.measured.insert("margin".to_string(), json!(1.0e-7));
+        finding.measured.insert("passed".to_string(), json!(true));
+        finding
+            .measured
+            .insert("evaluated_corners".to_string(), json!(3));
+        finding.limit.insert("relation".to_string(), json!("below"));
+        finding
+            .limit
+            .insert("limit_value".to_string(), json!(3.0e-7));
+        finding.limit.insert("limit_unit".to_string(), json!("V"));
+    }
+
+    fn report(infos: Vec<Finding>) -> ValidationReport {
+        ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            infos,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        )
     }
 }

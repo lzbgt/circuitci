@@ -156,8 +156,9 @@ impl CircuitCiApp {
             operating_point_views_csv(&self.operating_points, self.report.as_ref());
         let operating_points_markdown =
             operating_point_views_markdown(&self.operating_points, self.report.as_ref());
-        let noise_totals_csv = noise_total_views_csv(&self.noise_totals);
-        let noise_totals_markdown = noise_total_views_markdown(&self.noise_totals);
+        let noise_totals_csv = noise_total_views_csv(&self.noise_totals, self.report.as_ref());
+        let noise_totals_markdown =
+            noise_total_views_markdown(&self.noise_totals, self.report.as_ref());
         let sweep_margin_rows = scope_sweep_margin_summary_rows(self.report.as_ref());
         let sweep_margin_summaries_csv = scope_sweep_margin_summaries_csv(&sweep_margin_rows);
         let sweep_margin_summaries_markdown =
@@ -296,7 +297,7 @@ report conveniences and are not part of the manifest they describe.
             operating_point_views_markdown(&self.operating_points, self.report.as_ref()),
             self.noise_totals.len(),
             self.noise_totals.len() * 2,
-            noise_total_views_markdown(&self.noise_totals),
+            noise_total_views_markdown(&self.noise_totals, self.report.as_ref()),
             sweep_margin_rows.len(),
             scope_sweep_margin_summaries_markdown(sweep_margin_rows),
             self.waveform_plot_export_size.label(),
@@ -433,7 +434,7 @@ report conveniences and are not part of the manifest they describe.
             operating_point_views_html(&self.operating_points, self.report.as_ref()),
             self.noise_totals.len(),
             self.noise_totals.len() * 2,
-            noise_total_views_html(&self.noise_totals),
+            noise_total_views_html(&self.noise_totals, self.report.as_ref()),
             scope_sweep_margin_summaries_html(sweep_margin_rows),
             html_escape(self.waveform_plot_export_size.label()),
             yes_no(self.waveform_plot_export_cursors),
