@@ -141,8 +141,7 @@ sweep name, corner name, and parameter values on generated findings. Swept
 assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify
 the worst evaluated corner, parameter values, measured value, limit, relation,
 and numeric margin for each assertion. A complete physical acceptance language
-still needs setup/hold and richer temperature/model/load
-corner sources.
+still needs richer temperature/model/load corner sources.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode
