@@ -388,6 +388,11 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     assert!(index.contains("<h2>Monte Carlo Yield Summaries</h2>"));
     assert!(index.contains("rc_tolerance"));
     assert!(index.contains("rc_monte_carlo"));
+    assert!(index.contains("<th>Distribution</th>"));
+    assert!(index.contains("class=\"mc-dist\""));
+    assert!(index.contains("class=\"mc-dist-band fail\""));
+    assert!(index.contains("class=\"mc-dist-limit\""));
+    assert!(index.contains("P5 5 Hz | P50 50 Hz | P95 95 Hz"));
     assert!(svg.contains("CircuitCI Scope Plot"));
     assert!(app.status.contains("Exported scope compare report bundle"));
 

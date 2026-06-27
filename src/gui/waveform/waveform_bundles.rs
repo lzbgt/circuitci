@@ -91,6 +91,16 @@ pub(super) struct ScopeMonteCarloYieldSummaryRow {
     pub(super) p95_margin_value: Option<f64>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct ScopeMonteCarloMarginDistribution {
+    pub(super) min: f32,
+    pub(super) p5: f32,
+    pub(super) p50: f32,
+    pub(super) p95: f32,
+    pub(super) max: f32,
+    pub(super) zero: Option<f32>,
+}
+
 impl CircuitCiApp {
     pub(in crate::gui) fn export_scope_report_bundle(
         &mut self,
@@ -407,6 +417,13 @@ report conveniences and are not part of the manifest they describe.
     th {{ background: #f6f8fa; }}
     td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
     img {{ max-width: 100%; border: 1px solid #d0d7de; }}
+    .mc-dist {{ position: relative; display: inline-block; width: 180px; height: 18px; border-radius: 4px; background: #f6f8fa; border: 1px solid #d0d7de; vertical-align: middle; }}
+    .mc-dist-line {{ position: absolute; top: 8px; height: 2px; background: #8c959f; }}
+    .mc-dist-band {{ position: absolute; top: 4px; height: 10px; border-radius: 3px; }}
+    .mc-dist-band.pass {{ background: #4b965c; }}
+    .mc-dist-band.fail {{ background: #b55a52; }}
+    .mc-dist-marker {{ position: absolute; top: 2px; width: 2px; height: 14px; background: #68d6ff; }}
+    .mc-dist-limit {{ position: absolute; top: 1px; width: 2px; height: 16px; background: #ffc457; }}
   </style>
 </head>
 <body>
@@ -972,14 +989,14 @@ fn scope_monte_carlo_yield_summaries_html(rows: &[ScopeMonteCarloYieldSummaryRow
         "\
 <table>
   <thead>
-    <tr><th>Scenario</th><th>Assertion</th><th>Probe</th><th>Sweep</th><th>Limiting sample</th><th>Inputs</th><th>Pass</th><th>Yield %</th><th>Passed</th><th>Failed</th><th>Samples</th><th>Mean margin</th><th>Sigma margin</th><th>Min margin</th><th>Max margin</th><th>P1 margin</th><th>P5 margin</th><th>P50 margin</th><th>P95 margin</th></tr>
+    <tr><th>Scenario</th><th>Assertion</th><th>Probe</th><th>Sweep</th><th>Limiting sample</th><th>Inputs</th><th>Pass</th><th>Yield %</th><th>Passed</th><th>Failed</th><th>Samples</th><th>Mean margin</th><th>Sigma margin</th><th>Distribution</th><th>Min margin</th><th>Max margin</th><th>P1 margin</th><th>P5 margin</th><th>P50 margin</th><th>P95 margin</th></tr>
   </thead>
   <tbody>
 ",
     );
     for row in rows {
         html.push_str(&format!(
-            "    <tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
+            "    <tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
             html_escape(&row.scenario),
             html_escape(&row.assertion),
             html_escape(&row.probe),
@@ -993,6 +1010,7 @@ fn scope_monte_carlo_yield_summaries_html(rows: &[ScopeMonteCarloYieldSummaryRow
             row.evaluated_samples,
             html_escape(&row.mean_margin),
             html_escape(&row.stddev_margin),
+            scope_monte_carlo_distribution_strip_html(row),
             html_escape(&row.min_margin),
             html_escape(&row.max_margin),
             html_escape(&row.p1_margin),
@@ -1003,6 +1021,78 @@ fn scope_monte_carlo_yield_summaries_html(rows: &[ScopeMonteCarloYieldSummaryRow
     }
     html.push_str("  </tbody>\n</table>");
     html
+}
+
+fn scope_monte_carlo_distribution_strip_html(row: &ScopeMonteCarloYieldSummaryRow) -> String {
+    let Some(distribution) = scope_monte_carlo_margin_distribution(row) else {
+        return "n/a".to_string();
+    };
+    let pct = |value: f32| format!("{:.3}", value * 100.0);
+    let line_left = distribution.min.min(distribution.max);
+    let line_width = (distribution.max - distribution.min).abs().max(0.0);
+    let band_left = distribution.p5.min(distribution.p95);
+    let band_width = (distribution.p95 - distribution.p5).abs().max(0.0);
+    let limit = distribution.zero.map(|zero| {
+        format!(
+            "<span class=\"mc-dist-limit\" style=\"left: {}%;\" aria-hidden=\"true\"></span>",
+            pct(zero)
+        )
+    });
+    format!(
+        "<span class=\"mc-dist\" title=\"{}\" aria-label=\"Monte Carlo margin distribution: {}\">\
+<span class=\"mc-dist-line\" style=\"left: {}%; width: {}%;\" aria-hidden=\"true\"></span>\
+<span class=\"mc-dist-band {}\" style=\"left: {}%; width: {}%;\" aria-hidden=\"true\"></span>\
+{}\
+<span class=\"mc-dist-marker\" style=\"left: {}%;\" aria-hidden=\"true\"></span>\
+</span>",
+        html_escape(&scope_monte_carlo_distribution_summary(row)),
+        html_escape(&scope_monte_carlo_distribution_summary(row)),
+        pct(line_left),
+        pct(line_width),
+        if row.passed { "pass" } else { "fail" },
+        pct(band_left),
+        pct(band_width),
+        limit.unwrap_or_default(),
+        pct(distribution.p50),
+    )
+}
+
+fn scope_monte_carlo_distribution_summary(row: &ScopeMonteCarloYieldSummaryRow) -> String {
+    format!(
+        "min {} | P5 {} | P50 {} | P95 {} | max {}; yellow = zero margin",
+        row.min_margin, row.p5_margin, row.p50_margin, row.p95_margin, row.max_margin
+    )
+}
+
+pub(super) fn scope_monte_carlo_margin_distribution(
+    row: &ScopeMonteCarloYieldSummaryRow,
+) -> Option<ScopeMonteCarloMarginDistribution> {
+    let min = row.min_margin_value?;
+    let max = row.max_margin_value?;
+    let p5 = row.p5_margin_value?;
+    let p50 = row.p50_margin_value?;
+    let p95 = row.p95_margin_value?;
+    let range_min = min.min(0.0);
+    let range_max = max.max(0.0);
+    if ![range_min, range_max, p5, p50, p95]
+        .iter()
+        .all(|value| value.is_finite())
+    {
+        return None;
+    }
+    let span = range_max - range_min;
+    if span <= f64::EPSILON {
+        return None;
+    }
+    let normalized = |value: f64| ((value - range_min) / span).clamp(0.0, 1.0) as f32;
+    Some(ScopeMonteCarloMarginDistribution {
+        min: normalized(min),
+        p5: normalized(p5),
+        p50: normalized(p50),
+        p95: normalized(p95),
+        max: normalized(max),
+        zero: (range_min <= 0.0 && range_max >= 0.0).then(|| normalized(0.0)),
+    })
 }
 
 fn scope_sweep_margin_input_summary(finding: &Finding) -> String {

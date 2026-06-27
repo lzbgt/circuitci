@@ -940,9 +940,10 @@ Export Bundle writes the same filtered snapshot CSV and Markdown, loaded DC
 operating-point CSV/Markdown, loaded noise-total CSV/Markdown, sweep
 worst-corner margin CSV/Markdown and Monte Carlo yield CSV/Markdown, including
 sampled-margin percentiles, from the loaded validation report, the
-configured or scalar-observation placeholder plot SVG, a local `index.html`, a
-README manifest, and `artifact_manifest.csv` plus optional artifact integrity
-detail CSV/Markdown audit files into a timestamped output folder,
+configured or scalar-observation placeholder plot SVG, a local `index.html`
+that preserves Monte Carlo min/max, P5-P95, median, and zero-margin
+distribution strips, a README manifest, and `artifact_manifest.csv` plus
+optional artifact integrity detail CSV/Markdown audit files into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.
 Compare Sets also provide `Bundle Set` and `Bundle + Open`; these create
 ephemeral selected/pinned cursor rows for the active compare view, then export
@@ -952,7 +953,7 @@ adding persistent measurement snapshot rows.
 The index links the plot SVG, snapshot CSV/Markdown, DC operating-point
 CSV/Markdown, sweep-margin CSV/Markdown, Monte Carlo yield CSV/Markdown,
 README, manifest, and optional integrity detail files while surfacing the same
-snapshot, DC bias, sweep-margin, Monte Carlo yield, plot, selected-trace,
+snapshot, DC bias, sweep-margin, Monte Carlo yield distribution, plot, selected-trace,
 generated content artifact size/SHA-256 metadata, and loaded-waveform footprint
 summary context for quick browser review. The README records active snapshot
 filters, DC operating-point row counts, sweep-margin row counts, Monte Carlo

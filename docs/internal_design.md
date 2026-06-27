@@ -484,7 +484,8 @@ cursor rows without mutating saved measurement snapshots. It also projects
 loaded `ANALOG_SWEEP_MARGIN_SUMMARY` findings into bundle-local
 `sweep_margin_summaries.csv` and `.md` artifacts, and loaded
 `ANALOG_MONTE_CARLO_YIELD_SUMMARY` findings into
-`monte_carlo_yield_summaries.csv` and `.md` artifacts, so waveform evidence,
+`monte_carlo_yield_summaries.csv` and `.md` artifacts plus HTML
+min/max/P5-P95/median/zero-margin distribution strips, so waveform evidence,
 limiting design margins, and sampled-yield statistics travel together.
 `src/gui/waveform/waveform_bundle_recent.rs` owns recent-bundle
 folder/index/integrity-audit opening, path copy actions, missing-folder

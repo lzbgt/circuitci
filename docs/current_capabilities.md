@@ -126,7 +126,7 @@ Current analog support:
   P5-P95, median, and zero-margin distribution strips plus mean/sigma,
   worst-case, percentile margin rows, and CSV/Markdown copy actions, and are
   exported beside scope evidence when the loaded report contains sampled
-  tolerance runs.
+  tolerance runs; bundle HTML preserves the same distribution strips.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

@@ -60,8 +60,8 @@ targets.
 Scopes report bundles include a local `index.html` plus README manifest. The
 index links the plot SVG, snapshot CSV/Markdown artifacts, sweep
 worst-corner margin CSV/Markdown artifacts, Monte Carlo yield-summary
-CSV/Markdown artifacts, and optional artifact integrity detail CSV/Markdown
-files while surfacing the same runtime
+CSV/Markdown artifacts, HTML Monte Carlo min/max/P5-P95/median/zero-margin
+distribution strips, and optional artifact integrity detail CSV/Markdown files while surfacing the same runtime
 loaded-waveform footprint source summary and generated content artifact
 size/SHA-256 metadata, so exported folders can be audited for Full CSV,
 Selected Columns, Runtime Only memory distribution, and report-artifact

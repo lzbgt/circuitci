@@ -1,7 +1,8 @@
 use super::CircuitCiApp;
 use super::waveform_bundles::{
-    ScopeMonteCarloYieldSummaryRow, scope_monte_carlo_yield_summaries_csv,
-    scope_monte_carlo_yield_summaries_markdown, scope_monte_carlo_yield_summary_rows,
+    ScopeMonteCarloYieldSummaryRow, scope_monte_carlo_margin_distribution,
+    scope_monte_carlo_yield_summaries_csv, scope_monte_carlo_yield_summaries_markdown,
+    scope_monte_carlo_yield_summary_rows,
 };
 use crate::reports::ValidationReport;
 use eframe::egui;
@@ -116,7 +117,7 @@ fn monte_carlo_yield_results_grid(ui: &mut egui::Ui, rows: &[ScopeMonteCarloYiel
 }
 
 fn monte_carlo_margin_distribution_strip(ui: &mut egui::Ui, row: &ScopeMonteCarloYieldSummaryRow) {
-    let Some(distribution) = monte_carlo_margin_distribution(row) else {
+    let Some(distribution) = scope_monte_carlo_margin_distribution(row) else {
         ui.label("n/a");
         return;
     };
@@ -178,47 +179,6 @@ fn monte_carlo_margin_distribution_strip(ui: &mut egui::Ui, row: &ScopeMonteCarl
     ));
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct MonteCarloMarginDistribution {
-    min: f32,
-    p5: f32,
-    p50: f32,
-    p95: f32,
-    max: f32,
-    zero: Option<f32>,
-}
-
-fn monte_carlo_margin_distribution(
-    row: &ScopeMonteCarloYieldSummaryRow,
-) -> Option<MonteCarloMarginDistribution> {
-    let min = row.min_margin_value?;
-    let max = row.max_margin_value?;
-    let p5 = row.p5_margin_value?;
-    let p50 = row.p50_margin_value?;
-    let p95 = row.p95_margin_value?;
-    let range_min = min.min(0.0);
-    let range_max = max.max(0.0);
-    if ![range_min, range_max, p5, p50, p95]
-        .iter()
-        .all(|value| value.is_finite())
-    {
-        return None;
-    }
-    let span = range_max - range_min;
-    if span <= f64::EPSILON {
-        return None;
-    }
-    let normalized = |value: f64| ((value - range_min) / span).clamp(0.0, 1.0) as f32;
-    Some(MonteCarloMarginDistribution {
-        min: normalized(min),
-        p5: normalized(p5),
-        p50: normalized(p50),
-        p95: normalized(p95),
-        max: normalized(max),
-        zero: (range_min <= 0.0 && range_max >= 0.0).then(|| normalized(0.0)),
-    })
-}
-
 pub(super) fn report_has_monte_carlo_yield_summaries(report: Option<&ValidationReport>) -> bool {
     report
         .map(|report| !scope_monte_carlo_yield_summary_rows(Some(report)).is_empty())
@@ -227,7 +187,7 @@ pub(super) fn report_has_monte_carlo_yield_summaries(report: Option<&ValidationR
 
 #[cfg(test)]
 mod tests {
-    use super::{monte_carlo_margin_distribution, report_has_monte_carlo_yield_summaries};
+    use super::{report_has_monte_carlo_yield_summaries, scope_monte_carlo_margin_distribution};
     use crate::reports::{Finding, ValidationReport};
     use serde_json::json;
 
@@ -285,7 +245,7 @@ mod tests {
         let row = super::scope_monte_carlo_yield_summary_rows(Some(&report))
             .pop()
             .unwrap();
-        let distribution = monte_carlo_margin_distribution(&row).unwrap();
+        let distribution = scope_monte_carlo_margin_distribution(&row).unwrap();
 
         assert_eq!(distribution.min, 0.0);
         assert!((distribution.p5 - 0.1).abs() < 1.0e-6);
@@ -314,6 +274,6 @@ mod tests {
             .pop()
             .unwrap();
 
-        assert!(monte_carlo_margin_distribution(&row).is_none());
+        assert!(scope_monte_carlo_margin_distribution(&row).is_none());
     }
 }
