@@ -6,7 +6,8 @@ use super::analog_branches::{current_probe_expression, power_probe_expression};
 #[cfg(test)]
 pub(super) use super::analog_run_setup::append_analog_transient_scenario;
 pub(super) use super::analog_run_setup::{
-    AnalogAcScenarioDraft, AnalogScenarioDraft, append_analog_ac_scenario_with_project_path,
+    AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogScenarioDraft,
+    append_analog_ac_scenario_with_project_path, append_analog_dc_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path,
 };
 
@@ -846,6 +847,7 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "falling_gain_crossing_frequency"
             | "phase_margin_deg"
             | "gain_margin_db"
+            | "operating_point"
     ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
@@ -1114,6 +1116,7 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
             }
         }
         "phase_margin_deg" | "gain_margin_db" => {}
+        "operating_point" => {}
         _ => unreachable!("aggregation was validated"),
     }
     Ok(())
@@ -1550,6 +1553,7 @@ fn assertion_value(
             )?;
         }
         "phase_margin_deg" | "gain_margin_db" => {}
+        "operating_point" => {}
         _ => unreachable!("aggregation was validated"),
     }
     insert_string(&mut assertion, "relation", &draft.relation);

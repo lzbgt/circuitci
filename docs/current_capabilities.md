@@ -101,18 +101,24 @@ Current analog support:
   artifacts with one column per declared probe, support generated-from-board
   and file-backed decks, and evaluate `operating_point` assertions for bias,
   rail, and quiescent checks across the same run-input sweep corners used by
-  transient and AC/Bode workflows.
+  transient and AC/Bode workflows. The GUI run-setup editor can author
+  generated DC operating-point observations directly, and the check editor
+  offers ordinary assertion presets for 3.3 V rails, 5 V rails, and 2.5 V
+  midpoint bias windows.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
-- Generated Board IR transient and AC/Bode decks for passives, independent
+- Generated Board IR transient, AC/Bode, and DC operating-point decks for
+  passives, independent
   voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
   GUI run-setup creation can author generated AC/Bode observations with
   frequency limits and an initial voltage probe; generated AC sources emit a
   unity small-signal `AC 1` drive while preserving their DC or pulse operating
-  point.
+  point. GUI-created generated DC observations write `.op` analysis setups
+  with an initial voltage probe and reuse the same ground/node/component
+  editors.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform, Bode, or operating-point artifact set, tagged on findings, and
   summarized with per-assertion worst-corner margin info findings for

@@ -1,13 +1,15 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionRemoveDraft,
-    AnalogAssertionReplaceDraft, AnalogProbeAssertionsRemoveDraft, AnalogScenarioDraft,
-    analog_probe_assertion_summaries, analog_scenario_choices,
+    AnalogAssertionReplaceDraft, AnalogDcScenarioDraft, AnalogProbeAssertionsRemoveDraft,
+    AnalogScenarioDraft, analog_probe_assertion_summaries, analog_scenario_choices,
     append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_dc_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, remove_analog_assertion,
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
 use super::analog_ac_presets::{analog_ac_assertion_presets, append_analog_ac_assertion_preset};
+use super::analog_dc_presets::{analog_dc_assertion_presets, append_analog_dc_assertion_preset};
 use super::analog_generated::{
     AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft, AnalogGeneratedSettingsDraft,
     analog_generated_scenarios, exclude_generated_component,
@@ -45,6 +47,7 @@ impl CircuitCiApp {
                     egui::ComboBox::from_id_salt("analog_run_setup_kind")
                         .selected_text(match self.analog_run_setup_kind.as_str() {
                             "ac" => "AC/Bode",
+                            "dc" => "DC operating point",
                             _ => "Transient",
                         })
                         .show_ui(ui, |ui| {
@@ -57,6 +60,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "ac".to_string(),
                                 "AC/Bode",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "dc".to_string(),
+                                "DC operating point",
                             );
                         });
                     ui.end_row();
@@ -107,6 +115,10 @@ impl CircuitCiApp {
                                 .speed(1.0)
                                 .range(1..=1000),
                         );
+                        ui.end_row();
+                    } else if self.analog_run_setup_kind == "dc" {
+                        ui.label("Analysis");
+                        ui.label("Operating point");
                         ui.end_row();
                     } else {
                         ui.label("Stop time");
@@ -330,6 +342,10 @@ impl CircuitCiApp {
                                 .speed(1.0)
                                 .range(1..=1000),
                         );
+                        ui.end_row();
+                    } else if selected_scenario.scenario_type == "analog_dc" {
+                        ui.label("Analysis");
+                        ui.label("Operating point");
                         ui.end_row();
                     } else {
                         ui.label("Stop time");
@@ -721,6 +737,10 @@ impl CircuitCiApp {
                             "phase_margin_deg",
                             "gain_margin_db",
                         ][..]
+                    } else if selected_scenario
+                        .is_some_and(|scenario| scenario.scenario_type == "analog_dc")
+                    {
+                        &["operating_point"][..]
                     } else {
                         &[
                             "sample",
@@ -888,6 +908,10 @@ impl CircuitCiApp {
                                 .suffix(" Hz"),
                         );
                         ui.end_row();
+                    } else if self.analog_assertion_aggregation == "operating_point" {
+                        ui.label("Analysis");
+                        ui.label("Operating point");
+                        ui.end_row();
                     } else if self.analog_assertion_aggregation == "sample" {
                         ui.label("At");
                         ui.add(
@@ -995,6 +1019,34 @@ impl CircuitCiApp {
                                 .clicked()
                             {
                                 self.apply_add_analog_ac_assertion_preset(preset.id, preset.label);
+                            }
+                            ui.end_row();
+                        }
+                    });
+            } else if selected_scenario
+                .is_some_and(|scenario| scenario.scenario_type == "analog_dc")
+            {
+                ui.separator();
+                ui.strong("DC check presets");
+                egui::Grid::new("analog_dc_assertion_presets")
+                    .num_columns(3)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.strong("Preset");
+                        ui.strong("Checks");
+                        ui.strong("Add");
+                        ui.end_row();
+                        for preset in analog_dc_assertion_presets() {
+                            ui.label(preset.label);
+                            ui.label(preset.summary);
+                            if ui
+                                .add_enabled(
+                                    !self.analog_assertion_probe.trim().is_empty(),
+                                    egui::Button::new("Add"),
+                                )
+                                .clicked()
+                            {
+                                self.apply_add_analog_dc_assertion_preset(preset.id, preset.label);
                             }
                             ui.end_row();
                         }
@@ -1127,6 +1179,27 @@ impl CircuitCiApp {
                 ),
                 Err(error) => self.record_error(error),
             }
+        } else if self.analog_run_setup_kind == "dc" {
+            let draft = AnalogDcScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+            };
+            match append_analog_dc_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "DC operating-point run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
         } else {
             let draft = AnalogScenarioDraft {
                 name: self.analog_scenario_name.clone(),
@@ -1195,6 +1268,24 @@ impl CircuitCiApp {
                 updated,
                 &format!(
                     "AC/Bode check preset {preset_label} added for {}.",
+                    self.analog_assertion_probe.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_dc_assertion_preset(&mut self, preset_id: &str, preset_label: &str) {
+        match append_analog_dc_assertion_preset(
+            &self.project_yaml,
+            &self.analog_assertion_scenario,
+            &self.analog_assertion_probe,
+            preset_id,
+        ) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "DC check preset {preset_label} added for {}.",
                     self.analog_assertion_probe.trim()
                 ),
             ),

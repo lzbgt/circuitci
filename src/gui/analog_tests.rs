@@ -1,10 +1,11 @@
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
-    AnalogExpressionProbeDraft, AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft,
-    AnalogProbeDraft, AnalogProbeRemoveDraft, AnalogScenarioDraft,
-    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
-    append_analog_assertion, append_analog_current_probe, append_analog_expression_probe,
-    append_analog_power_probe, append_analog_transient_scenario,
+    AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogPowerProbeDraft,
+    AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
+    AnalogScenarioDraft, analog_probe_assertion_summaries,
+    append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
+    append_analog_expression_probe, append_analog_power_probe, append_analog_transient_scenario,
     append_analog_transient_scenario_with_project_path, append_analog_voltage_probe,
     remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
 };
@@ -223,6 +224,67 @@ fn append_analog_ac_scenario_emits_valid_yaml() {
     assert_eq!(analog.analysis.points_per_decade, Some(20));
     assert_eq!(analog.probes[0].expression, "V(out)");
     assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_dc_scenario_emits_valid_yaml() {
+    let draft = AnalogDcScenarioDraft {
+        name: "gui_bias".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_bias".to_string(),
+    };
+    let edited = append_analog_dc_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_dc/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(project.scenarios.len(), 1);
+    let scenario = &project.scenarios[0];
+    assert_eq!(scenario.name, "gui_bias");
+    assert_eq!(scenario.scenario_type, "analog_dc");
+    assert_eq!(scenario.checks, vec!["SPICE_DC_ANALYSIS".to_string()]);
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
+    assert_eq!(analog.analysis.analysis_type, "op");
+    assert_eq!(analog.probes[0].expression, "V(out)");
+    assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_assertion_emits_operating_point_yaml() {
+    let draft = AnalogDcScenarioDraft {
+        name: "gui_bias".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_bias".to_string(),
+    };
+    let edited = append_analog_dc_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_dc/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let mut assertion = assertion_draft();
+    assertion.scenario_name = "gui_bias".to_string();
+    assertion.assertion_name = "out_bias_above_min".to_string();
+    assertion.probe_name = "out_bias".to_string();
+    assertion.aggregation = "operating_point".to_string();
+    assertion.relation = "above".to_string();
+    assertion.threshold = 2.4;
+    let edited = append_analog_assertion(&edited, &assertion).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::OperatingPoint
+    );
+    assert_eq!(assertion.threshold_v, Some(2.4));
+    assert_eq!(assertion.at_us, None);
+    assert_eq!(assertion.start_us, None);
+    assert_eq!(assertion.end_us, None);
 }
 
 #[test]

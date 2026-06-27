@@ -10,6 +10,7 @@ mod analog_ac_presets;
 mod analog_assertion_edit_tests;
 mod analog_assertion_kinds;
 mod analog_branches;
+mod analog_dc_presets;
 mod analog_generated;
 mod analog_model_files;
 mod analog_models;

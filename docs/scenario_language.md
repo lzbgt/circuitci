@@ -2749,7 +2749,10 @@ solver log artifacts. `operating_point` assertions compare the checked probe's
 DC value against the probe-unit threshold (`threshold_v`, `threshold_a`, or
 `threshold_w`) without time or frequency fields. DC scenarios participate in
 the same `analog.sweeps` expansion and `ANALOG_SWEEP_MARGIN_SUMMARY` worst
-corner reports as transient and AC/Bode scenarios.
+corner reports as transient and AC/Bode scenarios. The GUI run-setup editor
+can create generated-from-board `analog_dc` observations directly, and its
+check editor can add either individual `operating_point` checks or preset
+3.3 V rail, 5 V rail, and 2.5 V midpoint bias windows.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

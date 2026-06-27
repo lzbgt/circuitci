@@ -24,6 +24,14 @@ pub(super) struct AnalogAcScenarioDraft {
     pub(super) points_per_decade: u32,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AnalogDcScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+}
+
 #[cfg(test)]
 pub(super) fn append_analog_transient_scenario(
     text: &str,
@@ -70,6 +78,23 @@ pub(super) fn append_analog_ac_scenario_with_project_path(
             stop_frequency_hz: draft.stop_frequency_hz,
             points_per_decade: draft.points_per_decade,
         },
+    )
+}
+
+pub(super) fn append_analog_dc_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogDcScenarioDraft,
+) -> Result<String> {
+    validate_dc_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::Dc,
     )
 }
 
@@ -171,6 +196,18 @@ fn validate_ac_draft(draft: &AnalogAcScenarioDraft) -> Result<()> {
         anyhow::bail!(
             "Analog AC/Bode start and stop frequencies must be finite and positive, stop must exceed start, and points per decade must be in 1..=1000."
         );
+    }
+    Ok(())
+}
+
+fn validate_dc_draft(draft: &AnalogDcScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
     }
     Ok(())
 }
@@ -282,6 +319,7 @@ enum GeneratedAnalogScenarioKind {
         stop_frequency_hz: f64,
         points_per_decade: u32,
     },
+    Dc,
 }
 
 impl GeneratedAnalogScenarioKind {
@@ -289,6 +327,7 @@ impl GeneratedAnalogScenarioKind {
         match self {
             Self::Transient { .. } => "analog_transient",
             Self::Ac { .. } => "analog_ac",
+            Self::Dc => "analog_dc",
         }
     }
 
@@ -296,6 +335,7 @@ impl GeneratedAnalogScenarioKind {
         match self {
             Self::Transient { .. } => "SPICE_TRANSIENT_ANALYSIS",
             Self::Ac { .. } => "SPICE_AC_ANALYSIS",
+            Self::Dc => "SPICE_DC_ANALYSIS",
         }
     }
 }
@@ -373,6 +413,9 @@ fn analog_block(
                 serde_yaml_ng::to_value(points_per_decade)
                     .context("Failed to encode AC points_per_decade.")?,
             );
+        }
+        GeneratedAnalogScenarioKind::Dc => {
+            insert_string(&mut analysis, "type", "op");
         }
     }
     analog.insert(key("analysis"), serde_yaml_ng::Value::Mapping(analysis));

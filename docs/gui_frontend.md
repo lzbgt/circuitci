@@ -334,21 +334,26 @@ Model-section sweeps emit `.lib "path" section` cards during ngspice execution.
 The same panel exposes one-click corner presets for supply, load, temperature,
 model-selector, and RC-tolerance sweeps, all persisted as ordinary
 `analog.sweeps` data.
-The run-setup editor can create either generated transient observations or
-generated AC/Bode observations. AC/Bode creation writes a normal `analog_ac`
+The run-setup editor can create generated transient, AC/Bode, or DC
+operating-point observations. AC/Bode creation writes a normal `analog_ac`
 scenario with start/stop frequency, points per decade, generated board
-component inclusion, ground binding, and an initial voltage probe, so a
-frequency-response observation can be authored from the GUI without a
-hand-authored SPICE deck.
-The check editor can author transient assertions and AC/Bode assertions. AC
-checks expose frequency fields for gain or phase at a frequency, gain
-crossing-frequency limits, and threshold-only phase/gain margin checks, then
-serialize normal `analog.assertions` entries with `at_hz`,
-`frequency_limit_hz`, `threshold_db`, or `threshold_deg`. For AC/Bode run
-setups, the same editor offers Bode check presets that append ordinary
-assertion rows for common low-pass, unity-gain, and loop-stability
-observations, so the checks automatically participate in sweep worst-corner
-margin summaries, reports, and scope bundles.
+component inclusion, ground binding, and an initial voltage probe. DC creation
+writes a normal `analog_dc` scenario with `analysis: {type: op}`, generated
+board component inclusion, ground binding, and an initial voltage probe, so
+bias observations can be authored from the GUI without a hand-authored SPICE
+deck.
+The check editor can author transient, AC/Bode, and DC operating-point
+assertions. AC checks expose frequency fields for gain or phase at a
+frequency, gain crossing-frequency limits, and threshold-only phase/gain
+margin checks, then serialize normal `analog.assertions` entries with
+`at_hz`, `frequency_limit_hz`, `threshold_db`, or `threshold_deg`. DC checks
+serialize `aggregation: operating_point` with probe-unit thresholds and no
+time or frequency fields. For AC/Bode run setups, the same editor offers Bode
+check presets that append ordinary assertion rows for common low-pass,
+unity-gain, and loop-stability observations. For DC run setups, it offers
+3.3 V rail, 5 V rail, and 2.5 V midpoint presets. These checks automatically
+participate in sweep worst-corner margin summaries, reports, and scope
+bundles.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the

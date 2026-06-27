@@ -182,6 +182,13 @@ pub(super) fn replace_generated_settings(
             serde_yaml_ng::to_value(draft.points_per_decade)
                 .context("Failed to encode AC points_per_decade.")?,
         );
+    } else if scenario.scenario_type == "analog_dc" {
+        insert_string(analysis_mapping, "type", "op");
+        analysis_mapping.remove(key("stop_time_us"));
+        analysis_mapping.remove(key("max_step_us"));
+        analysis_mapping.remove(key("start_frequency_hz"));
+        analysis_mapping.remove(key("stop_frequency_hz"));
+        analysis_mapping.remove(key("points_per_decade"));
     } else {
         validate_transient_settings(draft)?;
         insert_string(analysis_mapping, "type", "tran");
@@ -1199,6 +1206,39 @@ scenarios:
                 .iter()
                 .any(|binding| binding.net == "gnd" && binding.node != "0")
         );
+    }
+
+    #[test]
+    fn replace_generated_settings_preserves_dc_operating_point_analysis() {
+        let yaml = project_yaml()
+            .replace("type: analog_transient", "type: analog_dc")
+            .replace(
+                "analysis: {type: tran, stop_time_us: 100.0, max_step_us: 1.0}",
+                "analysis: {type: op}",
+            );
+        let edited = replace_generated_settings(
+            &yaml,
+            &AnalogGeneratedSettingsDraft {
+                scenario_name: "generated_transient".to_string(),
+                ground_net: "gnd".to_string(),
+                stop_time_us: 250.0,
+                max_step_us: 2.5,
+                start_frequency_hz: 100.0,
+                stop_frequency_hz: 100_000.0,
+                points_per_decade: 40,
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let scenario = &project.scenarios[0];
+        assert_eq!(scenario.scenario_type, "analog_dc");
+        let analog = scenario.analog.as_ref().unwrap();
+        assert_eq!(analog.analysis.analysis_type, "op");
+        assert_eq!(analog.analysis.stop_time_us, 0.0);
+        assert_eq!(analog.analysis.max_step_us, 0.0);
+        assert_eq!(analog.analysis.start_frequency_hz, None);
+        assert_eq!(analog.analysis.stop_frequency_hz, None);
+        assert_eq!(analog.analysis.points_per_decade, None);
     }
 
     #[test]
