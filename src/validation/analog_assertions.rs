@@ -15,11 +15,25 @@ pub(super) struct AssertionThreshold {
     pub(super) limit_key: &'static str,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AnalogAssertionMeasurement {
+    pub(super) assertion_name: String,
+    pub(super) probe_name: String,
+    pub(super) measured: f64,
+    pub(super) limit: f64,
+    pub(super) margin: f64,
+    pub(super) relation: &'static str,
+    pub(super) unit: &'static str,
+    pub(super) quantity: String,
+    pub(super) passed: bool,
+}
+
 pub(super) fn evaluate_waveform_assertions(
     scenario: &Scenario,
     run: &NgspiceRun,
     findings: &mut Vec<Finding>,
-) {
+) -> Vec<AnalogAssertionMeasurement> {
+    let mut measurements = Vec::new();
     let analog = scenario
         .analog
         .as_ref()
@@ -89,15 +103,30 @@ pub(super) fn evaluate_waveform_assertions(
                 continue;
             }
         };
-        let passed = match assertion.relation {
-            AnalogRelation::Below => measured < comparison_threshold.value,
-            AnalogRelation::Above => measured > comparison_threshold.value,
+        let (relation, margin, passed) = match assertion.relation {
+            AnalogRelation::Below => (
+                "below",
+                comparison_threshold.value - measured,
+                measured < comparison_threshold.value,
+            ),
+            AnalogRelation::Above => (
+                "above",
+                measured - comparison_threshold.value,
+                measured > comparison_threshold.value,
+            ),
         };
+        measurements.push(AnalogAssertionMeasurement {
+            assertion_name: assertion.name.clone(),
+            probe_name: assertion.probe.clone(),
+            measured,
+            limit: comparison_threshold.value,
+            margin,
+            relation,
+            unit: comparison_threshold.unit,
+            quantity: measured_quantity_name(assertion, &probe.quantity).to_string(),
+            passed,
+        });
         if !passed {
-            let relation = match assertion.relation {
-                AnalogRelation::Below => "below",
-                AnalogRelation::Above => "above",
-            };
             let aggregation = aggregation_label(&assertion.aggregation);
             let mut finding = Finding::critical(
                 SPICE_TRANSIENT_ANALYSIS,
@@ -154,6 +183,7 @@ pub(super) fn evaluate_waveform_assertions(
             findings.push(finding);
         }
     }
+    measurements
 }
 
 pub(super) fn validate_probe_contract(probe: &AnalogProbe) -> Result<(), String> {

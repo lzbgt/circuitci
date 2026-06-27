@@ -95,6 +95,24 @@ Projects using `generic`, `estimated`, or `low` confidence component models must
 
 ## Additional Rule Findings
 
+### `ANALOG_SWEEP_MARGIN_SUMMARY`
+
+Analog transient scenarios with `analog.sweeps` emit one informational summary
+per evaluated waveform assertion. These findings do not change pass/fail
+semantics; they identify the limiting sweep corner so designers can see which
+input values control margin.
+
+Typical fields:
+
+- `measured.analog_sweep`: sweep name.
+- `measured.analog_corner`: corner label such as `corner_003`.
+- `measured.analog_parameters`: parameter/value map used for that corner.
+- `measured.assertion`, `measured.probe`, `measured.measured_value`,
+  `measured.measured_unit`, `measured.margin`, `measured.passed`, and
+  `measured.evaluated_corners`.
+- `limit.relation`, `limit.limit_value`, `limit.limit_unit`, and
+  `limit.minimum_margin`.
+
 Reset/boot/download rules use the same finding object. Required IDs:
 
 - `RESET_RELEASE_AFTER_POWER_VALID`

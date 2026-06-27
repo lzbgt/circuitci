@@ -2586,3 +2586,6 @@ bounded Cartesian product of explicit SPICE parameter values. Parameter names
 must be valid SPICE `.param` identifiers, and sweep execution is capped to keep
 GUI and CI runs predictable. Each corner writes separate waveform artifacts and
 tags assertion findings with the sweep name, corner name, and parameter values.
+For every assertion that is evaluated across a sweep, the report also emits an
+`ANALOG_SWEEP_MARGIN_SUMMARY` info finding that points at the worst margin
+corner, measured value, limit, relation, and parameter values.

@@ -133,9 +133,12 @@ windows, rising/falling crossing-time checks, minimum high/low pulse-width
 checks, duty-cycle checks, and threshold crossing-count checks for no-recross or
 ringing budgets with voltage/current/power decision thresholds. Analog run
 setups can also declare bounded SPICE `.param` sweeps; each corner records the
-sweep name, corner name, and parameter values on generated findings. A complete
-physical acceptance language still needs setup/hold, integration/energy, and
-worst-case margin summaries across richer temperature/model/load corners.
+sweep name, corner name, and parameter values on generated findings. Swept
+assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify
+the worst evaluated corner, parameter values, measured value, limit, relation,
+and numeric margin for each assertion. A complete physical acceptance language
+still needs setup/hold, integration/energy, and richer temperature/model/load
+corner sources.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode

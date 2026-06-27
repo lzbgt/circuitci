@@ -93,7 +93,8 @@ Current analog support:
 - Generated Board IR transient decks for passives, independent voltage and
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Bounded SPICE `.param` sweeps for analog run inputs, with each sweep corner
-  exported as its own waveform/artifact set and tagged on findings.
+  exported as its own waveform/artifact set, tagged on findings, and summarized
+  with per-assertion worst-corner margin info findings.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter, extra parameter add/remove controls, and
   declared corner-count summaries without editing YAML by hand.

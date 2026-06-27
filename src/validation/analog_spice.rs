@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 
 use super::SPICE_TRANSIENT_ANALYSIS;
 use super::analog_assertions::{
-    evaluate_waveform_assertions, quantity_name, threshold_count, threshold_for,
-    validate_assertion_contract, validate_probe_contract,
+    AnalogAssertionMeasurement, evaluate_waveform_assertions, quantity_name, threshold_count,
+    threshold_for, validate_assertion_contract, validate_probe_contract,
 };
 use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
@@ -24,6 +24,7 @@ use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
 
 const MAX_ANALOG_SWEEP_CORNERS: usize = 64;
+const ANALOG_SWEEP_MARGIN_SUMMARY: &str = "ANALOG_SWEEP_MARGIN_SUMMARY";
 
 pub(super) struct AnalogTransientSinks<'a> {
     pub(super) findings: &'a mut Vec<Finding>,
@@ -439,6 +440,7 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
     }
 
     let operating_expressions = operating_probe_expressions(&operating_limits);
+    let mut sweep_measurements = Vec::new();
     for run_plan in run_plans {
         if should_cancel() {
             push_canceled_finding(findings, scenario);
@@ -481,7 +483,12 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
                         analog.assertions.len()
                     ),
                 );
-                evaluate_waveform_assertions(scenario, &run, findings);
+                let assertion_measurements = evaluate_waveform_assertions(scenario, &run, findings);
+                record_sweep_measurements(
+                    &mut sweep_measurements,
+                    &run_plan,
+                    assertion_measurements,
+                );
                 on_progress(
                     "Evaluating analog limits",
                     format!("{} operating probe(s).", operating_limits.probes.len()),
@@ -512,6 +519,7 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
             }
         }
     }
+    push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
 }
 
 fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {
@@ -683,6 +691,120 @@ fn parameter_override_map(overrides: &[ParameterOverride]) -> BTreeMap<String, f
         .collect()
 }
 
+#[derive(Debug, Clone)]
+struct SweepAssertionMeasurement {
+    sweep_name: String,
+    corner_name: String,
+    parameters: BTreeMap<String, f64>,
+    assertion: AnalogAssertionMeasurement,
+}
+
+fn record_sweep_measurements(
+    output: &mut Vec<SweepAssertionMeasurement>,
+    run_plan: &AnalogRunPlan,
+    measurements: Vec<AnalogAssertionMeasurement>,
+) {
+    let Some(sweep_name) = &run_plan.sweep_name else {
+        return;
+    };
+    let parameters = parameter_override_map(&run_plan.parameter_overrides);
+    output.extend(
+        measurements
+            .into_iter()
+            .map(|assertion| SweepAssertionMeasurement {
+                sweep_name: sweep_name.clone(),
+                corner_name: run_plan.corner_name.clone(),
+                parameters: parameters.clone(),
+                assertion,
+            }),
+    );
+}
+
+fn push_sweep_margin_summaries(
+    findings: &mut Vec<Finding>,
+    scenario: &Scenario,
+    measurements: &[SweepAssertionMeasurement],
+) {
+    let mut worst_by_assertion: BTreeMap<(String, String), &SweepAssertionMeasurement> =
+        BTreeMap::new();
+    let mut counts_by_assertion: BTreeMap<(String, String), usize> = BTreeMap::new();
+    for measurement in measurements {
+        let key = (
+            measurement.sweep_name.clone(),
+            measurement.assertion.assertion_name.clone(),
+        );
+        *counts_by_assertion.entry(key.clone()).or_default() += 1;
+        let replace = worst_by_assertion
+            .get(&key)
+            .is_none_or(|current| measurement.assertion.margin < current.assertion.margin);
+        if replace {
+            worst_by_assertion.insert(key, measurement);
+        }
+    }
+    for ((sweep_name, assertion_name), worst) in worst_by_assertion {
+        let evaluated_corners = counts_by_assertion
+            .get(&(sweep_name.clone(), assertion_name.clone()))
+            .copied()
+            .unwrap_or(0);
+        let mut finding = Finding::info(
+            ANALOG_SWEEP_MARGIN_SUMMARY,
+            &scenario.name,
+            format!(
+                "Analog sweep {sweep_name} worst margin for assertion {assertion_name} is {:.6} {} at {}.",
+                worst.assertion.margin, worst.assertion.unit, worst.corner_name
+            ),
+        );
+        finding
+            .measured
+            .insert("analog_sweep".to_string(), json!(sweep_name));
+        finding
+            .measured
+            .insert("analog_corner".to_string(), json!(worst.corner_name));
+        finding.measured.insert(
+            "analog_parameters".to_string(),
+            json!(worst.parameters.clone()),
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!(assertion_name));
+        finding
+            .measured
+            .insert("probe".to_string(), json!(&worst.assertion.probe_name));
+        finding
+            .measured
+            .insert("quantity".to_string(), json!(&worst.assertion.quantity));
+        finding.measured.insert(
+            "measured_value".to_string(),
+            json!(worst.assertion.measured),
+        );
+        finding
+            .measured
+            .insert("measured_unit".to_string(), json!(worst.assertion.unit));
+        finding
+            .measured
+            .insert("margin".to_string(), json!(worst.assertion.margin));
+        finding
+            .measured
+            .insert("passed".to_string(), json!(worst.assertion.passed));
+        finding
+            .measured
+            .insert("evaluated_corners".to_string(), json!(evaluated_corners));
+        finding
+            .limit
+            .insert("relation".to_string(), json!(worst.assertion.relation));
+        finding
+            .limit
+            .insert("limit_value".to_string(), json!(worst.assertion.limit));
+        finding
+            .limit
+            .insert("limit_unit".to_string(), json!(worst.assertion.unit));
+        finding
+            .limit
+            .insert("minimum_margin".to_string(), json!(0.0));
+        findings.push(finding);
+    }
+}
+
 fn netlist_source_name(source: &AnalogNetlistSource) -> &'static str {
     match source {
         AnalogNetlistSource::File => "file-backed",
@@ -775,11 +897,14 @@ fn prepare_source_netlist(
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogRunPlan, MAX_ANALOG_SWEEP_CORNERS, ParameterOverride, analog_run_plans,
+        ANALOG_SWEEP_MARGIN_SUMMARY, AnalogRunPlan, MAX_ANALOG_SWEEP_CORNERS, ParameterOverride,
+        SweepAssertionMeasurement, analog_run_plans, push_sweep_margin_summaries,
         tag_corner_finding,
     };
     use crate::board_ir::BoardProject;
     use crate::reports::Finding;
+    use crate::validation::analog_assertions::AnalogAssertionMeasurement;
+    use std::collections::BTreeMap;
 
     fn rc_sweep_project_yaml(parameter_yaml: &str) -> String {
         format!(
@@ -906,5 +1031,61 @@ scenarios:
         assert_eq!(finding.measured["analog_sweep"], "rc_tolerance");
         assert_eq!(finding.measured["analog_corner"], "corner_007");
         assert_eq!(finding.measured["analog_parameters"]["RIN_VALUE"], 1050.0);
+    }
+
+    #[test]
+    fn sweep_margin_summary_reports_worst_assertion_corner() {
+        let project: BoardProject = serde_yaml_ng::from_str(&rc_sweep_project_yaml(
+            r#"            - name: RIN_VALUE
+              values: [950.0, 1000.0, 1050.0]
+"#,
+        ))
+        .unwrap();
+        let scenario = &project.scenarios[0];
+        let measurements = vec![
+            sweep_measurement("corner_001", 950.0, 0.12, 0.52, true),
+            sweep_measurement("corner_002", 1000.0, 0.04, 0.60, true),
+            sweep_measurement("corner_003", 1050.0, -0.02, 0.66, false),
+        ];
+        let mut findings = Vec::new();
+
+        push_sweep_margin_summaries(&mut findings, scenario, &measurements);
+
+        assert_eq!(findings.len(), 1);
+        let summary = &findings[0];
+        assert_eq!(summary.id, ANALOG_SWEEP_MARGIN_SUMMARY);
+        assert_eq!(summary.measured["analog_sweep"], "rc_tolerance");
+        assert_eq!(summary.measured["analog_corner"], "corner_003");
+        assert_eq!(summary.measured["analog_parameters"]["RIN_VALUE"], 1050.0);
+        assert_eq!(summary.measured["assertion"], "filtered_rms_below");
+        assert_eq!(summary.measured["evaluated_corners"], 3);
+        assert_eq!(summary.measured["passed"], false);
+        assert_eq!(summary.limit["relation"], "below");
+        assert_eq!(summary.limit["minimum_margin"], 0.0);
+    }
+
+    fn sweep_measurement(
+        corner_name: &str,
+        parameter_value: f64,
+        margin: f64,
+        measured: f64,
+        passed: bool,
+    ) -> SweepAssertionMeasurement {
+        SweepAssertionMeasurement {
+            sweep_name: "rc_tolerance".to_string(),
+            corner_name: corner_name.to_string(),
+            parameters: BTreeMap::from([("RIN_VALUE".to_string(), parameter_value)]),
+            assertion: AnalogAssertionMeasurement {
+                assertion_name: "filtered_rms_below".to_string(),
+                probe_name: "v_filtered".to_string(),
+                measured,
+                limit: 0.64,
+                margin,
+                relation: "below",
+                unit: "V",
+                quantity: "rms voltage".to_string(),
+                passed,
+            },
+        }
     }
 }

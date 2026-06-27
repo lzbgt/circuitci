@@ -197,6 +197,29 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
         assert_eq!(report["summary"]["critical"], 0);
         assert!(report["failures"].as_array().unwrap().is_empty());
         assert_eq!(report["waveforms"].as_array().unwrap().len(), 9);
+        let sweep_summaries: Vec<&Value> = report["infos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|info| info["id"] == "ANALOG_SWEEP_MARGIN_SUMMARY")
+            .collect();
+        assert_eq!(sweep_summaries.len(), 2);
+        for summary in &sweep_summaries {
+            assert_eq!(summary["measured"]["analog_sweep"], "rc_tolerance");
+            assert_eq!(summary["measured"]["evaluated_corners"], 9);
+            assert!(
+                summary["measured"]["margin"].as_f64().unwrap() > 0.0,
+                "expected passing sweep margin summary, got {summary:#?}"
+            );
+        }
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "input_rms_present"
+                && summary["limit"]["relation"] == "above"
+        }));
+        assert!(sweep_summaries.iter().any(|summary| {
+            summary["measured"]["assertion"] == "filtered_rms_attenuated"
+                && summary["limit"]["relation"] == "below"
+        }));
         let artifacts = report["artifacts"].as_array().unwrap();
         assert!(
             artifacts
