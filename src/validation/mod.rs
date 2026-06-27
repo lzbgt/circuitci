@@ -3,6 +3,9 @@ mod analog_assertions;
 mod analog_dc_assertions;
 mod analog_dc_runner;
 mod analog_dc_spice;
+mod analog_noise_assertions;
+mod analog_noise_runner;
+mod analog_noise_spice;
 mod analog_operating_limits;
 mod analog_runner;
 mod analog_soa;
@@ -84,6 +87,7 @@ pub(super) const USB_RETURN_PATH_VALID: &str = "USB_RETURN_PATH_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_AC_ANALYSIS: &str = "SPICE_AC_ANALYSIS";
 pub(super) const SPICE_DC_ANALYSIS: &str = "SPICE_DC_ANALYSIS";
+pub(super) const SPICE_NOISE_ANALYSIS: &str = "SPICE_NOISE_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
@@ -116,6 +120,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_transient",
     "analog_ac",
     "analog_dc",
+    "analog_noise",
     "motor_drive",
     "load_budget",
     "model_quality",
@@ -548,6 +553,21 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_NOISE_ANALYSIS if scenario.scenario_type == "analog_noise" => {
+                    let mut sinks = analog_noise_spice::AnalogNoiseSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                        waveforms: &mut waveforms,
+                    };
+                    analog_noise_spice::validate_spice_noise_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
                 }
@@ -675,6 +695,7 @@ where
                 | SPICE_TRANSIENT_ANALYSIS
                 | SPICE_AC_ANALYSIS
                 | SPICE_DC_ANALYSIS
+                | SPICE_NOISE_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_BRIDGE_SWITCHING_VALID

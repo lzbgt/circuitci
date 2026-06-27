@@ -46,6 +46,7 @@ pub(super) fn validate_ac_assertion_contract(
         || assertion.threshold_vs.is_some()
         || assertion.threshold_c.is_some()
         || assertion.threshold_j.is_some()
+        || assertion.threshold_v_per_sqrt_hz.is_some()
         || assertion.target_v.is_some()
         || assertion.target_a.is_some()
         || assertion.target_w.is_some()
@@ -126,7 +127,11 @@ pub(super) fn validate_ac_assertion_contract(
         | AnalogAggregation::DutyCycle
         | AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
-        | AnalogAggregation::FallingCrossingCount => unreachable!("filtered by is_ac_aggregation"),
+        | AnalogAggregation::FallingCrossingCount
+        | AnalogAggregation::OutputNoiseDensityAtFrequency
+        | AnalogAggregation::InputNoiseDensityAtFrequency
+        | AnalogAggregation::IntegratedOutputNoise
+        | AnalogAggregation::IntegratedInputNoise => unreachable!("filtered by is_ac_aggregation"),
     }
     Ok(())
 }
@@ -358,7 +363,11 @@ fn measure_ac_assertion(
         | AnalogAggregation::DutyCycle
         | AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
-        | AnalogAggregation::FallingCrossingCount => Err("unsupported AC aggregation".to_string()),
+        | AnalogAggregation::FallingCrossingCount
+        | AnalogAggregation::OutputNoiseDensityAtFrequency
+        | AnalogAggregation::InputNoiseDensityAtFrequency
+        | AnalogAggregation::IntegratedOutputNoise
+        | AnalogAggregation::IntegratedInputNoise => Err("unsupported AC aggregation".to_string()),
     }
 }
 

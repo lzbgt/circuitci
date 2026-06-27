@@ -327,6 +327,12 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::GainMarginDb => {
             return Err("AC aggregations are only valid for analog_ac scenarios".to_string());
         }
+        AnalogAggregation::OutputNoiseDensityAtFrequency
+        | AnalogAggregation::InputNoiseDensityAtFrequency
+        | AnalogAggregation::IntegratedOutputNoise
+        | AnalogAggregation::IntegratedInputNoise => {
+            return Err("noise aggregations are only valid for analog_noise scenarios".to_string());
+        }
         AnalogAggregation::OperatingPoint => {
             return Err(
                 "operating_point aggregation is only valid for analog_dc scenarios".to_string(),
@@ -566,6 +572,7 @@ pub(super) fn threshold_count(assertion: &AnalogAssertion) -> usize {
         assertion.threshold_vs,
         assertion.threshold_c,
         assertion.threshold_j,
+        assertion.threshold_v_per_sqrt_hz,
     ]
     .into_iter()
     .filter(|threshold| threshold.is_some_and(f64::is_finite))
@@ -786,6 +793,10 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing frequency",
         AnalogAggregation::PhaseMarginDeg => "phase margin",
         AnalogAggregation::GainMarginDb => "gain margin",
+        AnalogAggregation::OutputNoiseDensityAtFrequency => "output noise density",
+        AnalogAggregation::InputNoiseDensityAtFrequency => "input noise density",
+        AnalogAggregation::IntegratedOutputNoise => "integrated output noise",
+        AnalogAggregation::IntegratedInputNoise => "integrated input noise",
     }
 }
 
@@ -868,6 +879,13 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
         }
         AnalogAggregation::PhaseMarginDeg => " at unity-gain crossing".to_string(),
         AnalogAggregation::GainMarginDb => " at -180 deg phase crossing".to_string(),
+        AnalogAggregation::OutputNoiseDensityAtFrequency
+        | AnalogAggregation::InputNoiseDensityAtFrequency => {
+            format!(" at {} Hz", assertion.at_hz.unwrap_or_default())
+        }
+        AnalogAggregation::IntegratedOutputNoise | AnalogAggregation::IntegratedInputNoise => {
+            String::new()
+        }
     }
 }
 
@@ -1028,6 +1046,24 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("threshold_db".to_string(), json!(threshold_db));
             }
         }
+        AnalogAggregation::OutputNoiseDensityAtFrequency
+        | AnalogAggregation::InputNoiseDensityAtFrequency => {
+            if let Some(at_hz) = assertion.at_hz {
+                finding.limit.insert("at_hz".to_string(), json!(at_hz));
+            }
+            if let Some(threshold) = assertion.threshold_v_per_sqrt_hz {
+                finding
+                    .limit
+                    .insert("threshold_v_per_sqrt_hz".to_string(), json!(threshold));
+            }
+        }
+        AnalogAggregation::IntegratedOutputNoise | AnalogAggregation::IntegratedInputNoise => {
+            if let Some(threshold_v) = assertion.threshold_v {
+                finding
+                    .limit
+                    .insert("threshold_v".to_string(), json!(threshold_v));
+            }
+        }
     }
 }
 
@@ -1086,6 +1122,13 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
             }
         }
         AnalogAggregation::PhaseMarginDeg | AnalogAggregation::GainMarginDb => {}
+        AnalogAggregation::OutputNoiseDensityAtFrequency
+        | AnalogAggregation::InputNoiseDensityAtFrequency => {
+            if let Some(at_hz) = assertion.at_hz {
+                finding.measured.insert("at_hz".to_string(), json!(at_hz));
+            }
+        }
+        AnalogAggregation::IntegratedOutputNoise | AnalogAggregation::IntegratedInputNoise => {}
     }
 }
 
@@ -1200,6 +1243,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1243,6 +1287,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1299,6 +1344,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1335,6 +1381,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1371,6 +1418,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1407,6 +1455,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1443,6 +1492,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1479,6 +1529,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,
@@ -1517,6 +1568,7 @@ mod tests {
             threshold_j: None,
             threshold_db: None,
             threshold_deg: None,
+            threshold_v_per_sqrt_hz: None,
             reference_threshold_v: None,
             reference_threshold_a: None,
             reference_threshold_w: None,

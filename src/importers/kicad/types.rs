@@ -503,6 +503,8 @@ pub(super) struct AssertionYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) threshold_j: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) threshold_v_per_sqrt_hz: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) reference_threshold_v: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) reference_threshold_a: Option<f64>,

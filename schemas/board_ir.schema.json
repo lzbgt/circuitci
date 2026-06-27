@@ -1459,12 +1459,15 @@
                 "type": "object",
                 "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran", "ac"] },
+                  "type": { "enum": ["tran", "ac", "op", "noise"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
                   "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "stop_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
-                  "points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 }
+                  "points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "noise_output_node": { "type": "string", "minLength": 1 },
+                  "noise_reference_node": { "type": "string", "minLength": 1 },
+                  "noise_input_source": { "type": "string", "minLength": 1 }
                 },
                 "allOf": [
                   {
@@ -1474,6 +1477,14 @@
                   {
                     "if": { "properties": { "type": { "const": "ac" } } },
                     "then": { "required": ["start_frequency_hz", "stop_frequency_hz"] }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "op" } } },
+                    "then": { "not": { "anyOf": [{ "required": ["stop_time_us"] }, { "required": ["max_step_us"] }, { "required": ["start_frequency_hz"] }, { "required": ["stop_frequency_hz"] }, { "required": ["points_per_decade"] }] } }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "noise" } } },
+                    "then": { "required": ["start_frequency_hz", "stop_frequency_hz", "points_per_decade", "noise_output_node", "noise_input_source"] }
                   }
                 ],
                 "additionalProperties": false
@@ -1602,7 +1613,7 @@
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
                     "count_limit": { "type": "number", "minimum": 0 },
                     "overshoot_limit_percent": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "operating_point", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count", "gain_db_at_frequency", "phase_deg_at_frequency", "rising_gain_crossing_frequency", "falling_gain_crossing_frequency", "phase_margin_deg", "gain_margin_db"] },
+                    "aggregation": { "enum": ["sample", "operating_point", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count", "gain_db_at_frequency", "phase_deg_at_frequency", "rising_gain_crossing_frequency", "falling_gain_crossing_frequency", "phase_margin_deg", "gain_margin_db", "output_noise_density_at_frequency", "input_noise_density_at_frequency", "integrated_output_noise", "integrated_input_noise"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1612,6 +1623,7 @@
                     "threshold_j": { "type": "number" },
                     "threshold_db": { "type": "number" },
                     "threshold_deg": { "type": "number" },
+                    "threshold_v_per_sqrt_hz": { "type": "number" },
                     "reference_threshold_v": { "type": "number" },
                     "reference_threshold_a": { "type": "number" },
                     "reference_threshold_w": { "type": "number" },
@@ -1802,18 +1814,77 @@
                                         }
                                       },
                                       "else": {
-                                        "required": ["at_us"],
-                                        "not": {
-                                          "anyOf": [
-                                            { "required": ["at_hz"] },
-                                            { "required": ["start_us"] },
-                                            { "required": ["end_us"] },
-                                            { "required": ["time_limit_us"] },
-                                            { "required": ["frequency_limit_hz"] },
-                                            { "required": ["duty_limit_percent"] },
-                                            { "required": ["count_limit"] },
-                                            { "required": ["overshoot_limit_percent"] }
-                                          ]
+                                        "if": {
+                                          "required": ["aggregation"],
+                                          "properties": { "aggregation": { "enum": ["output_noise_density_at_frequency", "input_noise_density_at_frequency"] } }
+                                        },
+                                        "then": {
+                                          "required": ["at_hz", "threshold_v_per_sqrt_hz"],
+                                          "not": {
+                                            "anyOf": [
+                                              { "required": ["at_us"] },
+                                              { "required": ["start_us"] },
+                                              { "required": ["end_us"] },
+                                              { "required": ["time_limit_us"] },
+                                              { "required": ["frequency_limit_hz"] },
+                                              { "required": ["duty_limit_percent"] },
+                                              { "required": ["count_limit"] },
+                                              { "required": ["overshoot_limit_percent"] },
+                                              { "required": ["threshold_v"] },
+                                              { "required": ["threshold_a"] },
+                                              { "required": ["threshold_w"] },
+                                              { "required": ["threshold_vs"] },
+                                              { "required": ["threshold_c"] },
+                                              { "required": ["threshold_j"] },
+                                              { "required": ["threshold_db"] },
+                                              { "required": ["threshold_deg"] }
+                                            ]
+                                          }
+                                        },
+                                        "else": {
+                                          "if": {
+                                            "required": ["aggregation"],
+                                            "properties": { "aggregation": { "enum": ["integrated_output_noise", "integrated_input_noise"] } }
+                                          },
+                                          "then": {
+                                            "required": ["threshold_v"],
+                                            "not": {
+                                              "anyOf": [
+                                                { "required": ["at_us"] },
+                                                { "required": ["at_hz"] },
+                                                { "required": ["start_us"] },
+                                                { "required": ["end_us"] },
+                                                { "required": ["time_limit_us"] },
+                                                { "required": ["frequency_limit_hz"] },
+                                                { "required": ["duty_limit_percent"] },
+                                                { "required": ["count_limit"] },
+                                                { "required": ["overshoot_limit_percent"] },
+                                                { "required": ["threshold_a"] },
+                                                { "required": ["threshold_w"] },
+                                                { "required": ["threshold_vs"] },
+                                                { "required": ["threshold_c"] },
+                                                { "required": ["threshold_j"] },
+                                                { "required": ["threshold_db"] },
+                                                { "required": ["threshold_deg"] },
+                                                { "required": ["threshold_v_per_sqrt_hz"] }
+                                              ]
+                                            }
+                                          },
+                                          "else": {
+                                            "required": ["at_us"],
+                                            "not": {
+                                              "anyOf": [
+                                                { "required": ["at_hz"] },
+                                                { "required": ["start_us"] },
+                                                { "required": ["end_us"] },
+                                                { "required": ["time_limit_us"] },
+                                                { "required": ["frequency_limit_hz"] },
+                                                { "required": ["duty_limit_percent"] },
+                                                { "required": ["count_limit"] },
+                                                { "required": ["overshoot_limit_percent"] }
+                                              ]
+                                            }
+                                          }
                                         }
                                       }
                                     }
@@ -1835,6 +1906,7 @@
                         { "required": ["threshold_j"] },
                         { "required": ["threshold_db"] },
                         { "required": ["threshold_deg"] },
+                        { "required": ["threshold_v_per_sqrt_hz"] },
                         { "required": ["target_v"] },
                         { "required": ["target_a"] },
                         { "required": ["target_w"] }

@@ -810,6 +810,8 @@ fn assertion_threshold_label(assertion: &crate::board_ir::AnalogAssertion) -> St
         format!("{} dB", compact_number(value))
     } else if let Some(value) = assertion.threshold_deg {
         format!("{} deg", compact_number(value))
+    } else if let Some(value) = assertion.threshold_v_per_sqrt_hz {
+        format!("{} V/sqrt(Hz)", compact_number(value))
     } else if let Some(value) = assertion.target_v {
         format!("target {} V", compact_number(value))
     } else if let Some(value) = assertion.target_a {
@@ -942,6 +944,10 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing",
         crate::board_ir::AnalogAggregation::PhaseMarginDeg => "phase margin",
         crate::board_ir::AnalogAggregation::GainMarginDb => "gain margin",
+        crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency => "output noise density",
+        crate::board_ir::AnalogAggregation::InputNoiseDensityAtFrequency => "input noise density",
+        crate::board_ir::AnalogAggregation::IntegratedOutputNoise => "integrated output noise",
+        crate::board_ir::AnalogAggregation::IntegratedInputNoise => "integrated input noise",
     }
 }
 

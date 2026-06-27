@@ -357,6 +357,39 @@ fn generated_dc_bias_observation_validates_with_operating_point_artifacts() {
 }
 
 #[test]
+fn generated_noise_observation_validates_with_noise_artifacts() {
+    let report = run_validation("examples/good_noise_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        let waveforms = report["waveforms"].as_array().unwrap();
+        assert_eq!(waveforms.len(), 1);
+        assert!(
+            waveforms[0]
+                .as_str()
+                .unwrap()
+                .ends_with("noise_spectrum.csv")
+        );
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| artifact.as_str().unwrap().ends_with("noise_total.csv"))
+        );
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| artifact.as_str().unwrap().ends_with("generated_board.cir"))
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn loop_stability_bode_scope_validates_with_margin_checks() {
     let report = run_validation("examples/loop_stability_bode_scope/project.yaml");
     if binary_available("ngspice") {

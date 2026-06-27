@@ -1,0 +1,99 @@
+project:
+  name: good_noise_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: vin
+        B: midpoint
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    R2:
+      model: generic.analog.resistor
+      pins:
+        A: midpoint
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    vin:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    midpoint:
+      kind: digital_or_analog
+      nominal_voltage: 2.5
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: divider_output_noise
+    type: analog_noise
+    checks:
+      - SPICE_NOISE_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, R2]
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: vin, net: vin }
+        - { node: midpoint, net: midpoint }
+      pin_bindings:
+        - { node: vin, endpoint: { component: V1, pin: P } }
+        - { node: "0", endpoint: { component: V1, pin: N } }
+        - { node: vin, endpoint: { component: R1, pin: A } }
+        - { node: midpoint, endpoint: { component: R1, pin: B } }
+        - { node: midpoint, endpoint: { component: R2, pin: A } }
+        - { node: "0", endpoint: { component: R2, pin: B } }
+      analysis:
+        type: noise
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+        noise_output_node: midpoint
+        noise_input_source: V1
+      stimuli:
+        - name: divider_noise_band
+          description: V1 is the input-referred source for output noise over a 10 Hz to 100 kHz band.
+      probes:
+        - name: onoise
+          expression: V(midpoint)
+        - name: inoise
+          expression: V(vin)
+      assertions:
+        - name: output_density_1khz_below_10nv
+          probe: onoise
+          aggregation: output_noise_density_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_v_per_sqrt_hz: 1.0e-8
+        - name: output_rms_noise_below_3_5uv
+          probe: onoise
+          aggregation: integrated_output_noise
+          relation: below
+          threshold_v: 3.5e-6
+        - name: input_referred_rms_noise_below_7uv
+          probe: inoise
+          aggregation: integrated_input_noise
+          relation: below
+          threshold_v: 7.0e-6

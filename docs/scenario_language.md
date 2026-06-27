@@ -148,6 +148,7 @@ Canonical executable check IDs:
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_AC_ANALYSIS`
 - `SPICE_DC_ANALYSIS`
+- `SPICE_NOISE_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
 automatic critical finding emitted by `SPICE_TRANSIENT_ANALYSIS` when generated
@@ -2753,6 +2754,64 @@ corner reports as transient and AC/Bode scenarios. The GUI run-setup editor
 can create generated-from-board `analog_dc` observations directly, and its
 check editor can add either individual `operating_point` checks or preset
 3.3 V rail, 5 V rail, and 2.5 V midpoint bias windows.
+
+Noise observations use the same model-file, node-binding, pin-binding, and
+run-input sweep contract, but run ngspice `.noise` and export both spectral
+density and integrated RMS totals:
+
+```yaml
+scenarios:
+  - name: divider_output_noise
+    type: analog_noise
+    checks:
+      - SPICE_NOISE_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, R2]
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: vin, net: vin }
+        - { node: midpoint, net: midpoint }
+      pin_bindings:
+        - { node: vin, endpoint: { component: V1, pin: P } }
+        - { node: "0", endpoint: { component: V1, pin: N } }
+      analysis:
+        type: noise
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+        noise_output_node: midpoint
+        noise_input_source: V1
+      probes:
+        - name: onoise
+          expression: V(midpoint)
+        - name: inoise
+          expression: V(vin)
+      assertions:
+        - name: output_density_1khz_below_10nv
+          probe: onoise
+          aggregation: output_noise_density_at_frequency
+          relation: below
+          at_hz: 1000.0
+          threshold_v_per_sqrt_hz: 1.0e-8
+        - name: output_rms_noise_below_3_5uv
+          probe: onoise
+          aggregation: integrated_output_noise
+          relation: below
+          threshold_v: 3.5e-6
+```
+
+`SPICE_NOISE_ANALYSIS` currently uses external ngspice export. It emits
+`noise_spectrum_raw.csv`, normalized `noise_spectrum.csv`, `noise_total_raw.csv`,
+normalized `noise_total.csv`, wrapper deck, and solver log artifacts. Density
+assertions use `output_noise_density_at_frequency` or
+`input_noise_density_at_frequency` with `at_hz` and
+`threshold_v_per_sqrt_hz`. Integrated RMS checks use
+`integrated_output_noise` or `integrated_input_noise` with `threshold_v`.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

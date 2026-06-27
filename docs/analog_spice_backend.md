@@ -157,6 +157,31 @@ For a scenario with check `SPICE_DC_ANALYSIS`:
    quiescent operating margins can be reviewed across tolerance, temperature,
    load, and model-section corners.
 
+For a scenario with check `SPICE_NOISE_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as
+   transient, AC, and DC validation.
+2. Require `analysis.type: noise`, finite positive `start_frequency_hz`, finite
+   `stop_frequency_hz` greater than the start frequency, `points_per_decade`
+   in `1..=1000`, `noise_output_node`, and `noise_input_source`. Optional
+   `noise_reference_node` creates a differential output expression.
+3. Select external `ngspice`; noise export currently fails closed for embedded
+   ngspice and Xyce until equivalent export paths are implemented.
+4. Expand bounded run-input sweeps exactly like transient, AC, and DC
+   validation. Temperature corners still emit `.temp`; model-section and
+   generated component-value corners still produce isolated run directories.
+5. Run `.noise`, export the ngspice spectral-density plot, and normalize it to
+   `noise_spectrum.csv` with `frequency_hz`,
+   `onoise_v_per_sqrt_hz`, and `inoise_v_per_sqrt_hz`.
+6. Export the ngspice integrated-total plot to `noise_total.csv` with
+   `onoise_total_v` and `inoise_total_v`.
+7. Evaluate noise assertions over those artifacts. Supported checks are output
+   or input-referred noise density at a frequency using
+   `threshold_v_per_sqrt_hz`, and integrated output or input-referred RMS noise
+   using `threshold_v`.
+8. Preserve `noise_spectrum.csv` paths in the report `waveforms` list and
+   preserve `noise_total.csv` as normal artifacts.
+
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical
 acceptance as passing.

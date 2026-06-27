@@ -1030,6 +1030,12 @@ pub struct AnalogTransientAnalysis {
     pub stop_frequency_hz: Option<f64>,
     #[serde(default)]
     pub points_per_decade: Option<u32>,
+    #[serde(default)]
+    pub noise_output_node: Option<String>,
+    #[serde(default)]
+    pub noise_reference_node: Option<String>,
+    #[serde(default)]
+    pub noise_input_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1171,6 +1177,8 @@ pub struct AnalogAssertion {
     pub threshold_db: Option<f64>,
     #[serde(default, rename = "threshold_deg")]
     pub threshold_deg: Option<f64>,
+    #[serde(default, rename = "threshold_v_per_sqrt_hz")]
+    pub threshold_v_per_sqrt_hz: Option<f64>,
     #[serde(default)]
     pub reference_threshold_v: Option<f64>,
     #[serde(default)]
@@ -1229,6 +1237,10 @@ pub enum AnalogAggregation {
     FallingGainCrossingFrequency,
     PhaseMarginDeg,
     GainMarginDb,
+    OutputNoiseDensityAtFrequency,
+    InputNoiseDensityAtFrequency,
+    IntegratedOutputNoise,
+    IntegratedInputNoise,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

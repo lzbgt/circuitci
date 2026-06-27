@@ -847,6 +847,10 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "falling_gain_crossing_frequency"
             | "phase_margin_deg"
             | "gain_margin_db"
+            | "output_noise_density_at_frequency"
+            | "input_noise_density_at_frequency"
+            | "integrated_output_noise"
+            | "integrated_input_noise"
             | "operating_point"
     ) {
         anyhow::bail!(
@@ -1116,6 +1120,12 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
             }
         }
         "phase_margin_deg" | "gain_margin_db" => {}
+        "output_noise_density_at_frequency" | "input_noise_density_at_frequency" => {
+            if !draft.at_hz.is_finite() || draft.at_hz <= 0.0 {
+                anyhow::bail!("Noise density sample frequency must be finite and positive.");
+            }
+        }
+        "integrated_output_noise" | "integrated_input_noise" => {}
         "operating_point" => {}
         _ => unreachable!("aggregation was validated"),
     }
@@ -1197,6 +1207,14 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         }
         crate::board_ir::AnalogAggregation::PhaseMarginDeg => "phase_margin_deg",
         crate::board_ir::AnalogAggregation::GainMarginDb => "gain_margin_db",
+        crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency => {
+            "output_noise_density_at_frequency"
+        }
+        crate::board_ir::AnalogAggregation::InputNoiseDensityAtFrequency => {
+            "input_noise_density_at_frequency"
+        }
+        crate::board_ir::AnalogAggregation::IntegratedOutputNoise => "integrated_output_noise",
+        crate::board_ir::AnalogAggregation::IntegratedInputNoise => "integrated_input_noise",
     }
 }
 
@@ -1232,6 +1250,26 @@ fn assertion_threshold_label(
             .threshold_deg
             .map(|value| format!("{value:.6} deg"))
             .unwrap_or_else(|| "missing phase threshold".to_string());
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency
+            | crate::board_ir::AnalogAggregation::InputNoiseDensityAtFrequency
+    ) {
+        return assertion
+            .threshold_v_per_sqrt_hz
+            .map(|value| format!("{value:.6} V/sqrt(Hz)"))
+            .unwrap_or_else(|| "missing noise density threshold".to_string());
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::IntegratedOutputNoise
+            | crate::board_ir::AnalogAggregation::IntegratedInputNoise
+    ) {
+        return assertion
+            .threshold_v
+            .map(|value| format!("{value:.6} V"))
+            .unwrap_or_else(|| "missing noise threshold".to_string());
     }
     if matches!(
         assertion.aggregation,
@@ -1316,6 +1354,20 @@ fn assertion_threshold_value(
             | crate::board_ir::AnalogAggregation::PhaseMarginDeg
     ) {
         return assertion.threshold_deg;
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency
+            | crate::board_ir::AnalogAggregation::InputNoiseDensityAtFrequency
+    ) {
+        return assertion.threshold_v_per_sqrt_hz;
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::IntegratedOutputNoise
+            | crate::board_ir::AnalogAggregation::IntegratedInputNoise
+    ) {
+        return assertion.threshold_v;
     }
     if matches!(
         assertion.aggregation,
@@ -1458,6 +1510,14 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         }
         crate::board_ir::AnalogAggregation::PhaseMarginDeg => "unity-gain crossing".to_string(),
         crate::board_ir::AnalogAggregation::GainMarginDb => "phase -180 deg crossing".to_string(),
+        crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency
+        | crate::board_ir::AnalogAggregation::InputNoiseDensityAtFrequency => {
+            format!("{:.6} Hz", assertion.at_hz.unwrap_or_default())
+        }
+        crate::board_ir::AnalogAggregation::IntegratedOutputNoise
+        | crate::board_ir::AnalogAggregation::IntegratedInputNoise => {
+            "integrated noise band".to_string()
+        }
     }
 }
 
@@ -1553,6 +1613,10 @@ fn assertion_value(
             )?;
         }
         "phase_margin_deg" | "gain_margin_db" => {}
+        "output_noise_density_at_frequency" | "input_noise_density_at_frequency" => {
+            insert_number(&mut assertion, "at_hz", draft.at_hz)?;
+        }
+        "integrated_output_noise" | "integrated_input_noise" => {}
         "operating_point" => {}
         _ => unreachable!("aggregation was validated"),
     }
@@ -1610,6 +1674,18 @@ fn threshold_field(aggregation: &str, quantity: &crate::board_ir::AnalogQuantity
     }
     if matches!(aggregation, "phase_deg_at_frequency" | "phase_margin_deg") {
         return "threshold_deg";
+    }
+    if matches!(
+        aggregation,
+        "output_noise_density_at_frequency" | "input_noise_density_at_frequency"
+    ) {
+        return "threshold_v_per_sqrt_hz";
+    }
+    if matches!(
+        aggregation,
+        "integrated_output_noise" | "integrated_input_noise"
+    ) {
+        return "threshold_v";
     }
     if aggregation == "energy" {
         return "threshold_j";

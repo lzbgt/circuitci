@@ -34,6 +34,7 @@ pub(super) fn validate_dc_assertion_contract(assertion: &AnalogAssertion) -> Res
         || assertion.threshold_j.is_some()
         || assertion.threshold_db.is_some()
         || assertion.threshold_deg.is_some()
+        || assertion.threshold_v_per_sqrt_hz.is_some()
         || assertion.target_v.is_some()
         || assertion.target_a.is_some()
         || assertion.target_w.is_some()

@@ -108,12 +108,19 @@ Current analog support:
   compact DC table with scenario, sweep, corner, probe, value, worst-corner
   marker, artifact label, Copy CSV/Markdown actions, and report-bundle export,
   so bias runs are inspectable and preservable without opening report files.
+- `analog_noise` scenarios with `SPICE_NOISE_ANALYSIS` for external-ngspice
+  small-signal noise observations. Noise runs write normalized
+  `noise_spectrum.csv` artifacts with frequency, output noise density, and
+  input-referred noise density, plus `noise_total.csv` artifacts with
+  integrated RMS output and input-referred noise over the declared frequency
+  band. Noise assertions support output/input density at a frequency and
+  integrated output/input RMS noise checks.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
-- Generated Board IR transient, AC/Bode, and DC operating-point decks for
+- Generated Board IR transient, AC/Bode, DC operating-point, and noise decks for
   passives, independent
   voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
   GUI run-setup creation can author generated AC/Bode observations with
