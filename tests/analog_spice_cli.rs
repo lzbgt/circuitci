@@ -196,7 +196,22 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
         assert_eq!(report["result"], "pass");
         assert_eq!(report["summary"]["critical"], 0);
         assert!(report["failures"].as_array().unwrap().is_empty());
-        assert_eq!(report["waveforms"].as_array().unwrap().len(), 9);
+        let waveforms = report["waveforms"].as_array().unwrap();
+        assert_eq!(waveforms.len(), 18);
+        assert_eq!(
+            waveforms
+                .iter()
+                .filter(|waveform| waveform.as_str().unwrap().ends_with("waveform.csv"))
+                .count(),
+            9
+        );
+        assert_eq!(
+            waveforms
+                .iter()
+                .filter(|waveform| waveform.as_str().unwrap().ends_with("bode.csv"))
+                .count(),
+            9
+        );
         let sweep_summaries: Vec<&Value> = report["infos"]
             .as_array()
             .unwrap()
@@ -233,6 +248,16 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
             artifacts
                 .iter()
                 .any(|artifact| { artifact.as_str().unwrap().ends_with("waveform.csv") })
+        );
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("ac_raw.csv") })
+        );
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("bode.csv") })
         );
     } else {
         assert_eq!(report["result"], "fail");

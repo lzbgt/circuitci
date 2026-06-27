@@ -1,0 +1,9 @@
+* Scope-ready RC low-pass small-signal AC response GUI example.
+* R=1 kOhm and C=100 nF set fc = 1/(2*pi*R*C) ~= 1.59 kHz.
+* A 1 V AC source lets Bode export show input/output magnitude and phase.
+.param RIN_VALUE=1k
+.param COUT_VALUE=100n
+VSIN input 0 AC 1
+RIN input filtered {RIN_VALUE}
+COUT filtered 0 {COUT_VALUE}
+.end

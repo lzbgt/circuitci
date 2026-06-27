@@ -1018,10 +1018,18 @@ pub enum AnalogBackend {
 pub struct AnalogTransientAnalysis {
     #[serde(rename = "type")]
     pub analysis_type: String,
+    #[serde(default)]
     #[serde(rename = "stop_time_us")]
     pub stop_time_us: f64,
+    #[serde(default)]
     #[serde(rename = "max_step_us")]
     pub max_step_us: f64,
+    #[serde(default)]
+    pub start_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub stop_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub points_per_decade: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

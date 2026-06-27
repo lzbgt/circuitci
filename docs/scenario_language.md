@@ -74,6 +74,7 @@ Executable scenario types:
 - `power_tree`
 - `manufacturing`
 - `analog_transient`
+- `analog_ac`
 - `motor_drive`
 - `load_budget`
 - `model_quality`
@@ -144,6 +145,7 @@ Canonical executable check IDs:
 - `SOLDER_PASTE_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
+- `SPICE_AC_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
 automatic critical finding emitted by `SPICE_TRANSIENT_ANALYSIS` when generated
@@ -2606,6 +2608,56 @@ model-selector (`MODEL_CORNER`), and RC tolerance (`RIN_VALUE` x
 `COUT_VALUE`). Temperature presets are special-cased by the ngspice wrapper:
 `TEMP_C` or `TEMPERATURE_C` remains available as a `.param` and also becomes
 the corner's `.temp` card.
+
+## Analog AC Scenario Shape
+
+`analog_ac` scenarios use the same Board IR binding and model-file contract as
+`analog_transient`, but run a small-signal AC sweep and export Bode observation
+artifacts instead of time-domain assertion measurements:
+
+```yaml
+scenarios:
+  - name: rc_filter_bode
+    type: analog_ac
+    checks:
+      - SPICE_AC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck_ac.cir
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: input, net: input }
+        - { node: filtered, net: filtered }
+      pin_bindings:
+        - { node: input, endpoint: { component: RIN, pin: A } }
+        - { node: filtered, endpoint: { component: RIN, pin: B } }
+      analysis:
+        type: ac
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+      stimuli:
+        - name: small_signal_input
+          description: 1 V AC source defined in deck_ac.cir.
+      sweeps: []
+      probes:
+        - name: input
+          expression: V(input)
+        - name: filtered
+          expression: V(filtered)
+      assertions: []
+```
+
+The deck must contain an AC-capable source such as `VIN in 0 AC 1`; transient
+`SIN(...)` sources alone do not define small-signal AC magnitude for ngspice.
+Each run writes `bode.csv` with `frequency_hz`, `{probe}_mag_db`,
+`{probe}_phase_deg`, and `{probe}_mag` columns. `analog.sweeps` work the same
+way as transient sweeps and create one Bode artifact per corner. AC-specific
+gain, bandwidth, phase-margin, and peaking assertions are intentionally not part
+of this first slice; keep `assertions: []` until those sign-off checks are
+implemented.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

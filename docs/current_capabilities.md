@@ -85,6 +85,10 @@ support arbitrary analog circuit simulation.
 Current analog support:
 
 - `analog_transient` scenarios with `SPICE_TRANSIENT_ANALYSIS`.
+- `analog_ac` scenarios with `SPICE_AC_ANALYSIS` for external-ngspice
+  small-signal Bode exports. AC runs write `bode.csv` artifacts with
+  frequency, per-probe magnitude in dB, phase in degrees, and linear
+  magnitude. AC-specific assertions are not yet supported.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
@@ -93,11 +97,11 @@ Current analog support:
 - Generated Board IR transient decks for passives, independent voltage and
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
-  waveform/artifact set, tagged on findings, and summarized with per-assertion
-  worst-corner margin info findings. Sweeps can use raw SPICE `.param` values,
-  generated component value inputs such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`,
-  and vendor model-library sections through section-specific ngspice `.lib`
-  cards.
+  waveform or Bode artifact set, tagged on findings, and summarized with
+  per-assertion worst-corner margin info findings for transient assertions.
+  Sweeps can use raw SPICE `.param` values, generated component value inputs
+  such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`, and vendor model-library
+  sections through section-specific ngspice `.lib` cards.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter or component value, generated load/source
   candidate selection, extra parameter/component/model-section add/remove

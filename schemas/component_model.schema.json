@@ -481,7 +481,16 @@
             "model_name": { "type": "string", "minLength": 1 },
             "model_type": { "enum": ["bjt_npn", "bjt_pnp", "mosfet_n", "mosfet_p", "diode", "subckt"] },
             "model_path": { "type": "string", "minLength": 1 },
-            "provenance": { "enum": ["datasheet_fit", "vendor_model", "measured_fit", "estimated"] },
+            "provenance": {
+              "enum": [
+                "datasheet_fit",
+                "vendor_model",
+                "measured_fit",
+                "estimated",
+                "generic_behavioral",
+                "datasheet_limited_generic_behavioral"
+              ]
+            },
             "body_pin_policy": {
               "enum": ["require_explicit_body_pin", "tie_to_source_when_absent"]
             },

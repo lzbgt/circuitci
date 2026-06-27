@@ -1,4 +1,4 @@
-# SPICE-Class Analog Transient Backend
+# SPICE-Class Analog Backend
 
 CircuitCI must not claim physical proof for analog circuits unless it runs a
 physics solver with explicit device models, netlists, stimuli, convergence
@@ -51,6 +51,8 @@ mode?"
 ## Backend Contract
 
 An `analog_transient` scenario owns a SPICE deck and waveform assertions.
+An `analog_ac` scenario owns a small-signal SPICE deck and Bode response
+exports for frequency-domain design observation.
 
 Required fields:
 
@@ -59,7 +61,8 @@ Required fields:
 - `model_files`: SPICE model-card or subcircuit files used by the deck.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
-- `analysis`: transient settings, including stop time and maximum step.
+- `analysis`: transient settings, including stop time and maximum step, or AC
+  settings with start/stop frequency and optional points per decade.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -108,6 +111,24 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    execution.
 10. Passing physical analog acceptance requires no critical findings, no
    blocking analog limitations, and suite-required waveform/artifact evidence.
+
+For a scenario with check `SPICE_AC_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as
+   transient validation.
+2. Require `analysis.type: ac`, finite positive `start_frequency_hz`, finite
+   `stop_frequency_hz` greater than the start frequency, and
+   `points_per_decade` in `1..=1000` when provided.
+3. Select external `ngspice`; the first AC slice deliberately fails closed for
+   embedded ngspice and Xyce until equivalent export paths are implemented.
+4. Expand bounded run-input sweeps exactly like transient validation,
+   including raw `.param`, generated component-value parameters, model-library
+   sections, and `.temp` corners.
+5. Run `ac dec`, export ngspice complex probe data, and convert it to
+   `bode.csv` with `frequency_hz`, per-probe magnitude in dB, phase in degrees,
+   and linear magnitude columns.
+6. Keep AC assertions empty for now. Magnitude/phase gain-margin assertions are
+   a future sign-off layer; current AC output is design-observation evidence.
 
 Until steps 5-7 are implemented for a real backend, CircuitCI must not present
 the UM USB downloader physical acceptance as passing.

@@ -153,3 +153,44 @@ scenarios:
           start_us: 5000.0
           end_us: 10000.0
           time_limit_us: 50.0
+  - name: rc_lowpass_bode_ac
+    type: analog_ac
+    checks:
+      - SPICE_AC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck_ac.cir
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: input, net: input }
+        - { node: filtered, net: filtered }
+      pin_bindings:
+        - { node: input, endpoint: { component: VSIN, pin: P } }
+        - { node: "0", endpoint: { component: VSIN, pin: N } }
+        - { node: input, endpoint: { component: RIN, pin: A } }
+        - { node: filtered, endpoint: { component: RIN, pin: B } }
+        - { node: filtered, endpoint: { component: COUT, pin: A } }
+        - { node: "0", endpoint: { component: COUT, pin: B } }
+      analysis:
+        type: ac
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+      stimuli:
+        - name: small_signal_input
+          description: 1 V AC source defined in deck_ac.cir.
+      sweeps:
+        - name: rc_tolerance
+          parameters:
+            - name: RIN_VALUE
+              values: [950.0, 1000.0, 1050.0]
+            - name: COUT_VALUE
+              values: [0.000000095, 0.0000001, 0.000000105]
+      probes:
+        - name: input
+          expression: V(input)
+        - name: filtered
+          expression: V(filtered)
+      assertions: []

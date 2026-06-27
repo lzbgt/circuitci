@@ -36,6 +36,11 @@ pub(super) struct NgspiceRun {
     pub(super) user_probe_count: usize,
 }
 
+pub(super) struct NgspiceAcRun {
+    pub(super) artifacts: Vec<PathBuf>,
+    pub(super) bode: PathBuf,
+}
+
 #[derive(Debug)]
 pub(super) struct WaveformSeries {
     pub(super) time_s: Vec<f64>,
@@ -67,6 +72,19 @@ struct NgspiceWrapperOptions<'a> {
     operating_probe_expressions: &'a [String],
     include_control: bool,
     include_quit: bool,
+}
+
+pub(super) struct NgspiceAcRunOptions<'a, F, C>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    pub(super) output: &'a Path,
+    pub(super) run_subdir: Option<&'a str>,
+    pub(super) parameter_overrides: &'a [ParameterOverride],
+    pub(super) model_section_overrides: &'a [ModelSectionOverride],
+    pub(super) on_progress: F,
+    pub(super) should_cancel: C,
 }
 
 pub(super) fn run_ngspice<F, C>(
@@ -225,6 +243,149 @@ where
         series,
         user_probe_count: analog.probes.len(),
     })
+}
+
+pub(super) fn run_ngspice_ac<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    backend: &str,
+    source_netlist: &Path,
+    options: NgspiceAcRunOptions<'_, F, C>,
+) -> Result<NgspiceAcRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let NgspiceAcRunOptions {
+        output,
+        run_subdir,
+        parameter_overrides,
+        model_section_overrides,
+        mut on_progress,
+        should_cancel,
+    } = options;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before AC run");
+    let mut run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Some(run_subdir) = run_subdir {
+        run_dir = run_dir.join(safe_artifact_name(run_subdir));
+    }
+    fs::create_dir_all(&run_dir).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to create analog AC run directory {}: {error}",
+                run_dir.display()
+            ),
+            Vec::new(),
+        )
+    })?;
+    let mut artifacts = vec![source_netlist.to_path_buf()];
+    let wrapper = run_dir.join("circuitci_ngspice_ac.cir");
+    let log = run_dir.join("ngspice_ac.log");
+    let raw = run_dir.join("ac_raw.csv");
+    let bode = run_dir.join("bode.csv");
+    on_progress(
+        "Writing analog AC wrapper deck",
+        format!("Writing {}.", wrapper.to_string_lossy()),
+    );
+    let wrapper_text = build_ngspice_ac_wrapper(
+        bound,
+        scenario,
+        source_netlist,
+        Path::new("ac_raw.csv"),
+        parameter_overrides,
+        model_section_overrides,
+    )
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    fs::write(&wrapper, wrapper_text).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write ngspice AC wrapper deck {}: {error}",
+                wrapper.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(wrapper.clone());
+
+    on_progress(
+        "Running analog AC backend",
+        format!("{} AC sweep for {} probe(s).", backend, analog.probes.len()),
+    );
+    let output = run_solver_with_timeout(
+        backend,
+        &wrapper,
+        Duration::from_secs(60),
+        None,
+        should_cancel,
+    )
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    let mut log_text = String::new();
+    log_text.push_str("COMMAND: ");
+    log_text.push_str(&output.command);
+    log_text.push_str("\n\nSTDOUT:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stdout));
+    log_text.push_str("\n\nSTDERR:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stderr));
+    on_progress(
+        "Writing analog AC solver log",
+        format!("Writing {}.", log.to_string_lossy()),
+    );
+    fs::write(&log, &log_text).map_err(|error| {
+        ngspice_error(
+            format!("Failed to write ngspice AC log {}: {error}", log.display()),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(log.clone());
+    if !output.status.success() {
+        return Err(ngspice_error(
+            format!("ngspice AC analysis exited with status {}.", output.status),
+            artifacts,
+        ));
+    }
+    if let Some(reason) = detect_nonconvergence(&log_text) {
+        return Err(ngspice_error(
+            format!("ngspice reported non-convergence or numerical failure: {reason}."),
+            artifacts,
+        ));
+    }
+    if !raw.is_file() {
+        return Err(ngspice_error(
+            format!(
+                "ngspice completed without producing AC export {}.",
+                raw.display()
+            ),
+            artifacts,
+        ));
+    }
+    artifacts.push(raw.clone());
+    on_progress(
+        "Loading analog AC response",
+        format!("Reading {}.", raw.to_string_lossy()),
+    );
+    let bode_csv = ac_raw_to_bode_csv(&raw, analog).map_err(|message| {
+        ngspice_error(
+            format!("Failed to convert AC response {}: {message}", raw.display()),
+            artifacts.clone(),
+        )
+    })?;
+    fs::write(&bode, bode_csv).map_err(|error| {
+        ngspice_error(
+            format!("Failed to write AC Bode CSV {}: {error}", bode.display()),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(bode.clone());
+    on_progress(
+        "Exported analog AC response",
+        format!("Wrote {}.", bode.to_string_lossy()),
+    );
+    Ok(NgspiceAcRun { artifacts, bode })
 }
 
 struct SolverOutput {
@@ -835,6 +996,193 @@ fn build_ngspice_wrapper(
     Ok(text)
 }
 
+fn build_ngspice_ac_wrapper(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    netlist: &Path,
+    raw_output: &Path,
+    parameter_overrides: &[ParameterOverride],
+    model_section_overrides: &[ModelSectionOverride],
+) -> Result<String, String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before AC wrapper generation");
+    let source = fs::read_to_string(netlist).map_err(|error| {
+        format!(
+            "Failed to read SPICE netlist {}: {error}",
+            netlist.display()
+        )
+    })?;
+    let start_hz = analog.analysis.start_frequency_hz.ok_or_else(|| {
+        "analog.analysis.start_frequency_hz is required for AC analysis.".to_string()
+    })?;
+    let stop_hz = analog.analysis.stop_frequency_hz.ok_or_else(|| {
+        "analog.analysis.stop_frequency_hz is required for AC analysis.".to_string()
+    })?;
+    let points_per_decade = analog.analysis.points_per_decade.unwrap_or(20);
+    let mut text = String::new();
+    text.push_str("* Generated by CircuitCI. Do not edit by hand.\n");
+    text.push_str("* Source netlist: ");
+    text.push_str(&netlist.to_string_lossy());
+    text.push('\n');
+    let include_base = netlist.parent().unwrap_or(&bound.project.source_dir);
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        let directive = trimmed.to_ascii_lowercase();
+        let first_token = directive.split_whitespace().next().unwrap_or("");
+        if matches!(first_token, ".end" | ".tran" | ".ac") {
+            continue;
+        }
+        text.push_str(&rewrite_include_line(line, include_base));
+        text.push('\n');
+    }
+    if !parameter_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep parameter overrides.\n");
+        for override_ in parameter_overrides {
+            text.push_str(".param ");
+            text.push_str(&override_.name);
+            text.push('=');
+            text.push_str(&format!("{:.12e}", override_.value));
+            text.push('\n');
+        }
+        if let Some(temperature_c) = sweep_temperature_c(parameter_overrides) {
+            text.push_str(".temp ");
+            text.push_str(&format!("{:.12e}", temperature_c));
+            text.push('\n');
+        }
+    }
+    if !model_section_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep model section overrides.\n");
+        for override_ in model_section_overrides {
+            let path = Path::new(&override_.path);
+            let absolute = if path.is_absolute() {
+                normalize_path(path)
+            } else {
+                absolute_path(&bound.project.source_dir.join(path))
+                    .unwrap_or_else(|_| normalize_path(&bound.project.source_dir.join(path)))
+            };
+            text.push_str(".lib \"");
+            text.push_str(&absolute.to_string_lossy());
+            text.push_str("\" ");
+            text.push_str(&override_.section);
+            text.push('\n');
+        }
+    }
+    text.push_str(".control\n");
+    text.push_str("set wr_vecnames\n");
+    text.push_str("set wr_singlescale\n");
+    text.push_str(&format!(
+        "ac dec {} {:.12e} {:.12e}\n",
+        points_per_decade, start_hz, stop_hz
+    ));
+    text.push_str("wrdata ");
+    text.push_str(&raw_output.to_string_lossy());
+    for probe in &analog.probes {
+        text.push(' ');
+        text.push_str(&probe.expression);
+    }
+    text.push_str("\nquit\n.endc\n.end\n");
+    Ok(text)
+}
+
+fn ac_raw_to_bode_csv(
+    raw: &Path,
+    analog: &crate::board_ir::AnalogScenario,
+) -> Result<String, String> {
+    let text = fs::read_to_string(raw)
+        .map_err(|error| format!("Failed to read AC raw export {}: {error}", raw.display()))?;
+    let mut csv = String::from("frequency_hz");
+    for probe in &analog.probes {
+        let name = sanitize_csv_column(&probe.name);
+        csv.push_str(&format!(",{name}_mag_db,{name}_phase_deg,{name}_mag"));
+    }
+    csv.push('\n');
+    let expected_columns = 1 + analog.probes.len() * 2;
+    let mut row_count = 0usize;
+    for (line_index, line) in text.lines().enumerate() {
+        let fields: Vec<_> = line
+            .split(|character: char| character == ',' || character.is_whitespace())
+            .filter(|field| !field.is_empty())
+            .collect();
+        if fields.is_empty() {
+            continue;
+        }
+        let Some(frequency_hz) = parse_float(fields[0]) else {
+            if row_count == 0 {
+                continue;
+            }
+            return Err(format!(
+                "AC row {} has non-numeric frequency value {}.",
+                line_index + 1,
+                fields[0]
+            ));
+        };
+        if fields.len() < expected_columns {
+            return Err(format!(
+                "AC row {} has {} columns, expected at least {}.",
+                line_index + 1,
+                fields.len(),
+                expected_columns
+            ));
+        }
+        csv.push_str(&format!("{frequency_hz:.12e}"));
+        for probe_index in 0..analog.probes.len() {
+            let real_index = 1 + probe_index * 2;
+            let imag_index = real_index + 1;
+            let real = parse_float(fields[real_index]).ok_or_else(|| {
+                format!(
+                    "AC row {} has non-numeric real value {}.",
+                    line_index + 1,
+                    fields[real_index]
+                )
+            })?;
+            let imag = parse_float(fields[imag_index]).ok_or_else(|| {
+                format!(
+                    "AC row {} has non-numeric imaginary value {}.",
+                    line_index + 1,
+                    fields[imag_index]
+                )
+            })?;
+            let magnitude = real.hypot(imag);
+            let magnitude_db = if magnitude > 0.0 {
+                20.0 * magnitude.log10()
+            } else {
+                -300.0
+            };
+            let phase_deg = imag.atan2(real).to_degrees();
+            csv.push_str(&format!(
+                ",{magnitude_db:.12e},{phase_deg:.12e},{magnitude:.12e}"
+            ));
+        }
+        csv.push('\n');
+        row_count += 1;
+    }
+    if row_count == 0 {
+        return Err(format!(
+            "AC raw export {} has no numeric rows.",
+            raw.display()
+        ));
+    }
+    Ok(csv)
+}
+
+fn sanitize_csv_column(name: &str) -> String {
+    let mut output = String::new();
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            output.push(ch);
+        } else {
+            output.push('_');
+        }
+    }
+    if output.is_empty() {
+        "probe".to_string()
+    } else {
+        output
+    }
+}
+
 fn sweep_temperature_c(parameter_overrides: &[ParameterOverride]) -> Option<f64> {
     parameter_overrides
         .iter()
@@ -1072,10 +1420,10 @@ pub(super) fn backend_name(backend: &AnalogBackend) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        ModelSectionOverride, NgspiceWrapperOptions, ParameterOverride, build_ngspice_wrapper,
-        detect_nonconvergence, parse_waveform_csv, rewrite_include_line,
+        ModelSectionOverride, NgspiceWrapperOptions, ParameterOverride, ac_raw_to_bode_csv,
+        build_ngspice_wrapper, detect_nonconvergence, parse_waveform_csv, rewrite_include_line,
     };
-    use crate::board_ir::load_project;
+    use crate::board_ir::{BoardProject, load_project};
     use crate::library::{bind_project, load_library};
     use crate::validation::analog_operating_limits::{
         operating_limit_probes, operating_probe_expressions,
@@ -1132,6 +1480,62 @@ mod tests {
         .unwrap();
         let error = parse_waveform_csv(&path, 1).unwrap_err();
         assert!(error.contains("non-increasing time"));
+    }
+
+    #[test]
+    fn ac_raw_export_converts_to_bode_columns() {
+        let project: BoardProject = serde_yaml_ng::from_str(
+            r#"
+project:
+  name: ac_test
+  version: 0.1.0
+board:
+  components: {}
+  nets: {}
+scenarios:
+  - name: ac_response
+    type: analog_ac
+    checks: [SPICE_AC_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck_ac.cir
+      model_files: []
+      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: ac
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+      stimuli: []
+      probes:
+        - name: input
+          expression: V(input)
+        - name: filtered
+          expression: V(filtered)
+      assertions: []
+"#,
+        )
+        .unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ac_raw.csv");
+        std::fs::write(
+            &path,
+            "frequency v(input) v(input) v(filtered) v(filtered)
+1.000000e3 1.0 0.0 0.5 -0.5
+",
+        )
+        .unwrap();
+
+        let bode = ac_raw_to_bode_csv(&path, analog).unwrap();
+
+        assert!(bode.starts_with(
+            "frequency_hz,input_mag_db,input_phase_deg,input_mag,filtered_mag_db,filtered_phase_deg,filtered_mag"
+        ));
+        assert!(bode.contains("1.000000000000e3"));
+        assert!(bode.contains("-3.010299956640e0"));
+        assert!(bode.contains("-4.500000000000e1"));
     }
 
     #[test]

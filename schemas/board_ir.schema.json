@@ -1457,12 +1457,25 @@
               },
               "analysis": {
                 "type": "object",
-                "required": ["type", "stop_time_us", "max_step_us"],
+                "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran"] },
+                  "type": { "enum": ["tran", "ac"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
-                  "max_step_us": { "type": "number", "exclusiveMinimum": 0 }
+                  "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
+                  "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "stop_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 }
                 },
+                "allOf": [
+                  {
+                    "if": { "properties": { "type": { "const": "tran" } } },
+                    "then": { "required": ["stop_time_us", "max_step_us"] }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "ac" } } },
+                    "then": { "required": ["start_frequency_hz", "stop_frequency_hz"] }
+                  }
+                ],
                 "additionalProperties": false
               },
               "stimuli": {
