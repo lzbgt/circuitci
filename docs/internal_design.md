@@ -400,6 +400,7 @@ when no analog probes exist, Run may add a generated transient voltage probe
 or add a voltage probe to the first analog run setup with node bindings before
 saving and validating. `src/gui/simulation_editors.rs` owns the docked
 run-setup/model/source/check editors and their Board IR YAML mutation helpers.
+`src/gui/simulation_sweeps.rs` owns the Run Input Sweeps UI surface, while
 `src/gui/analog_sweeps.rs` owns GUI projection and mutation helpers for bounded
 analog run-input sweeps. The GUI creates a sweep together with its first raw
 SPICE parameter or generated component value so edited projects stay executable,

@@ -301,8 +301,9 @@ orientation under `board.schematic.node_styles`.
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
 `src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
-editors and their Board IR YAML mutation helpers, including the user-facing
-Run Input Sweeps panel. Sweep creation is valid-by-construction: adding a new
+editors and their Board IR YAML mutation helpers. `src/gui/simulation_sweeps.rs`
+owns the user-facing Run Input Sweeps panel. Sweep creation is
+valid-by-construction: adding a new
 sweep also adds its first SPICE `.param` input or generated component value
 input plus a comma-separated value list, while extra parameters, component
 values, and vendor model-library section lists can be added or removed without
