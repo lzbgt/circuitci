@@ -122,8 +122,9 @@ Current analog support:
   compact integrated-RMS noise table with CSV/Markdown copy actions and
   report-bundle export. Sweep margin summaries mark the limiting output or
   input integrated-RMS noise total directly in Scopes and exported tables.
-  Monte Carlo yield summaries appear as a Scopes table with mean/sigma,
-  worst-case, and percentile margin rows plus CSV/Markdown copy actions, and are
+  Monte Carlo yield summaries appear in Scopes with compact min/max,
+  P5-P95, median, and zero-margin distribution strips plus mean/sigma,
+  worst-case, percentile margin rows, and CSV/Markdown copy actions, and are
   exported beside scope evidence when the loaded report contains sampled
   tolerance runs.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.

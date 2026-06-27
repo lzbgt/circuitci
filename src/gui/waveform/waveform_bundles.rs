@@ -82,6 +82,13 @@ pub(super) struct ScopeMonteCarloYieldSummaryRow {
     pub(super) p5_margin: String,
     pub(super) p50_margin: String,
     pub(super) p95_margin: String,
+    pub(super) mean_margin_value: Option<f64>,
+    pub(super) min_margin_value: Option<f64>,
+    pub(super) max_margin_value: Option<f64>,
+    pub(super) p1_margin_value: Option<f64>,
+    pub(super) p5_margin_value: Option<f64>,
+    pub(super) p50_margin_value: Option<f64>,
+    pub(super) p95_margin_value: Option<f64>,
 }
 
 impl CircuitCiApp {
@@ -845,6 +852,14 @@ fn scope_monte_carlo_yield_summary_row(
     let unit = json_string(&finding.measured, "measured_unit")
         .or_else(|| json_string(&finding.limit, "limit_unit"))
         .unwrap_or_default();
+    let mean_margin_value = json_f64(&finding.measured, "mean_margin");
+    let stddev_margin_value = json_f64(&finding.measured, "stddev_margin");
+    let min_margin_value = json_f64(&finding.measured, "min_margin");
+    let max_margin_value = json_f64(&finding.measured, "max_margin");
+    let p1_margin_value = json_f64(&finding.measured, "p1_margin");
+    let p5_margin_value = json_f64(&finding.measured, "p5_margin");
+    let p50_margin_value = json_f64(&finding.measured, "p50_margin");
+    let p95_margin_value = json_f64(&finding.measured, "p95_margin");
     Some(ScopeMonteCarloYieldSummaryRow {
         scenario: finding.scenario.clone(),
         assertion,
@@ -861,38 +876,21 @@ fn scope_monte_carlo_yield_summary_row(
         passed_samples: json_u64(&finding.measured, "passed_samples").unwrap_or(0),
         failed_samples: json_u64(&finding.measured, "failed_samples").unwrap_or(0),
         evaluated_samples: json_u64(&finding.measured, "evaluated_samples").unwrap_or(0),
-        mean_margin: format_numeric_with_unit(
-            json_f64(&finding.measured, "mean_margin"),
-            &unit,
-            "n/a",
-        ),
-        stddev_margin: format_numeric_with_unit(
-            json_f64(&finding.measured, "stddev_margin"),
-            &unit,
-            "n/a",
-        ),
-        min_margin: format_numeric_with_unit(
-            json_f64(&finding.measured, "min_margin"),
-            &unit,
-            "n/a",
-        ),
-        max_margin: format_numeric_with_unit(
-            json_f64(&finding.measured, "max_margin"),
-            &unit,
-            "n/a",
-        ),
-        p1_margin: format_numeric_with_unit(json_f64(&finding.measured, "p1_margin"), &unit, "n/a"),
-        p5_margin: format_numeric_with_unit(json_f64(&finding.measured, "p5_margin"), &unit, "n/a"),
-        p50_margin: format_numeric_with_unit(
-            json_f64(&finding.measured, "p50_margin"),
-            &unit,
-            "n/a",
-        ),
-        p95_margin: format_numeric_with_unit(
-            json_f64(&finding.measured, "p95_margin"),
-            &unit,
-            "n/a",
-        ),
+        mean_margin: format_numeric_with_unit(mean_margin_value, &unit, "n/a"),
+        stddev_margin: format_numeric_with_unit(stddev_margin_value, &unit, "n/a"),
+        min_margin: format_numeric_with_unit(min_margin_value, &unit, "n/a"),
+        max_margin: format_numeric_with_unit(max_margin_value, &unit, "n/a"),
+        p1_margin: format_numeric_with_unit(p1_margin_value, &unit, "n/a"),
+        p5_margin: format_numeric_with_unit(p5_margin_value, &unit, "n/a"),
+        p50_margin: format_numeric_with_unit(p50_margin_value, &unit, "n/a"),
+        p95_margin: format_numeric_with_unit(p95_margin_value, &unit, "n/a"),
+        mean_margin_value,
+        min_margin_value,
+        max_margin_value,
+        p1_margin_value,
+        p5_margin_value,
+        p50_margin_value,
+        p95_margin_value,
     })
 }
 
