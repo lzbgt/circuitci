@@ -13,6 +13,7 @@ pub(super) struct AnalogSweepSummary {
     pub(super) parameters: Vec<AnalogSweepParameterSummary>,
     pub(super) component_values: Vec<AnalogSweepComponentValueSummary>,
     pub(super) model_sections: Vec<AnalogSweepModelSectionSummary>,
+    pub(super) monte_carlo: Option<AnalogMonteCarloSummary>,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +33,20 @@ pub(super) struct AnalogSweepComponentValueSummary {
 pub(super) struct AnalogSweepModelSectionSummary {
     pub(super) path: String,
     pub(super) sections: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogMonteCarloSummary {
+    pub(super) samples: usize,
+    pub(super) component_values: Vec<AnalogMonteCarloComponentValueSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogMonteCarloComponentValueSummary {
+    pub(super) component: String,
+    pub(super) field: String,
+    pub(super) nominal: f64,
+    pub(super) tolerance_percent: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -209,14 +224,40 @@ pub(super) fn analog_sweep_scenarios(text: &str) -> Result<Vec<AnalogSweepScenar
                             .iter()
                             .map(|model_section| model_section.sections.len().max(1))
                             .product();
+                        let monte_carlo =
+                            sweep
+                                .monte_carlo
+                                .as_ref()
+                                .map(|monte_carlo| AnalogMonteCarloSummary {
+                                    samples: monte_carlo.samples,
+                                    component_values: monte_carlo
+                                        .component_values
+                                        .iter()
+                                        .map(|component_value| {
+                                            AnalogMonteCarloComponentValueSummary {
+                                                component: component_value.component.clone(),
+                                                field: component_value.field.as_str().to_string(),
+                                                nominal: component_value.nominal,
+                                                tolerance_percent: component_value
+                                                    .tolerance_percent,
+                                            }
+                                        })
+                                        .collect(),
+                                });
+                        let monte_carlo_corners = monte_carlo
+                            .as_ref()
+                            .map(|monte_carlo| monte_carlo.samples.max(1))
+                            .unwrap_or(1);
                         AnalogSweepSummary {
                             name: sweep.name.clone(),
                             corner_count: parameter_corners
                                 * component_value_corners
-                                * model_section_corners,
+                                * model_section_corners
+                                * monte_carlo_corners,
                             parameters,
                             component_values,
                             model_sections,
+                            monte_carlo,
                         }
                     })
                     .collect(),
@@ -677,6 +718,7 @@ pub(super) fn remove_analog_sweep_model_section(
         .get(key("component_values"))
         .and_then(serde_yaml_ng::Value::as_sequence)
         .is_some_and(|component_values| !component_values.is_empty());
+    let before_has_monte_carlo = sweep_mapping.contains_key(key("monte_carlo"));
     let model_sections =
         ensure_child_sequence_mut(sweep_mapping, "model_sections", "sweep model sections")?;
     let before = model_sections.len();
@@ -690,9 +732,13 @@ pub(super) fn remove_analog_sweep_model_section(
     if model_sections.len() == before {
         anyhow::bail!("Model file {path} was not found in sweep {sweep_name}.");
     }
-    if model_sections.is_empty() && !before_has_parameters && !before_has_component_values {
+    if model_sections.is_empty()
+        && !before_has_parameters
+        && !before_has_component_values
+        && !before_has_monte_carlo
+    {
         anyhow::bail!(
-            "Sweep {sweep_name} must keep at least one parameter, component value, or model section. Remove the sweep instead."
+            "Sweep {sweep_name} must keep at least one parameter, component value, model section, or Monte Carlo block. Remove the sweep instead."
         );
     }
     validate_updated_yaml(yaml)
@@ -717,6 +763,7 @@ pub(super) fn remove_analog_sweep_component_value(
         .get(key("model_sections"))
         .and_then(serde_yaml_ng::Value::as_sequence)
         .is_some_and(|model_sections| !model_sections.is_empty());
+    let before_has_monte_carlo = sweep_mapping.contains_key(key("monte_carlo"));
     let component_values =
         ensure_child_sequence_mut(sweep_mapping, "component_values", "sweep component values")?;
     let before = component_values.len();
@@ -737,9 +784,13 @@ pub(super) fn remove_analog_sweep_component_value(
     if component_values.len() == before {
         anyhow::bail!("Component value {component}.{field} was not found in sweep {sweep_name}.");
     }
-    if component_values.is_empty() && !before_has_parameters && !before_has_model_sections {
+    if component_values.is_empty()
+        && !before_has_parameters
+        && !before_has_model_sections
+        && !before_has_monte_carlo
+    {
         anyhow::bail!(
-            "Sweep {sweep_name} must keep at least one parameter, component value, or model section. Remove the sweep instead."
+            "Sweep {sweep_name} must keep at least one parameter, component value, model section, or Monte Carlo block. Remove the sweep instead."
         );
     }
     validate_updated_yaml(yaml)
@@ -763,6 +814,7 @@ pub(super) fn remove_analog_sweep_parameter(
         .get(key("component_values"))
         .and_then(serde_yaml_ng::Value::as_sequence)
         .is_some_and(|component_values| !component_values.is_empty());
+    let before_has_monte_carlo = sweep_mapping.contains_key(key("monte_carlo"));
     let parameters = ensure_child_sequence_mut(sweep_mapping, "parameters", "sweep parameters")?;
     let before = parameters.len();
     parameters.retain(|parameter| {
@@ -775,9 +827,13 @@ pub(super) fn remove_analog_sweep_parameter(
     if parameters.len() == before {
         anyhow::bail!("Parameter {parameter_name} was not found in sweep {sweep_name}.");
     }
-    if parameters.is_empty() && !before_has_model_sections && !before_has_component_values {
+    if parameters.is_empty()
+        && !before_has_model_sections
+        && !before_has_component_values
+        && !before_has_monte_carlo
+    {
         anyhow::bail!(
-            "Sweep {sweep_name} must keep at least one parameter, component value, or model section. Remove the sweep instead."
+            "Sweep {sweep_name} must keep at least one parameter, component value, model section, or Monte Carlo block. Remove the sweep instead."
         );
     }
     validate_updated_yaml(yaml)
@@ -1136,6 +1192,67 @@ scenarios:
           expression: V(out)
       assertions: []
 "
+    }
+
+    fn monte_carlo_project_yaml() -> &'static str {
+        "project:
+  name: gui_monte_carlo_sweep_test
+  version: 0.1.0
+board:
+  components: {}
+  nets:
+    gnd:
+      kind: ground
+scenarios:
+  - name: rc_run
+    type: analog_transient
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck.cir
+      model_files: []
+      node_bindings:
+        - { node: '0', net: gnd }
+      pin_bindings: []
+      analysis:
+        type: tran
+        stop_time_us: 1000
+        max_step_us: 1
+      stimuli: []
+      sweeps:
+        - name: rc_monte_carlo
+          monte_carlo:
+            samples: 8
+            seed: 7
+            component_values:
+              - component: RLOAD
+                field: value_ohm
+                nominal: 1000.0
+                tolerance_percent: 5.0
+              - component: CLOAD
+                field: value_f
+                nominal: 0.0000001
+                tolerance_percent: 10.0
+      probes:
+        - name: v_out
+          expression: V(out)
+      assertions: []
+"
+    }
+
+    #[test]
+    fn analog_sweep_scenarios_reports_monte_carlo_inputs() {
+        let scenarios = analog_sweep_scenarios(monte_carlo_project_yaml()).unwrap();
+
+        let sweep = &scenarios[0].sweeps[0];
+        assert_eq!(sweep.name, "rc_monte_carlo");
+        assert_eq!(sweep.corner_count, 8);
+        let monte_carlo = sweep.monte_carlo.as_ref().unwrap();
+        assert_eq!(monte_carlo.samples, 8);
+        assert_eq!(monte_carlo.component_values[0].component, "RLOAD");
+        assert_eq!(monte_carlo.component_values[0].field, "value_ohm");
+        assert_eq!(monte_carlo.component_values[0].nominal, 1000.0);
+        assert_eq!(monte_carlo.component_values[0].tolerance_percent, 5.0);
     }
 
     #[test]

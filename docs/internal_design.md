@@ -407,9 +407,13 @@ SPICE parameter or generated component value so edited projects stay executable,
 and it prevents removing the last sweep dimension unless the whole sweep is
 removed. It also owns generated load/source candidate inference, the small
 preset catalog for common supply, load, temperature, model-selector, and
-RC-tolerance corner sweeps, and vendor model-section corner editing; all are
-serialized through the same `analog.sweeps` structure rather than a separate
-GUI-only model. `src/gui/simulation_editors.rs` also owns generated noise
+RC-tolerance corner sweeps, vendor model-section corner editing, and declared
+Monte Carlo sample-count/target summaries; all are serialized through the same
+`analog.sweeps` structure rather than a separate GUI-only model.
+`src/validation/analog_sweep_sampling.rs` owns deterministic Monte Carlo
+component-value sample generation so sampled tolerance runs expand into normal
+sweep corners before any transient, AC, DC, or noise backend is invoked.
+`src/gui/simulation_editors.rs` also owns generated noise
 run-setup authoring, mapping the selected output net, input source, start/stop
 frequency, and points-per-decade controls to normal `analog_noise`
 `SPICE_NOISE_ANALYSIS` Board IR. It also owns AC check authoring for Bode

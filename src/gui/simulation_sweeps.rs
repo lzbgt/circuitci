@@ -497,6 +497,7 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
     if sweep.parameters.is_empty()
         && sweep.component_values.is_empty()
         && sweep.model_sections.is_empty()
+        && sweep.monte_carlo.is_none()
     {
         return "none".to_string();
     }
@@ -536,5 +537,25 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
             model_section.sections.join(", ")
         )
     }));
+    if let Some(monte_carlo) = &sweep.monte_carlo {
+        let targets = monte_carlo
+            .component_values
+            .iter()
+            .map(|component_value| {
+                format!(
+                    "{}.{} {:.6} +/-{:.3}%",
+                    component_value.component,
+                    component_value.field,
+                    component_value.nominal,
+                    component_value.tolerance_percent
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!(
+            "Monte Carlo {} sample(s) [{targets}]",
+            monte_carlo.samples
+        ));
+    }
     parts.join("; ")
 }

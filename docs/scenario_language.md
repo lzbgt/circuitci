@@ -2588,23 +2588,33 @@ scenario must fail with a critical analog finding.
 
 The optional `analog.sweeps` list runs the same deck and assertions across a
 bounded Cartesian product of explicit SPICE parameter values, generated
-component value inputs, and/or vendor model-library sections. Parameter names
-must be valid SPICE `.param` identifiers. Generated component value inputs use
-`component_values[]` entries with a Board IR component id, one of `value_ohm`,
-`value_f`, `value_h`, `dc_v`, or `dc_a`, and a bounded value list. When the
-scenario uses `generated_from_board`, CircuitCI emits a nominal `.param` for the
-selected component field and uses that parameter in the generated primitive
-line, so load resistance, capacitance, inductance, supply voltage, or current
-source corners can be edited without hand-authoring SPICE parameter names. Model
-sections use `model_sections[].path` plus a non-empty `sections` list; each
-selected corner emits an ngspice `.lib "path" section` line. Sweep execution is
-capped to keep GUI and CI runs predictable. Each corner writes separate waveform
-artifacts and tags assertion findings with the sweep name, corner name,
-parameter values, component value inputs, and selected model sections. For every
-assertion that is evaluated across a sweep, the report also emits an
-`ANALOG_SWEEP_MARGIN_SUMMARY` info finding that points at the worst margin
-corner, measured value, limit, relation, parameters, component values, and model
-sections.
+component value inputs, vendor model-library sections, and/or deterministic
+Monte Carlo component tolerances. Parameter names must be valid SPICE `.param`
+identifiers. Generated component value inputs use `component_values[]` entries
+with a Board IR component id, one of `value_ohm`, `value_f`, `value_h`, `dc_v`,
+or `dc_a`, and a bounded value list. When the scenario uses
+`generated_from_board`, CircuitCI emits a nominal `.param` for the selected
+component field and uses that parameter in the generated primitive line, so load
+resistance, capacitance, inductance, supply voltage, or current source corners
+can be edited without hand-authoring SPICE parameter names. Model sections use
+`model_sections[].path` plus a non-empty `sections` list; each selected corner
+emits an ngspice `.lib "path" section` line.
+
+Monte Carlo sweeps use a `monte_carlo` block with `samples`, optional `seed`,
+and `component_values[]` entries containing `component`, `field`, `nominal`,
+`tolerance_percent`, and optional `distribution: uniform`. The sampler is
+deterministic: the same seed, sample count, and target list produce the same
+sampled component values, corner names, artifacts, and worst-corner summaries on
+every run. Monte Carlo samples are still ordinary sweep corners, so they work
+with transient, AC/Bode, DC operating-point, and noise observations.
+
+Sweep execution is capped to keep GUI and CI runs predictable. Each corner
+writes separate waveform/artifact outputs and tags assertion findings with the
+sweep name, corner name, parameter values, component value inputs, and selected
+model sections. For every assertion that is evaluated across a sweep, the report
+also emits an `ANALOG_SWEEP_MARGIN_SUMMARY` info finding that points at the
+worst margin corner, measured value, limit, relation, parameters, component
+values, and model sections.
 GUI Run Inputs expose presets that persist as this same `analog.sweeps`
 structure: supply (`SUPPLY_V`), load (`LOAD_OHM`), temperature (`TEMP_C`),
 model-selector (`MODEL_CORNER`), and RC tolerance (`RIN_VALUE` x

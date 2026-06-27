@@ -396,6 +396,10 @@ fn component_value_swept(
     analog.sweeps.iter().any(|sweep| {
         sweep.component_values.iter().any(|component_value| {
             component_value.component == component_id && component_value.field == field
+        }) || sweep.monte_carlo.as_ref().is_some_and(|monte_carlo| {
+            monte_carlo.component_values.iter().any(|component_value| {
+                component_value.component == component_id && component_value.field == field
+            })
         })
     })
 }
@@ -410,6 +414,15 @@ fn swept_component_fields(
             if component_value.component == component_id && !fields.contains(&component_value.field)
             {
                 fields.push(component_value.field);
+            }
+        }
+        if let Some(monte_carlo) = &sweep.monte_carlo {
+            for component_value in &monte_carlo.component_values {
+                if component_value.component == component_id
+                    && !fields.contains(&component_value.field)
+                {
+                    fields.push(component_value.field);
+                }
             }
         }
     }

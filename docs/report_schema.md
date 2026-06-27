@@ -97,10 +97,12 @@ Projects using `generic`, `estimated`, or `low` confidence component models must
 
 ### `ANALOG_SWEEP_MARGIN_SUMMARY`
 
-Analog transient scenarios with `analog.sweeps` emit one informational summary
-per evaluated waveform assertion. These findings do not change pass/fail
-semantics; they identify the limiting sweep corner so designers can see which
-input values control margin.
+Analog transient, AC/Bode, DC operating-point, and noise scenarios with
+`analog.sweeps` emit one informational summary per evaluated swept assertion.
+These findings do not change pass/fail semantics; they identify the limiting
+sweep corner so designers can see which input values control margin. Monte
+Carlo sweeps use the same fields because sampled tolerances are expanded into
+ordinary component-value corners before assertion evaluation.
 
 Typical fields:
 

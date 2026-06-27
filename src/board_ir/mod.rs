@@ -1072,6 +1072,8 @@ pub struct AnalogParameterSweep {
     pub component_values: Vec<AnalogSweepComponentValue>,
     #[serde(default)]
     pub model_sections: Vec<AnalogModelSectionSweep>,
+    #[serde(default)]
+    pub monte_carlo: Option<AnalogMonteCarloSweep>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1117,6 +1119,35 @@ impl AnalogSweepComponentField {
 pub struct AnalogModelSectionSweep {
     pub path: String,
     pub sections: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogMonteCarloSweep {
+    pub samples: usize,
+    #[serde(default = "default_monte_carlo_seed")]
+    pub seed: u64,
+    pub component_values: Vec<AnalogMonteCarloComponentValue>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogMonteCarloComponentValue {
+    pub component: String,
+    pub field: AnalogSweepComponentField,
+    pub nominal: f64,
+    pub tolerance_percent: f64,
+    #[serde(default)]
+    pub distribution: AnalogMonteCarloDistribution,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogMonteCarloDistribution {
+    #[default]
+    Uniform,
+}
+
+fn default_monte_carlo_seed() -> u64 {
+    1
 }
 
 #[derive(Debug, Clone, Deserialize)]

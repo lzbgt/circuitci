@@ -22,6 +22,7 @@ use super::analog_runner::{
     run_ngspice, run_ngspice_ac, select_backend,
 };
 use super::analog_soa::evaluate_soa_limits;
+use super::analog_sweep_sampling::monte_carlo_component_value_samples;
 use super::analog_util::{
     component_value_parameter_name, file_sha256_hex, push_artifact, safe_artifact_name,
 };
@@ -978,9 +979,10 @@ pub(super) fn analog_run_plans(
         if sweep.parameters.is_empty()
             && sweep.component_values.is_empty()
             && sweep.model_sections.is_empty()
+            && sweep.monte_carlo.is_none()
         {
             return Err(format!(
-                "Analog sweep {} must declare at least one parameter, component value, or model section.",
+                "Analog sweep {} must declare at least one parameter, component value, model section, or Monte Carlo block.",
                 sweep.name
             ));
         }
@@ -1102,7 +1104,36 @@ pub(super) fn analog_run_plans(
             Vec::new(),
             &mut component_value_combinations,
         )?;
-        for (index, (parameter_overrides, component_value_overrides, model_section_overrides)) in
+        let monte_carlo_combinations = if let Some(monte_carlo) = &sweep.monte_carlo {
+            monte_carlo_component_value_samples(&sweep.name, monte_carlo, &component_value_seen)?
+                .into_iter()
+                .map(|sample| {
+                    sample
+                        .into_iter()
+                        .map(|entry| ComponentValueOverride {
+                            parameter_name: component_value_parameter_name(
+                                &entry.component,
+                                entry.field.as_str(),
+                            ),
+                            component: entry.component,
+                            field: entry.field,
+                            value: entry.value,
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        } else {
+            vec![Vec::new()]
+        };
+        for (
+            index,
+            (
+                parameter_overrides,
+                component_value_overrides,
+                monte_carlo_component_value_overrides,
+                model_section_overrides,
+            ),
+        ) in
             parameter_combinations
                 .into_iter()
                 .flat_map(|parameter_overrides| {
@@ -1113,17 +1144,34 @@ pub(super) fn analog_run_plans(
                     )
                 })
                 .flat_map(|(parameter_overrides, component_value_overrides)| {
-                    model_section_combinations
-                        .iter()
-                        .cloned()
-                        .map(move |model_section_overrides| {
+                    monte_carlo_combinations.iter().cloned().map(
+                        move |monte_carlo_component_value_overrides| {
                             (
                                 parameter_overrides.clone(),
                                 component_value_overrides.clone(),
-                                model_section_overrides,
+                                monte_carlo_component_value_overrides,
                             )
-                        })
+                        },
+                    )
                 })
+                .flat_map(
+                    |(
+                        parameter_overrides,
+                        component_value_overrides,
+                        monte_carlo_component_value_overrides,
+                    )| {
+                        model_section_combinations.iter().cloned().map(
+                            move |model_section_overrides| {
+                                (
+                                    parameter_overrides.clone(),
+                                    component_value_overrides.clone(),
+                                    monte_carlo_component_value_overrides.clone(),
+                                    model_section_overrides,
+                                )
+                            },
+                        )
+                    },
+                )
                 .enumerate()
         {
             if plans.len() >= MAX_ANALOG_SWEEP_CORNERS {
@@ -1137,7 +1185,10 @@ pub(super) fn analog_run_plans(
                 run_subdir: Some(format!("{}_{}", sweep.name, corner_name)),
                 corner_name,
                 parameter_overrides,
-                component_value_overrides,
+                component_value_overrides: component_value_overrides
+                    .into_iter()
+                    .chain(monte_carlo_component_value_overrides)
+                    .collect(),
                 model_section_overrides,
             });
         }
@@ -1731,6 +1782,43 @@ scenarios:
         let solver_overrides = plans[0].parameter_overrides_for_solver();
         assert_eq!(solver_overrides.len(), 2);
         assert_eq!(solver_overrides[0].name, "CCI_RLOAD_VALUE_OHM");
+    }
+
+    #[test]
+    fn analog_run_plans_expand_monte_carlo_component_values() {
+        let yaml = model_section_sweep_project_yaml(
+            r#"          monte_carlo:
+            samples: 4
+            seed: 42
+            component_values:
+              - component: RLOAD
+                field: value_ohm
+                nominal: 1000.0
+                tolerance_percent: 5.0
+              - component: CLOAD
+                field: value_f
+                nominal: 0.0000001
+                tolerance_percent: 10.0
+"#,
+        );
+        let project: BoardProject = serde_yaml_ng::from_str(&yaml).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+
+        let plans = analog_run_plans(analog).unwrap();
+
+        assert_eq!(plans.len(), 4);
+        assert_eq!(plans[0].sweep_name.as_deref(), Some("model_corner"));
+        assert_eq!(
+            plans[0].run_subdir.as_deref(),
+            Some("model_corner_corner_001")
+        );
+        assert_eq!(plans[0].component_value_overrides.len(), 2);
+        assert_eq!(
+            plans[0].component_value_overrides[0].parameter_name,
+            "CCI_RLOAD_VALUE_OHM"
+        );
+        assert!((950.0..=1050.0).contains(&plans[0].component_value_overrides[0].value));
+        assert!((0.00000009..=0.00000011).contains(&plans[3].component_value_overrides[1].value));
     }
 
     #[test]

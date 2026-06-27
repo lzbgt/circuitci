@@ -302,6 +302,44 @@ fn generated_rc_lowpass_bode_observation_validates_with_bode_artifact() {
 }
 
 #[test]
+fn generated_rc_lowpass_monte_carlo_observation_validates_with_bode_artifacts() {
+    let report =
+        run_validation("examples/good_generated_rc_lowpass_monte_carlo_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        let waveforms = report["waveforms"].as_array().unwrap();
+        assert_eq!(waveforms.len(), 5);
+        assert!(
+            waveforms
+                .iter()
+                .all(|waveform| waveform.as_str().unwrap().ends_with("bode.csv"))
+        );
+        let sweep_summaries: Vec<_> = report["infos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|finding| finding["id"] == "ANALOG_SWEEP_MARGIN_SUMMARY")
+            .collect();
+        assert_eq!(sweep_summaries.len(), 2);
+        assert!(sweep_summaries.iter().all(|summary| {
+            summary["measured"]["analog_sweep"] == "rc_monte_carlo"
+                && summary["measured"]["evaluated_corners"] == 5
+                && summary["measured"]["analog_component_values"]
+                    .as_object()
+                    .is_some_and(|values| {
+                        values.contains_key("R1.value_ohm") && values.contains_key("C1.value_f")
+                    })
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_dc_bias_observation_validates_with_operating_point_artifacts() {
     let report = run_validation("examples/good_dc_bias_observation/project.yaml");
     if binary_available("ngspice") {

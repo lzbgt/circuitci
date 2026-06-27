@@ -143,14 +143,18 @@ Current analog support:
   transient, AC/Bode, and DC operating-point assertions.
   Sweeps can use raw SPICE `.param` values, generated component value inputs
   such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`, and vendor model-library
-  sections through section-specific ngspice `.lib` cards.
+  sections through section-specific ngspice `.lib` cards. They can also use
+  deterministic Monte Carlo component-value samples for generated-board
+  tolerance observations, with sampled values represented as normal component
+  value corners.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter or component value, generated load/source
   candidate selection, extra parameter/component/model-section add/remove
   controls, and declared corner-count summaries without editing YAML by hand.
   Built-in corner presets add common supply, load, temperature, model-selector,
   and RC-tolerance sweeps; `TEMP_C` and `TEMPERATURE_C` also drive ngspice
-  `.temp`.
+  `.temp`. Declared Monte Carlo sweeps are shown with their sample counts and
+  sampled component fields in the same table.
 - GUI generated run-setup overview rows for completed sweep worst-corner
   assertion margins, including limiting corner, parameter values, component
   value inputs, selected model sections, measured value, limit, margin,

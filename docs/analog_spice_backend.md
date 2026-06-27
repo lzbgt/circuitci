@@ -223,14 +223,18 @@ primitive fields such as `RLOAD.value_ohm`, `CLOAD.value_f`, `VSUPPLY.dc_v`, or
 `ILOAD.dc_a`; CircuitCI emits a nominal generated `.param` for that field and
 uses the generated parameter in the primitive line, so load/source corners can
 be driven from Board IR component names instead of hand-written SPICE parameter
-names. Swept assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings
-that identify the worst evaluated corner, parameter values, component value
-inputs, selected model-library sections, measured value, limit, relation, and
-numeric margin for each assertion. Sweeps can select vendor model-library
-sections through `model_sections`; CircuitCI emits section-specific ngspice
-`.lib "path" section` cards for each corner. When a sweep declares `TEMP_C` or
-`TEMPERATURE_C`, CircuitCI emits both the matching `.param` and an ngspice
-`.temp` card for that corner.
+names. `monte_carlo` sweep blocks deterministically sample generated component
+fields around a nominal value and tolerance using the declared seed; sampled
+values are expanded into the same component-value override path, so artifacts
+and margin summaries remain reproducible. Swept assertions also emit
+`ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify the worst evaluated
+corner, parameter values, component value inputs, selected model-library
+sections, measured value, limit, relation, and numeric margin for each
+assertion. Sweeps can select vendor model-library sections through
+`model_sections`; CircuitCI emits section-specific ngspice `.lib "path" section`
+cards for each corner. When a sweep declares `TEMP_C` or `TEMPERATURE_C`,
+CircuitCI emits both the matching `.param` and an ngspice `.temp` card for that
+corner.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode
