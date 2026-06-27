@@ -1,0 +1,295 @@
+# Scope-ready loop-stability Bode GUI example.
+#
+# The file-backed AC deck is a deterministic loop-gain fixture. The Board IR
+# shell gives the GUI a connected, readable schematic and executable stability
+# margin checks.
+project:
+  name: loop_stability_bode_scope
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  schematic:
+    component_symbols:
+      VIN: Simulation_SPICE:VAC
+      EGAIN: Simulation_SPICE:VCVS
+      RDOM: Device:R
+      CDOM: Device:C
+      EBUF1: Simulation_SPICE:VCVS
+      RHF1: Device:R
+      CHF1: Device:C
+      EBUF2: Simulation_SPICE:VCVS
+      RHF2: Device:R
+      CHF2: Device:C
+    node_styles:
+      component:VIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:EGAIN: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RDOM: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CDOM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:EBUF1: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RHF1: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CHF1: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:EBUF2: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RHF2: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CHF2: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VIN: { x: 32.0, y: 288.0 }
+      component:EGAIN: { x: 192.0, y: 224.0 }
+      component:RDOM: { x: 384.0, y: 224.0 }
+      component:CDOM: { x: 512.0, y: 352.0 }
+      component:EBUF1: { x: 640.0, y: 224.0 }
+      component:RHF1: { x: 832.0, y: 224.0 }
+      component:CHF1: { x: 960.0, y: 352.0 }
+      component:EBUF2: { x: 1088.0, y: 224.0 }
+      component:RHF2: { x: 1280.0, y: 224.0 }
+      component:CHF2: { x: 1408.0, y: 352.0 }
+      net:input: { x: 144.0, y: 224.0 }
+      net:gain: { x: 304.0, y: 224.0 }
+      net:p1: { x: 512.0, y: 224.0 }
+      net:b1: { x: 736.0, y: 224.0 }
+      net:p2: { x: 960.0, y: 224.0 }
+      net:b2: { x: 1184.0, y: 224.0 }
+      net:loop: { x: 1408.0, y: 224.0 }
+      net:gnd: { x: 736.0, y: 544.0 }
+    wire_routes:
+      VIN.P->input:
+        points:
+          - { x: 144.0, y: 320.0 }
+      VIN.N->gnd:
+        points:
+          - { x: 80.0, y: 544.0 }
+      EGAIN.P1->input:
+        points:
+          - { x: 160.0, y: 224.0 }
+      EGAIN.P2->gnd:
+        points:
+          - { x: 192.0, y: 544.0 }
+      EGAIN.P3->gain:
+        points:
+          - { x: 304.0, y: 224.0 }
+      EGAIN.P4->gnd:
+        points:
+          - { x: 224.0, y: 544.0 }
+      RDOM.A->gain:
+        points:
+          - { x: 304.0, y: 224.0 }
+      RDOM.B->p1:
+        points:
+          - { x: 512.0, y: 224.0 }
+      CDOM.A->p1:
+        points:
+          - { x: 512.0, y: 352.0 }
+      CDOM.B->gnd:
+        points:
+          - { x: 512.0, y: 544.0 }
+      EBUF1.P1->p1:
+        points:
+          - { x: 608.0, y: 224.0 }
+      EBUF1.P2->gnd:
+        points:
+          - { x: 640.0, y: 544.0 }
+      EBUF1.P3->b1:
+        points:
+          - { x: 736.0, y: 224.0 }
+      EBUF1.P4->gnd:
+        points:
+          - { x: 672.0, y: 544.0 }
+      RHF1.A->b1:
+        points:
+          - { x: 736.0, y: 224.0 }
+      RHF1.B->p2:
+        points:
+          - { x: 960.0, y: 224.0 }
+      CHF1.A->p2:
+        points:
+          - { x: 960.0, y: 352.0 }
+      CHF1.B->gnd:
+        points:
+          - { x: 960.0, y: 544.0 }
+      EBUF2.P1->p2:
+        points:
+          - { x: 1056.0, y: 224.0 }
+      EBUF2.P2->gnd:
+        points:
+          - { x: 1088.0, y: 544.0 }
+      EBUF2.P3->b2:
+        points:
+          - { x: 1184.0, y: 224.0 }
+      EBUF2.P4->gnd:
+        points:
+          - { x: 1120.0, y: 544.0 }
+      RHF2.A->b2:
+        points:
+          - { x: 1184.0, y: 224.0 }
+      RHF2.B->loop:
+        points:
+          - { x: 1408.0, y: 224.0 }
+      CHF2.A->loop:
+        points:
+          - { x: 1408.0, y: 352.0 }
+      CHF2.B->gnd:
+        points:
+          - { x: 1408.0, y: 544.0 }
+  components:
+    VIN:
+      model: generic.analog.imported_spice_device
+      pins:
+        P: input
+        N: gnd
+    EGAIN:
+      model: generic.analog.imported_spice_device
+      pins:
+        P1: input
+        P2: gnd
+        P3: gain
+        P4: gnd
+    RDOM:
+      model: generic.analog.resistor
+      pins:
+        A: gain
+        B: p1
+      spice:
+        primitive: resistor
+        value_ohm: 15915.494309
+    CDOM:
+      model: generic.analog.capacitor
+      pins:
+        A: p1
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
+    EBUF1:
+      model: generic.analog.imported_spice_device
+      pins:
+        P1: p1
+        P2: gnd
+        P3: b1
+        P4: gnd
+    RHF1:
+      model: generic.analog.resistor
+      pins:
+        A: b1
+        B: p2
+      spice:
+        primitive: resistor
+        value_ohm: 1591.549431
+    CHF1:
+      model: generic.analog.capacitor
+      pins:
+        A: p2
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000000001
+    EBUF2:
+      model: generic.analog.imported_spice_device
+      pins:
+        P1: p2
+        P2: gnd
+        P3: b2
+        P4: gnd
+    RHF2:
+      model: generic.analog.resistor
+      pins:
+        A: b2
+        B: loop
+      spice:
+        primitive: resistor
+        value_ohm: 159.154943
+    CHF2:
+      model: generic.analog.capacitor
+      pins:
+        A: loop
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000000001
+  nets:
+    input:
+      kind: digital_or_analog
+    gain:
+      kind: digital_or_analog
+    p1:
+      kind: digital_or_analog
+    b1:
+      kind: digital_or_analog
+    p2:
+      kind: digital_or_analog
+    b2:
+      kind: digital_or_analog
+    loop:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: loop_stability_bode_ac
+    type: analog_ac
+    checks:
+      - SPICE_AC_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck_ac.cir
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: in, net: input }
+        - { node: gain, net: gain }
+        - { node: p1, net: p1 }
+        - { node: b1, net: b1 }
+        - { node: p2, net: p2 }
+        - { node: b2, net: b2 }
+        - { node: loop, net: loop }
+      pin_bindings:
+        - { node: in, endpoint: { component: VIN, pin: P } }
+        - { node: "0", endpoint: { component: VIN, pin: N } }
+        - { node: in, endpoint: { component: EGAIN, pin: P1 } }
+        - { node: "0", endpoint: { component: EGAIN, pin: P2 } }
+        - { node: gain, endpoint: { component: EGAIN, pin: P3 } }
+        - { node: "0", endpoint: { component: EGAIN, pin: P4 } }
+        - { node: gain, endpoint: { component: RDOM, pin: A } }
+        - { node: p1, endpoint: { component: RDOM, pin: B } }
+        - { node: p1, endpoint: { component: CDOM, pin: A } }
+        - { node: "0", endpoint: { component: CDOM, pin: B } }
+        - { node: p1, endpoint: { component: EBUF1, pin: P1 } }
+        - { node: "0", endpoint: { component: EBUF1, pin: P2 } }
+        - { node: b1, endpoint: { component: EBUF1, pin: P3 } }
+        - { node: "0", endpoint: { component: EBUF1, pin: P4 } }
+        - { node: b1, endpoint: { component: RHF1, pin: A } }
+        - { node: p2, endpoint: { component: RHF1, pin: B } }
+        - { node: p2, endpoint: { component: CHF1, pin: A } }
+        - { node: "0", endpoint: { component: CHF1, pin: B } }
+        - { node: p2, endpoint: { component: EBUF2, pin: P1 } }
+        - { node: "0", endpoint: { component: EBUF2, pin: P2 } }
+        - { node: b2, endpoint: { component: EBUF2, pin: P3 } }
+        - { node: "0", endpoint: { component: EBUF2, pin: P4 } }
+        - { node: b2, endpoint: { component: RHF2, pin: A } }
+        - { node: loop, endpoint: { component: RHF2, pin: B } }
+        - { node: loop, endpoint: { component: CHF2, pin: A } }
+        - { node: "0", endpoint: { component: CHF2, pin: B } }
+      analysis:
+        type: ac
+        start_frequency_hz: 1.0
+        stop_frequency_hz: 10000000.0
+        points_per_decade: 50
+      stimuli:
+        - name: loop_gain_drive
+          description: 1 V AC source into a 40 dB loop-gain fixture.
+      probes:
+        - name: loop
+          expression: V(loop)
+      assertions:
+        - name: loop_phase_margin_above_45deg
+          probe: loop
+          aggregation: phase_margin_deg
+          relation: above
+          threshold_deg: 45.0
+        - name: loop_gain_margin_above_6db
+          probe: loop
+          aggregation: gain_margin_db
+          relation: above
+          threshold_db: 6.0

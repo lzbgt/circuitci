@@ -1,0 +1,15 @@
+* Scope-ready loop-stability Bode example.
+* A 1 V AC source drives an open-loop transfer fixture with 40 dB DC gain.
+* One dominant pole and two higher-frequency poles provide measurable
+* phase-margin and gain-margin checks without a vendor op-amp macro-model.
+VIN in 0 AC 1
+EGAIN gain 0 in 0 100
+RDOM gain p1 15915.494309
+CDOM p1 0 1u
+EBUF1 b1 0 p1 0 1
+RHF1 b1 p2 1591.549431
+CHF1 p2 0 1n
+EBUF2 b2 0 p2 0 1
+RHF2 b2 loop 159.154943
+CHF2 loop 0 1n
+.end

@@ -188,6 +188,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
 - `examples/comparator_threshold_scope` proves the generic comparator
   macro-model in a direct-open GUI example with routed schematic metadata,
   named scope probes, and executable threshold/output-state waveform checks.
+- `examples/loop_stability_bode_scope` proves file-backed AC/Bode loop-gain
+  observation in a direct-open GUI example with routed schematic metadata,
+  Bode artifact export, and executable phase/gain margin checks.
 - `examples/bad_mosfet_missing_body_policy` proves a three-pin MOSFET fails
   closed when the model does not explicitly allow body-to-source tying.
 - `examples/bad_mosfet_model_missing_sha` proves generated device models must

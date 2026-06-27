@@ -528,15 +528,6 @@ fn gain_crossing_frequency(
     crossing_frequency(response, column, threshold_db, direction, "gain crossing")
 }
 
-fn phase_crossing_frequency(
-    response: &BodeResponse,
-    column: &str,
-    threshold_deg: f64,
-    direction: CrossingDirection,
-) -> Result<f64, String> {
-    crossing_frequency(response, column, threshold_deg, direction, "phase crossing")
-}
-
 fn crossing_frequency(
     response: &BodeResponse,
     column: &str,
@@ -551,7 +542,25 @@ fn crossing_frequency(
         .columns
         .get(column)
         .ok_or_else(|| format!("Bode CSV is missing column {column}"))?;
-    for (frequency_pair, value_pair) in response.frequency_hz.windows(2).zip(values.windows(2)) {
+    crossing_frequency_values(
+        &response.frequency_hz,
+        values,
+        threshold,
+        direction,
+        label,
+        column,
+    )
+}
+
+fn crossing_frequency_values(
+    frequency_hz: &[f64],
+    values: &[f64],
+    threshold: f64,
+    direction: CrossingDirection,
+    label: &str,
+    column: &str,
+) -> Result<f64, String> {
+    for (frequency_pair, value_pair) in frequency_hz.windows(2).zip(values.windows(2)) {
         let y0 = value_pair[0];
         let y1 = value_pair[1];
         let crosses = match direction {
@@ -590,15 +599,45 @@ fn phase_margin_deg(response: &BodeResponse, probe_key: &str) -> Result<f64, Str
 }
 
 fn gain_margin_db(response: &BodeResponse, probe_key: &str) -> Result<f64, String> {
-    let phase_cross_hz = phase_crossing_frequency(
-        response,
-        &format!("{probe_key}_phase_deg"),
+    let phase_column = format!("{probe_key}_phase_deg");
+    let phase_values = response
+        .columns
+        .get(&phase_column)
+        .ok_or_else(|| format!("Bode CSV is missing column {phase_column}"))?;
+    let unwrapped_phase = unwrap_phase_degrees(phase_values);
+    let phase_cross_hz = crossing_frequency_values(
+        &response.frequency_hz,
+        &unwrapped_phase,
         -180.0,
         CrossingDirection::Falling,
+        "phase crossing",
+        &phase_column,
     )?;
     let gain_db =
         interpolate_log_frequency(response, &format!("{probe_key}_mag_db"), phase_cross_hz)?;
     Ok(-gain_db)
+}
+
+fn unwrap_phase_degrees(values: &[f64]) -> Vec<f64> {
+    let mut unwrapped = Vec::with_capacity(values.len());
+    let mut offset = 0.0;
+    let mut previous = None;
+    for &value in values {
+        let mut candidate = value + offset;
+        if let Some(previous) = previous {
+            while candidate - previous > 180.0 {
+                offset -= 360.0;
+                candidate = value + offset;
+            }
+            while candidate - previous < -180.0 {
+                offset += 360.0;
+                candidate = value + offset;
+            }
+        }
+        unwrapped.push(candidate);
+        previous = Some(candidate);
+    }
+    unwrapped
 }
 
 fn sanitize_csv_column(name: &str) -> String {

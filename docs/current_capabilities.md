@@ -143,7 +143,7 @@ Current analog support:
   subcircuits. These models are low-confidence workflow/topology aids, not
   vendor sign-off evidence. The GUI Examples picker includes direct-open
   scope fixtures for NE555, RC low-pass, comparator threshold, op-amp buffer,
-  AP2112K LDO rail, and TLV803 reset-supervisor workflows.
+  AP2112K LDO rail, TLV803 reset-supervisor, and loop-stability Bode workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled

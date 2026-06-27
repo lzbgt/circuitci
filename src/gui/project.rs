@@ -38,6 +38,11 @@ const TLV803_RESET_SCOPE_EXAMPLE_PROJECT: &str =
 const TLV803_RESET_SCOPE_EXAMPLE_NAME: &str = "good_tlv803ea29_reset_observation";
 const TLV803_RESET_SCOPE_EXPECTED_TRACES: &[&str] = &["v_rail", "reset_n"];
 const TLV803_RESET_SCOPE_EXPECTED_FREQUENCY: &str = "3.3 V rail ramp with reset release";
+const LOOP_STABILITY_BODE_EXAMPLE_PROJECT: &str = "examples/loop_stability_bode_scope/project.yaml";
+const LOOP_STABILITY_BODE_EXAMPLE_NAME: &str = "loop_stability_bode_scope";
+const LOOP_STABILITY_BODE_EXPECTED_TRACES: &[&str] = &["loop_mag_db", "loop_phase_deg", "loop_mag"];
+const LOOP_STABILITY_BODE_EXPECTED_FREQUENCY: &str =
+    "Bode loop gain with phase margin >45 deg and gain margin >6 dB";
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
@@ -116,6 +121,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TLV803_RESET_SCOPE_EXPECTED_TRACES,
         expected_frequency: TLV803_RESET_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("URESET"),
+    },
+    GuiProjectExample {
+        id: "loop_stability_bode_scope",
+        category: "Stability",
+        open_label: "Open Loop Stability Bode Example",
+        run_label: "Open Loop Stability + Run Scopes",
+        workflow_title: "Loop Stability Bode Workflow",
+        summary: "Open-loop Bode response with executable phase and gain margin checks.",
+        project_path: LOOP_STABILITY_BODE_EXAMPLE_PROJECT,
+        project_name: LOOP_STABILITY_BODE_EXAMPLE_NAME,
+        expected_traces: LOOP_STABILITY_BODE_EXPECTED_TRACES,
+        expected_frequency: LOOP_STABILITY_BODE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
     },
 ];
 

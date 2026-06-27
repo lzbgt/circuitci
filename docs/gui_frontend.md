@@ -479,10 +479,11 @@ form:
   traces, and expected frequency before `Open` or `Run + Scopes`. The current
   entries cover the checked-in NE555 astable-style fixture, RC low-pass sine
   fixture, comparator threshold fixture, op-amp buffer fixture, AP2112K LDO
-  rail fixture, and TLV803 reset-supervisor fixture; all direct-open projects
-  include display-only routed schematic waypoints. Opening one lands directly
-  in Sketch with a deferred Fit All, so the first view is the readable connected
-  network. When a scope-ready fixture is active, the Project overlay also shows
+  rail fixture, TLV803 reset-supervisor fixture, and loop-stability Bode
+  fixture; all direct-open projects include display-only routed schematic
+  waypoints. Opening one lands directly in Sketch with a deferred Fit All, so
+  the first view is the readable connected network. When a scope-ready fixture
+  is active, the Project overlay also shows
   a workflow status with direct `Run + Scopes` / `Open Scope Activity` actions,
   and the Sketch side dock mirrors those compact workflow actions above Run
   Readiness. Examples that contain a known SPICE-ready function block, such as
