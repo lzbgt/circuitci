@@ -114,6 +114,43 @@ fn append_analog_assertion_emits_phase_delay_yaml() {
     assert_eq!(assertion.time_limit_us, Some(10.0));
 }
 
+#[test]
+fn append_analog_assertion_emits_setup_time_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let edited = append_analog_voltage_probe(
+        &edited,
+        &AnalogProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            net_id: "rail_5v".to_string(),
+            probe_name: "clock_voltage".to_string(),
+        },
+    )
+    .unwrap();
+    let mut assertion = assertion_draft();
+    assertion.assertion_name = "out_setup_before_clock".to_string();
+    assertion.aggregation = "rising_setup_time".to_string();
+    assertion.relation = "above".to_string();
+    assertion.probe_name = "out_voltage".to_string();
+    assertion.reference_probe = "clock_voltage".to_string();
+    assertion.threshold = 0.5;
+    assertion.reference_threshold = 1.2;
+    assertion.start_us = 0.0;
+    assertion.end_us = 100.0;
+    assertion.time_limit_us = 5.0;
+
+    let edited = append_analog_assertion(&edited, &assertion).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::RisingSetupTime
+    );
+    assert_eq!(assertion.reference_probe.as_deref(), Some("clock_voltage"));
+    assert_eq!(assertion.reference_threshold_v, Some(1.2));
+    assert_eq!(assertion.threshold_v, Some(0.5));
+    assert_eq!(assertion.time_limit_us, Some(5.0));
+}
+
 fn probe_draft() -> AnalogProbeDraft {
     AnalogProbeDraft {
         scenario_name: "gui_transient".to_string(),

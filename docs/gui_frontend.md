@@ -658,8 +658,8 @@ The supported desktop simulation path is:
    the branch voltage and branch current as an explicit Board IR power probe,
 32. add sample, windowed min/max/mean/RMS/integral/energy, rising/falling
    crossing-time, minimum high/low pulse-width, duty-cycle, crossing-count,
-   settling-time, overshoot, or two-probe phase-delay waveform observation
-   checks against declared probes,
+   settling-time, overshoot, two-probe phase-delay, or setup/hold waveform
+   observation checks against declared probes,
 33. author bounded SPICE `.param` run-input sweeps from the Observations
    overlay, including executable first-parameter creation, extra parameter
    add/remove controls, declared corner counts, and Board IR YAML persistence,

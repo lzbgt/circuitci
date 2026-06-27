@@ -287,7 +287,12 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
         }
         if matches!(
             assertion.aggregation,
-            AnalogAggregation::RisingPhaseDelay | AnalogAggregation::FallingPhaseDelay
+            AnalogAggregation::RisingPhaseDelay
+                | AnalogAggregation::FallingPhaseDelay
+                | AnalogAggregation::RisingSetupTime
+                | AnalogAggregation::RisingHoldTime
+                | AnalogAggregation::FallingSetupTime
+                | AnalogAggregation::FallingHoldTime
         ) {
             let Some(reference_probe) = assertion.reference_probe.as_deref() else {
                 validation_input_missing(

@@ -105,7 +105,8 @@ Current analog support:
   minimum high/low pulse-width checks, duty-cycle checks, threshold
   crossing-count checks for no-recross or ringing budgets, settling-time
   checks against target/tolerance bands, and overshoot-percent checks against
-  target values, and rising/falling phase-delay checks between two probes.
+  target values, rising/falling phase-delay checks between two probes, and
+  setup/hold timing checks around reference probe edges.
 - Automatic `SPICE_OPERATING_LIMIT` checks for supported generated Board IR
   semiconductor stress limits, including selected derating, pulse, and SOA
   metadata paths.

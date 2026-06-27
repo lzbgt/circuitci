@@ -313,7 +313,7 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
                 draft.probe_name, scenario.name
             )
         })?;
-    let reference_quantity = phase_reference_quantity(draft, analog)?;
+    let reference_quantity = reference_timing_quantity(draft, analog)?;
     validate_assertion_probe_quantity(draft, &probe.quantity)?;
     validate_assertion_timing(draft, analog.analysis.stop_time_us)?;
 
@@ -772,7 +772,7 @@ pub(super) fn replace_analog_assertion(
                 draft.replacement.probe_name, scenario.name
             )
         })?;
-    let reference_quantity = phase_reference_quantity(&draft.replacement, analog)?;
+    let reference_quantity = reference_timing_quantity(&draft.replacement, analog)?;
     validate_assertion_probe_quantity(&draft.replacement, &probe.quantity)?;
     validate_assertion_timing(&draft.replacement, analog.analysis.stop_time_us)?;
 
@@ -886,6 +886,10 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "overshoot_percent"
             | "rising_phase_delay"
             | "falling_phase_delay"
+            | "rising_setup_time"
+            | "rising_hold_time"
+            | "falling_setup_time"
+            | "falling_hold_time"
             | "rising_crossing_time"
             | "falling_crossing_time"
             | "min_high_pulse_width"
@@ -911,7 +915,12 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
     }
     if matches!(
         draft.aggregation.as_str(),
-        "rising_phase_delay" | "falling_phase_delay"
+        "rising_phase_delay"
+            | "falling_phase_delay"
+            | "rising_setup_time"
+            | "rising_hold_time"
+            | "falling_setup_time"
+            | "falling_hold_time"
     ) {
         validated_id(&draft.reference_probe, "reference probe")?;
         if !draft.reference_threshold.is_finite() {
@@ -1085,7 +1094,11 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
         | "min_low_pulse_width"
         | "settling_time"
         | "rising_phase_delay"
-        | "falling_phase_delay" => {
+        | "falling_phase_delay"
+        | "rising_setup_time"
+        | "rising_hold_time"
+        | "falling_setup_time"
+        | "falling_hold_time" => {
             if !draft.start_us.is_finite()
                 || !draft.end_us.is_finite()
                 || draft.start_us < 0.0
@@ -1158,13 +1171,18 @@ fn validate_assertion_probe_quantity(
     Ok(())
 }
 
-fn phase_reference_quantity(
+fn reference_timing_quantity(
     draft: &AnalogAssertionDraft,
     analog: &crate::board_ir::AnalogScenario,
 ) -> Result<Option<crate::board_ir::AnalogQuantity>> {
     if !matches!(
         draft.aggregation.as_str(),
-        "rising_phase_delay" | "falling_phase_delay"
+        "rising_phase_delay"
+            | "falling_phase_delay"
+            | "rising_setup_time"
+            | "rising_hold_time"
+            | "falling_setup_time"
+            | "falling_hold_time"
     ) {
         return Ok(None);
     }
@@ -1194,6 +1212,10 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::OvershootPercent => "overshoot_percent",
         crate::board_ir::AnalogAggregation::RisingPhaseDelay => "rising_phase_delay",
         crate::board_ir::AnalogAggregation::FallingPhaseDelay => "falling_phase_delay",
+        crate::board_ir::AnalogAggregation::RisingSetupTime => "rising_setup_time",
+        crate::board_ir::AnalogAggregation::RisingHoldTime => "rising_hold_time",
+        crate::board_ir::AnalogAggregation::FallingSetupTime => "falling_setup_time",
+        crate::board_ir::AnalogAggregation::FallingHoldTime => "falling_hold_time",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising_crossing_time",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling_crossing_time",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min_high_pulse_width",
@@ -1372,7 +1394,11 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         | crate::board_ir::AnalogAggregation::MinLowPulseWidth
         | crate::board_ir::AnalogAggregation::SettlingTime
         | crate::board_ir::AnalogAggregation::RisingPhaseDelay
-        | crate::board_ir::AnalogAggregation::FallingPhaseDelay => {
+        | crate::board_ir::AnalogAggregation::FallingPhaseDelay
+        | crate::board_ir::AnalogAggregation::RisingSetupTime
+        | crate::board_ir::AnalogAggregation::RisingHoldTime
+        | crate::board_ir::AnalogAggregation::FallingSetupTime
+        | crate::board_ir::AnalogAggregation::FallingHoldTime => {
             format!(
                 "{:.6}..{:.6} us, limit {:.6} us",
                 assertion.start_us.unwrap_or_default(),
@@ -1621,7 +1647,11 @@ fn assertion_value(
         | "min_low_pulse_width"
         | "settling_time"
         | "rising_phase_delay"
-        | "falling_phase_delay" => {
+        | "falling_phase_delay"
+        | "rising_setup_time"
+        | "rising_hold_time"
+        | "falling_setup_time"
+        | "falling_hold_time" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
             insert_number(&mut assertion, "time_limit_us", draft.time_limit_us)?;
@@ -1659,10 +1689,15 @@ fn assertion_value(
         insert_number(&mut assertion, target_field(quantity), draft.target)?;
     } else if matches!(
         draft.aggregation.as_str(),
-        "rising_phase_delay" | "falling_phase_delay"
+        "rising_phase_delay"
+            | "falling_phase_delay"
+            | "rising_setup_time"
+            | "rising_hold_time"
+            | "falling_setup_time"
+            | "falling_hold_time"
     ) {
         let reference_quantity = reference_quantity
-            .context("Phase-delay assertions require a resolved reference probe quantity.")?;
+            .context("Reference-timing assertions require a resolved reference probe quantity.")?;
         insert_string(
             &mut assertion,
             "reference_probe",

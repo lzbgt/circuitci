@@ -779,6 +779,10 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
             Some(
                 AssertionAggregationYaml::RisingPhaseDelay
                     | AssertionAggregationYaml::FallingPhaseDelay
+                    | AssertionAggregationYaml::RisingSetupTime
+                    | AssertionAggregationYaml::RisingHoldTime
+                    | AssertionAggregationYaml::FallingSetupTime
+                    | AssertionAggregationYaml::FallingHoldTime
             )
         );
         if is_settling {
@@ -808,7 +812,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     .is_none_or(|reference_probe| !probes.contains(reference_probe))
             {
                 bail!(
-                    "KiCad analog scenario {} assertion {} must declare one checked threshold, one reference probe, and one reference threshold for phase-delay checks.",
+                    "KiCad analog scenario {} assertion {} must declare one checked threshold, one reference probe, and one reference threshold for reference-timing checks.",
                     scenario.name,
                     assertion.name
                 );
@@ -846,6 +850,10 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     | AssertionAggregationYaml::SettlingTime
                     | AssertionAggregationYaml::RisingPhaseDelay
                     | AssertionAggregationYaml::FallingPhaseDelay
+                    | AssertionAggregationYaml::RisingSetupTime
+                    | AssertionAggregationYaml::RisingHoldTime
+                    | AssertionAggregationYaml::FallingSetupTime
+                    | AssertionAggregationYaml::FallingHoldTime
             )
         );
         let is_duty = matches!(

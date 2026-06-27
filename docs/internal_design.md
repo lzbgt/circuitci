@@ -553,7 +553,7 @@ not introduce a second analog netlist or sign-off model.
 selected-net voltage-probe insertion, selected-component source, passive, and
 semiconductor current-probe insertion, selected-component source, passive, and
 semiconductor power-probe insertion into existing analog scenarios, and
-structured sample/window/timing/duty/count/settling/overshoot/phase-delay check authoring. Its focused regression tests live
+structured sample/window/timing/duty/count/settling/overshoot/phase-delay/setup-hold check authoring. Its focused regression tests live
 in `src/gui/analog_tests.rs` so the production module stays below the source
 line guard. It may derive node and pin bindings from Board IR for observation
 scenarios. Selected-net probe insertion must fail

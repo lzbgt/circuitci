@@ -52,7 +52,12 @@ pub(super) fn measured_assertion_value(
             crossing_count(times, values, start, end, threshold, &assertion.aggregation)
                 .map(|count| count as f64)
         }
-        AnalogAggregation::RisingPhaseDelay | AnalogAggregation::FallingPhaseDelay => None,
+        AnalogAggregation::RisingPhaseDelay
+        | AnalogAggregation::FallingPhaseDelay
+        | AnalogAggregation::RisingSetupTime
+        | AnalogAggregation::RisingHoldTime
+        | AnalogAggregation::FallingSetupTime
+        | AnalogAggregation::FallingHoldTime => None,
     }
 }
 
@@ -82,6 +87,61 @@ pub(super) fn phase_delay_us(
     let reference_time = reference_time_us / 1_000_000.0;
     let target_time_us = crossing_time_us(times, values, reference_time, end, threshold, &edge)?;
     Some(target_time_us - reference_time_us)
+}
+
+pub(super) fn setup_hold_time_us(
+    times: &[f64],
+    reference_values: &[f64],
+    values: &[f64],
+    window: (f64, f64),
+    thresholds: (f64, f64),
+    aggregation: &AnalogAggregation,
+) -> Option<f64> {
+    let (start, end) = window;
+    let (reference_threshold, threshold) = thresholds;
+    let reference_edge = match aggregation {
+        AnalogAggregation::RisingSetupTime | AnalogAggregation::RisingHoldTime => {
+            CrossingEdge::Rising
+        }
+        AnalogAggregation::FallingSetupTime | AnalogAggregation::FallingHoldTime => {
+            CrossingEdge::Falling
+        }
+        _ => return None,
+    };
+    let reference_crossings = crossing_times(
+        times,
+        reference_values,
+        start,
+        end,
+        reference_threshold,
+        reference_edge,
+    )?;
+    let data_crossings = crossing_times(times, values, start, end, threshold, CrossingEdge::Any)?;
+    let margins = reference_crossings.into_iter().map(|reference_time| {
+        if matches!(
+            aggregation,
+            AnalogAggregation::RisingSetupTime | AnalogAggregation::FallingSetupTime
+        ) {
+            let previous = data_crossings
+                .iter()
+                .copied()
+                .filter(|crossing| *crossing <= reference_time)
+                .next_back()
+                .unwrap_or(start);
+            reference_time - previous
+        } else {
+            let next = data_crossings
+                .iter()
+                .copied()
+                .find(|crossing| *crossing >= reference_time)
+                .unwrap_or(end);
+            next - reference_time
+        }
+    });
+    margins
+        .filter(|margin| margin.is_finite() && *margin >= 0.0)
+        .map(|margin| margin * 1_000_000.0)
+        .reduce(f64::min)
 }
 
 fn aggregate_window(
@@ -148,6 +208,10 @@ fn aggregate_window(
         | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingPhaseDelay
         | AnalogAggregation::FallingPhaseDelay
+        | AnalogAggregation::RisingSetupTime
+        | AnalogAggregation::RisingHoldTime
+        | AnalogAggregation::FallingSetupTime
+        | AnalogAggregation::FallingHoldTime
         | AnalogAggregation::CrossingCount
         | AnalogAggregation::RisingCrossingCount
         | AnalogAggregation::FallingCrossingCount => None,
@@ -335,6 +399,43 @@ fn crossing_count(
 }
 
 #[derive(Debug, Clone, Copy)]
+enum CrossingEdge {
+    Any,
+    Rising,
+    Falling,
+}
+
+fn crossing_times(
+    times: &[f64],
+    values: &[f64],
+    start: f64,
+    end: f64,
+    threshold: f64,
+    edge: CrossingEdge,
+) -> Option<Vec<f64>> {
+    if start > end || !threshold.is_finite() {
+        return None;
+    }
+    let selected = threshold_selected_points(times, values, start, end)?;
+    let mut crossings = Vec::new();
+    for segment in selected.windows(2) {
+        let (t0, y0) = segment[0];
+        let (t1, y1) = segment[1];
+        let crosses = match edge {
+            CrossingEdge::Any => {
+                (y0 < threshold && y1 >= threshold) || (y0 > threshold && y1 <= threshold)
+            }
+            CrossingEdge::Rising => y0 < threshold && y1 >= threshold,
+            CrossingEdge::Falling => y0 > threshold && y1 <= threshold,
+        };
+        if crosses {
+            crossings.push(threshold_crossing_between(t0, y0, t1, y1, threshold)?);
+        }
+    }
+    Some(crossings)
+}
+
+#[derive(Debug, Clone, Copy)]
 struct ThresholdInterval {
     high: bool,
     start: f64,
@@ -450,7 +551,7 @@ pub(super) fn interpolate_at(times: &[f64], values: &[f64], target: f64) -> Opti
 mod tests {
     use super::{
         aggregate_window, crossing_count, crossing_time_us, duty_cycle_percent, min_pulse_width_us,
-        overshoot_percent, phase_delay_us, settling_time_us,
+        overshoot_percent, phase_delay_us, settling_time_us, setup_hold_time_us,
     };
     use crate::board_ir::AnalogAggregation;
 
@@ -618,6 +719,34 @@ mod tests {
         .unwrap();
 
         assert!((delay - 1.0).abs() < 1.0e-9);
+    }
+
+    #[test]
+    fn setup_hold_time_measures_data_stability_around_reference_edges() {
+        let times = [0.0, 1.0e-6, 2.0e-6, 3.0e-6, 4.0e-6, 5.0e-6];
+        let reference = [0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
+        let data = [0.0, 1.0, 1.0, 1.0, 0.0, 0.0];
+        let setup = setup_hold_time_us(
+            &times,
+            &reference,
+            &data,
+            (0.0, 5.0e-6),
+            (0.5, 0.5),
+            &AnalogAggregation::RisingSetupTime,
+        )
+        .unwrap();
+        let hold = setup_hold_time_us(
+            &times,
+            &reference,
+            &data,
+            (0.0, 5.0e-6),
+            (0.5, 0.5),
+            &AnalogAggregation::RisingHoldTime,
+        )
+        .unwrap();
+
+        assert!((setup - 1.0).abs() < 1.0e-9);
+        assert!((hold - 2.0).abs() < 1.0e-9);
     }
 
     #[test]

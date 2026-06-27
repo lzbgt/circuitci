@@ -15,7 +15,9 @@ frequency near `1 kHz` while showing lower amplitude and phase lag relative to
 over the final `5 ms` of the transient: `v(input)` must remain above
 `0.69 Vrms`, `v(filtered)` must stay below `0.62 Vrms`, and the rising
 zero-crossing phase delay from `v(input)` to `v(filtered)` must stay below
-`150 us`.
+`150 us`. The same input/output zero-crossings also exercise a hold-style
+observation check: the filtered output must remain stable for at least `50 us`
+after each rising input reference edge.
 
 Expected workflow:
 

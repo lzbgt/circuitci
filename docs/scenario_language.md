@@ -2615,3 +2615,12 @@ target as a percent of the target magnitude. `rising_phase_delay` and
 checked probe threshold, and `time_limit_us`. The measured value is the delay
 from the reference probe's first matching threshold crossing to the checked
 probe's first matching threshold crossing after it.
+
+Setup/hold timing checks also compare a checked probe against a reference
+probe. `rising_setup_time`, `rising_hold_time`, `falling_setup_time`, and
+`falling_hold_time` use the reference threshold to find matching reference
+edges and the checked probe threshold to find any checked-signal transition.
+Setup time is the minimum time from the previous checked transition to a
+reference edge; hold time is the minimum time from a reference edge to the next
+checked transition. Use `relation: above` with `time_limit_us` for a minimum
+setup or hold margin.

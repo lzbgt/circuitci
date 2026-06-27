@@ -639,6 +639,10 @@ impl CircuitCiApp {
                             "overshoot_percent",
                             "rising_phase_delay",
                             "falling_phase_delay",
+                            "rising_setup_time",
+                            "rising_hold_time",
+                            "falling_setup_time",
+                            "falling_hold_time",
                             "rising_crossing_time",
                             "falling_crossing_time",
                             "min_high_pulse_width",
@@ -660,11 +664,16 @@ impl CircuitCiApp {
                     );
                     ui.end_row();
 
-                    let phase_delay = matches!(
+                    let reference_timing = matches!(
                         self.analog_assertion_aggregation.as_str(),
-                        "rising_phase_delay" | "falling_phase_delay"
+                        "rising_phase_delay"
+                            | "falling_phase_delay"
+                            | "rising_setup_time"
+                            | "rising_hold_time"
+                            | "falling_setup_time"
+                            | "falling_hold_time"
                     );
-                    if phase_delay {
+                    if reference_timing {
                         ui.label("Reference");
                         analog_probe_combo(
                             ui,
@@ -783,6 +792,10 @@ impl CircuitCiApp {
                                 | "settling_time"
                                 | "rising_phase_delay"
                                 | "falling_phase_delay"
+                                | "rising_setup_time"
+                                | "rising_hold_time"
+                                | "falling_setup_time"
+                                | "falling_hold_time"
                         ) {
                             ui.label("Time limit");
                             ui.add(

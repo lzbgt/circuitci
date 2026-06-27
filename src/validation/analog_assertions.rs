@@ -7,7 +7,9 @@ use serde_json::json;
 use super::SPICE_TRANSIENT_ANALYSIS;
 use super::analog_runner::NgspiceRun;
 use super::analog_util::normalize_artifact_path;
-use super::analog_waveform_measurements::{measured_assertion_value, phase_delay_us};
+use super::analog_waveform_measurements::{
+    measured_assertion_value, phase_delay_us, setup_hold_time_us,
+};
 use super::common::validation_input_missing;
 
 pub(super) struct AssertionThreshold {
@@ -56,7 +58,7 @@ pub(super) fn evaluate_waveform_assertions(
             continue;
         };
         let probe = &analog.probes[probe_index];
-        let phase_reference = if is_phase_delay_aggregation(&assertion.aggregation) {
+        let reference_timing = if is_reference_timing_aggregation(&assertion.aggregation) {
             let Some(reference_probe_name) = assertion.reference_probe.as_deref() else {
                 validation_input_missing(
                     findings,
@@ -141,18 +143,32 @@ pub(super) fn evaluate_waveform_assertions(
         } else {
             None
         };
-        let measured = if let Some((reference_probe_index, reference_threshold)) = phase_reference {
-            phase_delay_us(
-                &run.series.time_s,
-                &run.series.values_by_probe[reference_probe_index],
-                &run.series.values_by_probe[probe_index],
-                (
-                    assertion.start_us.unwrap_or_default() / 1_000_000.0,
-                    assertion.end_us.unwrap_or_default() / 1_000_000.0,
-                ),
-                (reference_threshold.value, signal_threshold.value),
-                &assertion.aggregation,
-            )
+        let measured = if let Some((reference_probe_index, reference_threshold)) = reference_timing
+        {
+            let window = (
+                assertion.start_us.unwrap_or_default() / 1_000_000.0,
+                assertion.end_us.unwrap_or_default() / 1_000_000.0,
+            );
+            let thresholds = (reference_threshold.value, signal_threshold.value);
+            if is_phase_delay_aggregation(&assertion.aggregation) {
+                phase_delay_us(
+                    &run.series.time_s,
+                    &run.series.values_by_probe[reference_probe_index],
+                    &run.series.values_by_probe[probe_index],
+                    window,
+                    thresholds,
+                    &assertion.aggregation,
+                )
+            } else {
+                setup_hold_time_us(
+                    &run.series.time_s,
+                    &run.series.values_by_probe[reference_probe_index],
+                    &run.series.values_by_probe[probe_index],
+                    window,
+                    thresholds,
+                    &assertion.aggregation,
+                )
+            }
         } else {
             measured_assertion_value(
                 assertion,
@@ -338,6 +354,10 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingPhaseDelay
         | AnalogAggregation::FallingPhaseDelay
+        | AnalogAggregation::RisingSetupTime
+        | AnalogAggregation::RisingHoldTime
+        | AnalogAggregation::FallingSetupTime
+        | AnalogAggregation::FallingHoldTime
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -472,26 +492,29 @@ pub(super) fn validate_assertion_contract(
             }
         }
     }
-    if is_phase_delay_aggregation(&assertion.aggregation) {
+    if is_reference_timing_aggregation(&assertion.aggregation) {
         let Some(reference_probe) = assertion.reference_probe.as_deref() else {
-            return Err("phase-delay aggregation must declare reference_probe".to_string());
+            return Err("reference-timing aggregation must declare reference_probe".to_string());
         };
         if reference_probe.trim().is_empty() {
-            return Err("phase-delay reference_probe must not be blank".to_string());
+            return Err("reference-timing reference_probe must not be blank".to_string());
         }
         if reference_threshold_count(assertion) != 1 {
             return Err(
-                "phase-delay aggregation must declare exactly one finite reference threshold unit"
+                "reference-timing aggregation must declare exactly one finite reference threshold unit"
                     .to_string(),
             );
         }
     } else {
         if assertion.reference_probe.is_some() {
-            return Err("non-phase aggregation must not declare reference_probe".to_string());
+            return Err(
+                "non-reference-timing aggregation must not declare reference_probe".to_string(),
+            );
         }
         if reference_threshold_count(assertion) != 0 {
             return Err(
-                "non-phase aggregation must not declare reference threshold fields".to_string(),
+                "non-reference-timing aggregation must not declare reference threshold fields"
+                    .to_string(),
             );
         }
     }
@@ -654,7 +677,7 @@ pub(super) fn assertion_reference_contract_is_complete(
         target_for(assertion, probe).is_some()
             && tolerance_count(assertion) == 0
             && threshold_count(assertion) == 0
-    } else if is_phase_delay_aggregation(&assertion.aggregation) {
+    } else if is_reference_timing_aggregation(&assertion.aggregation) {
         threshold_for(assertion, probe).is_some()
             && assertion
                 .reference_probe
@@ -731,6 +754,10 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::OvershootPercent => "overshoot",
         AnalogAggregation::RisingPhaseDelay => "rising phase-delay",
         AnalogAggregation::FallingPhaseDelay => "falling phase-delay",
+        AnalogAggregation::RisingSetupTime => "rising setup time",
+        AnalogAggregation::RisingHoldTime => "rising hold time",
+        AnalogAggregation::FallingSetupTime => "falling setup time",
+        AnalogAggregation::FallingHoldTime => "falling hold time",
         AnalogAggregation::RisingCrossingTime => "rising crossing-time",
         AnalogAggregation::FallingCrossingTime => "falling crossing-time",
         AnalogAggregation::MinHighPulseWidth => "minimum high pulse width",
@@ -760,7 +787,7 @@ fn measured_quantity_name(
         "time"
     } else if matches!(assertion.aggregation, AnalogAggregation::OvershootPercent) {
         "overshoot"
-    } else if is_phase_delay_aggregation(&assertion.aggregation) {
+    } else if is_reference_timing_aggregation(&assertion.aggregation) {
         "time"
     } else if matches!(assertion.aggregation, AnalogAggregation::Integral) {
         match probe_quantity {
@@ -792,6 +819,10 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
         | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingPhaseDelay
         | AnalogAggregation::FallingPhaseDelay
+        | AnalogAggregation::RisingSetupTime
+        | AnalogAggregation::RisingHoldTime
+        | AnalogAggregation::FallingSetupTime
+        | AnalogAggregation::FallingHoldTime
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -826,6 +857,10 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingPhaseDelay
         | AnalogAggregation::FallingPhaseDelay
+        | AnalogAggregation::RisingSetupTime
+        | AnalogAggregation::RisingHoldTime
+        | AnalogAggregation::FallingSetupTime
+        | AnalogAggregation::FallingHoldTime
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -939,6 +974,10 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::OvershootPercent
         | AnalogAggregation::RisingPhaseDelay
         | AnalogAggregation::FallingPhaseDelay
+        | AnalogAggregation::RisingSetupTime
+        | AnalogAggregation::RisingHoldTime
+        | AnalogAggregation::FallingSetupTime
+        | AnalogAggregation::FallingHoldTime
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -978,6 +1017,10 @@ fn requires_time_limit(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::SettlingTime
             | AnalogAggregation::RisingPhaseDelay
             | AnalogAggregation::FallingPhaseDelay
+            | AnalogAggregation::RisingSetupTime
+            | AnalogAggregation::RisingHoldTime
+            | AnalogAggregation::FallingSetupTime
+            | AnalogAggregation::FallingHoldTime
     )
 }
 
@@ -990,6 +1033,10 @@ fn uses_signal_threshold_as_level(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::MinLowPulseWidth
             | AnalogAggregation::RisingPhaseDelay
             | AnalogAggregation::FallingPhaseDelay
+            | AnalogAggregation::RisingSetupTime
+            | AnalogAggregation::RisingHoldTime
+            | AnalogAggregation::FallingSetupTime
+            | AnalogAggregation::FallingHoldTime
             | AnalogAggregation::DutyCycle
             | AnalogAggregation::CrossingCount
             | AnalogAggregation::RisingCrossingCount
@@ -1008,6 +1055,18 @@ fn is_phase_delay_aggregation(aggregation: &AnalogAggregation) -> bool {
     matches!(
         aggregation,
         AnalogAggregation::RisingPhaseDelay | AnalogAggregation::FallingPhaseDelay
+    )
+}
+
+fn is_reference_timing_aggregation(aggregation: &AnalogAggregation) -> bool {
+    matches!(
+        aggregation,
+        AnalogAggregation::RisingPhaseDelay
+            | AnalogAggregation::FallingPhaseDelay
+            | AnalogAggregation::RisingSetupTime
+            | AnalogAggregation::RisingHoldTime
+            | AnalogAggregation::FallingSetupTime
+            | AnalogAggregation::FallingHoldTime
     )
 }
 

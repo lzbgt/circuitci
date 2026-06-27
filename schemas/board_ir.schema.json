@@ -1542,7 +1542,7 @@
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
                     "count_limit": { "type": "number", "minimum": 0 },
                     "overshoot_limit_percent": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1584,7 +1584,7 @@
                       "else": {
                         "if": {
                           "required": ["aggregation"],
-                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "settling_time", "rising_phase_delay", "falling_phase_delay"] } }
+                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "settling_time", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time"] } }
                         },
                         "then": {
                           "required": ["start_us", "end_us", "time_limit_us"],
