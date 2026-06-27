@@ -289,14 +289,18 @@ the symbol's real pin locations. The
 model browser remains the source of Board IR model semantics: it filters
 component models, stages selected models, assigns models to selected
 components, and inserts model-backed components through the same Board IR YAML
-mutation path. Inserted model-backed components use the selected model's
-declared ports to seed editable Board IR pin bindings and generated per-pin
-nets, and Sketch-stage placement can target the current view center, an armed
-blank-canvas click, a drag/drop release with live ghost and snap feedback, or
-the blank-canvas context-menu pointer. `R` / `Shift+R` rotate armed component
-placement ghosts before insertion, `F` flips them, and `Shift+F` cycles the
-previewed pin side. The accepted placement persists that schematic-only
-orientation under `board.schematic.node_styles`.
+mutation path. Models that declare `simulation.spice` metadata are marked with
+a `SPICE` readiness column and selected-model details show the generated model
+type, model name, required model file, provenance, pin order, and first
+valid-operating note so users can distinguish simulation-observation parts from
+validation-only library models before placing them. Inserted model-backed
+components use the selected model's declared ports to seed editable Board IR
+pin bindings and generated per-pin nets, and Sketch-stage placement can target
+the current view center, an armed blank-canvas click, a drag/drop release with
+live ghost and snap feedback, or the blank-canvas context-menu pointer. `R` /
+`Shift+R` rotate armed component placement ghosts before insertion, `F` flips
+them, and `Shift+F` cycles the previewed pin side. The accepted placement
+persists that schematic-only orientation under `board.schematic.node_styles`.
 `src/gui/simulation.rs` owns the Observations/Scopes overlay shell: a runtime-first
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.

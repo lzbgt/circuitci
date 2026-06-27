@@ -139,6 +139,10 @@ Current analog support:
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned
   `analog.model_files` entries automatically when missing.
+- The GUI component model browser marks `simulation.spice`-backed library parts
+  as SPICE-ready, makes that metadata searchable, and shows model type, model
+  name, model file, provenance, pin order, and the first operating note before
+  the user places the part on the schematic.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.

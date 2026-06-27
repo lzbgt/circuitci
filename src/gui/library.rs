@@ -26,6 +26,7 @@ struct ModelBrowserEntry {
     confidence: String,
     ports: Vec<ModelPortEntry>,
     features: Vec<&'static str>,
+    simulation: Option<ModelSimulationEntry>,
 }
 
 impl ModelBrowserEntry {
@@ -34,6 +35,33 @@ impl ModelBrowserEntry {
             .iter()
             .map(|port| (port.id.clone(), port.kind.clone()))
             .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ModelSimulationEntry {
+    model_type: String,
+    model_name: String,
+    model_path: String,
+    provenance: String,
+    pin_order: Vec<String>,
+    notes: Vec<String>,
+}
+
+impl ModelSimulationEntry {
+    fn badge(&self) -> String {
+        format!("SPICE {}", self.model_type)
+    }
+
+    fn search_text(&self) -> String {
+        format!(
+            "spice simulation generated observation {} {} {} {} {}",
+            self.model_type,
+            self.model_name,
+            self.model_path,
+            self.provenance,
+            self.pin_order.join(" ")
+        )
     }
 }
 
@@ -166,6 +194,29 @@ impl CircuitCiApp {
             } else {
                 ui.label(format!("Selected model ports: {ports}"));
             }
+            if let Some(simulation) = &entry.simulation {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Simulation");
+                    ui.strong(simulation.badge());
+                    ui.label("model");
+                    ui.monospace(&simulation.model_name);
+                    ui.label("file");
+                    ui.monospace(&simulation.model_path);
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Provenance");
+                    ui.label(&simulation.provenance);
+                    if !simulation.pin_order.is_empty() {
+                        ui.label("pin order");
+                        ui.monospace(simulation.pin_order.join(", "));
+                    }
+                });
+                if let Some(note) = simulation.notes.first() {
+                    ui.label(format!("Simulation note: {note}"));
+                }
+            } else {
+                ui.label("Selected model has no generated-SPICE simulation face.");
+            }
         }
 
         let filtered = filtered_entries(&entries, &self.model_search);
@@ -174,12 +225,13 @@ impl CircuitCiApp {
             .max_height(280.0)
             .show(ui, |ui| {
                 egui::Grid::new("model_browser_grid")
-                    .num_columns(6)
+                    .num_columns(7)
                     .striped(true)
                     .show(ui, |ui| {
                         ui.strong("Model");
                         ui.strong("Category");
                         ui.strong("Quality");
+                        ui.strong("Simulation");
                         ui.strong("Ports");
                         ui.strong("Features");
                         ui.strong("Action");
@@ -188,6 +240,11 @@ impl CircuitCiApp {
                             ui.monospace(&entry.id);
                             ui.label(&entry.category);
                             ui.label(format!("{} / {}", entry.source, entry.confidence));
+                            if let Some(simulation) = &entry.simulation {
+                                ui.label(simulation.badge());
+                            } else {
+                                ui.label("-");
+                            }
                             ui.label(entry.ports.len().to_string());
                             ui.label(entry.features.join(", "));
                             if ui.button("Select").clicked() {
@@ -768,6 +825,7 @@ fn model_browser_entries(
                 })
                 .collect(),
             features: model_features(model),
+            simulation: model_simulation_entry(model),
         })
         .collect();
     entries.sort_by(|left, right| left.id.cmp(&right.id));
@@ -789,7 +847,7 @@ fn filtered_entries<'a>(
                 return true;
             }
             let haystack = format!(
-                "{} {} {} {} {} {}",
+                "{} {} {} {} {} {} {}",
                 entry.id,
                 entry.category,
                 entry.source,
@@ -800,7 +858,12 @@ fn filtered_entries<'a>(
                     .map(|port| format!("{} {}", port.id, port.kind))
                     .collect::<Vec<_>>()
                     .join(" "),
-                entry.features.join(" ")
+                entry.features.join(" "),
+                entry
+                    .simulation
+                    .as_ref()
+                    .map(ModelSimulationEntry::search_text)
+                    .unwrap_or_default()
             )
             .to_ascii_lowercase();
             terms.iter().all(|term| haystack.contains(term))
@@ -956,6 +1019,9 @@ fn compact_source_label(source: &str) -> String {
 
 fn model_features(model: &crate::library::ComponentModel) -> Vec<&'static str> {
     let mut features = Vec::new();
+    if model.simulation.spice.is_some() {
+        features.push("spice");
+    }
     if model.power_conversion.is_some() {
         features.push("power");
     }
@@ -1001,6 +1067,29 @@ fn model_features(model: &crate::library::ComponentModel) -> Vec<&'static str> {
     features
 }
 
+fn model_simulation_entry(model: &crate::library::ComponentModel) -> Option<ModelSimulationEntry> {
+    let spice = model.simulation.spice.as_ref()?;
+    Some(ModelSimulationEntry {
+        model_type: spice_model_type_label(&spice.model_type).to_string(),
+        model_name: spice.model_name.clone(),
+        model_path: spice.model_path.clone(),
+        provenance: spice.provenance.clone(),
+        pin_order: spice.pin_order.clone(),
+        notes: spice.valid_operating_notes.clone(),
+    })
+}
+
+fn spice_model_type_label(model_type: &crate::library::SpiceModelType) -> &'static str {
+    match model_type {
+        crate::library::SpiceModelType::BjtNpn => "BJT NPN",
+        crate::library::SpiceModelType::BjtPnp => "BJT PNP",
+        crate::library::SpiceModelType::MosfetN => "MOSFET N",
+        crate::library::SpiceModelType::MosfetP => "MOSFET P",
+        crate::library::SpiceModelType::Diode => "diode",
+        crate::library::SpiceModelType::Subckt => "subckt",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -1021,6 +1110,19 @@ mod tests {
   version: 0.1.0
 libraries:
   - libs/vendor/ti/regulators
+board:
+  components: {}
+  nets: {}
+"
+    }
+
+    fn analog_project_yaml() -> &'static str {
+        "project:
+  name: model_browser_analog_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+  - libs/vendor/ti/reset_supervisors
 board:
   components: {}
   nets: {}
@@ -1097,6 +1199,37 @@ board:
     }
 
     #[test]
+    fn model_browser_exposes_spice_simulation_readiness() {
+        let entries = model_browser_entries(analog_project_yaml(), Path::new(".")).unwrap();
+        let entry = entries
+            .iter()
+            .find(|entry| entry.id == "vendor.ti.tlv803ea29")
+            .unwrap();
+        let simulation = entry.simulation.as_ref().unwrap();
+
+        assert!(entry.features.contains(&"spice"));
+        assert_eq!(simulation.model_type, "subckt");
+        assert_eq!(
+            simulation.model_name,
+            "CIRCUITCI_TLV803EA29_RESET_SUPERVISOR"
+        );
+        assert_eq!(
+            simulation.model_path,
+            "models/spice/generic/analog_behavioral.lib"
+        );
+        assert_eq!(simulation.pin_order, vec!["VDD", "GND", "RESET"]);
+    }
+
+    #[test]
+    fn model_browser_filters_by_spice_metadata() {
+        let entries = model_browser_entries(analog_project_yaml(), Path::new(".")).unwrap();
+        let filtered = filtered_entries(&entries, "spice tlv803 subckt");
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "vendor.ti.tlv803ea29");
+    }
+
+    #[test]
     fn next_component_id_uses_model_category_prefix() {
         let entries = model_browser_entries(project_yaml(), Path::new(".")).unwrap();
         let entry = entries
@@ -1155,6 +1288,7 @@ board:
                 confidence: "low".to_string(),
                 ports: Vec::new(),
                 features: vec!["basic"],
+                simulation: None,
             },
         )
         .unwrap();
