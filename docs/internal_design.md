@@ -408,8 +408,10 @@ and it prevents removing the last sweep dimension unless the whole sweep is
 removed. It also owns generated load/source candidate inference, the small
 preset catalog for common supply, load, temperature, model-selector, and
 RC-tolerance corner sweeps, vendor model-section corner editing, and declared
-Monte Carlo sample-count/target summaries; all are serialized through the same
-`analog.sweeps` structure rather than a separate GUI-only model.
+Monte Carlo sample-count summaries plus criteria set/clear editing for minimum
+yield percent and P1/P5/P50/P95 sampled-margin targets; all are serialized
+through the same `analog.sweeps` structure rather than a separate GUI-only
+model.
 `src/validation/analog_sweep_sampling.rs` owns deterministic Monte Carlo
 component-value sample generation so sampled tolerance runs expand into normal
 sweep corners before any transient, AC, DC, or noise backend is invoked.

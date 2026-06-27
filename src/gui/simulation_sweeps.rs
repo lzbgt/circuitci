@@ -1,13 +1,14 @@
 use super::CircuitCiApp;
 use super::analog_sweeps::{
-    AnalogSweepComponentValueDraft, AnalogSweepDraft, AnalogSweepModelSectionDraft,
-    AnalogSweepParameterDraft, AnalogSweepScenario, AnalogSweepSummary,
-    analog_load_sweep_candidates, analog_sweep_presets, analog_sweep_scenarios,
+    AnalogMonteCarloCriteriaDraft, AnalogSweepComponentValueDraft, AnalogSweepDraft,
+    AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, AnalogSweepScenario,
+    AnalogSweepSummary, analog_load_sweep_candidates, analog_sweep_presets, analog_sweep_scenarios,
     append_analog_sweep_component_value, append_analog_sweep_model_section,
     append_analog_sweep_parameter, append_analog_sweep_preset,
     append_analog_sweep_with_component_value, append_analog_sweep_with_model_section,
     append_analog_sweep_with_parameter, remove_analog_sweep, remove_analog_sweep_component_value,
     remove_analog_sweep_model_section, remove_analog_sweep_parameter,
+    set_analog_monte_carlo_criteria,
 };
 use eframe::egui;
 
@@ -71,7 +72,32 @@ impl CircuitCiApp {
                     ui.label("Sections");
                     ui.text_edit_singleline(&mut self.analog_sweep_model_sections);
                     ui.end_row();
+
+                    ui.label("MC min yield %");
+                    ui.text_edit_singleline(&mut self.analog_sweep_min_yield_percent);
+                    ui.end_row();
+
+                    ui.label("MC P1 margin");
+                    ui.text_edit_singleline(&mut self.analog_sweep_min_p1_margin);
+                    ui.end_row();
+
+                    ui.label("MC P5 margin");
+                    ui.text_edit_singleline(&mut self.analog_sweep_min_p5_margin);
+                    ui.end_row();
+
+                    ui.label("MC P50 margin");
+                    ui.text_edit_singleline(&mut self.analog_sweep_min_p50_margin);
+                    ui.end_row();
+
+                    ui.label("MC P95 margin");
+                    ui.text_edit_singleline(&mut self.analog_sweep_min_p95_margin);
+                    ui.end_row();
                 });
+            let selected_sweep = selected_analog_sweep(
+                &scenarios,
+                &self.analog_sweep_scenario,
+                &self.analog_sweep_name,
+            );
             ui.horizontal(|ui| {
                 if ui.button("Add Sweep + Parameter").clicked() {
                     self.apply_add_analog_sweep();
@@ -82,11 +108,6 @@ impl CircuitCiApp {
                 if ui.button("Add Sweep + Component Values").clicked() {
                     self.apply_add_analog_sweep_with_component_value();
                 }
-                let selected_sweep = selected_analog_sweep(
-                    &scenarios,
-                    &self.analog_sweep_scenario,
-                    &self.analog_sweep_name,
-                );
                 if ui
                     .add_enabled(selected_sweep.is_some(), egui::Button::new("Remove Sweep"))
                     .clicked()
@@ -150,14 +171,13 @@ impl CircuitCiApp {
                 analog_sweep_rows(ui, selected_scenario, &mut self.analog_sweep_name);
             }
 
-            if selected_analog_sweep(
-                &scenarios,
-                &self.analog_sweep_scenario,
-                &self.analog_sweep_name,
-            )
-            .is_some()
-            {
+            if let Some(selected_sweep) = selected_sweep {
                 ui.add_space(4.0);
+                let has_monte_carlo = selected_sweep.monte_carlo.is_some();
+                let has_criteria = selected_sweep
+                    .monte_carlo
+                    .as_ref()
+                    .is_some_and(|monte_carlo| monte_carlo.criteria.is_some());
                 ui.horizontal(|ui| {
                     if ui.button("Add Parameter").clicked() {
                         self.apply_add_analog_sweep_parameter();
@@ -177,7 +197,28 @@ impl CircuitCiApp {
                     if ui.button("Remove Component Values").clicked() {
                         self.apply_remove_analog_sweep_component_value();
                     }
+                    if ui
+                        .add_enabled(
+                            has_monte_carlo,
+                            egui::Button::new("Set Monte Carlo Criteria"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_set_analog_monte_carlo_criteria();
+                    }
+                    if ui
+                        .add_enabled(
+                            has_monte_carlo && has_criteria,
+                            egui::Button::new("Clear Monte Carlo Criteria"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_clear_analog_monte_carlo_criteria();
+                    }
                 });
+                if !has_monte_carlo {
+                    ui.label("Monte Carlo criteria controls apply only to Monte Carlo sweeps.");
+                }
             }
         });
     }
@@ -395,6 +436,50 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn apply_set_analog_monte_carlo_criteria(&mut self) {
+        let draft = AnalogMonteCarloCriteriaDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            min_yield_percent: self.analog_sweep_min_yield_percent.clone(),
+            min_p1_margin: self.analog_sweep_min_p1_margin.clone(),
+            min_p5_margin: self.analog_sweep_min_p5_margin.clone(),
+            min_p50_margin: self.analog_sweep_min_p50_margin.clone(),
+            min_p95_margin: self.analog_sweep_min_p95_margin.clone(),
+        };
+        match set_analog_monte_carlo_criteria(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Monte Carlo criteria updated for sweep {}.",
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_clear_analog_monte_carlo_criteria(&mut self) {
+        let draft = AnalogMonteCarloCriteriaDraft {
+            scenario_name: self.analog_sweep_scenario.clone(),
+            sweep_name: self.analog_sweep_name.clone(),
+            min_yield_percent: String::new(),
+            min_p1_margin: String::new(),
+            min_p5_margin: String::new(),
+            min_p50_margin: String::new(),
+            min_p95_margin: String::new(),
+        };
+        match set_analog_monte_carlo_criteria(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Monte Carlo criteria cleared for sweep {}.",
+                    draft.sweep_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
 }
 
 fn initialize_analog_sweep_defaults(
@@ -586,4 +671,96 @@ fn parameter_summary(sweep: &AnalogSweepSummary) -> String {
         }
     }
     parts.join("; ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CircuitCiApp;
+
+    fn monte_carlo_project_yaml() -> &'static str {
+        "project:
+  name: gui_monte_carlo_criteria_action_test
+  version: 0.1.0
+board:
+  components: {}
+  nets:
+    gnd:
+      kind: ground
+scenarios:
+  - name: rc_run
+    type: analog_transient
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck.cir
+      model_files: []
+      node_bindings:
+        - { node: '0', net: gnd }
+      pin_bindings: []
+      analysis:
+        type: tran
+        stop_time_us: 1000
+        max_step_us: 1
+      stimuli: []
+      sweeps:
+        - name: rc_monte_carlo
+          monte_carlo:
+            samples: 8
+            seed: 7
+            component_values:
+              - component: RLOAD
+                field: value_ohm
+                nominal: 1000.0
+                tolerance_percent: 5.0
+      probes:
+        - name: v_out
+          expression: V(out)
+      assertions: []
+"
+    }
+
+    #[test]
+    fn app_action_sets_and_clears_monte_carlo_criteria() {
+        let mut app = CircuitCiApp {
+            project_yaml: monte_carlo_project_yaml().to_string(),
+            analog_sweep_scenario: "rc_run".to_string(),
+            analog_sweep_name: "rc_monte_carlo".to_string(),
+            analog_sweep_min_yield_percent: "98".to_string(),
+            analog_sweep_min_p1_margin: String::new(),
+            analog_sweep_min_p5_margin: "0.05".to_string(),
+            analog_sweep_min_p50_margin: "0.10".to_string(),
+            analog_sweep_min_p95_margin: String::new(),
+            ..Default::default()
+        };
+
+        app.apply_set_analog_monte_carlo_criteria();
+
+        assert!(app.project_yaml_dirty);
+        assert!(app.status.contains("Monte Carlo criteria updated"));
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+        let criteria = project.scenarios[0].analog.as_ref().unwrap().sweeps[0]
+            .monte_carlo
+            .as_ref()
+            .unwrap()
+            .criteria
+            .as_ref()
+            .unwrap();
+        assert_eq!(criteria.min_yield_percent, Some(98.0));
+        assert_eq!(criteria.min_p5_margin, Some(0.05));
+        assert_eq!(criteria.min_p50_margin, Some(0.10));
+
+        app.apply_clear_analog_monte_carlo_criteria();
+
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+        assert!(
+            project.scenarios[0].analog.as_ref().unwrap().sweeps[0]
+                .monte_carlo
+                .as_ref()
+                .unwrap()
+                .criteria
+                .is_none()
+        );
+    }
 }

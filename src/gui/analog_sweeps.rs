@@ -99,6 +99,17 @@ pub(super) struct AnalogSweepComponentValueDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogMonteCarloCriteriaDraft {
+    pub(super) scenario_name: String,
+    pub(super) sweep_name: String,
+    pub(super) min_yield_percent: String,
+    pub(super) min_p1_margin: String,
+    pub(super) min_p5_margin: String,
+    pub(super) min_p50_margin: String,
+    pub(super) min_p95_margin: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogSweepPreset {
     pub(super) id: &'static str,
     pub(super) label: &'static str,
@@ -858,6 +869,71 @@ pub(super) fn remove_analog_sweep_parameter(
     validate_updated_yaml(yaml)
 }
 
+pub(super) fn set_analog_monte_carlo_criteria(
+    text: &str,
+    draft: &AnalogMonteCarloCriteriaDraft,
+) -> Result<String> {
+    let scenario_name = validated_id(&draft.scenario_name, "run setup")?;
+    let sweep_name = validated_id(&draft.sweep_name, "sweep name")?;
+    let min_yield_percent =
+        parse_optional_number(&draft.min_yield_percent, "minimum yield percent")?;
+    if min_yield_percent.is_some_and(|value| !(0.0..=100.0).contains(&value)) {
+        anyhow::bail!("Minimum yield percent must be between 0 and 100.");
+    }
+    let min_p1_margin = parse_optional_number(&draft.min_p1_margin, "minimum P1 margin")?;
+    let min_p5_margin = parse_optional_number(&draft.min_p5_margin, "minimum P5 margin")?;
+    let min_p50_margin = parse_optional_number(&draft.min_p50_margin, "minimum P50 margin")?;
+    let min_p95_margin = parse_optional_number(&draft.min_p95_margin, "minimum P95 margin")?;
+
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Run setup {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Run setup {scenario_name} is not analog."))?;
+    let sweep = analog
+        .sweeps
+        .iter()
+        .find(|sweep| sweep.name == sweep_name)
+        .with_context(|| format!("Sweep {sweep_name} was not found."))?;
+    if sweep.monte_carlo.is_none() {
+        anyhow::bail!("Sweep {sweep_name} has no Monte Carlo block.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let sweep_mapping = sweep_mapping_mut(&mut yaml, scenario_name, sweep_name)?;
+    let monte_carlo = sweep_mapping
+        .get_mut(key("monte_carlo"))
+        .context("Sweep Monte Carlo block was not found.")?
+        .as_mapping_mut()
+        .context("Sweep Monte Carlo block must be a YAML object.")?;
+    let criteria_values = [
+        ("min_yield_percent", min_yield_percent),
+        ("min_p1_margin", min_p1_margin),
+        ("min_p5_margin", min_p5_margin),
+        ("min_p50_margin", min_p50_margin),
+        ("min_p95_margin", min_p95_margin),
+    ];
+    if criteria_values.iter().all(|(_, value)| value.is_none()) {
+        monte_carlo.remove(key("criteria"));
+    } else {
+        let mut criteria = serde_yaml_ng::Mapping::new();
+        for (name, value) in criteria_values {
+            if let Some(value) = value {
+                criteria.insert(key(name), serde_yaml_ng::Value::Number(value.into()));
+            }
+        }
+        monte_carlo.insert(key("criteria"), serde_yaml_ng::Value::Mapping(criteria));
+    }
+    validate_updated_yaml(yaml)
+}
+
 fn preset_parameter_value(parameter: &AnalogSweepPresetParameter) -> serde_yaml_ng::Value {
     let mut mapping = serde_yaml_ng::Mapping::new();
     insert_string(&mut mapping, "name", parameter.name);
@@ -924,6 +1000,20 @@ fn parse_sweep_values(text: &str) -> Result<Vec<f64>> {
         anyhow::bail!("Sweep parameter values must include at least one number.");
     }
     Ok(values)
+}
+
+fn parse_optional_number(text: &str, label: &str) -> Result<Option<f64>> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    let value: f64 = text
+        .parse()
+        .with_context(|| format!("{label} {text} is not a number."))?;
+    if !value.is_finite() {
+        anyhow::bail!("{label} must be finite.");
+    }
+    Ok(Some(value))
 }
 
 fn format_sweep_number(value: f64) -> String {
@@ -1119,13 +1209,14 @@ fn key(value: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogSweepComponentValueDraft, AnalogSweepModelSectionDraft, AnalogSweepParameterDraft,
-        analog_load_sweep_candidates, analog_sweep_scenarios, append_analog_sweep_component_value,
+        AnalogMonteCarloCriteriaDraft, AnalogSweepComponentValueDraft,
+        AnalogSweepModelSectionDraft, AnalogSweepParameterDraft, analog_load_sweep_candidates,
+        analog_sweep_scenarios, append_analog_sweep_component_value,
         append_analog_sweep_model_section, append_analog_sweep_parameter,
         append_analog_sweep_preset, append_analog_sweep_with_component_value,
         append_analog_sweep_with_model_section, append_analog_sweep_with_parameter,
         remove_analog_sweep_component_value, remove_analog_sweep_model_section,
-        remove_analog_sweep_parameter,
+        remove_analog_sweep_parameter, set_analog_monte_carlo_criteria,
     };
 
     fn project_yaml() -> &'static str {
@@ -1279,6 +1370,112 @@ scenarios:
         assert_eq!(criteria.min_yield_percent, Some(95.0));
         assert_eq!(criteria.min_p5_margin, Some(0.1));
         assert_eq!(criteria.min_p1_margin, None);
+    }
+
+    #[test]
+    fn set_monte_carlo_criteria_emits_valid_yaml() {
+        let edited = set_analog_monte_carlo_criteria(
+            monte_carlo_project_yaml(),
+            &AnalogMonteCarloCriteriaDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "rc_monte_carlo".to_string(),
+                min_yield_percent: "99.5".to_string(),
+                min_p1_margin: "0.01".to_string(),
+                min_p5_margin: "0.02".to_string(),
+                min_p50_margin: "0.10".to_string(),
+                min_p95_margin: "0.20".to_string(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let criteria = project.scenarios[0].analog.as_ref().unwrap().sweeps[0]
+            .monte_carlo
+            .as_ref()
+            .unwrap()
+            .criteria
+            .as_ref()
+            .unwrap();
+        assert_eq!(criteria.min_yield_percent, Some(99.5));
+        assert_eq!(criteria.min_p1_margin, Some(0.01));
+        assert_eq!(criteria.min_p5_margin, Some(0.02));
+        assert_eq!(criteria.min_p50_margin, Some(0.10));
+        assert_eq!(criteria.min_p95_margin, Some(0.20));
+    }
+
+    #[test]
+    fn clear_monte_carlo_criteria_removes_criteria() {
+        let edited = set_analog_monte_carlo_criteria(
+            monte_carlo_project_yaml(),
+            &AnalogMonteCarloCriteriaDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "rc_monte_carlo".to_string(),
+                min_yield_percent: String::new(),
+                min_p1_margin: String::new(),
+                min_p5_margin: String::new(),
+                min_p50_margin: String::new(),
+                min_p95_margin: String::new(),
+            },
+        )
+        .unwrap();
+
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        assert!(
+            project.scenarios[0].analog.as_ref().unwrap().sweeps[0]
+                .monte_carlo
+                .as_ref()
+                .unwrap()
+                .criteria
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn set_monte_carlo_criteria_rejects_invalid_yield_percent() {
+        let error = set_analog_monte_carlo_criteria(
+            monte_carlo_project_yaml(),
+            &AnalogMonteCarloCriteriaDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "rc_monte_carlo".to_string(),
+                min_yield_percent: "101".to_string(),
+                min_p1_margin: String::new(),
+                min_p5_margin: String::new(),
+                min_p50_margin: String::new(),
+                min_p95_margin: String::new(),
+            },
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("between 0 and 100"));
+    }
+
+    #[test]
+    fn set_monte_carlo_criteria_rejects_non_monte_carlo_sweep() {
+        let edited = append_analog_sweep_with_parameter(
+            project_yaml(),
+            &AnalogSweepParameterDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "rc_tolerance".to_string(),
+                parameter_name: "RIN_VALUE".to_string(),
+                values_csv: "950, 1000, 1050".to_string(),
+            },
+        )
+        .unwrap();
+        let error = set_analog_monte_carlo_criteria(
+            &edited,
+            &AnalogMonteCarloCriteriaDraft {
+                scenario_name: "rc_run".to_string(),
+                sweep_name: "rc_tolerance".to_string(),
+                min_yield_percent: "95".to_string(),
+                min_p1_margin: String::new(),
+                min_p5_margin: "0".to_string(),
+                min_p50_margin: String::new(),
+                min_p95_margin: String::new(),
+            },
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("has no Monte Carlo block"));
     }
 
     #[test]
