@@ -78,6 +78,10 @@ pub(super) struct ScopeMonteCarloYieldSummaryRow {
     pub(super) stddev_margin: String,
     pub(super) min_margin: String,
     pub(super) max_margin: String,
+    pub(super) p1_margin: String,
+    pub(super) p5_margin: String,
+    pub(super) p50_margin: String,
+    pub(super) p95_margin: String,
 }
 
 impl CircuitCiApp {
@@ -871,6 +875,18 @@ fn scope_monte_carlo_yield_summary_row(
             &unit,
             "n/a",
         ),
+        p1_margin: format_numeric_with_unit(json_f64(&finding.measured, "p1_margin"), &unit, "n/a"),
+        p5_margin: format_numeric_with_unit(json_f64(&finding.measured, "p5_margin"), &unit, "n/a"),
+        p50_margin: format_numeric_with_unit(
+            json_f64(&finding.measured, "p50_margin"),
+            &unit,
+            "n/a",
+        ),
+        p95_margin: format_numeric_with_unit(
+            json_f64(&finding.measured, "p95_margin"),
+            &unit,
+            "n/a",
+        ),
     })
 }
 
@@ -878,7 +894,7 @@ pub(super) fn scope_monte_carlo_yield_summaries_csv(
     rows: &[ScopeMonteCarloYieldSummaryRow],
 ) -> String {
     let mut csv = String::from(
-        "scenario,assertion,probe,sweep,limiting_sample,inputs,passed,yield_percent,passed_samples,failed_samples,evaluated_samples,mean_margin,stddev_margin,min_margin,max_margin\n",
+        "scenario,assertion,probe,sweep,limiting_sample,inputs,passed,yield_percent,passed_samples,failed_samples,evaluated_samples,mean_margin,stddev_margin,min_margin,max_margin,p1_margin,p5_margin,p50_margin,p95_margin\n",
     );
     for row in rows {
         let fields = [
@@ -897,6 +913,10 @@ pub(super) fn scope_monte_carlo_yield_summaries_csv(
             row.stddev_margin.clone(),
             row.min_margin.clone(),
             row.max_margin.clone(),
+            row.p1_margin.clone(),
+            row.p5_margin.clone(),
+            row.p50_margin.clone(),
+            row.p95_margin.clone(),
         ];
         csv.push_str(
             &fields
@@ -914,11 +934,11 @@ pub(super) fn scope_monte_carlo_yield_summaries_markdown(
     rows: &[ScopeMonteCarloYieldSummaryRow],
 ) -> String {
     let mut markdown = String::from(
-        "| Scenario | Assertion | Probe | Sweep | Limiting sample | Inputs | Pass | Yield % | Passed | Failed | Samples | Mean margin | Sigma margin | Min margin | Max margin |\n| --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- | --- |\n",
+        "| Scenario | Assertion | Probe | Sweep | Limiting sample | Inputs | Pass | Yield % | Passed | Failed | Samples | Mean margin | Sigma margin | Min margin | Max margin | P1 margin | P5 margin | P50 margin | P95 margin |\n| --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- |\n",
     );
     for row in rows {
         markdown.push_str(&format!(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
             markdown_escape(&row.scenario),
             markdown_escape(&row.assertion),
             markdown_escape(&row.probe),
@@ -933,7 +953,11 @@ pub(super) fn scope_monte_carlo_yield_summaries_markdown(
             markdown_escape(&row.mean_margin),
             markdown_escape(&row.stddev_margin),
             markdown_escape(&row.min_margin),
-            markdown_escape(&row.max_margin)
+            markdown_escape(&row.max_margin),
+            markdown_escape(&row.p1_margin),
+            markdown_escape(&row.p5_margin),
+            markdown_escape(&row.p50_margin),
+            markdown_escape(&row.p95_margin)
         ));
     }
     markdown
@@ -944,14 +968,14 @@ fn scope_monte_carlo_yield_summaries_html(rows: &[ScopeMonteCarloYieldSummaryRow
         "\
 <table>
   <thead>
-    <tr><th>Scenario</th><th>Assertion</th><th>Probe</th><th>Sweep</th><th>Limiting sample</th><th>Inputs</th><th>Pass</th><th>Yield %</th><th>Passed</th><th>Failed</th><th>Samples</th><th>Mean margin</th><th>Sigma margin</th><th>Min margin</th><th>Max margin</th></tr>
+    <tr><th>Scenario</th><th>Assertion</th><th>Probe</th><th>Sweep</th><th>Limiting sample</th><th>Inputs</th><th>Pass</th><th>Yield %</th><th>Passed</th><th>Failed</th><th>Samples</th><th>Mean margin</th><th>Sigma margin</th><th>Min margin</th><th>Max margin</th><th>P1 margin</th><th>P5 margin</th><th>P50 margin</th><th>P95 margin</th></tr>
   </thead>
   <tbody>
 ",
     );
     for row in rows {
         html.push_str(&format!(
-            "    <tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
+            "    <tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
             html_escape(&row.scenario),
             html_escape(&row.assertion),
             html_escape(&row.probe),
@@ -966,7 +990,11 @@ fn scope_monte_carlo_yield_summaries_html(rows: &[ScopeMonteCarloYieldSummaryRow
             html_escape(&row.mean_margin),
             html_escape(&row.stddev_margin),
             html_escape(&row.min_margin),
-            html_escape(&row.max_margin)
+            html_escape(&row.max_margin),
+            html_escape(&row.p1_margin),
+            html_escape(&row.p5_margin),
+            html_escape(&row.p50_margin),
+            html_escape(&row.p95_margin)
         ));
     }
     html.push_str("  </tbody>\n</table>");

@@ -473,13 +473,16 @@ fn monte_carlo_yield_row(finding: &Finding) -> Option<AnalogMonteCarloYieldRow> 
     let stddev_margin = format_optional_unit(json_f64(&finding.measured, "stddev_margin"), &unit);
     let min_margin = format_optional_unit(json_f64(&finding.measured, "min_margin"), &unit);
     let max_margin = format_optional_unit(json_f64(&finding.measured, "max_margin"), &unit);
+    let p5_margin = format_optional_unit(json_f64(&finding.measured, "p5_margin"), &unit);
+    let p50_margin = format_optional_unit(json_f64(&finding.measured, "p50_margin"), &unit);
+    let p95_margin = format_optional_unit(json_f64(&finding.measured, "p95_margin"), &unit);
     let params = sweep_corner_input_summary(finding);
     let passed = json_bool(&finding.measured, "passed").unwrap_or(failed_samples == 0);
     Some(AnalogMonteCarloYieldRow {
         assertion,
         passed,
         detail: format!(
-            "{sweep}/{sample}{params}: yield {yield_percent}% ({passed_samples}/{evaluated} pass, {failed_samples} fail), margin mean {mean_margin}, sigma {stddev_margin}, range {min_margin}..{max_margin}"
+            "{sweep}/{sample}{params}: yield {yield_percent}% ({passed_samples}/{evaluated} pass, {failed_samples} fail), margin mean {mean_margin}, sigma {stddev_margin}, p5/p50/p95 {p5_margin}/{p50_margin}/{p95_margin}, range {min_margin}..{max_margin}"
         ),
     })
 }
@@ -1400,6 +1403,15 @@ scenarios:
         finding
             .measured
             .insert("max_margin".to_string(), json!(180.0));
+        finding
+            .measured
+            .insert("p5_margin".to_string(), json!(10.0));
+        finding
+            .measured
+            .insert("p50_margin".to_string(), json!(100.0));
+        finding
+            .measured
+            .insert("p95_margin".to_string(), json!(170.0));
         let report = ValidationReport::from_parts(
             "project".to_string(),
             "profile".to_string(),
@@ -1421,6 +1433,7 @@ scenarios:
         assert!(rows[0].detail.contains("31/32 pass, 1 fail"));
         assert!(rows[0].detail.contains("margin mean 142.25 Hz"));
         assert!(rows[0].detail.contains("sigma 12.5 Hz"));
+        assert!(rows[0].detail.contains("p5/p50/p95 10 Hz/100 Hz/170 Hz"));
         assert!(rows[0].detail.contains("range -1.25 Hz..180 Hz"));
     }
 }

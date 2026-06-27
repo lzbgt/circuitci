@@ -42,7 +42,7 @@ impl CircuitCiApp {
 
 fn monte_carlo_yield_results_grid(ui: &mut egui::Ui, rows: &[ScopeMonteCarloYieldSummaryRow]) {
     egui::Grid::new("monte_carlo_yield_results")
-        .num_columns(13)
+        .num_columns(15)
         .striped(true)
         .show(ui, |ui| {
             ui.strong("Scenario");
@@ -56,7 +56,9 @@ fn monte_carlo_yield_results_grid(ui: &mut egui::Ui, rows: &[ScopeMonteCarloYiel
             ui.strong("Failed");
             ui.strong("Mean");
             ui.strong("Sigma");
+            ui.strong("P50");
             ui.strong("Worst");
+            ui.strong("P5/P95");
             ui.strong("Inputs");
             ui.end_row();
             for row in rows {
@@ -71,7 +73,9 @@ fn monte_carlo_yield_results_grid(ui: &mut egui::Ui, rows: &[ScopeMonteCarloYiel
                 ui.monospace(row.failed_samples.to_string());
                 ui.monospace(&row.mean_margin);
                 ui.monospace(&row.stddev_margin);
+                ui.monospace(&row.p50_margin);
                 ui.monospace(&row.min_margin);
+                ui.monospace(format!("{} / {}", row.p5_margin, row.p95_margin));
                 ui.label(&row.inputs);
                 ui.end_row();
             }

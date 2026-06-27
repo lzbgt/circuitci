@@ -138,6 +138,9 @@ distribution:
 - `measured.yield_percent`: `passed_samples / evaluated_samples * 100`.
 - `measured.mean_margin`, `measured.stddev_margin`, `measured.min_margin`, and
   `measured.max_margin`: margin distribution in the assertion unit.
+- `measured.p1_margin`, `measured.p5_margin`, `measured.p50_margin`, and
+  `measured.p95_margin`: linearly interpolated sampled-margin percentiles in
+  the assertion unit.
 - `limit.minimum_margin`: always `0.0`; sample failures are already represented
   by the underlying assertion findings and by `failed_samples`.
 

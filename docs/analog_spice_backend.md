@@ -232,8 +232,8 @@ corner, parameter values, component value inputs, selected model-library
 sections, measured value, limit, relation, and numeric margin for each
 assertion. Monte Carlo sweeps also emit `ANALOG_MONTE_CARLO_YIELD_SUMMARY`
 findings with pass/fail sample counts, yield percent, mean margin, standard
-deviation, min/max margin, and the limiting sample. Sweeps can select vendor
-model-library sections through
+deviation, min/max margin, p1/p5/p50/p95 sampled-margin percentiles, and the
+limiting sample. Sweeps can select vendor model-library sections through
 `model_sections`; CircuitCI emits section-specific ngspice `.lib "path" section`
 cards for each corner. When a sweep declares `TEMP_C` or `TEMPERATURE_C`,
 CircuitCI emits both the matching `.param` and an ngspice `.temp` card for that

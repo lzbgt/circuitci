@@ -122,9 +122,10 @@ Current analog support:
   compact integrated-RMS noise table with CSV/Markdown copy actions and
   report-bundle export. Sweep margin summaries mark the limiting output or
   input integrated-RMS noise total directly in Scopes and exported tables.
-  Monte Carlo yield summaries appear as a Scopes table with CSV/Markdown copy
-  actions and are exported beside scope evidence when the loaded report contains
-  sampled tolerance runs.
+  Monte Carlo yield summaries appear as a Scopes table with mean/sigma,
+  worst-case, and percentile margin rows plus CSV/Markdown copy actions, and are
+  exported beside scope evidence when the loaded report contains sampled
+  tolerance runs.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
@@ -150,7 +151,8 @@ Current analog support:
   deterministic Monte Carlo component-value samples for generated-board
   tolerance observations, with sampled values represented as normal component
   value corners and summarized with per-assertion yield percent, pass/fail
-  counts, mean margin, margin standard deviation, and min/max margin.
+  counts, mean margin, margin standard deviation, min/max margin, and
+  linearly interpolated P1/P5/P50/P95 sampled-margin percentiles.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter or component value, generated load/source
   candidate selection, extra parameter/component/model-section add/remove

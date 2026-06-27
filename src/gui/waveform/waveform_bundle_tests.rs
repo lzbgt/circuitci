@@ -377,8 +377,10 @@ fn scope_compare_report_bundle_exports_selected_and_pinned_traces() {
     assert!(yield_csv.contains("rc_run,cutoff_below_limit,v_filtered,rc_monte_carlo,sample_012"));
     assert!(yield_csv.contains("96.875"));
     assert!(yield_csv.contains("31,1,32"));
+    assert!(yield_csv.contains("1 Hz,5 Hz,50 Hz,95 Hz"));
     assert!(yield_markdown.contains("| rc_run | cutoff_below_limit | v_filtered |"));
     assert!(yield_markdown.contains("12.5 Hz"));
+    assert!(yield_markdown.contains("| 1 Hz | 5 Hz | 50 Hz | 95 Hz |"));
     assert!(readme.contains("## Sweep Margin Summaries"));
     assert!(readme.contains("- Rows: 1"));
     assert!(readme.contains("## Monte Carlo Yield Summaries"));
@@ -506,6 +508,14 @@ fn monte_carlo_yield(
     finding
         .measured
         .insert("max_margin".to_string(), json!(180.0));
+    finding.measured.insert("p1_margin".to_string(), json!(1.0));
+    finding.measured.insert("p5_margin".to_string(), json!(5.0));
+    finding
+        .measured
+        .insert("p50_margin".to_string(), json!(50.0));
+    finding
+        .measured
+        .insert("p95_margin".to_string(), json!(95.0));
     finding
 }
 

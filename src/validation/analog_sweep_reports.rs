@@ -183,13 +183,17 @@ fn push_monte_carlo_yield_summaries(
             ANALOG_MONTE_CARLO_YIELD_SUMMARY,
             &scenario.name,
             format!(
-                "Monte Carlo sweep {sweep_name} yield for assertion {assertion_name} is {:.3}% ({}/{} pass); mean margin {:.6} {} with stddev {:.6} {}, worst {:.6} {} at {}.",
+                "Monte Carlo sweep {sweep_name} yield for assertion {assertion_name} is {:.3}% ({}/{} pass); mean margin {:.6} {} with stddev {:.6} {}, p5/p50/p95 margins {:.6}/{:.6}/{:.6} {}, worst {:.6} {} at {}.",
                 stats.yield_percent,
                 stats.passed_samples,
                 stats.evaluated_samples,
                 stats.mean_margin,
                 worst.assertion.unit,
                 stats.stddev_margin,
+                worst.assertion.unit,
+                stats.p5_margin,
+                stats.p50_margin,
+                stats.p95_margin,
                 worst.assertion.unit,
                 stats.min_margin,
                 worst.assertion.unit,
@@ -223,6 +227,18 @@ fn push_monte_carlo_yield_summaries(
             .measured
             .insert("max_margin".to_string(), json!(stats.max_margin));
         finding
+            .measured
+            .insert("p1_margin".to_string(), json!(stats.p1_margin));
+        finding
+            .measured
+            .insert("p5_margin".to_string(), json!(stats.p5_margin));
+        finding
+            .measured
+            .insert("p50_margin".to_string(), json!(stats.p50_margin));
+        finding
+            .measured
+            .insert("p95_margin".to_string(), json!(stats.p95_margin));
+        finding
             .limit
             .insert("minimum_margin".to_string(), json!(0.0));
         findings.push(finding);
@@ -238,6 +254,10 @@ struct MonteCarloStats<'a> {
     stddev_margin: f64,
     min_margin: f64,
     max_margin: f64,
+    p1_margin: f64,
+    p5_margin: f64,
+    p50_margin: f64,
+    p95_margin: f64,
     worst: &'a SweepAssertionMeasurement,
 }
 
@@ -274,6 +294,11 @@ impl<'a> MonteCarloStats<'a> {
             .iter()
             .map(|measurement| measurement.assertion.margin)
             .fold(f64::NEG_INFINITY, f64::max);
+        let mut margins = measurements
+            .iter()
+            .map(|measurement| measurement.assertion.margin)
+            .collect::<Vec<_>>();
+        margins.sort_by(f64::total_cmp);
         Some(Self {
             evaluated_samples,
             passed_samples,
@@ -283,8 +308,31 @@ impl<'a> MonteCarloStats<'a> {
             stddev_margin: variance.sqrt(),
             min_margin: worst.assertion.margin,
             max_margin,
+            p1_margin: percentile_margin(&margins, 1.0),
+            p5_margin: percentile_margin(&margins, 5.0),
+            p50_margin: percentile_margin(&margins, 50.0),
+            p95_margin: percentile_margin(&margins, 95.0),
             worst,
         })
+    }
+}
+
+fn percentile_margin(sorted_margins: &[f64], percentile: f64) -> f64 {
+    if sorted_margins.is_empty() {
+        return f64::NAN;
+    }
+    if sorted_margins.len() == 1 {
+        return sorted_margins[0];
+    }
+    let clamped = percentile.clamp(0.0, 100.0);
+    let rank = clamped / 100.0 * (sorted_margins.len() - 1) as f64;
+    let lower_index = rank.floor() as usize;
+    let upper_index = rank.ceil() as usize;
+    if lower_index == upper_index {
+        sorted_margins[lower_index]
+    } else {
+        let fraction = rank - lower_index as f64;
+        sorted_margins[lower_index] * (1.0 - fraction) + sorted_margins[upper_index] * fraction
     }
 }
 
@@ -547,7 +595,18 @@ scenarios:
         assert_eq!(summary.measured["yield_percent"], 200.0 / 3.0);
         assert_eq!(summary.measured["min_margin"], -0.03);
         assert_eq!(summary.measured["max_margin"], 0.12);
+        assert_close(summary.measured["p1_margin"].as_f64().unwrap(), -0.0282);
+        assert_close(summary.measured["p5_margin"].as_f64().unwrap(), -0.021);
+        assert_close(summary.measured["p50_margin"].as_f64().unwrap(), 0.06);
+        assert_close(summary.measured["p95_margin"].as_f64().unwrap(), 0.114);
         assert_eq!(summary.limit["minimum_margin"], 0.0);
+    }
+
+    fn assert_close(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 1.0e-12,
+            "expected {expected}, got {actual}"
+        );
     }
 
     fn sweep_measurement(

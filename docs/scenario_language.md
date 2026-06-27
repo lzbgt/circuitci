@@ -2610,7 +2610,10 @@ with transient, AC/Bode, DC operating-point, and noise observations. For every
 assertion evaluated across a Monte Carlo sweep, the report also emits an
 `ANALOG_MONTE_CARLO_YIELD_SUMMARY` info finding with evaluated sample count,
 pass/fail counts, yield percent, mean margin, margin standard deviation, and the
-limiting sampled corner.
+limiting sampled corner. The same finding includes linearly interpolated
+sampled-margin percentiles (`p1_margin`, `p5_margin`, `p50_margin`, and
+`p95_margin`) so distribution tails and median margin are visible without
+opening every sampled artifact.
 
 Sweep execution is capped to keep GUI and CI runs predictable. Each corner
 writes separate waveform/artifact outputs and tags assertion findings with the
