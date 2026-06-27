@@ -1,0 +1,23 @@
+* Generic behavioral analog macro-models for preliminary CircuitCI design simulation.
+* These models are intentionally simple and are not vendor- or bench-calibrated.
+
+.subckt CIRCUITCI_IDEAL_OPAMP INP INN VCC VEE OUT
+* Finite-gain voltage-controlled source for preliminary closed-loop topology checks.
+EGAIN NRAW VEE INP INN 100000
+ROUT NRAW OUT 10
+RBIASP INP VEE 1G
+RBIASN INN VEE 1G
+COUT OUT VEE 10p
+.ends CIRCUITCI_IDEAL_OPAMP
+
+.subckt CIRCUITCI_IDEAL_COMPARATOR INP INN VCC VEE OUT
+* Logistic transition avoids the convergence problems of a hard digital step.
+BOUT OUT VEE V={v(VCC,VEE)/(1+exp(-1000*(v(INP)-v(INN))))}
+ROUT OUT VEE 1G
+.ends CIRCUITCI_IDEAL_COMPARATOR
+
+.subckt CIRCUITCI_IDEAL_LDO_3V3 VIN EN GND VOUT
+* Idealized enabled 3.3 V source with smooth enable behavior.
+BOUT VOUT GND V={3.3/(1+exp(-20*(v(EN,GND)-1)))}
+ROUT VOUT GND 1G
+.ends CIRCUITCI_IDEAL_LDO_3V3

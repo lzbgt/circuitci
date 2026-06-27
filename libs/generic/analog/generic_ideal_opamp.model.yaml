@@ -1,0 +1,41 @@
+component_id: generic.analog.ideal_opamp
+version: 0.1.0
+category: op_amp
+ports:
+  INP:
+    kind: passive
+    required: true
+  INN:
+    kind: passive
+    required: true
+  VCC:
+    kind: electrical_power
+    required: true
+  VEE:
+    kind: electrical_ground
+    required: true
+  OUT:
+    kind: passive
+    required: true
+simulation:
+  spice:
+    model_name: CIRCUITCI_IDEAL_OPAMP
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: generic_behavioral
+    pin_order: [INP, INN, VCC, VEE, OUT]
+    valid_operating_notes:
+      - Generic high-gain behavioral op amp for topology and observation workflow checks.
+      - Finite-gain core omits rail clipping, bandwidth, slew rate, input bias, offset, noise, output current, stability, and saturation recovery behavior.
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - preliminary_circuit_simulation
+    - op_amp_topology_smoke_test
+    - generated_spice_subckt_workflow
+  not_valid_for:
+    - vendor_part_signoff
+    - stability_or_phase_margin_signoff
+    - output_current_or_thermal_signoff
+    - noise_offset_bias_or_slew_rate_analysis

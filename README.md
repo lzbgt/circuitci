@@ -261,6 +261,8 @@ libs/
   generic/        Generic component models
   vendor/         Datasheet-backed vendor model packs
 
+models/spice/     SHA-pinned SPICE model cards and generic behavioral
+                  macro-model libraries used by generated analog scenarios
 examples/         Passing/failing fixtures and importer demos
 schemas/          JSON schemas for Board IR and reports
 suites/           Acceptance-suite manifests

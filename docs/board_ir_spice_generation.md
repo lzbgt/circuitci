@@ -170,6 +170,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   device emission with a SHA-pinned datasheet-fit BSS84 model.
 - `examples/good_subckt_rc_delay` proves generated subcircuit `X` device
   emission from explicit `simulation.spice.pin_order` metadata.
+- `examples/good_ideal_opamp_buffer` proves reusable generic behavioral
+  macro-model packs can drive generated Board IR decks through the same
+  subcircuit, model-file, and SHA-pinned artifact path used by vendor models.
 - `examples/bad_mosfet_missing_body_policy` proves a three-pin MOSFET fails
   closed when the model does not explicitly allow body-to-source tying.
 - `examples/bad_mosfet_model_missing_sha` proves generated device models must

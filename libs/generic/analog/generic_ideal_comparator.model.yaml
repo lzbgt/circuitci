@@ -1,0 +1,41 @@
+component_id: generic.analog.ideal_comparator
+version: 0.1.0
+category: comparator
+ports:
+  INP:
+    kind: passive
+    required: true
+  INN:
+    kind: passive
+    required: true
+  VCC:
+    kind: electrical_power
+    required: true
+  VEE:
+    kind: electrical_ground
+    required: true
+  OUT:
+    kind: passive
+    required: true
+simulation:
+  spice:
+    model_name: CIRCUITCI_IDEAL_COMPARATOR
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: generic_behavioral
+    pin_order: [INP, INN, VCC, VEE, OUT]
+    valid_operating_notes:
+      - Generic smooth-threshold comparator for preliminary threshold and timing observation checks.
+      - Omits propagation-delay distribution, input common-mode limits, hysteresis, open-drain behavior, output drive strength, and metastability.
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - preliminary_circuit_simulation
+    - comparator_threshold_smoke_test
+    - generated_spice_subckt_workflow
+  not_valid_for:
+    - vendor_part_signoff
+    - propagation_delay_or_hysteresis_signoff
+    - open_drain_pullup_or_output_current_signoff
+    - noise_offset_or_input_common_mode_analysis

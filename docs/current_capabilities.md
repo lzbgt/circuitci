@@ -121,6 +121,11 @@ Current analog support:
 - Automatic `SPICE_OPERATING_LIMIT` checks for supported generated Board IR
   semiconductor stress limits, including selected derating, pulse, and SOA
   metadata paths.
+- Generic reusable behavioral macro-model pack entries for preliminary
+  generated-board simulation of op-amp buffers, comparator threshold behavior,
+  and enabled 3.3 V regulator rails through explicit `simulation.spice`
+  subcircuits. These models are low-confidence workflow/topology aids, not
+  vendor sign-off evidence.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.

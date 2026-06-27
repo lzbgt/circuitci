@@ -1,0 +1,52 @@
+component_id: generic.analog.ideal_ldo_3v3
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.5
+      operating_voltage_max_V: 6.0
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 1.0
+      vil_max_V: 0.4
+  GND:
+    kind: electrical_ground
+    required: true
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  dropout_voltage_V: 0.2
+  max_output_current_A: 0.1
+simulation:
+  spice:
+    model_name: CIRCUITCI_IDEAL_LDO_3V3
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: generic_behavioral
+    pin_order: [VIN, EN, GND, VOUT]
+    valid_operating_notes:
+      - Generic enabled 3.3 V regulator for preliminary rail sequencing and load-observation checks.
+      - Omits dropout accuracy, loop stability, output capacitor ESR, current limit, quiescent current, thermal shutdown, PSRR, noise, and startup waveform accuracy.
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - preliminary_circuit_simulation
+    - power_tree_observation_smoke_test
+    - generated_spice_subckt_workflow
+  not_valid_for:
+    - vendor_part_signoff
+    - regulator_stability_or_transient_response_signoff
+    - current_limit_or_thermal_signoff
+    - noise_psrr_or_quiescent_current_analysis

@@ -619,6 +619,25 @@ scenarios, where generated or file-backed SPICE decks provide waveform evidence
 and generated semiconductor models can be checked against datasheet operating
 limits.
 
+## Generic Behavioral Analog Macro-Models
+
+Reusable preliminary analog models should be normal component models with
+`simulation.spice` metadata, not special-case simulator code. The generic
+analog library includes low-confidence behavioral subcircuits for:
+
+- `generic.analog.ideal_opamp`
+- `generic.analog.ideal_comparator`
+- `generic.analog.ideal_ldo_3v3`
+
+Each declares an explicit `pin_order` and points at
+`models/spice/generic/analog_behavioral.lib`. Generated Board IR scenarios must
+still list that file in `analog.model_files` with its SHA-256 hash, so reports
+show exactly which macro-model artifact was used. These models are useful for
+topology, waveform, sweep, and GUI workflow checks. They are not valid for
+vendor-part sign-off, op-amp stability/noise/slew/current analysis,
+comparator propagation-delay/hysteresis/open-drain sign-off, or regulator
+loop-stability/current-limit/thermal/PSRR analysis.
+
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital
 output/input pairs and:

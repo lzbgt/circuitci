@@ -1,0 +1,140 @@
+project:
+  name: good_ideal_opamp_buffer
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vcc_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    VIN:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: input
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0.5
+          pulsed_v: 2.5
+          delay_us: 10
+          rise_us: 1
+          fall_us: 1
+          width_us: 40
+          period_us: 80
+    XU1:
+      model: generic.analog.ideal_opamp
+      pins:
+        INP: input
+        INN: output
+        VCC: vcc_5v
+        VEE: gnd
+        OUT: output
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: output
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    vcc_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    input:
+      kind: digital_or_analog
+    output:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ideal_opamp_buffer_step
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCC
+          - VIN
+          - XU1
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 7872b453d85cec24216861e3d51326c477d056225617d029a8f03fde00dbb670
+      node_bindings:
+        - node: vcc
+          net: vcc_5v
+        - node: in
+          net: input
+        - node: out
+          net: output
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: in
+          endpoint:
+            component: XU1
+            pin: INP
+        - node: out
+          endpoint:
+            component: XU1
+            pin: OUT
+        - node: out
+          endpoint:
+            component: XU1
+            pin: INN
+        - node: vcc
+          endpoint:
+            component: XU1
+            pin: VCC
+        - node: "0"
+          endpoint:
+            component: XU1
+            pin: VEE
+      analysis:
+        type: tran
+        stop_time_us: 35
+        max_step_us: 0.1
+      stimuli:
+        - name: input_step
+          description: Input source steps from 0.5 V to 2.5 V at 10 us.
+      probes:
+        - name: input
+          expression: V(in)
+        - name: output
+          expression: V(out)
+      assertions:
+        - name: output_tracks_low_input
+          probe: output
+          at_us: 5
+          relation: below
+          threshold_v: 0.6
+        - name: output_tracks_high_input
+          probe: output
+          at_us: 25
+          relation: above
+          threshold_v: 2.4
+        - name: output_settles_after_step
+          probe: output
+          aggregation: settling_time
+          start_us: 10
+          end_us: 35
+          relation: below
+          target_v: 2.5
+          tolerance_v: 0.02
+          time_limit_us: 5

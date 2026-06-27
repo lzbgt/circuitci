@@ -863,3 +863,62 @@ impl ComponentLibrary {
             .map(|(component_id, model)| (component_id.as_str(), model))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_generic_library_includes_behavioral_analog_model_pack() {
+        let mut project: BoardProject = serde_yaml_ng::from_str(
+            r#"
+project:
+  name: model_pack_probe
+  version: 0.1.0
+board: {}
+"#,
+        )
+        .unwrap();
+        project.source_dir = PathBuf::from(".");
+        let (library, findings) = load_library(Path::new("project.yaml"), &project);
+        assert!(
+            findings.is_empty(),
+            "default generic library should load cleanly: {findings:#?}"
+        );
+
+        for (component_id, model_name, pin_order) in [
+            (
+                "generic.analog.ideal_opamp",
+                "CIRCUITCI_IDEAL_OPAMP",
+                vec!["INP", "INN", "VCC", "VEE", "OUT"],
+            ),
+            (
+                "generic.analog.ideal_comparator",
+                "CIRCUITCI_IDEAL_COMPARATOR",
+                vec!["INP", "INN", "VCC", "VEE", "OUT"],
+            ),
+            (
+                "generic.analog.ideal_ldo_3v3",
+                "CIRCUITCI_IDEAL_LDO_3V3",
+                vec!["VIN", "EN", "GND", "VOUT"],
+            ),
+        ] {
+            let model = library
+                .get(component_id)
+                .unwrap_or_else(|| panic!("missing {component_id}"));
+            let spice = model
+                .simulation
+                .spice
+                .as_ref()
+                .unwrap_or_else(|| panic!("missing SPICE metadata for {component_id}"));
+            assert_eq!(spice.model_type, SpiceModelType::Subckt);
+            assert_eq!(spice.model_name, model_name);
+            assert_eq!(
+                spice.model_path,
+                "models/spice/generic/analog_behavioral.lib"
+            );
+            assert_eq!(spice.pin_order, pin_order);
+            assert_eq!(model.model_quality.confidence, "low");
+        }
+    }
+}
