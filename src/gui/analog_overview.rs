@@ -649,11 +649,24 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
     if let Some(at_us) = assertion.at_us {
         format!("at {} us", compact_number(at_us))
     } else if let (Some(start_us), Some(end_us)) = (assertion.start_us, assertion.end_us) {
-        format!(
-            "from {} us to {} us",
-            compact_number(start_us),
-            compact_number(end_us)
-        )
+        if matches!(
+            assertion.aggregation,
+            crate::board_ir::AnalogAggregation::RisingCrossingTime
+                | crate::board_ir::AnalogAggregation::FallingCrossingTime
+        ) {
+            format!(
+                "from {} us to {} us, limit {} us",
+                compact_number(start_us),
+                compact_number(end_us),
+                compact_number(assertion.time_limit_us.unwrap_or_default())
+            )
+        } else {
+            format!(
+                "from {} us to {} us",
+                compact_number(start_us),
+                compact_number(end_us)
+            )
+        }
     } else {
         "over full waveform".to_string()
     }
@@ -666,6 +679,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Max => "max",
         crate::board_ir::AnalogAggregation::Mean => "mean",
         crate::board_ir::AnalogAggregation::Rms => "rms",
+        crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising crossing",
+        crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling crossing",
     }
 }
 

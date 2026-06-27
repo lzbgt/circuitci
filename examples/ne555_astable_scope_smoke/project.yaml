@@ -171,4 +171,12 @@ scenarios:
         - name: i_vout
           expression: I(VOUT)
           quantity: current
-      assertions: []
+      assertions:
+        - name: output_rises_before_2us
+          probe: v_out
+          aggregation: rising_crossing_time
+          relation: below
+          threshold_v: 2.5
+          start_us: 0.0
+          end_us: 20.0
+          time_limit_us: 2.0

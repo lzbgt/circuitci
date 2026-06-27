@@ -66,6 +66,7 @@ fn assertion_draft() -> AnalogAssertionDraft {
         at_us: 50.0,
         start_us: 0.0,
         end_us: 100.0,
+        time_limit_us: 50.0,
     }
 }
 
@@ -131,6 +132,31 @@ fn append_analog_assertion_emits_valid_yaml() {
     assert_eq!(assertion.name, "out_above_min");
     assert_eq!(assertion.threshold_v, Some(1.0));
     assert_eq!(assertion.at_us, Some(50.0));
+}
+
+#[test]
+fn append_analog_assertion_emits_crossing_time_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let mut draft = assertion_draft();
+    draft.assertion_name = "out_rises_soon".to_string();
+    draft.aggregation = "rising_crossing_time".to_string();
+    draft.relation = "below".to_string();
+    draft.start_us = 0.0;
+    draft.end_us = 100.0;
+    draft.time_limit_us = 25.0;
+    let edited = append_analog_assertion(&edited, &draft).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(assertion.name, "out_rises_soon");
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::RisingCrossingTime
+    );
+    assert_eq!(assertion.threshold_v, Some(1.0));
+    assert_eq!(assertion.start_us, Some(0.0));
+    assert_eq!(assertion.end_us, Some(100.0));
+    assert_eq!(assertion.time_limit_us, Some(25.0));
+    assert_eq!(assertion.at_us, None);
 }
 
 #[test]

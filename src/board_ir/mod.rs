@@ -1074,6 +1074,8 @@ pub struct AnalogAssertion {
     pub start_us: Option<f64>,
     #[serde(default, rename = "end_us")]
     pub end_us: Option<f64>,
+    #[serde(default, rename = "time_limit_us")]
+    pub time_limit_us: Option<f64>,
     #[serde(default)]
     pub aggregation: AnalogAggregation,
     pub relation: AnalogRelation,
@@ -1096,6 +1098,8 @@ pub enum AnalogAggregation {
     Max,
     Mean,
     Rms,
+    RisingCrossingTime,
+    FallingCrossingTime,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

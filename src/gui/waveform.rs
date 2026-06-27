@@ -544,6 +544,7 @@ impl CircuitCiApp {
                 at_us: self.analog_assertion_at_us,
                 start_us: self.analog_assertion_start_us,
                 end_us: self.analog_assertion_end_us,
+                time_limit_us: self.analog_assertion_time_limit_us,
             },
         )
     }

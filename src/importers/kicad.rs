@@ -759,10 +759,18 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     | AssertionAggregationYaml::Rms
             )
         );
+        let is_crossing = matches!(
+            assertion.aggregation,
+            Some(
+                AssertionAggregationYaml::RisingCrossingTime
+                    | AssertionAggregationYaml::FallingCrossingTime
+            )
+        );
         if is_window {
             if assertion.start_us.is_none()
                 || assertion.end_us.is_none()
                 || assertion.at_us.is_some()
+                || assertion.time_limit_us.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid window/sample timing contract.",
@@ -770,9 +778,22 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                     assertion.name
                 );
             }
+        } else if is_crossing {
+            if assertion.start_us.is_none()
+                || assertion.end_us.is_none()
+                || assertion.time_limit_us.is_none()
+                || assertion.at_us.is_some()
+            {
+                bail!(
+                    "KiCad analog scenario {} assertion {} has an invalid crossing-time timing contract.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
         } else if assertion.at_us.is_none()
             || assertion.start_us.is_some()
             || assertion.end_us.is_some()
+            || assertion.time_limit_us.is_some()
         {
             bail!(
                 "KiCad analog scenario {} assertion {} has an invalid sample timing contract.",

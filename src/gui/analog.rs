@@ -24,6 +24,7 @@ pub(super) struct AnalogAssertionDraft {
     pub(super) at_us: f64,
     pub(super) start_us: f64,
     pub(super) end_us: f64,
+    pub(super) time_limit_us: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -253,6 +254,7 @@ pub(super) fn analog_probe_assertion_summaries(
                     at_us: assertion.at_us.unwrap_or_default(),
                     start_us: assertion.start_us.unwrap_or_default(),
                     end_us: assertion.end_us.unwrap_or_default(),
+                    time_limit_us: assertion.time_limit_us.unwrap_or_default(),
                 },
                 status,
                 failure_message: failure.map(|finding| finding.message.clone()),
@@ -845,7 +847,13 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
     validated_id(&draft.probe_name, "probe name")?;
     if !matches!(
         draft.aggregation.as_str(),
-        "sample" | "min" | "max" | "mean" | "rms"
+        "sample"
+            | "min"
+            | "max"
+            | "mean"
+            | "rms"
+            | "rising_crossing_time"
+            | "falling_crossing_time"
     ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
@@ -1022,6 +1030,21 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
+        "rising_crossing_time" | "falling_crossing_time" => {
+            if !draft.start_us.is_finite()
+                || !draft.end_us.is_finite()
+                || draft.start_us < 0.0
+                || draft.end_us < draft.start_us
+                || draft.end_us > stop_time_us
+                || !draft.time_limit_us.is_finite()
+                || draft.time_limit_us < 0.0
+                || draft.time_limit_us > stop_time_us
+            {
+                anyhow::bail!(
+                    "Crossing-time assertion bounds and time limit must be finite, ordered, and within the scenario stop time."
+                );
+            }
+        }
         _ => unreachable!("aggregation was validated"),
     }
     Ok(())
@@ -1034,6 +1057,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Max => "max",
         crate::board_ir::AnalogAggregation::Mean => "mean",
         crate::board_ir::AnalogAggregation::Rms => "rms",
+        crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising_crossing_time",
+        crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling_crossing_time",
     }
 }
 
@@ -1088,6 +1113,15 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
                 "{:.6}..{:.6} us",
                 assertion.start_us.unwrap_or_default(),
                 assertion.end_us.unwrap_or_default()
+            )
+        }
+        crate::board_ir::AnalogAggregation::RisingCrossingTime
+        | crate::board_ir::AnalogAggregation::FallingCrossingTime => {
+            format!(
+                "{:.6}..{:.6} us, limit {:.6} us",
+                assertion.start_us.unwrap_or_default(),
+                assertion.end_us.unwrap_or_default(),
+                assertion.time_limit_us.unwrap_or_default()
             )
         }
     }
@@ -1297,6 +1331,11 @@ fn assertion_value(
         "min" | "max" | "mean" | "rms" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
+        }
+        "rising_crossing_time" | "falling_crossing_time" => {
+            insert_number(&mut assertion, "start_us", draft.start_us)?;
+            insert_number(&mut assertion, "end_us", draft.end_us)?;
+            insert_number(&mut assertion, "time_limit_us", draft.time_limit_us)?;
         }
         _ => unreachable!("aggregation was validated"),
     }

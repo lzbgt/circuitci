@@ -550,7 +550,8 @@ form:
   threshold/timing/status/failure details, edit or delete one assertion without
   clearing sibling checks on that selected probe, add or clear assertions for
   that selected probe, quick-add cursor-sampled above/below assertions from a
-  hovered schematic probe element, add sample/min/max probe assertions, edit
+  hovered schematic probe element, add sample/window/crossing-time probe
+  assertions, edit
   file-backed SPICE decks declared by analog scenarios, run validation through
   the engine, plot emitted CSV waveforms, add GUI-only derived
   difference/sum/product/ratio channels, promote representable derived channels
@@ -652,7 +653,8 @@ The supported desktop simulation path is:
    source,
 31. select a supported component branch and append a power probe that composes
    the branch voltage and branch current as an explicit Board IR power probe,
-32. add sample or windowed min/max waveform assertions against declared probes,
+32. add sample, windowed min/max/mean/RMS, or rising/falling crossing-time
+   waveform assertions against declared probes,
 33. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
 34. browse, hash, add, and remove SHA-backed SPICE model/include files for

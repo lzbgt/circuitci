@@ -481,6 +481,8 @@ pub(super) struct AssertionYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) end_us: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) time_limit_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) aggregation: Option<AssertionAggregationYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) threshold_v: Option<f64>,
@@ -505,4 +507,6 @@ pub(super) enum AssertionAggregationYaml {
     Max,
     Mean,
     Rms,
+    RisingCrossingTime,
+    FallingCrossingTime,
 }

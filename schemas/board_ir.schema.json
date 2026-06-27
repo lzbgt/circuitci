@@ -1499,7 +1499,8 @@
                     "at_us": { "type": "number", "minimum": 0 },
                     "start_us": { "type": "number", "minimum": 0 },
                     "end_us": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms"] },
+                    "time_limit_us": { "type": "number", "minimum": 0 },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "rising_crossing_time", "falling_crossing_time"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1517,15 +1518,31 @@
                       },
                       "then": {
                         "required": ["start_us", "end_us"],
-                        "not": { "required": ["at_us"] }
-                      },
-                      "else": {
-                        "required": ["at_us"],
                         "not": {
                           "anyOf": [
-                            { "required": ["start_us"] },
-                            { "required": ["end_us"] }
+                            { "required": ["at_us"] },
+                            { "required": ["time_limit_us"] }
                           ]
+                        }
+                      },
+                      "else": {
+                        "if": {
+                          "required": ["aggregation"],
+                          "properties": { "aggregation": { "enum": ["rising_crossing_time", "falling_crossing_time"] } }
+                        },
+                        "then": {
+                          "required": ["start_us", "end_us", "time_limit_us"],
+                          "not": { "required": ["at_us"] }
+                        },
+                        "else": {
+                          "required": ["at_us"],
+                          "not": {
+                            "anyOf": [
+                              { "required": ["start_us"] },
+                              { "required": ["end_us"] },
+                              { "required": ["time_limit_us"] }
+                            ]
+                          }
                         }
                       }
                     },
