@@ -14,6 +14,7 @@ mod analog_dc_presets;
 mod analog_generated;
 mod analog_model_files;
 mod analog_models;
+mod analog_noise_presets;
 mod analog_overview;
 mod analog_run_setup;
 mod analog_stimulus;

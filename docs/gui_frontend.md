@@ -346,18 +346,20 @@ deck. Noise creation writes a normal `analog_noise` scenario with
 `analysis: {type: noise}`, a selected output net, selected input source,
 start/stop frequency, points per decade, output/input noise probes, generated
 board component inclusion, ground binding, and model-file inference.
-The check editor can author transient, AC/Bode, and DC operating-point
+The check editor can author transient, AC/Bode, DC operating-point, and noise
 assertions. AC checks expose frequency fields for gain or phase at a
 frequency, gain crossing-frequency limits, and threshold-only phase/gain
 margin checks, then serialize normal `analog.assertions` entries with
 `at_hz`, `frequency_limit_hz`, `threshold_db`, or `threshold_deg`. DC checks
 serialize `aggregation: operating_point` with probe-unit thresholds and no
-time or frequency fields. For AC/Bode run setups, the same editor offers Bode
-check presets that append ordinary assertion rows for common low-pass,
-unity-gain, and loop-stability observations. For DC run setups, it offers
-3.3 V rail, 5 V rail, and 2.5 V midpoint presets. These checks automatically
-participate in sweep worst-corner margin summaries, reports, and scope
-bundles.
+time or frequency fields. Noise checks serialize density-at-frequency and
+integrated-RMS assertions with the correct `threshold_v_per_sqrt_hz` or
+`threshold_v` units. For AC/Bode run setups, the same editor offers Bode check
+presets that append ordinary assertion rows for common low-pass, unity-gain,
+and loop-stability observations. For DC run setups, it offers 3.3 V rail, 5 V
+rail, and 2.5 V midpoint presets. For noise run setups, it offers output and
+input-referred density/RMS presets. These checks automatically participate in
+sweep worst-corner margin summaries, reports, and scope bundles.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
@@ -489,8 +491,8 @@ form:
   `Open` or `Run + Scopes`. The current entries cover the checked-in NE555
   astable-style fixture, RC low-pass sine fixture, comparator threshold
   fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TLV803
-  reset-supervisor fixture, loop-stability Bode fixture, and DC divider-bias
-  fixture; all direct-open projects include display-only routed schematic
+  reset-supervisor fixture, loop-stability Bode fixture, DC divider-bias
+  fixture, and divider-noise fixture; all direct-open projects include display-only routed schematic
   waypoints. Opening one lands directly in Sketch with a deferred Fit All, so
   the first view is the readable connected network. When a scope-ready fixture
   is active, the Project overlay also shows

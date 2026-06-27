@@ -47,6 +47,16 @@ const DC_BIAS_EXAMPLE_PROJECT: &str = "examples/good_dc_bias_observation/project
 const DC_BIAS_EXAMPLE_NAME: &str = "good_dc_bias_observation";
 const DC_BIAS_EXPECTED_TRACES: &[&str] = &["vin", "midpoint"];
 const DC_BIAS_EXPECTED_FREQUENCY: &str = "DC operating point with 9 divider-tolerance corners";
+const NOISE_OBSERVATION_EXAMPLE_PROJECT: &str = "examples/good_noise_observation/project.yaml";
+const NOISE_OBSERVATION_EXAMPLE_NAME: &str = "good_noise_observation";
+const NOISE_OBSERVATION_EXPECTED_TRACES: &[&str] = &[
+    "onoise_density",
+    "inoise_density",
+    "onoise_total",
+    "inoise_total",
+];
+const NOISE_OBSERVATION_EXPECTED_FREQUENCY: &str =
+    "10 Hz to 100 kHz divider output and input-referred RMS noise";
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
@@ -150,6 +160,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: DC_BIAS_EXAMPLE_NAME,
         expected_traces: DC_BIAS_EXPECTED_TRACES,
         expected_frequency: DC_BIAS_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
+    },
+    GuiProjectExample {
+        id: "noise_observation",
+        category: "Noise",
+        open_label: "Open Noise Observation Example",
+        run_label: "Open Noise + Run Observations",
+        workflow_title: "Noise Observation Workflow",
+        summary: "Generated divider noise density and integrated RMS noise checks.",
+        project_path: NOISE_OBSERVATION_EXAMPLE_PROJECT,
+        project_name: NOISE_OBSERVATION_EXAMPLE_NAME,
+        expected_traces: NOISE_OBSERVATION_EXPECTED_TRACES,
+        expected_frequency: NOISE_OBSERVATION_EXPECTED_FREQUENCY,
         observation_preset_component: None,
     },
 ];

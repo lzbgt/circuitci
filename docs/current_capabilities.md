@@ -116,9 +116,10 @@ Current analog support:
   band. Noise assertions support output/input density at a frequency and
   integrated output/input RMS noise checks. The GUI run-setup editor can author
   generated noise observations directly by choosing an output net, input source,
-  and frequency band. Scopes plots `noise_spectrum.csv` as frequency-axis
-  output/input density traces and loads `noise_total.csv` into a compact
-  integrated-RMS noise table with CSV/Markdown copy actions.
+  and frequency band, and the check editor offers output and input-referred
+  density/RMS noise presets. Scopes plots `noise_spectrum.csv` as
+  frequency-axis output/input density traces and loads `noise_total.csv` into a
+  compact integrated-RMS noise table with CSV/Markdown copy actions.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
@@ -170,8 +171,8 @@ Current analog support:
   subcircuits. These models are low-confidence workflow/topology aids, not
   vendor sign-off evidence. The GUI Examples picker includes direct-open
   observation fixtures for NE555, RC low-pass, comparator threshold, op-amp
-  buffer, AP2112K LDO rail, TLV803 reset-supervisor, loop-stability Bode, and
-  DC divider-bias workflows.
+  buffer, AP2112K LDO rail, TLV803 reset-supervisor, loop-stability Bode, DC
+  divider-bias, and divider-noise workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled

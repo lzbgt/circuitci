@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 8);
+    assert_eq!(examples.len(), 9);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -792,6 +792,38 @@ fn gui_project_example_registry_lists_dc_bias_fixture() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_noise_observation_fixture() {
+    let example = gui_project_example_by_id("noise_observation");
+
+    assert_eq!(example.category, "Noise");
+    assert_eq!(example.open_label, "Open Noise Observation Example");
+    assert_eq!(example.run_label, "Open Noise + Run Observations");
+    assert_eq!(
+        example.summary,
+        "Generated divider noise density and integrated RMS noise checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_noise_observation/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_noise_observation");
+    assert_eq!(
+        example.expected_traces,
+        &[
+            "onoise_density",
+            "inoise_density",
+            "onoise_total",
+            "inoise_total"
+        ]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "10 Hz to 100 kHz divider output and input-referred RMS noise"
+    );
+    assert_eq!(example.observation_preset_component, None);
+}
+
+#[test]
 fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     let mut app = CircuitCiApp::default();
 
@@ -822,6 +854,8 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
         app.selected_project_example().id,
         "loop_stability_bode_scope"
     );
+    app.selected_project_example_id = "noise_observation".to_string();
+    assert_eq!(app.selected_project_example().id, "noise_observation");
     app.selected_project_example_id = "deleted_example".to_string();
     assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
 }

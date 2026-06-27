@@ -581,6 +581,9 @@ node/pin bindings, generated model-file inference, `.op` analysis settings,
 and `.noise` output/input source settings. `src/gui/analog_ac_presets.rs` owns GUI Bode check
 presets that append ordinary AC assertion rows for common low-pass and
 unity-gain observations plus loop-stability phase/gain margin checks.
+`src/gui/analog_dc_presets.rs` owns GUI operating-point rail/midpoint check
+presets. `src/gui/analog_noise_presets.rs` owns GUI output and input-referred
+noise density/RMS check presets that append ordinary noise assertion rows.
 `src/gui/analog.rs` owns selected-net voltage-probe
 insertion, selected-component source/passive/semiconductor current-probe
 insertion, selected-component source/passive/semiconductor power-probe
