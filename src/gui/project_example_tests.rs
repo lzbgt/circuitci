@@ -140,6 +140,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UDBG"),
         },
         ExpectedProjectExample {
+            id: "cmsis_dap_swd_scope",
+            category: "Debug",
+            open_label: "Open CMSIS-DAP SWD Example",
+            run_label: "Open CMSIS-DAP + Run Scopes",
+            summary: "Source-backed generic CMSIS-DAP SWD probe line-state observation.",
+            project_path: "examples/good_cmsis_dap_swd_probe_observation/project.yaml",
+            project_name: "good_cmsis_dap_swd_probe_observation",
+            expected_traces: &["v_vtref", "v_swclk", "v_swdio", "v_nreset", "v_swo"],
+            expected_frequency: "3.3 V target reference with CMSIS-DAP SWD idle high lines and released reset",
+            observation_preset_component: Some("UPROBE"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

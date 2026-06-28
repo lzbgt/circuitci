@@ -212,6 +212,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   face for VCC, UART1 TXD, and JTAG TMS/TCK/TDI/TRST line-state observations.
   The model-state inputs are explicit Board IR component parameters, not
   inferred USB enumeration, JTAG TAP state, or driver-mode behavior.
+- `examples/good_cmsis_dap_swd_probe_observation` proves the generic
+  CMSIS-DAP SWD probe model can use a reduced generated-SPICE face for
+  VTREF-referenced SWCLK, SWDIO, nRESET, and SWO line-state observations. The
+  model-state inputs are explicit Board IR component parameters, not inferred
+  USB transport, SWD protocol transfer, or probe-vendor electrical behavior.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

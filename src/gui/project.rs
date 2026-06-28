@@ -67,6 +67,13 @@ const CH347_USB_JTAG_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const CH347_USB_JTAG_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V CH347 debug bridge with TXD1/TMS/TDI/TRST high and TCK low";
+const CMSIS_DAP_SWD_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_cmsis_dap_swd_probe_observation/project.yaml";
+const CMSIS_DAP_SWD_SCOPE_EXAMPLE_NAME: &str = "good_cmsis_dap_swd_probe_observation";
+const CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vtref", "v_swclk", "v_swdio", "v_nreset", "v_swo"];
+const CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V target reference with CMSIS-DAP SWD idle high lines and released reset";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -274,6 +281,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: CH347_USB_JTAG_SCOPE_EXPECTED_TRACES,
         expected_frequency: CH347_USB_JTAG_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UDBG"),
+    },
+    GuiProjectExample {
+        id: "cmsis_dap_swd_scope",
+        category: "Debug",
+        open_label: "Open CMSIS-DAP SWD Example",
+        run_label: "Open CMSIS-DAP + Run Scopes",
+        workflow_title: "CMSIS-DAP SWD Workflow",
+        summary: "Source-backed generic CMSIS-DAP SWD probe line-state observation.",
+        project_path: CMSIS_DAP_SWD_SCOPE_EXAMPLE_PROJECT,
+        project_name: CMSIS_DAP_SWD_SCOPE_EXAMPLE_NAME,
+        expected_traces: CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES,
+        expected_frequency: CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UPROBE"),
     },
     GuiProjectExample {
         id: "ap2112k_ldo_scope",

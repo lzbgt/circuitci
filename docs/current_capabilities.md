@@ -194,6 +194,7 @@ Current analog support:
   observations, CP2102N-style USB-UART VREGIN/VDD and output-state
   observations, FT232R-style USB-UART 3V3OUT/VCCIO and output-state
   observations, CH347-style USB-JTAG debug bridge line-state observations,
+  CMSIS-DAP-style SWD probe line-state observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -205,8 +206,8 @@ Current analog support:
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
-  FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, AP2112K LDO rail, TPS54331
-  buck rail, TPS62162 buck rail, TPS63802 buck-boost rail, TPS61023 boost rail,
+  FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
+  AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail, TPS61023 boost rail,
   TPS2121 power mux, TPS22918 load switch, MCP73831 charger, BQ24075 power
   path, BQ25798 NVDC power path, TLV803 reset-supervisor, loop-stability Bode,
   DC divider-bias, divider-noise, and RC Monte Carlo yield workflows.
@@ -237,6 +238,13 @@ Current analog support:
   explicitly reduced-fidelity and omits USB PHY behavior, enumeration,
   driver-mode selection, UART/JTAG timing, TAP state, external-clock accuracy,
   and final I/O injection-current sign-off.
+- The generic CMSIS-DAP SWD probe pack now has a source-backed generated SPICE
+  observation face for VTREF-referenced SWD line-state workflows. Its SWD/JTAG
+  pin-role metadata and default SWD setup behavior are sourced from Arm
+  CMSIS-DAP repository documentation, while the transient face stays explicitly
+  reduced-fidelity and omits USB transport, SWD turnaround/protocol transfers,
+  target-specific voltage limits, trace bandwidth, and probe-vendor drive
+  strength.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

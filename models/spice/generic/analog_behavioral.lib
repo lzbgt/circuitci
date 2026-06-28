@@ -97,6 +97,23 @@ RRXD1 RXD1 GND 1G
 RTDO TDO GND 1G
 .ends CIRCUITCI_CH347_USB_JTAG_BRIDGE
 
+.subckt CIRCUITCI_CMSIS_DAP_SWD_PROBE VTREF GND SWCLK SWDIO NRESET SWO PARAMS: SWCLK_STATE=1 SWDIO_STATE=1 NRESET_ASSERT=0
+* Reduced CMSIS-DAP SWD probe observation behavior.
+* SWCLK and SWDIO are preliminary VTREF-referenced push-pull line-state
+* drivers. NRESET is represented as an open-drain-style pull-down that releases
+* to the target pull-up when NRESET_ASSERT is low. SWO is represented as a
+* high-impedance input. USB transport, CMSIS-DAP command sequencing, turnaround
+* timing, SWD protocol transfers, and target/probe vendor electrical limits are
+* intentionally not modeled.
+BSWCLK NSWCLK GND V={v(VTREF,GND)*SWCLK_STATE}
+RSWCLK NSWCLK SWCLK 100
+BSWDIO NSWDIO GND V={v(VTREF,GND)*SWDIO_STATE}
+RSWDIO NSWDIO SWDIO 100
+BNRST NNRST GND V={0}
+RNRST NNRST NRESET {1e12/(1+1e9*NRESET_ASSERT)}
+RSWO SWO GND 1G
+.ends CIRCUITCI_CMSIS_DAP_SWD_PROBE
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

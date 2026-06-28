@@ -1,0 +1,121 @@
+component_id: generic.debug.cmsis_dap_swd_probe
+version: 0.1.0
+category: comms
+ports:
+  VTREF:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+  SWCLK:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 100
+  SWDIO:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 100
+  NRESET:
+    kind: digital_electrical_output
+    required: false
+  SWO:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+datasheet:
+  manufacturer: Arm
+  part_number: CMSIS-DAP SWD probe interface
+  package: specification
+  polarity: cmsis_dap_swd_probe
+  pinout:
+    VTREF: Target reference voltage
+    GND: Ground
+    SWCLK: SWCLK/TCK
+    SWDIO: SWDIO/TMS
+    NRESET: nRESET
+    SWO: SWO
+  device_parameters:
+    cmsis_dap_role:
+      conditions: CMSIS-DAP standardizes communication between host debug tools and Arm Cortex target processors through standalone or on-board debug units.
+      unit: note
+      simulation_relevance: Provides a source-backed generic debug-probe interface without binding to one probe vendor IC.
+    swd_interface:
+      conditions: CMSIS-DAP supports a two-pin Serial Wire Debug interface using SWCLK and SWDIO plus nRESET.
+      unit: note
+      simulation_relevance: Supports preliminary SWD header line-state observations.
+    swdio_bidirectional:
+      conditions: SWDIO/TMS is output push-pull and input for receiving data; CMSIS-DAP firmware exposes functions to switch SWDIO output on or off.
+      unit: note
+      simulation_relevance: The reduced model can represent a driven idle-state snapshot but is not a turnaround or protocol model.
+    reset_behavior:
+      conditions: nRESET is output open drain with pull-up resistor, and setup defaults nRESET high in SWD mode.
+      unit: note
+      simulation_relevance: Supports executable reset-release and reset-assertion observations when the target pull-up is modeled explicitly.
+  documents:
+    - title: CMSIS-DAP README
+      path: docs/research/debug/cmsis_dap/cmsis_dap_readme.md
+      source_url: https://raw.githubusercontent.com/ARM-software/CMSIS-DAP/main/README.md
+      sha256: cc42e0eacc9cf9d898aa349e9290b20cd593389e72e4e516a0a326987408aa49
+      retrieved: "2026-06-28"
+    - title: CMSIS-DAP main documentation page source
+      path: docs/research/debug/cmsis_dap/cmsis_dap_mainpage.md
+      source_url: https://raw.githubusercontent.com/ARM-software/CMSIS-DAP/main/Documentation/Doxygen/src/mainpage.md
+      sha256: 20fea54acf8f195811a893ea0261849493aee58839f71c9b39e8dc982b71120f
+      retrieved: "2026-06-28"
+    - title: CMSIS-DAP command reference source
+      path: docs/research/debug/cmsis_dap/cmsis_dap_ref_dap.txt
+      source_url: https://raw.githubusercontent.com/ARM-software/CMSIS-DAP/main/Documentation/Doxygen/src/ref_dap.txt
+      sha256: 44ff07615236e07da1fcd058c602f3ecc775dc341cc183fee12f6f091ba4de58
+      retrieved: "2026-06-28"
+    - title: CMSIS-DAP firmware configuration template
+      path: docs/research/debug/cmsis_dap/cmsis_dap_config_template.h
+      source_url: https://raw.githubusercontent.com/ARM-software/CMSIS-DAP/main/Firmware/Config/DAP_config.h
+      sha256: 1e11c4879a41674adeb9ab5068b77dff9144a217df7a85a883103b7bd213349c
+      retrieved: "2026-06-28"
+    - title: CMSIS-DAP DAP header
+      path: docs/research/debug/cmsis_dap/cmsis_dap_dap_h.h
+      source_url: https://raw.githubusercontent.com/ARM-software/CMSIS-DAP/main/Firmware/Include/DAP.h
+      sha256: 1fa6a1489d199de159a0bd1a814845ac8e1f6e0335d349b883f341f84c1b73c5
+      retrieved: "2026-06-28"
+simulation:
+  spice:
+    model_name: CIRCUITCI_CMSIS_DAP_SWD_PROBE
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: specification_limited_generic_behavioral
+    pin_order: [VTREF, GND, SWCLK, SWDIO, NRESET, SWO]
+    instance_parameters:
+      - spice_name: SWCLK_STATE
+        component_parameter: observation_swclk_state
+        default_value: 1.0
+      - spice_name: SWDIO_STATE
+        component_parameter: observation_swdio_state
+        default_value: 1.0
+      - spice_name: NRESET_ASSERT
+        component_parameter: observation_nreset_assert
+        default_value: 0.0
+    valid_operating_notes:
+      - Reduced CMSIS-DAP SWD probe observation model for preliminary VTREF-referenced SWCLK, SWDIO, nRESET, and SWO line-state checks only.
+      - Uses source-backed CMSIS-DAP SWD/JTAG pin-role semantics and default SWD setup behavior, while relying on the Board IR fixture to declare the target voltage and pull-up network.
+      - USB transport, CMSIS-DAP command sequencing, SWD turnaround/protocol transfers, target-specific voltage limits, trace bandwidth, and probe-vendor drive strength are out of scope.
+model_quality:
+  source: specification
+  confidence: low
+  intended_use:
+    - debug_header_screening
+    - board_connectivity
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - probe_vendor_electrical_signoff
+    - swd_protocol_or_turnaround_timing
+    - usb_protocol_or_enumeration
+    - target_specific_voltage_limit_signoff
+    - trace_bandwidth_or_swo_protocol_signoff

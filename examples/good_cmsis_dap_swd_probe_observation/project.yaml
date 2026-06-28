@@ -1,0 +1,229 @@
+project:
+  name: good_cmsis_dap_swd_probe_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/generic/digital
+
+board:
+  schematic:
+    component_symbols:
+      VREF: Simulation_SPICE:VDC
+      UPROBE: Interface_Debug:CMSIS_DAP_SWD
+      RSWCLKLOAD: Device:R
+      RSWDIOLOAD: Device:R
+      RNRSTPULL: Device:R
+      RSWOPULL: Device:R
+    node_styles:
+      component:VREF: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UPROBE: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSWCLKLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSWDIOLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RNRSTPULL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSWOPULL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VREF: { x: 64.0, y: 176.0 }
+      component:UPROBE: { x: 352.0, y: 256.0 }
+      component:RSWCLKLOAD: { x: 640.0, y: 160.0 }
+      component:RSWDIOLOAD: { x: 640.0, y: 272.0 }
+      component:RNRSTPULL: { x: 640.0, y: 384.0 }
+      component:RSWOPULL: { x: 480.0, y: 80.0 }
+      net:target_vref: { x: 176.0, y: 160.0 }
+      net:swd_swclk: { x: 512.0, y: 160.0 }
+      net:swd_swdio: { x: 512.0, y: 272.0 }
+      net:target_nreset: { x: 512.0, y: 384.0 }
+      net:swd_swo: { x: 512.0, y: 80.0 }
+      net:gnd: { x: 352.0, y: 520.0 }
+    wire_routes:
+      VREF.P->target_vref:
+        points:
+          - { x: 144.0, y: 176.0 }
+      VREF.N->gnd:
+        points:
+          - { x: 112.0, y: 520.0 }
+      UPROBE.VTREF->target_vref:
+        points:
+          - { x: 256.0, y: 160.0 }
+      UPROBE.GND->gnd:
+        points:
+          - { x: 352.0, y: 520.0 }
+      UPROBE.SWCLK->swd_swclk:
+        points:
+          - { x: 512.0, y: 160.0 }
+      UPROBE.SWDIO->swd_swdio:
+        points:
+          - { x: 512.0, y: 272.0 }
+      UPROBE.NRESET->target_nreset:
+        points:
+          - { x: 512.0, y: 384.0 }
+      UPROBE.SWO->swd_swo:
+        points:
+          - { x: 512.0, y: 80.0 }
+      RSWCLKLOAD.A->swd_swclk:
+        points:
+          - { x: 640.0, y: 160.0 }
+      RSWCLKLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 520.0 }
+      RSWDIOLOAD.A->swd_swdio:
+        points:
+          - { x: 640.0, y: 272.0 }
+      RSWDIOLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 520.0 }
+      RNRSTPULL.A->target_vref:
+        points:
+          - { x: 640.0, y: 160.0 }
+      RNRSTPULL.B->target_nreset:
+        points:
+          - { x: 640.0, y: 384.0 }
+      RSWOPULL.A->target_vref:
+        points:
+          - { x: 480.0, y: 160.0 }
+      RSWOPULL.B->swd_swo:
+        points:
+          - { x: 480.0, y: 80.0 }
+  components:
+    VREF:
+      model: generic.analog.dc_voltage_source
+      part_number: TARGET_3V3_REFERENCE
+      pins:
+        P: target_vref
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UPROBE:
+      model: generic.debug.cmsis_dap_swd_probe
+      part_number: CMSIS_DAP_SWD_PROBE
+      parameters:
+        observation_swclk_state: 1.0
+        observation_swdio_state: 1.0
+        observation_nreset_assert: 0.0
+      pins:
+        VTREF: target_vref
+        GND: gnd
+        SWCLK: swd_swclk
+        SWDIO: swd_swdio
+        NRESET: target_nreset
+        SWO: swd_swo
+    RSWCLKLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: swd_swclk, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RSWDIOLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: swd_swdio, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RNRSTPULL:
+      model: generic.analog.resistor
+      part_number: 10k_pullup
+      pins: { A: target_vref, B: target_nreset }
+      spice: { primitive: resistor, value_ohm: 10000.0 }
+    RSWOPULL:
+      model: generic.analog.resistor
+      part_number: 100k_pullup
+      pins: { A: target_vref, B: swd_swo }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+  nets:
+    target_vref:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    swd_swclk: { kind: digital_or_analog }
+    swd_swdio: { kind: digital_or_analog }
+    target_nreset: { kind: digital_or_analog }
+    swd_swo: { kind: digital_or_analog }
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: cmsis_dap_swd_probe_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VREF
+          - UPROBE
+          - RSWCLKLOAD
+          - RSWDIOLOAD
+          - RNRSTPULL
+          - RSWOPULL
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 4fdbeee10a9ca9eec41c4694f90e01fbde191978c109b45c52a6180992b0aee2
+      node_bindings:
+        - { node: vtref, net: target_vref }
+        - { node: swclk, net: swd_swclk }
+        - { node: swdio, net: swd_swdio }
+        - { node: nreset, net: target_nreset }
+        - { node: swo, net: swd_swo }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vtref, endpoint: { component: VREF, pin: P } }
+        - { node: "0", endpoint: { component: VREF, pin: N } }
+        - { node: vtref, endpoint: { component: UPROBE, pin: VTREF } }
+        - { node: "0", endpoint: { component: UPROBE, pin: GND } }
+        - { node: swclk, endpoint: { component: UPROBE, pin: SWCLK } }
+        - { node: swdio, endpoint: { component: UPROBE, pin: SWDIO } }
+        - { node: nreset, endpoint: { component: UPROBE, pin: NRESET } }
+        - { node: swo, endpoint: { component: UPROBE, pin: SWO } }
+        - { node: swclk, endpoint: { component: RSWCLKLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RSWCLKLOAD, pin: B } }
+        - { node: swdio, endpoint: { component: RSWDIOLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RSWDIOLOAD, pin: B } }
+        - { node: vtref, endpoint: { component: RNRSTPULL, pin: A } }
+        - { node: nreset, endpoint: { component: RNRSTPULL, pin: B } }
+        - { node: vtref, endpoint: { component: RSWOPULL, pin: A } }
+        - { node: swo, endpoint: { component: RSWOPULL, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 60.0
+        max_step_us: 0.2
+      stimuli:
+        - name: swd_idle_snapshot
+          description: CMSIS-DAP SWD probe observes a 3.3 V target reference with SWCLK/SWDIO high and nRESET released through the target pull-up.
+      probes:
+        - { name: v_vtref, expression: V(vtref) }
+        - { name: v_swclk, expression: V(swclk) }
+        - { name: v_swdio, expression: V(swdio) }
+        - { name: v_nreset, expression: V(nreset) }
+        - { name: v_swo, expression: V(swo) }
+      assertions:
+        - name: vtref_present
+          probe: v_vtref
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 3.0
+        - name: swclk_idle_high
+          probe: v_swclk
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9
+        - name: swdio_idle_high
+          probe: v_swdio
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9
+        - name: nreset_released_high
+          probe: v_nreset
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9

@@ -154,7 +154,7 @@ scenarios:
           - CBAT
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: b280cae47ffb58f26928fcb4f20f124703d78293acbec4fe5dd254db8abfda15
+          sha256: 4fdbeee10a9ca9eec41c4694f90e01fbde191978c109b45c52a6180992b0aee2
       node_bindings:
         - { node: vusb, net: usb_5v }
         - { node: charge, net: charge_out }
