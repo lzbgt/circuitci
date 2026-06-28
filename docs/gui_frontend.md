@@ -315,9 +315,10 @@ AMS1117, TPS54331, TPS62162, TPS63802, TPS61023, TPS2121, TPS2115A, MCP73831, BQ
 fixtures for generated-SPICE rail, charge-current, and load-current
 observations. Direct-open USB/debug bridge examples include CH340C, CP2102N,
 FT232R, CH347, CMSIS-DAP SWD, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM
-boot/USB, LicheeRV-Nano-W, and AT32F435 motion-core fixtures for
+boot/USB, LicheeRV-Nano-W, AT32F435 motion-core, and AT32M416 motor-control fixtures for
 generated-SPICE rail, reset/strap, USB, UART, motion-enable, fault-IRQ, CAN,
-RS-485, servo-enable, and output-state observations. The
+RS-485, servo-enable, PWM, driver-interface, encoder, current-sense, and
+output-state observations. The
 TXS0108E level-shifter fixture opens a
 mixed-voltage generated-SPICE A-to-B observation with rail, OE, input, and
 translated-output checks. The NL27WZ17 logic-buffer fixture opens a
@@ -532,7 +533,7 @@ form:
   fixture, op-amp buffer fixture, CH340C USB-UART bridge fixture, CP2102N
   USB-UART bridge fixture, FT232R USB-UART bridge fixture, CH347 USB-JTAG
   debug bridge fixture, CMSIS-DAP SWD probe fixture, ESP32-WROOM-32E boot/UART
-  fixture, ESP32-S3-WROOM boot/USB fixture, LicheeRV-Nano-W module fixture, AT32F435 motion-core fixture, TXS0108E level-shifter
+  fixture, ESP32-S3-WROOM boot/USB fixture, LicheeRV-Nano-W module fixture, AT32F435 motion-core fixture, AT32M416 motor-control fixture, TXS0108E level-shifter
   fixture, NL27WZ17 logic-buffer fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, ESD2CAN24-Q1 CAN ESD fixture, TCAN3413 CAN transceiver fixture, DRV8323 gate-driver fixture, PCA9685 PWM-driver fixture, ICM-42688-P IMU fixture, ESDS552 RS-485 ESD fixture, THVD1450 RS-485 transceiver fixture, AP2112K LDO rail fixture, AMS1117 LDO rail fixture, TPS54331 buck rail fixture,
   TPS62162 buck rail fixture,
   TPS63802 buck-boost rail fixture, TPS61023 boost rail fixture, TPS2121
@@ -550,7 +551,7 @@ form:
   the comparator threshold, op-amp buffer, CH340C USB-UART, CP2102N USB-UART,
   FT232R USB-UART, CH347 USB-JTAG, CMSIS-DAP SWD,
   ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB, LicheeRV-Nano-W module,
-  AT32F435 motion core,
+  AT32F435 motion core, AT32M416 motor control,
   TXS0108E level shifter, NL27WZ17 logic buffer,
   TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO, AMS1117 LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load-switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power-path charger, and

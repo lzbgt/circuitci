@@ -213,6 +213,12 @@ robot control-stack design pass.
   evidence for the endpoint-population option, CAN TVS/termination
   route-placement contracts, rail budgets, and a preliminary 3x CSD88599Q5DC
   wheel bridge candidate.
+- The standalone `examples/good_artery_at32m416_motor_control_observation`
+  fixture uses the saved AT32M416 source-backed model as a generated-SPICE
+  board-boundary observation for VDD, CAN, six PWM outputs, DRV8323-style
+  enable/fault/SPI lines, current-sense nodes, encoder inputs, board enable,
+  and fault output. It is not firmware, ADC, FOC-loop, gate-drive, layout,
+  thermal, or EMC sign-off.
 - The wheel actuator now also checks `M1`, a modeled first-pass motor-load
   design envelope: 10 A phase peak, 6 A phase RMS, 6 A regeneration,
   5 mohm / 1 W phase shunts, 8 A motor connector rating, 10 ohm gate

@@ -1,6 +1,79 @@
 component_id: vendor.artery.at32m416_motor_control
 version: 0.1.0
 category: mcu
+simulation:
+  spice:
+    model_name: CIRCUITCI_AT32M416_MOTOR_CONTROL_MCU
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order:
+      - VDD
+      - GND
+      - CAN_TX
+      - CAN_RX
+      - PWM_UH
+      - PWM_UL
+      - PWM_VH
+      - PWM_VL
+      - PWM_WH
+      - PWM_WL
+      - DRV_EN
+      - DRV_NFAULT
+      - DRV_SPI_SCK
+      - DRV_SPI_MOSI
+      - DRV_SPI_MISO
+      - DRV_SPI_CS
+      - CUR_U
+      - CUR_V
+      - CUR_W
+      - ENC_A
+      - ENC_B
+      - ENC_Z
+      - ENABLE_IN
+      - FAULT_OUT
+    instance_parameters:
+      - spice_name: CAN_TX_STATE
+        component_parameter: observation_can_tx_state
+        default_value: 1.0
+      - spice_name: PWM_UH_STATE
+        component_parameter: observation_pwm_uh_state
+        default_value: 1.0
+      - spice_name: PWM_UL_STATE
+        component_parameter: observation_pwm_ul_state
+        default_value: 0.0
+      - spice_name: PWM_VH_STATE
+        component_parameter: observation_pwm_vh_state
+        default_value: 0.0
+      - spice_name: PWM_VL_STATE
+        component_parameter: observation_pwm_vl_state
+        default_value: 1.0
+      - spice_name: PWM_WH_STATE
+        component_parameter: observation_pwm_wh_state
+        default_value: 0.0
+      - spice_name: PWM_WL_STATE
+        component_parameter: observation_pwm_wl_state
+        default_value: 0.0
+      - spice_name: DRV_EN_STATE
+        component_parameter: observation_drv_en_state
+        default_value: 1.0
+      - spice_name: DRV_SPI_SCK_STATE
+        component_parameter: observation_drv_spi_sck_state
+        default_value: 0.0
+      - spice_name: DRV_SPI_MOSI_STATE
+        component_parameter: observation_drv_spi_mosi_state
+        default_value: 0.0
+      - spice_name: DRV_SPI_CS_STATE
+        component_parameter: observation_drv_spi_cs_state
+        default_value: 1.0
+      - spice_name: FAULT_OUT_STATE
+        component_parameter: observation_fault_out_state
+        default_value: 0.0
+    valid_operating_notes:
+      - Reduced rail and board-facing line-state observation for preliminary smart-robot motor-control checks.
+      - VDD, CAN, six PWM outputs, DRV8323-style enable/fault/SPI pins, current-sense nodes, encoder inputs, and board enable/fault lines are represented.
+      - Static output states are explicit Board IR component parameters.
+      - Firmware, timer waveform generation, ADC conversion behavior, FOC loops, dead-time, exact package pin assignment, gate-drive physics, layout/SI, EMC, and thermal behavior are outside this model.
 ports:
   VDD:
     kind: electrical_power

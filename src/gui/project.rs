@@ -120,6 +120,25 @@ const AT32F435_MOTION_CORE_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const AT32F435_MOTION_CORE_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V AT32F435 motion core with Linux UART and field-bus control lines in idle/ready states";
+const AT32M416_MOTOR_CONTROL_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_artery_at32m416_motor_control_observation/project.yaml";
+const AT32M416_MOTOR_CONTROL_SCOPE_EXAMPLE_NAME: &str =
+    "good_artery_at32m416_motor_control_observation";
+const AT32M416_MOTOR_CONTROL_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd",
+    "v_can_tx",
+    "v_can_rx",
+    "v_pwm_uh",
+    "v_pwm_ul",
+    "v_pwm_vl",
+    "v_drv_en",
+    "v_drv_nfault",
+    "v_drv_spi_cs",
+    "v_cur_u",
+    "v_enc_a",
+    "v_fault_out",
+];
+const AT32M416_MOTOR_CONTROL_SCOPE_EXPECTED_FREQUENCY: &str = "3.3 V AT32M416 motor-control MCU with driver, CAN, encoder, and control lines in idle/ready states";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_txs0108e_level_shifter_observation/project.yaml";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME: &str = "good_ti_txs0108e_level_shifter_observation";
@@ -513,6 +532,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: AT32F435_MOTION_CORE_SCOPE_EXAMPLE_NAME,
         expected_traces: AT32F435_MOTION_CORE_SCOPE_EXPECTED_TRACES,
         expected_frequency: AT32F435_MOTION_CORE_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UMCU"),
+    },
+    GuiProjectExample {
+        id: "at32m416_motor_control_scope",
+        category: "MCU",
+        open_label: "Open AT32M416 Motor-Control Example",
+        run_label: "Open AT32M416 + Run Scopes",
+        workflow_title: "AT32M416 Motor-Control Workflow",
+        summary: "Source-backed AT32M416 motor-control rail, CAN, PWM, driver, encoder, and fault-line observation.",
+        project_path: AT32M416_MOTOR_CONTROL_SCOPE_EXAMPLE_PROJECT,
+        project_name: AT32M416_MOTOR_CONTROL_SCOPE_EXAMPLE_NAME,
+        expected_traces: AT32M416_MOTOR_CONTROL_SCOPE_EXPECTED_TRACES,
+        expected_frequency: AT32M416_MOTOR_CONTROL_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UMCU"),
     },
     GuiProjectExample {

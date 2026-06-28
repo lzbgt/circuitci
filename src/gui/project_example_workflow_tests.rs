@@ -660,6 +660,78 @@ fn at32f435_motion_core_scope_example_workflow_creates_model_aware_observation_c
 }
 
 #[test]
+fn at32m416_motor_control_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(
+        gui_project_example_by_id("at32m416_motor_control_scope"),
+        None,
+    );
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UMCU".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "umcu_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "umcu_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_umcu_vdd"));
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_umcu_pwm_uh")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_vdd_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_pwm_uh_drive_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_drv_nfault_fault_clear_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_drv_spi_cs_chip_select_idle_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_enc_b_input_low")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_fault_out_output_low")
+    );
+}
+
+#[test]
 fn txs0108e_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

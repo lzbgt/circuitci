@@ -1,0 +1,409 @@
+project:
+  name: good_artery_at32m416_motor_control_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/artery/mcus
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      VCANRX: Simulation_SPICE:VDC
+      VDRVFAULT: Simulation_SPICE:VDC
+      VMISO: Simulation_SPICE:VDC
+      VCURU: Simulation_SPICE:VDC
+      VCURV: Simulation_SPICE:VDC
+      VCURW: Simulation_SPICE:VDC
+      VENCA: Simulation_SPICE:VDC
+      VENCB: Simulation_SPICE:VDC
+      VENCZ: Simulation_SPICE:VDC
+      VENABLE: Simulation_SPICE:VDC
+      UMCU: MCU:AT32M416
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCANRX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VDRVFAULT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VMISO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCURU: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCURV: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCURW: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VENCA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VENCB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VENCZ: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VENABLE: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UMCU: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 96.0 }
+      component:VCANRX: { x: 80.0, y: 176.0 }
+      component:VDRVFAULT: { x: 80.0, y: 256.0 }
+      component:VMISO: { x: 80.0, y: 336.0 }
+      component:VCURU: { x: 80.0, y: 416.0 }
+      component:VCURV: { x: 80.0, y: 496.0 }
+      component:VCURW: { x: 80.0, y: 576.0 }
+      component:VENCA: { x: 80.0, y: 656.0 }
+      component:VENCB: { x: 80.0, y: 736.0 }
+      component:VENCZ: { x: 80.0, y: 816.0 }
+      component:VENABLE: { x: 80.0, y: 896.0 }
+      component:UMCU: { x: 456.0, y: 496.0 }
+      net:vdd_3v3: { x: 240.0, y: 96.0 }
+      net:can_tx: { x: 664.0, y: 128.0 }
+      net:can_rx: { x: 240.0, y: 176.0 }
+      net:pwm_uh: { x: 664.0, y: 208.0 }
+      net:pwm_ul: { x: 664.0, y: 256.0 }
+      net:pwm_vh: { x: 664.0, y: 304.0 }
+      net:pwm_vl: { x: 664.0, y: 352.0 }
+      net:pwm_wh: { x: 664.0, y: 400.0 }
+      net:pwm_wl: { x: 664.0, y: 448.0 }
+      net:drv_en: { x: 664.0, y: 496.0 }
+      net:drv_nfault: { x: 240.0, y: 256.0 }
+      net:drv_spi_sck: { x: 664.0, y: 544.0 }
+      net:drv_spi_mosi: { x: 664.0, y: 592.0 }
+      net:drv_spi_miso: { x: 240.0, y: 336.0 }
+      net:drv_spi_cs: { x: 664.0, y: 640.0 }
+      net:cur_u: { x: 240.0, y: 416.0 }
+      net:cur_v: { x: 240.0, y: 496.0 }
+      net:cur_w: { x: 240.0, y: 576.0 }
+      net:enc_a: { x: 240.0, y: 656.0 }
+      net:enc_b: { x: 240.0, y: 736.0 }
+      net:enc_z: { x: 240.0, y: 816.0 }
+      net:enable_in: { x: 240.0, y: 896.0 }
+      net:fault_out: { x: 664.0, y: 704.0 }
+      net:gnd: { x: 360.0, y: 1000.0 }
+    wire_routes:
+      VDD.P->vdd_3v3: { points: [{ x: 176.0, y: 96.0 }] }
+      VDD.N->gnd: { points: [{ x: 112.0, y: 1000.0 }] }
+      VCANRX.P->can_rx: { points: [{ x: 176.0, y: 176.0 }] }
+      VCANRX.N->gnd: { points: [{ x: 136.0, y: 1000.0 }] }
+      VDRVFAULT.P->drv_nfault: { points: [{ x: 176.0, y: 256.0 }] }
+      VDRVFAULT.N->gnd: { points: [{ x: 160.0, y: 1000.0 }] }
+      VMISO.P->drv_spi_miso: { points: [{ x: 176.0, y: 336.0 }] }
+      VMISO.N->gnd: { points: [{ x: 184.0, y: 1000.0 }] }
+      VCURU.P->cur_u: { points: [{ x: 176.0, y: 416.0 }] }
+      VCURU.N->gnd: { points: [{ x: 208.0, y: 1000.0 }] }
+      VCURV.P->cur_v: { points: [{ x: 176.0, y: 496.0 }] }
+      VCURV.N->gnd: { points: [{ x: 232.0, y: 1000.0 }] }
+      VCURW.P->cur_w: { points: [{ x: 176.0, y: 576.0 }] }
+      VCURW.N->gnd: { points: [{ x: 256.0, y: 1000.0 }] }
+      VENCA.P->enc_a: { points: [{ x: 176.0, y: 656.0 }] }
+      VENCA.N->gnd: { points: [{ x: 280.0, y: 1000.0 }] }
+      VENCB.P->enc_b: { points: [{ x: 176.0, y: 736.0 }] }
+      VENCB.N->gnd: { points: [{ x: 304.0, y: 1000.0 }] }
+      VENCZ.P->enc_z: { points: [{ x: 176.0, y: 816.0 }] }
+      VENCZ.N->gnd: { points: [{ x: 328.0, y: 1000.0 }] }
+      VENABLE.P->enable_in: { points: [{ x: 176.0, y: 896.0 }] }
+      VENABLE.N->gnd: { points: [{ x: 352.0, y: 1000.0 }] }
+      UMCU.VDD->vdd_3v3: { points: [{ x: 376.0, y: 96.0 }] }
+      UMCU.GND->gnd: { points: [{ x: 456.0, y: 1000.0 }] }
+      UMCU.CAN_TX->can_tx: { points: [{ x: 584.0, y: 128.0 }] }
+      UMCU.CAN_RX->can_rx: { points: [{ x: 376.0, y: 176.0 }] }
+      UMCU.PWM_UH->pwm_uh: { points: [{ x: 584.0, y: 208.0 }] }
+      UMCU.PWM_UL->pwm_ul: { points: [{ x: 584.0, y: 256.0 }] }
+      UMCU.PWM_VH->pwm_vh: { points: [{ x: 584.0, y: 304.0 }] }
+      UMCU.PWM_VL->pwm_vl: { points: [{ x: 584.0, y: 352.0 }] }
+      UMCU.PWM_WH->pwm_wh: { points: [{ x: 584.0, y: 400.0 }] }
+      UMCU.PWM_WL->pwm_wl: { points: [{ x: 584.0, y: 448.0 }] }
+      UMCU.DRV_EN->drv_en: { points: [{ x: 584.0, y: 496.0 }] }
+      UMCU.DRV_NFAULT->drv_nfault: { points: [{ x: 376.0, y: 256.0 }] }
+      UMCU.DRV_SPI_SCK->drv_spi_sck: { points: [{ x: 584.0, y: 544.0 }] }
+      UMCU.DRV_SPI_MOSI->drv_spi_mosi: { points: [{ x: 584.0, y: 592.0 }] }
+      UMCU.DRV_SPI_MISO->drv_spi_miso: { points: [{ x: 376.0, y: 336.0 }] }
+      UMCU.DRV_SPI_CS->drv_spi_cs: { points: [{ x: 584.0, y: 640.0 }] }
+      UMCU.CUR_U->cur_u: { points: [{ x: 376.0, y: 416.0 }] }
+      UMCU.CUR_V->cur_v: { points: [{ x: 376.0, y: 496.0 }] }
+      UMCU.CUR_W->cur_w: { points: [{ x: 376.0, y: 576.0 }] }
+      UMCU.ENC_A->enc_a: { points: [{ x: 376.0, y: 656.0 }] }
+      UMCU.ENC_B->enc_b: { points: [{ x: 376.0, y: 736.0 }] }
+      UMCU.ENC_Z->enc_z: { points: [{ x: 376.0, y: 816.0 }] }
+      UMCU.ENABLE_IN->enable_in: { points: [{ x: 376.0, y: 896.0 }] }
+      UMCU.FAULT_OUT->fault_out: { points: [{ x: 584.0, y: 704.0 }] }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: WHEEL_MCU_3V3_SOURCE
+      pins: { P: vdd_3v3, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VCANRX:
+      model: generic.analog.dc_voltage_source
+      part_number: CAN_RX_RECESSIVE_HIGH_SOURCE
+      pins: { P: can_rx, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VDRVFAULT:
+      model: generic.analog.dc_voltage_source
+      part_number: DRIVER_NFAULT_CLEAR_SOURCE
+      pins: { P: drv_nfault, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VMISO:
+      model: generic.analog.dc_voltage_source
+      part_number: DRIVER_MISO_IDLE_HIGH_SOURCE
+      pins: { P: drv_spi_miso, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VCURU:
+      model: generic.analog.dc_voltage_source
+      part_number: CURRENT_U_MIDSCALE_SOURCE
+      pins: { P: cur_u, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 1.65 }
+    VCURV:
+      model: generic.analog.dc_voltage_source
+      part_number: CURRENT_V_MIDSCALE_SOURCE
+      pins: { P: cur_v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 1.65 }
+    VCURW:
+      model: generic.analog.dc_voltage_source
+      part_number: CURRENT_W_MIDSCALE_SOURCE
+      pins: { P: cur_w, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 1.65 }
+    VENCA:
+      model: generic.analog.dc_voltage_source
+      part_number: ENCODER_A_HIGH_SOURCE
+      pins: { P: enc_a, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VENCB:
+      model: generic.analog.dc_voltage_source
+      part_number: ENCODER_B_LOW_SOURCE
+      pins: { P: enc_b, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 0.0 }
+    VENCZ:
+      model: generic.analog.dc_voltage_source
+      part_number: ENCODER_Z_LOW_SOURCE
+      pins: { P: enc_z, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 0.0 }
+    VENABLE:
+      model: generic.analog.dc_voltage_source
+      part_number: WHEEL_ENABLE_HIGH_SOURCE
+      pins: { P: enable_in, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    UMCU:
+      model: vendor.artery.at32m416_motor_control
+      part_number: AT32M416
+      parameters:
+        observation_can_tx_state: 1.0
+        observation_can_rx_state: 1.0
+        observation_pwm_uh_state: 1.0
+        observation_pwm_ul_state: 0.0
+        observation_pwm_vh_state: 0.0
+        observation_pwm_vl_state: 1.0
+        observation_pwm_wh_state: 0.0
+        observation_pwm_wl_state: 0.0
+        observation_drv_en_state: 1.0
+        observation_drv_nfault_state: 1.0
+        observation_drv_spi_sck_state: 0.0
+        observation_drv_spi_mosi_state: 0.0
+        observation_drv_spi_miso_state: 1.0
+        observation_drv_spi_cs_state: 1.0
+        observation_enc_a_state: 1.0
+        observation_enc_b_state: 0.0
+        observation_enc_z_state: 0.0
+        observation_enable_in_state: 1.0
+        observation_fault_out_state: 0.0
+      power_domains:
+        VDD: vdd_3v3
+      pins:
+        VDD: vdd_3v3
+        GND: gnd
+        CAN_TX: can_tx
+        CAN_RX: can_rx
+        PWM_UH: pwm_uh
+        PWM_UL: pwm_ul
+        PWM_VH: pwm_vh
+        PWM_VL: pwm_vl
+        PWM_WH: pwm_wh
+        PWM_WL: pwm_wl
+        DRV_EN: drv_en
+        DRV_NFAULT: drv_nfault
+        DRV_SPI_SCK: drv_spi_sck
+        DRV_SPI_MOSI: drv_spi_mosi
+        DRV_SPI_MISO: drv_spi_miso
+        DRV_SPI_CS: drv_spi_cs
+        CUR_U: cur_u
+        CUR_V: cur_v
+        CUR_W: cur_w
+        ENC_A: enc_a
+        ENC_B: enc_b
+        ENC_Z: enc_z
+        ENABLE_IN: enable_in
+        FAULT_OUT: fault_out
+  nets:
+    vdd_3v3: { kind: power, nominal_voltage: 3.3, powered: true, supply_current_limit_A: 0.2 }
+    can_tx: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    can_rx: { kind: power, nominal_voltage: 3.3, powered: true }
+    pwm_uh: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    pwm_ul: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    pwm_vh: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    pwm_vl: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    pwm_wh: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    pwm_wl: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    drv_en: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    drv_nfault: { kind: power, nominal_voltage: 3.3, powered: true }
+    drv_spi_sck: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    drv_spi_mosi: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    drv_spi_miso: { kind: power, nominal_voltage: 3.3, powered: true }
+    drv_spi_cs: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    cur_u: { kind: power, nominal_voltage: 1.65, powered: true }
+    cur_v: { kind: power, nominal_voltage: 1.65, powered: true }
+    cur_w: { kind: power, nominal_voltage: 1.65, powered: true }
+    enc_a: { kind: power, nominal_voltage: 3.3, powered: true }
+    enc_b: { kind: power, nominal_voltage: 0.0, powered: true }
+    enc_z: { kind: power, nominal_voltage: 0.0, powered: true }
+    enable_in: { kind: power, nominal_voltage: 3.3, powered: true }
+    fault_out: { kind: digital_or_analog, nominal_voltage: 0.0 }
+    gnd: { kind: ground }
+
+scenarios:
+  - name: at32m416_motor_control_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VCANRX
+          - VDRVFAULT
+          - VMISO
+          - VCURU
+          - VCURV
+          - VCURW
+          - VENCA
+          - VENCB
+          - VENCZ
+          - VENABLE
+          - UMCU
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 50ca8875be8c3d625c59a0d53ee74b36ca5653a8f210d27416da2b55cda65a07
+      node_bindings:
+        - { node: vdd, net: vdd_3v3 }
+        - { node: can_tx, net: can_tx }
+        - { node: can_rx, net: can_rx }
+        - { node: pwm_uh, net: pwm_uh }
+        - { node: pwm_ul, net: pwm_ul }
+        - { node: pwm_vh, net: pwm_vh }
+        - { node: pwm_vl, net: pwm_vl }
+        - { node: pwm_wh, net: pwm_wh }
+        - { node: pwm_wl, net: pwm_wl }
+        - { node: drv_en, net: drv_en }
+        - { node: drv_nfault, net: drv_nfault }
+        - { node: drv_spi_sck, net: drv_spi_sck }
+        - { node: drv_spi_mosi, net: drv_spi_mosi }
+        - { node: drv_spi_miso, net: drv_spi_miso }
+        - { node: drv_spi_cs, net: drv_spi_cs }
+        - { node: cur_u, net: cur_u }
+        - { node: cur_v, net: cur_v }
+        - { node: cur_w, net: cur_w }
+        - { node: enc_a, net: enc_a }
+        - { node: enc_b, net: enc_b }
+        - { node: enc_z, net: enc_z }
+        - { node: enable_in, net: enable_in }
+        - { node: fault_out, net: fault_out }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: can_rx, endpoint: { component: VCANRX, pin: P } }
+        - { node: "0", endpoint: { component: VCANRX, pin: N } }
+        - { node: drv_nfault, endpoint: { component: VDRVFAULT, pin: P } }
+        - { node: "0", endpoint: { component: VDRVFAULT, pin: N } }
+        - { node: drv_spi_miso, endpoint: { component: VMISO, pin: P } }
+        - { node: "0", endpoint: { component: VMISO, pin: N } }
+        - { node: cur_u, endpoint: { component: VCURU, pin: P } }
+        - { node: "0", endpoint: { component: VCURU, pin: N } }
+        - { node: cur_v, endpoint: { component: VCURV, pin: P } }
+        - { node: "0", endpoint: { component: VCURV, pin: N } }
+        - { node: cur_w, endpoint: { component: VCURW, pin: P } }
+        - { node: "0", endpoint: { component: VCURW, pin: N } }
+        - { node: enc_a, endpoint: { component: VENCA, pin: P } }
+        - { node: "0", endpoint: { component: VENCA, pin: N } }
+        - { node: enc_b, endpoint: { component: VENCB, pin: P } }
+        - { node: "0", endpoint: { component: VENCB, pin: N } }
+        - { node: enc_z, endpoint: { component: VENCZ, pin: P } }
+        - { node: "0", endpoint: { component: VENCZ, pin: N } }
+        - { node: enable_in, endpoint: { component: VENABLE, pin: P } }
+        - { node: "0", endpoint: { component: VENABLE, pin: N } }
+        - { node: vdd, endpoint: { component: UMCU, pin: VDD } }
+        - { node: "0", endpoint: { component: UMCU, pin: GND } }
+        - { node: can_tx, endpoint: { component: UMCU, pin: CAN_TX } }
+        - { node: can_rx, endpoint: { component: UMCU, pin: CAN_RX } }
+        - { node: pwm_uh, endpoint: { component: UMCU, pin: PWM_UH } }
+        - { node: pwm_ul, endpoint: { component: UMCU, pin: PWM_UL } }
+        - { node: pwm_vh, endpoint: { component: UMCU, pin: PWM_VH } }
+        - { node: pwm_vl, endpoint: { component: UMCU, pin: PWM_VL } }
+        - { node: pwm_wh, endpoint: { component: UMCU, pin: PWM_WH } }
+        - { node: pwm_wl, endpoint: { component: UMCU, pin: PWM_WL } }
+        - { node: drv_en, endpoint: { component: UMCU, pin: DRV_EN } }
+        - { node: drv_nfault, endpoint: { component: UMCU, pin: DRV_NFAULT } }
+        - { node: drv_spi_sck, endpoint: { component: UMCU, pin: DRV_SPI_SCK } }
+        - { node: drv_spi_mosi, endpoint: { component: UMCU, pin: DRV_SPI_MOSI } }
+        - { node: drv_spi_miso, endpoint: { component: UMCU, pin: DRV_SPI_MISO } }
+        - { node: drv_spi_cs, endpoint: { component: UMCU, pin: DRV_SPI_CS } }
+        - { node: cur_u, endpoint: { component: UMCU, pin: CUR_U } }
+        - { node: cur_v, endpoint: { component: UMCU, pin: CUR_V } }
+        - { node: cur_w, endpoint: { component: UMCU, pin: CUR_W } }
+        - { node: enc_a, endpoint: { component: UMCU, pin: ENC_A } }
+        - { node: enc_b, endpoint: { component: UMCU, pin: ENC_B } }
+        - { node: enc_z, endpoint: { component: UMCU, pin: ENC_Z } }
+        - { node: enable_in, endpoint: { component: UMCU, pin: ENABLE_IN } }
+        - { node: fault_out, endpoint: { component: UMCU, pin: FAULT_OUT } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.2
+      stimuli:
+        - name: motor_control_ready_driver_clear
+          description: 3.3 V AT32M416 motor-control MCU with driver, CAN, encoder, and control lines in idle/ready states.
+      probes:
+        - { name: v_vdd, expression: V(vdd) }
+        - { name: v_can_tx, expression: V(can_tx) }
+        - { name: v_can_rx, expression: V(can_rx) }
+        - { name: v_pwm_uh, expression: V(pwm_uh) }
+        - { name: v_pwm_ul, expression: V(pwm_ul) }
+        - { name: v_pwm_vh, expression: V(pwm_vh) }
+        - { name: v_pwm_vl, expression: V(pwm_vl) }
+        - { name: v_pwm_wh, expression: V(pwm_wh) }
+        - { name: v_pwm_wl, expression: V(pwm_wl) }
+        - { name: v_drv_en, expression: V(drv_en) }
+        - { name: v_drv_nfault, expression: V(drv_nfault) }
+        - { name: v_drv_spi_sck, expression: V(drv_spi_sck) }
+        - { name: v_drv_spi_mosi, expression: V(drv_spi_mosi) }
+        - { name: v_drv_spi_miso, expression: V(drv_spi_miso) }
+        - { name: v_drv_spi_cs, expression: V(drv_spi_cs) }
+        - { name: v_cur_u, expression: V(cur_u) }
+        - { name: v_cur_v, expression: V(cur_v) }
+        - { name: v_cur_w, expression: V(cur_w) }
+        - { name: v_enc_a, expression: V(enc_a) }
+        - { name: v_enc_b, expression: V(enc_b) }
+        - { name: v_enc_z, expression: V(enc_z) }
+        - { name: v_enable_in, expression: V(enable_in) }
+        - { name: v_fault_out, expression: V(fault_out) }
+      assertions:
+        - { name: vdd_above_min, probe: v_vdd, aggregation: min, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.6 }
+        - { name: vdd_below_max, probe: v_vdd, aggregation: max, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 3.6 }
+        - { name: can_tx_idle_high, probe: v_can_tx, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: can_rx_recessive_high, probe: v_can_rx, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: pwm_uh_drive_high, probe: v_pwm_uh, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: pwm_ul_drive_low, probe: v_pwm_ul, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: pwm_vh_drive_low, probe: v_pwm_vh, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: pwm_vl_drive_high, probe: v_pwm_vl, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: pwm_wh_drive_low, probe: v_pwm_wh, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: pwm_wl_drive_low, probe: v_pwm_wl, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: drv_en_high, probe: v_drv_en, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: drv_nfault_clear_high, probe: v_drv_nfault, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: drv_spi_sck_idle_low, probe: v_drv_spi_sck, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: drv_spi_mosi_idle_low, probe: v_drv_spi_mosi, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: drv_spi_miso_idle_high, probe: v_drv_spi_miso, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: drv_spi_cs_idle_high, probe: v_drv_spi_cs, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: cur_u_midscale_above_min, probe: v_cur_u, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 1.45 }
+        - { name: cur_u_midscale_below_max, probe: v_cur_u, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 1.85 }
+        - { name: cur_v_midscale_above_min, probe: v_cur_v, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 1.45 }
+        - { name: cur_v_midscale_below_max, probe: v_cur_v, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 1.85 }
+        - { name: cur_w_midscale_above_min, probe: v_cur_w, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 1.45 }
+        - { name: cur_w_midscale_below_max, probe: v_cur_w, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 1.85 }
+        - { name: enc_a_high, probe: v_enc_a, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: enc_b_low, probe: v_enc_b, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: enc_z_low, probe: v_enc_z, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: enable_in_high, probe: v_enable_in, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: fault_out_low, probe: v_fault_out, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }

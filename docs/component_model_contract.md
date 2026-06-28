@@ -854,6 +854,25 @@ and servo PWM enable observations, but not firmware execution, reset/clock
 timing, CAN/RS-485 protocol timing, ADC behavior, motor-control loops, exact
 package pin assignment, layout, thermal behavior, EMC, or final
 signal-integrity sign-off.
+`vendor.artery.at32m416_motor_control` follows the same pattern for wheel
+actuator motor-control MCU board-boundary observation: its Artery source-backed
+motor-control class, project VDD range, current-budget class, CAN, six PWM
+outputs, driver-interface, current-sense, encoder, enable, and fault-line port
+metadata remain source-backed, while its generated-SPICE face uses reduced
+high-impedance input pins and static output drivers. Its
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_can_tx_state`, `observation_pwm_uh_state`,
+`observation_pwm_ul_state`, `observation_pwm_vh_state`,
+`observation_pwm_vl_state`, `observation_pwm_wh_state`,
+`observation_pwm_wl_state`, `observation_drv_en_state`,
+`observation_drv_spi_sck_state`, `observation_drv_spi_mosi_state`,
+`observation_drv_spi_cs_state`, and `observation_fault_out_state` into
+explicit SPICE output-state parameters. That model can exercise VDD, CAN,
+six-PWM, driver enable/fault/SPI, current-sense, encoder, board enable, and
+fault-output observations, but not firmware execution, reset/clock timing, PWM
+timer waveform generation, ADC conversion or current reconstruction, FOC
+loops, dead-time, exact package pin assignment, gate-drive physics, layout,
+thermal behavior, EMC, or final signal-integrity sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

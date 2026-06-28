@@ -241,6 +241,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   PWM enable line-state observations. The model-state inputs are explicit
   Board IR component parameters, not inferred firmware, protocol timing, ADC,
   motor-control, package, layout, or thermal behavior.
+- `examples/good_artery_at32m416_motor_control_observation` proves the Artery
+  AT32M416 motor-control MCU model can use a reduced generated-SPICE face for
+  preliminary VDD, CAN, six PWM outputs, DRV8323-style enable/fault/SPI lines,
+  current-sense nodes, encoder inputs, board enable, and fault-output
+  observations. The model-state inputs are explicit Board IR component
+  parameters, not inferred firmware, PWM timing, ADC conversion/current
+  reconstruction, FOC loops, dead-time, package, layout, or thermal behavior.
 - `examples/good_ti_txs0108e_level_shifter_observation` proves the TI TXS0108E
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and
