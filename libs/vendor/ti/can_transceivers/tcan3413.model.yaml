@@ -11,10 +11,10 @@ simulation:
     instance_parameters:
       - spice_name: TXD_STATE
         component_parameter: observation_txd_state
-        default: 0.0
+        default_value: 0.0
       - spice_name: STB_STATE
         component_parameter: observation_stb_state
-        default: 0.0
+        default_value: 0.0
     valid_operating_notes:
       - Preliminary generated-SPICE observation face for VCC, VIO, TXD, STB, RXD, and CANH/CANL line-state checks.
       - Uses source-backed supply range, VIO range, pinout, logic thresholds, CAN FD data-rate class, and bus-fault metadata; behavioral bus voltages are reduced design-observation placeholders.

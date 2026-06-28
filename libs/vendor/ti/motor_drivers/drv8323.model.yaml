@@ -100,6 +100,33 @@ ports:
   SOC:
     kind: passive
     required: false
+simulation:
+  spice:
+    model_name: CIRCUITCI_DRV8323_GATE_DRIVER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VM, DVDD, GND, ENABLE, NFAULT, SDO, SOA, SOB, SOC]
+    instance_parameters:
+      - spice_name: NFAULT_STATE
+        component_parameter: observation_nfault_state
+        default_value: 1.0
+      - spice_name: SDO_STATE
+        component_parameter: observation_sdo_state
+        default_value: 0.0
+      - spice_name: SOA_V
+        component_parameter: observation_soa_v
+        default_value: 1.65
+      - spice_name: SOB_V
+        component_parameter: observation_sob_v
+        default_value: 1.65
+      - spice_name: SOC_V
+        component_parameter: observation_soc_v
+        default_value: 1.65
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VM/DVDD/ENABLE, nFAULT/SDO output-state, and current-sense output presence checks only.
+      - Uses source-backed 6 V to 60 V VM operating range, 3 V to 5.5 V DVDD range, 2 V logic input-high threshold, output-state metadata, and three current-sense amplifier metadata while emitting ideal board-facing observation nodes.
+      - MOSFET gate-drive strength, high-side/low-side outputs, charge pump/bootstrap behavior, dead time, SPI register/protection behavior, shunt gain/offset/noise, phase switching, motor dynamics, layout, and thermal sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: DRV8323
@@ -157,9 +184,11 @@ model_quality:
     - wheel_actuator_gate_driver_io_screening
     - static_power_tree
     - current_sense_interface_presence
+    - preliminary_generated_spice_observation
   not_valid_for:
     - mosfet_selection_or_soa_signoff
     - gate_charge_or_deadtime_signoff
     - bridge_thermal_signoff
     - current_sense_accuracy_or_adc_noise_signoff
     - motor_control_loop_stability
+    - spi_protocol_or_fault_protection_signoff

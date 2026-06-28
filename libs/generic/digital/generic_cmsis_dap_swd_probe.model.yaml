@@ -90,7 +90,7 @@ simulation:
     model_name: CIRCUITCI_CMSIS_DAP_SWD_PROBE
     model_type: subckt
     model_path: models/spice/generic/analog_behavioral.lib
-    provenance: specification_limited_generic_behavioral
+    provenance: generic_behavioral
     pin_order: [VTREF, GND, SWCLK, SWDIO, NRESET, SWO]
     instance_parameters:
       - spice_name: SWCLK_STATE
@@ -107,7 +107,7 @@ simulation:
       - Uses source-backed CMSIS-DAP SWD/JTAG pin-role semantics and default SWD setup behavior, while relying on the Board IR fixture to declare the target voltage and pull-up network.
       - USB transport, CMSIS-DAP command sequencing, SWD turnaround/protocol transfers, target-specific voltage limits, trace bandwidth, and probe-vendor drive strength are out of scope.
 model_quality:
-  source: specification
+  source: generic
   confidence: low
   intended_use:
     - debug_header_screening

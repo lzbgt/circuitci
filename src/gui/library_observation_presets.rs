@@ -364,6 +364,14 @@ fn observation_default_assertions(
             &mut assertions,
         );
     }
+    add_gate_driver_observation_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        stop_time_us,
+        &mut assertions,
+    );
     add_level_shifter_observation_assertions(
         project,
         component,
@@ -413,7 +421,7 @@ fn observation_default_assertions(
 fn supports_comms_output_observation(model: &crate::library::ComponentModel) -> bool {
     matches!(
         model.category.as_str(),
-        "comms" | "rs485_transceiver" | "can_transceiver"
+        "comms" | "rs485_transceiver" | "can_transceiver" | "gate_driver"
     )
 }
 
@@ -452,6 +460,47 @@ fn add_comms_output_observation_assertions(
             "mean",
             relation,
             threshold,
+            (0.0, stop_time_us),
+        ));
+    }
+}
+
+fn add_gate_driver_observation_assertions(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "gate_driver" {
+        return;
+    }
+    for pin in ["SOA", "SOB", "SOC"] {
+        let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let target = component_parameter_f64(
+            component,
+            &format!("observation_{}_v", pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(1.65);
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_current_sense_min_voltage", probe.probe_name),
+            &probe.probe_name,
+            "mean",
+            "above",
+            target - 0.05,
+            (0.0, stop_time_us),
+        ));
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_current_sense_max_voltage", probe.probe_name),
+            &probe.probe_name,
+            "mean",
+            "below",
+            target + 0.05,
             (0.0, stop_time_us),
         ));
     }

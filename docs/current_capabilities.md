@@ -206,6 +206,8 @@ Current analog support:
   ESDS552-style RS-485/RS-422 ESD/surge normal-operation standoff and
   line-capacitance observations,
   THVD1450-style RS-485 transceiver line-state observations,
+  DRV8323-style three-phase gate-driver supply, output-state, and current-sense
+  observation-node checks,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -219,7 +221,7 @@ Current analog support:
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -354,6 +356,15 @@ Current analog support:
   omits EN/D0/D1/VSNS autoswitch truth-table behavior, switchover droop,
   reverse-current magnitude, ILIM-derived current limit, thermal behavior,
   package limits, layout, and final mux sign-off.
+- The TI DRV8323 gate-driver pack now has a source-backed generated SPICE
+  observation face for VM/DVDD/ENABLE, nFAULT/SDO output-state, and SOA/SOB/SOC
+  current-sense output presence checks. Its 6 V to 60 V motor-supply range,
+  3 V to 5.5 V DVDD range, 2 V logic input-high threshold, digital-output
+  metadata, and three current-sense amplifier metadata remain source-backed,
+  while the transient face stays explicitly reduced-fidelity and omits MOSFET
+  gate-drive strength, half-bridge switching, charge-pump/bootstrap behavior,
+  dead time, SPI register/protection behavior, current-sense gain/offset/noise,
+  motor dynamics, layout, EMI, and thermal sign-off.
 - The TI TLV803EA29 reset-supervisor pack now has a datasheet-backed generated
   SPICE observation face for active-low open-drain threshold behavior with an
   external pull-up. Datasheet delay and threshold metadata remain available for

@@ -116,6 +116,14 @@ const TCAN3413_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const TCAN3413_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V normal-mode TCAN3413 CAN dominant line-state observation";
+const DRV8323_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_drv8323_gate_driver_observation/project.yaml";
+const DRV8323_SCOPE_EXAMPLE_NAME: &str = "good_drv8323_gate_driver_observation";
+const DRV8323_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vm", "v_dvdd", "v_enable", "v_nfault", "v_sdo", "v_soa", "v_sob", "v_soc",
+];
+const DRV8323_SCOPE_EXPECTED_FREQUENCY: &str =
+    "24 V VM and 3.3 V DVDD/ENABLE DRV8323 gate-driver observation";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -443,6 +451,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TCAN3413_SCOPE_EXPECTED_TRACES,
         expected_frequency: TCAN3413_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UCAN"),
+    },
+    GuiProjectExample {
+        id: "drv8323_gate_driver_scope",
+        category: "Motor Driver",
+        open_label: "Open DRV8323 Gate-Driver Example",
+        run_label: "Open DRV8323 + Run Scopes",
+        workflow_title: "DRV8323 Gate-Driver Workflow",
+        summary: "Source-backed DRV8323 supply, fault, SPI-output, and current-sense observation.",
+        project_path: DRV8323_SCOPE_EXAMPLE_PROJECT,
+        project_name: DRV8323_SCOPE_EXAMPLE_NAME,
+        expected_traces: DRV8323_SCOPE_EXPECTED_TRACES,
+        expected_frequency: DRV8323_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UDRV"),
     },
     GuiProjectExample {
         id: "esds552_scope",

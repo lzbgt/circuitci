@@ -221,6 +221,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UCAN"),
         },
         ExpectedProjectExample {
+            id: "drv8323_gate_driver_scope",
+            category: "Motor Driver",
+            open_label: "Open DRV8323 Gate-Driver Example",
+            run_label: "Open DRV8323 + Run Scopes",
+            summary: "Source-backed DRV8323 supply, fault, SPI-output, and current-sense observation.",
+            project_path: "examples/good_drv8323_gate_driver_observation/project.yaml",
+            project_name: "good_drv8323_gate_driver_observation",
+            expected_traces: &[
+                "v_vm", "v_dvdd", "v_enable", "v_nfault", "v_sdo", "v_soa", "v_sob", "v_soc",
+            ],
+            expected_frequency: "24 V VM and 3.3 V DVDD/ENABLE DRV8323 gate-driver observation",
+            observation_preset_component: Some("UDRV"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

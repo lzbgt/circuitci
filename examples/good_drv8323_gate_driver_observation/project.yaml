@@ -1,0 +1,318 @@
+project:
+  name: good_drv8323_gate_driver_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/motor_drivers
+
+board:
+  schematic:
+    component_symbols:
+      VMOTOR: Simulation_SPICE:VDC
+      VDVDD: Simulation_SPICE:VDC
+      VEN: Simulation_SPICE:VDC
+      UDRV: Driver_Motor:DRV8323
+    node_styles:
+      component:VMOTOR: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VDVDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UDRV: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VMOTOR: { x: 64.0, y: 144.0 }
+      component:VDVDD: { x: 64.0, y: 272.0 }
+      component:VEN: { x: 64.0, y: 400.0 }
+      component:UDRV: { x: 384.0, y: 272.0 }
+      net:motor_24v: { x: 192.0, y: 128.0 }
+      net:dvdd_3v3: { x: 192.0, y: 256.0 }
+      net:gate_enable: { x: 192.0, y: 400.0 }
+      net:nfault: { x: 608.0, y: 128.0 }
+      net:sdo: { x: 608.0, y: 192.0 }
+      net:sense_a: { x: 608.0, y: 288.0 }
+      net:sense_b: { x: 608.0, y: 352.0 }
+      net:sense_c: { x: 608.0, y: 416.0 }
+      net:gnd: { x: 384.0, y: 560.0 }
+    wire_routes:
+      VMOTOR.P->motor_24v:
+        points:
+          - { x: 144.0, y: 144.0 }
+      VMOTOR.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      VDVDD.P->dvdd_3v3:
+        points:
+          - { x: 144.0, y: 272.0 }
+      VDVDD.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      VEN.P->gate_enable:
+        points:
+          - { x: 144.0, y: 400.0 }
+      VEN.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      UDRV.VM->motor_24v:
+        points:
+          - { x: 288.0, y: 128.0 }
+      UDRV.DVDD->dvdd_3v3:
+        points:
+          - { x: 288.0, y: 256.0 }
+      UDRV.ENABLE->gate_enable:
+        points:
+          - { x: 288.0, y: 400.0 }
+      UDRV.GND->gnd:
+        points:
+          - { x: 384.0, y: 560.0 }
+      UDRV.NFAULT->nfault:
+        points:
+          - { x: 544.0, y: 128.0 }
+      UDRV.SDO->sdo:
+        points:
+          - { x: 544.0, y: 192.0 }
+      UDRV.SOA->sense_a:
+        points:
+          - { x: 544.0, y: 288.0 }
+      UDRV.SOB->sense_b:
+        points:
+          - { x: 544.0, y: 352.0 }
+      UDRV.SOC->sense_c:
+        points:
+          - { x: 544.0, y: 416.0 }
+  components:
+    VMOTOR:
+      model: generic.analog.dc_voltage_source
+      part_number: MOTOR_BUS_24V_SOURCE
+      pins:
+        P: motor_24v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 24.0
+    VDVDD:
+      model: generic.analog.dc_voltage_source
+      part_number: DVDD_3V3_SOURCE
+      pins:
+        P: dvdd_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VEN:
+      model: generic.analog.dc_voltage_source
+      part_number: ENABLE_3V3_SOURCE
+      pins:
+        P: gate_enable
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UDRV:
+      model: vendor.ti.drv8323
+      part_number: DRV8323RS
+      parameters:
+        observation_nfault_state: 1.0
+        observation_sdo_state: 0.0
+        observation_soa_v: 1.65
+        observation_sob_v: 1.65
+        observation_soc_v: 1.65
+      power_domains:
+        VM: motor_24v
+        DVDD: dvdd_3v3
+      pins:
+        VM: motor_24v
+        DVDD: dvdd_3v3
+        GND: gnd
+        ENABLE: gate_enable
+        NFAULT: nfault
+        SDO: sdo
+        SOA: sense_a
+        SOB: sense_b
+        SOC: sense_c
+  nets:
+    motor_24v:
+      kind: power
+      nominal_voltage: 24.0
+      powered: true
+      supply_current_limit_A: 2.0
+    dvdd_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.1
+    gate_enable:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    nfault:
+      kind: digital_or_analog
+    sdo:
+      kind: digital_or_analog
+    sense_a:
+      kind: digital_or_analog
+    sense_b:
+      kind: digital_or_analog
+    sense_c:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: drv8323_gate_driver_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VMOTOR
+          - VDVDD
+          - VEN
+          - UDRV
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 67e29fee54f5bc360f58f6d4724bfd5024a5619d8aaf3af4e815b75756b5faef
+      node_bindings:
+        - { node: vmotor, net: motor_24v }
+        - { node: dvdd, net: dvdd_3v3 }
+        - { node: enable, net: gate_enable }
+        - { node: nfault, net: nfault }
+        - { node: sdo, net: sdo }
+        - { node: soa, net: sense_a }
+        - { node: sob, net: sense_b }
+        - { node: soc, net: sense_c }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vmotor, endpoint: { component: VMOTOR, pin: P } }
+        - { node: "0", endpoint: { component: VMOTOR, pin: N } }
+        - { node: dvdd, endpoint: { component: VDVDD, pin: P } }
+        - { node: "0", endpoint: { component: VDVDD, pin: N } }
+        - { node: enable, endpoint: { component: VEN, pin: P } }
+        - { node: "0", endpoint: { component: VEN, pin: N } }
+        - { node: vmotor, endpoint: { component: UDRV, pin: VM } }
+        - { node: dvdd, endpoint: { component: UDRV, pin: DVDD } }
+        - { node: "0", endpoint: { component: UDRV, pin: GND } }
+        - { node: enable, endpoint: { component: UDRV, pin: ENABLE } }
+        - { node: nfault, endpoint: { component: UDRV, pin: NFAULT } }
+        - { node: sdo, endpoint: { component: UDRV, pin: SDO } }
+        - { node: soa, endpoint: { component: UDRV, pin: SOA } }
+        - { node: sob, endpoint: { component: UDRV, pin: SOB } }
+        - { node: soc, endpoint: { component: UDRV, pin: SOC } }
+      analysis:
+        type: tran
+        stop_time_us: 80.0
+        max_step_us: 0.2
+      stimuli:
+        - name: enabled_drv8323_observation
+          description: 24 V VM and 3.3 V DVDD/ENABLE drive a reduced DRV8323 observation model with nFAULT high, SDO low, and nominal current-sense outputs.
+      probes:
+        - name: v_vm
+          expression: V(vmotor)
+        - name: v_dvdd
+          expression: V(dvdd)
+        - name: v_enable
+          expression: V(enable)
+        - name: v_nfault
+          expression: V(nfault)
+        - name: v_sdo
+          expression: V(sdo)
+        - name: v_soa
+          expression: V(soa)
+        - name: v_sob
+          expression: V(sob)
+        - name: v_soc
+          expression: V(soc)
+      assertions:
+        - name: vm_above_min
+          probe: v_vm
+          aggregation: min
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 23.5
+        - name: vm_below_max
+          probe: v_vm
+          aggregation: max
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 24.5
+        - name: dvdd_above_min
+          probe: v_dvdd
+          aggregation: min
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 3.2
+        - name: dvdd_below_max
+          probe: v_dvdd
+          aggregation: max
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 3.4
+        - name: enable_logic_high
+          probe: v_enable
+          aggregation: min
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 3.0
+        - name: nfault_released_high
+          probe: v_nfault
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 3.0
+        - name: sdo_observation_low
+          probe: v_sdo
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 0.5
+        - name: soa_midscale_min
+          probe: v_soa
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 1.6
+        - name: soa_midscale_max
+          probe: v_soa
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 1.7
+        - name: sob_midscale_min
+          probe: v_sob
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 1.6
+        - name: sob_midscale_max
+          probe: v_sob
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 1.7
+        - name: soc_midscale_min
+          probe: v_soc
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 1.6
+        - name: soc_midscale_max
+          probe: v_soc
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 1.7

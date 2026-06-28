@@ -223,6 +223,29 @@ RSTB_BIAS STB GND 1G
 RRXD_BIAS RXD GND 1G
 .ends CIRCUITCI_TCAN3413_CAN_TRANSCEIVER
 
+.subckt CIRCUITCI_DRV8323_GATE_DRIVER VM DVDD GND ENABLE NFAULT SDO SOA SOB SOC PARAMS: NFAULT_STATE=1 SDO_STATE=0 SOA_V=1.65 SOB_V=1.65 SOC_V=1.65
+* Reduced DRV8323 three-phase smart gate-driver observation behavior.
+* Board-facing supply/control and observation-node model only: VM/DVDD,
+* ENABLE, nFAULT, SDO, and nominal current-sense output presence are
+* represented with source-backed limits and explicit state parameters.
+* Half-bridge gate-drive strength, MOSFET charge/dead-time, charge pump,
+* bootstrap behavior, SPI register/protection behavior, shunt gain/offset/noise,
+* motor dynamics, layout, and thermal sign-off are intentionally not modeled.
+BOK NOK GND V={1/(1+exp(-20*(v(ENABLE,GND)-2.0)))/(1+exp(-4*(v(VM,GND)-6.0)))}
+BNFAULT NNFAULT GND V={3.3*NFAULT_STATE*v(NOK,GND)}
+RNFAULT NNFAULT NFAULT 1k
+BSDO NSDO GND V={3.3*SDO_STATE*v(NOK,GND)}
+RSDO NSDO SDO 50
+BSOA SOA GND V={SOA_V*v(NOK,GND)}
+BSOB SOB GND V={SOB_V*v(NOK,GND)}
+BSOC SOC GND V={SOC_V*v(NOK,GND)}
+RVM VM GND 1G
+RDVDD DVDD GND 1G
+RENABLE ENABLE GND 1G
+RNFAULT_BIAS NFAULT GND 1G
+RSDO_BIAS SDO GND 1G
+.ends CIRCUITCI_DRV8323_GATE_DRIVER
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

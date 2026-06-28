@@ -789,6 +789,19 @@ enabled protected-rail wiring and preliminary voltage/current observations, but
 not TIMER/PROG/SET current-limit and fault-timer behavior, FLTb/PGb outputs,
 external MOSFET gate-drive dynamics, disabled-state reverse-current dynamics,
 thermal shutdown, inrush accuracy, or final hot-swap/protection sign-off.
+`vendor.ti.drv8323` follows the same pattern for three-phase smart gate-driver
+observation: its TI source-backed VM/DVDD ranges, logic threshold, nFAULT/SDO
+output metadata, and three current-sense amplifier metadata remain
+source-backed, while its generated-SPICE face uses reduced voltage-driver and
+observation-node behavior. Its `simulation.spice.instance_parameters` map
+optional Board IR component parameters `observation_nfault_state`,
+`observation_sdo_state`, `observation_soa_v`, `observation_sob_v`, and
+`observation_soc_v` into explicit SPICE instance parameters. That model can
+exercise supply, enable, nFAULT/SDO output-state, and current-sense output
+presence observations, but not MOSFET gate-drive strength, half-bridge
+switching, charge-pump/bootstrap behavior, dead time, SPI register/protection
+behavior, shunt gain/offset/noise, motor dynamics, layout, EMI, thermal
+behavior, or final motor-driver sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

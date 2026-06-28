@@ -238,6 +238,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   generated-SPICE face for VCC, VIO, TXD, STB, RXD, and CANH/CANL line-state
   checks. The model-state inputs are explicit Board IR component parameters,
   not inferred CAN protocol, termination, or cable behavior.
+- `examples/good_drv8323_gate_driver_observation` proves the TI DRV8323
+  source-backed three-phase gate-driver model can use a reduced
+  generated-SPICE face for VM, DVDD, ENABLE, nFAULT, SDO, and SOA/SOB/SOC
+  current-sense output-presence checks. The model-state inputs are explicit
+  Board IR component parameters, not inferred SPI/protection behavior,
+  half-bridge gate-drive dynamics, motor behavior, or current-sense accuracy.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

@@ -11,13 +11,13 @@ simulation:
     instance_parameters:
       - spice_name: DI_STATE
         component_parameter: observation_di_state
-        default: 1.0
+        default_value: 1.0
       - spice_name: DE_STATE
         component_parameter: observation_de_state
-        default: 1.0
+        default_value: 1.0
       - spice_name: RE_N_STATE
         component_parameter: observation_re_n_state
-        default: 0.0
+        default_value: 0.0
     valid_operating_notes:
       - Preliminary generated-SPICE observation face for VCC, DI, DE, RE_N, RO, and A/B line-state checks.
       - Uses source-backed supply range, pinout, logic thresholds, data-rate class, unit-load, and ESD-class metadata; behavioral line voltages are reduced design-observation placeholders.
