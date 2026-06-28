@@ -139,6 +139,7 @@ fn observation_voltage_probe_specs(
 ) -> Vec<ObservationProbeSpec> {
     let mut probes = Vec::new();
     let mut seen_nets = BTreeSet::new();
+    let mut seen_probe_names = BTreeSet::new();
     let pin_order = model
         .simulation
         .spice
@@ -170,8 +171,9 @@ fn observation_voltage_probe_specs(
         if !seen_nets.insert(net.clone()) {
             continue;
         }
+        let base_probe_name = sanitize_observation_id(&format!("v_{component_id}_{pin}"));
         probes.push(ObservationProbeSpec {
-            probe_name: sanitize_observation_id(&format!("v_{component_id}_{pin}")),
+            probe_name: unique_observation_probe_name(&base_probe_name, &mut seen_probe_names),
             net: net.clone(),
         });
     }
@@ -364,6 +366,14 @@ fn observation_default_assertions(
     }
     add_level_shifter_observation_assertions(
         project,
+        component,
+        model,
+        probes,
+        scenario_name,
+        stop_time_us,
+        &mut assertions,
+    );
+    add_protection_clamp_observation_assertions(
         component,
         model,
         probes,
@@ -715,6 +725,33 @@ fn add_port_voltage_window_assertions(
     }
 }
 
+fn add_protection_clamp_observation_assertions(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    for clamp in &model.signal_conditioning.protection_clamps {
+        let Some(max_v) = clamp.working_voltage_max_v else {
+            continue;
+        };
+        let Some(probe) = probe_for_component_pin(probes, component, &clamp.protected_pin) else {
+            continue;
+        };
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}_standoff", probe.probe_name, clamp.name),
+            &probe.probe_name,
+            "max",
+            "below",
+            max_v,
+            (0.0, stop_time_us),
+        ));
+    }
+}
+
 fn add_tracks_pulse_assertions(
     scenario_name: &str,
     output_probe_name: &str,
@@ -977,6 +1014,19 @@ fn unique_observation_scenario_name(
     for suffix in 2.. {
         let candidate = format!("{base}_{suffix}");
         if !existing.contains(candidate.as_str()) {
+            return candidate;
+        }
+    }
+    unreachable!("unbounded suffix search must return")
+}
+
+fn unique_observation_probe_name(base: &str, seen: &mut BTreeSet<String>) -> String {
+    if seen.insert(base.to_string()) {
+        return base.to_string();
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}_{suffix}");
+        if seen.insert(candidate.clone()) {
             return candidate;
         }
     }

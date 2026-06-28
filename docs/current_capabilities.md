@@ -196,6 +196,8 @@ Current analog support:
   observations, CH347-style USB-JTAG debug bridge line-state observations,
   CMSIS-DAP-style SWD probe line-state observations,
   TXS0108E-style A-to-B mixed-voltage level-shifter observations,
+  TPD2EUSB30-style USB ESD normal-operation standoff and line-capacitance
+  observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -208,7 +210,7 @@ Current analog support:
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
-  TXS0108E level shifter, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck
+  TXS0108E level shifter, TPD2EUSB30 USB ESD, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck
   rail, TPS63802 buck-boost rail, TPS61023 boost rail, TPS2121 power mux,
   TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -254,6 +256,12 @@ Current analog support:
   explicitly reduced-fidelity and omits automatic bidirectional sensing,
   one-shot edge accelerators, pass-gate analog behavior, high-speed timing, and
   signal-integrity sign-off.
+- The TI TPD2EUSB30 vendor component pack now has a datasheet-backed generated
+  SPICE observation face for normal-operation USB D+/D- standoff checks with
+  the source-backed `0.7 pF` IO-to-ground capacitance load. Its static clamp
+  metadata still covers 5.5 V standoff and capacitance-budget review, while the
+  transient face explicitly omits IEC ESD pulse clamping, dynamic snapback,
+  leakage over temperature, USB eye margin, and layout sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

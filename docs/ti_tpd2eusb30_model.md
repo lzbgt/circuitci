@@ -37,6 +37,24 @@ matching clamp review scenario. The suggestion includes `parameters.clamp` and
 reference net, standoff limit, and capacitance before deciding the interface
 budget.
 
-This model is not a SPICE clamp model. It is not valid for ESD pulse waveform
-proof, USB eye margin, differential impedance, return-path quality, or final
-layout sign-off.
+The model also declares a reduced generated-SPICE observation face:
+
+```text
+CIRCUITCI_TPD2EUSB30_USB_ESD DP DM GND
+```
+
+This face keeps each line high impedance during normal operation and adds the
+datasheet typical `0.7 pF` IO-to-ground capacitance on D+ and D-. It is useful
+for generated observations that verify normal D+/D- voltages stay below the
+`5.5 V` reverse standoff limit while preserving a first-order line capacitance
+load in the deck.
+
+The direct-open GUI fixture lives at:
+
+```text
+examples/good_tpd2eusb30_usb_esd_observation/project.yaml
+```
+
+This remains intentionally limited. It is not valid for ESD pulse waveform
+proof, dynamic clamp behavior, leakage over temperature, USB eye margin,
+differential impedance, return-path quality, or final layout sign-off.

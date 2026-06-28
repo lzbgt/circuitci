@@ -81,6 +81,13 @@ const TXS0108E_LEVEL_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vcca", "v_vccb", "v_oe", "v_a1", "v_b1", "i_b1_load"];
 const TXS0108E_LEVEL_SCOPE_EXPECTED_FREQUENCY: &str =
     "1.8 V A-side input translated to a 3.3 V B-side high level";
+const TPD2EUSB30_ESD_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tpd2eusb30_usb_esd_observation/project.yaml";
+const TPD2EUSB30_ESD_SCOPE_EXAMPLE_NAME: &str = "good_tpd2eusb30_usb_esd_observation";
+const TPD2EUSB30_ESD_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_dp", "v_dm", "i_dp_source", "i_dm_source"];
+const TPD2EUSB30_ESD_SCOPE_EXPECTED_FREQUENCY: &str =
+    "normal USB data-line voltages below the 5.5 V TPD2EUSB30 standoff limit";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -314,6 +321,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TXS0108E_LEVEL_SCOPE_EXPECTED_TRACES,
         expected_frequency: TXS0108E_LEVEL_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("ULS"),
+    },
+    GuiProjectExample {
+        id: "tpd2eusb30_esd_scope",
+        category: "Protection",
+        open_label: "Open TPD2EUSB30 ESD Example",
+        run_label: "Open TPD2EUSB30 + Run Scopes",
+        workflow_title: "TPD2EUSB30 USB ESD Workflow",
+        summary: "Source-backed USB ESD standoff and line-capacitance observation.",
+        project_path: TPD2EUSB30_ESD_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPD2EUSB30_ESD_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPD2EUSB30_ESD_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPD2EUSB30_ESD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UESD"),
     },
     GuiProjectExample {
         id: "ap2112k_ldo_scope",

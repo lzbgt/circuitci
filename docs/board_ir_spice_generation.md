@@ -221,6 +221,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and
   translated-output checks.
+- `examples/good_tpd2eusb30_usb_esd_observation` proves the TI TPD2EUSB30
+  datasheet-backed USB ESD model can use a reduced generated-SPICE face for
+  normal-operation D+/D- standoff checks with the source-backed 0.7 pF
+  line-capacitance load.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

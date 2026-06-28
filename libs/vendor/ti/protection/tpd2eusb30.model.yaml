@@ -51,13 +51,24 @@ datasheet:
     power_supply:
       conditions: Passive ESD protection device; no supply rail is required.
       unit: note
-      simulation_relevance: Static validation checks signal standoff and capacitance only.
+      simulation_relevance: Static validation checks signal standoff and capacitance; generated-SPICE observation models line capacitance and normal standoff only.
   documents:
     - title: TPDxEUSB30 2-, 4-Channel ESD Protection for Super-Speed USB Interface
       path: docs/research/datasheets/ti/tpd2eusb30.pdf
       source_url: https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf
       sha256: a2c0dd845043a5bbfe610f673879c29e38649544385dea51dbe0a4c49df39136
       retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPD2EUSB30_USB_ESD
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: ["D1+", "D1-", GND]
+    valid_operating_notes:
+      - Reduced TPD2EUSB30 observation model for preliminary USB D+/D- normal-line standoff and capacitance checks only.
+      - Uses source-backed 5.5 V reverse standoff and 0.7 pF typical IO-to-ground capacitance metadata while leaving the device high impedance during normal operation.
+      - IEC ESD pulse clamping, dynamic snapback behavior, leakage over temperature, USB eye margin, placement/layout, and surge sign-off are out of scope.
 model_quality:
   source: datasheet
   confidence: medium
@@ -65,6 +76,7 @@ model_quality:
     - usb_esd_static_screening
     - interface_protection_review
     - preliminary_usb_board_validation
+    - preliminary_generated_spice_observation
   not_valid_for:
     - esd_pulse_clamp_waveform
     - usb_signal_integrity_signoff

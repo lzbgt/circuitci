@@ -126,6 +126,18 @@ RAIN A1 GND 1G
 ROE OE GND 1G
 .ends CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER
 
+.subckt CIRCUITCI_TPD2EUSB30_USB_ESD DP DM GND
+* Reduced TPD2EUSB30 USB ESD observation behavior.
+* Normal-operation model only: 0.7 pF typical IO-to-ground capacitance and
+* high-impedance leakage placeholders. IEC ESD pulse clamping, dynamic snapback,
+* leakage over temperature, USB eye margin, and layout are intentionally not
+* modeled.
+CDP DP GND 0.7p
+CDM DM GND 0.7p
+RDP DP GND 1G
+RDM DM GND 1G
+.ends CIRCUITCI_TPD2EUSB30_USB_ESD
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

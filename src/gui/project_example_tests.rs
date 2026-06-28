@@ -164,6 +164,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("ULS"),
         },
         ExpectedProjectExample {
+            id: "tpd2eusb30_esd_scope",
+            category: "Protection",
+            open_label: "Open TPD2EUSB30 ESD Example",
+            run_label: "Open TPD2EUSB30 + Run Scopes",
+            summary: "Source-backed USB ESD standoff and line-capacitance observation.",
+            project_path: "examples/good_tpd2eusb30_usb_esd_observation/project.yaml",
+            project_name: "good_tpd2eusb30_usb_esd_observation",
+            expected_traces: &["v_dp", "v_dm", "i_dp_source", "i_dm_source"],
+            expected_frequency: "normal USB data-line voltages below the 5.5 V TPD2EUSB30 standoff limit",
+            observation_preset_component: Some("UESD"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",
