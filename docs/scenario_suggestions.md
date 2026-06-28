@@ -399,6 +399,13 @@ The command is conservative:
   emits runnable target-scoped `SOLDER_PASTE_BGA_APERTURE_VALID` with the
   inferred `pin_pitch_mm`. The BGA grid suggestion suppresses the IC row
   suggestion for the same target component.
+- When a component has `source.format: jlc_assembly` plus comparable imported
+  KiCad PCB footprint-property evidence or source-explicit placement
+  side/rotation evidence, it emits a runnable target-scoped
+  `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` template. This only screens direct
+  contradictions between BOM/CPL source fields and imported KiCad footprint or
+  placement evidence; it does not infer package compatibility or final assembly
+  polarity.
 - Manufacturing checks whose thresholds are neither pinned to a named process
   preset nor present as Board IR manufacturing metadata are suggested as
   `runnable: false` with explicit required inputs. This keeps order-specific

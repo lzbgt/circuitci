@@ -21,6 +21,7 @@ const SOLDER_PASTE_APERTURE_AREA_RATIO_VALID: &str = "SOLDER_PASTE_APERTURE_AREA
 const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
+const ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID: &str = "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID";
 const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
 const JLC_IC_PIN_PITCH_INFERENCE_CANDIDATES: &[IcPinPitchInferenceCandidate] = &[
     IcPinPitchInferenceCandidate {
@@ -464,7 +465,146 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         );
     }
 
+    suggestions.extend(assembly_footprint_alignment_suggestions(
+        bound,
+        &project_name,
+    ));
+
     suggestions
+}
+
+fn assembly_footprint_alignment_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        if manufacturing_check_declared_for_target(
+            bound,
+            ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID,
+            component_id,
+        ) || !has_comparable_assembly_alignment_evidence(bound, component_id)
+        {
+            continue;
+        }
+        let mut suggestion = manufacturing_suggestion(
+            &format!(
+                "assembly_footprint_alignment_{}",
+                sanitized_name(component_id)
+            ),
+            true,
+            &format!(
+                "Component {component_id} has JLC/EasyEDA assembly source evidence and imported KiCad PCB footprint or placement evidence that can be screened for direct contradictions."
+            ),
+            &format!(
+                "{}_{}_assembly_footprint_alignment",
+                project_name,
+                sanitized_name(component_id)
+            ),
+            ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID,
+            None,
+            Vec::new(),
+        );
+        suggestion.kind = "manufacturing_assembly_footprint_alignment".to_string();
+        suggestion.scenario.target = Some(SuggestedTarget {
+            component: component_id.clone(),
+            power_pin: None,
+            reset_pin: None,
+        });
+        if component
+            .source
+            .as_ref()
+            .and_then(|source| source.placement_orientation_confidence.as_deref())
+            == Some("source_explicit")
+        {
+            suggestion.scenario.parameters = Some(BTreeMap::from([(
+                "rotation_tolerance_deg".to_string(),
+                json!(0.01),
+            )]));
+        }
+        suggestions.push(suggestion);
+    }
+    suggestions
+}
+
+fn has_comparable_assembly_alignment_evidence(bound: &BoundBoard<'_>, component_id: &str) -> bool {
+    let Some(component) = bound.project.board.components.get(component_id) else {
+        return false;
+    };
+    let Some(source) = component.source.as_ref() else {
+        return false;
+    };
+    if source.format.as_deref() != Some("jlc_assembly") {
+        return false;
+    }
+    let Some(footprint) = bound.project.board.layout.footprints.get(component_id) else {
+        return false;
+    };
+    let placement = bound.project.board.layout.placements.get(component_id);
+    has_comparable_footprint_name_evidence(source, footprint)
+        || has_comparable_part_property_evidence(source, footprint)
+        || source.placement_side_confidence.as_deref() == Some("source_explicit")
+            && source.placement_side.is_some()
+            && placement
+                .and_then(|placement| placement.side.as_ref())
+                .is_some()
+        || source.placement_orientation_confidence.as_deref() == Some("source_explicit")
+            && source.placement_rotation_deg.is_some()
+            && placement
+                .and_then(|placement| placement.rotation_deg)
+                .is_some()
+}
+
+fn has_comparable_footprint_name_evidence(
+    source: &crate::board_ir::ComponentSourceSpec,
+    footprint: &crate::board_ir::LayoutFootprint,
+) -> bool {
+    let has_assembly_footprint = [
+        source.footprint.as_deref(),
+        source.placement_footprint.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|value| !value.trim().is_empty());
+    has_assembly_footprint
+        && footprint.properties.iter().any(|property| {
+            matches!(
+                property.source.as_deref(),
+                Some("kicad_footprint_identifier" | "kicad_footprint_property")
+            )
+        })
+}
+
+fn has_comparable_part_property_evidence(
+    source: &crate::board_ir::ComponentSourceSpec,
+    footprint: &crate::board_ir::LayoutFootprint,
+) -> bool {
+    has_comparable_part_property(
+        source.supplier_part.as_deref(),
+        footprint,
+        &["jlcpcbpart", "lcscpart", "supplierpart", "supplierpn"],
+    ) || has_comparable_part_property(
+        source.manufacturer_part.as_deref(),
+        footprint,
+        &[
+            "mpn",
+            "manufacturerpart",
+            "manufacturerpartnumber",
+            "partnumber",
+        ],
+    )
+}
+
+fn has_comparable_part_property(
+    assembly_part: Option<&str>,
+    footprint: &crate::board_ir::LayoutFootprint,
+    names: &[&str],
+) -> bool {
+    assembly_part.is_some_and(|value| !value.trim().is_empty())
+        && footprint.properties.iter().any(|property| {
+            property.source.as_deref() == Some("kicad_footprint_property")
+                && names.contains(&normalize_property_name(&property.name).as_str())
+        })
 }
 
 fn push_if_not_declared(
@@ -552,6 +692,14 @@ fn pin_pitch_parameter(pin_pitch_mm: f64) -> BTreeMap<String, Value> {
 
 fn board_numeric_parameter(name: &str, value: Option<f64>) -> Option<BTreeMap<String, Value>> {
     value.map(|value| BTreeMap::from([(name.to_string(), json!(value))]))
+}
+
+fn normalize_property_name(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 fn paste_area_ratio_parameters(

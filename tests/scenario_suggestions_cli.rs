@@ -762,6 +762,44 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
 }
 
 #[test]
+fn suggest_scenarios_derives_assembly_footprint_alignment_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_assembly_footprint_alignment/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_assembly_footprint_alignment"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 1);
+
+    let alignment = &suggested[0];
+    assert_eq!(alignment["id"], "assembly_footprint_alignment_u1");
+    assert_eq!(
+        alignment["kind"],
+        "manufacturing_assembly_footprint_alignment"
+    );
+    assert_eq!(alignment["runnable"], true);
+    assert_eq!(alignment["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        alignment["scenario"]["checks"][0],
+        "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID"
+    );
+    assert_eq!(alignment["scenario"]["target"]["component"], "U1");
+    assert_eq!(
+        alignment["scenario"]["parameters"]["rotation_tolerance_deg"],
+        0.01
+    );
+    assert!(alignment.get("required_inputs").is_none());
+    assert!(
+        alignment["reason"]
+            .as_str()
+            .unwrap()
+            .contains("JLC/EasyEDA assembly source evidence")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_broad_ic_stencil_pitch_template() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_ic_stencil_broad_pitch/project.yaml");

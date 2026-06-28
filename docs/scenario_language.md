@@ -1481,6 +1481,9 @@ Assembly footprint alignment validation uses
 `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` when Board IR contains JLC/EasyEDA
 assembly source metadata and imported KiCad PCB footprint or placement
 evidence for the same components.
+`suggest-scenarios` emits runnable target-scoped templates automatically for
+components with comparable JLC assembly source evidence and imported KiCad PCB
+footprint-property or source-explicit placement evidence.
 
 ```yaml
 scenarios:

@@ -76,8 +76,8 @@ Useful next slices:
   manifest,
 - vendor reference-design adapters,
 - package/footprint semantics beyond the current KiCad footprint-property,
-  pin-1, body/courtyard-bounds, connector-entry, and raw pad-level mask/paste
-  fabrication override evidence,
+  pin-1, body/courtyard-bounds, connector-entry, raw pad-level mask/paste
+  fabrication override, and assembly-footprint alignment suggestion evidence,
 - board/order metadata extraction workflows beyond the current reviewed
   manufacturing metadata CSV import manifest.
 
