@@ -29,6 +29,7 @@ mod import_flow;
 mod jobs;
 mod kicad_symbol_library;
 mod library;
+mod library_observation_preset_kinds;
 mod library_observation_presets;
 mod project;
 #[cfg(test)]

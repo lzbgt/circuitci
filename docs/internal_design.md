@@ -603,7 +603,13 @@ not introduce a second analog netlist or sign-off model.
 `src/gui/analog_run_setup.rs` owns generated-from-Board analog transient,
 AC/Bode, DC operating-point, and noise scenario creation, including derived
 node/pin bindings, generated model-file inference, `.op` analysis settings,
-and `.noise` output/input source settings. `src/gui/analog_ac_presets.rs` owns GUI Bode check
+and `.noise` output/input source settings. `src/gui/library_observation_presets.rs`
+owns Library/Example `Create Checks` orchestration, generated transient scenario
+creation, and probe insertion. `src/gui/library_observation_preset_kinds.rs`
+owns category-specific generated checks for comms outputs, gate drivers, PWM
+drivers, level shifters, and protection clamps, keeping the orchestration module
+below the 2000-line source guard as more model families are added.
+`src/gui/analog_ac_presets.rs` owns GUI Bode check
 presets that append ordinary AC assertion rows for common low-pass and
 unity-gain observations plus loop-stability phase/gain margin checks.
 `src/gui/analog_dc_presets.rs` owns GUI operating-point rail/midpoint check
