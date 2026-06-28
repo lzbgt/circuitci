@@ -35,6 +35,11 @@ growing the rule modules.
 stencil table, optional target-component filtering, and stable IC aperture
 report construction.
 
+`src/validation/manufacturing/pin1_orientation.rs` owns
+`PIN_1_ORIENTATION_VALID`, including imported body-center to pin-1 marker
+direction measurement, explicit expected-direction parameter parsing, and
+stable pin-1 orientation report construction.
+
 `src/validation/manufacturing/geometry.rs` owns shared 2D geometry and evidence
 selection for imported fabrication data:
 

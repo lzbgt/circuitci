@@ -406,6 +406,11 @@ The command is conservative:
   contradictions between BOM/CPL source fields and imported KiCad footprint or
   placement evidence; it does not infer package compatibility or final assembly
   polarity.
+- When imported KiCad footprint semantics contain both `body_bounds` and
+  `pin_1` evidence, it emits a non-runnable target-scoped
+  `PIN_1_ORIENTATION_VALID` template. Agents must fill
+  `expected_pin_1_direction_deg` and `max_pin_1_direction_error_deg` from an
+  explicit package or assembly drawing before the check can execute.
 - Manufacturing checks whose thresholds are neither pinned to a named process
   preset nor present as Board IR manufacturing metadata are suggested as
   `runnable: false` with explicit required inputs. This keeps order-specific

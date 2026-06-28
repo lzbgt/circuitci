@@ -75,6 +75,7 @@ pub(super) const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN
 pub(super) const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 pub(super) const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 pub(super) const ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID: &str = "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID";
+pub(super) const PIN_1_ORIENTATION_VALID: &str = "PIN_1_ORIENTATION_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
 pub(super) const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMENT_VALID";
@@ -516,6 +517,9 @@ where
                         &mut findings,
                     )
                 }
+                PIN_1_ORIENTATION_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_pin_1_orientation(bound, scenario, &mut findings)
+                }
                 IO_VOLTAGE_COMPATIBLE if scenario.scenario_type == "power_tree" => {
                     io_voltage::validate_io_voltage_compatible(bound, scenario, &mut findings)
                 }
@@ -692,6 +696,7 @@ where
                 | SOLDER_PASTE_BGA_APERTURE_VALID
                 | SOLDER_PASTE_SPACING_VALID
                 | ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
+                | PIN_1_ORIENTATION_VALID
                 | IO_VOLTAGE_COMPATIBLE
                 | USB_CONNECTOR_PROTECTION_VALID
                 | USB_PROTECTION_PLACEMENT_VALID

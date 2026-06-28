@@ -800,6 +800,29 @@ fn suggest_scenarios_derives_assembly_footprint_alignment_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_pin_1_orientation_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_pin_1_orientation/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_pin_1_orientation"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 1);
+
+    let pin_1 = &suggested[0];
+    assert_eq!(pin_1["id"], "pin_1_orientation_u1");
+    assert_eq!(pin_1["kind"], "manufacturing_pin_1_orientation");
+    assert_eq!(pin_1["runnable"], false);
+    assert_eq!(pin_1["scenario"]["type"], "manufacturing");
+    assert_eq!(pin_1["scenario"]["checks"][0], "PIN_1_ORIENTATION_VALID");
+    assert_eq!(pin_1["scenario"]["target"]["component"], "U1");
+    assert!(pin_1["scenario"]["parameters"]["expected_pin_1_direction_deg"].is_null());
+    assert!(pin_1["scenario"]["parameters"]["max_pin_1_direction_error_deg"].is_null());
+    assert_eq!(pin_1["required_inputs"].as_array().unwrap().len(), 2);
+}
+
+#[test]
 fn suggest_scenarios_derives_broad_ic_stencil_pitch_template() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_ic_stencil_broad_pitch/project.yaml");

@@ -22,6 +22,7 @@ const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_V
 const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 const ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID: &str = "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID";
+const PIN_1_ORIENTATION_VALID: &str = "PIN_1_ORIENTATION_VALID";
 const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
 const JLC_IC_PIN_PITCH_INFERENCE_CANDIDATES: &[IcPinPitchInferenceCandidate] = &[
     IcPinPitchInferenceCandidate {
@@ -469,6 +470,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         bound,
         &project_name,
     ));
+    suggestions.extend(pin_1_orientation_suggestions(bound, &project_name));
 
     suggestions
 }
@@ -605,6 +607,56 @@ fn has_comparable_part_property(
             property.source.as_deref() == Some("kicad_footprint_property")
                 && names.contains(&normalize_property_name(&property.name).as_str())
         })
+}
+
+fn pin_1_orientation_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for component_id in bound.project.board.components.keys() {
+        if manufacturing_check_declared_for_target(bound, PIN_1_ORIENTATION_VALID, component_id)
+            || !has_pin_1_orientation_evidence(bound, component_id)
+        {
+            continue;
+        }
+        let mut suggestion = manufacturing_suggestion(
+            &format!("pin_1_orientation_{}", sanitized_name(component_id)),
+            false,
+            &format!(
+                "Component {component_id} has imported KiCad body-bounds and pad-1 marker evidence; add an explicit expected pin-1 direction from the package or assembly drawing before validating orientation."
+            ),
+            &format!("{}_{}_pin_1_orientation", project_name, sanitized_name(component_id)),
+            PIN_1_ORIENTATION_VALID,
+            Some(BTreeMap::from([
+                ("expected_pin_1_direction_deg".to_string(), Value::Null),
+                ("max_pin_1_direction_error_deg".to_string(), Value::Null),
+            ])),
+            vec![
+                "Set manufacturing parameters.expected_pin_1_direction_deg from explicit package or assembly drawing evidence.".to_string(),
+                "Set manufacturing parameters.max_pin_1_direction_error_deg from the allowed orientation tolerance.".to_string(),
+            ],
+        );
+        suggestion.kind = "manufacturing_pin_1_orientation".to_string();
+        suggestion.scenario.target = Some(SuggestedTarget {
+            component: component_id.clone(),
+            power_pin: None,
+            reset_pin: None,
+        });
+        suggestions.push(suggestion);
+    }
+    suggestions
+}
+
+fn has_pin_1_orientation_evidence(bound: &BoundBoard<'_>, component_id: &str) -> bool {
+    bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(component_id)
+        .and_then(|footprint| footprint.semantics.as_ref())
+        .is_some_and(|semantics| semantics.body_bounds.is_some() && semantics.pin_1.is_some())
 }
 
 fn push_if_not_declared(

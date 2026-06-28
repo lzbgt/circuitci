@@ -1419,6 +1419,51 @@ fn assembly_footprint_alignment_fails_closed_without_comparable_evidence() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn pin_1_orientation_passes_with_explicit_expected_direction() {
+    let (_dir, project_path) = write_pin_1_orientation_project(180.0, 2.0);
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn pin_1_orientation_fails_on_direction_mismatch() {
+    let (_dir, project_path) = write_pin_1_orientation_project(0.0, 2.0);
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "PIN_1_ORIENTATION_VALID");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["measured"]["measured_pin_1_direction_deg"], 180.0);
+    assert_eq!(failure["measured"]["expected_pin_1_direction_deg"], 0.0);
+    assert_eq!(failure["measured"]["pin_1_direction_error_deg"], 180.0);
+    assert_eq!(failure["measured"]["pin_1_source"], "kicad_pad_1");
+    assert_eq!(
+        failure["measured"]["body_bounds_source"],
+        "kicad_footprint_graphics"
+    );
+    assert_eq!(failure["limit"]["max_pin_1_direction_error_deg"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn pin_1_orientation_fails_closed_without_expected_direction() {
+    let (_dir, project_path) = write_pin_1_orientation_project_without_parameters();
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("expected_pin_1_direction_deg")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_alignment_project(
     component_source: &str,
     layout_placement: &str,
@@ -1470,6 +1515,81 @@ board:
     parameters:
       components: [U1]
 "#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_pin_1_orientation_project(
+    expected_direction_deg: f64,
+    max_error_deg: f64,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    write_pin_1_orientation_project_with_parameters(&format!(
+        r#"      expected_pin_1_direction_deg: {expected_direction_deg}
+      max_pin_1_direction_error_deg: {max_error_deg}
+"#
+    ))
+}
+
+fn write_pin_1_orientation_project_without_parameters() -> (tempfile::TempDir, std::path::PathBuf) {
+    write_pin_1_orientation_project_with_parameters("")
+}
+
+fn write_pin_1_orientation_project_with_parameters(
+    parameters: &str,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let library_path = std::env::current_dir()
+        .unwrap()
+        .join("libs/generic/analog")
+        .to_string_lossy()
+        .into_owned();
+    let parameters_block = if parameters.trim().is_empty() {
+        String::new()
+    } else {
+        format!("    parameters:\n{parameters}")
+    };
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: pin_1_orientation_fixture
+  version: 1
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: NET1
+        B: GND
+  nets:
+    NET1:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+    footprints:
+      U1:
+        semantics:
+          body_bounds:
+            min: {{ x_mm: -1.0, y_mm: -1.0 }}
+            max: {{ x_mm: 1.0, y_mm: 1.0 }}
+            source: kicad_footprint_graphics
+          pin_1:
+            at: {{ x_mm: -0.6, y_mm: 0.0 }}
+            source: kicad_pad_1
+scenarios:
+  - name: pin_1_orientation
+    type: manufacturing
+    checks:
+      - PIN_1_ORIENTATION_VALID
+    target:
+      component: U1
+{parameters_block}"#
         ),
     )
     .unwrap();

@@ -781,6 +781,15 @@ findings include `assembly_side` and `layout_side`. Rotation findings include
 `assembly_rotation_deg`, `layout_rotation_deg`, `rotation_delta_deg`, and limit
 key `rotation_tolerance_deg`.
 
+`PIN_1_ORIENTATION_VALID` reports are emitted by `manufacturing` scenarios that
+compare an explicit expected pin-1 direction against imported KiCad footprint
+`semantics.pin_1` and `semantics.body_bounds` evidence. Stable measured keys
+include `component`, `pin_1_x_mm`, `pin_1_y_mm`, `pin_1_source`,
+`body_center_x_mm`, `body_center_y_mm`, `body_bounds_source`,
+`measured_pin_1_direction_deg`, `expected_pin_1_direction_deg`, and
+`pin_1_direction_error_deg`. Stable limit keys include
+`max_pin_1_direction_error_deg`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

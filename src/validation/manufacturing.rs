@@ -3,6 +3,7 @@ mod artwork_measurements;
 mod assembly_alignment;
 mod drill_slot;
 mod geometry;
+mod pin1_orientation;
 mod process;
 mod solder_mask;
 mod solder_paste_bga;
@@ -37,6 +38,7 @@ pub(super) use drill_slot::{
     validate_castellated_hole, validate_drill_diameter, validate_drill_to_board_edge_clearance,
     validate_slot_aspect_ratio, validate_slot_to_board_edge_clearance, validate_slot_width,
 };
+pub(super) use pin1_orientation::validate_pin_1_orientation;
 pub(super) use solder_mask::{
     validate_solder_mask_dam, validate_solder_mask_opening,
     validate_solder_paste_aperture_area_ratio, validate_solder_paste_aperture_size,

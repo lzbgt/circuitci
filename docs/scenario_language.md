@@ -145,6 +145,7 @@ Canonical executable check IDs:
 - `SOLDER_PASTE_BGA_APERTURE_VALID`
 - `SOLDER_PASTE_SPACING_VALID`
 - `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID`
+- `PIN_1_ORIENTATION_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_AC_ANALYSIS`
@@ -1518,6 +1519,33 @@ This is a source-consistency screen. It detects contradictions between BOM/CPL
 and KiCad PCB evidence, but it does not prove final assembly polarity, visual
 pin-1 interpretation, footprint land-pattern correctness, or manufacturer
 package compatibility.
+
+Pin-1 orientation validation uses `PIN_1_ORIENTATION_VALID` when Board IR
+contains imported footprint `semantics.body_bounds` and `semantics.pin_1`
+evidence for a target component, and the scenario supplies an explicit expected
+pin-1 direction from a package or assembly drawing.
+`suggest-scenarios` emits a non-runnable target-scoped template when imported
+body-bounds and pad-1 marker evidence exists, but it does not guess the
+expected direction.
+
+```yaml
+scenarios:
+  - name: pin_1_orientation
+    type: manufacturing
+    checks:
+      - PIN_1_ORIENTATION_VALID
+    target:
+      component: U1
+    parameters:
+      expected_pin_1_direction_deg: 180.0
+      max_pin_1_direction_error_deg: 5.0
+```
+
+The measured direction is the angle from the imported footprint body center to
+the imported pin-1 marker in Board IR layout coordinates. A pass only means the
+imported pin-1 marker is on the expected side of the imported body within the
+declared tolerance; it does not prove package polarity, assembly rotation,
+land-pattern correctness, or visual silkscreen polarity.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule always checks
