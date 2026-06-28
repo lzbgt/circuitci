@@ -113,11 +113,12 @@ filled-zone, stitching-via, controlled-impedance geometry with reviewed-target
 suggestions, controlled-impedance stackup material/copper-thickness evidence
 checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
 manufacturing-level stitching-via transition distance, reviewed RF antenna
-keepout, feed-path route/proximity, and measured return-loss screens, reviewed thermal copper-area,
-thermal via/stackup, via-plating/drill/plating-thickness/barrel cross-section
-evidence, package static temperature-rise, and measured-temperature screens
-with reviewed environment/limit metadata import, and manufacturing geometry
-screens when explicit policy exists. It is not a field solver.
+keepout, feed-path route/proximity, matching-network topology, and measured
+return-loss screens, reviewed thermal copper-area, thermal via/stackup,
+via-plating/drill/plating-thickness/barrel cross-section evidence, package
+static temperature-rise, and measured-temperature screens with reviewed
+environment/limit metadata import, and manufacturing geometry screens when
+explicit policy exists. It is not a field solver.
 
 Useful next slices:
 
@@ -128,8 +129,8 @@ Useful next slices:
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,
 - RF antenna proof beyond the current explicit keepout-to-copper, feed-path
-  route/proximity, and single-point measured return-loss screens, such as
-  matching network topology, S-parameter sweep interpolation, and
+  route/proximity, matching-network topology, and single-point measured
+  return-loss screens, such as S-parameter sweep interpolation and
   enclosure/cable effects,
 - thermal proof beyond the current reviewed 2D copper-area, via/stackup,
   via-plating/drill/plating-thickness/barrel cross-section, package static temperature-rise, and measured-temperature
