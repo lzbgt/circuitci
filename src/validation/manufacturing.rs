@@ -60,7 +60,7 @@ pub(super) use solder_mask::{
 pub(super) use solder_paste_bga::validate_solder_paste_bga_aperture;
 pub(super) use solder_paste_ic::validate_solder_paste_ic_pin_aperture;
 pub(super) use stitching_via::validate_return_path_stitching_via;
-pub(super) use thermal_copper::validate_thermal_copper_area;
+pub(super) use thermal_copper::{validate_thermal_copper_area, validate_thermal_via_stackup};
 
 pub(super) fn validate_copper_to_board_edge_clearance(
     bound: &BoundBoard<'_>,

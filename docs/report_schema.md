@@ -182,6 +182,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
 - `THERMAL_COPPER_AREA_VALID`
+- `THERMAL_VIA_STACKUP_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -633,6 +634,16 @@ include `thermal_copper_name`, `thermal_copper_source`, `component`,
 `copper_feature_area_mm2`, `copper_segment_area_mm2`,
 `copper_region_area_mm2`, and `copper_object_count`. Stable limit keys include
 `min_copper_area_mm2`.
+
+`THERMAL_VIA_STACKUP_VALID` reports are emitted by `manufacturing` scenarios
+that compare reviewed thermal via-count and copper-thickness policy against
+explicit route-via and stackup-layer evidence. Stable measured keys include
+`thermal_copper_name`, `thermal_copper_source`, `component`, `power_loss_w`,
+`nets`, `layers`, `route_via_count`, `thermal_via_count`, and
+`observed_min_copper_thickness_um` for via-count findings. Copper-thickness
+findings report `stackup_layer`, `stackup_layer_kind`, `stackup_layer_source`,
+and `layer_copper_thickness_um`. Stable limit keys include
+`min_thermal_via_count` and `min_copper_thickness_um`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

@@ -324,6 +324,27 @@ fn suggest_scenarios_derives_thermal_copper_area_template() {
             .unwrap()
             .contains("reviewed power-loss/source metadata")
     );
+
+    let thermal_vias = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "thermal_via_stackup_u1_switch_heat_spreader")
+        .expect("thermal via stackup suggestion");
+    assert_eq!(thermal_vias["runnable"], true);
+    assert_eq!(
+        thermal_vias["scenario"]["checks"][0],
+        "THERMAL_VIA_STACKUP_VALID"
+    );
+    assert_eq!(
+        thermal_vias["scenario"]["parameters"]["thermal_copper"][0]["name"],
+        "u1_switch_heat_spreader"
+    );
+    assert!(thermal_vias.get("required_inputs").is_none());
+    assert!(
+        thermal_vias["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed via-count/copper-thickness policy")
+    );
 }
 
 #[test]

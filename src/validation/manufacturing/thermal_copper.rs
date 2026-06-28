@@ -1,12 +1,13 @@
 use crate::board_ir::{
-    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, Scenario, ThermalCopperRule,
+    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, RouteVia, Scenario, StackupLayer,
+    StackupLayerKind, ThermalCopperRule,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
-use super::super::THERMAL_COPPER_AREA_VALID;
 use super::super::common::validation_input_missing;
+use super::super::{THERMAL_COPPER_AREA_VALID, THERMAL_VIA_STACKUP_VALID};
 use super::geometry::{
     validate_copper_feature_geometry, validate_copper_region_geometry,
     validate_copper_segment_geometry,
@@ -21,19 +22,56 @@ pub(in crate::validation) fn validate_thermal_copper_area(
         return;
     };
     for name in names {
-        let Some(rule) = thermal_rule(bound, scenario, findings, &name) else {
+        let Some(rule) = thermal_rule(bound, scenario, findings, THERMAL_COPPER_AREA_VALID, &name)
+        else {
             return;
         };
         validate_thermal_rule(bound, scenario, findings, rule);
     }
 }
 
+pub(in crate::validation) fn validate_thermal_via_stackup(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = named_thermal_rule_parameters(
+        scenario,
+        findings,
+        THERMAL_VIA_STACKUP_VALID,
+        "thermal_copper",
+    ) else {
+        return;
+    };
+    for name in names {
+        let Some(rule) = thermal_rule(bound, scenario, findings, THERMAL_VIA_STACKUP_VALID, &name)
+        else {
+            return;
+        };
+        validate_via_stackup_rule(bound, scenario, findings, rule);
+    }
+}
+
 fn thermal_rule_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<String>> {
+    named_thermal_rule_parameters(
+        scenario,
+        findings,
+        THERMAL_COPPER_AREA_VALID,
+        "thermal_copper",
+    )
+}
+
+fn named_thermal_rule_parameters(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    parameter_name: &str,
+) -> Option<Vec<String>> {
     let Some(value) = scenario.parameters.get("thermal_copper") else {
         validation_input_missing(
             findings,
             scenario,
-            "THERMAL_COPPER_AREA_VALID requires parameters.thermal_copper.",
+            format!("{check_id} requires parameters.{parameter_name}."),
         );
         return None;
     };
@@ -41,7 +79,7 @@ fn thermal_rule_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Optio
         validation_input_missing(
             findings,
             scenario,
-            "THERMAL_COPPER_AREA_VALID parameters.thermal_copper must be a list.",
+            format!("{check_id} parameters.{parameter_name} must be a list."),
         );
         return None;
     };
@@ -49,7 +87,7 @@ fn thermal_rule_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Optio
         validation_input_missing(
             findings,
             scenario,
-            "THERMAL_COPPER_AREA_VALID parameters.thermal_copper must not be empty.",
+            format!("{check_id} parameters.{parameter_name} must not be empty."),
         );
         return None;
     }
@@ -59,9 +97,7 @@ fn thermal_rule_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Optio
             validation_input_missing(
                 findings,
                 scenario,
-                format!(
-                    "THERMAL_COPPER_AREA_VALID parameters.thermal_copper[{index}] must be an object."
-                ),
+                format!("{check_id} parameters.{parameter_name}[{index}] must be an object."),
             );
             return None;
         };
@@ -76,7 +112,7 @@ fn thermal_rule_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Optio
                 findings,
                 scenario,
                 format!(
-                    "THERMAL_COPPER_AREA_VALID parameters.thermal_copper[{index}].name must be a non-empty string."
+                    "{check_id} parameters.{parameter_name}[{index}].name must be a non-empty string."
                 ),
             );
             return None;
@@ -90,6 +126,7 @@ fn thermal_rule<'a>(
     bound: &'a BoundBoard<'_>,
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
+    check_id: &str,
     name: &str,
 ) -> Option<&'a ThermalCopperRule> {
     let matches = bound
@@ -107,7 +144,7 @@ fn thermal_rule<'a>(
                 findings,
                 scenario,
                 format!(
-                    "THERMAL_COPPER_AREA_VALID thermal copper rule {name} is absent from board.manufacturing.thermal_copper."
+                    "{check_id} thermal copper rule {name} is absent from board.manufacturing.thermal_copper."
                 ),
             );
             None
@@ -117,7 +154,7 @@ fn thermal_rule<'a>(
                 findings,
                 scenario,
                 format!(
-                    "THERMAL_COPPER_AREA_VALID thermal copper rule {name} is ambiguous in board.manufacturing.thermal_copper."
+                    "{check_id} thermal copper rule {name} is ambiguous in board.manufacturing.thermal_copper."
                 ),
             );
             None
@@ -206,6 +243,162 @@ fn validate_thermal_rule(
     }
 }
 
+fn validate_via_stackup_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    rule: &ThermalCopperRule,
+) {
+    if let Err(message) = validate_rule_metadata(bound, rule) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    let Some(min_thermal_via_count) = rule.min_thermal_via_count else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_STACKUP_VALID thermal copper rule {} must declare min_thermal_via_count.",
+                rule.name
+            ),
+        );
+        return;
+    };
+    let Some(min_copper_thickness_um) = positive_number(rule.min_copper_thickness_um) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_STACKUP_VALID thermal copper rule {} must declare finite positive min_copper_thickness_um.",
+                rule.name
+            ),
+        );
+        return;
+    };
+    if min_thermal_via_count == 0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_STACKUP_VALID thermal copper rule {} min_thermal_via_count must be positive.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if rule.nets.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_STACKUP_VALID thermal copper rule {} requires at least one reviewed net in board.manufacturing.thermal_copper[].nets.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if rule.layers.len() < 2 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_STACKUP_VALID thermal copper rule {} requires at least two reviewed copper layers.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    let stackup_layers = &bound.project.board.layout.stackup.layers;
+    if stackup_layers.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "THERMAL_VIA_STACKUP_VALID requires board.layout.stackup.layers evidence.",
+        );
+        return;
+    }
+
+    let mut observed_min_copper_thickness_um = f64::INFINITY;
+    for layer_name in &rule.layers {
+        let Some(layer) = stackup_layer(stackup_layers, layer_name) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "THERMAL_VIA_STACKUP_VALID layer {layer_name} is absent from board.layout.stackup.layers."
+                ),
+            );
+            return;
+        };
+        if !matches!(
+            layer.kind,
+            StackupLayerKind::Signal | StackupLayerKind::Plane
+        ) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "THERMAL_VIA_STACKUP_VALID layer {} must be kind: signal or kind: plane.",
+                    layer.name
+                ),
+            );
+            return;
+        }
+        let Some(copper_thickness_um) = positive_number(layer.copper_thickness_um) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "THERMAL_VIA_STACKUP_VALID stackup layer {} must declare finite positive copper_thickness_um.",
+                    layer.name
+                ),
+            );
+            return;
+        };
+        if layer
+            .source
+            .as_deref()
+            .map(str::trim)
+            .is_none_or(str::is_empty)
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "THERMAL_VIA_STACKUP_VALID stackup layer {} must declare non-empty source.",
+                    layer.name
+                ),
+            );
+            return;
+        };
+        observed_min_copper_thickness_um =
+            observed_min_copper_thickness_um.min(copper_thickness_um);
+        if copper_thickness_um + f64::EPSILON < min_copper_thickness_um {
+            findings.push(thermal_copper_thickness_finding(
+                scenario,
+                rule,
+                layer,
+                copper_thickness_um,
+                min_copper_thickness_um,
+            ));
+        }
+    }
+
+    let Some(via_evidence) = thermal_via_evidence(bound, scenario, findings, rule) else {
+        return;
+    };
+    if via_evidence.thermal_via_count < min_thermal_via_count {
+        findings.push(thermal_via_count_finding(
+            scenario,
+            rule,
+            &via_evidence,
+            min_thermal_via_count,
+            min_copper_thickness_um,
+            observed_min_copper_thickness_um,
+        ));
+    }
+}
+
 fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> Result<(), String> {
     if rule.name.trim().is_empty() {
         return Err(
@@ -245,6 +438,70 @@ fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> R
         }
     }
     Ok(())
+}
+
+fn positive_number(value: Option<f64>) -> Option<f64> {
+    value.filter(|value| value.is_finite() && *value > 0.0)
+}
+
+fn stackup_layer<'a>(layers: &'a [StackupLayer], name: &str) -> Option<&'a StackupLayer> {
+    layers.iter().find(|layer| layer.name == name)
+}
+
+fn thermal_via_evidence(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    rule: &ThermalCopperRule,
+) -> Option<ThermalViaEvidence> {
+    let mut evidence = ThermalViaEvidence::default();
+    for net in &rule.nets {
+        let Some(route) = bound.project.board.layout.routes.get(net) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "THERMAL_VIA_STACKUP_VALID thermal copper rule {} net {net} has no board.layout.routes evidence.",
+                    rule.name
+                ),
+            );
+            return None;
+        };
+        evidence.route_via_count += route.vias.len();
+        for (via_index, via) in route.vias.iter().enumerate() {
+            if !valid_route_via(via) {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "THERMAL_VIA_STACKUP_VALID net {net} via {via_index} must have finite coordinates, positive size/drill, and at least two explicit layers."
+                    ),
+                );
+                return None;
+            }
+            if thermal_via_spans_layers(via, &rule.layers) {
+                evidence.thermal_via_count += 1;
+            }
+        }
+    }
+    Some(evidence)
+}
+
+fn valid_route_via(via: &RouteVia) -> bool {
+    via.at.x_mm.is_finite()
+        && via.at.y_mm.is_finite()
+        && via.size_mm.is_finite()
+        && via.size_mm > 0.0
+        && via.drill_mm.is_finite()
+        && via.drill_mm > 0.0
+        && via.layers.len() >= 2
+        && via.layers.iter().all(|layer| !layer.trim().is_empty())
+}
+
+fn thermal_via_spans_layers(via: &RouteVia, layers: &[String]) -> bool {
+    layers
+        .iter()
+        .all(|layer| via.layers.iter().any(|candidate| candidate == layer))
 }
 
 fn thermal_feature_matches(rule: &ThermalCopperRule, feature: &LayoutCopperFeature) -> bool {
@@ -336,6 +593,12 @@ struct ThermalAreaEvidence {
     region_count: usize,
 }
 
+#[derive(Debug, Default)]
+struct ThermalViaEvidence {
+    route_via_count: usize,
+    thermal_via_count: usize,
+}
+
 impl ThermalAreaEvidence {
     fn total_area_mm2(&self) -> f64 {
         self.feature_area_mm2 + self.segment_area_mm2 + self.region_area_mm2
@@ -405,6 +668,121 @@ fn thermal_area_finding(
     finding.suggested_fixes = vec![
         "Increase explicit copper area tied to the component or reviewed thermal nets/layers, then re-import the layout evidence.".to_string(),
         "If the loss or copper-area requirement changed, update board.manufacturing.thermal_copper from the reviewed thermal note instead of relying on this screen as a thermal solver.".to_string(),
+    ];
+    finding
+}
+
+fn thermal_copper_thickness_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    layer: &StackupLayer,
+    copper_thickness_um: f64,
+    min_copper_thickness_um: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_VIA_STACKUP_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} stackup layer {} has {:.3} um copper thickness, below the reviewed {:.3} um minimum.",
+            rule.name, layer.name, copper_thickness_um, min_copper_thickness_um
+        ),
+    );
+    finding.component = Some(rule.component.clone());
+    finding
+        .measured
+        .insert("thermal_copper_name".to_string(), json!(rule.name));
+    finding
+        .measured
+        .insert("thermal_copper_source".to_string(), json!(rule.source));
+    finding
+        .measured
+        .insert("component".to_string(), json!(rule.component));
+    finding
+        .measured
+        .insert("power_loss_w".to_string(), json!(rule.power_loss_w));
+    finding
+        .measured
+        .insert("stackup_layer".to_string(), json!(layer.name));
+    finding.measured.insert(
+        "stackup_layer_kind".to_string(),
+        json!(format!("{:?}", layer.kind)),
+    );
+    finding
+        .measured
+        .insert("stackup_layer_source".to_string(), json!(layer.source));
+    finding.measured.insert(
+        "layer_copper_thickness_um".to_string(),
+        json!(copper_thickness_um),
+    );
+    finding.limit.insert(
+        "min_copper_thickness_um".to_string(),
+        json!(min_copper_thickness_um),
+    );
+    finding.suggested_fixes = vec![
+        "Use a stackup layer copper thickness that satisfies the reviewed thermal policy, or update the reviewed policy from the actual fabrication stackup.".to_string(),
+        "If thermal relief depends on plating, vias, or external heatsinking, encode that evidence explicitly before using this screen for sign-off.".to_string(),
+    ];
+    finding
+}
+
+fn thermal_via_count_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    evidence: &ThermalViaEvidence,
+    min_thermal_via_count: usize,
+    min_copper_thickness_um: f64,
+    observed_min_copper_thickness_um: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_VIA_STACKUP_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} found {} explicit thermal via(s), below the reviewed minimum of {}.",
+            rule.name, evidence.thermal_via_count, min_thermal_via_count
+        ),
+    );
+    finding.component = Some(rule.component.clone());
+    finding
+        .measured
+        .insert("thermal_copper_name".to_string(), json!(rule.name));
+    finding
+        .measured
+        .insert("thermal_copper_source".to_string(), json!(rule.source));
+    finding
+        .measured
+        .insert("component".to_string(), json!(rule.component));
+    finding
+        .measured
+        .insert("power_loss_w".to_string(), json!(rule.power_loss_w));
+    finding
+        .measured
+        .insert("nets".to_string(), json!(rule.nets));
+    finding
+        .measured
+        .insert("layers".to_string(), json!(rule.layers));
+    finding.measured.insert(
+        "route_via_count".to_string(),
+        json!(evidence.route_via_count),
+    );
+    finding.measured.insert(
+        "thermal_via_count".to_string(),
+        json!(evidence.thermal_via_count),
+    );
+    finding.measured.insert(
+        "observed_min_copper_thickness_um".to_string(),
+        json!(observed_min_copper_thickness_um),
+    );
+    finding.limit.insert(
+        "min_thermal_via_count".to_string(),
+        json!(min_thermal_via_count),
+    );
+    finding.limit.insert(
+        "min_copper_thickness_um".to_string(),
+        json!(min_copper_thickness_um),
+    );
+    finding.suggested_fixes = vec![
+        "Add explicit route via evidence on the reviewed thermal net spanning the reviewed thermal layers, then re-import the layout.".to_string(),
+        "If the via count requirement changed, update board.manufacturing.thermal_copper from the reviewed thermal layout policy.".to_string(),
     ];
     finding
 }

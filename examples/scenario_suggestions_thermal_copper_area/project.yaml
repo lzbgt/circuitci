@@ -19,10 +19,36 @@ board:
         component: U1
         power_loss_w: 1.2
         min_copper_area_mm2: 18.0
-        layers: [F.Cu]
+        min_thermal_via_count: 2
+        min_copper_thickness_um: 30.0
+        layers: [F.Cu, B.Cu]
         nets: [SW]
         source: reviewed_thermal_note_rev_a
   layout:
+    stackup:
+      layers:
+        - name: F.Cu
+          kind: signal
+          copper_thickness_um: 35.0
+          source: reviewed_stackup_rev_a
+        - name: core
+          kind: dielectric
+          source: reviewed_stackup_rev_a
+        - name: B.Cu
+          kind: signal
+          copper_thickness_um: 35.0
+          source: reviewed_stackup_rev_a
+    routes:
+      SW:
+        vias:
+          - at: { x_mm: 1.0, y_mm: 1.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]
+          - at: { x_mm: 2.0, y_mm: 1.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]
     copper:
       regions:
         - points:

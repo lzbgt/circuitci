@@ -145,6 +145,7 @@ Canonical executable check IDs:
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
 - `THERMAL_COPPER_AREA_VALID`
+- `THERMAL_VIA_STACKUP_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1330,6 +1331,48 @@ Thermal copper area algorithm:
 This is a static copper-area evidence screen for reviewed thermal rules. It
 does not model copper thickness, vias, convection, enclosure, component thermal
 resistance, temperature rise, derating, or measured thermal behavior.
+
+Thermal via and stackup validation uses `THERMAL_VIA_STACKUP_VALID` when the
+same reviewed `board.manufacturing.thermal_copper[]` rule also declares
+`min_thermal_via_count`, `min_copper_thickness_um`, reviewed nets, and reviewed
+copper layers.
+
+```yaml
+scenarios:
+  - name: thermal_via_stackup
+    type: manufacturing
+    checks:
+      - THERMAL_VIA_STACKUP_VALID
+    parameters:
+      thermal_copper:
+        - name: u1_heat_spreader
+```
+
+Thermal via and stackup algorithm:
+
+1. Require `parameters.thermal_copper[]` with explicit rule `name` values.
+2. Resolve each name from `board.manufacturing.thermal_copper[]`.
+3. Require the reviewed rule to name an existing component, non-empty source,
+   positive `power_loss_w`, positive `min_thermal_via_count`, positive
+   `min_copper_thickness_um`, at least one reviewed net, and at least two
+   reviewed copper layers.
+4. Require every reviewed net to exist and to have explicit
+   `board.layout.routes.<net>` evidence.
+5. Require every reviewed layer to exist in `board.layout.stackup.layers[]`, be
+   `kind: signal` or `kind: plane`, declare non-empty `source`, and declare
+   positive `copper_thickness_um`.
+6. Fail when any reviewed layer copper thickness is below
+   `min_copper_thickness_um`.
+7. Count only imported route vias on reviewed nets whose explicit `layers[]`
+   include all reviewed thermal layers.
+8. Fail when the counted thermal vias are below `min_thermal_via_count`.
+9. Fail closed when route-via coordinates, drill/size, or layer-span evidence
+   is absent or malformed.
+
+This is a static via-count and stackup-evidence screen for reviewed thermal
+rules. It does not model plating thickness, via barrel resistance, spreading
+resistance, convection, package thermal resistance, temperature rise, or
+measured thermal behavior.
 
 Controlled-impedance geometry validation uses
 `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported

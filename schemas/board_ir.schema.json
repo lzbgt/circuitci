@@ -363,6 +363,8 @@
                   "source": { "type": "string", "minLength": 1 },
                   "power_loss_w": { "type": "number", "exclusiveMinimum": 0 },
                   "min_copper_area_mm2": { "type": "number", "exclusiveMinimum": 0 },
+                  "min_thermal_via_count": { "type": "integer", "minimum": 1 },
+                  "min_copper_thickness_um": { "type": "number", "exclusiveMinimum": 0 },
                   "nets": {
                     "type": "array",
                     "items": { "type": "string", "minLength": 1 }

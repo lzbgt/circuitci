@@ -456,6 +456,11 @@ The command is conservative:
   region evidence is explicitly tied to the component or reviewed nets/layers,
   it emits a runnable `THERMAL_COPPER_AREA_VALID` template. The suggestion does
   not infer thermal copper from net names or solve component temperature rise.
+- When those same reviewed thermal-copper entries also declare
+  `min_thermal_via_count`, `min_copper_thickness_um`, reviewed nets, reviewed
+  copper layers, imported route-via evidence, and stackup copper-thickness
+  metadata, it emits a runnable `THERMAL_VIA_STACKUP_VALID` template. The
+  suggestion does not infer thermal vias from copper pours or solve heat flow.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

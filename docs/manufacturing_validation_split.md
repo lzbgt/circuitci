@@ -40,11 +40,13 @@ stable report construction. It intentionally does not model RF matching,
 radiation, or field behavior.
 
 `src/validation/manufacturing/thermal_copper.rs` owns
-`THERMAL_COPPER_AREA_VALID`, including reviewed thermal-copper rule lookup,
-component/net/layer evidence filtering, bounded 2D copper area measurement for
-features, segments, and regions, fail-closed missing evidence, and stable
-report construction. It intentionally does not solve thermal resistance,
-temperature rise, copper thickness effects, or convection.
+`THERMAL_COPPER_AREA_VALID` and `THERMAL_VIA_STACKUP_VALID`, including
+reviewed thermal-copper rule lookup, component/net/layer evidence filtering,
+bounded 2D copper area measurement for features, segments, and regions,
+reviewed route-via layer-span counting, stackup copper-thickness checks,
+fail-closed missing evidence, and stable report construction. It intentionally
+does not solve thermal resistance, temperature rise, via plating effects,
+copper spreading, or convection.
 
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,

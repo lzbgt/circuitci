@@ -299,6 +299,13 @@ without explicit imported mechanical evidence.
   component package thermal resistance, derating, or measured temperature rise.
   Passing this rule only means the imported 2D copper-area evidence satisfies
   the reviewed static minimum.
+- `THERMAL_VIA_STACKUP_VALID` compares reviewed thermal via-count and
+  copper-thickness metadata against explicit imported route vias and stackup
+  layer copper thickness. It does not model via plating thickness, via barrel
+  resistance, spreading resistance, convection, enclosure, package thermal
+  resistance, derating, or measured temperature rise. Passing this rule only
+  means the imported via layer spans and stackup copper-thickness evidence meet
+  the reviewed static minimums.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

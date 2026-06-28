@@ -110,8 +110,8 @@ suggestions, controlled-impedance stackup material/copper-thickness evidence
 checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
 manufacturing-level stitching-via transition distance, reviewed RF antenna
 keepout and feed-path route/proximity screens, reviewed thermal copper-area
-screens, and manufacturing geometry screens when explicit policy exists. It is
-not a field solver.
+plus thermal via/stackup screens, and manufacturing geometry screens when
+explicit policy exists. It is not a field solver.
 
 Useful next slices:
 
@@ -124,8 +124,8 @@ Useful next slices:
 - RF antenna proof beyond the current explicit keepout-to-copper and
   feed-path route/proximity screens, such as matching network topology,
   measured S11, and enclosure/cable effects,
-- thermal proof beyond the current reviewed 2D copper-area screen, such as
-  copper thickness, thermal vias, package thermal resistance, temperature-rise
+- thermal proof beyond the current reviewed 2D copper-area and via/stackup
+  screens, such as via plating, package thermal resistance, temperature-rise
   models, measured temperature, and derating evidence,
 - creepage and clearance proof beyond the current explicit same-layer planar
   conductor screen, such as reviewed slot, barrier, coating, stackup, material,

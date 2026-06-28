@@ -150,6 +150,8 @@ board:
         source: reviewed_thermal_note_rev_a
         power_loss_w: 1.5
         min_copper_area_mm2: 20.0
+        min_thermal_via_count: 6
+        min_copper_thickness_um: 35.0
         nets: [SW]
         layers: [F.Cu, B.Cu]
     source: jlc_stencil_order
@@ -200,6 +202,15 @@ explicit copper area, and optional nets/layers that bound which imported copper
 can be counted. CircuitCI measures only imported copper features, route
 segments, and zone regions tied to that component or those reviewed nets/layers;
 it does not infer thermal copper from designators or solve temperature rise.
+
+`THERMAL_VIA_STACKUP_VALID` consumes the same
+`board.manufacturing.thermal_copper[]` entries when they also declare
+`min_thermal_via_count`, `min_copper_thickness_um`, at least one reviewed net,
+and at least two reviewed copper layers. The check counts imported
+`board.layout.routes.<net>.vias[]` only when via layer spans explicitly include
+all reviewed thermal layers, and it checks `board.layout.stackup.layers[]`
+copper thickness for each reviewed layer. It does not infer thermal vias from
+zone geometry or solve heat flow.
 
 Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
 metadata to an imported Board IR without hand-editing YAML:

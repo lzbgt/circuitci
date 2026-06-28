@@ -1,7 +1,8 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPoint,
-    NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, ThermalCopperRule,
+    NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, RouteVia,
+    StackupLayerKind, ThermalCopperRule,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -21,6 +22,7 @@ const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
+const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -80,6 +82,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     suggestions.extend(rf_antenna_keepout_suggestions(bound, &project_name));
     suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
     suggestions.extend(thermal_copper_area_suggestions(bound, &project_name));
+    suggestions.extend(thermal_via_stackup_suggestions(bound, &project_name));
     if !layout.drills.is_empty() {
         push_if_not_declared(
             bound,
@@ -1242,6 +1245,119 @@ fn thermal_copper_rule_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -
                 .checks
                 .iter()
                 .any(|declared| declared == THERMAL_COPPER_AREA_VALID)
+            && scenario
+                .parameters
+                .get("thermal_copper")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(rule_name)
+                    })
+                })
+    })
+}
+
+fn thermal_via_stackup_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for rule in &bound.project.board.manufacturing.thermal_copper {
+        if !thermal_via_stackup_rule_has_evidence(bound, rule)
+            || thermal_via_stackup_check_declared(bound, &rule.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("thermal_via_stackup_{}", sanitized_name(&rule.name)),
+            true,
+            &format!(
+                "Thermal copper rule {} has reviewed via-count/copper-thickness policy plus imported stackup and route-via evidence.",
+                rule.name
+            ),
+            &format!(
+                "{}_{}_thermal_via_stackup",
+                project_name,
+                sanitized_name(&rule.name)
+            ),
+            THERMAL_VIA_STACKUP_VALID,
+            Some(BTreeMap::from([(
+                "thermal_copper".to_string(),
+                json!([{ "name": rule.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn thermal_via_stackup_rule_has_evidence(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> bool {
+    thermal_copper_rule_has_evidence(bound, rule)
+        && rule.min_thermal_via_count.is_some_and(|count| count > 0)
+        && rule
+            .min_copper_thickness_um
+            .is_some_and(|value| value.is_finite() && value > 0.0)
+        && !rule.nets.is_empty()
+        && rule.layers.len() >= 2
+        && rule.layers.iter().all(|layer_name| {
+            bound
+                .project
+                .board
+                .layout
+                .stackup
+                .layers
+                .iter()
+                .any(|layer| {
+                    layer.name == *layer_name
+                        && matches!(
+                            layer.kind,
+                            StackupLayerKind::Signal | StackupLayerKind::Plane
+                        )
+                        && layer
+                            .copper_thickness_um
+                            .is_some_and(|value| value.is_finite() && value > 0.0)
+                        && layer
+                            .source
+                            .as_deref()
+                            .map(str::trim)
+                            .is_some_and(|value| !value.is_empty())
+                })
+        })
+        && rule.nets.iter().all(|net| {
+            bound
+                .project
+                .board
+                .layout
+                .routes
+                .get(net)
+                .is_some_and(|route| {
+                    !route.vias.is_empty() && route.vias.iter().all(valid_thermal_route_via)
+                })
+        })
+}
+
+fn valid_thermal_route_via(via: &RouteVia) -> bool {
+    via.at.x_mm.is_finite()
+        && via.at.y_mm.is_finite()
+        && via.size_mm.is_finite()
+        && via.size_mm > 0.0
+        && via.drill_mm.is_finite()
+        && via.drill_mm > 0.0
+        && via.layers.len() >= 2
+        && via.layers.iter().all(|layer| !layer.trim().is_empty())
+}
+
+fn thermal_via_stackup_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_VIA_STACKUP_VALID)
             && scenario
                 .parameters
                 .get("thermal_copper")

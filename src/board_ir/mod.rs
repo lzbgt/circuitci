@@ -221,6 +221,10 @@ pub struct ThermalCopperRule {
     pub power_loss_w: f64,
     pub min_copper_area_mm2: f64,
     #[serde(default)]
+    pub min_thermal_via_count: Option<usize>,
+    #[serde(default)]
+    pub min_copper_thickness_um: Option<f64>,
+    #[serde(default)]
     pub nets: Vec<String>,
     #[serde(default)]
     pub layers: Vec<String>,
