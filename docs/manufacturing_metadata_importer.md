@@ -21,8 +21,9 @@ Input CSV columns:
   operating environment evidence. Repeated `thermal_limit` rows are supported
   for reviewed measured/package temperature limits. Repeated `stackup_layer`
   rows are supported for reviewed stackup layer evidence. Repeated
-  `rf_antenna_keepout` and `rf_antenna_feed_path` rows are supported for
-  reviewed RF antenna layout constraints.
+  `rf_antenna_keepout`, `rf_antenna_feed_path`, and
+  `rf_antenna_measurement` rows are supported for reviewed RF antenna layout
+  and measured return-loss evidence.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
@@ -37,6 +38,8 @@ Input CSV columns:
   `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
   `rf_antenna_keepout` and `rf_antenna_feed_path` rows use `mm` for the
   distance value when a unit is supplied.
+  `rf_antenna_measurement` rows use `dB`/`decibel` for the measured
+  return-loss magnitude.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
 
@@ -201,12 +204,25 @@ require extra columns:
 - `max_matching_component_distance_mm`: reviewed non-negative placement
   distance limit.
 
+`rf_antenna_measurement` rows use `value` as positive `return_loss_db` and
+require extra columns:
+
+- `name`: stable RF measurement identifier.
+- `antenna_net`: Board IR antenna/feed net.
+- `frequency_mhz`: positive measurement frequency in MHz.
+
+Optional `rf_antenna_measurement` columns:
+
+- `measurement_method`: reviewed measurement method such as `vna_s11`.
+
 RF rows create or replace entries under
-`board.layout.constraints.rf_antenna.keepouts[]` and
-`board.layout.constraints.rf_antenna.feed_paths[]` by `name`. Duplicate CSV
-names fail closed. These rows are reviewed RF layout evidence only; the
-importer does not infer antenna topology, RF roles, matching components, or
-keepout geometry from net names or designators.
+`board.layout.constraints.rf_antenna.keepouts[]`,
+`board.layout.constraints.rf_antenna.feed_paths[]`, and
+`board.layout.constraints.rf_antenna.measurements[]` by `name`. Duplicate CSV
+names fail closed. These rows are reviewed RF layout/measurement evidence only;
+the importer does not infer antenna topology, RF roles, matching components,
+keepout geometry, acceptable return loss, or S-parameter sweep behavior from
+net names or designators.
 
 Example:
 
@@ -234,7 +250,8 @@ The JSON manifest conforms to
   row-level source/notes, and skip reason for unsupported rows.
 
 This importer updates only explicit reviewed `board.manufacturing` fields,
-`board.layout.stackup.layers[]` entries, and reviewed RF antenna layout
-constraints while preserving existing design, schematic, Gerber, drill, and
-assembly evidence. It does not infer schematic connectivity, component pin
-behavior, stackup properties, RF topology, or global JLCPCB defaults.
+`board.layout.stackup.layers[]` entries, and reviewed RF antenna layout and
+measurement constraints while preserving existing design, schematic, Gerber,
+drill, and assembly evidence. It does not infer schematic connectivity,
+component pin behavior, stackup properties, RF topology, acceptable RF
+performance, or global JLCPCB defaults.

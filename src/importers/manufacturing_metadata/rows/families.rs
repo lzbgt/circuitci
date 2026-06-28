@@ -1,9 +1,9 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
-    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
-    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMeasurement,
+    AppliedStackupLayer, AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
+    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -535,6 +535,61 @@ pub(super) fn applied_rf_antenna_feed_path(
         )?,
         source,
     })
+}
+
+pub(super) fn applied_rf_antenna_measurement(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaMeasurement> {
+    let measurement_source = optional_raw_column(row, "measurement_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(measurement_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} rf_antenna_measurement requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedRfAntennaMeasurement {
+        name: required_raw_column_for(row, path, "name", "rf_antenna_measurement")?,
+        antenna_net: required_raw_column_for(row, path, "antenna_net", "rf_antenna_measurement")?,
+        frequency_mhz: required_positive_number(
+            row,
+            path,
+            "frequency_mhz",
+            "rf_antenna_measurement",
+        )?,
+        return_loss_db: parse_positive_db(row.value.trim(), row.unit.as_deref(), path, row)?,
+        source,
+        measurement_method: optional_raw_column(row, "measurement_method"),
+        notes: row.notes.clone(),
+    })
+}
+
+fn parse_positive_db(
+    raw: &str,
+    unit: Option<&str>,
+    path: &Path,
+    row: &MetadataCsvRow,
+) -> Result<f64> {
+    let unit = unit.map(normalize_name);
+    if !matches!(
+        unit.as_deref(),
+        None | Some("") | Some("db") | Some("decibel") | Some("decibels")
+    ) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} must use dB for rf_antenna_measurement value.",
+            path.display(),
+            row.row_number
+        );
+    }
+    parse_positive_number(raw, path, row, "value")
 }
 
 fn parse_polygon_points(

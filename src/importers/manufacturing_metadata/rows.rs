@@ -27,6 +27,28 @@ pub(super) struct AppliedField {
     pub(super) stackup_layer: Option<AppliedStackupLayer>,
     pub(super) rf_antenna_keepout: Option<AppliedRfAntennaKeepout>,
     pub(super) rf_antenna_feed_path: Option<AppliedRfAntennaFeedPath>,
+    pub(super) rf_antenna_measurement: Option<AppliedRfAntennaMeasurement>,
+}
+
+impl AppliedField {
+    fn empty(field: ManufacturingField) -> Self {
+        Self {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+            thermal_package: None,
+            thermal_environment: None,
+            thermal_limit: None,
+            stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
+            rf_antenna_measurement: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +172,17 @@ pub(super) struct AppliedRfAntennaFeedPath {
     source: String,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaMeasurement {
+    pub(super) name: String,
+    antenna_net: String,
+    frequency_mhz: f64,
+    return_loss_db: f64,
+    source: String,
+    measurement_method: Option<String>,
+    notes: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum ManufacturingField {
     StencilThicknessMm,
@@ -169,6 +202,7 @@ pub(super) enum ManufacturingField {
     StackupLayer,
     RfAntennaKeepout,
     RfAntennaFeedPath,
+    RfAntennaMeasurement,
     Source,
 }
 
@@ -192,6 +226,7 @@ impl ManufacturingField {
             Self::StackupLayer => "layout.stackup.layers[]",
             Self::RfAntennaKeepout => "layout.constraints.rf_antenna.keepouts[]",
             Self::RfAntennaFeedPath => "layout.constraints.rf_antenna.feed_paths[]",
+            Self::RfAntennaMeasurement => "layout.constraints.rf_antenna.measurements[]",
             Self::Source => "source",
         }
     }
@@ -228,6 +263,7 @@ impl ManufacturingField {
                 | Self::StackupLayer
                 | Self::RfAntennaKeepout
                 | Self::RfAntennaFeedPath
+                | Self::RfAntennaMeasurement
         )
     }
 }
@@ -311,6 +347,7 @@ fn applied_field(
     field: ManufacturingField,
     path: &Path,
 ) -> Result<AppliedField> {
+    let mut applied = AppliedField::empty(field);
     if field == ManufacturingField::Source {
         let value = row.value.trim();
         if value.is_empty() {
@@ -320,191 +357,52 @@ fn applied_field(
                 row.row_number
             );
         }
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: Some(value.to_string()),
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.string_value = Some(value.to_string());
+        return Ok(applied);
     }
     if field == ManufacturingField::ControlledImpedanceNet {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: Some(applied_controlled_impedance_net(row, path)?),
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.controlled_impedance_net = Some(applied_controlled_impedance_net(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::ControlledImpedancePair {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: Some(applied_controlled_impedance_pair(row, path)?),
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.controlled_impedance_pair = Some(applied_controlled_impedance_pair(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::ThermalCopper {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: Some(applied_thermal_copper(row, path)?),
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::ThermalMeasurement {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: Some(applied_thermal_measurement(row, path)?),
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.thermal_measurement = Some(applied_thermal_measurement(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::ThermalPackage {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: Some(applied_thermal_package(row, path)?),
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.thermal_package = Some(applied_thermal_package(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::ThermalEnvironment {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: Some(applied_thermal_environment(row, path)?),
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.thermal_environment = Some(applied_thermal_environment(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::ThermalLimit {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: Some(applied_thermal_limit(row, path)?),
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.thermal_limit = Some(applied_thermal_limit(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::StackupLayer {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: Some(applied_stackup_layer(row, path)?),
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: None,
-        });
+        applied.stackup_layer = Some(applied_stackup_layer(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::RfAntennaKeepout {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: Some(applied_rf_antenna_keepout(row, path)?),
-            rf_antenna_feed_path: None,
-        });
+        applied.rf_antenna_keepout = Some(applied_rf_antenna_keepout(row, path)?);
+        return Ok(applied);
     }
     if field == ManufacturingField::RfAntennaFeedPath {
-        return Ok(AppliedField {
-            field,
-            numeric_value: None,
-            string_value: None,
-            controlled_impedance_net: None,
-            controlled_impedance_pair: None,
-            thermal_copper: None,
-            thermal_measurement: None,
-            thermal_package: None,
-            thermal_environment: None,
-            thermal_limit: None,
-            stackup_layer: None,
-            rf_antenna_keepout: None,
-            rf_antenna_feed_path: Some(applied_rf_antenna_feed_path(row, path)?),
-        });
+        applied.rf_antenna_feed_path = Some(applied_rf_antenna_feed_path(row, path)?);
+        return Ok(applied);
+    }
+    if field == ManufacturingField::RfAntennaMeasurement {
+        applied.rf_antenna_measurement = Some(applied_rf_antenna_measurement(row, path)?);
+        return Ok(applied);
     }
     let value = row.value.trim();
     if value.is_empty() {
@@ -524,21 +422,8 @@ fn applied_field(
         )
     })?;
     let normalized = normalize_numeric_value(field, numeric_value, row.unit.as_deref(), path, row)?;
-    Ok(AppliedField {
-        field,
-        numeric_value: Some(normalized),
-        string_value: None,
-        controlled_impedance_net: None,
-        controlled_impedance_pair: None,
-        thermal_copper: None,
-        thermal_measurement: None,
-        thermal_package: None,
-        thermal_environment: None,
-        thermal_limit: None,
-        stackup_layer: None,
-        rf_antenna_keepout: None,
-        rf_antenna_feed_path: None,
-    })
+    applied.numeric_value = Some(normalized);
+    Ok(applied)
 }
 
 fn applied_controlled_impedance_net(
@@ -597,6 +482,13 @@ fn applied_rf_antenna_feed_path(
     path: &Path,
 ) -> Result<AppliedRfAntennaFeedPath> {
     families::applied_rf_antenna_feed_path(row, path)
+}
+
+fn applied_rf_antenna_measurement(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaMeasurement> {
+    families::applied_rf_antenna_measurement(row, path)
 }
 
 fn normalize_numeric_value(
@@ -1076,6 +968,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut rf_antenna_measurement_names = BTreeSet::new();
+    for measurement in fields
+        .iter()
+        .filter_map(|field| field.rf_antenna_measurement.as_ref())
+    {
+        if !rf_antenna_measurement_names.insert(measurement.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats rf_antenna_measurement row name {}.",
+                measurement.name
+            );
+        }
+    }
     Ok(())
 }
 
@@ -1169,6 +1073,11 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         "rfantennafeedpath" | "antennafeedpath" | "rffeedpath" => {
             Some(ManufacturingField::RfAntennaFeedPath)
         }
+        "rfantennameasurement"
+        | "antennas11"
+        | "antennareturnloss"
+        | "rfmeasurement"
+        | "rfantennareturnloss" => Some(ManufacturingField::RfAntennaMeasurement),
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
     }

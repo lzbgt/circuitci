@@ -1,8 +1,9 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
-    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
-    AppliedThermalMeasurement, AppliedThermalPackage,
+    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
+    AppliedRfAntennaMeasurement, AppliedStackupLayer, AppliedThermalCopper,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -92,6 +93,16 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(feed_path) = &field.rf_antenna_feed_path {
         return serde_yaml_ng::to_value(rf_antenna_feed_path_mapping(feed_path)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
+    if let Some(measurement) = &field.rf_antenna_measurement {
+        return serde_yaml_ng::to_value(rf_antenna_measurement_mapping(measurement)).with_context(
             || {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -451,6 +462,39 @@ fn rf_antenna_feed_path_mapping(feed_path: &AppliedRfAntennaFeedPath) -> BTreeMa
         "source".to_string(),
         Value::String(feed_path.source.clone()),
     );
+    mapping
+}
+
+fn rf_antenna_measurement_mapping(
+    measurement: &AppliedRfAntennaMeasurement,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(measurement.name.clone()));
+    mapping.insert(
+        "antenna_net".to_string(),
+        Value::String(measurement.antenna_net.clone()),
+    );
+    mapping.insert(
+        "frequency_mhz".to_string(),
+        serde_yaml_ng::to_value(measurement.frequency_mhz).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "return_loss_db".to_string(),
+        serde_yaml_ng::to_value(measurement.return_loss_db).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "source".to_string(),
+        Value::String(measurement.source.clone()),
+    );
+    if let Some(value) = &measurement.measurement_method {
+        mapping.insert(
+            "measurement_method".to_string(),
+            Value::String(value.clone()),
+        );
+    }
+    if let Some(value) = &measurement.notes {
+        mapping.insert("notes".to_string(), Value::String(value.clone()));
+    }
     mapping
 }
 
