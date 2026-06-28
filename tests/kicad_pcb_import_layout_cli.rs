@@ -942,6 +942,8 @@ scenarios: []
   (footprint "Package:Pin1Fixture" (layer "F.Cu")
     (at 10 20 90)
     (property "Reference" "U1" (at 0 0 0) (layer "F.SilkS"))
+    (property "Value" "Pin1Fixture")
+    (property "JLCPCB Part" "C12345")
     (fp_rect (start -1 -2) (end 1 2) (stroke (width 0.1) (type solid)) (fill none) (layer "F.Fab"))
     (pad "1" smd rect (at 0.5 0.25) (size 0.3 0.3) (layers "F.Cu" "F.Paste" "F.Mask") (net 1 "NET_1")
       (solder_mask_margin 0.04)
@@ -970,6 +972,19 @@ scenarios: []
     let imported: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&output_path).unwrap()).unwrap();
     let semantics = &imported["board"]["layout"]["footprints"]["U1"]["semantics"];
+    let properties = imported["board"]["layout"]["footprints"]["U1"]["properties"]
+        .as_array()
+        .unwrap();
+    assert!(properties.iter().any(|property| {
+        property["name"] == "Footprint"
+            && property["value"] == "Package:Pin1Fixture"
+            && property["source"] == "kicad_footprint_identifier"
+    }));
+    assert!(properties.iter().any(|property| {
+        property["name"] == "JLCPCB Part"
+            && property["value"] == "C12345"
+            && property["source"] == "kicad_footprint_property"
+    }));
     assert_eq!(semantics["pin_1"]["source"], "kicad_pad_1");
     assert_eq!(semantics["pin_1"]["at"]["x_mm"], 9.75);
     assert_eq!(semantics["pin_1"]["at"]["y_mm"], 20.5);

@@ -75,8 +75,8 @@ Useful next slices:
   source/row/component/side-confidence/orientation-confidence assembly
   manifest,
 - vendor reference-design adapters,
-- package/footprint semantics beyond the current KiCad pin-1,
-  body/courtyard-bounds, connector-entry, and raw pad-level mask/paste
+- package/footprint semantics beyond the current KiCad footprint-property,
+  pin-1, body/courtyard-bounds, connector-entry, and raw pad-level mask/paste
   fabrication override evidence,
 - board/order metadata extraction workflows beyond the current reviewed
   manufacturing metadata CSV import manifest.

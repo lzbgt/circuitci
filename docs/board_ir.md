@@ -275,6 +275,13 @@ board:
   layout:
     footprints:
       J1:
+        properties:
+          - name: Footprint
+            value: Connector_USB:USB_C_Receptacle
+            source: kicad_footprint_identifier
+          - name: Value
+            value: USB_C_Receptacle
+            source: kicad_footprint_property
         rectangles:
           - start: { x_mm: -0.7, y_mm: -0.8 }
             end: { x_mm: 0.3, y_mm: 1.2 }
@@ -330,10 +337,14 @@ board:
           source: kicad_footprint_property
 ```
 
-KiCad PCB import currently populates this from footprint `fp_line`, `fp_rect`,
-`fp_poly`, `fp_circle`, and `fp_arc` drawing items. It also imports optional
-connector entry-direction and entry-aperture metadata from explicit footprint
-properties named `CircuitCI_EntryDirectionOffsetDeg`,
+KiCad PCB import currently populates this from the footprint library identifier,
+raw `(property name value)` rows, and footprint `fp_line`, `fp_rect`,
+`fp_poly`, `fp_circle`, and `fp_arc` drawing items. Footprint `properties`
+entries preserve package/assembly alignment evidence with `source:
+kicad_footprint_identifier` or `source: kicad_footprint_property`; they do not
+prove BOM part selection, pick-and-place orientation, or schematic pin intent.
+The importer also imports optional connector entry-direction and entry-aperture
+metadata from explicit footprint properties named `CircuitCI_EntryDirectionOffsetDeg`,
 `CircuitCI_EntryClearanceDepthMM`,
 `CircuitCI_EntryClearanceWidthMM`,
 `CircuitCI_EntryApertureFrontOffsetMM`,

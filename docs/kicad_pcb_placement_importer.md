@@ -33,6 +33,10 @@ and `fp_arc` drawing items and writes transformed drawing evidence under
 drawing evidence includes:
 
 - component reference,
+- the source footprint library identifier as a `properties[]` row with
+  `source: kicad_footprint_identifier`,
+- raw KiCad `(property name value)` rows as `properties[]` rows with
+  `source: kicad_footprint_property`,
 - transformed start/end coordinates for lines and rectangles, transformed
   point lists for polygons, transformed center/end radius evidence for circles,
   or transformed start/mid/end evidence for arcs, in millimeters,
@@ -53,6 +57,11 @@ Each semantic row carries a `source` string such as
 `kicad_footprint_graphics` or `kicad_pad_1`. Pin-1 evidence is package
 orientation evidence only; it does not create or validate schematic pin
 bindings. Duplicate KiCad pad `1` markers fail closed.
+
+Footprint property rows are source provenance for package/assembly alignment
+review. They preserve names and values exactly enough for downstream agents to
+compare against BOM or pick-and-place evidence, but the importer does not treat
+them as proof of final part number, polarity, or placement orientation.
 
 For USB connector entry-clearance checks, the importer also reads optional
 footprint properties named `CircuitCI_EntryDirectionOffsetDeg`,

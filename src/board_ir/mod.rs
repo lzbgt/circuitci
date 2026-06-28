@@ -262,6 +262,8 @@ pub struct BoardLayout {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct LayoutFootprint {
     #[serde(default)]
+    pub properties: Vec<LayoutFootprintProperty>,
+    #[serde(default)]
     pub segments: Vec<LayoutFootprintSegment>,
     #[serde(default)]
     pub rectangles: Vec<LayoutFootprintRectangle>,
@@ -279,6 +281,14 @@ pub struct LayoutFootprint {
     pub entry_clearance: Option<LayoutEntryClearance>,
     #[serde(default)]
     pub entry_aperture: Option<LayoutEntryAperture>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintProperty {
+    pub name: String,
+    pub value: String,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

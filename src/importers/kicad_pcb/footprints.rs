@@ -11,6 +11,7 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct PcbFootprint {
+    properties: Vec<PcbFootprintProperty>,
     segments: Vec<PcbFootprintSegment>,
     rectangles: Vec<PcbFootprintRectangle>,
     polygons: Vec<PcbFootprintPolygon>,
@@ -20,6 +21,13 @@ pub(super) struct PcbFootprint {
     entry_direction: Option<PcbEntryDirection>,
     entry_clearance: Option<PcbEntryClearance>,
     entry_aperture: Option<PcbEntryAperture>,
+}
+
+#[derive(Debug, Clone)]
+struct PcbFootprintProperty {
+    name: String,
+    value: String,
+    source: &'static str,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +109,8 @@ struct PcbEntryAperture {
 #[derive(Debug, Serialize)]
 struct FootprintYaml {
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    properties: Vec<FootprintPropertyYaml>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     segments: Vec<FootprintSegmentYaml>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     rectangles: Vec<FootprintRectangleYaml>,
@@ -118,6 +128,13 @@ struct FootprintYaml {
     entry_clearance: Option<EntryClearanceYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     entry_aperture: Option<EntryApertureYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintPropertyYaml {
+    name: String,
+    value: String,
+    source: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -219,6 +236,7 @@ pub(super) fn parse_footprints(
             .with_context(|| "KiCad PCB footprint is missing Reference property or fp_text.")?;
         let footprint_at = footprint_at(footprint, &reference)?;
         let mut evidence = PcbFootprint {
+            properties: parse_footprint_properties(footprint, &reference, path)?,
             entry_direction: parse_entry_direction(footprint, &reference, path)?,
             entry_clearance: parse_entry_clearance(footprint, &reference, path)?,
             entry_aperture: parse_entry_aperture(footprint, &reference, path)?,
@@ -314,7 +332,8 @@ pub(super) fn parse_footprints(
         }
         let pin_1 = parse_pin_1_marker(footprint, footprint_at, &reference, path)?;
         evidence.semantics = footprint_semantics(&evidence, pin_1);
-        if footprint_graphic_count(&evidence) > 0
+        if !evidence.properties.is_empty()
+            || footprint_graphic_count(&evidence) > 0
             || evidence.semantics.is_some()
             || evidence.entry_direction.is_some()
             || evidence.entry_clearance.is_some()
@@ -348,6 +367,15 @@ pub(super) fn footprint_has_entry_clearance(footprint: &PcbFootprint) -> bool {
 
 pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
     serde_yaml_ng::to_value(FootprintYaml {
+        properties: footprint
+            .properties
+            .iter()
+            .map(|property| FootprintPropertyYaml {
+                name: property.name.clone(),
+                value: property.value.clone(),
+                source: property.source,
+            })
+            .collect(),
         segments: footprint
             .segments
             .iter()
@@ -756,6 +784,52 @@ fn parse_entry_aperture(
         }
     }
     Ok(saw_aperture_property.then_some(aperture))
+}
+
+fn parse_footprint_properties(
+    footprint: &[Sexp],
+    reference: &str,
+    path: &Path,
+) -> Result<Vec<PcbFootprintProperty>> {
+    let mut properties = Vec::new();
+    if let Some(identifier) = string_at(footprint, 1)
+        .map(str::trim)
+        .filter(|identifier| !identifier.is_empty())
+    {
+        properties.push(PcbFootprintProperty {
+            name: "Footprint".to_string(),
+            value: identifier.to_string(),
+            source: "kicad_footprint_identifier",
+        });
+    }
+    for property in list_children(footprint, "property") {
+        let name = string_at(property, 1)
+            .with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} property in {} is missing a name.",
+                    path.display()
+                )
+            })?
+            .trim();
+        if name.is_empty() {
+            bail!(
+                "KiCad PCB footprint {reference} property in {} has an empty name.",
+                path.display()
+            );
+        }
+        let value = string_at(property, 2).with_context(|| {
+            format!(
+                "KiCad PCB footprint {reference} property {name} in {} is missing a value.",
+                path.display()
+            )
+        })?;
+        properties.push(PcbFootprintProperty {
+            name: name.to_string(),
+            value: value.to_string(),
+            source: "kicad_footprint_property",
+        });
+    }
+    Ok(properties)
 }
 
 #[derive(Clone, Copy)]

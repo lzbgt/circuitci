@@ -448,6 +448,24 @@
               "additionalProperties": {
                 "type": "object",
                 "properties": {
+                  "properties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "value", "source"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "value": { "type": "string" },
+                        "source": {
+                          "enum": [
+                            "kicad_footprint_identifier",
+                            "kicad_footprint_property"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "segments": {
                     "type": "array",
                     "items": {
