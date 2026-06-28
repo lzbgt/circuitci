@@ -199,6 +199,8 @@ Current analog support:
   idle-state observations, ESP32-S3-WROOM-style module supply, EN, boot-strap,
   and USB D-/D+ line-state observations, LicheeRV-Nano-W-style 5 V module,
   UART0, motion-enable, and fault-IRQ line-state observations,
+  AT32F435-style motion-core VDD, UART, CAN, RS-485, and control-line
+  observations,
   TXS0108E-style A-to-B mixed-voltage level-shifter observations,
   NL27WZ17-style dual non-inverting Schmitt-buffer input/output line-state
   observations,
@@ -231,7 +233,7 @@ Current analog support:
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB,
-  LicheeRV-Nano-W module,
+  LicheeRV-Nano-W module, AT32F435 motion core,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
   ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
@@ -268,6 +270,13 @@ Current analog support:
   rails, firmware behavior, USB/MIPI/high-speed interfaces, RF/Wi-Fi, exact
   header-numbering sign-off, thermal behavior, and EMC behavior explicitly out
   of scope.
+- The Artery AT32F435 motion-core vendor component pack now has a source-backed
+  generated SPICE observation face for preliminary 3.3 V VDD, LicheeRV UART,
+  motion-enable/fault, CAN, RS-485, and servo PWM enable line-state checks. Its
+  direct-open GUI fixture keeps firmware execution, reset/clock timing,
+  CAN/RS-485 protocol timing, ADC and motor-control behavior, exact package pin
+  assignment, layout, thermal behavior, and EMC behavior explicitly out of
+  scope.
 - The Silicon Labs CP2102N vendor component pack now has a datasheet-backed
   generated SPICE observation face for VREGIN-to-VDD regulator and UART
   output-state checks. Its VREGIN/VDD/VIO ranges, regulator output-current

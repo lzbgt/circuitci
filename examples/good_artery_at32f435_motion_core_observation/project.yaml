@@ -1,0 +1,399 @@
+project:
+  name: good_artery_at32f435_motion_core_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/artery/mcus
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      VLRVRX: Simulation_SPICE:VDC
+      VMOTION: Simulation_SPICE:VDC
+      VCANRX: Simulation_SPICE:VDC
+      VRS485RX: Simulation_SPICE:VDC
+      UMCU: MCU:AT32F435
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VLRVRX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VMOTION: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCANRX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VRS485RX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UMCU: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 112.0 }
+      component:VLRVRX: { x: 80.0, y: 224.0 }
+      component:VMOTION: { x: 80.0, y: 336.0 }
+      component:VCANRX: { x: 80.0, y: 448.0 }
+      component:VRS485RX: { x: 80.0, y: 560.0 }
+      component:UMCU: { x: 424.0, y: 336.0 }
+      net:vdd_3v3: { x: 240.0, y: 96.0 }
+      net:lrv_uart_rx: { x: 240.0, y: 224.0 }
+      net:lrv_uart_tx: { x: 616.0, y: 184.0 }
+      net:lrv_motion_en: { x: 240.0, y: 336.0 }
+      net:motion_fault_irq: { x: 616.0, y: 256.0 }
+      net:can_tx: { x: 616.0, y: 336.0 }
+      net:can_rx: { x: 240.0, y: 448.0 }
+      net:rs485_tx: { x: 616.0, y: 408.0 }
+      net:rs485_rx: { x: 240.0, y: 560.0 }
+      net:rs485_de: { x: 616.0, y: 488.0 }
+      net:servo_pwm_oe: { x: 616.0, y: 560.0 }
+      net:gnd: { x: 336.0, y: 704.0 }
+    wire_routes:
+      VDD.P->vdd_3v3:
+        points:
+          - { x: 176.0, y: 96.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 112.0, y: 704.0 }
+      VLRVRX.P->lrv_uart_rx:
+        points:
+          - { x: 176.0, y: 224.0 }
+      VLRVRX.N->gnd:
+        points:
+          - { x: 144.0, y: 704.0 }
+      VMOTION.P->lrv_motion_en:
+        points:
+          - { x: 176.0, y: 336.0 }
+      VMOTION.N->gnd:
+        points:
+          - { x: 176.0, y: 704.0 }
+      VCANRX.P->can_rx:
+        points:
+          - { x: 176.0, y: 448.0 }
+      VCANRX.N->gnd:
+        points:
+          - { x: 208.0, y: 704.0 }
+      VRS485RX.P->rs485_rx:
+        points:
+          - { x: 176.0, y: 560.0 }
+      VRS485RX.N->gnd:
+        points:
+          - { x: 240.0, y: 704.0 }
+      UMCU.VDD->vdd_3v3:
+        points:
+          - { x: 344.0, y: 96.0 }
+      UMCU.GND->gnd:
+        points:
+          - { x: 424.0, y: 704.0 }
+      UMCU.LRV_UART_RX->lrv_uart_rx:
+        points:
+          - { x: 344.0, y: 224.0 }
+      UMCU.LRV_UART_TX->lrv_uart_tx:
+        points:
+          - { x: 552.0, y: 184.0 }
+      UMCU.LRV_MOTION_EN->lrv_motion_en:
+        points:
+          - { x: 344.0, y: 336.0 }
+      UMCU.MOTION_FAULT_IRQ->motion_fault_irq:
+        points:
+          - { x: 552.0, y: 256.0 }
+      UMCU.CAN_TX->can_tx:
+        points:
+          - { x: 552.0, y: 336.0 }
+      UMCU.CAN_RX->can_rx:
+        points:
+          - { x: 344.0, y: 448.0 }
+      UMCU.RS485_TX->rs485_tx:
+        points:
+          - { x: 552.0, y: 408.0 }
+      UMCU.RS485_RX->rs485_rx:
+        points:
+          - { x: 344.0, y: 560.0 }
+      UMCU.RS485_DE->rs485_de:
+        points:
+          - { x: 552.0, y: 488.0 }
+      UMCU.SERVO_PWM_OE->servo_pwm_oe:
+        points:
+          - { x: 552.0, y: 560.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: MOTION_CORE_3V3_SOURCE
+      pins:
+        P: vdd_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VLRVRX:
+      model: generic.analog.dc_voltage_source
+      part_number: LRV_UART_RX_HIGH_SOURCE
+      pins:
+        P: lrv_uart_rx
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VMOTION:
+      model: generic.analog.dc_voltage_source
+      part_number: LRV_MOTION_EN_HIGH_SOURCE
+      pins:
+        P: lrv_motion_en
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VCANRX:
+      model: generic.analog.dc_voltage_source
+      part_number: CAN_RX_RECESSIVE_HIGH_SOURCE
+      pins:
+        P: can_rx
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VRS485RX:
+      model: generic.analog.dc_voltage_source
+      part_number: RS485_RX_IDLE_HIGH_SOURCE
+      pins:
+        P: rs485_rx
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UMCU:
+      model: vendor.artery.at32f435_motion_core
+      part_number: AT32F435
+      parameters:
+        observation_lrv_uart_rx_state: 1.0
+        observation_lrv_uart_tx_state: 1.0
+        observation_lrv_motion_en_state: 1.0
+        observation_motion_fault_irq_state: 0.0
+        observation_can_tx_state: 1.0
+        observation_can_rx_state: 1.0
+        observation_rs485_tx_state: 1.0
+        observation_rs485_rx_state: 1.0
+        observation_rs485_de_state: 0.0
+        observation_servo_pwm_oe_state: 1.0
+      power_domains:
+        VDD: vdd_3v3
+      pins:
+        VDD: vdd_3v3
+        GND: gnd
+        LRV_UART_RX: lrv_uart_rx
+        LRV_UART_TX: lrv_uart_tx
+        LRV_MOTION_EN: lrv_motion_en
+        MOTION_FAULT_IRQ: motion_fault_irq
+        CAN_TX: can_tx
+        CAN_RX: can_rx
+        RS485_TX: rs485_tx
+        RS485_RX: rs485_rx
+        RS485_DE: rs485_de
+        SERVO_PWM_OE: servo_pwm_oe
+  nets:
+    vdd_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.2
+    lrv_uart_rx:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    lrv_uart_tx:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    lrv_motion_en:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    motion_fault_irq:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    can_tx:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    can_rx:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    rs485_tx:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    rs485_rx:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    rs485_de:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    servo_pwm_oe:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: at32f435_motion_core_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VLRVRX
+          - VMOTION
+          - VCANRX
+          - VRS485RX
+          - UMCU
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: f043e9a6d146494f2098fb48cd08eea307894ed912a9e489818bb99a8b70e759
+      node_bindings:
+        - { node: vdd, net: vdd_3v3 }
+        - { node: lrv_uart_rx, net: lrv_uart_rx }
+        - { node: lrv_uart_tx, net: lrv_uart_tx }
+        - { node: lrv_motion_en, net: lrv_motion_en }
+        - { node: motion_fault_irq, net: motion_fault_irq }
+        - { node: can_tx, net: can_tx }
+        - { node: can_rx, net: can_rx }
+        - { node: rs485_tx, net: rs485_tx }
+        - { node: rs485_rx, net: rs485_rx }
+        - { node: rs485_de, net: rs485_de }
+        - { node: servo_pwm_oe, net: servo_pwm_oe }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: lrv_uart_rx, endpoint: { component: VLRVRX, pin: P } }
+        - { node: "0", endpoint: { component: VLRVRX, pin: N } }
+        - { node: lrv_motion_en, endpoint: { component: VMOTION, pin: P } }
+        - { node: "0", endpoint: { component: VMOTION, pin: N } }
+        - { node: can_rx, endpoint: { component: VCANRX, pin: P } }
+        - { node: "0", endpoint: { component: VCANRX, pin: N } }
+        - { node: rs485_rx, endpoint: { component: VRS485RX, pin: P } }
+        - { node: "0", endpoint: { component: VRS485RX, pin: N } }
+        - { node: vdd, endpoint: { component: UMCU, pin: VDD } }
+        - { node: "0", endpoint: { component: UMCU, pin: GND } }
+        - { node: lrv_uart_rx, endpoint: { component: UMCU, pin: LRV_UART_RX } }
+        - { node: lrv_uart_tx, endpoint: { component: UMCU, pin: LRV_UART_TX } }
+        - { node: lrv_motion_en, endpoint: { component: UMCU, pin: LRV_MOTION_EN } }
+        - { node: motion_fault_irq, endpoint: { component: UMCU, pin: MOTION_FAULT_IRQ } }
+        - { node: can_tx, endpoint: { component: UMCU, pin: CAN_TX } }
+        - { node: can_rx, endpoint: { component: UMCU, pin: CAN_RX } }
+        - { node: rs485_tx, endpoint: { component: UMCU, pin: RS485_TX } }
+        - { node: rs485_rx, endpoint: { component: UMCU, pin: RS485_RX } }
+        - { node: rs485_de, endpoint: { component: UMCU, pin: RS485_DE } }
+        - { node: servo_pwm_oe, endpoint: { component: UMCU, pin: SERVO_PWM_OE } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.2
+      stimuli:
+        - name: motion_core_ready_fault_clear
+          description: 3.3 V AT32F435 motion core with Linux UART and field-bus control lines in idle/ready states.
+      probes:
+        - name: v_vdd
+          expression: V(vdd)
+        - name: v_lrv_uart_rx
+          expression: V(lrv_uart_rx)
+        - name: v_lrv_uart_tx
+          expression: V(lrv_uart_tx)
+        - name: v_lrv_motion_en
+          expression: V(lrv_motion_en)
+        - name: v_motion_fault_irq
+          expression: V(motion_fault_irq)
+        - name: v_can_tx
+          expression: V(can_tx)
+        - name: v_can_rx
+          expression: V(can_rx)
+        - name: v_rs485_tx
+          expression: V(rs485_tx)
+        - name: v_rs485_rx
+          expression: V(rs485_rx)
+        - name: v_rs485_de
+          expression: V(rs485_de)
+        - name: v_servo_pwm_oe
+          expression: V(servo_pwm_oe)
+      assertions:
+        - name: vdd_above_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.6
+        - name: vdd_below_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 3.6
+        - name: lrv_uart_rx_high
+          probe: v_lrv_uart_rx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0
+        - name: lrv_uart_tx_idle_high
+          probe: v_lrv_uart_tx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: lrv_motion_en_high
+          probe: v_lrv_motion_en
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0
+        - name: motion_fault_irq_low
+          probe: v_motion_fault_irq
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.8
+        - name: can_tx_idle_high
+          probe: v_can_tx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: can_rx_recessive_high
+          probe: v_can_rx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0
+        - name: rs485_tx_idle_high
+          probe: v_rs485_tx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: rs485_rx_idle_high
+          probe: v_rs485_rx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0
+        - name: rs485_de_disabled_low
+          probe: v_rs485_de
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.8
+        - name: servo_pwm_oe_high
+          probe: v_servo_pwm_oe
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3

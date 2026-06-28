@@ -575,27 +575,134 @@ pub(super) fn add_mcu_observation_assertions(
         stop_time_us,
         assertions,
     );
-    let logic_high_v = voltage_for_component_pin(project, component, "3V3").unwrap_or(3.3);
-    for (pin, parameter, high_suffix, low_suffix) in [
-        ("EN", "observation_en_state", "released_high", "held_low"),
-        ("IO0", "observation_io0_state", "boot_high", "boot_low"),
-        ("IO2", "observation_io2_state", "strap_high", "strap_low"),
-        ("IO46", "observation_io46_state", "strap_high", "strap_low"),
+    add_port_voltage_window_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        "VDD",
+        stop_time_us,
+        assertions,
+    );
+    let logic_high_v = voltage_for_component_pin(project, component, "3V3")
+        .or_else(|| voltage_for_component_pin(project, component, "VDD"))
+        .unwrap_or(3.3);
+    for (pin, parameter, default_state, high_suffix, low_suffix) in [
+        (
+            "EN",
+            "observation_en_state",
+            1.0,
+            "released_high",
+            "held_low",
+        ),
+        ("IO0", "observation_io0_state", 1.0, "boot_high", "boot_low"),
+        (
+            "IO2",
+            "observation_io2_state",
+            1.0,
+            "strap_high",
+            "strap_low",
+        ),
+        (
+            "IO46",
+            "observation_io46_state",
+            1.0,
+            "strap_high",
+            "strap_low",
+        ),
         (
             "IO19",
             "observation_usb_dm_state",
+            1.0,
             "usb_dm_high",
             "usb_dm_low",
         ),
         (
             "IO20",
             "observation_usb_dp_state",
+            1.0,
             "usb_dp_high",
             "usb_dp_low",
         ),
-        ("TXD0", "observation_txd0_state", "idle_high", "idle_low"),
+        (
+            "TXD0",
+            "observation_txd0_state",
+            1.0,
+            "idle_high",
+            "idle_low",
+        ),
+        (
+            "LRV_UART_RX",
+            "observation_lrv_uart_rx_state",
+            1.0,
+            "input_high",
+            "input_low",
+        ),
+        (
+            "LRV_UART_TX",
+            "observation_lrv_uart_tx_state",
+            1.0,
+            "idle_high",
+            "idle_low",
+        ),
+        (
+            "LRV_MOTION_EN",
+            "observation_lrv_motion_en_state",
+            1.0,
+            "input_high",
+            "input_low",
+        ),
+        (
+            "MOTION_FAULT_IRQ",
+            "observation_motion_fault_irq_state",
+            0.0,
+            "output_high",
+            "output_low",
+        ),
+        (
+            "CAN_TX",
+            "observation_can_tx_state",
+            1.0,
+            "idle_high",
+            "idle_low",
+        ),
+        (
+            "CAN_RX",
+            "observation_can_rx_state",
+            1.0,
+            "input_high",
+            "input_low",
+        ),
+        (
+            "RS485_TX",
+            "observation_rs485_tx_state",
+            1.0,
+            "idle_high",
+            "idle_low",
+        ),
+        (
+            "RS485_RX",
+            "observation_rs485_rx_state",
+            1.0,
+            "input_high",
+            "input_low",
+        ),
+        (
+            "RS485_DE",
+            "observation_rs485_de_state",
+            0.0,
+            "driver_enabled_high",
+            "driver_disabled_low",
+        ),
+        (
+            "SERVO_PWM_OE",
+            "observation_servo_pwm_oe_state",
+            1.0,
+            "output_high",
+            "output_low",
+        ),
     ] {
-        let state = component_parameter_f64(component, parameter).unwrap_or(1.0);
+        let state = component_parameter_f64(component, parameter).unwrap_or(default_state);
         let suffix = if state >= 0.5 {
             high_suffix
         } else {

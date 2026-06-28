@@ -101,6 +101,25 @@ const LICHEERV_NANO_W_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const LICHEERV_NANO_W_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V LicheeRV-Nano-W module with UART0 TX/RX high, motion enable high, and fault IRQ low";
+const AT32F435_MOTION_CORE_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_artery_at32f435_motion_core_observation/project.yaml";
+const AT32F435_MOTION_CORE_SCOPE_EXAMPLE_NAME: &str =
+    "good_artery_at32f435_motion_core_observation";
+const AT32F435_MOTION_CORE_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd",
+    "v_lrv_uart_rx",
+    "v_lrv_uart_tx",
+    "v_lrv_motion_en",
+    "v_motion_fault_irq",
+    "v_can_tx",
+    "v_can_rx",
+    "v_rs485_tx",
+    "v_rs485_rx",
+    "v_rs485_de",
+    "v_servo_pwm_oe",
+];
+const AT32F435_MOTION_CORE_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V AT32F435 motion core with Linux UART and field-bus control lines in idle/ready states";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_txs0108e_level_shifter_observation/project.yaml";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME: &str = "good_ti_txs0108e_level_shifter_observation";
@@ -482,6 +501,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: LICHEERV_NANO_W_SCOPE_EXPECTED_TRACES,
         expected_frequency: LICHEERV_NANO_W_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("USOM"),
+    },
+    GuiProjectExample {
+        id: "at32f435_motion_core_scope",
+        category: "MCU",
+        open_label: "Open AT32F435 Motion-Core Example",
+        run_label: "Open AT32F435 + Run Scopes",
+        workflow_title: "AT32F435 Motion-Core Workflow",
+        summary: "Source-backed AT32F435 motion-core rail, UART, CAN, RS-485, and control-line observation.",
+        project_path: AT32F435_MOTION_CORE_SCOPE_EXAMPLE_PROJECT,
+        project_name: AT32F435_MOTION_CORE_SCOPE_EXAMPLE_NAME,
+        expected_traces: AT32F435_MOTION_CORE_SCOPE_EXPECTED_TRACES,
+        expected_frequency: AT32F435_MOTION_CORE_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UMCU"),
     },
     GuiProjectExample {
         id: "txs0108e_level_scope",

@@ -1,6 +1,36 @@
 component_id: vendor.artery.at32f435_motion_core
 version: 0.1.0
 category: mcu
+simulation:
+  spice:
+    model_name: CIRCUITCI_AT32F435_MOTION_CORE_MCU
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, GND, LRV_UART_RX, LRV_UART_TX, LRV_MOTION_EN, MOTION_FAULT_IRQ, CAN_TX, CAN_RX, RS485_TX, RS485_RX, RS485_DE, SERVO_PWM_OE]
+    instance_parameters:
+      - spice_name: LRV_UART_TX_STATE
+        component_parameter: observation_lrv_uart_tx_state
+        default_value: 1.0
+      - spice_name: MOTION_FAULT_IRQ_STATE
+        component_parameter: observation_motion_fault_irq_state
+        default_value: 0.0
+      - spice_name: CAN_TX_STATE
+        component_parameter: observation_can_tx_state
+        default_value: 1.0
+      - spice_name: RS485_TX_STATE
+        component_parameter: observation_rs485_tx_state
+        default_value: 1.0
+      - spice_name: RS485_DE_STATE
+        component_parameter: observation_rs485_de_state
+        default_value: 0.0
+      - spice_name: SERVO_PWM_OE_STATE
+        component_parameter: observation_servo_pwm_oe_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VDD rail, LicheeRV UART link, motion-enable/fault handshake, CAN TX/RX, RS-485 TX/RX/DE, and servo PWM OE line-state checks.
+      - Uses source-backed AT32F435 MCU class, saved Artery product-page provenance, 2.6 V to 3.6 V project supply range, and board-facing GPIO threshold metadata while emitting explicit static output states.
+      - Firmware execution, reset/clock timing, CAN or RS-485 protocol timing, ADC/motor-control behavior, exact package pin assignment, thermal behavior, and final signal-integrity sign-off are out of scope.
 ports:
   VDD:
     kind: electrical_power

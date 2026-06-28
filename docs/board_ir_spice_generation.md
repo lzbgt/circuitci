@@ -235,6 +235,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   and fault-IRQ input observations. The model-state inputs are explicit Board
   IR component parameters, not inferred Linux boot, firmware, USB/MIPI, RF,
   high-speed, or thermal behavior.
+- `examples/good_artery_at32f435_motion_core_observation` proves the Artery
+  AT32F435 motion-core MCU model can use a reduced generated-SPICE face for
+  preliminary VDD, LicheeRV UART, motion-enable/fault, CAN, RS-485, and servo
+  PWM enable line-state observations. The model-state inputs are explicit
+  Board IR component parameters, not inferred firmware, protocol timing, ADC,
+  motor-control, package, layout, or thermal behavior.
 - `examples/good_ti_txs0108e_level_shifter_observation` proves the TI TXS0108E
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and

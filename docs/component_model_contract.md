@@ -839,6 +839,21 @@ motion-enable, and fault-IRQ observations, but not Linux boot power transients,
 internal SoC rails, firmware behavior, USB/MIPI/high-speed interfaces,
 RF/Wi-Fi behavior, thermal behavior, exact header-numbering sign-off, or final
 signal-integrity sign-off.
+`vendor.artery.at32f435_motion_core` follows the same pattern for MCU
+board-boundary observation: its Artery source-backed MCU class, project VDD
+range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,
+and project-facing pin roles remain source-backed, while its generated-SPICE
+face uses reduced high-impedance input pins and static output drivers. Its
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_lrv_uart_tx_state`,
+`observation_motion_fault_irq_state`, `observation_can_tx_state`,
+`observation_rs485_tx_state`, `observation_rs485_de_state`, and
+`observation_servo_pwm_oe_state` into explicit SPICE output-state parameters.
+That model can exercise VDD, LicheeRV UART, motion-enable/fault, CAN, RS-485,
+and servo PWM enable observations, but not firmware execution, reset/clock
+timing, CAN/RS-485 protocol timing, ADC behavior, motor-control loops, exact
+package pin assignment, layout, thermal behavior, EMC, or final
+signal-integrity sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain
