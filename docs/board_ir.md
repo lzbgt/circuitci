@@ -975,6 +975,23 @@ board:
             max_feed_route_length_mm: 10.0
             max_matching_component_distance_mm: 2.0
             source: antenna_layout_guide_rev_a
+        matching_networks:
+          - name: chip_antenna_pi_match
+            antenna_net: ANT
+            topology: pi
+            reference_net: GND
+            source: rf_matching_review_rev_a
+            elements:
+              - component: L1
+                role: series
+                input_net: RFOUT
+                output_net: ANT
+              - component: C2
+                role: shunt
+                signal_net: RFOUT
+              - component: C1
+                role: shunt
+                signal_net: ANT
         measurements:
           - name: chip_antenna_s11_2440
             antenna_net: ANT
@@ -991,6 +1008,16 @@ and reviewed limits for imported route length and placement proximity. The
 matching components must still have explicit component-pin and layout-pad
 evidence on the antenna net; this field does not infer RF topology from part
 values or reference designators.
+
+`board.layout.constraints.rf_antenna.matching_networks[]` stores reviewed RF
+matching topology evidence. Each rule names the antenna net, declared topology
+(`series`, `l`, `pi`, `t`, or `custom`), source, optional reference net, and
+reviewed series/shunt elements. Series elements require explicit `input_net`
+and `output_net`; shunt elements require explicit `signal_net` and either an
+element or rule `reference_net`. Validators require matching component-pin and
+layout-pad evidence for every reviewed element net and only compare the declared
+topology to those explicit roles; they do not infer topology from designators,
+part values, or net names.
 
 `board.layout.constraints.rf_antenna.measurements[]` stores reviewed RF
 measurement evidence such as VNA S11/return-loss points. Each row names the

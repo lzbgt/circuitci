@@ -43,9 +43,10 @@ suggestions.
 - `src/scenario_suggestions/manufacturing.rs` owns fabrication and assembly
   suggestion templates, including process-preset suggestions, manufacturing
   metadata-gated templates, assembly/footprint evidence alignment, pin-1 marker
-  templates, RF antenna keepout/feed-path/measured-performance templates from
-  reviewed layout/measurement constraints and imported copper, route, pad, and
-  placement evidence, and manufacturing suggestion orchestration.
+  templates, RF antenna keepout/feed-path/matching-topology/measured-performance
+  templates from reviewed layout/measurement constraints and imported copper,
+  route, pad, placement, and component pin evidence, and manufacturing
+  suggestion orchestration.
 - `src/scenario_suggestions/manufacturing/thermal.rs` owns reviewed
   thermal-copper area, via/stackup, via-plating/plating-thickness/barrel
   cross-section, derating-environment,

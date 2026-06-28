@@ -580,6 +580,8 @@ pub struct RfAntennaLayoutRules {
     #[serde(default)]
     pub feed_paths: Vec<RfAntennaFeedPathRule>,
     #[serde(default)]
+    pub matching_networks: Vec<RfAntennaMatchingNetworkRule>,
+    #[serde(default)]
     pub measurements: Vec<RfAntennaMeasurement>,
 }
 
@@ -618,6 +620,32 @@ pub struct RfAntennaMeasurement {
     pub measurement_method: Option<String>,
     #[serde(default)]
     pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RfAntennaMatchingNetworkRule {
+    pub name: String,
+    pub antenna_net: String,
+    pub topology: String,
+    pub source: String,
+    #[serde(default)]
+    pub reference_net: Option<String>,
+    #[serde(default)]
+    pub elements: Vec<RfAntennaMatchingElement>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RfAntennaMatchingElement {
+    pub component: String,
+    pub role: String,
+    #[serde(default)]
+    pub input_net: Option<String>,
+    #[serde(default)]
+    pub output_net: Option<String>,
+    #[serde(default)]
+    pub signal_net: Option<String>,
+    #[serde(default)]
+    pub reference_net: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

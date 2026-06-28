@@ -1507,6 +1507,50 @@
                         "additionalProperties": false
                       }
                     },
+                    "matching_networks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "antenna_net",
+                          "topology",
+                          "source",
+                          "elements"
+                        ],
+                        "properties": {
+                          "name": { "type": "string", "minLength": 1 },
+                          "antenna_net": { "type": "string", "minLength": 1 },
+                          "topology": {
+                            "type": "string",
+                            "enum": ["series", "l", "pi", "t", "custom"]
+                          },
+                          "source": { "type": "string", "minLength": 1 },
+                          "reference_net": { "type": "string", "minLength": 1 },
+                          "elements": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                              "type": "object",
+                              "required": ["component", "role"],
+                              "properties": {
+                                "component": { "type": "string", "minLength": 1 },
+                                "role": {
+                                  "type": "string",
+                                  "enum": ["series", "shunt"]
+                                },
+                                "input_net": { "type": "string", "minLength": 1 },
+                                "output_net": { "type": "string", "minLength": 1 },
+                                "signal_net": { "type": "string", "minLength": 1 },
+                                "reference_net": { "type": "string", "minLength": 1 }
+                              },
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
                     "measurements": {
                       "type": "array",
                       "items": {

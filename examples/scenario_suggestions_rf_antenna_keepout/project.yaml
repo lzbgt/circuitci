@@ -15,7 +15,19 @@ board:
       pins:
         A: ANT
         B: GND
+    C2:
+      model: generic.analog.capacitor
+      pins:
+        A: RFOUT
+        B: GND
+    L1:
+      model: generic.analog.inductor
+      pins:
+        A: RFOUT
+        B: ANT
   nets:
+    RFOUT:
+      kind: digital_or_analog
     ANT:
       kind: digital_or_analog
     GND:
@@ -39,10 +51,27 @@ board:
             antenna_net: ANT
             feed_component: ANT1
             feed_pin: A
-            matching_components: [C1]
+            matching_components: [C1, L1]
             max_feed_route_length_mm: 10.0
             max_matching_component_distance_mm: 2.0
             source: antenna_layout_guide_rev_a
+        matching_networks:
+          - name: chip_antenna_pi_match
+            antenna_net: ANT
+            topology: pi
+            reference_net: GND
+            source: rf_matching_review_rev_a
+            elements:
+              - component: L1
+                role: series
+                input_net: RFOUT
+                output_net: ANT
+              - component: C2
+                role: shunt
+                signal_net: RFOUT
+              - component: C1
+                role: shunt
+                signal_net: ANT
         measurements:
           - name: chip_antenna_s11_2440
             antenna_net: ANT
@@ -53,6 +82,8 @@ board:
     placements:
       ANT1: { x_mm: 0.0, y_mm: 0.0, side: top, rotation_deg: 0.0 }
       C1: { x_mm: 1.2, y_mm: 0.0, side: top, rotation_deg: 0.0 }
+      C2: { x_mm: 2.0, y_mm: 0.0, side: top, rotation_deg: 0.0 }
+      L1: { x_mm: 1.6, y_mm: 0.0, side: top, rotation_deg: 0.0 }
     pads:
       ANT1:
         A:
@@ -80,6 +111,36 @@ board:
         B:
           at: { x_mm: 1.2, y_mm: 0.8 }
           net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+      C2:
+        A:
+          at: { x_mm: 2.0, y_mm: 0.0 }
+          net: RFOUT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+        B:
+          at: { x_mm: 2.0, y_mm: 0.8 }
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+      L1:
+        A:
+          at: { x_mm: 1.6, y_mm: 0.0 }
+          net: RFOUT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+        B:
+          at: { x_mm: 1.6, y_mm: 0.4 }
+          net: ANT
           layers: [F.Cu]
           kind: smd
           shape: rect

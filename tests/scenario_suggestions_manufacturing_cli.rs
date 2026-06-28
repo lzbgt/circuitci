@@ -293,6 +293,32 @@ fn suggest_scenarios_derives_rf_antenna_keepout_template() {
             .contains("imported route, pad, placement")
     );
 
+    let matching = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "rf_antenna_matching_topology_chip_antenna_pi_match")
+        .expect("RF antenna matching topology suggestion");
+    assert_eq!(
+        matching["kind"],
+        "manufacturing_rf_antenna_matching_topology_chip_antenna_pi_match"
+    );
+    assert_eq!(matching["runnable"], true);
+    assert_eq!(matching["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        matching["scenario"]["checks"][0],
+        "RF_ANTENNA_MATCHING_TOPOLOGY_VALID"
+    );
+    assert_eq!(
+        matching["scenario"]["parameters"]["matching_networks"][0]["name"],
+        "chip_antenna_pi_match"
+    );
+    assert!(matching.get("required_inputs").is_none());
+    assert!(
+        matching["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed topology metadata")
+    );
+
     let measurement = suggested
         .iter()
         .find(|suggestion| {

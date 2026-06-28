@@ -292,6 +292,13 @@ without explicit imported mechanical evidence.
   replace RF simulation and VNA/S-parameter measurement. Passing this rule only
   means the imported layout evidence satisfies the reviewed static feed-path
   length and proximity limits.
+- `RF_ANTENNA_MATCHING_TOPOLOGY_VALID` compares reviewed RF matching-network
+  topology metadata against explicit component pin and layout pad evidence for
+  declared series/shunt elements. It does not verify L/C values, solve
+  impedance, model parasitics, infer topology from designators or net names,
+  prove return loss, or replace RF simulation and S-parameter measurement.
+  Passing this rule only means the source-backed topology declaration is
+  consistent with the explicit reviewed role and pin/pad evidence.
 - `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` compares reviewed RF measurement rows
   against explicit return-loss and optional frequency-band limits. It does not
   interpolate S-parameter sweeps, solve impedance, infer antenna tuning quality

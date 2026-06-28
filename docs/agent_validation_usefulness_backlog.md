@@ -82,8 +82,8 @@ Useful next slices:
   manufacturing metadata CSV import manifest, including reviewed scalar,
   controlled-impedance target, stackup-layer, thermal-copper policy, and
   measured-temperature, package thermal, operating-environment, and
-  thermal-limit evidence rows plus RF antenna keepout/feed-path/measurement
-  constraint rows.
+  thermal-limit evidence rows plus RF antenna keepout/feed-path/matching-network
+  / measurement constraint rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.

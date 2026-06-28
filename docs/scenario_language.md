@@ -144,6 +144,7 @@ Canonical executable check IDs:
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
+- `RF_ANTENNA_MATCHING_TOPOLOGY_VALID`
 - `RF_ANTENNA_MEASURED_PERFORMANCE_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
@@ -1300,6 +1301,51 @@ This is a static layout-evidence gate for reviewed antenna-feed rules. It does
 not solve impedance, verify L/C values, prove pi/t topology, model
 discontinuities, or replace RF simulation, VNA/S-parameter measurement, or
 antenna tuning.
+
+RF antenna matching-topology validation uses
+`RF_ANTENNA_MATCHING_TOPOLOGY_VALID` when Board IR contains reviewed matching
+network rules under `board.layout.constraints.rf_antenna.matching_networks[]`
+and imported component pin plus layout pad evidence for every reviewed matching
+element.
+
+```yaml
+scenarios:
+  - name: antenna_matching_topology
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_MATCHING_TOPOLOGY_VALID
+    parameters:
+      matching_networks:
+        - name: chip_antenna_pi_match
+```
+
+RF antenna matching-topology algorithm:
+
+1. Require `parameters.matching_networks[]` with explicit matching-network
+   `name` values.
+2. Resolve each name from
+   `board.layout.constraints.rf_antenna.matching_networks[]`.
+3. Require the reviewed rule to name an existing antenna net, non-empty source,
+   supported topology (`series`, `l`, `pi`, `t`, or `custom`), and at least one
+   reviewed element tied to the antenna net.
+4. Require every series element to name a component plus distinct existing
+   `input_net` and `output_net`; require explicit component-pin and finite
+   layout-pad evidence on both nets.
+5. Require every shunt element to name a component plus an existing `signal_net`
+   and distinct existing reference net from the element or rule; require
+   explicit component-pin and finite layout-pad evidence on both nets.
+6. Compare the reviewed role counts to the declared topology: series requires
+   one or more series elements and no shunts; L requires at least one series and
+   one shunt; pi requires at least one series and two shunts; T requires at
+   least two series and one shunt; custom requires at least one reviewed
+   element.
+7. Fail closed when selected rows, nets, components, pins, pads, roles, topology,
+   or source metadata are absent or malformed.
+
+This is a bounded evidence screen over explicit reviewed matching-network
+metadata and imported pin/pad evidence. It does not verify component values,
+solve impedance, prove RF tuning quality, model parasitics or enclosure effects,
+or replace RF simulation and S-parameter measurement.
 
 RF antenna measured-performance validation uses
 `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` when Board IR contains reviewed RF

@@ -1,7 +1,8 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutPoint, NetRoute, RfAntennaFeedPathRule,
-    RfAntennaKeepoutRule, RfAntennaMeasurement, RouteSegment,
+    RfAntennaKeepoutRule, RfAntennaMatchingElement, RfAntennaMatchingNetworkRule,
+    RfAntennaMeasurement, RouteSegment,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -21,6 +22,7 @@ const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARAN
 const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
+const RF_ANTENNA_MATCHING_TOPOLOGY_VALID: &str = "RF_ANTENNA_MATCHING_TOPOLOGY_VALID";
 const RF_ANTENNA_MEASURED_PERFORMANCE_VALID: &str = "RF_ANTENNA_MEASURED_PERFORMANCE_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
@@ -80,6 +82,10 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
 
     suggestions.extend(rf_antenna_keepout_suggestions(bound, &project_name));
     suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
+    suggestions.extend(rf_antenna_matching_topology_suggestions(
+        bound,
+        &project_name,
+    ));
     suggestions.extend(rf_antenna_measured_performance_suggestions(
         bound,
         &project_name,
@@ -1085,6 +1091,204 @@ fn rf_antenna_feed_path_check_declared(bound: &BoundBoard<'_>, feed_path_name: &
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(feed_path_name)
+                    })
+                })
+    })
+}
+
+fn rf_antenna_matching_topology_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for network in &bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .matching_networks
+    {
+        if !rf_antenna_matching_network_has_evidence(bound, network)
+            || rf_antenna_matching_network_check_declared(bound, &network.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "rf_antenna_matching_topology_{}",
+                sanitized_name(&network.name)
+            ),
+            true,
+            &format!(
+                "RF antenna matching network {} has reviewed topology metadata plus imported component pin and layout pad evidence.",
+                network.name
+            ),
+            &format!(
+                "{}_{}_rf_antenna_matching_topology",
+                project_name,
+                sanitized_name(&network.name)
+            ),
+            RF_ANTENNA_MATCHING_TOPOLOGY_VALID,
+            Some(BTreeMap::from([(
+                "matching_networks".to_string(),
+                json!([{ "name": network.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn rf_antenna_matching_network_has_evidence(
+    bound: &BoundBoard<'_>,
+    network: &RfAntennaMatchingNetworkRule,
+) -> bool {
+    !network.name.trim().is_empty()
+        && !network.source.trim().is_empty()
+        && !network.elements.is_empty()
+        && matches!(
+            normalize_rf_token(&network.topology).as_str(),
+            "series" | "l" | "pi" | "t" | "custom"
+        )
+        && bound.project.board.nets.contains_key(&network.antenna_net)
+        && network
+            .reference_net
+            .as_deref()
+            .is_none_or(|net| bound.project.board.nets.contains_key(net))
+        && network
+            .elements
+            .iter()
+            .any(|element| matching_element_touches_net(element, &network.antenna_net))
+        && network
+            .elements
+            .iter()
+            .enumerate()
+            .all(|(index, element)| matching_element_has_evidence(bound, network, element, index))
+}
+
+fn matching_element_has_evidence(
+    bound: &BoundBoard<'_>,
+    network: &RfAntennaMatchingNetworkRule,
+    element: &RfAntennaMatchingElement,
+    _index: usize,
+) -> bool {
+    if element.component.trim().is_empty()
+        || !bound
+            .project
+            .board
+            .components
+            .contains_key(&element.component)
+    {
+        return false;
+    }
+    match normalize_rf_token(&element.role).as_str() {
+        "series" => {
+            let Some(input_net) = matching_element_net(element.input_net.as_deref()) else {
+                return false;
+            };
+            let Some(output_net) = matching_element_net(element.output_net.as_deref()) else {
+                return false;
+            };
+            input_net != output_net
+                && bound.project.board.nets.contains_key(input_net)
+                && bound.project.board.nets.contains_key(output_net)
+                && component_has_pin_on_net(bound, &element.component, input_net)
+                && component_has_pin_on_net(bound, &element.component, output_net)
+                && component_has_layout_pad_on_net(bound, &element.component, input_net)
+                && component_has_layout_pad_on_net(bound, &element.component, output_net)
+        }
+        "shunt" => {
+            let Some(signal_net) = matching_element_net(element.signal_net.as_deref()) else {
+                return false;
+            };
+            let Some(reference_net) = matching_element_net(
+                element
+                    .reference_net
+                    .as_deref()
+                    .or(network.reference_net.as_deref()),
+            ) else {
+                return false;
+            };
+            signal_net != reference_net
+                && bound.project.board.nets.contains_key(signal_net)
+                && bound.project.board.nets.contains_key(reference_net)
+                && component_has_pin_on_net(bound, &element.component, signal_net)
+                && component_has_pin_on_net(bound, &element.component, reference_net)
+                && component_has_layout_pad_on_net(bound, &element.component, signal_net)
+                && component_has_layout_pad_on_net(bound, &element.component, reference_net)
+        }
+        _ => false,
+    }
+}
+
+fn matching_element_net(net: Option<&str>) -> Option<&str> {
+    net.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn matching_element_touches_net(element: &RfAntennaMatchingElement, net: &str) -> bool {
+    [
+        element.input_net.as_deref(),
+        element.output_net.as_deref(),
+        element.signal_net.as_deref(),
+        element.reference_net.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|candidate| candidate == net)
+}
+
+fn normalize_rf_token(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+fn component_has_pin_on_net(bound: &BoundBoard<'_>, component: &str, net: &str) -> bool {
+    bound
+        .project
+        .board
+        .components
+        .get(component)
+        .is_some_and(|spec| spec.pins.values().any(|candidate| candidate == net))
+}
+
+fn component_has_layout_pad_on_net(bound: &BoundBoard<'_>, component: &str, net: &str) -> bool {
+    bound
+        .project
+        .board
+        .layout
+        .pads
+        .get(component)
+        .is_some_and(|pads| {
+            pads.values()
+                .any(|pad| pad.net == net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite())
+        })
+}
+
+fn rf_antenna_matching_network_check_declared(
+    bound: &BoundBoard<'_>,
+    matching_network_name: &str,
+) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == RF_ANTENNA_MATCHING_TOPOLOGY_VALID)
+            && scenario
+                .parameters
+                .get("matching_networks")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|matching_networks| {
+                    matching_networks.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(matching_network_name)
                     })
                 })
     })

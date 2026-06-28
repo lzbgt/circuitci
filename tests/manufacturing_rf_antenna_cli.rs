@@ -130,6 +130,57 @@ fn rf_antenna_feed_path_fails_closed_without_matching_pad_evidence() {
 }
 
 #[test]
+fn rf_antenna_matching_topology_passes_for_reviewed_pi_network() {
+    let (_dir, project_path) = write_rf_matching_project(true, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_matching_topology_fails_when_reviewed_counts_contradict_topology() {
+    let (_dir, project_path) = write_rf_matching_project(false, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "RF_ANTENNA_MATCHING_TOPOLOGY_VALID");
+    assert_eq!(
+        failure["measured"]["matching_network_name"],
+        "chip_antenna_pi_match"
+    );
+    assert_eq!(
+        failure["measured"]["matching_network_source"],
+        "rf_matching_review_rev_a"
+    );
+    assert_eq!(failure["measured"]["antenna_net"], "ANT");
+    assert_eq!(failure["measured"]["topology"], "pi");
+    assert_eq!(failure["measured"]["series_element_count"], 1);
+    assert_eq!(failure["measured"]["shunt_element_count"], 1);
+    assert_eq!(failure["limit"]["required_topology"], "pi");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_matching_topology_fails_closed_without_pad_evidence() {
+    let (_dir, project_path) = write_rf_matching_project(true, false);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("has no finite layout pad on net RFOUT")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn rf_antenna_measured_performance_passes_when_return_loss_meets_limit() {
     let (_dir, project_path) = write_rf_measurement_project(14.0, 2440.0, true);
 
@@ -322,6 +373,137 @@ board:
       rf_measurements:
         - name: chip_antenna_s11_2440
 "#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_rf_matching_project(
+    include_second_shunt: bool,
+    include_c2_pads: bool,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    let second_shunt = if include_second_shunt {
+        r#"              - component: C1
+                role: shunt
+                signal_net: ANT
+"#
+    } else {
+        ""
+    };
+    let c2_pads = if include_c2_pads {
+        r#"      C2:
+        A:
+          at: { x_mm: 2.0, y_mm: 0.0 }
+          net: RFOUT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+        B:
+          at: { x_mm: 2.0, y_mm: 0.8 }
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+"#
+    } else {
+        ""
+    };
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: rf_antenna_matching_fixture
+  version: 1
+libraries:
+  - {generic_library}
+board:
+  components:
+    L1:
+      model: generic.analog.inductor
+      pins:
+        A: RFOUT
+        B: ANT
+    C1:
+      model: generic.analog.capacitor
+      pins:
+        A: ANT
+        B: GND
+    C2:
+      model: generic.analog.capacitor
+      pins:
+        A: RFOUT
+        B: GND
+  nets:
+    RFOUT:
+      kind: digital_or_analog
+    ANT:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+    constraints:
+      rf_antenna:
+        matching_networks:
+          - name: chip_antenna_pi_match
+            antenna_net: ANT
+            topology: pi
+            reference_net: GND
+            source: rf_matching_review_rev_a
+            elements:
+              - component: L1
+                role: series
+                input_net: RFOUT
+                output_net: ANT
+              - component: C2
+                role: shunt
+                signal_net: RFOUT
+{second_shunt}    pads:
+      L1:
+        A:
+          at: {{ x_mm: 1.6, y_mm: 0.0 }}
+          net: RFOUT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 0.6, y_mm: 0.4 }}
+        B:
+          at: {{ x_mm: 1.6, y_mm: 0.4 }}
+          net: ANT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 0.6, y_mm: 0.4 }}
+      C1:
+        A:
+          at: {{ x_mm: 1.2, y_mm: 0.0 }}
+          net: ANT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 0.6, y_mm: 0.4 }}
+        B:
+          at: {{ x_mm: 1.2, y_mm: 0.8 }}
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 0.6, y_mm: 0.4 }}
+{c2_pads}scenarios:
+  - name: rf_antenna_matching_topology
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_MATCHING_TOPOLOGY_VALID
+    parameters:
+      matching_networks:
+        - name: chip_antenna_pi_match
+"#,
+            generic_library = repo.join("libs/generic").display()
         ),
     )
     .unwrap();

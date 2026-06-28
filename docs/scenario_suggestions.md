@@ -451,6 +451,12 @@ The command is conservative:
   placement, and matching-component antenna-net pad evidence, it emits a
   runnable `RF_ANTENNA_FEED_PATH_VALID` template. The suggestion does not infer
   matching topology or RF quality from designators, part values, or net names.
+- When `board.layout.constraints.rf_antenna.matching_networks[]` contains
+  reviewed topology metadata and every reviewed series/shunt element has
+  explicit component pin plus finite layout-pad evidence on its declared nets,
+  it emits a runnable `RF_ANTENNA_MATCHING_TOPOLOGY_VALID` template. The
+  suggestion does not infer topology from designators, values, or net names; a
+  topology count mismatch remains a runnable validation finding.
 - When `board.layout.constraints.rf_antenna.measurements[]` contains reviewed
   antenna-net, frequency, return-loss, and source evidence, it emits a
   non-runnable `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` template requiring an

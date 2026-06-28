@@ -1,7 +1,7 @@
 use crate::board_ir::{
     ComponentPlacement, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPad,
-    LayoutPoint, NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RfAntennaMeasurement,
-    RouteSegment, Scenario,
+    LayoutPoint, NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RfAntennaMatchingElement,
+    RfAntennaMatchingNetworkRule, RfAntennaMeasurement, RouteSegment, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -9,7 +9,8 @@ use serde_json::json;
 
 use super::super::common::validation_input_missing;
 use super::super::{
-    RF_ANTENNA_FEED_PATH_VALID, RF_ANTENNA_KEEPOUT_VALID, RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+    RF_ANTENNA_FEED_PATH_VALID, RF_ANTENNA_KEEPOUT_VALID, RF_ANTENNA_MATCHING_TOPOLOGY_VALID,
+    RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
 };
 use super::geometry::{
     copper_feature_to_polygon_clearance_mm, copper_segment_to_polygon_clearance_mm,
@@ -48,6 +49,27 @@ pub(in crate::validation) fn validate_rf_antenna_feed_path(
             return;
         };
         validate_feed_path_rule(bound, scenario, findings, rule);
+    }
+}
+
+pub(in crate::validation) fn validate_rf_antenna_matching_topology(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = named_rule_parameters(
+        scenario,
+        findings,
+        RF_ANTENNA_MATCHING_TOPOLOGY_VALID,
+        "matching_networks",
+    ) else {
+        return;
+    };
+    for name in names {
+        let Some(rule) = matching_network_rule(bound, scenario, findings, &name) else {
+            return;
+        };
+        validate_matching_network_rule(bound, scenario, findings, rule);
     }
 }
 
@@ -236,6 +258,47 @@ fn feed_path_rule<'a>(
                 scenario,
                 format!(
                     "RF_ANTENNA_FEED_PATH_VALID feed path {name} is ambiguous in board.layout.constraints.rf_antenna.feed_paths."
+                ),
+            );
+            None
+        }
+    }
+}
+
+fn matching_network_rule<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    name: &str,
+) -> Option<&'a RfAntennaMatchingNetworkRule> {
+    let matches = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .matching_networks
+        .iter()
+        .filter(|rule| rule.name == name)
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [rule] => Some(*rule),
+        [] => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {name} is absent from board.layout.constraints.rf_antenna.matching_networks."
+                ),
+            );
+            None
+        }
+        _ => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {name} is ambiguous in board.layout.constraints.rf_antenna.matching_networks."
                 ),
             );
             None
@@ -472,6 +535,28 @@ fn validate_feed_path_rule(
     }
 }
 
+fn validate_matching_network_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    rule: &RfAntennaMatchingNetworkRule,
+) {
+    if let Err(message) = validate_matching_network_metadata(bound, rule) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    for (index, element) in rule.elements.iter().enumerate() {
+        if let Err(message) = validate_matching_element(bound, rule, element, index) {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    }
+    let role_counts = matching_role_counts(&rule.elements);
+    if !topology_counts_match(rule.topology.as_str(), role_counts) {
+        findings.push(matching_topology_finding(scenario, rule, role_counts));
+    }
+}
+
 fn validate_rf_measurement(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -669,6 +754,134 @@ fn validate_rf_measurement_metadata(
     Ok(())
 }
 
+fn validate_matching_network_metadata(
+    bound: &BoundBoard<'_>,
+    rule: &RfAntennaMatchingNetworkRule,
+) -> Result<(), String> {
+    if rule.name.trim().is_empty() {
+        return Err(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network name must be non-empty."
+                .to_string(),
+        );
+    }
+    if rule.antenna_net.trim().is_empty()
+        || !bound.project.board.nets.contains_key(&rule.antenna_net)
+    {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} antenna_net {} is absent from board.nets.",
+            rule.name, rule.antenna_net
+        ));
+    }
+    if rule.source.trim().is_empty() {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} source must be non-empty.",
+            rule.name
+        ));
+    }
+    if !matches!(
+        normalize_rf_token(&rule.topology).as_str(),
+        "series" | "l" | "pi" | "t" | "custom"
+    ) {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} topology must be series, l, pi, t, or custom.",
+            rule.name
+        ));
+    }
+    if let Some(reference_net) = rule.reference_net.as_deref()
+        && !bound.project.board.nets.contains_key(reference_net)
+    {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} reference_net {reference_net} is absent from board.nets.",
+            rule.name
+        ));
+    }
+    if rule.elements.is_empty() {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} requires at least one reviewed element.",
+            rule.name
+        ));
+    }
+    if !rule
+        .elements
+        .iter()
+        .any(|element| element_touches_net(element, &rule.antenna_net))
+    {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} requires at least one element tied to antenna_net {}.",
+            rule.name, rule.antenna_net
+        ));
+    }
+    Ok(())
+}
+
+fn validate_matching_element(
+    bound: &BoundBoard<'_>,
+    rule: &RfAntennaMatchingNetworkRule,
+    element: &RfAntennaMatchingElement,
+    index: usize,
+) -> Result<(), String> {
+    if element.component.trim().is_empty()
+        || !bound
+            .project
+            .board
+            .components
+            .contains_key(&element.component)
+    {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} component {} is absent from board.components.",
+            rule.name, element.component
+        ));
+    }
+    match normalize_rf_token(&element.role).as_str() {
+        "series" => {
+            let input_net = required_element_net(rule, element, index, "input_net")?;
+            let output_net = required_element_net(rule, element, index, "output_net")?;
+            if input_net == output_net {
+                return Err(format!(
+                    "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} series input_net and output_net must differ.",
+                    rule.name
+                ));
+            }
+            validate_net_exists(bound, rule, index, input_net)?;
+            validate_net_exists(bound, rule, index, output_net)?;
+            validate_component_pin_and_pad(bound, rule, index, element, input_net)?;
+            validate_component_pin_and_pad(bound, rule, index, element, output_net)?;
+        }
+        "shunt" => {
+            let signal_net = required_element_net(rule, element, index, "signal_net")?;
+            let reference_net = element
+                .reference_net
+                .as_deref()
+                .or(rule.reference_net.as_deref())
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| {
+                    format!(
+                        "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} shunt requires reference_net or rule reference_net.",
+                        rule.name
+                    )
+                })?;
+            if signal_net == reference_net {
+                return Err(format!(
+                    "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} shunt signal_net and reference_net must differ.",
+                    rule.name
+                ));
+            }
+            validate_net_exists(bound, rule, index, signal_net)?;
+            validate_net_exists(bound, rule, index, reference_net)?;
+            validate_component_pin_and_pad(bound, rule, index, element, signal_net)?;
+            validate_component_pin_and_pad(bound, rule, index, element, reference_net)?;
+        }
+        _ => {
+            return Err(format!(
+                "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} role must be series or shunt.",
+                rule.name
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn required_positive_numeric_parameter(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
@@ -759,6 +972,118 @@ fn optional_positive_numeric_parameter(
         return None;
     }
     Some(Some(value))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MatchingRoleCounts {
+    series: usize,
+    shunt: usize,
+}
+
+fn matching_role_counts(elements: &[RfAntennaMatchingElement]) -> MatchingRoleCounts {
+    let mut counts = MatchingRoleCounts {
+        series: 0,
+        shunt: 0,
+    };
+    for element in elements {
+        match normalize_rf_token(&element.role).as_str() {
+            "series" => counts.series += 1,
+            "shunt" => counts.shunt += 1,
+            _ => {}
+        }
+    }
+    counts
+}
+
+fn topology_counts_match(topology: &str, counts: MatchingRoleCounts) -> bool {
+    match normalize_rf_token(topology).as_str() {
+        "series" => counts.series >= 1 && counts.shunt == 0,
+        "l" => counts.series >= 1 && counts.shunt >= 1,
+        "pi" => counts.series >= 1 && counts.shunt >= 2,
+        "t" => counts.series >= 2 && counts.shunt >= 1,
+        "custom" => counts.series + counts.shunt > 0,
+        _ => false,
+    }
+}
+
+fn normalize_rf_token(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+fn element_touches_net(element: &RfAntennaMatchingElement, net: &str) -> bool {
+    [
+        element.input_net.as_deref(),
+        element.output_net.as_deref(),
+        element.signal_net.as_deref(),
+        element.reference_net.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|candidate| candidate == net)
+}
+
+fn required_element_net<'a>(
+    rule: &RfAntennaMatchingNetworkRule,
+    element: &'a RfAntennaMatchingElement,
+    index: usize,
+    field: &str,
+) -> Result<&'a str, String> {
+    let value = match field {
+        "input_net" => element.input_net.as_deref(),
+        "output_net" => element.output_net.as_deref(),
+        "signal_net" => element.signal_net.as_deref(),
+        _ => None,
+    };
+    value.map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            format!(
+                "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} requires {field}.",
+                rule.name
+            )
+        })
+}
+
+fn validate_net_exists(
+    bound: &BoundBoard<'_>,
+    rule: &RfAntennaMatchingNetworkRule,
+    index: usize,
+    net: &str,
+) -> Result<(), String> {
+    if bound.project.board.nets.contains_key(net) {
+        Ok(())
+    } else {
+        Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} net {net} is absent from board.nets.",
+            rule.name
+        ))
+    }
+}
+
+fn validate_component_pin_and_pad(
+    bound: &BoundBoard<'_>,
+    rule: &RfAntennaMatchingNetworkRule,
+    index: usize,
+    element: &RfAntennaMatchingElement,
+    net: &str,
+) -> Result<(), String> {
+    if !component_has_pin_on_net(bound, &element.component, net) {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} component {} has no explicit pin on net {net}.",
+            rule.name, element.component
+        ));
+    }
+    if !component_has_layout_pad_on_net(bound, &element.component, net) {
+        return Err(format!(
+            "RF_ANTENNA_MATCHING_TOPOLOGY_VALID matching network {} element {index} component {} has no finite layout pad on net {net}.",
+            rule.name, element.component
+        ));
+    }
+    Ok(())
 }
 
 fn validate_polygon(name: &str, polygon: &[LayoutPoint]) -> Result<(), String> {
@@ -1030,6 +1355,28 @@ fn component_has_antenna_net_pin(
         .is_some_and(|spec| spec.pins.values().any(|net| net == antenna_net))
 }
 
+fn component_has_pin_on_net(bound: &BoundBoard<'_>, component: &str, net: &str) -> bool {
+    bound
+        .project
+        .board
+        .components
+        .get(component)
+        .is_some_and(|spec| spec.pins.values().any(|candidate| candidate == net))
+}
+
+fn component_has_layout_pad_on_net(bound: &BoundBoard<'_>, component: &str, net: &str) -> bool {
+    bound
+        .project
+        .board
+        .layout
+        .pads
+        .get(component)
+        .is_some_and(|pads| {
+            pads.values()
+                .any(|pad| pad.net == net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite())
+        })
+}
+
 fn matching_component_distance_mm(
     bound: &BoundBoard<'_>,
     rule: &RfAntennaFeedPathRule,
@@ -1156,6 +1503,54 @@ fn base_feed_path_finding(
         "Move the antenna matching components closer to the reviewed feed component/pin.".to_string(),
         "Shorten the imported antenna feed route or update the limit only from antenna module, RF layout-guide, or RF review evidence.".to_string(),
         "Use RF simulation or measured S-parameters for final matching quality; this check only screens explicit feed-path layout evidence.".to_string(),
+    ];
+    finding
+}
+
+fn matching_topology_finding(
+    scenario: &Scenario,
+    rule: &RfAntennaMatchingNetworkRule,
+    role_counts: MatchingRoleCounts,
+) -> Finding {
+    let mut finding = Finding::critical(
+        RF_ANTENNA_MATCHING_TOPOLOGY_VALID,
+        &scenario.name,
+        format!(
+            "RF antenna matching network {} declares {} topology but has {} series and {} shunt reviewed elements.",
+            rule.name, rule.topology, role_counts.series, role_counts.shunt
+        ),
+    );
+    finding
+        .measured
+        .insert("matching_network_name".to_string(), json!(rule.name));
+    finding
+        .measured
+        .insert("matching_network_source".to_string(), json!(rule.source));
+    finding
+        .measured
+        .insert("antenna_net".to_string(), json!(rule.antenna_net));
+    finding
+        .measured
+        .insert("topology".to_string(), json!(rule.topology));
+    finding.measured.insert(
+        "series_element_count".to_string(),
+        json!(role_counts.series),
+    );
+    finding
+        .measured
+        .insert("shunt_element_count".to_string(), json!(role_counts.shunt));
+    finding
+        .measured
+        .insert("element_count".to_string(), json!(rule.elements.len()));
+    finding
+        .limit
+        .insert("required_topology".to_string(), json!(rule.topology));
+    finding.suggested_fixes = vec![
+        "Update the reviewed matching-network metadata if the intended RF topology is different."
+            .to_string(),
+        "Add missing explicit component pin and layout pad evidence for every reviewed matching element."
+            .to_string(),
+        "Use RF simulation or measured S-parameters for matching quality; this check only screens explicit matching topology evidence.".to_string(),
     ];
     finding
 }

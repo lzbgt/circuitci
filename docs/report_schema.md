@@ -181,6 +181,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
+- `RF_ANTENNA_MATCHING_TOPOLOGY_VALID`
 - `RF_ANTENNA_MEASURED_PERFORMANCE_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
@@ -631,6 +632,13 @@ pad, placement, and component-pin evidence. Stable measured keys include
 include `max_feed_route_length_mm`. Matching-component distance findings also
 report `matching_component` and `matching_component_distance_mm`; stable limit
 keys include `max_matching_component_distance_mm`.
+
+`RF_ANTENNA_MATCHING_TOPOLOGY_VALID` reports are emitted by `manufacturing`
+scenarios that compare reviewed RF matching-network topology metadata against
+explicit component pin and layout pad evidence. Stable measured keys include
+`matching_network_name`, `matching_network_source`, `antenna_net`, `topology`,
+`series_element_count`, `shunt_element_count`, and `element_count`. Stable
+limit keys include `required_topology`.
 
 `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed RF measurement rows against explicit
