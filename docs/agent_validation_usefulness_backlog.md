@@ -32,14 +32,14 @@ Done means:
 
 Reports already carry suggested fixes, and suites can compare bad and fixed
 cases. The first concrete patch-and-rerun workflow is now available for Board
-IR YAML `INVALID_POWER_DOMAIN`, `NET_NOT_FOUND`, and `PIN_NOT_DECLARED` binding
-findings through `circuitci repair-yaml`.
+IR YAML `INVALID_POWER_DOMAIN`, `NET_NOT_FOUND`, `PIN_NOT_DECLARED`, and
+`REQUIRED_PIN_FLOATING` binding findings through `circuitci repair-yaml`.
 
 Implemented slice:
 
 - select Board IR YAML as the first artifact family,
 - generate a machine-readable repair proposal for `INVALID_POWER_DOMAIN`,
-  `NET_NOT_FOUND`, and `PIN_NOT_DECLARED`,
+  `NET_NOT_FOUND`, `PIN_NOT_DECLARED`, and `REQUIRED_PIN_FLOATING`,
 - apply the patch to a copied `project.yaml`,
 - rerun validation,
 - report whether the original finding disappeared across failures, warnings,
@@ -58,9 +58,9 @@ Implemented slice:
 
 Useful next slice:
 
-- add a fourth deterministic YAML repair class for a common remaining Board IR
-  binding issue, only if it can be proven from model contracts without inventing
-  electrical intent.
+- add machine-readable repair reason codes for blocked and no-op proposal
+  reports, so agents can branch on unsupported/unsafe cases without matching
+  prose in `messages[]`.
 
 Do not start with arbitrary schematic or PCB editing. That remains too broad
 until several narrow YAML repair loops are proven end to end.

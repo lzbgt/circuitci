@@ -19,6 +19,11 @@ Supported repair classes:
 - `pin-not-declared`: fixes warning-level `PIN_NOT_DECLARED` findings by
   removing a copied project's stray `board.components.<component>.pins.<pin>`
   binding when the resolved component model does not declare that pin.
+- `required-pin-floating`: fixes `REQUIRED_PIN_FLOATING` by adding a missing
+  required `board.components.<component>.pins.<pin>` binding only when the
+  component already declares a compatible existing net for that exact pin
+  through `power_domains.<pin>`, or for an electrical-power pin through
+  `power_domain`.
 
 Example:
 
@@ -108,7 +113,8 @@ report has zero proposals and a message explaining that no matching finding was
 available to repair.
 
 This command is intentionally narrow. It does not choose nominal rail voltages,
-invent nets for undeclared model pins, repair ambiguous missing nets with
+invent nets for undeclared model pins, connect floating required pins without
+explicit compatible component metadata, repair ambiguous missing nets with
 conflicting inferred kinds, remove required declared pins, edit component
 models, or repair schematic/PCB geometry. Relative `libraries:` entries are
 converted to absolute paths in the repaired copy so the copied project validates

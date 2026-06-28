@@ -13,6 +13,7 @@ pub enum BoardYamlRepairFindingKind {
     InvalidPowerDomain,
     NetNotFound,
     PinNotDeclared,
+    RequiredPinFloating,
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +146,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         BoardYamlRepairFindingKind::NetNotFound => net_not_found_proposals(&project, &library)?,
         BoardYamlRepairFindingKind::PinNotDeclared => {
             pin_not_declared_proposals(&project, &library)?
+        }
+        BoardYamlRepairFindingKind::RequiredPinFloating => {
+            required_pin_floating_proposals(&project, &library)?
         }
     };
     let finding_id = options.finding.finding_id();
@@ -653,6 +657,78 @@ fn pin_not_declared_proposals(
     Ok(proposals)
 }
 
+fn required_pin_floating_proposals(
+    project: &BoardProject,
+    library: &crate::library::ComponentLibrary,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let mut proposals = Vec::new();
+    for (component_id, component) in &project.board.components {
+        let Some(model) = library.get(&component.model) else {
+            continue;
+        };
+        for (pin_name, port) in &model.ports {
+            if !port.required || component.pins.contains_key(pin_name) {
+                continue;
+            }
+            let Some((net_name, source)) = required_pin_candidate_net(component, pin_name, port)
+            else {
+                continue;
+            };
+            let Some(net) = project.board.nets.get(net_name) else {
+                continue;
+            };
+            let expected_kind = inferred_net_kind(&port.kind);
+            if net.kind.as_yaml() != expected_kind {
+                continue;
+            }
+            let yaml_path = format!("/board/components/{component_id}/pins/{pin_name}");
+            proposals.push(BoardYamlRepairProposal {
+                id: format!("required_pin_floating_{}", proposals.len() + 1),
+                finding_id: BoardYamlRepairFindingKind::RequiredPinFloating
+                    .finding_id()
+                    .to_string(),
+                status: "proposed".to_string(),
+                description: format!(
+                    "Connect required pin {component_id}.{pin_name} to existing {expected_kind} net {net_name} from {source}."
+                ),
+                yaml_path: yaml_path.clone(),
+                affected_pins: vec![format!("{component_id}.{pin_name}")],
+                edits: vec![BoardYamlRepairEdit {
+                    op: "add".to_string(),
+                    path: yaml_path,
+                    from: serde_json::Value::Null,
+                    to: serde_json::Value::String(net_name.clone()),
+                    reason:
+                        "A required model pin can be connected when the component already declares a compatible net for that pin through power-domain metadata."
+                            .to_string(),
+                }],
+            });
+        }
+    }
+    Ok(proposals)
+}
+
+fn required_pin_candidate_net<'a>(
+    component: &'a crate::board_ir::ComponentSpec,
+    pin_name: &str,
+    port: &crate::library::Port,
+) -> Option<(&'a String, &'static str)> {
+    component
+        .power_domains
+        .get(pin_name)
+        .map(|net| (net, "component power_domains"))
+        .or_else(|| {
+            if port.kind == PortKind::ElectricalPower {
+                component
+                    .power_domain
+                    .as_ref()
+                    .map(|net| (net, "component power_domain"))
+            } else {
+                None
+            }
+        })
+}
+
 #[derive(Debug, Default)]
 struct MissingNetProposalDraft {
     affected_pins: Vec<String>,
@@ -697,7 +773,21 @@ fn apply_proposals(
             };
             add_net(project_yaml, net_name, kind)?;
         } else if let Some((component_id, pin_name)) = component_pin_path(&proposal.yaml_path) {
-            remove_component_pin(project_yaml, component_id, pin_name)?;
+            match proposal.edits.first().map(|edit| edit.op.as_str()) {
+                Some("add") => {
+                    let Some(net_name) = proposal.edits.first().and_then(|edit| edit.to.as_str())
+                    else {
+                        proposal.status = "skipped".to_string();
+                        continue;
+                    };
+                    add_component_pin(project_yaml, component_id, pin_name, net_name)?;
+                }
+                Some("remove") => remove_component_pin(project_yaml, component_id, pin_name)?,
+                _ => {
+                    proposal.status = "skipped".to_string();
+                    continue;
+                }
+            }
         } else {
             proposal.status = "skipped".to_string();
             continue;
@@ -755,6 +845,31 @@ fn remove_component_pin(
     if removed.is_none() {
         bail!("Board IR pin binding {component_id}.{pin_name} is missing.");
     }
+    Ok(())
+}
+
+fn add_component_pin(
+    project_yaml: &mut Value,
+    component_id: &str,
+    pin_name: &str,
+    net_name: &str,
+) -> Result<()> {
+    let root = project_yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?;
+    let board = get_mapping_field_mut(root, "board")?;
+    let components = get_mapping_field_mut(board, "components")?;
+    let component = components
+        .get_mut(Value::String(component_id.to_string()))
+        .with_context(|| format!("Board IR component {component_id} is missing."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR component {component_id} must be an object."))?;
+    let pins = ensure_mapping_field_mut(component, "pins")?;
+    let pin_key = Value::String(pin_name.to_string());
+    if pins.contains_key(&pin_key) {
+        bail!("Board IR pin binding {component_id}.{pin_name} already exists.");
+    }
+    pins.insert(pin_key, Value::String(net_name.to_string()));
     Ok(())
 }
 
@@ -1067,6 +1182,7 @@ impl BoardYamlRepairFindingKind {
             Self::InvalidPowerDomain => "INVALID_POWER_DOMAIN",
             Self::NetNotFound => "NET_NOT_FOUND",
             Self::PinNotDeclared => "PIN_NOT_DECLARED",
+            Self::RequiredPinFloating => "REQUIRED_PIN_FLOATING",
         }
     }
 
@@ -1075,6 +1191,7 @@ impl BoardYamlRepairFindingKind {
             Self::InvalidPowerDomain => "invalid-power-domain",
             Self::NetNotFound => "net-not-found",
             Self::PinNotDeclared => "pin-not-declared",
+            Self::RequiredPinFloating => "required-pin-floating",
         }
     }
 }

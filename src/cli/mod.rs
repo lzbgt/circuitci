@@ -195,6 +195,7 @@ enum RepairYamlFinding {
     InvalidPowerDomain,
     NetNotFound,
     PinNotDeclared,
+    RequiredPinFloating,
 }
 
 impl RepairYamlFinding {
@@ -203,6 +204,7 @@ impl RepairYamlFinding {
             Self::InvalidPowerDomain => BoardYamlRepairFindingKind::InvalidPowerDomain,
             Self::NetNotFound => BoardYamlRepairFindingKind::NetNotFound,
             Self::PinNotDeclared => BoardYamlRepairFindingKind::PinNotDeclared,
+            Self::RequiredPinFloating => BoardYamlRepairFindingKind::RequiredPinFloating,
         }
     }
 }

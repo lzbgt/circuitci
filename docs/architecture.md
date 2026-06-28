@@ -165,7 +165,7 @@ only writes display positions for the labels that are currently visible.
 | `ScenarioSuggestion` | `scenario_suggestions` | Agent-facing scenario template with confidence, runnability, and required inputs. |
 | `Finding` | `reports` | Stable diagnostic payload containing rule ID, severity, measured evidence, limits, and suggested fixes. |
 | `ValidationReport` | `reports` | Final pass/fail result and serialized finding set. |
-| `BoardYamlRepairReport` | `repair_yaml` | Agent-facing patch-and-rerun proof for supported Board IR YAML repairs, currently `INVALID_POWER_DOMAIN` net-kind correction, `NET_NOT_FOUND` net creation, and `PIN_NOT_DECLARED` stray-pin removal on a copied project. |
+| `BoardYamlRepairReport` | `repair_yaml` | Agent-facing patch-and-rerun proof for supported Board IR YAML repairs, currently `INVALID_POWER_DOMAIN` net-kind correction, `NET_NOT_FOUND` net creation, `PIN_NOT_DECLARED` stray-pin removal, and metadata-proven `REQUIRED_PIN_FLOATING` pin connection on a copied project. |
 
 Binding diagnostics such as `MODEL_NOT_FOUND` and `PIN_NOT_DECLARED` are report
 findings. Rule implementations should rely on `BoundBoard` rather than
