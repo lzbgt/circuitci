@@ -12,14 +12,45 @@ Input CSV columns:
   `max_paste_area_ratio`, `min_solder_paste_spacing_mm`, and
   `max_stitch_via_distance_mm`. A few plain-label aliases such as
   `stencil thickness`, `hole to board edge clearance`, and
-  `stitch via distance` are accepted. Repeated `thermal_measurement` rows are
-  also supported for reviewed measured-temperature evidence.
+  `stitch via distance` are accepted. Repeated `thermal_copper` rows are
+  supported for reviewed thermal layout policy, and repeated
+  `thermal_measurement` rows are supported for reviewed measured-temperature
+  evidence.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
+  `thermal_copper` rows use `mm2`/square millimeters for minimum copper area.
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
+
+`thermal_copper` rows use `value` as `min_copper_area_mm2` and require extra
+columns:
+
+- `name`: stable thermal policy identifier. If an existing
+  `board.manufacturing.thermal_copper[]` entry has the same name, the importer
+  replaces that entry so repeated imports stay deterministic. Duplicate CSV
+  names fail closed.
+- `component`: Board IR component reference.
+- `power_loss_w`: reviewed positive dissipation assumption.
+
+Optional `thermal_copper` columns map directly to Board IR policy fields:
+
+- `min_thermal_via_count`
+- `min_plated_thermal_via_count`
+- `min_thermal_via_drill_mm`
+- `min_thermal_via_plating_thickness_um`
+- `min_total_thermal_via_barrel_cross_section_mm2`
+- `min_copper_thickness_um`
+- `rated_ambient_temperature_C`
+- `min_airflow_lfm`
+- `enclosure_profile`
+- `nets`
+- `layers`
+
+`nets` and `layers` accept comma-, semicolon-, or pipe-separated lists. These
+rows are reviewed policy evidence only; the importer does not infer thermal
+nets, layers, vias, package limits, or heat-flow behavior.
 
 `thermal_measurement` rows require extra columns:
 
@@ -31,9 +62,9 @@ Input CSV columns:
 - `power_loss_w`: optional reviewed dissipation context.
 - `measurement_point`: optional probe/IR-camera point label.
 
-The importer appends these rows to `board.manufacturing.thermal_measurements[]`
-and preserves the raw columns in the manifest. It does not infer pass/fail
-limits from the measured temperature.
+The importer appends measurement rows to
+`board.manufacturing.thermal_measurements[]` and preserves the raw columns in
+the manifest. It does not infer pass/fail limits from the measured temperature.
 
 Example:
 

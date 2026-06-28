@@ -46,7 +46,28 @@ struct AppliedField {
     field: ManufacturingField,
     numeric_value: Option<f64>,
     string_value: Option<String>,
+    thermal_copper: Option<AppliedThermalCopper>,
     thermal_measurement: Option<AppliedThermalMeasurement>,
+}
+
+#[derive(Debug, Clone)]
+struct AppliedThermalCopper {
+    name: String,
+    component: String,
+    source: String,
+    power_loss_w: f64,
+    min_copper_area_mm2: f64,
+    min_thermal_via_count: Option<usize>,
+    min_plated_thermal_via_count: Option<usize>,
+    min_thermal_via_drill_mm: Option<f64>,
+    min_thermal_via_plating_thickness_um: Option<f64>,
+    min_total_thermal_via_barrel_cross_section_mm2: Option<f64>,
+    min_copper_thickness_um: Option<f64>,
+    rated_ambient_temperature_c: Option<f64>,
+    min_airflow_lfm: Option<f64>,
+    enclosure_profile: Option<String>,
+    nets: Vec<String>,
+    layers: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +92,7 @@ enum ManufacturingField {
     MaxPasteAreaRatio,
     MinSolderPasteSpacingMm,
     MaxStitchViaDistanceMm,
+    ThermalCopper,
     ThermalMeasurement,
     Source,
 }
@@ -85,6 +107,7 @@ impl ManufacturingField {
             Self::MaxPasteAreaRatio => "max_paste_area_ratio",
             Self::MinSolderPasteSpacingMm => "min_solder_paste_spacing_mm",
             Self::MaxStitchViaDistanceMm => "max_stitch_via_distance_mm",
+            Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::Source => "source",
         }
@@ -110,7 +133,7 @@ impl ManufacturingField {
     }
 
     fn is_repeatable(self) -> bool {
-        matches!(self, Self::ThermalMeasurement)
+        matches!(self, Self::ThermalCopper | Self::ThermalMeasurement)
     }
 }
 
@@ -337,6 +360,16 @@ fn applied_field(
             field,
             numeric_value: None,
             string_value: Some(value.to_string()),
+            thermal_copper: None,
+            thermal_measurement: None,
+        });
+    }
+    if field == ManufacturingField::ThermalCopper {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            thermal_copper: Some(applied_thermal_copper(row, path)?),
             thermal_measurement: None,
         });
     }
@@ -345,6 +378,7 @@ fn applied_field(
             field,
             numeric_value: None,
             string_value: None,
+            thermal_copper: None,
             thermal_measurement: Some(applied_thermal_measurement(row, path)?),
         });
     }
@@ -370,7 +404,94 @@ fn applied_field(
         field,
         numeric_value: Some(normalized),
         string_value: None,
+        thermal_copper: None,
         thermal_measurement: None,
+    })
+}
+
+fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
+    let name = required_raw_column_for(row, path, "name", "thermal_copper")?;
+    let component = required_raw_column_for(row, path, "component", "thermal_copper")?;
+    let thermal_source = optional_raw_column(row, "thermal_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(thermal_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} thermal_copper requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    let min_copper_area_mm2 =
+        parse_positive_area_mm2(row.value.trim(), row.unit.as_deref(), path, row, "value")?;
+    let power_loss_w = required_positive_watts(row, path, "power_loss_w", "thermal_copper")?;
+    Ok(AppliedThermalCopper {
+        name,
+        component,
+        source,
+        power_loss_w,
+        min_copper_area_mm2,
+        min_thermal_via_count: optional_raw_column(row, "min_thermal_via_count")
+            .as_deref()
+            .map(|value| parse_positive_usize(value, path, row, "min_thermal_via_count"))
+            .transpose()?,
+        min_plated_thermal_via_count: optional_raw_column(row, "min_plated_thermal_via_count")
+            .as_deref()
+            .map(|value| parse_positive_usize(value, path, row, "min_plated_thermal_via_count"))
+            .transpose()?,
+        min_thermal_via_drill_mm: optional_raw_column(row, "min_thermal_via_drill_mm")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "min_thermal_via_drill_mm"))
+            .transpose()?,
+        min_thermal_via_plating_thickness_um: optional_raw_column(
+            row,
+            "min_thermal_via_plating_thickness_um",
+        )
+        .as_deref()
+        .map(|value| {
+            parse_positive_number(value, path, row, "min_thermal_via_plating_thickness_um")
+        })
+        .transpose()?,
+        min_total_thermal_via_barrel_cross_section_mm2: optional_raw_column(
+            row,
+            "min_total_thermal_via_barrel_cross_section_mm2",
+        )
+        .as_deref()
+        .map(|value| {
+            parse_positive_number(
+                value,
+                path,
+                row,
+                "min_total_thermal_via_barrel_cross_section_mm2",
+            )
+        })
+        .transpose()?,
+        min_copper_thickness_um: optional_raw_column(row, "min_copper_thickness_um")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "min_copper_thickness_um"))
+            .transpose()?,
+        rated_ambient_temperature_c: optional_raw_column(row, "rated_ambient_temperature_C")
+            .as_deref()
+            .map(|value| parse_temperature_c(value, None, path, row, "rated_ambient_temperature_C"))
+            .transpose()?,
+        min_airflow_lfm: optional_raw_column(row, "min_airflow_lfm")
+            .as_deref()
+            .map(|value| parse_nonnegative_number(value, path, row, "min_airflow_lfm"))
+            .transpose()?,
+        enclosure_profile: optional_raw_column(row, "enclosure_profile"),
+        nets: optional_raw_column(row, "nets")
+            .map(|value| parse_nonempty_list(&value))
+            .transpose()?
+            .unwrap_or_default(),
+        layers: optional_raw_column(row, "layers")
+            .map(|value| parse_nonempty_list(&value))
+            .transpose()?
+            .unwrap_or_default(),
     })
 }
 
@@ -378,8 +499,8 @@ fn applied_thermal_measurement(
     row: &MetadataCsvRow,
     path: &Path,
 ) -> Result<AppliedThermalMeasurement> {
-    let name = required_raw_column(row, path, "name")?;
-    let component = required_raw_column(row, path, "component")?;
+    let name = required_raw_column_for(row, path, "name", "thermal_measurement")?;
+    let component = required_raw_column_for(row, path, "component", "thermal_measurement")?;
     let measurement_source = optional_raw_column(row, "measurement_source");
     let source = row
         .source
@@ -542,9 +663,86 @@ fn parse_temperature_c(
 }
 
 fn parse_positive_watts(raw: &str, path: &Path, row: &MetadataCsvRow, column: &str) -> Result<f64> {
-    let value = raw.trim().parse::<f64>().with_context(|| {
+    parse_positive_number(raw, path, row, column).with_context(|| {
         format!(
             "Manufacturing metadata CSV {} row {} has invalid power {}.",
+            path.display(),
+            row.row_number,
+            raw
+        )
+    })
+}
+
+fn required_positive_watts(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<f64> {
+    let value = required_raw_column_for(row, path, column, record)?;
+    parse_positive_watts(&value, path, row, column)
+}
+
+fn parse_positive_area_mm2(
+    raw: &str,
+    unit: Option<&str>,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = parse_positive_number(raw, path, row, column)?;
+    let unit = unit.map(normalize_unit);
+    if !matches!(
+        unit.as_deref(),
+        None | Some("")
+            | Some("mm2")
+            | Some("mm^2")
+            | Some("squaremm")
+            | Some("squaremillimeter")
+            | Some("squaremillimeters")
+    ) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} must use mm2/square millimeters for {column}.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
+fn parse_positive_usize(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<usize> {
+    let value = raw.trim().parse::<usize>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid integer {}.",
+            path.display(),
+            row.row_number,
+            raw
+        )
+    })?;
+    if value == 0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} must be positive.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
+fn parse_positive_number(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = raw.trim().parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid number {}.",
             path.display(),
             row.row_number,
             raw
@@ -558,6 +756,43 @@ fn parse_positive_watts(raw: &str, path: &Path, row: &MetadataCsvRow, column: &s
         );
     }
     Ok(value)
+}
+
+fn parse_nonnegative_number(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = raw.trim().parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid number {}.",
+            path.display(),
+            row.row_number,
+            raw
+        )
+    })?;
+    if !value.is_finite() || value < 0.0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} must be finite and non-negative.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
+fn parse_nonempty_list(raw: &str) -> Result<Vec<String>> {
+    let values: Vec<String> = raw
+        .split([',', ';', '|'])
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .collect();
+    if values.is_empty() {
+        bail!("list column must contain at least one value.");
+    }
+    Ok(values)
 }
 
 fn parse_nonnegative_temperature_delta_c(
@@ -591,10 +826,30 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
     {
         bail!("max_paste_area_ratio must be greater than or equal to min_paste_area_ratio.");
     }
+    let mut thermal_copper_names = BTreeSet::new();
+    for rule in fields
+        .iter()
+        .filter_map(|field| field.thermal_copper.as_ref())
+    {
+        if !thermal_copper_names.insert(rule.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats thermal_copper row name {}.",
+                rule.name
+            );
+        }
+    }
     Ok(())
 }
 
 fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
+    if let Some(rule) = &field.thermal_copper {
+        return serde_yaml_ng::to_value(thermal_copper_mapping(rule)).with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
     if let Some(measurement) = &field.thermal_measurement {
         return serde_yaml_ng::to_value(thermal_measurement_mapping(measurement)).with_context(
             || {
@@ -620,6 +875,91 @@ fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
             .context("source field must have a string value")?
             .clone(),
     ))
+}
+
+fn thermal_copper_mapping(rule: &AppliedThermalCopper) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(rule.name.clone()));
+    mapping.insert(
+        "component".to_string(),
+        Value::String(rule.component.clone()),
+    );
+    mapping.insert("source".to_string(), Value::String(rule.source.clone()));
+    mapping.insert(
+        "power_loss_w".to_string(),
+        serde_yaml_ng::to_value(rule.power_loss_w).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "min_copper_area_mm2".to_string(),
+        serde_yaml_ng::to_value(rule.min_copper_area_mm2).unwrap_or(Value::Null),
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_thermal_via_count",
+        rule.min_thermal_via_count,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_plated_thermal_via_count",
+        rule.min_plated_thermal_via_count,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_thermal_via_drill_mm",
+        rule.min_thermal_via_drill_mm,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_thermal_via_plating_thickness_um",
+        rule.min_thermal_via_plating_thickness_um,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_total_thermal_via_barrel_cross_section_mm2",
+        rule.min_total_thermal_via_barrel_cross_section_mm2,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_copper_thickness_um",
+        rule.min_copper_thickness_um,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "rated_ambient_temperature_C",
+        rule.rated_ambient_temperature_c,
+    );
+    insert_optional_number(&mut mapping, "min_airflow_lfm", rule.min_airflow_lfm);
+    if let Some(value) = &rule.enclosure_profile {
+        mapping.insert(
+            "enclosure_profile".to_string(),
+            Value::String(value.clone()),
+        );
+    }
+    insert_string_sequence(&mut mapping, "nets", &rule.nets);
+    insert_string_sequence(&mut mapping, "layers", &rule.layers);
+    mapping
+}
+
+fn insert_optional_number<T: Serialize>(
+    mapping: &mut BTreeMap<String, Value>,
+    key: &str,
+    value: Option<T>,
+) {
+    if let Some(value) = value {
+        mapping.insert(
+            key.to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+}
+
+fn insert_string_sequence(mapping: &mut BTreeMap<String, Value>, key: &str, values: &[String]) {
+    if !values.is_empty() {
+        mapping.insert(
+            key.to_string(),
+            Value::Sequence(values.iter().cloned().map(Value::String).collect()),
+        );
+    }
 }
 
 fn thermal_measurement_mapping(measurement: &AppliedThermalMeasurement) -> BTreeMap<String, Value> {
@@ -700,7 +1040,15 @@ fn apply_metadata(
     let board = ensure_mapping_field_mut(root, "board")?;
     let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
     for field in fields {
-        if field.field == ManufacturingField::ThermalMeasurement {
+        if field.field == ManufacturingField::ThermalCopper {
+            let rule = field
+                .thermal_copper
+                .as_ref()
+                .context("thermal_copper field must have thermal copper value")?;
+            let value = normalized_yaml_value(field)?;
+            let rules = ensure_sequence_field_mut(manufacturing, "thermal_copper")?;
+            upsert_named_sequence_value(rules, &rule.name, value)?;
+        } else if field.field == ManufacturingField::ThermalMeasurement {
             let measurements = ensure_sequence_field_mut(manufacturing, "thermal_measurements")?;
             measurements.push(normalized_yaml_value(field)?);
         } else {
@@ -758,6 +1106,9 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "maxstitchviadistance"
         | "maximumstitchviadistance"
         | "stitchviadistance" => Some(ManufacturingField::MaxStitchViaDistanceMm),
+        "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
+            Some(ManufacturingField::ThermalCopper)
+        }
         "thermalmeasurement" | "thermalmeasuredtemperature" | "measuredtemperature" => {
             Some(ManufacturingField::ThermalMeasurement)
         }
@@ -920,14 +1271,46 @@ fn optional_raw_column(row: &MetadataCsvRow, name: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-fn required_raw_column(row: &MetadataCsvRow, path: &Path, name: &str) -> Result<String> {
+fn required_raw_column_for(
+    row: &MetadataCsvRow,
+    path: &Path,
+    name: &str,
+    record: &str,
+) -> Result<String> {
     optional_raw_column(row, name).with_context(|| {
         format!(
-            "Manufacturing metadata CSV {} row {} thermal_measurement requires column {name}.",
+            "Manufacturing metadata CSV {} row {} {record} requires column {name}.",
             path.display(),
             row.row_number
         )
     })
+}
+
+fn upsert_named_sequence_value(sequence: &mut Vec<Value>, name: &str, value: Value) -> Result<()> {
+    let mut matched_index = None;
+    for (index, item) in sequence.iter().enumerate() {
+        if yaml_mapping_name(item) == Some(name) {
+            if matched_index.is_some() {
+                bail!(
+                    "Board IR field thermal_copper has duplicate existing name {name}; refusing to update ambiguous policy."
+                );
+            }
+            matched_index = Some(index);
+        }
+    }
+    if let Some(index) = matched_index {
+        sequence[index] = value;
+    } else {
+        sequence.push(value);
+    }
+    Ok(())
+}
+
+fn yaml_mapping_name(value: &Value) -> Option<&str> {
+    value
+        .as_mapping()?
+        .get(Value::String("name".to_string()))?
+        .as_str()
 }
 
 fn source_file_manifest(path: &Path) -> Result<SourceFileManifest> {

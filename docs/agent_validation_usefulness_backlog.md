@@ -79,7 +79,8 @@ Useful next slices:
   pin-1, body/courtyard-bounds, connector-entry, raw pad-level mask/paste
   fabrication override, and assembly-footprint alignment suggestion evidence,
 - board/order metadata extraction workflows beyond the current reviewed
-  manufacturing metadata CSV import manifest.
+  manufacturing metadata CSV import manifest, including reviewed scalar,
+  thermal-copper policy, and measured-temperature evidence rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.

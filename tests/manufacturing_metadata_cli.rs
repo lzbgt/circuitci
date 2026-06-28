@@ -276,6 +276,112 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
 }
 
 #[test]
+fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("without_thermal_policy.project.yaml");
+    let metadata = dir.path().join("thermal_policy.csv");
+    let output = dir.path().join("with_thermal_policy.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    let mut project_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string("examples/scenario_suggestions_thermal_via_plating/project.yaml")
+            .unwrap(),
+    )
+    .unwrap();
+    remove_board_manufacturing(&mut project_yaml);
+    std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
+    std::fs::write(
+        &metadata,
+        "field,value,unit,source,notes,name,component,power_loss_w,min_plated_thermal_via_count,min_thermal_via_drill_mm,min_thermal_via_plating_thickness_um,min_total_thermal_via_barrel_cross_section_mm2,nets,layers\n\
+         thermal_copper,20.0,mm2,thermal layout review,reviewed via barrel policy,u1_heat_spreader,U1,1.5,2,0.25,20.0,0.04,HOT,F.Cu|B.Cu\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("1 applied fields"));
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let thermal_copper = enriched["board"]["manufacturing"]["thermal_copper"]
+        .as_sequence()
+        .unwrap();
+    assert_eq!(thermal_copper.len(), 1);
+    assert_eq!(
+        thermal_copper[0]["name"],
+        Value::String("u1_heat_spreader".to_string())
+    );
+    assert_eq!(thermal_copper[0]["min_copper_area_mm2"], 20.0);
+    assert_eq!(thermal_copper[0]["min_plated_thermal_via_count"], 2);
+    assert_eq!(
+        thermal_copper[0]["min_total_thermal_via_barrel_cross_section_mm2"],
+        0.04
+    );
+    assert_eq!(
+        thermal_copper[0]["nets"][0],
+        Value::String("HOT".to_string())
+    );
+    assert_eq!(
+        thermal_copper[0]["layers"][1],
+        Value::String("B.Cu".to_string())
+    );
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.3.0");
+    assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
+        20.0
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    assert_runnable(&suggestions, "thermal_copper_area_u1_heat_spreader");
+    assert_runnable(&suggestions, "thermal_via_plating_u1_heat_spreader");
+    assert_runnable(
+        &suggestions,
+        "thermal_via_barrel_cross_section_u1_heat_spreader",
+    );
+}
+
+#[test]
 fn import_manufacturing_metadata_rejects_unknown_fields_by_default() {
     let dir = tempfile::tempdir().unwrap();
     let metadata = dir.path().join("order_metadata.csv");
