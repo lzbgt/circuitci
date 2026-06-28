@@ -35,6 +35,17 @@ battery_charger:
   min_charge_current_A: 0.015
   max_charge_current_A: 0.5
   regulation_voltage_V: 4.2
+simulation:
+  spice:
+    model_name: CIRCUITCI_MCP73831_4V2_CHARGER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VBAT, VSS, PROG]
+    valid_operating_notes:
+      - Uses MCP73831-2 datasheet pinout, 4.2 V regulation target, and PROG resistor current equation as a smooth constant-current/constant-voltage behavioral source.
+      - Suitable for generated-SPICE wiring, PROG resistor, battery-node voltage, charge-current probe, and preliminary USB charge-current observation workflows.
+      - Omits preconditioning, charge termination, STAT behavior, thermal regulation, timer behavior, battery chemistry, cell safety, package dissipation, and final charger sign-off.
 datasheet:
   manufacturer: Microchip Technology
   part_number: MCP73831-2
@@ -103,6 +114,7 @@ model_quality:
     - power_tree_validation
     - battery_charger_static_screening
     - usb_charge_current_budget_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - charger_thermal_signoff
     - battery_safety_or_chemistry_signoff

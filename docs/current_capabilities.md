@@ -190,13 +190,14 @@ Current analog support:
   metadata paths.
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
-  enabled 3.3 V regulator rails, and enabled load-switch paths through
-  explicit `simulation.spice` subcircuits. These models are low-confidence
+  enabled 3.3 V regulator rails, enabled load-switch paths, and MCP73831-style
+  PROG-programmed Li-Ion charger observations through explicit
+  `simulation.spice` subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
-  threshold, op-amp buffer, AP2112K LDO rail, TPS22918 load switch, TLV803
-  reset-supervisor, loop-stability Bode, DC divider-bias, divider-noise, and RC
-  Monte Carlo yield workflows.
+  threshold, op-amp buffer, AP2112K LDO rail, TPS22918 load switch, MCP73831
+  charger, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
+  divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -212,6 +213,13 @@ Current analog support:
   power-tree checks, while the transient face stays explicitly reduced-fidelity
   and omits CT, QOD, reverse-current, current-limit, inrush, and thermal
   sign-off behavior.
+- The Microchip MCP73831-2 charger pack now has a datasheet-backed generated
+  SPICE observation face for 4.2 V PROG-programmed constant-current/
+  constant-voltage behavior. Datasheet charge-current, PROG equation, input,
+  and battery-voltage metadata remain available for static charger checks,
+  while the transient face stays explicitly reduced-fidelity and omits
+  preconditioning, termination, STAT, thermal, timer, battery-chemistry, cell
+  safety, and final charger sign-off behavior.
 - GUI generated run-setup creation and generated component inclusion infer
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned

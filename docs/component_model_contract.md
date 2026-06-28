@@ -683,6 +683,15 @@ a reduced smooth VIN-to-VOUT conductance near the typical on-resistance. That
 model can exercise enabled-load wiring and preliminary voltage/current
 observations, but not CT slew-rate shaping, QOD discharge, reverse current,
 current limiting, inrush, leakage, or thermal sign-off.
+`vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
+observation: its datasheet pinout, input range, battery regulation target, PROG
+resistor charge-current equation, and static charger metadata remain
+source-backed, while its generated-SPICE face uses a reduced smooth
+constant-current/constant-voltage behavioral source. That model can exercise
+charger wiring, PROG resistor behavior, battery-node voltage, and preliminary
+charge-current observations, but not preconditioning, termination, STAT,
+thermal regulation, timer behavior, battery chemistry, cell safety, package
+dissipation, or final charger sign-off.
 
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital

@@ -51,6 +51,12 @@ const TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_usb", "v_on", "v_switched5v", "i_load"];
 const TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V enabled load switch into a 1 kOhm load";
+const MCP73831_CHARGER_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_mcp73831_charger_observation/project.yaml";
+const MCP73831_CHARGER_SCOPE_EXAMPLE_NAME: &str = "good_mcp73831_charger_observation";
+const MCP73831_CHARGER_SCOPE_EXPECTED_TRACES: &[&str] = &["v_usb", "v_bat", "i_charge"];
+const MCP73831_CHARGER_SCOPE_EXPECTED_FREQUENCY: &str =
+    "5 V USB input, 10 kOhm PROG resistor, and 100 mA charge observation";
 const TLV803_RESET_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tlv803ea29_reset_observation/project.yaml";
 const TLV803_RESET_SCOPE_EXAMPLE_NAME: &str = "good_tlv803ea29_reset_observation";
@@ -166,6 +172,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("USW"),
+    },
+    GuiProjectExample {
+        id: "mcp73831_charger_scope",
+        category: "Charger",
+        open_label: "Open MCP73831 Charger Example",
+        run_label: "Open MCP73831 + Run Scopes",
+        workflow_title: "MCP73831 Charger Workflow",
+        summary: "USB-powered Li-Ion charger with PROG-current and VBAT checks.",
+        project_path: MCP73831_CHARGER_SCOPE_EXAMPLE_PROJECT,
+        project_name: MCP73831_CHARGER_SCOPE_EXAMPLE_NAME,
+        expected_traces: MCP73831_CHARGER_SCOPE_EXPECTED_TRACES,
+        expected_frequency: MCP73831_CHARGER_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UCHG"),
     },
     GuiProjectExample {
         id: "tlv803_reset_scope",

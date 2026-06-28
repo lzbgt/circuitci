@@ -32,6 +32,18 @@ RLEAK VOUT GND 1G
 RBIAS ON GND 1G
 .ends CIRCUITCI_TPS22918_LOAD_SWITCH
 
+.subckt CIRCUITCI_MCP73831_4V2_CHARGER VDD VBAT VSS PROG
+* Reduced MCP73831-2 constant-current/constant-voltage charger behavior.
+* A 1 uA PROG bias makes the external RPROG voltage encode the datasheet
+* IREG = 1000 V / RPROG relationship as ICHG = 0.001 / V(PROG,VSS).
+* Thermal regulation, charge qualification, termination, STAT behavior, and
+* battery chemistry are intentionally not modeled.
+BPROG PROG VSS I=1u
+BCHG VDD VBAT I={(0.001/sqrt(v(PROG,VSS)*v(PROG,VSS)+1e-12))/(1+exp(25*(v(VBAT,VSS)-4.2)))}
+BCLAMP VBAT VSS I={5*(v(VBAT,VSS)-4.2+sqrt((v(VBAT,VSS)-4.2)*(v(VBAT,VSS)-4.2)+1e-8))}
+RLEAK VBAT VSS 1G
+.ends CIRCUITCI_MCP73831_4V2_CHARGER
+
 .subckt CIRCUITCI_TLV803EA29_RESET_SUPERVISOR VDD GND RESET
 * Reduced TLV803EA29 active-low open-drain threshold behavior.
 * RESET is strongly pulled low while VDD is below the nominal 2.93 V threshold

@@ -290,6 +290,27 @@ fn observation_default_assertions(
             (0.0, stop_time_us),
         ));
     }
+    if let Some(charger) = &model.battery_charger
+        && let Some(battery_probe) =
+            probe_for_component_pin(probes, component, &charger.battery_pin)
+        && let Some(battery_port) = model.ports.get(&charger.battery_pin)
+    {
+        let max_v = battery_port
+            .electrical
+            .operating_voltage_max_v
+            .or(charger.regulation_voltage_v.map(|voltage| voltage * 1.01));
+        if let Some(max_v) = max_v {
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_regulation_ceiling", battery_probe.probe_name),
+                &battery_probe.probe_name,
+                "max",
+                "below",
+                max_v,
+                (0.0, stop_time_us),
+            ));
+        }
+    }
     if let Some(function) = &model.analog_function {
         match function.kind {
             crate::library::AnalogFunctionKind::OpAmp => {
@@ -819,6 +840,43 @@ board:
 "
     }
 
+    fn mcp73831_project_yaml() -> &'static str {
+        "project:
+  name: mcp73831_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+  - libs/vendor/microchip/chargers
+board:
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      pins: { P: usb_5v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    UCHG:
+      model: vendor.microchip.mcp73831_4v2
+      parameters:
+        programmed_charge_current_A: 0.1
+      power_domains:
+        VDD: usb_5v
+        VBAT: battery
+      pins: { VDD: usb_5v, VBAT: battery, VSS: gnd, PROG: prog }
+    RPROG:
+      model: generic.analog.resistor
+      pins: { A: prog, B: gnd }
+      spice: { primitive: resistor, value_ohm: 10000.0 }
+    CBAT:
+      model: generic.analog.capacitor
+      pins: { A: battery, B: gnd }
+      spice: { primitive: capacitor, value_f: 0.000001 }
+  nets:
+    usb_5v: { kind: power, nominal_voltage: 5.0, powered: true }
+    battery: { kind: power, nominal_voltage: 4.2, powered: true }
+    prog: { kind: digital_or_analog }
+    gnd: { kind: ground }
+"
+    }
+
     fn opamp_buffer_project_yaml() -> &'static str {
         "project:
   name: opamp_observation_preset_test
@@ -1058,6 +1116,52 @@ board:
                     Some(5.1)
                 )
             ]
+        );
+    }
+
+    #[test]
+    fn observation_preset_adds_battery_charger_voltage_ceiling_check() {
+        let result =
+            create_component_observation_preset(mcp73831_project_yaml(), Path::new("."), "UCHG")
+                .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "uchg_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["v_uchg_vdd", "v_uchg_vbat", "v_uchg_prog"]
+        );
+        assert_eq!(
+            analog
+                .assertions
+                .iter()
+                .map(|assertion| {
+                    (
+                        assertion.name.as_str(),
+                        assertion.probe.as_str(),
+                        assertion.aggregation.clone(),
+                        assertion.relation.clone(),
+                        assertion.threshold_v,
+                    )
+                })
+                .collect::<Vec<_>>(),
+            vec![(
+                "v_uchg_vbat_regulation_ceiling",
+                "v_uchg_vbat",
+                crate::board_ir::AnalogAggregation::Max,
+                crate::board_ir::AnalogRelation::Below,
+                Some(4.232)
+            )]
         );
     }
 

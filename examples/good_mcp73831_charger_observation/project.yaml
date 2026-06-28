@@ -1,0 +1,221 @@
+project:
+  name: good_mcp73831_charger_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/microchip/chargers
+
+board:
+  schematic:
+    component_symbols:
+      VUSB: Simulation_SPICE:VDC
+      UCHG: Battery_Management:MCP73831-2-OT
+      RPROG: Device:R
+      VSENSE: Simulation_SPICE:VDC
+      CBAT: Device:C
+    node_styles:
+      component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UCHG: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RPROG: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VSENSE: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CBAT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VUSB: { x: 64.0, y: 224.0 }
+      component:UCHG: { x: 320.0, y: 224.0 }
+      component:RPROG: { x: 320.0, y: 400.0 }
+      component:VSENSE: { x: 496.0, y: 224.0 }
+      component:CBAT: { x: 640.0, y: 320.0 }
+      net:usb_5v: { x: 176.0, y: 176.0 }
+      net:charge_out: { x: 432.0, y: 176.0 }
+      net:battery: { x: 592.0, y: 176.0 }
+      net:prog: { x: 320.0, y: 320.0 }
+      net:gnd: { x: 352.0, y: 544.0 }
+    wire_routes:
+      VUSB.P->usb_5v:
+        points:
+          - { x: 160.0, y: 192.0 }
+      VUSB.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      UCHG.VDD->usb_5v:
+        points:
+          - { x: 240.0, y: 192.0 }
+      UCHG.VBAT->charge_out:
+        points:
+          - { x: 432.0, y: 192.0 }
+      UCHG.VSS->gnd:
+        points:
+          - { x: 320.0, y: 544.0 }
+      UCHG.PROG->prog:
+        points:
+          - { x: 320.0, y: 320.0 }
+      RPROG.A->prog:
+        points:
+          - { x: 368.0, y: 320.0 }
+      RPROG.B->gnd:
+        points:
+          - { x: 368.0, y: 544.0 }
+      VSENSE.P->charge_out:
+        points:
+          - { x: 464.0, y: 192.0 }
+      VSENSE.N->battery:
+        points:
+          - { x: 592.0, y: 192.0 }
+      CBAT.A->battery:
+        points:
+          - { x: 688.0, y: 192.0 }
+      CBAT.B->gnd:
+        points:
+          - { x: 688.0, y: 544.0 }
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    UCHG:
+      model: vendor.microchip.mcp73831_4v2
+      part_number: MCP73831T-2ACI/OT
+      parameters:
+        programmed_charge_current_A: 0.1
+      power_domains:
+        VDD: usb_5v
+        VBAT: charge_out
+      pins:
+        VDD: usb_5v
+        VBAT: charge_out
+        VSS: gnd
+        PROG: prog
+    RPROG:
+      model: generic.analog.resistor
+      part_number: 10k_1pct
+      pins:
+        A: prog
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    VSENSE:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: charge_out
+        N: battery
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    CBAT:
+      model: generic.analog.capacitor
+      pins:
+        A: battery
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
+        initial_v: 0.0
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 0.5
+    charge_out:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    battery:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    prog:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: mcp73831_charge_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VUSB
+          - UCHG
+          - RPROG
+          - VSENSE
+          - CBAT
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 4af8d2bc3c59538a497c35a16cdf39846e150ffa1cd76fc4efecaa323e6b9eb4
+      node_bindings:
+        - { node: vusb, net: usb_5v }
+        - { node: charge, net: charge_out }
+        - { node: battery, net: battery }
+        - { node: prog, net: prog }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vusb, endpoint: { component: VUSB, pin: P } }
+        - { node: "0", endpoint: { component: VUSB, pin: N } }
+        - { node: vusb, endpoint: { component: UCHG, pin: VDD } }
+        - { node: charge, endpoint: { component: UCHG, pin: VBAT } }
+        - { node: "0", endpoint: { component: UCHG, pin: VSS } }
+        - { node: prog, endpoint: { component: UCHG, pin: PROG } }
+        - { node: prog, endpoint: { component: RPROG, pin: A } }
+        - { node: "0", endpoint: { component: RPROG, pin: B } }
+        - { node: charge, endpoint: { component: VSENSE, pin: P } }
+        - { node: battery, endpoint: { component: VSENSE, pin: N } }
+        - { node: battery, endpoint: { component: CBAT, pin: A } }
+        - { node: "0", endpoint: { component: CBAT, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 60.0
+        max_step_us: 0.1
+      stimuli:
+        - name: usb_charger_prog_current
+          description: 5 V USB source feeds an MCP73831-2 behavioral charger with a 10 kOhm PROG resistor and a 1 uF battery-node capacitor.
+      probes:
+        - name: v_usb
+          expression: V(vusb)
+        - name: v_bat
+          expression: V(battery)
+        - name: i_charge
+          expression: I(VSENSE)
+          quantity: current
+      assertions:
+        - name: charge_current_above_90ma
+          probe: i_charge
+          aggregation: mean
+          start_us: 5.0
+          end_us: 20.0
+          relation: above
+          threshold_a: 0.09
+        - name: charge_current_below_110ma
+          probe: i_charge
+          aggregation: mean
+          start_us: 5.0
+          end_us: 20.0
+          relation: below
+          threshold_a: 0.11
+        - name: battery_rises_above_4v
+          probe: v_bat
+          aggregation: rising_crossing_time
+          start_us: 0.001
+          end_us: 59.0
+          threshold_v: 4.0
+          time_limit_us: 45.0
+          relation: below
+        - name: battery_below_regulation_max
+          probe: v_bat
+          aggregation: max
+          start_us: 0.001
+          end_us: 59.0
+          relation: below
+          threshold_v: 4.25

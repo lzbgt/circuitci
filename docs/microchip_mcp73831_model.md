@@ -48,3 +48,21 @@ requires the explicit parameter.
 This is intentionally static. It does not validate battery chemistry, thermal
 foldback, preconditioning behavior, charge termination, USB negotiation,
 thermal dissipation, or transient load sharing between charger and system load.
+
+The model also declares `simulation.spice` metadata for generated Board IR
+SPICE. The generated-SPICE face points at the reduced-fidelity
+`CIRCUITCI_MCP73831_4V2_CHARGER` subcircuit in
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+`VDD, VBAT, VSS, PROG`
+
+That subcircuit models the datasheet 4.2 V regulation target and derives charge
+current from the external PROG resistor equation, so users can observe charger
+wiring, battery-node voltage, and charge-current probes in Sketch/Scopes. It
+intentionally omits preconditioning, charge termination, STAT behavior, thermal
+regulation, timer behavior, battery chemistry, cell safety, package
+dissipation, and final charger sign-off.
+
+`examples/good_mcp73831_charger_observation` proves the MCP73831 generated
+SPICE workflow with voltage/current probes and executable checks. The GUI
+Examples picker registers the same fixture as `MCP73831 Charger`.
