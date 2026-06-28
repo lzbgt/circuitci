@@ -284,6 +284,18 @@ board:
             end: { x_mm: 0.2, y_mm: 0.9 }
             layer: F.CrtYd
             kind: courtyard
+        semantics:
+          body_bounds:
+            min: { x_mm: -0.8, y_mm: -0.9 }
+            max: { x_mm: 0.4, y_mm: 1.2 }
+            source: kicad_footprint_graphics
+          courtyard_bounds:
+            min: { x_mm: -0.8, y_mm: -0.9 }
+            max: { x_mm: 0.4, y_mm: 1.0 }
+            source: kicad_footprint_graphics
+          pin_1:
+            at: { x_mm: -0.6, y_mm: 0.0 }
+            source: kicad_pad_1
         entry_direction:
           offset_deg: 0.0
           source: kicad_mapping
@@ -317,8 +329,12 @@ The `kind` field is derived from the drawing
 layer and is intentionally conservative: `fabrication`, `courtyard`,
 `silkscreen`, or `other`. Curved graphics retain their source points in Board
 IR; current 2D layout checks sample them into bounded polylines when computing
-edge distance or overhang evidence. This is drawing evidence for follow-up
-layout rules; it is not a full 3D body, enclosure, or keepout model.
+edge distance or overhang evidence. Optional `semantics` entries summarize
+source-backed footprint evidence: `body_bounds` from fabrication graphics,
+`courtyard_bounds` from courtyard graphics, and `pin_1` from a KiCad pad named
+`1`. These summaries are review and rule inputs; they do not create schematic
+pin bindings, prove BOM/PNP orientation, or replace exact polygonal DRC,
+enclosure, or keepout analysis.
 
 ## Layout Outline Evidence
 

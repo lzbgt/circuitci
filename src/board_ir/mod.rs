@@ -272,11 +272,38 @@ pub struct LayoutFootprint {
     #[serde(default)]
     pub arcs: Vec<LayoutFootprintArc>,
     #[serde(default)]
+    pub semantics: Option<LayoutFootprintSemantics>,
+    #[serde(default)]
     pub entry_direction: Option<LayoutEntryDirection>,
     #[serde(default)]
     pub entry_clearance: Option<LayoutEntryClearance>,
     #[serde(default)]
     pub entry_aperture: Option<LayoutEntryAperture>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutFootprintSemantics {
+    #[serde(default)]
+    pub body_bounds: Option<LayoutFootprintBounds>,
+    #[serde(default)]
+    pub courtyard_bounds: Option<LayoutFootprintBounds>,
+    #[serde(default)]
+    pub pin_1: Option<LayoutPinMarker>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintBounds {
+    pub min: LayoutPoint,
+    pub max: LayoutPoint,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutPinMarker {
+    pub at: LayoutPoint,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

@@ -40,6 +40,20 @@ drawing evidence includes:
 - a bounded semantic kind derived from the layer: `fabrication`, `courtyard`,
   `silkscreen`, or `other`.
 
+The importer also writes compact derived footprint semantics when the source
+evidence is present:
+
+- `board.layout.footprints.<ref>.semantics.body_bounds` from transformed
+  `fabrication` footprint graphics,
+- `board.layout.footprints.<ref>.semantics.courtyard_bounds` from transformed
+  `courtyard` footprint graphics,
+- `board.layout.footprints.<ref>.semantics.pin_1` from a KiCad pad named `1`.
+
+Each semantic row carries a `source` string such as
+`kicad_footprint_graphics` or `kicad_pad_1`. Pin-1 evidence is package
+orientation evidence only; it does not create or validate schematic pin
+bindings. Duplicate KiCad pad `1` markers fail closed.
+
 For USB connector entry-clearance checks, the importer also reads optional
 footprint properties named `CircuitCI_EntryDirectionOffsetDeg`,
 `CircuitCI_EntryClearanceDepthMM`,
@@ -75,6 +89,9 @@ stored as their transformed opposite corners; rotated rectangles should be
 treated as evidence for follow-up rules, not as exact polygonal body sign-off.
 Curved graphics retain their source-defining points; current layout checks
 sample circles/arcs into bounded polylines for distance and overhang evidence.
+Derived `body_bounds` and `courtyard_bounds` summarize those same
+source-defining points for agents and review tools; they do not replace exact
+polygonal DRC or enclosure clearance analysis.
 
 The importer also reads connected footprint `pad` entries and writes pad
 evidence under `board.layout.pads` when the footprint reference and pad net both

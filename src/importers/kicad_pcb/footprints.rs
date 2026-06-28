@@ -16,6 +16,7 @@ pub(super) struct PcbFootprint {
     polygons: Vec<PcbFootprintPolygon>,
     circles: Vec<PcbFootprintCircle>,
     arcs: Vec<PcbFootprintArc>,
+    semantics: Option<PcbFootprintSemantics>,
     entry_direction: Option<PcbEntryDirection>,
     entry_clearance: Option<PcbEntryClearance>,
     entry_aperture: Option<PcbEntryAperture>,
@@ -62,6 +63,24 @@ struct PcbFootprintArc {
 }
 
 #[derive(Debug, Clone, Default)]
+struct PcbFootprintSemantics {
+    body_bounds: Option<PcbSemanticBounds>,
+    courtyard_bounds: Option<PcbSemanticBounds>,
+    pin_1: Option<PcbPinMarker>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PcbSemanticBounds {
+    min: PcbPoint,
+    max: PcbPoint,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PcbPinMarker {
+    at: PcbPoint,
+}
+
+#[derive(Debug, Clone, Default)]
 struct PcbEntryDirection {
     offset_deg: f64,
 }
@@ -91,6 +110,8 @@ struct FootprintYaml {
     circles: Vec<FootprintCircleYaml>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     arcs: Vec<FootprintArcYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantics: Option<FootprintSemanticsYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     entry_direction: Option<EntryDirectionYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -137,6 +158,29 @@ struct FootprintArcYaml {
     end: PcbPoint,
     layer: String,
     kind: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintSemanticsYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    body_bounds: Option<FootprintBoundsYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    courtyard_bounds: Option<FootprintBoundsYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pin_1: Option<PinMarkerYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintBoundsYaml {
+    min: PcbPoint,
+    max: PcbPoint,
+    source: String,
+}
+
+#[derive(Debug, Serialize)]
+struct PinMarkerYaml {
+    at: PcbPoint,
+    source: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -268,7 +312,10 @@ pub(super) fn parse_footprints(
                 layer,
             });
         }
+        let pin_1 = parse_pin_1_marker(footprint, footprint_at, &reference, path)?;
+        evidence.semantics = footprint_semantics(&evidence, pin_1);
         if footprint_graphic_count(&evidence) > 0
+            || evidence.semantics.is_some()
             || evidence.entry_direction.is_some()
             || evidence.entry_clearance.is_some()
             || evidence.entry_aperture.is_some()
@@ -351,6 +398,27 @@ pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
                 kind: arc.kind.clone(),
             })
             .collect(),
+        semantics: footprint
+            .semantics
+            .as_ref()
+            .map(|semantics| FootprintSemanticsYaml {
+                body_bounds: semantics.body_bounds.map(|bounds| FootprintBoundsYaml {
+                    min: bounds.min,
+                    max: bounds.max,
+                    source: "kicad_footprint_graphics".to_string(),
+                }),
+                courtyard_bounds: semantics
+                    .courtyard_bounds
+                    .map(|bounds| FootprintBoundsYaml {
+                        min: bounds.min,
+                        max: bounds.max,
+                        source: "kicad_footprint_graphics".to_string(),
+                    }),
+                pin_1: semantics.pin_1.map(|pin_1| PinMarkerYaml {
+                    at: pin_1.at,
+                    source: "kicad_pad_1".to_string(),
+                }),
+            }),
         entry_direction: footprint.entry_direction.as_ref().map(|entry_direction| {
             EntryDirectionYaml {
                 offset_deg: entry_direction.offset_deg,
@@ -375,6 +443,150 @@ pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
             }),
     })
     .context("Failed to serialize KiCad PCB footprint drawing evidence into Board IR YAML.")
+}
+
+fn footprint_semantics(
+    footprint: &PcbFootprint,
+    pin_1: Option<PcbPinMarker>,
+) -> Option<PcbFootprintSemantics> {
+    let semantics = PcbFootprintSemantics {
+        body_bounds: bounds_for_kind(footprint, "fabrication"),
+        courtyard_bounds: bounds_for_kind(footprint, "courtyard"),
+        pin_1,
+    };
+    (semantics.body_bounds.is_some()
+        || semantics.courtyard_bounds.is_some()
+        || semantics.pin_1.is_some())
+    .then_some(semantics)
+}
+
+fn bounds_for_kind(footprint: &PcbFootprint, kind: &str) -> Option<PcbSemanticBounds> {
+    let mut bounds = BoundsBuilder::default();
+    for segment in footprint
+        .segments
+        .iter()
+        .filter(|segment| segment.kind == kind)
+    {
+        bounds.include_point(segment.start);
+        bounds.include_point(segment.end);
+    }
+    for rectangle in footprint
+        .rectangles
+        .iter()
+        .filter(|rectangle| rectangle.kind == kind)
+    {
+        bounds.include_point(rectangle.start);
+        bounds.include_point(rectangle.end);
+    }
+    for polygon in footprint
+        .polygons
+        .iter()
+        .filter(|polygon| polygon.kind == kind)
+    {
+        for point in &polygon.points {
+            bounds.include_point(*point);
+        }
+    }
+    for circle in footprint
+        .circles
+        .iter()
+        .filter(|circle| circle.kind == kind)
+    {
+        bounds.include_circle(circle.center, circle.end);
+    }
+    for arc in footprint.arcs.iter().filter(|arc| arc.kind == kind) {
+        bounds.include_point(arc.start);
+        bounds.include_point(arc.mid);
+        bounds.include_point(arc.end);
+    }
+    bounds.finish()
+}
+
+#[derive(Debug, Default)]
+struct BoundsBuilder {
+    min_x: Option<f64>,
+    min_y: Option<f64>,
+    max_x: Option<f64>,
+    max_y: Option<f64>,
+}
+
+impl BoundsBuilder {
+    fn include_point(&mut self, point: PcbPoint) {
+        self.min_x = Some(self.min_x.map_or(point.x_mm, |min| min.min(point.x_mm)));
+        self.min_y = Some(self.min_y.map_or(point.y_mm, |min| min.min(point.y_mm)));
+        self.max_x = Some(self.max_x.map_or(point.x_mm, |max| max.max(point.x_mm)));
+        self.max_y = Some(self.max_y.map_or(point.y_mm, |max| max.max(point.y_mm)));
+    }
+
+    fn include_circle(&mut self, center: PcbPoint, end: PcbPoint) {
+        let radius_mm = point_distance_mm(center, end);
+        self.include_point(PcbPoint {
+            x_mm: center.x_mm - radius_mm,
+            y_mm: center.y_mm - radius_mm,
+        });
+        self.include_point(PcbPoint {
+            x_mm: center.x_mm + radius_mm,
+            y_mm: center.y_mm + radius_mm,
+        });
+    }
+
+    fn finish(self) -> Option<PcbSemanticBounds> {
+        Some(PcbSemanticBounds {
+            min: PcbPoint {
+                x_mm: self.min_x?,
+                y_mm: self.min_y?,
+            },
+            max: PcbPoint {
+                x_mm: self.max_x?,
+                y_mm: self.max_y?,
+            },
+        })
+    }
+}
+
+fn parse_pin_1_marker(
+    footprint: &[Sexp],
+    footprint_at: FootprintAt,
+    reference: &str,
+    path: &Path,
+) -> Result<Option<PcbPinMarker>> {
+    let mut pin_1 = None;
+    for pad in list_children(footprint, "pad") {
+        let Some(pad_name) = string_at(pad, 1).map(str::trim) else {
+            continue;
+        };
+        if pad_name != "1" {
+            continue;
+        }
+        let local_at = child_list(pad, "at").with_context(|| {
+            format!(
+                "KiCad PCB footprint {reference} pad 1 in {} is missing (at x y).",
+                path.display()
+            )
+        })?;
+        let local_x_mm = numeric_at(local_at, 1).with_context(|| {
+            format!(
+                "KiCad PCB footprint {reference} pad 1 in {} has invalid x coordinate.",
+                path.display()
+            )
+        })?;
+        let local_y_mm = numeric_at(local_at, 2).with_context(|| {
+            format!(
+                "KiCad PCB footprint {reference} pad 1 in {} has invalid y coordinate.",
+                path.display()
+            )
+        })?;
+        let marker = PcbPinMarker {
+            at: transform_footprint_point(footprint_at, local_x_mm, local_y_mm),
+        };
+        if pin_1.replace(marker).is_some() {
+            bail!(
+                "KiCad PCB footprint {reference} in {} has duplicate pad 1 markers.",
+                path.display()
+            );
+        }
+    }
+    Ok(pin_1)
 }
 
 fn parse_entry_direction(

@@ -90,6 +90,47 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(connector_footprint["arcs"][0]["start"]["x_mm"], 0.0);
     assert_eq!(connector_footprint["arcs"][0]["mid"]["y_mm"], 1.0);
     assert_eq!(
+        connector_footprint["semantics"]["body_bounds"]["source"],
+        "kicad_footprint_graphics"
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["body_bounds"]["min"]["x_mm"],
+        -0.8
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["body_bounds"]["min"]["y_mm"],
+        -0.9
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["body_bounds"]["max"]["x_mm"],
+        0.4
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["body_bounds"]["max"]["y_mm"],
+        1.2
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["courtyard_bounds"]["source"],
+        "kicad_footprint_graphics"
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["courtyard_bounds"]["min"]["x_mm"],
+        -0.8
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["courtyard_bounds"]["min"]["y_mm"],
+        -0.9
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["courtyard_bounds"]["max"]["x_mm"],
+        0.4
+    );
+    assert_eq!(
+        connector_footprint["semantics"]["courtyard_bounds"]["max"]["y_mm"],
+        1.0
+    );
+    assert!(connector_footprint["semantics"]["pin_1"].is_null());
+    assert_eq!(
         connector_footprint["entry_direction"]["source"],
         "kicad_footprint_property"
     );
@@ -857,6 +898,82 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         mapped_entry_evidence["aperture_min_effective_clearance_width_mm"],
         1.2
     );
+}
+
+#[test]
+fn import_kicad_pcb_preserves_pin_1_semantic_marker() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let project_path = dir.path().join("pin1.project.yaml");
+    let pcb_path = dir.path().join("pin1.kicad_pcb");
+    let output_path = dir.path().join("pin1.with_layout.project.yaml");
+    let library_path = std::env::current_dir()
+        .unwrap()
+        .join("libs/generic")
+        .display()
+        .to_string();
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: kicad_pin1_fixture
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.schematic.imported_component
+      pins: {{}}
+  nets:
+    NET_1:
+      kind: digital_or_analog
+scenarios: []
+"#
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        &pcb_path,
+        r#"(kicad_pcb
+  (version 20240108)
+  (generator circuitci-test)
+  (net 1 "NET_1")
+  (footprint "Package:Pin1Fixture" (layer "F.Cu")
+    (at 10 20 90)
+    (property "Reference" "U1" (at 0 0 0) (layer "F.SilkS"))
+    (fp_rect (start -1 -2) (end 1 2) (stroke (width 0.1) (type solid)) (fill none) (layer "F.Fab"))
+    (pad "1" smd rect (at 0.5 0.25) (size 0.3 0.3) (layers "F.Cu") (net 1 "NET_1"))
+  )
+)
+"#,
+    )
+    .unwrap();
+
+    import_kicad_pcb(
+        pcb_path.to_str().unwrap(),
+        project_path.to_str().unwrap(),
+        &output_path,
+    );
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output_path).unwrap()).unwrap();
+    let semantics = &imported["board"]["layout"]["footprints"]["U1"]["semantics"];
+    assert_eq!(semantics["pin_1"]["source"], "kicad_pad_1");
+    assert_eq!(semantics["pin_1"]["at"]["x_mm"], 9.75);
+    assert_eq!(semantics["pin_1"]["at"]["y_mm"], 20.5);
+    assert_eq!(
+        semantics["body_bounds"]["source"],
+        "kicad_footprint_graphics"
+    );
+    assert_eq!(semantics["body_bounds"]["min"]["x_mm"], 8.0);
+    assert_eq!(semantics["body_bounds"]["min"]["y_mm"], 19.0);
+    assert_eq!(semantics["body_bounds"]["max"]["x_mm"], 12.0);
+    assert_eq!(semantics["body_bounds"]["max"]["y_mm"], 21.0);
 }
 
 fn import_kicad_pcb(board_path: &str, project_path: &str, output_path: &Path) {

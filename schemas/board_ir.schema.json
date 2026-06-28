@@ -522,6 +522,41 @@
                       "additionalProperties": false
                     }
                   },
+                  "semantics": {
+                    "type": "object",
+                    "properties": {
+                      "body_bounds": {
+                        "type": "object",
+                        "required": ["min", "max", "source"],
+                        "properties": {
+                          "min": { "$ref": "#/$defs/layout_point" },
+                          "max": { "$ref": "#/$defs/layout_point" },
+                          "source": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      },
+                      "courtyard_bounds": {
+                        "type": "object",
+                        "required": ["min", "max", "source"],
+                        "properties": {
+                          "min": { "$ref": "#/$defs/layout_point" },
+                          "max": { "$ref": "#/$defs/layout_point" },
+                          "source": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      },
+                      "pin_1": {
+                        "type": "object",
+                        "required": ["at", "source"],
+                        "properties": {
+                          "at": { "$ref": "#/$defs/layout_point" },
+                          "source": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
                   "entry_direction": {
                     "type": "object",
                     "properties": {
