@@ -283,15 +283,19 @@ record, use `circuitci import-manufacturing-metadata` instead. It accepts a
 evidence and skipped unknown rows. Repeated `field=thermal_measurement` rows
 may also include `name`, `component`, `ambient_temperature_C`,
 `measurement_uncertainty_C`, `power_loss_w`, and `measurement_point` columns;
-`value` is the measured temperature in C. Repeated `field=thermal_copper` rows
-use `value` as `min_copper_area_mm2` and may include reviewed policy columns
-such as `name`, `component`, `power_loss_w`, `nets`, `layers`,
-`min_thermal_via_count`, `min_plated_thermal_via_count`,
+`value` is the measured temperature in C. Repeated
+`field=controlled_impedance_net` rows use `value` as `target_impedance_ohm`,
+while repeated `field=controlled_impedance_pair` rows use `value` as
+`target_differential_impedance_ohm`; both forms require reviewed width/error
+columns and replace existing targets by net or net pair. Repeated
+`field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
+include reviewed policy columns such as `name`, `component`, `power_loss_w`,
+`nets`, `layers`, `min_thermal_via_count`, `min_plated_thermal_via_count`,
 `min_thermal_via_drill_mm`, `min_thermal_via_plating_thickness_um`,
 `min_total_thermal_via_barrel_cross_section_mm2`, `min_copper_thickness_um`,
 `rated_ambient_temperature_C`, `min_airflow_lfm`, and `enclosure_profile`.
 Thermal policy rows replace an existing `thermal_copper[]` entry with the same
-name and reject duplicate CSV names to avoid ambiguous validation inputs.
+name. Duplicate CSV targets fail closed to avoid ambiguous validation inputs.
 
 ```bash
 circuitci import-manufacturing-metadata \

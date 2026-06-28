@@ -46,8 +46,31 @@ struct AppliedField {
     field: ManufacturingField,
     numeric_value: Option<f64>,
     string_value: Option<String>,
+    controlled_impedance_net: Option<AppliedControlledImpedanceNet>,
+    controlled_impedance_pair: Option<AppliedControlledImpedancePair>,
     thermal_copper: Option<AppliedThermalCopper>,
     thermal_measurement: Option<AppliedThermalMeasurement>,
+}
+
+#[derive(Debug, Clone)]
+struct AppliedControlledImpedanceNet {
+    net: String,
+    source: String,
+    target_impedance_ohm: f64,
+    expected_width_mm: f64,
+    max_width_error_mm: f64,
+}
+
+#[derive(Debug, Clone)]
+struct AppliedControlledImpedancePair {
+    first_net: String,
+    second_net: String,
+    source: String,
+    target_differential_impedance_ohm: f64,
+    expected_width_mm: f64,
+    expected_gap_mm: f64,
+    max_width_error_mm: f64,
+    max_gap_error_mm: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -92,6 +115,8 @@ enum ManufacturingField {
     MaxPasteAreaRatio,
     MinSolderPasteSpacingMm,
     MaxStitchViaDistanceMm,
+    ControlledImpedanceNet,
+    ControlledImpedancePair,
     ThermalCopper,
     ThermalMeasurement,
     Source,
@@ -107,6 +132,8 @@ impl ManufacturingField {
             Self::MaxPasteAreaRatio => "max_paste_area_ratio",
             Self::MinSolderPasteSpacingMm => "min_solder_paste_spacing_mm",
             Self::MaxStitchViaDistanceMm => "max_stitch_via_distance_mm",
+            Self::ControlledImpedanceNet => "controlled_impedance.nets[]",
+            Self::ControlledImpedancePair => "controlled_impedance.differential_pairs[]",
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::Source => "source",
@@ -133,7 +160,13 @@ impl ManufacturingField {
     }
 
     fn is_repeatable(self) -> bool {
-        matches!(self, Self::ThermalCopper | Self::ThermalMeasurement)
+        matches!(
+            self,
+            Self::ControlledImpedanceNet
+                | Self::ControlledImpedancePair
+                | Self::ThermalCopper
+                | Self::ThermalMeasurement
+        )
     }
 }
 
@@ -360,6 +393,30 @@ fn applied_field(
             field,
             numeric_value: None,
             string_value: Some(value.to_string()),
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+        });
+    }
+    if field == ManufacturingField::ControlledImpedanceNet {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: Some(applied_controlled_impedance_net(row, path)?),
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+        });
+    }
+    if field == ManufacturingField::ControlledImpedancePair {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: Some(applied_controlled_impedance_pair(row, path)?),
             thermal_copper: None,
             thermal_measurement: None,
         });
@@ -369,6 +426,8 @@ fn applied_field(
             field,
             numeric_value: None,
             string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
             thermal_copper: Some(applied_thermal_copper(row, path)?),
             thermal_measurement: None,
         });
@@ -378,6 +437,8 @@ fn applied_field(
             field,
             numeric_value: None,
             string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: Some(applied_thermal_measurement(row, path)?),
         });
@@ -404,8 +465,120 @@ fn applied_field(
         field,
         numeric_value: Some(normalized),
         string_value: None,
+        controlled_impedance_net: None,
+        controlled_impedance_pair: None,
         thermal_copper: None,
         thermal_measurement: None,
+    })
+}
+
+fn applied_controlled_impedance_net(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceNet> {
+    let target_source = optional_raw_column(row, "target_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(target_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_net requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceNet {
+        net: required_raw_column_for(row, path, "net", "controlled_impedance_net")?,
+        source,
+        target_impedance_ohm: parse_positive_ohms(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        expected_width_mm: required_positive_number(
+            row,
+            path,
+            "expected_width_mm",
+            "controlled_impedance_net",
+        )?,
+        max_width_error_mm: required_nonnegative_number(
+            row,
+            path,
+            "max_width_error_mm",
+            "controlled_impedance_net",
+        )?,
+    })
+}
+
+fn applied_controlled_impedance_pair(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedancePair> {
+    let first_net = required_raw_column_for(row, path, "first_net", "controlled_impedance_pair")?;
+    let second_net = required_raw_column_for(row, path, "second_net", "controlled_impedance_pair")?;
+    if first_net == second_net {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_pair requires two distinct nets.",
+            path.display(),
+            row.row_number
+        );
+    }
+    let target_source = optional_raw_column(row, "target_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(target_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_pair requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedancePair {
+        first_net,
+        second_net,
+        source,
+        target_differential_impedance_ohm: parse_positive_ohms(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        expected_width_mm: required_positive_number(
+            row,
+            path,
+            "expected_width_mm",
+            "controlled_impedance_pair",
+        )?,
+        expected_gap_mm: required_positive_number(
+            row,
+            path,
+            "expected_gap_mm",
+            "controlled_impedance_pair",
+        )?,
+        max_width_error_mm: required_nonnegative_number(
+            row,
+            path,
+            "max_width_error_mm",
+            "controlled_impedance_pair",
+        )?,
+        max_gap_error_mm: required_nonnegative_number(
+            row,
+            path,
+            "max_gap_error_mm",
+            "controlled_impedance_pair",
+        )?,
     })
 }
 
@@ -683,6 +856,48 @@ fn required_positive_watts(
     parse_positive_watts(&value, path, row, column)
 }
 
+fn required_positive_number(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<f64> {
+    let value = required_raw_column_for(row, path, column, record)?;
+    parse_positive_number(&value, path, row, column)
+}
+
+fn required_nonnegative_number(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<f64> {
+    let value = required_raw_column_for(row, path, column, record)?;
+    parse_nonnegative_number(&value, path, row, column)
+}
+
+fn parse_positive_ohms(
+    raw: &str,
+    unit: Option<&str>,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = parse_positive_number(raw, path, row, column)?;
+    let unit = unit.map(normalize_unit);
+    if !matches!(
+        unit.as_deref(),
+        None | Some("") | Some("ohm") | Some("ohms") | Some("ω")
+    ) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} must use ohms for {column}.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
 fn parse_positive_area_mm2(
     raw: &str,
     unit: Option<&str>,
@@ -826,6 +1041,31 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
     {
         bail!("max_paste_area_ratio must be greater than or equal to min_paste_area_ratio.");
     }
+    let mut controlled_impedance_nets = BTreeSet::new();
+    for target in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_net.as_ref())
+    {
+        if !controlled_impedance_nets.insert(target.net.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_net target for net {}.",
+                target.net
+            );
+        }
+    }
+    let mut controlled_impedance_pairs = BTreeSet::new();
+    for target in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_pair.as_ref())
+    {
+        let key = ordered_pair_key(&target.first_net, &target.second_net);
+        if !controlled_impedance_pairs.insert(key.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_pair target for pair {}.",
+                key
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -842,6 +1082,26 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
 }
 
 fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
+    if let Some(target) = &field.controlled_impedance_net {
+        return serde_yaml_ng::to_value(controlled_impedance_net_mapping(target)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
+    if let Some(target) = &field.controlled_impedance_pair {
+        return serde_yaml_ng::to_value(controlled_impedance_pair_mapping(target)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
     if let Some(rule) = &field.thermal_copper {
         return serde_yaml_ng::to_value(thermal_copper_mapping(rule)).with_context(|| {
             format!(
@@ -875,6 +1135,63 @@ fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
             .context("source field must have a string value")?
             .clone(),
     ))
+}
+
+fn controlled_impedance_net_mapping(
+    target: &AppliedControlledImpedanceNet,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("net".to_string(), Value::String(target.net.clone()));
+    mapping.insert("source".to_string(), Value::String(target.source.clone()));
+    mapping.insert(
+        "target_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(target.target_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "expected_width_mm".to_string(),
+        serde_yaml_ng::to_value(target.expected_width_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_width_error_mm".to_string(),
+        serde_yaml_ng::to_value(target.max_width_error_mm).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_pair_mapping(
+    target: &AppliedControlledImpedancePair,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert(
+        "first_net".to_string(),
+        Value::String(target.first_net.clone()),
+    );
+    mapping.insert(
+        "second_net".to_string(),
+        Value::String(target.second_net.clone()),
+    );
+    mapping.insert("source".to_string(), Value::String(target.source.clone()));
+    mapping.insert(
+        "target_differential_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(target.target_differential_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "expected_width_mm".to_string(),
+        serde_yaml_ng::to_value(target.expected_width_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "expected_gap_mm".to_string(),
+        serde_yaml_ng::to_value(target.expected_gap_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_width_error_mm".to_string(),
+        serde_yaml_ng::to_value(target.max_width_error_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_gap_error_mm".to_string(),
+        serde_yaml_ng::to_value(target.max_gap_error_mm).unwrap_or(Value::Null),
+    );
+    mapping
 }
 
 fn thermal_copper_mapping(rule: &AppliedThermalCopper) -> BTreeMap<String, Value> {
@@ -1040,7 +1357,32 @@ fn apply_metadata(
     let board = ensure_mapping_field_mut(root, "board")?;
     let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
     for field in fields {
-        if field.field == ManufacturingField::ThermalCopper {
+        if field.field == ManufacturingField::ControlledImpedanceNet {
+            let target = field
+                .controlled_impedance_net
+                .as_ref()
+                .context("controlled_impedance_net field must have target value")?;
+            let value = normalized_yaml_value(field)?;
+            let controlled_impedance =
+                ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+            let targets = ensure_sequence_field_mut(controlled_impedance, "nets")?;
+            upsert_controlled_impedance_net_value(targets, &target.net, value)?;
+        } else if field.field == ManufacturingField::ControlledImpedancePair {
+            let target = field
+                .controlled_impedance_pair
+                .as_ref()
+                .context("controlled_impedance_pair field must have target value")?;
+            let value = normalized_yaml_value(field)?;
+            let controlled_impedance =
+                ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+            let targets = ensure_sequence_field_mut(controlled_impedance, "differential_pairs")?;
+            upsert_controlled_impedance_pair_value(
+                targets,
+                &target.first_net,
+                &target.second_net,
+                value,
+            )?;
+        } else if field.field == ManufacturingField::ThermalCopper {
             let rule = field
                 .thermal_copper
                 .as_ref()
@@ -1106,6 +1448,13 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "maxstitchviadistance"
         | "maximumstitchviadistance"
         | "stitchviadistance" => Some(ManufacturingField::MaxStitchViaDistanceMm),
+        "controlledimpedancenet" | "controlledimpedance" | "impedancenet" => {
+            Some(ManufacturingField::ControlledImpedanceNet)
+        }
+        "controlledimpedancepair"
+        | "controlledimpedancedifferentialpair"
+        | "differentialimpedancepair"
+        | "differentialpairimpedance" => Some(ManufacturingField::ControlledImpedancePair),
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)
         }
@@ -1286,6 +1635,62 @@ fn required_raw_column_for(
     })
 }
 
+fn upsert_controlled_impedance_net_value(
+    sequence: &mut Vec<Value>,
+    net: &str,
+    value: Value,
+) -> Result<()> {
+    let mut matched_index = None;
+    for (index, item) in sequence.iter().enumerate() {
+        if yaml_mapping_string(item, "net") == Some(net) {
+            if matched_index.is_some() {
+                bail!(
+                    "Board IR field controlled_impedance.nets has duplicate existing net {net}; refusing to update ambiguous target."
+                );
+            }
+            matched_index = Some(index);
+        }
+    }
+    if let Some(index) = matched_index {
+        sequence[index] = value;
+    } else {
+        sequence.push(value);
+    }
+    Ok(())
+}
+
+fn upsert_controlled_impedance_pair_value(
+    sequence: &mut Vec<Value>,
+    first_net: &str,
+    second_net: &str,
+    value: Value,
+) -> Result<()> {
+    let target_key = ordered_pair_key(first_net, second_net);
+    let mut matched_index = None;
+    for (index, item) in sequence.iter().enumerate() {
+        let Some(existing_first) = yaml_mapping_string(item, "first_net") else {
+            continue;
+        };
+        let Some(existing_second) = yaml_mapping_string(item, "second_net") else {
+            continue;
+        };
+        if ordered_pair_key(existing_first, existing_second) == target_key {
+            if matched_index.is_some() {
+                bail!(
+                    "Board IR field controlled_impedance.differential_pairs has duplicate existing pair {target_key}; refusing to update ambiguous target."
+                );
+            }
+            matched_index = Some(index);
+        }
+    }
+    if let Some(index) = matched_index {
+        sequence[index] = value;
+    } else {
+        sequence.push(value);
+    }
+    Ok(())
+}
+
 fn upsert_named_sequence_value(sequence: &mut Vec<Value>, name: &str, value: Value) -> Result<()> {
     let mut matched_index = None;
     for (index, item) in sequence.iter().enumerate() {
@@ -1307,10 +1712,22 @@ fn upsert_named_sequence_value(sequence: &mut Vec<Value>, name: &str, value: Val
 }
 
 fn yaml_mapping_name(value: &Value) -> Option<&str> {
+    yaml_mapping_string(value, "name")
+}
+
+fn yaml_mapping_string<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value
         .as_mapping()?
-        .get(Value::String("name".to_string()))?
+        .get(Value::String(key.to_string()))?
         .as_str()
+}
+
+fn ordered_pair_key(first: &str, second: &str) -> String {
+    if first <= second {
+        format!("{first}/{second}")
+    } else {
+        format!("{second}/{first}")
+    }
 }
 
 fn source_file_manifest(path: &Path) -> Result<SourceFileManifest> {

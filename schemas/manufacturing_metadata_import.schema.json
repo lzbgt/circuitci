@@ -89,6 +89,8 @@
             "max_paste_area_ratio",
             "min_solder_paste_spacing_mm",
             "max_stitch_via_distance_mm",
+            "controlled_impedance.nets[]",
+            "controlled_impedance.differential_pairs[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "source"
@@ -99,6 +101,63 @@
           "oneOf": [
             { "type": "number" },
             { "type": "string", "minLength": 1 },
+            {
+              "type": "object",
+              "required": [
+                "net",
+                "source",
+                "target_impedance_ohm",
+                "expected_width_mm",
+                "max_width_error_mm"
+              ],
+              "properties": {
+                "net": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "target_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "expected_width_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_width_error_mm": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "first_net",
+                "second_net",
+                "source",
+                "target_differential_impedance_ohm",
+                "expected_width_mm",
+                "expected_gap_mm",
+                "max_width_error_mm",
+                "max_gap_error_mm"
+              ],
+              "properties": {
+                "first_net": { "type": "string", "minLength": 1 },
+                "second_net": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "target_differential_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "expected_width_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "expected_gap_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_width_error_mm": { "type": "number", "minimum": 0 },
+                "max_gap_error_mm": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
             {
               "type": "object",
               "required": [

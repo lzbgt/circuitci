@@ -276,6 +276,114 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
 }
 
 #[test]
+fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("without_impedance_targets.project.yaml");
+    let metadata = dir.path().join("impedance_targets.csv");
+    let output = dir.path().join("with_impedance_targets.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    let mut project_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string("examples/scenario_suggestions_controlled_impedance/project.yaml")
+            .unwrap(),
+    )
+    .unwrap();
+    remove_board_manufacturing(&mut project_yaml);
+    std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
+    std::fs::write(
+        &metadata,
+        "field,value,unit,source,notes,net,first_net,second_net,expected_width_mm,expected_gap_mm,max_width_error_mm,max_gap_error_mm\n\
+         controlled_impedance_net,50,ohm,fab stackup table,reviewed RF target,RF,,,0.20,,0.03,\n\
+         controlled_impedance_pair,90,ohm,fab stackup table,reviewed USB target,,DP,DM,0.15,0.20,0.02,0.03\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("2 applied fields"));
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let controlled_impedance = &enriched["board"]["manufacturing"]["controlled_impedance"];
+    assert_eq!(controlled_impedance["nets"][0]["net"], "RF");
+    assert_eq!(
+        controlled_impedance["nets"][0]["target_impedance_ohm"],
+        50.0
+    );
+    assert_eq!(controlled_impedance["nets"][0]["expected_width_mm"], 0.20);
+    assert_eq!(
+        controlled_impedance["differential_pairs"][0]["first_net"],
+        "DP"
+    );
+    assert_eq!(
+        controlled_impedance["differential_pairs"][0]["second_net"],
+        "DM"
+    );
+    assert_eq!(
+        controlled_impedance["differential_pairs"][0]["target_differential_impedance_ohm"],
+        90.0
+    );
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(
+        manifest["rows"][0]["board_field"],
+        "controlled_impedance.nets[]"
+    );
+    assert_eq!(
+        manifest["rows"][1]["board_field"],
+        "controlled_impedance.differential_pairs[]"
+    );
+    assert_eq!(
+        manifest["rows"][1]["normalized_value"]["target_differential_impedance_ohm"],
+        90.0
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    assert_runnable(&suggestions, "controlled_impedance_rf");
+    assert_runnable(&suggestions, "controlled_impedance_dp_dm");
+    assert_runnable(&suggestions, "controlled_impedance_stackup_rf");
+    assert_runnable(&suggestions, "controlled_impedance_stackup_dp_dm");
+}
+
+#[test]
 fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("without_thermal_policy.project.yaml");

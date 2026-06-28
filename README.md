@@ -211,10 +211,13 @@ circuitci set-manufacturing-metadata out/imported_with_drills_and_vias.project.y
 ```
 
 Or import the same reviewed facts from a source CSV while preserving row-level
-evidence in a JSON manifest. Repeated `field=thermal_copper` rows create or
-replace reviewed `board.manufacturing.thermal_copper[]` policy entries, and
-repeated `field=thermal_measurement` rows append reviewed measured-temperature
-evidence under `board.manufacturing.thermal_measurements[]`:
+evidence in a JSON manifest. Repeated `field=controlled_impedance_net` and
+`field=controlled_impedance_pair` rows create or replace reviewed
+`board.manufacturing.controlled_impedance` targets, repeated
+`field=thermal_copper` rows create or replace reviewed
+`board.manufacturing.thermal_copper[]` policy entries, and repeated
+`field=thermal_measurement` rows append reviewed measured-temperature evidence
+under `board.manufacturing.thermal_measurements[]`:
 
 ```bash
 circuitci import-manufacturing-metadata \

@@ -12,17 +12,45 @@ Input CSV columns:
   `max_paste_area_ratio`, `min_solder_paste_spacing_mm`, and
   `max_stitch_via_distance_mm`. A few plain-label aliases such as
   `stencil thickness`, `hole to board edge clearance`, and
-  `stitch via distance` are accepted. Repeated `thermal_copper` rows are
-  supported for reviewed thermal layout policy, and repeated
+  `stitch via distance` are accepted. Repeated `controlled_impedance_net` and
+  `controlled_impedance_pair` rows are supported for reviewed impedance target
+  evidence. Repeated `thermal_copper` rows are supported for reviewed thermal
+  layout policy, and repeated
   `thermal_measurement` rows are supported for reviewed measured-temperature
   evidence.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
+  `controlled_impedance_net` and `controlled_impedance_pair` rows use
+  `ohm`/`ohms` for the target impedance value.
   `thermal_copper` rows use `mm2`/square millimeters for minimum copper area.
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
+
+`controlled_impedance_net` rows use `value` as `target_impedance_ohm` and
+require extra columns:
+
+- `net`: Board IR net name.
+- `expected_width_mm`: reviewed route width target.
+- `max_width_error_mm`: reviewed non-negative width tolerance.
+
+`controlled_impedance_pair` rows use `value` as
+`target_differential_impedance_ohm` and require extra columns:
+
+- `first_net`: first Board IR net name.
+- `second_net`: second Board IR net name. It must be distinct from
+  `first_net`.
+- `expected_width_mm`: reviewed route width target for each member.
+- `expected_gap_mm`: reviewed pair gap target.
+- `max_width_error_mm`: reviewed non-negative width tolerance.
+- `max_gap_error_mm`: reviewed non-negative gap tolerance.
+
+The importer replaces existing controlled-impedance net targets by `net`, and
+existing differential-pair targets by unordered net pair, so repeated imports
+stay deterministic. Duplicate CSV targets fail closed. These rows are reviewed
+target evidence only; the importer does not calculate impedance, derive targets
+from stackup, or infer high-speed nets.
 
 `thermal_copper` rows use `value` as `min_copper_area_mm2` and require extra
 columns:
