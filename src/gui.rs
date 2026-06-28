@@ -33,6 +33,8 @@ mod library_observation_presets;
 mod project;
 #[cfg(test)]
 mod project_example_tests;
+#[cfg(test)]
+mod project_example_workflow_tests;
 mod scope_auto_probes;
 mod shell;
 mod simulation;
