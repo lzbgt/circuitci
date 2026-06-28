@@ -209,7 +209,7 @@ Current analog support:
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
-  boost-regulator rail observations, TPS2121-style selected-source power-mux
+  boost-regulator rail observations, TPS2121/TPS2115A-style selected-source power-mux
   observations, enabled load-switch paths, MCP73831-style PROG-programmed
   Li-Ion charger observations, BQ24075-style power-path charger observations,
   and BQ25798-style buck-boost/NVDC charger observations through explicit `simulation.spice`
@@ -220,7 +220,7 @@ Current analog support:
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
   ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
-  TPS61023 boost rail, TPS2121 power mux,
+  TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
   divider-noise, and RC Monte Carlo yield workflows.
@@ -346,6 +346,14 @@ Current analog support:
   switchover droop, reverse-current magnitude, ILIM-derived current limit,
   soft-start timing, thermal behavior, status output, layout, and final mux
   sign-off.
+- The TI TPS2115A vendor component pack now has a datasheet-backed generated
+  SPICE observation face for selected IN1/IN2 to OUT rail checks. Its 2.8 V to
+  5.5 V input range, 1 A output-current class, reverse/cross-conduction
+  blocking metadata, and static selected-input power-mux checks remain
+  source-backed, while the transient face stays explicitly reduced-fidelity and
+  omits EN/D0/D1/VSNS autoswitch truth-table behavior, switchover droop,
+  reverse-current magnitude, ILIM-derived current limit, thermal behavior,
+  package limits, layout, and final mux sign-off.
 - The TI TLV803EA29 reset-supervisor pack now has a datasheet-backed generated
   SPICE observation face for active-low open-drain threshold behavior with an
   external pull-up. Datasheet delay and threshold metadata remain available for

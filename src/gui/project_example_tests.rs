@@ -361,6 +361,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UMUX"),
         },
         ExpectedProjectExample {
+            id: "tps2115a_power_mux_scope",
+            category: "Power Mux",
+            open_label: "Open TPS2115A Power Mux Example",
+            run_label: "Open TPS2115A + Run Scopes",
+            summary: "USB-selected 5 V autoswitching power-mux path with output rail and load-current checks.",
+            project_path: "examples/good_tps2115a_power_mux_observation/project.yaml",
+            project_name: "good_tps2115a_power_mux_observation",
+            expected_traces: &["v_usb", "v_backup", "v_mode", "v_sys5v", "i_load"],
+            expected_frequency: "5 V USB-selected input through a TPS2115A power-mux rail observation",
+            observation_preset_component: Some("UMUX"),
+        },
+        ExpectedProjectExample {
             id: "mcp73831_charger_scope",
             category: "Charger",
             open_label: "Open MCP73831 Charger Example",

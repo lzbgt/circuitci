@@ -49,6 +49,21 @@ power_mux:
     - name: in2
       input_pin: IN2
       reverse_blocking: true
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS2115A_POWER_MUX
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [IN1, IN2, GND, OUT, EN, D0, D1, ILIM]
+    instance_parameters:
+      - spice_name: SELECT_INPUT
+        component_parameter: observation_selected_input_index
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary selected-input IN1/IN2 to OUT generated-SPICE rail checks only.
+      - Uses source-backed 2.8 V to 5.5 V input range, 1 A current class, reverse/cross-conduction blocking metadata, and selected-input Board IR metadata while emitting an ideal selected-source output.
+      - EN/D0/D1/VSNS autoswitch truth-table behavior, switchover droop, reverse-current magnitude, ILIM resistor-derived current limit, thermal behavior, and package/layout sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS2115A
@@ -93,8 +108,10 @@ model_quality:
     - power_tree_validation
     - power_mux_static_screening
     - usb_battery_source_selection_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - switchover_transient_signoff
     - reverse_current_magnitude_signoff
     - ilim_resistor_current_limit_signoff
     - thermal_signoff
+    - autoswitch_truth_table_signoff

@@ -745,6 +745,18 @@ wiring and preliminary output/load-current observation, but not priority
 threshold comparators, switchover droop, reverse-current magnitude,
 ILIM-derived current limit, soft-start timing, thermal behavior, status output,
 layout, or final mux sign-off.
+`vendor.ti.tps2115a` follows the same pattern for autoswitching power-mux
+observation: its TI source-pinned 2.8 V to 5.5 V input range, 1 A output-current
+class, reverse/cross-conduction blocking metadata, string `selected_input`
+static contract, and `power_mux` metadata remain source-backed, while its
+generated-SPICE face uses a reduced ideal selected-source output. Its
+`simulation.spice.instance_parameters` map optional numeric
+`observation_selected_input_index` into the SPICE `SELECT_INPUT` parameter so
+generated observations can choose IN1 or IN2 without changing the static
+power-tree parameter. That model can exercise IN1/IN2/OUT wiring and
+preliminary output/load-current observation, but not EN/D0/D1/VSNS autoswitch
+truth-table behavior, switchover droop, reverse-current magnitude, ILIM-derived
+current limit, thermal behavior, package limits, layout, or final mux sign-off.
 `vendor.ti.tlv803ea29` follows the same pattern for reset-supervisor threshold
 observation: its datasheet threshold, delay, active-low open-drain topology, and
 pin metadata remain source-backed, while its generated-SPICE face points at a

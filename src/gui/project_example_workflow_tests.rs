@@ -928,6 +928,41 @@ fn tps24751_scope_example_workflow_creates_model_aware_observation_checks() {
 }
 
 #[test]
+fn tps2115a_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tps2115a_power_mux_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UMUX".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "umux_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "umux_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_umux_out"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| { assertion.name == "v_umux_out_selected_source_min_voltage" })
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| { assertion.name == "v_umux_out_selected_source_max_voltage" })
+    );
+}
+
+#[test]
 fn mcp73831_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

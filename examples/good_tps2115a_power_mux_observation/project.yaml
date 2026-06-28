@@ -1,5 +1,5 @@
 project:
-  name: good_tps2121_power_mux_observation
+  name: good_tps2115a_power_mux_observation
   version: 0.1.0
 
 libraries:
@@ -11,66 +11,85 @@ board:
     component_symbols:
       VUSB: Simulation_SPICE:VDC
       VBACKUP: Simulation_SPICE:VDC
-      UMUX: Power_Management:TPS2121
+      VMODE: Simulation_SPICE:VDC
+      UMUX: Power_Management:TPS2115A
       RILIM: Device:R
       RLOAD: Device:R
     node_styles:
       component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:VBACKUP: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VMODE: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:UMUX: { rotation_deg: 0, mirrored: false, pin_side: auto }
       component:RILIM: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
-      component:VUSB: { x: 64.0, y: 176.0 }
-      component:VBACKUP: { x: 64.0, y: 320.0 }
-      component:UMUX: { x: 336.0, y: 224.0 }
-      component:RILIM: { x: 336.0, y: 432.0 }
+      component:VUSB: { x: 64.0, y: 160.0 }
+      component:VBACKUP: { x: 64.0, y: 304.0 }
+      component:VMODE: { x: 64.0, y: 448.0 }
+      component:UMUX: { x: 352.0, y: 240.0 }
+      component:RILIM: { x: 352.0, y: 448.0 }
       component:RLOAD: { x: 640.0, y: 336.0 }
-      net:usb_5v: { x: 176.0, y: 160.0 }
-      net:backup_5v: { x: 176.0, y: 304.0 }
-      net:sys_5v: { x: 544.0, y: 160.0 }
-      net:mux_ilim: { x: 336.0, y: 368.0 }
-      net:gnd: { x: 336.0, y: 544.0 }
+      net:usb_5v: { x: 176.0, y: 144.0 }
+      net:backup_5v: { x: 176.0, y: 288.0 }
+      net:mux_mode: { x: 176.0, y: 448.0 }
+      net:sys_5v: { x: 544.0, y: 144.0 }
+      net:mux_ilim: { x: 352.0, y: 384.0 }
+      net:gnd: { x: 352.0, y: 576.0 }
     wire_routes:
       VUSB.P->usb_5v:
         points:
-          - { x: 144.0, y: 176.0 }
+          - { x: 144.0, y: 160.0 }
       VUSB.N->gnd:
         points:
-          - { x: 112.0, y: 544.0 }
+          - { x: 112.0, y: 576.0 }
       VBACKUP.P->backup_5v:
         points:
-          - { x: 144.0, y: 320.0 }
+          - { x: 144.0, y: 304.0 }
       VBACKUP.N->gnd:
         points:
-          - { x: 112.0, y: 544.0 }
+          - { x: 112.0, y: 576.0 }
+      VMODE.P->mux_mode:
+        points:
+          - { x: 144.0, y: 448.0 }
+      VMODE.N->gnd:
+        points:
+          - { x: 112.0, y: 576.0 }
       UMUX.IN1->usb_5v:
         points:
-          - { x: 256.0, y: 160.0 }
+          - { x: 256.0, y: 144.0 }
       UMUX.IN2->backup_5v:
         points:
-          - { x: 256.0, y: 304.0 }
+          - { x: 256.0, y: 288.0 }
       UMUX.OUT->sys_5v:
         points:
-          - { x: 544.0, y: 160.0 }
+          - { x: 544.0, y: 144.0 }
+      UMUX.EN->mux_mode:
+        points:
+          - { x: 256.0, y: 448.0 }
+      UMUX.D0->mux_mode:
+        points:
+          - { x: 288.0, y: 448.0 }
+      UMUX.D1->gnd:
+        points:
+          - { x: 320.0, y: 576.0 }
       UMUX.ILIM->mux_ilim:
         points:
-          - { x: 336.0, y: 368.0 }
+          - { x: 352.0, y: 384.0 }
       UMUX.GND->gnd:
         points:
-          - { x: 336.0, y: 544.0 }
+          - { x: 352.0, y: 576.0 }
       RILIM.A->mux_ilim:
         points:
-          - { x: 336.0, y: 368.0 }
+          - { x: 352.0, y: 384.0 }
       RILIM.B->gnd:
         points:
-          - { x: 336.0, y: 544.0 }
+          - { x: 352.0, y: 576.0 }
       RLOAD.A->sys_5v:
         points:
-          - { x: 640.0, y: 160.0 }
+          - { x: 640.0, y: 144.0 }
       RLOAD.B->gnd:
         points:
-          - { x: 640.0, y: 544.0 }
+          - { x: 640.0, y: 576.0 }
   components:
     VUSB:
       model: generic.analog.dc_voltage_source
@@ -90,9 +109,18 @@ board:
       spice:
         primitive: dc_voltage_source
         dc_v: 0.0
+    VMODE:
+      model: generic.analog.dc_voltage_source
+      part_number: MODE_3V3_SOURCE
+      pins:
+        P: mux_mode
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
     UMUX:
-      model: vendor.ti.tps2121
-      part_number: TPS2121RUXT
+      model: vendor.ti.tps2115a
+      part_number: TPS2115APW
       parameters:
         selected_input: in1
         observation_selected_input_index: 1.0
@@ -105,16 +133,19 @@ board:
         IN2: backup_5v
         OUT: sys_5v
         GND: gnd
+        EN: mux_mode
+        D0: mux_mode
+        D1: gnd
         ILIM: mux_ilim
     RILIM:
       model: generic.analog.resistor
-      part_number: 22.1k
+      part_number: 100k
       pins:
         A: mux_ilim
         B: gnd
       spice:
         primitive: resistor
-        value_ohm: 22100.0
+        value_ohm: 100000.0
     RLOAD:
       model: generic.analog.resistor
       part_number: 100R_1pct
@@ -138,13 +169,17 @@ board:
       kind: power
       nominal_voltage: 5.0
       powered: true
+    mux_mode:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
     mux_ilim:
       kind: digital_or_analog
     gnd:
       kind: ground
 
 scenarios:
-  - name: tps2121_power_mux_observation
+  - name: tps2115a_power_mux_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -156,6 +191,7 @@ scenarios:
         components:
           - VUSB
           - VBACKUP
+          - VMODE
           - UMUX
           - RLOAD
       model_files:
@@ -164,6 +200,7 @@ scenarios:
       node_bindings:
         - { node: in1, net: usb_5v }
         - { node: in2, net: backup_5v }
+        - { node: mode, net: mux_mode }
         - { node: out5v, net: sys_5v }
         - { node: ilim, net: mux_ilim }
         - { node: "0", net: gnd }
@@ -172,10 +209,15 @@ scenarios:
         - { node: "0", endpoint: { component: VUSB, pin: N } }
         - { node: in2, endpoint: { component: VBACKUP, pin: P } }
         - { node: "0", endpoint: { component: VBACKUP, pin: N } }
+        - { node: mode, endpoint: { component: VMODE, pin: P } }
+        - { node: "0", endpoint: { component: VMODE, pin: N } }
         - { node: in1, endpoint: { component: UMUX, pin: IN1 } }
         - { node: in2, endpoint: { component: UMUX, pin: IN2 } }
         - { node: out5v, endpoint: { component: UMUX, pin: OUT } }
         - { node: "0", endpoint: { component: UMUX, pin: GND } }
+        - { node: mode, endpoint: { component: UMUX, pin: EN } }
+        - { node: mode, endpoint: { component: UMUX, pin: D0 } }
+        - { node: "0", endpoint: { component: UMUX, pin: D1 } }
         - { node: ilim, endpoint: { component: UMUX, pin: ILIM } }
         - { node: out5v, endpoint: { component: RLOAD, pin: A } }
         - { node: "0", endpoint: { component: RLOAD, pin: B } }
@@ -185,12 +227,14 @@ scenarios:
         max_step_us: 0.2
       stimuli:
         - name: usb_selected_power_mux
-          description: 5 V USB input is selected through a reduced TPS2121 power-mux observation model while the backup input is inactive.
+          description: 5 V USB input is selected through a reduced TPS2115A power-mux observation model while the backup input is inactive.
       probes:
         - name: v_usb
           expression: V(in1)
         - name: v_backup
           expression: V(in2)
+        - name: v_mode
+          expression: V(mode)
         - name: v_sys5v
           expression: V(out5v)
         - name: i_load
@@ -225,3 +269,10 @@ scenarios:
           end_us: 80.0
           relation: below
           threshold_a: 0.055
+        - name: load_current_above_45ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_a: 0.045

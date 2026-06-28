@@ -197,6 +197,13 @@ const TPS2121_POWER_MUX_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_usb", "v_backup", "v_sys5v", "i_load"];
 const TPS2121_POWER_MUX_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V USB-selected input through a TPS2121 power-mux rail observation";
+const TPS2115A_POWER_MUX_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps2115a_power_mux_observation/project.yaml";
+const TPS2115A_POWER_MUX_SCOPE_EXAMPLE_NAME: &str = "good_tps2115a_power_mux_observation";
+const TPS2115A_POWER_MUX_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_usb", "v_backup", "v_mode", "v_sys5v", "i_load"];
+const TPS2115A_POWER_MUX_SCOPE_EXPECTED_FREQUENCY: &str =
+    "5 V USB-selected input through a TPS2115A power-mux rail observation";
 const MCP73831_CHARGER_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_mcp73831_charger_observation/project.yaml";
 const MCP73831_CHARGER_SCOPE_EXAMPLE_NAME: &str = "good_mcp73831_charger_observation";
@@ -578,6 +585,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: TPS2121_POWER_MUX_SCOPE_EXAMPLE_NAME,
         expected_traces: TPS2121_POWER_MUX_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPS2121_POWER_MUX_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UMUX"),
+    },
+    GuiProjectExample {
+        id: "tps2115a_power_mux_scope",
+        category: "Power Mux",
+        open_label: "Open TPS2115A Power Mux Example",
+        run_label: "Open TPS2115A + Run Scopes",
+        workflow_title: "TPS2115A Power Mux Workflow",
+        summary: "USB-selected 5 V autoswitching power-mux path with output rail and load-current checks.",
+        project_path: TPS2115A_POWER_MUX_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS2115A_POWER_MUX_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS2115A_POWER_MUX_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS2115A_POWER_MUX_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UMUX"),
     },
     GuiProjectExample {
