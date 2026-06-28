@@ -126,6 +126,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UUSB"),
         },
         ExpectedProjectExample {
+            id: "ch347_usb_jtag_scope",
+            category: "Debug",
+            open_label: "Open CH347 USB-JTAG Example",
+            run_label: "Open CH347 + Run Scopes",
+            summary: "Source-backed CH347 USB-JTAG bridge line-state observation.",
+            project_path: "examples/good_wch_ch347_usb_jtag_observation/project.yaml",
+            project_name: "good_wch_ch347_usb_jtag_observation",
+            expected_traces: &[
+                "v_vcc", "v_txd1", "v_tms", "v_tck", "v_tdi", "v_tdo", "v_trst",
+            ],
+            expected_frequency: "3.3 V CH347 debug bridge with TXD1/TMS/TDI/TRST high and TCK low",
+            observation_preset_component: Some("UDBG"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

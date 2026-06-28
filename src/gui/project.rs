@@ -59,6 +59,14 @@ const FT232R_USB_UART_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vcc", "v_3v3out", "v_txd", "v_rts_n", "v_dtr_n"];
 const FT232R_USB_UART_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V VCC, generated 3V3OUT/VCCIO, TXD high, RTS# high, and DTR# low";
+const CH347_USB_JTAG_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_wch_ch347_usb_jtag_observation/project.yaml";
+const CH347_USB_JTAG_SCOPE_EXAMPLE_NAME: &str = "good_wch_ch347_usb_jtag_observation";
+const CH347_USB_JTAG_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vcc", "v_txd1", "v_tms", "v_tck", "v_tdi", "v_tdo", "v_trst",
+];
+const CH347_USB_JTAG_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V CH347 debug bridge with TXD1/TMS/TDI/TRST high and TCK low";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -253,6 +261,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: FT232R_USB_UART_SCOPE_EXPECTED_TRACES,
         expected_frequency: FT232R_USB_UART_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UUSB"),
+    },
+    GuiProjectExample {
+        id: "ch347_usb_jtag_scope",
+        category: "Debug",
+        open_label: "Open CH347 USB-JTAG Example",
+        run_label: "Open CH347 + Run Scopes",
+        workflow_title: "CH347 USB-JTAG Workflow",
+        summary: "Source-backed CH347 USB-JTAG bridge line-state observation.",
+        project_path: CH347_USB_JTAG_SCOPE_EXAMPLE_PROJECT,
+        project_name: CH347_USB_JTAG_SCOPE_EXAMPLE_NAME,
+        expected_traces: CH347_USB_JTAG_SCOPE_EXPECTED_TRACES,
+        expected_frequency: CH347_USB_JTAG_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UDBG"),
     },
     GuiProjectExample {
         id: "ap2112k_ldo_scope",

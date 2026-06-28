@@ -76,6 +76,27 @@ RRXD RXD GND 1G
 RRST RESET_N GND 1G
 .ends CIRCUITCI_FT232R_USB_UART
 
+.subckt CIRCUITCI_CH347_USB_JTAG_BRIDGE VCC GND TXD1 RXD1 TMS TCK TDI TDO TRST PARAMS: TXD1_STATE=1 TMS_STATE=1 TCK_STATE=0 TDI_STATE=1 TRST_STATE=1
+* Reduced CH347 USB-JTAG bridge observation behavior.
+* TXD1, TMS, TCK, TDI, and TRST are preliminary VCC-referenced voltage
+* drivers with source impedance inferred from the 3.3 V VOH condition. RXD1
+* and TDO are represented as high-impedance inputs. USB protocol,
+* enumeration, UART/JTAG timing, clocking, EEPROM configuration, and
+* protocol-level TAP behavior are intentionally not modeled.
+BTXD1 NTXD1 GND V={v(VCC,GND)*TXD1_STATE}
+RTXD1 NTXD1 TXD1 50
+BTMS NTMS GND V={v(VCC,GND)*TMS_STATE}
+RTMS NTMS TMS 50
+BTCK NTCK GND V={v(VCC,GND)*TCK_STATE}
+RTCK NTCK TCK 50
+BTDI NTDI GND V={v(VCC,GND)*TDI_STATE}
+RTDI NTDI TDI 50
+BTRST NTRST GND V={v(VCC,GND)*TRST_STATE}
+RTRST NTRST TRST 50
+RRXD1 RXD1 GND 1G
+RTDO TDO GND 1G
+.ends CIRCUITCI_CH347_USB_JTAG_BRIDGE
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

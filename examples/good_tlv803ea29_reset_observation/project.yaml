@@ -104,7 +104,7 @@ scenarios:
           - RPU
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: 55ee444c24b0e8746083593b4caa68c2540f0486c4ca447a1c94aebea74ccaf2
+          sha256: b280cae47ffb58f26928fcb4f20f124703d78293acbec4fe5dd254db8abfda15
       node_bindings:
         - { node: rail3v3, net: rail_3v3 }
         - { node: reset_n, net: reset_n }

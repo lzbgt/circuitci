@@ -1,0 +1,222 @@
+component_id: vendor.wch.ch347
+version: 0.1.0
+category: comms
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.05
+  GND:
+    kind: electrical_ground
+    required: true
+  UD+:
+    kind: passive
+    required: false
+  UD-:
+    kind: passive
+    required: false
+  RST_N:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  TXD1:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 50
+  RXD1:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  TMS:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 50
+  TCK:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 50
+  TDI:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 50
+  TDO:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  TRST:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.9
+      source_impedance_ohm: 50
+datasheet:
+  manufacturer: WCH
+  part_number: CH347
+  package: TSSOP-20
+  polarity: usb_jtag_bridge
+  pinout:
+    VCC: VCC
+    GND: GND
+    UD+: UD+
+    UD-: UD-
+    RST_N: RST#
+    TXD1: TXD1
+    RXD1: RXD1
+    TMS: TMS
+    TCK: TCK
+    TDI: TDI
+    TDO: TDO
+    TRST: TRST
+  absolute_maximum_ratings:
+    VCC:
+      conditions: VCC supply voltage.
+      value: 4.0
+      unit: V
+    USB_IO:
+      conditions: USB signal voltage.
+      value: 3.8
+      unit: V
+    five_volt_tolerant_io:
+      conditions: Withstand input voltage on pins marked FT.
+      value: 5.6
+      unit: V
+    other_io:
+      conditions: Input voltage on pins not marked FT.
+      value: 0.3
+      unit: V_above_VCC
+  electrical_characteristics:
+    VCC:
+      conditions: VCC power supply, GND to ground.
+      min: 3.0
+      typ: 3.3
+      max: 3.6
+      unit: V
+    ICC:
+      conditions: Normal chip operation.
+      min: 28
+      typ: 38
+      max: 50
+      unit: mA
+    ISLP:
+      conditions: USB suspend supply current.
+      min: 180
+      typ: 260
+      max: 350
+      unit: uA
+    VIL:
+      min: 0
+      max: 0.8
+      unit: V
+    VIH3:
+      conditions: High-level input voltage on pins that do not tolerate 5 V.
+      min: 2.0
+      max: 3.3
+      unit: V
+    VIH5:
+      conditions: High-level input voltage on 5 V-tolerant pins.
+      min: 2.0
+      max: 5.0
+      unit: V
+    VOL:
+      conditions: Single pin sinking 8 mA.
+      max: 0.4
+      unit: V
+    VOH:
+      conditions: Single pin sourcing 8 mA, VCC = 3.3 V.
+      min: 2.9
+      unit: V
+  device_parameters:
+    high_speed_usb_bridge:
+      conditions: Provides USB high-speed bridge modes for UART, I2C, SPI, and JTAG.
+      unit: note
+      simulation_relevance: Board validation can bind a debug bridge without modeling USB enumeration or protocol transactions.
+    jtag_mode:
+      conditions: Working mode 3 exposes UART1 plus JTAG TMS, TCK, TDI, TDO, and optional TRST.
+      unit: note
+      simulation_relevance: Supports preliminary debug-header line-state and voltage-level observations.
+    jtag_pin_roles:
+      conditions: TDI, TCK, TMS, and TRST are outputs; TDO is a 5 V-tolerant input with a built-in pull-up resistor.
+      unit: note
+      simulation_relevance: Supports conservative direction and idle-state checks without TAP-level semantics.
+    uart_idle:
+      conditions: TXD1 idle state is high; RXD1 input has an integrated pull-up resistor.
+      unit: note
+      simulation_relevance: Helps agents reason about a combined debug-UART bridge fixture.
+  documents:
+    - title: CH347DS1 official WCH English metadata
+      path: docs/research/datasheets/wch/ch347ds1_wch_ic_metadata.json
+      source_url: https://www.wch-ic.com/api/official/website/common/relationFiles?fileName=CH347DS1_PDF.html
+      sha256: 0de3ff4eaef8d04d9ad1ff684eea4e2182368ab442470e05825383a766feeb04
+      retrieved: "2026-06-28"
+    - title: CH347DS1 official WCH Chinese metadata
+      path: docs/research/datasheets/wch/ch347ds1_wch_cn_metadata.json
+      source_url: https://www.wch.cn/api/official/website/common/relationFiles?fileName=CH347DS1_PDF.html
+      sha256: ef23738ef4c98dd505b1e1101684c5b4b3127250e862310bbd055109ef2316f2
+      retrieved: "2026-06-28"
+    - title: CH347DS1 PDF mirror for local text extraction
+      path: docs/research/datasheets/wch/ch347ds1_bitsavers_mirror.pdf
+      source_url: http://bitsavers.informatik.uni-stuttgart.de/components/wch/_dataSheets/CH347DS1.PDF
+      sha256: 28be5d556d5a14feba88b32210c12eb798bbc9ba91ec9a9e61d76196a3c5a93c
+      retrieved: "2026-06-28"
+simulation:
+  spice:
+    model_name: CIRCUITCI_CH347_USB_JTAG_BRIDGE
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, GND, TXD1, RXD1, TMS, TCK, TDI, TDO, TRST]
+    instance_parameters:
+      - spice_name: TXD1_STATE
+        component_parameter: observation_txd1_state
+        default_value: 1.0
+      - spice_name: TMS_STATE
+        component_parameter: observation_tms_state
+        default_value: 1.0
+      - spice_name: TCK_STATE
+        component_parameter: observation_tck_state
+        default_value: 0.0
+      - spice_name: TDI_STATE
+        component_parameter: observation_tdi_state
+        default_value: 1.0
+      - spice_name: TRST_STATE
+        component_parameter: observation_trst_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced USB-JTAG/debug-bridge observation model for preliminary CH347 VCC, UART1 TXD idle-high, and JTAG line-state checks only.
+      - Uses source-backed CH347 TSSOP-20 pin roles, 3.3 V supply range, 5 V-tolerant input notes, VOH minimum, and conservative output source impedance.
+      - USB PHY behavior, enumeration, driver mode selection, external clock accuracy, UART baud timing, SPI/I2C/JTAG protocol behavior, TAP state, and final I/O injection-current or timing sign-off are out of scope.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_connectivity
+    - debug_header_screening
+    - power_tree_screening
+    - preliminary_gpio_backdrive_screening
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - full_usb_phy
+    - usb_protocol_or_enumeration
+    - jtag_protocol_or_tap_state_signoff
+    - uart_baud_timing_signoff
+    - external_clock_signoff
+    - final_io_injection_current_signoff

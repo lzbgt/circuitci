@@ -1,0 +1,28 @@
+project:
+  name: bad_wch_ch347_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/wch
+
+board:
+  components:
+    U8:
+      model: vendor.wch.ch347
+      part_number: CH347T
+      pins:
+        VCC: debug_5v_bad
+        GND: gnd
+  nets:
+    debug_5v_bad:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ch347_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

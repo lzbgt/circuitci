@@ -1181,6 +1181,33 @@ fn generated_ft232r_usb_uart_observation_uses_datasheet_backed_model_pack() {
 }
 
 #[test]
+fn generated_ch347_usb_jtag_observation_uses_datasheet_backed_model_pack() {
+    let report = run_validation("examples/good_wch_ch347_usb_jtag_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/analog_behavioral.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_tps54331_buck_observation_uses_datasheet_backed_model_pack() {
     let report = run_validation("examples/good_tps54331_5v_buck_observation/project.yaml");
     if binary_available("ngspice") {

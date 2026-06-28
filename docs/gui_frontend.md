@@ -311,8 +311,9 @@ output-state checks when one input is pulse-driven and the other is a fixed
 reference. Direct-open regulator and charger/power-path examples include
 TPS54331, TPS62162, TPS63802, TPS61023, TPS2121, MCP73831, BQ24075, and BQ25798
 fixtures for generated-SPICE rail, charge-current, and load-current
-observations. Direct-open USB-UART examples include CH340C, CP2102N, and FT232R
-fixtures for generated-SPICE rail and output-state observations.
+observations. Direct-open USB/debug bridge examples include CH340C, CP2102N,
+FT232R, and CH347 fixtures for generated-SPICE rail and output-state
+observations.
 Inserted model-backed components use the selected model's declared
 ports to seed editable Board IR pin bindings and generated per-pin nets, and
 Sketch-stage placement can target the current view center, an armed blank-canvas
@@ -501,8 +502,9 @@ form:
   `Open` or `Run + Scopes`. The current entries cover the checked-in NE555
   astable-style fixture, RC low-pass sine fixture, comparator threshold
   fixture, op-amp buffer fixture, CH340C USB-UART bridge fixture, CP2102N
-  USB-UART bridge fixture, FT232R USB-UART bridge fixture, AP2112K LDO
-  rail fixture, TPS54331 buck rail fixture, TPS62162 buck rail fixture,
+  USB-UART bridge fixture, FT232R USB-UART bridge fixture, CH347 USB-JTAG
+  debug bridge fixture, AP2112K LDO rail fixture, TPS54331 buck rail fixture,
+  TPS62162 buck rail fixture,
   TPS63802 buck-boost rail fixture, TPS61023 boost rail fixture, TPS2121
   power-mux fixture, TPS22918 load-switch fixture, MCP73831 charger fixture, BQ24075
   power-path charger fixture, BQ25798 NVDC charger fixture, TLV803
@@ -516,7 +518,7 @@ form:
   and the Sketch side dock mirrors those compact workflow actions above Run
   Readiness. Examples that contain a known SPICE-ready function block, such as
   the comparator threshold, op-amp buffer, CH340C USB-UART, CP2102N USB-UART,
-  FT232R USB-UART, AP2112K LDO, TPS54331 buck,
+  FT232R USB-UART, CH347 USB-JTAG, AP2112K LDO, TPS54331 buck,
   TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux,
   TPS22918 load-switch, MCP73831 charger, BQ24075 power-path charger, and
   TLV803 reset fixtures, also show `Create Checks` to append a generated run

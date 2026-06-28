@@ -1,0 +1,312 @@
+project:
+  name: good_wch_ch347_usb_jtag_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/wch
+
+board:
+  schematic:
+    component_symbols:
+      VDBG: Simulation_SPICE:VDC
+      UDBG: Interface_USB:CH347
+      RTXLOAD: Device:R
+      RTMSLOAD: Device:R
+      RTCKLOAD: Device:R
+      RTDILOAD: Device:R
+      RTRSTLOAD: Device:R
+      RTDOPULL: Device:R
+    node_styles:
+      component:VDBG: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UDBG: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RTXLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTMSLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTCKLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTDILOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTRSTLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTDOPULL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDBG: { x: 64.0, y: 176.0 }
+      component:UDBG: { x: 352.0, y: 256.0 }
+      component:RTXLOAD: { x: 640.0, y: 128.0 }
+      component:RTMSLOAD: { x: 640.0, y: 216.0 }
+      component:RTCKLOAD: { x: 640.0, y: 304.0 }
+      component:RTDILOAD: { x: 640.0, y: 392.0 }
+      component:RTRSTLOAD: { x: 640.0, y: 480.0 }
+      component:RTDOPULL: { x: 480.0, y: 80.0 }
+      net:debug_3v3: { x: 176.0, y: 160.0 }
+      net:uart_txd1: { x: 512.0, y: 128.0 }
+      net:uart_rxd1: { x: 512.0, y: 176.0 }
+      net:jtag_tms: { x: 512.0, y: 216.0 }
+      net:jtag_tck: { x: 512.0, y: 304.0 }
+      net:jtag_tdi: { x: 512.0, y: 392.0 }
+      net:jtag_tdo: { x: 512.0, y: 80.0 }
+      net:jtag_trst: { x: 512.0, y: 480.0 }
+      net:gnd: { x: 352.0, y: 592.0 }
+    wire_routes:
+      VDBG.P->debug_3v3:
+        points:
+          - { x: 144.0, y: 176.0 }
+      VDBG.N->gnd:
+        points:
+          - { x: 112.0, y: 592.0 }
+      UDBG.VCC->debug_3v3:
+        points:
+          - { x: 256.0, y: 160.0 }
+      UDBG.GND->gnd:
+        points:
+          - { x: 352.0, y: 592.0 }
+      UDBG.TXD1->uart_txd1:
+        points:
+          - { x: 512.0, y: 128.0 }
+      UDBG.RXD1->uart_rxd1:
+        points:
+          - { x: 512.0, y: 176.0 }
+      UDBG.TMS->jtag_tms:
+        points:
+          - { x: 512.0, y: 216.0 }
+      UDBG.TCK->jtag_tck:
+        points:
+          - { x: 512.0, y: 304.0 }
+      UDBG.TDI->jtag_tdi:
+        points:
+          - { x: 512.0, y: 392.0 }
+      UDBG.TDO->jtag_tdo:
+        points:
+          - { x: 512.0, y: 80.0 }
+      UDBG.TRST->jtag_trst:
+        points:
+          - { x: 512.0, y: 480.0 }
+      RTXLOAD.A->uart_txd1:
+        points:
+          - { x: 640.0, y: 128.0 }
+      RTXLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 592.0 }
+      RTMSLOAD.A->jtag_tms:
+        points:
+          - { x: 640.0, y: 216.0 }
+      RTMSLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 592.0 }
+      RTCKLOAD.A->jtag_tck:
+        points:
+          - { x: 640.0, y: 304.0 }
+      RTCKLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 592.0 }
+      RTDILOAD.A->jtag_tdi:
+        points:
+          - { x: 640.0, y: 392.0 }
+      RTDILOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 592.0 }
+      RTRSTLOAD.A->jtag_trst:
+        points:
+          - { x: 640.0, y: 480.0 }
+      RTRSTLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 592.0 }
+      RTDOPULL.A->debug_3v3:
+        points:
+          - { x: 480.0, y: 160.0 }
+      RTDOPULL.B->jtag_tdo:
+        points:
+          - { x: 480.0, y: 80.0 }
+  components:
+    VDBG:
+      model: generic.analog.dc_voltage_source
+      part_number: DEBUG_3V3_SOURCE
+      pins:
+        P: debug_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UDBG:
+      model: vendor.wch.ch347
+      part_number: CH347T
+      parameters:
+        observation_txd1_state: 1.0
+        observation_tms_state: 1.0
+        observation_tck_state: 0.0
+        observation_tdi_state: 1.0
+        observation_trst_state: 1.0
+      pins:
+        VCC: debug_3v3
+        GND: gnd
+        TXD1: uart_txd1
+        RXD1: uart_rxd1
+        TMS: jtag_tms
+        TCK: jtag_tck
+        TDI: jtag_tdi
+        TDO: jtag_tdo
+        TRST: jtag_trst
+    RTXLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: uart_txd1, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RTMSLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: jtag_tms, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RTCKLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: jtag_tck, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RTDILOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: jtag_tdi, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RTRSTLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins: { A: jtag_trst, B: gnd }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RTDOPULL:
+      model: generic.analog.resistor
+      part_number: 100k_pullup
+      pins: { A: debug_3v3, B: jtag_tdo }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+  nets:
+    debug_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.1
+    uart_txd1: { kind: digital_or_analog }
+    uart_rxd1: { kind: digital_or_analog }
+    jtag_tms: { kind: digital_or_analog }
+    jtag_tck: { kind: digital_or_analog }
+    jtag_tdi: { kind: digital_or_analog }
+    jtag_tdo: { kind: digital_or_analog }
+    jtag_trst: { kind: digital_or_analog }
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ch347_usb_jtag_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDBG
+          - UDBG
+          - RTXLOAD
+          - RTMSLOAD
+          - RTCKLOAD
+          - RTDILOAD
+          - RTRSTLOAD
+          - RTDOPULL
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: b280cae47ffb58f26928fcb4f20f124703d78293acbec4fe5dd254db8abfda15
+      node_bindings:
+        - { node: vcc, net: debug_3v3 }
+        - { node: txd1, net: uart_txd1 }
+        - { node: rxd1, net: uart_rxd1 }
+        - { node: tms, net: jtag_tms }
+        - { node: tck, net: jtag_tck }
+        - { node: tdi, net: jtag_tdi }
+        - { node: tdo, net: jtag_tdo }
+        - { node: trst, net: jtag_trst }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VDBG, pin: P } }
+        - { node: "0", endpoint: { component: VDBG, pin: N } }
+        - { node: vcc, endpoint: { component: UDBG, pin: VCC } }
+        - { node: "0", endpoint: { component: UDBG, pin: GND } }
+        - { node: txd1, endpoint: { component: UDBG, pin: TXD1 } }
+        - { node: rxd1, endpoint: { component: UDBG, pin: RXD1 } }
+        - { node: tms, endpoint: { component: UDBG, pin: TMS } }
+        - { node: tck, endpoint: { component: UDBG, pin: TCK } }
+        - { node: tdi, endpoint: { component: UDBG, pin: TDI } }
+        - { node: tdo, endpoint: { component: UDBG, pin: TDO } }
+        - { node: trst, endpoint: { component: UDBG, pin: TRST } }
+        - { node: txd1, endpoint: { component: RTXLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTXLOAD, pin: B } }
+        - { node: tms, endpoint: { component: RTMSLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTMSLOAD, pin: B } }
+        - { node: tck, endpoint: { component: RTCKLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTCKLOAD, pin: B } }
+        - { node: tdi, endpoint: { component: RTDILOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTDILOAD, pin: B } }
+        - { node: trst, endpoint: { component: RTRSTLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTRSTLOAD, pin: B } }
+        - { node: vcc, endpoint: { component: RTDOPULL, pin: A } }
+        - { node: tdo, endpoint: { component: RTDOPULL, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 60.0
+        max_step_us: 0.2
+      stimuli:
+        - name: debug_line_snapshot
+          description: CH347 VCC powers a 3.3 V debug bridge with TXD1/TMS/TDI/TRST high and TCK idle low.
+      probes:
+        - { name: v_vcc, expression: V(vcc) }
+        - { name: v_txd1, expression: V(txd1) }
+        - { name: v_tms, expression: V(tms) }
+        - { name: v_tck, expression: V(tck) }
+        - { name: v_tdi, expression: V(tdi) }
+        - { name: v_tdo, expression: V(tdo) }
+        - { name: v_trst, expression: V(trst) }
+      assertions:
+        - name: vcc_within_input_range_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 3.0
+        - name: vcc_within_input_range_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 1.0
+          end_us: 60.0
+          relation: below
+          threshold_v: 3.6
+        - name: txd1_idle_high
+          probe: v_txd1
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9
+        - name: tms_idle_high
+          probe: v_tms
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9
+        - name: tck_idle_low
+          probe: v_tck
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: below
+          threshold_v: 0.5
+        - name: tdi_idle_high
+          probe: v_tdi
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9
+        - name: trst_idle_high
+          probe: v_trst
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.9

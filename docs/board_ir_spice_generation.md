@@ -207,6 +207,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   for VCC, generated 3V3OUT/VCCIO, TXD, RTS#, and DTR# output-state
   observations. The model-state inputs are explicit Board IR component
   parameters, not inferred USB protocol or EEPROM/CBUS configuration behavior.
+- `examples/good_wch_ch347_usb_jtag_observation` proves the WCH CH347
+  source-backed USB-JTAG/debug bridge model can use a reduced generated-SPICE
+  face for VCC, UART1 TXD, and JTAG TMS/TCK/TDI/TRST line-state observations.
+  The model-state inputs are explicit Board IR component parameters, not
+  inferred USB enumeration, JTAG TAP state, or driver-mode behavior.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE
