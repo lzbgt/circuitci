@@ -703,6 +703,21 @@ model can exercise rail and host-control-line output-state observations, but
 not USB PHY behavior, enumeration, baud-rate timing, oscillator accuracy,
 transistor-level auto-download circuits, or final I/O injection-current
 sign-off.
+
+`vendor.silabs.cp2102n` extends that USB-UART generated-observation pattern to
+parts with a VREGIN-fed internal regulator. Its Silicon Labs source-pinned
+VREGIN/VDD/VIO rail limits, regulator output-current class, reset pull-up note,
+and UART logic threshold metadata remain source-backed, while its
+generated-SPICE face uses a reduced VREGIN-to-VDD rail source plus VIO-referenced
+TXD, RTS, and DTR voltage-driver outputs. Its
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_txd_state`, `observation_rts_state`, and
+`observation_dtr_state` into explicit SPICE output-state parameters. That model
+can exercise regulator-rail and host-control-line output-state observations,
+but not USB PHY behavior, enumeration, baud-rate timing, oscillator accuracy,
+suspend behavior, regulator stability, transistor-level modem-line circuitry,
+or final I/O injection-current sign-off.
+
 `vendor.ti.tps2121` follows the same pattern for selected-source power-mux
 observation: its TI source-pinned input range, output-current class,
 reverse-blocking metadata, string `selected_input` static contract, and

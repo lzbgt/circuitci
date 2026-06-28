@@ -37,6 +37,25 @@ RRTS NRTS RTS_N 300
 RRXD RXD GND 1G
 .ends CIRCUITCI_CH340C_USB_UART
 
+.subckt CIRCUITCI_CP2102N_USB_UART VREGIN VDD VIO GND TXD RXD RTS DTR RSTB PARAMS: TXD_STATE=1 RTS_STATE=1 DTR_STATE=1
+* Reduced CP2102N USB-UART bridge observation behavior.
+* VDD is a preliminary internal-regulator rail from VREGIN. TXD, RTS, and DTR
+* are VIO-referenced voltage drivers with conservative source impedance. RXD
+* and RSTB are represented as high-impedance inputs. USB protocol,
+* enumeration, UART timing, suspend, regulator stability, and transistor-level
+* modem-line behavior are intentionally not modeled.
+BREG NREG GND V={3.3/(1+exp(-4*(v(VREGIN,GND)-3.0)))}
+RREG NREG VDD 0.1
+BTXD NTXD GND V={v(VIO,GND)*TXD_STATE}
+RTXD NTXD TXD 100
+BRTS NRTS GND V={v(VIO,GND)*RTS_STATE}
+RRTS NRTS RTS 100
+BDTR NDTR GND V={v(VIO,GND)*DTR_STATE}
+RDTR NDTR DTR 100
+RRXD RXD GND 1G
+RRST RSTB GND 1G
+.ends CIRCUITCI_CP2102N_USB_UART
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

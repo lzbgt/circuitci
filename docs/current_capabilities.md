@@ -191,6 +191,7 @@ Current analog support:
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
   enabled 3.3 V regulator rails, CH340C-style USB-UART output-state
+  observations, CP2102N-style USB-UART VREGIN/VDD and output-state
   observations, TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -201,7 +202,8 @@ Current analog support:
   subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
-  threshold, op-amp buffer, CH340C USB-UART bridge, AP2112K LDO rail, TPS54331
+  threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
+  AP2112K LDO rail, TPS54331
   buck rail, TPS62162 buck rail, TPS63802 buck-boost rail, TPS61023 boost rail,
   TPS2121 power mux, TPS22918 load switch, MCP73831 charger, BQ24075 power
   path, BQ25798 NVDC power path, TLV803 reset-supervisor, loop-stability Bode,
@@ -210,6 +212,14 @@ Current analog support:
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
   3.3 V LDO macro-model for preliminary rail observation.
+- The Silicon Labs CP2102N vendor component pack now has a datasheet-backed
+  generated SPICE observation face for VREGIN-to-VDD regulator and UART
+  output-state checks. Its VREGIN/VDD/VIO ranges, regulator output-current
+  class, reset pull-up note, and UART threshold metadata remain source-backed,
+  while the transient face stays explicitly reduced-fidelity and omits USB PHY
+  behavior, enumeration, baud timing, oscillator accuracy, suspend behavior,
+  regulator stability, modem-line transistor circuitry, and final I/O
+  injection-current sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

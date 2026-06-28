@@ -209,6 +209,27 @@ datasheet:
       source_url: https://www.silabs.com/documents/public/data-sheets/cp2102n-datasheet.pdf
       sha256: 32fbab0ba17f394ab76fbbd8129bddad228c1c486a1693d96ea5905936e437fe
       retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: CIRCUITCI_CP2102N_USB_UART
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VREGIN, VDD, VIO, GND, TXD, RXD, RTS, DTR, RSTb]
+    instance_parameters:
+      - spice_name: TXD_STATE
+        component_parameter: observation_txd_state
+        default_value: 1.0
+      - spice_name: RTS_STATE
+        component_parameter: observation_rts_state
+        default_value: 1.0
+      - spice_name: DTR_STATE
+        component_parameter: observation_dtr_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced USB-UART observation model for preliminary CP2102N VREGIN-to-VDD regulator, VIO-referenced TXD idle-high, and MODEM output-state checks only.
+      - Uses source-backed CP2102N pinout, VREGIN/VDD/VIO rail limits, VREGOUT target range, GPIO VOH minimum, and conservative output source impedance.
+      - USB PHY behavior, enumeration, suspend states, oscillator accuracy, UART baud timing, regulator stability, modem-line transistor circuitry, and final I/O injection-current sign-off are out of scope.
 rules:
   - UART_BOOTLOADER_SYNC
 model_quality:
@@ -220,8 +241,10 @@ model_quality:
     - power_tree_screening
     - regulator_static_screening
     - preliminary_gpio_backdrive_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - full_usb_phy
+    - usb_protocol_or_enumeration
     - final_io_injection_current_signoff
     - regulator_transient_or_stability_signoff
     - transistor_level_control_line_behavior

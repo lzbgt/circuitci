@@ -33,6 +33,21 @@ range. The same model can participate in `UART_BOOTLOADER_SYNC` and preliminary
 backdrive screening without embedding Silicon Labs-specific logic in the
 validator.
 
+The model also has a reduced generated-SPICE observation face,
+`CIRCUITCI_CP2102N_USB_UART`, backed by
+`models/spice/generic/analog_behavioral.lib`. It models a smooth VREGIN-to-VDD
+3.3 V rail source and VIO-referenced TXD, RTS, and DTR output-state drivers via
+explicit Board IR component parameters:
+
+- `observation_txd_state`
+- `observation_rts_state`
+- `observation_dtr_state`
+
+`examples/good_silabs_cp2102n_usb_uart_observation` is registered as the GUI
+`CP2102N USB-UART` example. It opens with routed schematic metadata, can run
+the generated transient observation, and can regenerate model-aware probes and
+checks for the placed `UUSB` component through `Create Checks`.
+
 The model is not valid for USB PHY sign-off, full USB enumeration behavior,
 transistor-level modem-line behavior, regulator transient/stability sign-off, or
 final I/O injection-current sign-off.

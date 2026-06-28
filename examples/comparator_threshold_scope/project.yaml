@@ -151,7 +151,7 @@ scenarios:
         components: [VCC, VIN, VREF, XU1, RLOAD]
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: fb8b822a092a4c2e7b901ddce8e2c4cd463294bd41fe9e21f0fd49b8b1cdf69b
+          sha256: 6a45e744afaf702aee58fc473424eae3b1d42f941908a044841cddb46650a7a5
       node_bindings:
         - { node: vcc, net: vcc_5v }
         - { node: in, net: input }

@@ -1,0 +1,301 @@
+project:
+  name: good_silabs_cp2102n_usb_uart_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/silabs
+
+board:
+  schematic:
+    component_symbols:
+      VUSB: Simulation_SPICE:VDC
+      UUSB: Interface_USB:CP2102N
+      RTXLOAD: Device:R
+      RRTSLOAD: Device:R
+      RDTRLOAD: Device:R
+      RRST: Device:R
+    node_styles:
+      component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UUSB: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RTXLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RRTSLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RDTRLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RRST: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VUSB: { x: 64.0, y: 176.0 }
+      component:UUSB: { x: 352.0, y: 224.0 }
+      component:RTXLOAD: { x: 640.0, y: 128.0 }
+      component:RRTSLOAD: { x: 640.0, y: 248.0 }
+      component:RDTRLOAD: { x: 640.0, y: 368.0 }
+      component:RRST: { x: 352.0, y: 432.0 }
+      net:usb_5v: { x: 176.0, y: 160.0 }
+      net:cp2102n_vdd: { x: 176.0, y: 256.0 }
+      net:uart_txd: { x: 512.0, y: 128.0 }
+      net:uart_rxd: { x: 512.0, y: 192.0 }
+      net:cp2102n_rts: { x: 512.0, y: 248.0 }
+      net:cp2102n_dtr: { x: 512.0, y: 368.0 }
+      net:cp2102n_rstb: { x: 352.0, y: 384.0 }
+      net:gnd: { x: 352.0, y: 544.0 }
+    wire_routes:
+      VUSB.P->usb_5v:
+        points:
+          - { x: 144.0, y: 176.0 }
+      VUSB.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      UUSB.VREGIN->usb_5v:
+        points:
+          - { x: 256.0, y: 160.0 }
+      UUSB.VDD->cp2102n_vdd:
+        points:
+          - { x: 256.0, y: 256.0 }
+      UUSB.VIO->cp2102n_vdd:
+        points:
+          - { x: 256.0, y: 256.0 }
+      UUSB.GND->gnd:
+        points:
+          - { x: 352.0, y: 544.0 }
+      UUSB.TXD->uart_txd:
+        points:
+          - { x: 512.0, y: 128.0 }
+      UUSB.RXD->uart_rxd:
+        points:
+          - { x: 512.0, y: 192.0 }
+      UUSB.RTS->cp2102n_rts:
+        points:
+          - { x: 512.0, y: 248.0 }
+      UUSB.DTR->cp2102n_dtr:
+        points:
+          - { x: 512.0, y: 368.0 }
+      UUSB.RSTb->cp2102n_rstb:
+        points:
+          - { x: 352.0, y: 384.0 }
+      RTXLOAD.A->uart_txd:
+        points:
+          - { x: 640.0, y: 128.0 }
+      RTXLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 544.0 }
+      RRTSLOAD.A->cp2102n_rts:
+        points:
+          - { x: 640.0, y: 248.0 }
+      RRTSLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 544.0 }
+      RDTRLOAD.A->cp2102n_vdd:
+        points:
+          - { x: 640.0, y: 256.0 }
+      RDTRLOAD.B->cp2102n_dtr:
+        points:
+          - { x: 640.0, y: 368.0 }
+      RRST.A->cp2102n_vdd:
+        points:
+          - { x: 352.0, y: 256.0 }
+      RRST.B->cp2102n_rstb:
+        points:
+          - { x: 352.0, y: 384.0 }
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    UUSB:
+      model: vendor.silabs.cp2102n
+      part_number: CP2102N-A02-GQFN24
+      parameters:
+        observation_txd_state: 1.0
+        observation_rts_state: 1.0
+        observation_dtr_state: 0.0
+      pins:
+        VREGIN: usb_5v
+        VDD: cp2102n_vdd
+        VIO: cp2102n_vdd
+        GND: gnd
+        TXD: uart_txd
+        RXD: uart_rxd
+        RTS: cp2102n_rts
+        DTR: cp2102n_dtr
+        RSTb: cp2102n_rstb
+    RTXLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: uart_txd
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RRTSLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: cp2102n_rts
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RDTRLOAD:
+      model: generic.analog.resistor
+      part_number: 10k_pullup
+      pins:
+        A: cp2102n_vdd
+        B: cp2102n_dtr
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RRST:
+      model: generic.analog.resistor
+      part_number: 1k_pullup
+      pins:
+        A: cp2102n_vdd
+        B: cp2102n_rstb
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 0.5
+    cp2102n_vdd:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.1
+    uart_txd:
+      kind: digital_or_analog
+    uart_rxd:
+      kind: digital_or_analog
+    cp2102n_rts:
+      kind: digital_or_analog
+    cp2102n_dtr:
+      kind: digital_or_analog
+    cp2102n_rstb:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: cp2102n_usb_uart_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VUSB
+          - UUSB
+          - RTXLOAD
+          - RRTSLOAD
+          - RDTRLOAD
+          - RRST
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 6a45e744afaf702aee58fc473424eae3b1d42f941908a044841cddb46650a7a5
+      node_bindings:
+        - { node: vregin, net: usb_5v }
+        - { node: vdd, net: cp2102n_vdd }
+        - { node: txd, net: uart_txd }
+        - { node: rxd, net: uart_rxd }
+        - { node: rts, net: cp2102n_rts }
+        - { node: dtr, net: cp2102n_dtr }
+        - { node: rstb, net: cp2102n_rstb }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vregin, endpoint: { component: VUSB, pin: P } }
+        - { node: "0", endpoint: { component: VUSB, pin: N } }
+        - { node: vregin, endpoint: { component: UUSB, pin: VREGIN } }
+        - { node: vdd, endpoint: { component: UUSB, pin: VDD } }
+        - { node: vdd, endpoint: { component: UUSB, pin: VIO } }
+        - { node: "0", endpoint: { component: UUSB, pin: GND } }
+        - { node: txd, endpoint: { component: UUSB, pin: TXD } }
+        - { node: rxd, endpoint: { component: UUSB, pin: RXD } }
+        - { node: rts, endpoint: { component: UUSB, pin: RTS } }
+        - { node: dtr, endpoint: { component: UUSB, pin: DTR } }
+        - { node: rstb, endpoint: { component: UUSB, pin: RSTb } }
+        - { node: txd, endpoint: { component: RTXLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTXLOAD, pin: B } }
+        - { node: rts, endpoint: { component: RRTSLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RRTSLOAD, pin: B } }
+        - { node: vdd, endpoint: { component: RDTRLOAD, pin: A } }
+        - { node: dtr, endpoint: { component: RDTRLOAD, pin: B } }
+        - { node: vdd, endpoint: { component: RRST, pin: A } }
+        - { node: rstb, endpoint: { component: RRST, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 60.0
+        max_step_us: 0.2
+      stimuli:
+        - name: host_line_snapshot
+          description: CP2102N VREGIN powers its VDD/VIO rail while TXD and RTS idle high and DTR is explicitly asserted low.
+      probes:
+        - name: v_vregin
+          expression: V(vregin)
+        - name: v_vdd
+          expression: V(vdd)
+        - name: v_txd
+          expression: V(txd)
+        - name: v_rts
+          expression: V(rts)
+        - name: v_dtr
+          expression: V(dtr)
+      assertions:
+        - name: vregin_within_input_range_min
+          probe: v_vregin
+          aggregation: min
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 3.0
+        - name: vregin_within_input_range_max
+          probe: v_vregin
+          aggregation: max
+          start_us: 1.0
+          end_us: 60.0
+          relation: below
+          threshold_v: 5.25
+        - name: vdd_regulated_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 3.0
+        - name: vdd_regulated_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 60.0
+          relation: below
+          threshold_v: 3.6
+        - name: txd_idle_high
+          probe: v_txd
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.6
+        - name: rts_idle_high
+          probe: v_rts
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: above
+          threshold_v: 2.6
+        - name: dtr_asserted_low
+          probe: v_dtr
+          aggregation: mean
+          start_us: 1.0
+          end_us: 60.0
+          relation: below
+          threshold_v: 0.6

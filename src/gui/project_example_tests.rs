@@ -102,6 +102,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UUSB"),
         },
         ExpectedProjectExample {
+            id: "cp2102n_usb_uart_scope",
+            category: "USB-UART",
+            open_label: "Open CP2102N USB-UART Example",
+            run_label: "Open CP2102N + Run Scopes",
+            summary: "Source-backed CP2102N regulator and UART output-state observation.",
+            project_path: "examples/good_silabs_cp2102n_usb_uart_observation/project.yaml",
+            project_name: "good_silabs_cp2102n_usb_uart_observation",
+            expected_traces: &["v_vregin", "v_vdd", "v_txd", "v_rts", "v_dtr"],
+            expected_frequency: "5 V VREGIN, regulated VDD/VIO, TXD high, RTS high, and DTR low",
+            observation_preset_component: Some("UUSB"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",
