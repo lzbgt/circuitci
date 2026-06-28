@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 15);
+    assert_eq!(examples.len(), 17);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -776,6 +776,63 @@ fn gui_project_example_registry_lists_tps54331_buck_scope_fixture() {
         "12 V input, 3.3 V enable, and 5 V buck-regulator rail observation"
     );
     assert_eq!(example.observation_preset_component, Some("UBUCK"));
+}
+
+#[test]
+fn gui_project_example_registry_lists_tps62162_buck_scope_fixture() {
+    let example = gui_project_example_by_id("tps62162_buck_scope");
+
+    assert_eq!(example.category, "Regulator");
+    assert_eq!(example.open_label, "Open TPS62162 Buck Example");
+    assert_eq!(example.run_label, "Open TPS62162 + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Enabled 12 V to 3.3 V buck-regulator rail observation with load-current checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_tps62162_3v3_buck_observation/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_tps62162_3v3_buck_observation");
+    assert_eq!(
+        example.expected_traces,
+        &["v_input", "v_enable", "v_rail3v3", "i_load"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "12 V input, 3.3 V enable, and 3.3 V buck-regulator rail observation"
+    );
+    assert_eq!(example.observation_preset_component, Some("UBUCK"));
+}
+
+#[test]
+fn gui_project_example_registry_lists_tps63802_buck_boost_scope_fixture() {
+    let example = gui_project_example_by_id("tps63802_buck_boost_scope");
+
+    assert_eq!(example.category, "Regulator");
+    assert_eq!(example.open_label, "Open TPS63802 Buck-Boost Example");
+    assert_eq!(example.run_label, "Open TPS63802 + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Enabled Li-Ion input to 3.3 V buck-boost rail observation with load-current checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_tps63802_3v3_buck_boost_observation/project.yaml"
+    );
+    assert_eq!(
+        example.project_name,
+        "good_tps63802_3v3_buck_boost_observation"
+    );
+    assert_eq!(
+        example.expected_traces,
+        &["v_battery", "v_enable", "v_rail3v3", "i_load"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "3.7 V input, 3.3 V enable, and 3.3 V buck-boost rail observation"
+    );
+    assert_eq!(example.observation_preset_component, Some("UREG"));
 }
 
 #[test]
@@ -1187,6 +1244,86 @@ fn tps54331_scope_example_workflow_creates_model_aware_observation_checks() {
             .assertions
             .iter()
             .any(|assertion| assertion.name == "v_ubuck_vsense_max_voltage")
+    );
+}
+
+#[test]
+fn tps62162_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tps62162_buck_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UBUCK".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "ubuck_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "ubuck_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_ubuck_vos")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ubuck_vos_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ubuck_vos_max_voltage")
+    );
+}
+
+#[test]
+fn tps63802_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tps63802_buck_boost_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UREG".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "ureg_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "ureg_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_ureg_vout")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ureg_vout_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ureg_vout_max_voltage")
     );
 }
 

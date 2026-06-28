@@ -30,6 +30,27 @@ fixed 3.3 V TPS62162 synchronous buck regulator:
   inductor-selection section, which states that TPS6216x can operate as low as
   `2.2 uH` and recommends `3.3 uH` for low input voltage/full-current designs.
 
+The model also declares `simulation.spice` metadata for generated Board IR
+observation. Its SPICE face points to
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+```text
+VIN EN GND VOS
+```
+
+The generated subcircuit instance can map a Board IR component parameter into
+the output target:
+
+```yaml
+instance_parameters:
+  - spice_name: VOUT_V
+    component_parameter: observation_output_voltage_V
+    default_value: 3.3
+```
+
+This supports GUI-created preliminary VIN/EN/VOS rail checks while keeping the
+3.3 V output target explicit in component metadata.
+
 ## Validation Use
 
 `POWER_TREE_VALID` uses this model through `power_conversion` metadata:
@@ -45,6 +66,14 @@ fixed 3.3 V TPS62162 synchronous buck regulator:
   net and `VOS` output rail. This is a static direct-link screen; it does not
   prove saturation current, DCR, ripple, or loop stability.
 
-This is a static buck-regulator screen. It is not valid for saturation-current
-selection, loop compensation, ripple, transient response, switch-node stress,
-thermal sign-off, EMI, or PCB layout sign-off.
+This is a static buck-regulator screen plus a reduced generated-SPICE rail
+observation face. It is not valid for SW switching behavior, PG behavior,
+DCS-Control dynamics, saturation-current selection, loop compensation, ripple,
+load-transient response, switch-node stress, thermal sign-off, EMI, or PCB
+layout sign-off.
+
+The direct-open GUI fixture lives at:
+
+```text
+examples/good_tps62162_3v3_buck_observation/project.yaml
+```

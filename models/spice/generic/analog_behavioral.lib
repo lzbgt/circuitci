@@ -32,6 +32,28 @@ ROUT VSENSE GND 1G
 RBIAS EN GND 1G
 .ends CIRCUITCI_TPS54331_5V_BUCK
 
+.subckt CIRCUITCI_TPS62162_3V3_BUCK VIN EN GND VOS PARAMS: VOUT_V=3.3
+* Reduced TPS62162 3.3 V buck-regulator observation behavior.
+* The output is an ideal preliminary rail source gated by the datasheet VIN
+* operating floor and EN. SW/PG behavior, DCS-Control dynamics, ripple, current
+* limit, thermal behavior, layout, EMI, and loop stability are intentionally
+* not modeled.
+BOUT VOS GND V={VOUT_V/(1+exp(-4*(v(VIN,GND)-3.0)))/(1+exp(-20*(v(EN,GND)-1)))}
+ROUT VOS GND 1G
+RBIAS EN GND 1G
+.ends CIRCUITCI_TPS62162_3V3_BUCK
+
+.subckt CIRCUITCI_TPS63802_3V3_BUCK_BOOST VIN EN GND VOUT PARAMS: VOUT_V=3.3
+* Reduced TPS63802 3.3 V buck-boost observation behavior.
+* The output is an ideal preliminary rail source gated by the datasheet VIN
+* startup floor and EN. L1/L2 switching, FB dynamics, MODE/PG behavior,
+* inductor current, thermal behavior, layout, EMI, and loop stability are
+* intentionally not modeled.
+BOUT VOUT GND V={VOUT_V/(1+exp(-4*(v(VIN,GND)-1.8)))/(1+exp(-20*(v(EN,GND)-1)))}
+ROUT VOUT GND 1G
+RBIAS EN GND 1G
+.ends CIRCUITCI_TPS63802_3V3_BUCK_BOOST
+
 .subckt CIRCUITCI_TPS22918_LOAD_SWITCH VIN VOUT GND ON
 * Reduced TPS22918 enabled high-side switch behavior.
 * ON controls a smooth VIN-to-VOUT conductance near the datasheet typical

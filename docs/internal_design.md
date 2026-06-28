@@ -68,10 +68,12 @@ Activity workflows from a typical analog example. The NE555 fixture also keeps
 a direct-open Board IR `project.yaml` beside the deck so GUI smoke workflows do
 not depend on regenerating import output first. `examples/rc_lowpass_scope`
 provides a second direct-open scope fixture with a 1 kHz sine-driven RC
-low-pass filter for comparing input/output traces and frequency readouts. Both
-direct-open fixtures carry schematic-only `wire_routes` waypoints so example
-loading exercises readable connected Sketch layouts without changing solver
-connectivity.
+low-pass filter for comparing input/output traces and frequency readouts. The
+same registry now includes SPICE-backed op-amp/comparator, regulator,
+load-switch, charger, power-path, reset, Bode, DC, noise, and Monte Carlo
+fixtures. Direct-open fixtures carry schematic-only `wire_routes` waypoints so
+example loading exercises readable connected Sketch layouts without changing
+solver connectivity.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, the GUI direct-open example registry with picker metadata, guarded

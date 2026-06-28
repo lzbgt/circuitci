@@ -34,6 +34,21 @@ power_conversion:
   input_capacitance_min_F: 0.000010
   output_capacitance_min_F: 0.000022
   output_inductance_min_H: 0.0000022
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS62162_3V3_BUCK
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, EN, GND, VOS]
+    instance_parameters:
+      - spice_name: VOUT_V
+        component_parameter: observation_output_voltage_V
+        default_value: 3.3
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VIN/EN/VOS generated-SPICE rail checks only.
+      - Uses the source-backed 3.0 V to 17 V input range, 1 A output-current class, and fixed 3.3 V output metadata while emitting an ideal enabled output source.
+      - SW switching, PG behavior, DCS-Control dynamics, inductor ripple/current, output ripple, current limit, thermal behavior, layout, EMI, and loop-stability sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS62162

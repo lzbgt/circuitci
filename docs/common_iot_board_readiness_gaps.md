@@ -50,11 +50,14 @@ static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI
 TPS62162-3.3 now covers a common 3 V to 17 V, 1 A fixed 3.3 V synchronous buck
 regulator for static input-range, output-current, support-capacitance, and
-direct output-inductance screening. TI TPS61023 now covers the peer-board 5 V
-boost regulator path for static input/output range, support capacitance, and
-direct input-inductance screening. TI TPS63802 now covers the peer-board
+direct output-inductance screening plus a reduced generated-SPICE observation
+face for VIN/EN/VOS/load-current checks. TI TPS61023 now covers the peer-board
+5 V boost regulator path for static input/output range, support capacitance,
+and direct input-inductance screening. TI TPS63802 now covers the peer-board
 3.3 V buck-boost path for static input/output range, support capacitance,
-output-current budget, and direct L1-L2 switch-inductor screening. Espressif
+output-current budget, and direct L1-L2 switch-inductor screening plus a
+reduced generated-SPICE observation face for VIN/EN/VOUT/load-current checks.
+Espressif
 ESP32-WROOM-32E and
 ESP32-S3-WROOM-1U-N16R8 now cover common Wi-Fi/Bluetooth MCU-module packs for
 3.3 V rail budgeting and boot-strap screening. The gap remains broad library

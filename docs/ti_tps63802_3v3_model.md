@@ -25,6 +25,27 @@ TPS63802 used as a peer-board 3.3 V buck-boost stage:
 - Required effective switch inductance: direct `L1` to `L2` inductance between
   `0.37 uH` and `0.57 uH`.
 
+The model also declares `simulation.spice` metadata for generated Board IR
+observation. Its SPICE face points to
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+```text
+VIN EN GND VOUT
+```
+
+The generated subcircuit instance can map a Board IR component parameter into
+the output target:
+
+```yaml
+instance_parameters:
+  - spice_name: VOUT_V
+    component_parameter: observation_output_voltage_V
+    default_value: 3.3
+```
+
+This supports GUI-created preliminary VIN/EN/VOUT rail checks while keeping the
+3.3 V output target explicit in component metadata.
+
 ## Validation Use
 
 `POWER_TREE_VALID` uses this model through `power_conversion` metadata:
@@ -34,6 +55,13 @@ TPS63802 used as a peer-board 3.3 V buck-boost stage:
 - buck-boost switch inductance is checked as the direct inductance between the
   `L1` and `L2` nets.
 
-The check is a static screen. It does not sign off inductor saturation,
+The check is a static screen plus a reduced generated-SPICE rail observation
+face. It does not sign off L1/L2 switching behavior, inductor saturation,
 current ripple, DCR loss, loop stability, thermal margin, feedback tolerance,
-startup from deeply depleted cells, or PCB layout.
+MODE/PG behavior, startup from deeply depleted cells, or PCB layout.
+
+The direct-open GUI fixture lives at:
+
+```text
+examples/good_tps63802_3v3_buck_boost_observation/project.yaml
+```

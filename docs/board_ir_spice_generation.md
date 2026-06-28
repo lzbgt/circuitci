@@ -196,6 +196,14 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE
   voltage probes, load-current probes, and executable preliminary rail checks.
+- `examples/good_tps62162_3v3_buck_observation` proves the TI TPS62162
+  datasheet-backed fixed 3.3 V buck-regulator model can use the same reduced
+  generated-SPICE pattern with VIN/EN/VOS probes, load-current probes, and
+  executable preliminary rail checks.
+- `examples/good_tps63802_3v3_buck_boost_observation` proves the TI TPS63802
+  datasheet-backed 3.3 V buck-boost model can use a reduced generated-SPICE
+  face with VIN/EN/VOUT probes, load-current probes, and executable preliminary
+  rail checks.
 - `examples/comparator_threshold_scope` proves the generic comparator
   macro-model in a direct-open GUI example with routed schematic metadata,
   named scope probes, and executable threshold/output-state waveform checks.

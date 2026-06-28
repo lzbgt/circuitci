@@ -191,15 +191,18 @@ Current analog support:
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
   enabled 3.3 V regulator rails, TPS54331-style 5 V buck-regulator rail
-  observations, enabled load-switch paths, MCP73831-style PROG-programmed
-  Li-Ion charger observations, BQ24075-style power-path charger observations,
-  and BQ25798-style buck-boost/NVDC charger observations through explicit
-  `simulation.spice` subcircuits. These models are low-confidence
+  observations, TPS62162-style 3.3 V buck-regulator rail observations,
+  TPS63802-style 3.3 V buck-boost rail observations, enabled load-switch
+  paths, MCP73831-style PROG-programmed Li-Ion charger observations,
+  BQ24075-style power-path charger observations, and BQ25798-style
+  buck-boost/NVDC charger observations through explicit `simulation.spice`
+  subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
-  threshold, op-amp buffer, AP2112K LDO rail, TPS54331 buck rail, TPS22918
-  load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC power path,
-  TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
+  threshold, op-amp buffer, AP2112K LDO rail, TPS54331 buck rail, TPS62162
+  buck rail, TPS63802 buck-boost rail, TPS22918 load switch, MCP73831 charger,
+  BQ24075 power path, BQ25798 NVDC power path, TLV803 reset-supervisor,
+  loop-stability Bode, DC divider-bias,
   divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
@@ -212,6 +215,20 @@ Current analog support:
   stays explicitly reduced-fidelity and omits PH/BOOT switching, compensation,
   inductor ripple/current, output ripple, current limit, Eco-mode, startup
   timing, thermal behavior, layout, EMI, and loop-stability sign-off.
+- The TI TPS62162-3.3 vendor component pack now has a datasheet-backed
+  generated SPICE observation face for VIN/EN/VOS rail checks. Its 3.0 V to
+  17 V input range, 1 A output-current class, fixed 3.3 V output metadata, and
+  static support-component checks remain source-backed, while the transient face
+  stays explicitly reduced-fidelity and omits SW switching, PG behavior,
+  DCS-Control dynamics, inductor ripple/current, output ripple, current limit,
+  thermal behavior, layout, EMI, and loop-stability sign-off.
+- The TI TPS63802-3.3 vendor component pack now has a datasheet-backed
+  generated SPICE observation face for VIN/EN/VOUT rail checks. Its 1.3 V to
+  5.5 V operating range, 1.8 V startup floor, 2 A output-current class, 3.3 V
+  configured output metadata, and static L1-L2 inductance checks remain
+  source-backed, while the transient face stays explicitly reduced-fidelity and
+  omits buck-boost switching, FB dynamics, MODE/PG behavior, inductor current,
+  output ripple, thermal behavior, layout, EMI, and loop-stability sign-off.
 - The TI TLV803EA29 reset-supervisor pack now has a datasheet-backed generated
   SPICE observation face for active-low open-drain threshold behavior with an
   external pull-up. Datasheet delay and threshold metadata remain available for

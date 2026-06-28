@@ -50,6 +50,21 @@ const TPS54331_BUCK_SCOPE_EXAMPLE_NAME: &str = "good_tps54331_5v_buck_observatio
 const TPS54331_BUCK_SCOPE_EXPECTED_TRACES: &[&str] = &["v_input", "v_enable", "v_rail5v", "i_load"];
 const TPS54331_BUCK_SCOPE_EXPECTED_FREQUENCY: &str =
     "12 V input, 3.3 V enable, and 5 V buck-regulator rail observation";
+const TPS62162_BUCK_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps62162_3v3_buck_observation/project.yaml";
+const TPS62162_BUCK_SCOPE_EXAMPLE_NAME: &str = "good_tps62162_3v3_buck_observation";
+const TPS62162_BUCK_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_input", "v_enable", "v_rail3v3", "i_load"];
+const TPS62162_BUCK_SCOPE_EXPECTED_FREQUENCY: &str =
+    "12 V input, 3.3 V enable, and 3.3 V buck-regulator rail observation";
+const TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps63802_3v3_buck_boost_observation/project.yaml";
+const TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_NAME: &str =
+    "good_tps63802_3v3_buck_boost_observation";
+const TPS63802_BUCK_BOOST_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_battery", "v_enable", "v_rail3v3", "i_load"];
+const TPS63802_BUCK_BOOST_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.7 V input, 3.3 V enable, and 3.3 V buck-boost rail observation";
 const TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tps22918_load_switch_observation/project.yaml";
 const TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_NAME: &str = "good_tps22918_load_switch_observation";
@@ -192,6 +207,32 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TPS54331_BUCK_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPS54331_BUCK_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UBUCK"),
+    },
+    GuiProjectExample {
+        id: "tps62162_buck_scope",
+        category: "Regulator",
+        open_label: "Open TPS62162 Buck Example",
+        run_label: "Open TPS62162 + Run Scopes",
+        workflow_title: "TPS62162 Buck Workflow",
+        summary: "Enabled 12 V to 3.3 V buck-regulator rail observation with load-current checks.",
+        project_path: TPS62162_BUCK_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS62162_BUCK_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS62162_BUCK_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS62162_BUCK_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UBUCK"),
+    },
+    GuiProjectExample {
+        id: "tps63802_buck_boost_scope",
+        category: "Regulator",
+        open_label: "Open TPS63802 Buck-Boost Example",
+        run_label: "Open TPS63802 + Run Scopes",
+        workflow_title: "TPS63802 Buck-Boost Workflow",
+        summary: "Enabled Li-Ion input to 3.3 V buck-boost rail observation with load-current checks.",
+        project_path: TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS63802_BUCK_BOOST_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS63802_BUCK_BOOST_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UREG"),
     },
     GuiProjectExample {
         id: "tps22918_load_switch_scope",

@@ -48,6 +48,21 @@ power_conversion:
   output_capacitance_min_F: 0.000007
   switch_inductance_min_H: 0.00000037
   switch_inductance_max_H: 0.00000057
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS63802_3V3_BUCK_BOOST
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, EN, GND, VOUT]
+    instance_parameters:
+      - spice_name: VOUT_V
+        component_parameter: observation_output_voltage_V
+        default_value: 3.3
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VIN/EN/VOUT generated-SPICE rail checks only.
+      - Uses the source-backed 1.3 V to 5.5 V operating range, 1.8 V startup floor, 2 A output-current class, and 3.3 V configured output metadata while emitting an ideal enabled output source.
+      - L1/L2 switching, FB dynamics, MODE/PG behavior, inductor current/ripple, output ripple, thermal behavior, layout, EMI, and loop-stability sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS63802DLAR
