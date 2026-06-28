@@ -321,11 +321,13 @@ without explicit imported mechanical evidence.
   temperature behavior. Passing this rule only means the reviewed static
   package estimate is within the declared limits.
 - `THERMAL_MEASURED_TEMPERATURE_VALID` compares reviewed thermal measurement
-  rows against reviewed temperature limits. It does not model measurement
-  uncertainty, probe emissivity, sensor placement, transient warm-up,
-  environmental repeatability, airflow/enclosure effects, or derating curves.
-  Passing this rule only means the explicit measurement rows are within the
-  declared static limits.
+  rows against reviewed temperature limits. When explicitly requested, it adds
+  reviewed `measurement_uncertainty_C` to the measured absolute temperature and
+  optional rise-over-ambient value before comparison. It does not infer
+  measurement uncertainty, probe emissivity, sensor placement, transient
+  warm-up, environmental repeatability, airflow/enclosure effects, or derating
+  curves. Passing this rule only means the explicit measurement rows are within
+  the declared static limits.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

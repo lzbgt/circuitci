@@ -24,6 +24,7 @@ board:
         source: ir_camera_steady_state_rev_a
         measured_temperature_C: 72.0
         ambient_temperature_C: 45.0
+        measurement_uncertainty_C: 2.0
         power_loss_w: 1.2
         measurement_point: package_top
         notes: steady_state_after_20_min

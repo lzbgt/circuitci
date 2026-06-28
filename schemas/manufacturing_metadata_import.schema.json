@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.2.0" },
+    "schema_version": { "const": "0.3.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -112,6 +112,7 @@
                 "source": { "type": "string", "minLength": 1 },
                 "measured_temperature_C": { "type": "number" },
                 "ambient_temperature_C": { "type": "number" },
+                "measurement_uncertainty_C": { "type": "number", "minimum": 0 },
                 "power_loss_w": { "type": "number", "exclusiveMinimum": 0 },
                 "measurement_point": { "type": "string", "minLength": 1 },
                 "notes": { "type": "string", "minLength": 1 }

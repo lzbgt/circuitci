@@ -477,8 +477,10 @@ The command is conservative:
   component measurement rows, it emits a non-runnable
   `THERMAL_MEASURED_TEMPERATURE_VALID` template requiring reviewed
   `max_measured_temperature_C` input. If ambient evidence is present it also
-  asks whether to add `max_temperature_rise_C`. The suggestion does not infer
-  acceptable temperature limits from the measurement itself.
+  asks whether to add `max_temperature_rise_C`; if uncertainty evidence is
+  present it asks whether to set `include_measurement_uncertainty: true`. The
+  suggestion does not infer acceptable temperature limits from the measurement
+  itself.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

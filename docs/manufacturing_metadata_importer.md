@@ -26,6 +26,8 @@ Input CSV columns:
 - `name`: stable measurement identifier.
 - `component`: Board IR component reference.
 - `ambient_temperature_C`: optional ambient measurement context.
+- `measurement_uncertainty_C`: optional reviewed non-negative measurement
+  uncertainty in C.
 - `power_loss_w`: optional reviewed dissipation context.
 - `measurement_point`: optional probe/IR-camera point label.
 

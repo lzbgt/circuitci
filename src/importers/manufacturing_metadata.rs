@@ -56,6 +56,7 @@ struct AppliedThermalMeasurement {
     source: String,
     measured_temperature_c: f64,
     ambient_temperature_c: Option<f64>,
+    measurement_uncertainty_c: Option<f64>,
     power_loss_w: Option<f64>,
     measurement_point: Option<String>,
     notes: Option<String>,
@@ -226,7 +227,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.2.0".to_string(),
+        schema_version: "0.3.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -400,6 +401,12 @@ fn applied_thermal_measurement(
         .as_deref()
         .map(|value| parse_temperature_c(value, None, path, row, "ambient_temperature_C"))
         .transpose()?;
+    let measurement_uncertainty_c = optional_raw_column(row, "measurement_uncertainty_C")
+        .as_deref()
+        .map(|value| {
+            parse_nonnegative_temperature_delta_c(value, path, row, "measurement_uncertainty_C")
+        })
+        .transpose()?;
     let power_loss_w = optional_raw_column(row, "power_loss_w")
         .as_deref()
         .map(|value| parse_positive_watts(value, path, row, "power_loss_w"))
@@ -410,6 +417,7 @@ fn applied_thermal_measurement(
         source,
         measured_temperature_c,
         ambient_temperature_c,
+        measurement_uncertainty_c,
         power_loss_w,
         measurement_point: optional_raw_column(row, "measurement_point"),
         notes: row.notes.clone(),
@@ -552,6 +560,23 @@ fn parse_positive_watts(raw: &str, path: &Path, row: &MetadataCsvRow, column: &s
     Ok(value)
 }
 
+fn parse_nonnegative_temperature_delta_c(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = parse_temperature_c(raw, None, path, row, column)?;
+    if value < 0.0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} must be non-negative.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
 fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
     let min = fields
         .iter()
@@ -615,6 +640,12 @@ fn thermal_measurement_mapping(measurement: &AppliedThermalMeasurement) -> BTree
     if let Some(value) = measurement.ambient_temperature_c {
         mapping.insert(
             "ambient_temperature_C".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+    if let Some(value) = measurement.measurement_uncertainty_c {
+        mapping.insert(
+            "measurement_uncertainty_C".to_string(),
             serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
         );
     }

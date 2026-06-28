@@ -674,9 +674,10 @@ scenarios that compare reviewed thermal measurement rows against reviewed
 temperature limits. Stable measured keys include `thermal_measurement_name`,
 `thermal_measurement_source`, `component`, `measured_temperature_C`, optional
 `ambient_temperature_C`, optional `measured_temperature_rise_C`, optional
-`power_loss_w`, optional `measurement_point`, and optional `measurement_notes`.
-Stable limit keys include `max_measured_temperature_C` and optional
-`max_temperature_rise_C`.
+`measurement_uncertainty_C`, optional `worst_case_measured_temperature_C`,
+optional `worst_case_measured_temperature_rise_C`, optional `power_loss_w`,
+optional `measurement_point`, and optional `measurement_notes`. Stable limit
+keys include `max_measured_temperature_C` and optional `max_temperature_rise_C`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

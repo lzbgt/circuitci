@@ -283,6 +283,23 @@ fn thermal_measured_temperature_passes_with_reviewed_measurement() {
 }
 
 #[test]
+fn thermal_measured_temperature_passes_with_reviewed_uncertainty_margin() {
+    let (_dir, project_path) = write_thermal_measurement_project_with_uncertainty(
+        82.0,
+        Some(45.0),
+        85.0,
+        Some(40.0),
+        Some(2.0),
+        true,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_measured_temperature_fails_absolute_limit() {
     let (_dir, project_path) = write_thermal_measurement_project(92.0, Some(45.0), 85.0, None);
 
@@ -309,6 +326,35 @@ fn thermal_measured_temperature_fails_absolute_limit() {
 }
 
 #[test]
+fn thermal_measured_temperature_fails_absolute_limit_with_uncertainty() {
+    let (_dir, project_path) = write_thermal_measurement_project_with_uncertainty(
+        84.0,
+        Some(45.0),
+        85.0,
+        None,
+        Some(2.0),
+        true,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_MEASURED_TEMPERATURE_VALID")
+        .expect("thermal measured temperature uncertainty failure");
+    assert_eq!(failure["measured"]["measured_temperature_C"], 84.0);
+    assert_eq!(failure["measured"]["measurement_uncertainty_C"], 2.0);
+    assert_eq!(
+        failure["measured"]["worst_case_measured_temperature_C"],
+        86.0
+    );
+    assert_eq!(failure["limit"]["max_measured_temperature_C"], 85.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_measured_temperature_fails_rise_limit() {
     let (_dir, project_path) =
         write_thermal_measurement_project(82.0, Some(45.0), 90.0, Some(30.0));
@@ -328,6 +374,35 @@ fn thermal_measured_temperature_fails_rise_limit() {
 }
 
 #[test]
+fn thermal_measured_temperature_fails_rise_limit_with_uncertainty() {
+    let (_dir, project_path) = write_thermal_measurement_project_with_uncertainty(
+        78.0,
+        Some(45.0),
+        90.0,
+        Some(35.0),
+        Some(3.0),
+        true,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_MEASURED_TEMPERATURE_VALID")
+        .expect("thermal measured rise uncertainty failure");
+    assert_eq!(failure["measured"]["measured_temperature_rise_C"], 33.0);
+    assert_eq!(failure["measured"]["measurement_uncertainty_C"], 3.0);
+    assert_eq!(
+        failure["measured"]["worst_case_measured_temperature_rise_C"],
+        36.0
+    );
+    assert_eq!(failure["limit"]["max_temperature_rise_C"], 35.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_measured_temperature_fails_closed_without_ambient_for_rise() {
     let (_dir, project_path) = write_thermal_measurement_project(72.0, None, 90.0, Some(30.0));
 
@@ -340,6 +415,30 @@ fn thermal_measured_temperature_fails_closed_without_ambient_for_rise() {
             .as_str()
             .unwrap()
             .contains("must declare ambient_temperature_C")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_measured_temperature_fails_closed_without_requested_uncertainty() {
+    let (_dir, project_path) = write_thermal_measurement_project_with_uncertainty(
+        72.0,
+        Some(45.0),
+        90.0,
+        None,
+        None,
+        true,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("must declare measurement_uncertainty_C")
     );
     assert_report_schema_valid(&report);
 }
@@ -513,6 +612,24 @@ fn write_thermal_measurement_project(
     max_measured_temperature_c: f64,
     max_temperature_rise_c: Option<f64>,
 ) -> (tempfile::TempDir, std::path::PathBuf) {
+    write_thermal_measurement_project_with_uncertainty(
+        measured_temperature_c,
+        ambient_temperature_c,
+        max_measured_temperature_c,
+        max_temperature_rise_c,
+        None,
+        false,
+    )
+}
+
+fn write_thermal_measurement_project_with_uncertainty(
+    measured_temperature_c: f64,
+    ambient_temperature_c: Option<f64>,
+    max_measured_temperature_c: f64,
+    max_temperature_rise_c: Option<f64>,
+    measurement_uncertainty_c: Option<f64>,
+    include_measurement_uncertainty: bool,
+) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let repo = std::env::current_dir().unwrap();
@@ -523,6 +640,14 @@ fn write_thermal_measurement_project(
     let max_rise = max_temperature_rise_c
         .map(|value| format!("      max_temperature_rise_C: {value}\n"))
         .unwrap_or_default();
+    let uncertainty = measurement_uncertainty_c
+        .map(|value| format!("        measurement_uncertainty_C: {value}\n"))
+        .unwrap_or_default();
+    let include_uncertainty = if include_measurement_uncertainty {
+        "      include_measurement_uncertainty: true\n"
+    } else {
+        ""
+    };
     std::fs::write(
         &project_path,
         format!(
@@ -549,7 +674,7 @@ board:
         source: ir_camera_steady_state_rev_a
         measured_temperature_C: {measured_temperature_c}
 {ambient}        power_loss_w: 1.2
-        measurement_point: package_top
+{uncertainty}        measurement_point: package_top
         notes: steady_state_after_20_min
 scenarios:
   - name: thermal_measured_temperature
@@ -558,7 +683,7 @@ scenarios:
       - THERMAL_MEASURED_TEMPERATURE_VALID
     parameters:
       max_measured_temperature_C: {max_measured_temperature_c}
-{max_rise}      thermal_measurements:
+{max_rise}{include_uncertainty}      thermal_measurements:
         - name: u1_hotspot_steady_state
 "#,
             generic_library = repo.join("libs/generic").display(),

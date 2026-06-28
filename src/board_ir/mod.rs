@@ -245,6 +245,8 @@ pub struct ThermalMeasurement {
     pub measured_temperature_c: f64,
     #[serde(default, rename = "ambient_temperature_C")]
     pub ambient_temperature_c: Option<f64>,
+    #[serde(default, rename = "measurement_uncertainty_C")]
+    pub measurement_uncertainty_c: Option<f64>,
     #[serde(default)]
     pub power_loss_w: Option<f64>,
     #[serde(default)]

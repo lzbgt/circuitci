@@ -35,6 +35,14 @@ pub(in crate::validation) fn validate_thermal_measured_temperature(
     ) else {
         return;
     };
+    let Some(include_measurement_uncertainty) = optional_bool_parameter(
+        scenario,
+        findings,
+        THERMAL_MEASURED_TEMPERATURE_VALID,
+        "include_measurement_uncertainty",
+    ) else {
+        return;
+    };
     for name in names {
         let Some(measurement) = thermal_measurement(
             bound,
@@ -52,6 +60,7 @@ pub(in crate::validation) fn validate_thermal_measured_temperature(
             measurement,
             max_measured_temperature_c,
             max_temperature_rise_c,
+            include_measurement_uncertainty,
         );
     }
 }
@@ -210,6 +219,26 @@ fn optional_positive_number(
     Some(Some(number))
 }
 
+fn optional_bool_parameter(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    key: &str,
+) -> Option<bool> {
+    let Some(value) = scenario.parameters.get(key) else {
+        return Some(false);
+    };
+    let Some(boolean) = value.as_bool() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be true or false when supplied."),
+        );
+        return None;
+    };
+    Some(boolean)
+}
+
 fn validate_measured_temperature_rule(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -217,16 +246,29 @@ fn validate_measured_temperature_rule(
     measurement: &ThermalMeasurement,
     max_measured_temperature_c: f64,
     max_temperature_rise_c: Option<f64>,
+    include_measurement_uncertainty: bool,
 ) {
     if let Err(message) = validate_measurement_metadata(bound, measurement) {
         validation_input_missing(findings, scenario, message);
         return;
     }
-    if measurement.measured_temperature_c > max_measured_temperature_c + f64::EPSILON {
+    let Some(measurement_uncertainty_c) = measurement_uncertainty_c(
+        scenario,
+        findings,
+        measurement,
+        include_measurement_uncertainty,
+    ) else {
+        return;
+    };
+    let worst_case_measured_temperature_c =
+        measurement.measured_temperature_c + measurement_uncertainty_c;
+    if worst_case_measured_temperature_c > max_measured_temperature_c + f64::EPSILON {
         findings.push(thermal_measured_temperature_finding(
             scenario,
             measurement,
             max_measured_temperature_c,
+            measurement_uncertainty_c,
+            worst_case_measured_temperature_c,
         ));
     }
     if let Some(max_temperature_rise_c) = max_temperature_rise_c {
@@ -254,16 +296,54 @@ fn validate_measured_temperature_rule(
         }
         let measured_temperature_rise_c =
             measurement.measured_temperature_c - ambient_temperature_c;
-        if measured_temperature_rise_c > max_temperature_rise_c + f64::EPSILON {
+        let worst_case_measured_temperature_rise_c =
+            measured_temperature_rise_c + measurement_uncertainty_c;
+        if worst_case_measured_temperature_rise_c > max_temperature_rise_c + f64::EPSILON {
             findings.push(thermal_measured_rise_finding(
                 scenario,
                 measurement,
                 ambient_temperature_c,
                 measured_temperature_rise_c,
+                measurement_uncertainty_c,
+                worst_case_measured_temperature_rise_c,
                 max_temperature_rise_c,
             ));
         }
     }
+}
+
+fn measurement_uncertainty_c(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    measurement: &ThermalMeasurement,
+    include_measurement_uncertainty: bool,
+) -> Option<f64> {
+    if !include_measurement_uncertainty {
+        return Some(0.0);
+    }
+    let Some(uncertainty_c) = measurement.measurement_uncertainty_c else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_MEASURED_TEMPERATURE_VALID thermal measurement {} must declare measurement_uncertainty_C when parameters.include_measurement_uncertainty is true.",
+                measurement.name
+            ),
+        );
+        return None;
+    };
+    if !uncertainty_c.is_finite() || uncertainty_c < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_MEASURED_TEMPERATURE_VALID thermal measurement {} measurement_uncertainty_C must be finite and non-negative.",
+                measurement.name
+            ),
+        );
+        return None;
+    }
+    Some(uncertainty_c)
 }
 
 fn validate_measurement_metadata(
@@ -299,6 +379,14 @@ fn validate_measurement_metadata(
             measurement.name
         ));
     }
+    if let Some(uncertainty_c) = measurement.measurement_uncertainty_c
+        && (!uncertainty_c.is_finite() || uncertainty_c < 0.0)
+    {
+        return Err(format!(
+            "THERMAL_MEASURED_TEMPERATURE_VALID thermal measurement {} measurement_uncertainty_C must be finite and non-negative when supplied.",
+            measurement.name
+        ));
+    }
     if let Some(power_loss_w) = measurement.power_loss_w
         && (!power_loss_w.is_finite() || power_loss_w <= 0.0)
     {
@@ -314,16 +402,32 @@ fn thermal_measured_temperature_finding(
     scenario: &Scenario,
     measurement: &ThermalMeasurement,
     max_measured_temperature_c: f64,
+    measurement_uncertainty_c: f64,
+    worst_case_measured_temperature_c: f64,
 ) -> Finding {
-    let mut finding = Finding::critical(
-        THERMAL_MEASURED_TEMPERATURE_VALID,
-        &scenario.name,
+    let message = if measurement_uncertainty_c > 0.0 {
+        format!(
+            "Thermal measurement {} worst-case {:.3} C including {:.3} C uncertainty, above the reviewed {:.3} C limit.",
+            measurement.name,
+            worst_case_measured_temperature_c,
+            measurement_uncertainty_c,
+            max_measured_temperature_c
+        )
+    } else {
         format!(
             "Thermal measurement {} observed {:.3} C, above the reviewed {:.3} C limit.",
             measurement.name, measurement.measured_temperature_c, max_measured_temperature_c
-        ),
-    );
+        )
+    };
+    let mut finding =
+        Finding::critical(THERMAL_MEASURED_TEMPERATURE_VALID, &scenario.name, message);
     populate_measured_thermal_finding(&mut finding, measurement);
+    populate_uncertainty_measurements(
+        &mut finding,
+        measurement_uncertainty_c,
+        Some(worst_case_measured_temperature_c),
+        None,
+    );
     finding.limit.insert(
         "max_measured_temperature_C".to_string(),
         json!(max_measured_temperature_c),
@@ -340,16 +444,26 @@ fn thermal_measured_rise_finding(
     measurement: &ThermalMeasurement,
     ambient_temperature_c: f64,
     measured_temperature_rise_c: f64,
+    measurement_uncertainty_c: f64,
+    worst_case_measured_temperature_rise_c: f64,
     max_temperature_rise_c: f64,
 ) -> Finding {
-    let mut finding = Finding::critical(
-        THERMAL_MEASURED_TEMPERATURE_VALID,
-        &scenario.name,
+    let message = if measurement_uncertainty_c > 0.0 {
+        format!(
+            "Thermal measurement {} worst-case {:.3} C rise over ambient including {:.3} C uncertainty, above the reviewed {:.3} C limit.",
+            measurement.name,
+            worst_case_measured_temperature_rise_c,
+            measurement_uncertainty_c,
+            max_temperature_rise_c
+        )
+    } else {
         format!(
             "Thermal measurement {} observed {:.3} C rise over ambient, above the reviewed {:.3} C limit.",
             measurement.name, measured_temperature_rise_c, max_temperature_rise_c
-        ),
-    );
+        )
+    };
+    let mut finding =
+        Finding::critical(THERMAL_MEASURED_TEMPERATURE_VALID, &scenario.name, message);
     populate_measured_thermal_finding(&mut finding, measurement);
     finding.measured.insert(
         "ambient_temperature_C".to_string(),
@@ -358,6 +472,12 @@ fn thermal_measured_rise_finding(
     finding.measured.insert(
         "measured_temperature_rise_C".to_string(),
         json!(measured_temperature_rise_c),
+    );
+    populate_uncertainty_measurements(
+        &mut finding,
+        measurement_uncertainty_c,
+        None,
+        Some(worst_case_measured_temperature_rise_c),
     );
     finding.limit.insert(
         "max_temperature_rise_C".to_string(),
@@ -401,5 +521,32 @@ fn populate_measured_thermal_finding(finding: &mut Finding, measurement: &Therma
         finding
             .measured
             .insert("measurement_notes".to_string(), json!(notes));
+    }
+}
+
+fn populate_uncertainty_measurements(
+    finding: &mut Finding,
+    measurement_uncertainty_c: f64,
+    worst_case_measured_temperature_c: Option<f64>,
+    worst_case_measured_temperature_rise_c: Option<f64>,
+) {
+    if measurement_uncertainty_c <= 0.0 {
+        return;
+    }
+    finding.measured.insert(
+        "measurement_uncertainty_C".to_string(),
+        json!(measurement_uncertainty_c),
+    );
+    if let Some(value) = worst_case_measured_temperature_c {
+        finding.measured.insert(
+            "worst_case_measured_temperature_C".to_string(),
+            json!(value),
+        );
+    }
+    if let Some(value) = worst_case_measured_temperature_rise_c {
+        finding.measured.insert(
+            "worst_case_measured_temperature_rise_C".to_string(),
+            json!(value),
+        );
     }
 }

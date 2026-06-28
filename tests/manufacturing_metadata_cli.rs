@@ -148,16 +148,16 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
     std::fs::write(
         &metadata,
-        "field,value,unit,source,notes,name,component,ambient_temperature_C,power_loss_w,measurement_point\n\
-         stencil_thickness_mm,0.10,mm,JLC stencil order,foil thickness,,,,,\n\
-         min_drill_edge_clearance_mm,0.50,mm,JLC fab order,hole edge clearance,,,,,\n\
-         min_slot_edge_clearance_mm,0.50,mm,JLC fab order,slot edge clearance,,,,,\n\
-         min_paste_area_ratio,70,%,JLC stencil order,minimum aperture area ratio,,,,,\n\
-         max_paste_area_ratio,100,%,JLC stencil order,maximum aperture area ratio,,,,,\n\
-         min_solder_paste_spacing_mm,0.15,mm,JLC stencil order,min paste spacing,,,,,\n\
-         max_stitch_via_distance_mm,1.00,mm,Layout review,max stitching via distance,,,,,\n\
-         thermal_measurement,72.0,C,IR camera review,steady-state hotspot,u1_hotspot_steady_state,U1,45.0,1.2,package_top\n\
-         unrelated_order_option,blue,,JLC order,kept as skipped evidence,,,,,\n",
+        "field,value,unit,source,notes,name,component,ambient_temperature_C,measurement_uncertainty_C,power_loss_w,measurement_point\n\
+         stencil_thickness_mm,0.10,mm,JLC stencil order,foil thickness,,,,,,\n\
+         min_drill_edge_clearance_mm,0.50,mm,JLC fab order,hole edge clearance,,,,,,\n\
+         min_slot_edge_clearance_mm,0.50,mm,JLC fab order,slot edge clearance,,,,,,\n\
+         min_paste_area_ratio,70,%,JLC stencil order,minimum aperture area ratio,,,,,,\n\
+         max_paste_area_ratio,100,%,JLC stencil order,maximum aperture area ratio,,,,,,\n\
+         min_solder_paste_spacing_mm,0.15,mm,JLC stencil order,min paste spacing,,,,,,\n\
+         max_stitch_via_distance_mm,1.00,mm,Layout review,max stitching via distance,,,,,,\n\
+         thermal_measurement,72.0,C,IR camera review,steady-state hotspot,u1_hotspot_steady_state,U1,45.0,2.5,1.2,package_top\n\
+         unrelated_order_option,blue,,JLC order,kept as skipped evidence,,,,,,\n",
     )
     .unwrap();
 
@@ -219,6 +219,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     );
     assert_eq!(thermal_measurements[0]["measured_temperature_C"], 72.0);
     assert_eq!(thermal_measurements[0]["ambient_temperature_C"], 45.0);
+    assert_eq!(thermal_measurements[0]["measurement_uncertainty_C"], 2.5);
     assert_eq!(thermal_measurements[0]["power_loss_w"], 1.2);
     assert_eq!(
         manufacturing[&Value::String("source".to_string())],
@@ -236,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.2.0");
+    assert_eq!(manifest["schema_version"], "0.3.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -245,6 +246,10 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     assert_eq!(
         manifest["rows"][7]["normalized_value"]["measured_temperature_C"],
         72.0
+    );
+    assert_eq!(
+        manifest["rows"][7]["normalized_value"]["measurement_uncertainty_C"],
+        2.5
     );
     assert_eq!(manifest["rows"][8]["status"], "skipped_unknown_field");
     assert_eq!(

@@ -453,6 +453,11 @@ fn suggest_scenarios_derives_thermal_measured_temperature_template() {
             .unwrap()
             .contains("parameters.max_temperature_rise_C")
     }));
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.include_measurement_uncertainty")
+    }));
 }
 
 #[test]

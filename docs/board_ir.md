@@ -232,10 +232,12 @@ temperature-rise acceptability.
 `THERMAL_MEASURED_TEMPERATURE_VALID` consumes reviewed
 `board.manufacturing.thermal_measurements[]` entries. Each entry names the
 measurement, component, source, and `measured_temperature_C`; optional
-`ambient_temperature_C`, `power_loss_w`, `measurement_point`, and `notes`
-preserve test context. The check compares those explicit measurements against
-scenario-declared limits only. It does not infer component thermal limits or
-measurement quality from the row text.
+`ambient_temperature_C`, `measurement_uncertainty_C`, `power_loss_w`,
+`measurement_point`, and `notes` preserve test context. The check compares
+those explicit measurements against scenario-declared limits only. It uses
+`measurement_uncertainty_C` only when the scenario explicitly sets
+`include_measurement_uncertainty: true`; it does not infer component thermal
+limits or measurement quality from the row text.
 
 Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
 metadata to an imported Board IR without hand-editing YAML:
@@ -258,8 +260,9 @@ record, use `circuitci import-manufacturing-metadata` instead. It accepts a
 `field,value,unit,source,notes` CSV, applies only supported
 `board.manufacturing` fields, and writes a JSON manifest preserving raw row
 evidence and skipped unknown rows. Repeated `field=thermal_measurement` rows
-may also include `name`, `component`, `ambient_temperature_C`, `power_loss_w`,
-and `measurement_point` columns; `value` is the measured temperature in C.
+may also include `name`, `component`, `ambient_temperature_C`,
+`measurement_uncertainty_C`, `power_loss_w`, and `measurement_point` columns;
+`value` is the measured temperature in C.
 
 ```bash
 circuitci import-manufacturing-metadata \

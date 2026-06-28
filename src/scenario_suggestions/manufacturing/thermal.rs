@@ -541,6 +541,12 @@ fn thermal_measured_temperature_suggestions(
                     .to_string(),
             );
         }
+        if measurement.measurement_uncertainty_c.is_some() {
+            required_inputs.push(
+                "Optionally set parameters.include_measurement_uncertainty: true to screen worst-case measured temperature using reviewed uncertainty."
+                    .to_string(),
+            );
+        }
         suggestions.push(manufacturing_suggestion(
             &format!(
                 "thermal_measured_temperature_{}",
@@ -583,6 +589,9 @@ fn thermal_measurement_has_evidence(
         && measurement
             .ambient_temperature_c
             .is_none_or(|value| value.is_finite())
+        && measurement
+            .measurement_uncertainty_c
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
         && measurement
             .power_loss_w
             .is_none_or(|value| value.is_finite() && value > 0.0)
