@@ -281,6 +281,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed 5 V boost model can use a reduced generated-SPICE face with
   VIN/EN/VOUT probes, load-current probes, and executable preliminary rail
   checks.
+- `examples/good_ams1117_3v3_ldo_observation` proves the AMS1117-3.3
+  datasheet-backed fixed LDO model can use a reduced generated-SPICE face with
+  VIN/VOUT probes, a 22 uF output capacitor, load-current probes, and executable
+  preliminary rail/minimum-load checks.
 - `examples/good_tps2121_power_mux_observation` proves the TI TPS2121
   datasheet-backed power-mux model can use a reduced generated-SPICE face with
   IN1/IN2/OUT probes, load-current probes, and executable preliminary

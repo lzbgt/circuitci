@@ -36,7 +36,24 @@ common fixed 3.3 V 1117-style LDO:
 - `VOUT` rail nominal voltage must remain inside the modeled fixed-output
   tolerance range.
 
-This model is not a SPICE regulator macromodel. It checks declared minimum-load
-evidence, but it is not valid for output capacitor ESR/material stability
-sign-off, thermal derating, load-transient behavior, short-circuit foldback,
-startup waveform, or detailed load-dependent dropout sign-off.
+## Generated-SPICE Face
+
+The generated-SPICE face is `CIRCUITCI_AMS1117_3V3_LDO` in
+`models/spice/generic/analog_behavioral.lib` with AMS1117 pin order:
+
+```spice
+XUREG VIN GND VOUT CIRCUITCI_AMS1117_3V3_LDO
+```
+
+`examples/good_ams1117_3v3_ldo_observation` proves the source-backed
+AMS1117-3.3 model can be opened from the GUI and run as a generated-SPICE rail
+observation with a 5 V input, 22 uF output capacitor, and 330 ohm minimum-load
+resistor.
+
+The generated-SPICE face is a reduced rail-observation model, not a vendor
+transistor-level regulator macromodel. It preserves the static minimum-load,
+dropout, output-current, output-capacitance, and voltage-window checks through
+Board IR metadata, but it is not valid for output capacitor ESR/material
+stability sign-off, thermal derating, load-transient behavior, short-circuit
+foldback, startup waveform, PSRR, noise, or detailed load-dependent dropout
+sign-off.

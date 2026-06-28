@@ -166,6 +166,12 @@ const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
 const AP2112K_LDO_SCOPE_EXPECTED_TRACES: &[&str] = &["v_usb", "v_en", "v_rail3v3", "i_load"];
 const AP2112K_LDO_SCOPE_EXPECTED_FREQUENCY: &str = "5 V enabled input, 3.3 V regulated load rail";
+const AMS1117_LDO_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ams1117_3v3_ldo_observation/project.yaml";
+const AMS1117_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ams1117_3v3_ldo_observation";
+const AMS1117_LDO_SCOPE_EXPECTED_TRACES: &[&str] = &["v_usb", "v_rail3v3", "i_load"];
+const AMS1117_LDO_SCOPE_EXPECTED_FREQUENCY: &str =
+    "5 V input, 3.3 V AMS1117 rail, 22 uF output capacitor, and 10 mA load";
 const TPS54331_BUCK_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tps54331_5v_buck_observation/project.yaml";
 const TPS54331_BUCK_SCOPE_EXAMPLE_NAME: &str = "good_tps54331_5v_buck_observation";
@@ -544,6 +550,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: AP2112K_LDO_SCOPE_EXAMPLE_NAME,
         expected_traces: AP2112K_LDO_SCOPE_EXPECTED_TRACES,
         expected_frequency: AP2112K_LDO_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UREG"),
+    },
+    GuiProjectExample {
+        id: "ams1117_ldo_scope",
+        category: "Regulator",
+        open_label: "Open AMS1117 LDO Example",
+        run_label: "Open AMS1117 + Run Scopes",
+        workflow_title: "AMS1117 LDO Workflow",
+        summary: "Fixed 3.3 V AMS1117 rail with output capacitor and minimum-load checks.",
+        project_path: AMS1117_LDO_SCOPE_EXAMPLE_PROJECT,
+        project_name: AMS1117_LDO_SCOPE_EXAMPLE_NAME,
+        expected_traces: AMS1117_LDO_SCOPE_EXPECTED_TRACES,
+        expected_frequency: AMS1117_LDO_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UREG"),
     },
     GuiProjectExample {

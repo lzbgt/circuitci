@@ -23,6 +23,17 @@ power_conversion:
   min_output_current_A: 0.01
   max_output_current_A: 0.8
   output_capacitance_min_F: 0.000022
+simulation:
+  spice:
+    model_name: CIRCUITCI_AMS1117_3V3_LDO
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, GND, VOUT]
+    valid_operating_notes:
+      - Uses AMS1117-3.3 datasheet pinout and board-level voltage/current/dropout/minimum-load/output-capacitance limits, but the transient waveform source is CircuitCI's reduced fixed 3.3 V LDO observation model.
+      - Suitable for generated-SPICE workflow checks, rail observation, probe/assertion authoring, and preliminary load wiring smoke tests.
+      - Omits AMS1117 loop stability, load transient response, output capacitor ESR/material/DC-bias effects, current limit, thermal shutdown, PSRR, noise, quiescent current waveform, and startup timing accuracy.
 datasheet:
   manufacturer: Advanced Monolithic Systems
   part_number: AMS1117-3.3

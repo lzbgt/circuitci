@@ -305,6 +305,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UREG"),
         },
         ExpectedProjectExample {
+            id: "ams1117_ldo_scope",
+            category: "Regulator",
+            open_label: "Open AMS1117 LDO Example",
+            run_label: "Open AMS1117 + Run Scopes",
+            summary: "Fixed 3.3 V AMS1117 rail with output capacitor and minimum-load checks.",
+            project_path: "examples/good_ams1117_3v3_ldo_observation/project.yaml",
+            project_name: "good_ams1117_3v3_ldo_observation",
+            expected_traces: &["v_usb", "v_rail3v3", "i_load"],
+            expected_frequency: "5 V input, 3.3 V AMS1117 rail, 22 uF output capacitor, and 10 mA load",
+            observation_preset_component: Some("UREG"),
+        },
+        ExpectedProjectExample {
             id: "tps54331_buck_scope",
             category: "Regulator",
             open_label: "Open TPS54331 Buck Example",

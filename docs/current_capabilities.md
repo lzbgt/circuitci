@@ -212,6 +212,7 @@ Current analog support:
   observation-node checks,
   PCA9685-style PWM-driver VDD/OE, I2C idle-line, and low-load PWM output
   observations,
+  AMS1117-style fixed 3.3 V LDO rail observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -225,7 +226,7 @@ Current analog support:
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -234,6 +235,14 @@ Current analog support:
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
   3.3 V LDO macro-model for preliminary rail observation.
+- The AMS1117-3.3 vendor component pack now has a datasheet-backed generated
+  SPICE observation face for a fixed 3.3 V rail with a 5 V input, 22 uF output
+  capacitor, and minimum-load resistor in the direct-open GUI fixture. Its
+  15 V absolute VIN limit, 3.201 V to 3.399 V output window, 1.3 V dropout
+  limit, 10 mA minimum load, 0.8 A output-current screen, and 22 uF output
+  capacitance requirement remain source-backed, while the transient face stays
+  explicitly reduced-fidelity and omits loop stability, ESR/material effects,
+  current-limit behavior, thermal behavior, PSRR/noise, and startup timing.
 - The Silicon Labs CP2102N vendor component pack now has a datasheet-backed
   generated SPICE observation face for VREGIN-to-VDD regulator and UART
   output-state checks. Its VREGIN/VDD/VIO ranges, regulator output-current
