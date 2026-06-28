@@ -415,6 +415,14 @@ The command is conservative:
   `max_slot_crossings: 0`. The suggestion is only generated when the imported
   plane-zone evidence exposes at least one internal split-plane gap; it does
   not infer slots from net names or from absent copper evidence.
+- When a routed digital/analog net has explicit route-via layer spans,
+  explicit `board.layout.stackup.layers`, a consistent adjacent declared
+  ground-plane reference net from the route segment layers, explicit matching
+  reference-net route vias, and reviewed
+  `board.manufacturing.max_stitch_via_distance_mm`, it emits a runnable
+  `RETURN_PATH_STITCHING_VIA_VALID` template. The suggestion does not infer a
+  stitching distance or reference net from names; the distance must come from
+  reviewed board/order/layout policy metadata.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

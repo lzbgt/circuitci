@@ -56,6 +56,7 @@ enum ManufacturingField {
     MinPasteAreaRatio,
     MaxPasteAreaRatio,
     MinSolderPasteSpacingMm,
+    MaxStitchViaDistanceMm,
     Source,
 }
 
@@ -68,6 +69,7 @@ impl ManufacturingField {
             Self::MinPasteAreaRatio => "min_paste_area_ratio",
             Self::MaxPasteAreaRatio => "max_paste_area_ratio",
             Self::MinSolderPasteSpacingMm => "min_solder_paste_spacing_mm",
+            Self::MaxStitchViaDistanceMm => "max_stitch_via_distance_mm",
             Self::Source => "source",
         }
     }
@@ -79,6 +81,7 @@ impl ManufacturingField {
                 | Self::MinDrillEdgeClearanceMm
                 | Self::MinSlotEdgeClearanceMm
                 | Self::MinSolderPasteSpacingMm
+                | Self::MaxStitchViaDistanceMm
         )
     }
 
@@ -532,6 +535,10 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         "minsolderpastespacingmm" | "minsolderpastespacing" | "minpastespace" => {
             Some(ManufacturingField::MinSolderPasteSpacingMm)
         }
+        "maxstitchviadistancemm"
+        | "maxstitchviadistance"
+        | "maximumstitchviadistance"
+        | "stitchviadistance" => Some(ManufacturingField::MaxStitchViaDistanceMm),
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
     }

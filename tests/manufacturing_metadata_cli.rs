@@ -155,6 +155,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
          min_paste_area_ratio,70,%,JLC stencil order,minimum aperture area ratio\n\
          max_paste_area_ratio,100,%,JLC stencil order,maximum aperture area ratio\n\
          min_solder_paste_spacing_mm,0.15,mm,JLC stencil order,min paste spacing\n\
+         max_stitch_via_distance_mm,1.00,mm,Layout review,max stitching via distance\n\
          unrelated_order_option,blue,,JLC order,kept as skipped evidence\n",
     )
     .unwrap();
@@ -180,7 +181,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
         String::from_utf8_lossy(&command_output.stderr)
     );
     let stdout = String::from_utf8_lossy(&command_output.stdout);
-    assert!(stdout.contains("6 applied fields"));
+    assert!(stdout.contains("7 applied fields"));
     assert!(stdout.contains("1 skipped rows"));
     assert!(stdout.contains("manifest"));
 
@@ -204,6 +205,10 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
         serde_yaml_ng::to_value(1.0).unwrap()
     );
     assert_eq!(
+        manufacturing[&Value::String("max_stitch_via_distance_mm".to_string())],
+        serde_yaml_ng::to_value(1.0).unwrap()
+    );
+    assert_eq!(
         manufacturing[&Value::String("source".to_string())],
         Value::String("jlc_order_metadata".to_string())
     );
@@ -220,13 +225,13 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
     assert_eq!(manifest["schema_version"], "0.1.0");
-    assert_eq!(manifest["sources"]["metadata"]["data_rows"], 7);
-    assert_eq!(manifest["import"]["applied_fields"], 6);
+    assert_eq!(manifest["sources"]["metadata"]["data_rows"], 8);
+    assert_eq!(manifest["import"]["applied_fields"], 7);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
     assert_eq!(manifest["rows"][3]["normalized_value"], 0.70);
-    assert_eq!(manifest["rows"][6]["status"], "skipped_unknown_field");
+    assert_eq!(manifest["rows"][7]["status"], "skipped_unknown_field");
     assert_eq!(
-        manifest["rows"][6]["raw_columns"]["notes"],
+        manifest["rows"][7]["raw_columns"]["notes"],
         "kept as skipped evidence"
     );
 

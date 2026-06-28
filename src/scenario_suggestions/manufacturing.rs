@@ -1,11 +1,11 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
-    CopperZone, LayoutCopper, LayoutCopperFeature, LayoutPoint, NetKind, RouteSegment,
+    CopperZone, LayoutCopper, LayoutCopperFeature, LayoutPoint, NetKind, RouteSegment, RouteVia,
     StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 const DRILL_DIAMETER_VALID: &str = "DRILL_DIAMETER_VALID";
 const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
@@ -26,6 +26,7 @@ const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
+const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
 const ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID: &str = "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID";
 const PIN_1_ORIENTATION_VALID: &str = "PIN_1_ORIENTATION_VALID";
 const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
@@ -480,6 +481,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         bound,
         &project_name,
     ));
+    suggestions.extend(return_path_stitching_via_suggestions(bound, &project_name));
     suggestions.extend(pin_1_orientation_suggestions(bound, &project_name));
 
     suggestions
@@ -573,6 +575,60 @@ fn reference_plane_slot_crossing_suggestions(
     suggestions
 }
 
+fn return_path_stitching_via_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let Some(max_stitch_via_distance_mm) = bound
+        .project
+        .board
+        .manufacturing
+        .max_stitch_via_distance_mm
+        .filter(|value| value.is_finite() && *value >= 0.0)
+    else {
+        return Vec::new();
+    };
+    let mut suggestions = Vec::new();
+    for (net_name, net) in &bound.project.board.nets {
+        if net.kind != NetKind::DigitalOrAnalog
+            || manufacturing_route_check_declared_for_net(
+                bound,
+                RETURN_PATH_STITCHING_VIA_VALID,
+                net_name,
+            )
+        {
+            continue;
+        }
+        let Some(evidence) = return_path_stitching_via_evidence(bound, net_name) else {
+            continue;
+        };
+        suggestions.push(manufacturing_suggestion(
+            &format!("return_path_stitching_via_{}", sanitized_name(net_name)),
+            true,
+            &format!(
+                "Route {net_name} has {} imported layer-transition via(s), explicit stackup evidence, {} declared {} stitching via(s), and reviewed board.manufacturing.max_stitch_via_distance_mm policy.",
+                evidence.signal_via_count, evidence.reference_via_count, evidence.reference_net
+            ),
+            &format!(
+                "{}_{}_return_path_stitching_via",
+                project_name,
+                sanitized_name(net_name)
+            ),
+            RETURN_PATH_STITCHING_VIA_VALID,
+            Some(BTreeMap::from([(
+                "routes".to_string(),
+                json!([{
+                    "net": net_name,
+                    "reference_net": evidence.reference_net,
+                    "max_stitch_via_distance_mm": max_stitch_via_distance_mm
+                }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -584,6 +640,13 @@ struct SlotCrossingEvidence {
     reference_net: String,
     reference_layer: String,
     slot_crossing_count: usize,
+}
+
+#[derive(Debug)]
+struct StitchingViaEvidence {
+    reference_net: String,
+    signal_via_count: usize,
+    reference_via_count: usize,
 }
 
 fn adjacent_plane_return_path_evidence(
@@ -672,6 +735,79 @@ fn reference_plane_slot_crossing_evidence(
     })
 }
 
+fn return_path_stitching_via_evidence(
+    bound: &BoundBoard<'_>,
+    net_name: &str,
+) -> Option<StitchingViaEvidence> {
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if route.vias.is_empty() || bound.project.board.layout.stackup.layers.is_empty() {
+        return None;
+    }
+    let stackup_layers = stackup_layer_names(bound);
+    let reference_net = route_reference_net(bound, route)?;
+    if !route
+        .vias
+        .iter()
+        .all(|via| usable_route_via(via, &stackup_layers))
+    {
+        return None;
+    }
+    let reference_route = bound.project.board.layout.routes.get(&reference_net)?;
+    if reference_route.vias.is_empty()
+        || !reference_route
+            .vias
+            .iter()
+            .all(|via| usable_route_via(via, &stackup_layers))
+    {
+        return None;
+    }
+    let has_matching_reference_via = route.vias.iter().any(|signal_via| {
+        reference_route
+            .vias
+            .iter()
+            .any(|reference_via| via_layers_match(signal_via, reference_via))
+    });
+    has_matching_reference_via.then_some(StitchingViaEvidence {
+        reference_net,
+        signal_via_count: route.vias.len(),
+        reference_via_count: reference_route.vias.len(),
+    })
+}
+
+fn route_reference_net(
+    bound: &BoundBoard<'_>,
+    route: &crate::board_ir::NetRoute,
+) -> Option<String> {
+    let mut reference_net = None::<String>;
+    for segment in &route.segments {
+        if !usable_route_segment(segment) {
+            return None;
+        }
+        let layer = adjacent_reference_plane(bound, &segment.layer)?;
+        let net = layer.reference_net.as_ref()?;
+        if reference_net
+            .as_deref()
+            .is_some_and(|current| current != net)
+        {
+            return None;
+        }
+        reference_net = Some(net.clone());
+    }
+    reference_net
+}
+
+fn stackup_layer_names(bound: &BoundBoard<'_>) -> BTreeSet<String> {
+    bound
+        .project
+        .board
+        .layout
+        .stackup
+        .layers
+        .iter()
+        .map(|layer| layer.name.clone())
+        .collect()
+}
+
 fn adjacent_reference_plane<'a>(
     bound: &'a BoundBoard<'_>,
     route_layer: &str,
@@ -722,6 +858,29 @@ fn usable_route_segment(segment: &RouteSegment) -> bool {
         && segment.width_mm > 0.0
         && !segment.layer.trim().is_empty()
         && segment_length_mm(segment) > f64::EPSILON
+}
+
+fn usable_route_via(via: &RouteVia, stackup_layers: &BTreeSet<String>) -> bool {
+    via.at.x_mm.is_finite()
+        && via.at.y_mm.is_finite()
+        && via.size_mm.is_finite()
+        && via.size_mm > 0.0
+        && via.drill_mm.is_finite()
+        && via.drill_mm > 0.0
+        && via.layers.len() >= 2
+        && via
+            .layers
+            .iter()
+            .all(|layer| !layer.trim().is_empty() && stackup_layers.contains(layer))
+}
+
+fn via_layers_match(signal_via: &RouteVia, reference_via: &RouteVia) -> bool {
+    signal_via.layers.iter().all(|layer| {
+        reference_via
+            .layers
+            .iter()
+            .any(|candidate| candidate == layer)
+    })
 }
 
 fn segment_has_plane_coverage(

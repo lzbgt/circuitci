@@ -245,6 +245,7 @@ named preset or supplied as board/order metadata:
 | `solder_paste_opening_valid` | `SOLDER_PASTE_OPENING_VALID` | `min_paste_area_ratio` and `max_paste_area_ratio`, or `board.manufacturing.min_paste_area_ratio` and `board.manufacturing.max_paste_area_ratio` |
 | `solder_paste_aperture_area_ratio_valid` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | `stencil_thickness_mm` or `board.manufacturing.stencil_thickness_mm`; area-ratio floor comes from `jlcpcb_stencil_area_ratio_2026_06` |
 | `solder_paste_spacing_valid` | `SOLDER_PASTE_SPACING_VALID` | `min_solder_paste_spacing_mm` or `board.manufacturing.min_solder_paste_spacing_mm` |
+| `return_path_stitching_via_<net>` | `RETURN_PATH_STITCHING_VIA_VALID` | `board.manufacturing.max_stitch_via_distance_mm` plus explicit route/stackup/via evidence |
 
 This confirms the fabricated-release ingestion is now strong enough to produce
 a concrete manufacturing checklist automatically. The remaining gap is process

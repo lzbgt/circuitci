@@ -1,0 +1,51 @@
+project:
+  name: scenario_suggestions_return_path_stitching_via
+  version: 0.1.0
+libraries: []
+board:
+  components: {}
+  nets:
+    SIG:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  manufacturing:
+    max_stitch_via_distance_mm: 1.0
+    source: reviewed_layout_policy
+  layout:
+    stackup:
+      layers:
+        - name: F.Cu
+          kind: signal
+          source: reviewed_stackup
+        - name: prepreg_1
+          kind: dielectric
+          source: reviewed_stackup
+        - name: In1.Cu
+          kind: plane
+          reference_net: GND
+          source: reviewed_stackup
+        - name: core_1
+          kind: dielectric
+          source: reviewed_stackup
+        - name: B.Cu
+          kind: signal
+          source: reviewed_stackup
+    routes:
+      SIG:
+        segments:
+          - start: { x_mm: 1.0, y_mm: 1.0 }
+            end: { x_mm: 9.0, y_mm: 1.0 }
+            width_mm: 0.15
+            layer: F.Cu
+        vias:
+          - at: { x_mm: 5.0, y_mm: 1.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]
+      GND:
+        vias:
+          - at: { x_mm: 5.5, y_mm: 1.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]

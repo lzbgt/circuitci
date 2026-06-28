@@ -9,9 +9,10 @@ Input CSV columns:
 - `field`: required. Supported values are Board IR manufacturing keys such as
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`,
   `min_slot_edge_clearance_mm`, `min_paste_area_ratio`,
-  `max_paste_area_ratio`, and `min_solder_paste_spacing_mm`. A few plain-label
-  aliases such as `stencil thickness` and `hole to board edge clearance` are
-  accepted.
+  `max_paste_area_ratio`, `min_solder_paste_spacing_mm`, and
+  `max_stitch_via_distance_mm`. A few plain-label aliases such as
+  `stencil thickness`, `hole to board edge clearance`, and
+  `stitch via distance` are accepted.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.

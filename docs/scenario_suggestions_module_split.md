@@ -44,7 +44,9 @@ suggestions.
   suggestion templates, including process-preset suggestions, manufacturing
   metadata-gated templates, assembly/footprint evidence alignment, pin-1 marker
   templates, and stackup-aware adjacent-plane return-path and reference-plane
-  slot-crossing discovery from explicit route/stackup/zone evidence.
+  slot-crossing discovery from explicit route/stackup/zone evidence plus
+  stitching-via discovery from explicit route/stackup/via evidence and reviewed
+  board manufacturing policy.
 - `src/scenario_suggestions/types.rs` owns the serializable suggestion report
   DTOs that must stay aligned with
   `schemas/scenario_suggestion_report.schema.json`.

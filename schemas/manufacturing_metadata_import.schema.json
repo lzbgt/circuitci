@@ -88,6 +88,7 @@
             "min_paste_area_ratio",
             "max_paste_area_ratio",
             "min_solder_paste_spacing_mm",
+            "max_stitch_via_distance_mm",
             "source"
           ]
         },

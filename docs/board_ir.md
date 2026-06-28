@@ -127,6 +127,7 @@ board:
     min_paste_area_ratio: 0.70
     max_paste_area_ratio: 1.00
     min_solder_paste_spacing_mm: 0.15
+    max_stitch_via_distance_mm: 1.00
     source: jlc_stencil_order
 ```
 
@@ -152,6 +153,12 @@ the matching `parameters.*` values. `SOLDER_PASTE_SPACING_VALID` similarly
 consumes `board.manufacturing.min_solder_paste_spacing_mm`. These are stencil,
 package, or assembly-process facts; CircuitCI stores them only when the board or
 order evidence supplies the values.
+
+`RETURN_PATH_STITCHING_VIA_VALID` suggestions consume
+`board.manufacturing.max_stitch_via_distance_mm` as a reviewed layout-policy
+limit for nearby reference-net stitching vias at signal route layer
+transitions. CircuitCI does not infer this distance from net names, stackup
+shape, or fabricator defaults.
 
 Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
 metadata to an imported Board IR without hand-editing YAML:

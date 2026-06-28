@@ -75,6 +75,8 @@ enum Command {
         #[arg(long)]
         min_solder_paste_spacing_mm: Option<f64>,
         #[arg(long)]
+        max_stitch_via_distance_mm: Option<f64>,
+        #[arg(long)]
         source: Option<String>,
     },
     ImportManufacturingMetadata {
@@ -284,6 +286,7 @@ pub fn run() -> Result<()> {
             min_paste_area_ratio,
             max_paste_area_ratio,
             min_solder_paste_spacing_mm,
+            max_stitch_via_distance_mm,
             source,
         }) => run_set_manufacturing_metadata(
             project,
@@ -295,6 +298,7 @@ pub fn run() -> Result<()> {
                 min_paste_area_ratio,
                 max_paste_area_ratio,
                 min_solder_paste_spacing_mm,
+                max_stitch_via_distance_mm,
                 source,
             },
         ),
@@ -465,6 +469,7 @@ struct ManufacturingMetadataArgs {
     min_paste_area_ratio: Option<f64>,
     max_paste_area_ratio: Option<f64>,
     min_solder_paste_spacing_mm: Option<f64>,
+    max_stitch_via_distance_mm: Option<f64>,
     source: Option<String>,
 }
 
@@ -535,6 +540,10 @@ fn validate_manufacturing_metadata(metadata: &ManufacturingMetadataArgs) -> Resu
     validate_non_negative(
         "min_solder_paste_spacing_mm",
         metadata.min_solder_paste_spacing_mm,
+    )?;
+    validate_non_negative(
+        "max_stitch_via_distance_mm",
+        metadata.max_stitch_via_distance_mm,
     )?;
     if let (Some(min), Some(max)) = (metadata.min_paste_area_ratio, metadata.max_paste_area_ratio)
         && max < min
@@ -610,6 +619,11 @@ fn apply_manufacturing_metadata(
         manufacturing,
         "min_solder_paste_spacing_mm",
         metadata.min_solder_paste_spacing_mm,
+    )?;
+    updates += insert_optional_number(
+        manufacturing,
+        "max_stitch_via_distance_mm",
+        metadata.max_stitch_via_distance_mm,
     )?;
     if let Some(source) = metadata.source.as_deref() {
         manufacturing.insert(

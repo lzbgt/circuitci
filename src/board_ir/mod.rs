@@ -175,6 +175,8 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub min_solder_paste_spacing_mm: Option<f64>,
     #[serde(default)]
+    pub max_stitch_via_distance_mm: Option<f64>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 

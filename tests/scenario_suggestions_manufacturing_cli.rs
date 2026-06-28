@@ -77,6 +77,43 @@ fn suggest_scenarios_derives_reference_plane_slot_crossing_template() {
     );
 }
 
+#[test]
+fn suggest_scenarios_derives_return_path_stitching_via_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_return_path_stitching_via/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_return_path_stitching_via"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 1);
+
+    let stitching = &suggested[0];
+    assert_eq!(stitching["id"], "return_path_stitching_via_sig");
+    assert_eq!(
+        stitching["kind"],
+        "manufacturing_return_path_stitching_via_sig"
+    );
+    assert_eq!(stitching["runnable"], true);
+    assert_eq!(stitching["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        stitching["scenario"]["checks"][0],
+        "RETURN_PATH_STITCHING_VIA_VALID"
+    );
+    let route = &stitching["scenario"]["parameters"]["routes"][0];
+    assert_eq!(route["net"], "SIG");
+    assert_eq!(route["reference_net"], "GND");
+    assert_eq!(route["max_stitch_via_distance_mm"], 1.0);
+    assert!(stitching.get("required_inputs").is_none());
+    assert!(
+        stitching["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed board.manufacturing.max_stitch_via_distance_mm")
+    );
+}
+
 fn run_suggest_scenarios(project: &str) -> Value {
     let dir = tempfile::tempdir().unwrap();
     let output = dir.path().join("suggestions.yaml");
