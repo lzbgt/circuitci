@@ -6,4 +6,5 @@ pub mod jlc;
 pub mod kicad;
 pub mod kicad_pcb;
 pub mod kicad_sch;
+pub mod manufacturing_metadata;
 pub mod spice;

@@ -77,7 +77,8 @@ Useful next slices:
 - package/footprint semantics beyond the current KiCad pin-1,
   body/courtyard-bounds, connector-entry, and raw pad-level mask/paste
   fabrication override evidence,
-- board/order metadata extraction workflows for fabrication constraints.
+- board/order metadata extraction workflows beyond the current reviewed
+  manufacturing metadata CSV import manifest.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.

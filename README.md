@@ -210,6 +210,18 @@ circuitci set-manufacturing-metadata out/imported_with_drills_and_vias.project.y
   --source jlc_order_metadata
 ```
 
+Or import the same reviewed facts from a source CSV while preserving row-level
+evidence in a JSON manifest:
+
+```bash
+circuitci import-manufacturing-metadata \
+  --project out/imported_with_drills_and_vias.project.yaml \
+  --metadata order_metadata.csv \
+  --output out/imported_with_order_metadata.project.yaml \
+  --source jlc_order_metadata \
+  --allow-unknown-fields
+```
+
 `suggest-scenarios` consumes these Board IR fields to make matching
 manufacturing templates runnable without turning order-specific limits into
 global process defaults.
@@ -241,6 +253,7 @@ Important contracts:
 - [docs/component_model_contract.md](docs/component_model_contract.md)
 - [docs/scenario_language.md](docs/scenario_language.md)
 - [docs/fabrication_process_presets.md](docs/fabrication_process_presets.md)
+- [docs/manufacturing_metadata_importer.md](docs/manufacturing_metadata_importer.md)
 - [docs/gui_frontend.md](docs/gui_frontend.md)
 - [docs/report_schema.md](docs/report_schema.md)
 - [docs/scenario_suggestions.md](docs/scenario_suggestions.md)

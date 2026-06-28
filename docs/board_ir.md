@@ -169,6 +169,25 @@ The command updates only `board.manufacturing`, preserves existing design and
 layout evidence, and rewrites relative `libraries` entries as absolute paths so
 the generated project can be validated from any working directory.
 
+For source CSVs from a fabrication order, stencil order, or reviewed process
+record, use `circuitci import-manufacturing-metadata` instead. It accepts a
+`field,value,unit,source,notes` CSV, applies only supported
+`board.manufacturing` fields, and writes a JSON manifest preserving raw row
+evidence and skipped unknown rows:
+
+```bash
+circuitci import-manufacturing-metadata \
+  --project imported.project.yaml \
+  --metadata order_metadata.csv \
+  --output imported_with_order_metadata.project.yaml \
+  --source jlc_order_metadata \
+  --allow-unknown-fields
+```
+
+The importer still updates only `board.manufacturing`; it does not infer
+schematic connectivity, component pin behavior, or global process defaults from
+order text.
+
 Power semantics:
 
 - `powered: true`: actual rail voltage equals `nominal_voltage`.

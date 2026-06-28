@@ -77,6 +77,20 @@ enum Command {
         #[arg(long)]
         source: Option<String>,
     },
+    ImportManufacturingMetadata {
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long)]
+        metadata: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        #[arg(long)]
+        source: Option<String>,
+        #[arg(long)]
+        allow_unknown_fields: bool,
+    },
     ImportSpice {
         deck: PathBuf,
         #[arg(long, short = 'o')]
@@ -283,6 +297,21 @@ pub fn run() -> Result<()> {
                 min_solder_paste_spacing_mm,
                 source,
             },
+        ),
+        Some(Command::ImportManufacturingMetadata {
+            project,
+            metadata,
+            output,
+            manifest,
+            source,
+            allow_unknown_fields,
+        }) => run_import_manufacturing_metadata(
+            project,
+            metadata,
+            output,
+            manifest,
+            source,
+            allow_unknown_fields,
         ),
         Some(Command::ImportSpice {
             deck,
@@ -663,6 +692,38 @@ fn sanitized_project_name(path: &std::path::Path, fallback: &str) -> String {
         .and_then(|stem| stem.to_str())
         .unwrap_or(fallback)
         .replace(|character: char| !character.is_ascii_alphanumeric(), "_")
+}
+
+fn run_import_manufacturing_metadata(
+    project: PathBuf,
+    metadata: PathBuf,
+    output: PathBuf,
+    manifest: Option<PathBuf>,
+    source: Option<String>,
+    allow_unknown_fields: bool,
+) -> Result<()> {
+    let manifest = manifest.unwrap_or_else(|| output.with_extension("manufacturing.json"));
+    let summary = crate::importers::manufacturing_metadata::import_manufacturing_metadata(
+        &crate::importers::manufacturing_metadata::ManufacturingMetadataImportOptions {
+            project: project.clone(),
+            metadata: metadata.clone(),
+            output: output.clone(),
+            manifest: manifest.clone(),
+            source,
+            allow_unknown_fields,
+        },
+    )?;
+    println!(
+        "CircuitCI imported manufacturing metadata: {} applied fields, {} skipped rows from {} rows {} + {} -> {}, manifest {}",
+        summary.applied_fields,
+        summary.skipped_rows,
+        summary.rows,
+        project.display(),
+        metadata.display(),
+        output.display(),
+        manifest.display()
+    );
+    Ok(())
 }
 
 fn run_import_spice(

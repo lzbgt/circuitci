@@ -184,6 +184,10 @@ Importers append evidence instead of guessing missing intent. Examples:
 - JLC/EasyEDA BOM+CPL import adds components and placements plus a JSON
   source/row/component manifest, but does not infer nets or pins from assembly
   files.
+- Reviewed manufacturing metadata CSV import updates only
+  `board.manufacturing` fields, preserves raw row evidence and skipped
+  unrelated order rows in a JSON manifest, and does not infer process defaults
+  from order text.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
   or flying-probe evidence uniquely proves net/island/owner metadata.

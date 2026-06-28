@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/manufacturing_metadata_import.schema.json",
+  "title": "CircuitCI Manufacturing Metadata Import Manifest",
+  "type": "object",
+  "required": ["schema_version", "sources", "import", "rows"],
+  "properties": {
+    "schema_version": { "const": "0.1.0" },
+    "sources": {
+      "type": "object",
+      "required": ["project", "metadata"],
+      "properties": {
+        "project": { "$ref": "#/$defs/source_file" },
+        "metadata": { "$ref": "#/$defs/source_csv" }
+      },
+      "additionalProperties": false
+    },
+    "import": {
+      "type": "object",
+      "required": [
+        "applied_fields",
+        "skipped_rows",
+        "allow_unknown_fields",
+        "source_label"
+      ],
+      "properties": {
+        "applied_fields": { "type": "integer", "minimum": 0 },
+        "skipped_rows": { "type": "integer", "minimum": 0 },
+        "allow_unknown_fields": { "type": "boolean" },
+        "source_label": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/row" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_file": {
+      "type": "object",
+      "required": ["path", "size_bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "source_csv": {
+      "type": "object",
+      "required": ["path", "size_bytes", "sha256", "columns", "data_rows"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "data_rows": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "row": {
+      "type": "object",
+      "required": [
+        "row_number",
+        "raw_field",
+        "status",
+        "raw_value",
+        "raw_columns"
+      ],
+      "properties": {
+        "row_number": { "type": "integer", "minimum": 2 },
+        "raw_field": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["applied", "skipped_unknown_field"] },
+        "board_field": {
+          "enum": [
+            "stencil_thickness_mm",
+            "min_drill_edge_clearance_mm",
+            "min_slot_edge_clearance_mm",
+            "min_paste_area_ratio",
+            "max_paste_area_ratio",
+            "min_solder_paste_spacing_mm",
+            "source"
+          ]
+        },
+        "raw_value": { "type": "string" },
+        "normalized_value": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string", "minLength": 1 }
+          ]
+        },
+        "unit": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string", "minLength": 1 },
+        "raw_columns": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}
