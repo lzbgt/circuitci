@@ -196,6 +196,8 @@ Current analog support:
   observations, CH347-style USB-JTAG debug bridge line-state observations,
   CMSIS-DAP-style SWD probe line-state observations,
   TXS0108E-style A-to-B mixed-voltage level-shifter observations,
+  NL27WZ17-style dual non-inverting Schmitt-buffer input/output line-state
+  observations,
   TPD2EUSB30-style USB ESD normal-operation standoff and line-capacitance
   observations,
   PRTR5V0U2X-style rail-to-rail USB ESD normal-operation standoff and
@@ -227,7 +229,7 @@ Current analog support:
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
-  divider-noise, and RC Monte Carlo yield workflows.
+  divider-noise, NL27WZ17 logic-buffer, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -375,6 +377,13 @@ Current analog support:
   protocol/register behavior, oscillator tolerance, phase staggering,
   LED/servo output current, pull-up rise time, servo dynamics, disabled-output
   high-Z behavior, thermal behavior, and final PWM timing sign-off.
+- The onsemi NL27WZ17 logic-buffer pack now has a source-backed generated
+  SPICE observation face for VCC, 1A/2A input-state, and non-inverted 1Y/2Y
+  output-state checks. Its 1.65 V to 5.5 V supply range, SC-88/SOT-363 pinout,
+  and dual non-inverting Schmitt-trigger buffer role remain source-backed,
+  while the transient face stays explicitly reduced-fidelity and omits Schmitt
+  thresholds/hysteresis, propagation delay, output drive strength, capacitive
+  loading, signal integrity, and final switching sign-off.
 - The TI TLV803EA29 reset-supervisor pack now has a datasheet-backed generated
   SPICE observation face for active-low open-drain threshold behavior with an
   external pull-up. Datasheet delay and threshold metadata remain available for

@@ -389,6 +389,63 @@ fn txs0108e_scope_example_workflow_creates_model_aware_observation_checks() {
 }
 
 #[test]
+fn nl27wz17_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(
+        gui_project_example_by_id("nl27wz17_logic_buffer_scope"),
+        None,
+    );
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UBUF".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "ubuf_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "ubuf_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ubuf_vcc"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ubuf_1a"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ubuf_1y"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ubuf_2y"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ubuf_vcc_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ubuf_1a_input_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ubuf_1y_output_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ubuf_2y_output_low")
+    );
+}
+
+#[test]
 fn tpd2eusb30_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

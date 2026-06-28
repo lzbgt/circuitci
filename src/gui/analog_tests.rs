@@ -384,7 +384,7 @@ board:
     );
     assert_eq!(
         model_files[0].sha256.as_deref(),
-        Some("583ecbcec5da562e95c72e753b73810007432b144bbb2fe3061906a91e312d98")
+        Some("943f5993da47ed52b3622795ff8a7a6391407d9eb1172b1c7bb27ef36b227b3b")
     );
 }
 

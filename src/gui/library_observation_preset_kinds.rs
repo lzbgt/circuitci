@@ -319,6 +319,61 @@ pub(super) fn add_level_shifter_observation_assertions(
     }
 }
 
+pub(super) fn add_logic_buffer_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "logic_buffer" {
+        return;
+    }
+    add_port_voltage_window_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        "VCC",
+        stop_time_us,
+        assertions,
+    );
+    let logic_high_v = voltage_for_component_pin(project, component, "VCC").unwrap_or(3.3);
+    for (input_pin, output_pin) in [("1A", "1Y"), ("2A", "2Y")] {
+        let state = component_parameter_f64(
+            component,
+            &format!("observation_{}_state", input_pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(1.0);
+        let state_suffix = logic_state_suffix(state);
+        let (relation, threshold) = logic_state_relation_threshold(state, logic_high_v);
+        if let Some(input_probe) = probe_for_component_pin(probes, component, input_pin) {
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_input_{}", input_probe.probe_name, state_suffix),
+                &input_probe.probe_name,
+                "mean",
+                relation,
+                threshold,
+                (0.0, stop_time_us),
+            ));
+        }
+        if let Some(output_probe) = probe_for_component_pin(probes, component, output_pin) {
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_output_{}", output_probe.probe_name, state_suffix),
+                &output_probe.probe_name,
+                "mean",
+                relation,
+                threshold,
+                (0.0, stop_time_us),
+            ));
+        }
+    }
+}
+
 pub(super) fn add_protection_clamp_observation_assertions(
     component: &crate::board_ir::ComponentSpec,
     model: &crate::library::ComponentModel,
@@ -382,6 +437,18 @@ fn add_port_voltage_window_assertions(
             max_v,
             (0.0, stop_time_us),
         ));
+    }
+}
+
+fn logic_state_suffix(state: f64) -> &'static str {
+    if state >= 0.5 { "high" } else { "low" }
+}
+
+fn logic_state_relation_threshold(state: f64, logic_high_v: f64) -> (&'static str, f64) {
+    if state >= 0.5 {
+        ("above", logic_high_v * 0.7)
+    } else {
+        ("below", logic_high_v * 0.3)
     }
 }
 

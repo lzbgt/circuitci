@@ -221,6 +221,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and
   translated-output checks.
+- `examples/good_onsemi_nl27wz17_logic_buffer_observation` proves the onsemi
+  NL27WZ17 datasheet-backed logic-buffer model can use a reduced
+  generated-SPICE face for VCC, 1A/2A input-state, and non-inverted 1Y/2Y
+  output-state checks. The model-state inputs are explicit Board IR component
+  parameters, not inferred Schmitt-trigger threshold, delay, loading, or
+  signal-integrity behavior.
 - `examples/good_tpd2eusb30_usb_esd_observation` proves the TI TPD2EUSB30
   datasheet-backed USB ESD model can use a reduced generated-SPICE face for
   normal-operation D+/D- standoff checks with the source-backed 0.7 pF

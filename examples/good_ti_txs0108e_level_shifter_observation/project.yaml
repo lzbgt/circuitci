@@ -180,7 +180,7 @@ scenarios:
           - RLOADB
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: 583ecbcec5da562e95c72e753b73810007432b144bbb2fe3061906a91e312d98
+          sha256: 943f5993da47ed52b3622795ff8a7a6391407d9eb1172b1c7bb27ef36b227b3b
       node_bindings:
         - { node: vcca, net: vcca_1v8 }
         - { node: vccb, net: vccb_3v3 }

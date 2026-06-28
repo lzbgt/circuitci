@@ -81,6 +81,14 @@ const TXS0108E_LEVEL_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vcca", "v_vccb", "v_oe", "v_a1", "v_b1", "i_b1_load"];
 const TXS0108E_LEVEL_SCOPE_EXPECTED_FREQUENCY: &str =
     "1.8 V A-side input translated to a 3.3 V B-side high level";
+const NL27WZ17_LOGIC_BUFFER_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_onsemi_nl27wz17_logic_buffer_observation/project.yaml";
+const NL27WZ17_LOGIC_BUFFER_SCOPE_EXAMPLE_NAME: &str =
+    "good_onsemi_nl27wz17_logic_buffer_observation";
+const NL27WZ17_LOGIC_BUFFER_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vcc", "v_1a", "v_1y", "v_2a", "v_2y"];
+const NL27WZ17_LOGIC_BUFFER_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V NL27WZ17 buffer with 1A high mirrored to 1Y and 2A low mirrored to 2Y";
 const TPD2EUSB30_ESD_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tpd2eusb30_usb_esd_observation/project.yaml";
 const TPD2EUSB30_ESD_SCOPE_EXAMPLE_NAME: &str = "good_tpd2eusb30_usb_esd_observation";
@@ -407,6 +415,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TXS0108E_LEVEL_SCOPE_EXPECTED_TRACES,
         expected_frequency: TXS0108E_LEVEL_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("ULS"),
+    },
+    GuiProjectExample {
+        id: "nl27wz17_logic_buffer_scope",
+        category: "Logic",
+        open_label: "Open NL27WZ17 Logic Buffer Example",
+        run_label: "Open NL27WZ17 + Run Scopes",
+        workflow_title: "NL27WZ17 Logic Buffer Workflow",
+        summary: "Source-backed dual Schmitt-buffer input/output line-state observation.",
+        project_path: NL27WZ17_LOGIC_BUFFER_SCOPE_EXAMPLE_PROJECT,
+        project_name: NL27WZ17_LOGIC_BUFFER_SCOPE_EXAMPLE_NAME,
+        expected_traces: NL27WZ17_LOGIC_BUFFER_SCOPE_EXPECTED_TRACES,
+        expected_frequency: NL27WZ17_LOGIC_BUFFER_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UBUF"),
     },
     GuiProjectExample {
         id: "tpd2eusb30_esd_scope",

@@ -164,6 +164,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("ULS"),
         },
         ExpectedProjectExample {
+            id: "nl27wz17_logic_buffer_scope",
+            category: "Logic",
+            open_label: "Open NL27WZ17 Logic Buffer Example",
+            run_label: "Open NL27WZ17 + Run Scopes",
+            summary: "Source-backed dual Schmitt-buffer input/output line-state observation.",
+            project_path: "examples/good_onsemi_nl27wz17_logic_buffer_observation/project.yaml",
+            project_name: "good_onsemi_nl27wz17_logic_buffer_observation",
+            expected_traces: &["v_vcc", "v_1a", "v_1y", "v_2a", "v_2y"],
+            expected_frequency: "3.3 V NL27WZ17 buffer with 1A high mirrored to 1Y and 2A low mirrored to 2Y",
+            observation_preset_component: Some("UBUF"),
+        },
+        ExpectedProjectExample {
             id: "tpd2eusb30_esd_scope",
             category: "Protection",
             open_label: "Open TPD2EUSB30 ESD Example",

@@ -1,0 +1,187 @@
+project:
+  name: good_onsemi_nl27wz17_logic_buffer_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/logic
+
+board:
+  schematic:
+    component_symbols:
+      VVCC: Simulation_SPICE:VDC
+      UBUF: Logic_74xGxx:NL27WZ17
+    node_styles:
+      component:VVCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UBUF: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VVCC: { x: 64.0, y: 144.0 }
+      component:UBUF: { x: 384.0, y: 256.0 }
+      net:logic_vcc: { x: 192.0, y: 144.0 }
+      net:logic_1a: { x: 208.0, y: 224.0 }
+      net:logic_2a: { x: 208.0, y: 320.0 }
+      net:logic_1y: { x: 560.0, y: 224.0 }
+      net:logic_2y: { x: 560.0, y: 320.0 }
+      net:gnd: { x: 384.0, y: 496.0 }
+    wire_routes:
+      VVCC.P->logic_vcc:
+        points:
+          - { x: 144.0, y: 144.0 }
+      VVCC.N->gnd:
+        points:
+          - { x: 112.0, y: 496.0 }
+      UBUF.VCC->logic_vcc:
+        points:
+          - { x: 288.0, y: 144.0 }
+      UBUF.GND->gnd:
+        points:
+          - { x: 384.0, y: 496.0 }
+      UBUF.1A->logic_1a:
+        points:
+          - { x: 288.0, y: 224.0 }
+      UBUF.2A->logic_2a:
+        points:
+          - { x: 288.0, y: 320.0 }
+      UBUF.1Y->logic_1y:
+        points:
+          - { x: 496.0, y: 224.0 }
+      UBUF.2Y->logic_2y:
+        points:
+          - { x: 496.0, y: 320.0 }
+  components:
+    VVCC:
+      model: generic.analog.dc_voltage_source
+      part_number: LOGIC_VCC_3V3_SOURCE
+      pins:
+        P: logic_vcc
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UBUF:
+      model: vendor.onsemi.nl27wz17
+      part_number: NL27WZ17
+      parameters:
+        observation_1a_state: 1.0
+        observation_2a_state: 0.0
+      pins:
+        VCC: logic_vcc
+        GND: gnd
+        "1A": logic_1a
+        "1Y": logic_1y
+        "2A": logic_2a
+        "2Y": logic_2y
+  nets:
+    logic_vcc:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.01
+    logic_1a:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    logic_2a:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    logic_1y:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    logic_2y:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: nl27wz17_logic_buffer_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VVCC
+          - UBUF
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 943f5993da47ed52b3622795ff8a7a6391407d9eb1172b1c7bb27ef36b227b3b
+      node_bindings:
+        - { node: vcc, net: logic_vcc }
+        - { node: a1, net: logic_1a }
+        - { node: y1, net: logic_1y }
+        - { node: a2, net: logic_2a }
+        - { node: y2, net: logic_2y }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VVCC, pin: P } }
+        - { node: "0", endpoint: { component: VVCC, pin: N } }
+        - { node: vcc, endpoint: { component: UBUF, pin: VCC } }
+        - { node: "0", endpoint: { component: UBUF, pin: GND } }
+        - { node: a1, endpoint: { component: UBUF, pin: "1A" } }
+        - { node: y1, endpoint: { component: UBUF, pin: "1Y" } }
+        - { node: a2, endpoint: { component: UBUF, pin: "2A" } }
+        - { node: y2, endpoint: { component: UBUF, pin: "2Y" } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.1
+      stimuli:
+        - name: nl27wz17_static_line_state
+          description: 3.3 V NL27WZ17 observation with 1A high mirrored to 1Y and 2A low mirrored to 2Y by the reduced non-inverting buffer model.
+      probes:
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_1a
+          expression: V(a1)
+        - name: v_1y
+          expression: V(y1)
+        - name: v_2a
+          expression: V(a2)
+        - name: v_2y
+          expression: V(y2)
+      assertions:
+        - name: vcc_above_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 3.2
+        - name: vcc_below_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 3.4
+        - name: input_1a_high
+          probe: v_1a
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: output_1y_high
+          probe: v_1y
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: input_2a_low
+          probe: v_2a
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 1.0
+        - name: output_2y_low
+          probe: v_2y
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 1.0

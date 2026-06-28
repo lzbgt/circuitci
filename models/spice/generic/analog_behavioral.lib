@@ -426,3 +426,21 @@ RLEAK BAT GND 1G
 BRESET RESET GND I={v(RESET,GND)*(1e-9 + 1/(1+exp(80*(v(VDD,GND)-2.93))))}
 RLEAK RESET GND 1G
 .ends CIRCUITCI_TLV803EA29_RESET_SUPERVISOR
+
+.subckt CIRCUITCI_NL27WZ17_DUAL_BUFFER VCC GND A1 Y1 A2 Y2 PARAMS: A1_STATE=1 A2_STATE=0
+* Reduced NL27WZ17 dual non-inverting Schmitt-trigger buffer observation behavior.
+* A1_STATE and A2_STATE are explicit Board IR observation parameters. Inputs
+* and outputs are ideal static logic levels referenced to VCC. Schmitt
+* thresholds, hysteresis, propagation delay, output drive strength, package
+* parasitics, capacitive loading, signal integrity, and final timing sign-off
+* are intentionally not modeled.
+BA1 NA1 GND V={v(VCC,GND)*A1_STATE}
+RA1 NA1 A1 50
+BY1 NY1 GND V={v(VCC,GND)*A1_STATE}
+RY1 NY1 Y1 50
+BA2 NA2 GND V={v(VCC,GND)*A2_STATE}
+RA2 NA2 A2 50
+BY2 NY2 GND V={v(VCC,GND)*A2_STATE}
+RY2 NY2 Y2 50
+RVCC VCC GND 1G
+.ends CIRCUITCI_NL27WZ17_DUAL_BUFFER

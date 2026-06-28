@@ -1,6 +1,24 @@
 component_id: vendor.onsemi.nl27wz17
 version: 0.1.0
 category: logic_buffer
+simulation:
+  spice:
+    model_name: CIRCUITCI_NL27WZ17_DUAL_BUFFER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, GND, 1A, 1Y, 2A, 2Y]
+    instance_parameters:
+      - spice_name: A1_STATE
+        component_parameter: observation_1a_state
+        default_value: 1.0
+      - spice_name: A2_STATE
+        component_parameter: observation_2a_state
+        default_value: 0.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VCC, 1A/2A input-state, and non-inverted 1Y/2Y output-state checks.
+      - Uses source-backed 1.65 V to 5.5 V VCC range, dual non-inverting Schmitt-trigger buffer topology, and pinout while emitting ideal board-facing static logic levels.
+      - Schmitt thresholds/hysteresis, propagation delay, rise/fall time, capacitive loading, output drive current, package parasitics, signal integrity, and final switching sign-off are out of scope.
 ports:
   1A:
     kind: digital_electrical_input
