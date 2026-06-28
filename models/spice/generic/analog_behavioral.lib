@@ -287,6 +287,20 @@ RLEAK VOUT GND 1G
 RBIAS ON GND 1G
 .ends CIRCUITCI_TPS22918_LOAD_SWITCH
 
+.subckt CIRCUITCI_TPS25948_EFUSE_RCB VIN VOUT GND EN
+* Reduced TPS25948 enabled eFuse/load-switch observation behavior.
+* EN controls a smooth VIN-to-VOUT conductance near the datasheet maximum
+* 20 mOhm on-resistance. The source-backed component metadata carries the
+* 8 A current-limit and always-on reverse-current-blocking facts. This
+* subcircuit only observes enabled forward-path rail behavior; dVdt slew,
+* ILM/ITIMER current limit, FLT/SPLYGD outputs, OVLO, RCBCTRL control,
+* reverse-current dynamics, thermal behavior, and fault timing are
+* intentionally not modeled.
+BSW VIN VOUT I={v(VIN,VOUT)*(1e-9 + 50/(1+exp(-20*(v(EN,GND)-1.15))))}
+RLEAK VOUT GND 1G
+RBIAS EN GND 1G
+.ends CIRCUITCI_TPS25948_EFUSE_RCB
+
 .subckt CIRCUITCI_MCP73831_4V2_CHARGER VDD VBAT VSS PROG
 * Reduced MCP73831-2 constant-current/constant-voltage charger behavior.
 * A 1 uA PROG bias makes the external RPROG voltage encode the datasheet

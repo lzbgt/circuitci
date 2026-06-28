@@ -325,6 +325,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("USW"),
         },
         ExpectedProjectExample {
+            id: "tps25948_efuse_scope",
+            category: "eFuse",
+            open_label: "Open TPS25948 eFuse Example",
+            run_label: "Open TPS25948 + Run Scopes",
+            summary: "Enabled 12 V eFuse/load-switch path with protected-rail and load-current checks.",
+            project_path: "examples/good_tps25948_efuse_observation/project.yaml",
+            project_name: "good_tps25948_efuse_observation",
+            expected_traces: &["v_input", "v_enable", "v_protected12v", "i_load"],
+            expected_frequency: "12 V enabled eFuse/load-switch path into a 120 ohm load",
+            observation_preset_component: Some("UEFUSE"),
+        },
+        ExpectedProjectExample {
             id: "tps2121_power_mux_scope",
             category: "Power Mux",
             open_label: "Open TPS2121 Power Mux Example",

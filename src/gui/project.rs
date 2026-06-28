@@ -176,6 +176,13 @@ const TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_usb", "v_on", "v_switched5v", "i_load"];
 const TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V enabled load switch into a 1 kOhm load";
+const TPS25948_EFUSE_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps25948_efuse_observation/project.yaml";
+const TPS25948_EFUSE_SCOPE_EXAMPLE_NAME: &str = "good_tps25948_efuse_observation";
+const TPS25948_EFUSE_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_input", "v_enable", "v_protected12v", "i_load"];
+const TPS25948_EFUSE_SCOPE_EXPECTED_FREQUENCY: &str =
+    "12 V enabled eFuse/load-switch path into a 120 ohm load";
 const TPS2121_POWER_MUX_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tps2121_power_mux_observation/project.yaml";
 const TPS2121_POWER_MUX_SCOPE_EXAMPLE_NAME: &str = "good_tps2121_power_mux_observation";
@@ -526,6 +533,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("USW"),
+    },
+    GuiProjectExample {
+        id: "tps25948_efuse_scope",
+        category: "eFuse",
+        open_label: "Open TPS25948 eFuse Example",
+        run_label: "Open TPS25948 + Run Scopes",
+        workflow_title: "TPS25948 eFuse Workflow",
+        summary: "Enabled 12 V eFuse/load-switch path with protected-rail and load-current checks.",
+        project_path: TPS25948_EFUSE_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS25948_EFUSE_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS25948_EFUSE_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS25948_EFUSE_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UEFUSE"),
     },
     GuiProjectExample {
         id: "tps2121_power_mux_scope",

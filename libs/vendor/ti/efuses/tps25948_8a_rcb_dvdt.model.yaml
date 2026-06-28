@@ -58,6 +58,17 @@ power_switch:
   reverse_current_blocking_mode: always
   max_inrush_current_A: 8.0
   soft_start_time_us: 7040.0
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS25948_EFUSE_RCB
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, VOUT, GND, EN]
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary enabled VIN-to-VOUT generated-SPICE rail checks only.
+      - Uses source-backed 3.5 V to 23 V operating range, active-high EN/UVLO threshold, 8 A current class, 20 mOhm maximum on-resistance, and always-on reverse-current-blocking metadata while emitting a smooth enabled high-side conductance.
+      - dVdt slew shaping, ILM/ITIMER current-limit and fault timing, FLT/SPLYGD outputs, OVLO behavior, RCBCTRL control, reverse-current dynamics, thermal shutdown, and final eFuse/protection sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS25948
@@ -142,7 +153,9 @@ model_quality:
     - pmu_servo_rail_switch_current_budget
     - pmu_servo_rail_reverse_current_screening
     - pmu_servo_rail_first_pass_inrush_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - final_servo_stall_or_regeneration_signoff
     - final_downstream_capacitance_signoff_without_bom_or_layout
+    - final_efuse_fault_timing_or_reverse_current_signoff
     - safety_certification

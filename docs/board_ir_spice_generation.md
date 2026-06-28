@@ -274,6 +274,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed load-switch model can use a reduced generic generated-SPICE
   face in a direct-open GUI example with routed schematic metadata, switched
   rail voltage probes, branch-current probes, and executable load-path checks.
+- `examples/good_tps25948_efuse_observation` proves the TI TPS25948
+  source-backed eFuse/load-switch model can use a reduced generic
+  generated-SPICE face in a direct-open GUI example with routed schematic
+  metadata, protected-rail voltage probes, branch-current probes, and
+  executable load-path checks.
 - `examples/good_mcp73831_charger_observation` proves the Microchip MCP73831-2
   datasheet-backed charger model can use a reduced generic generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, PROG resistor,

@@ -758,6 +758,15 @@ a reduced smooth VIN-to-VOUT conductance near the typical on-resistance. That
 model can exercise enabled-load wiring and preliminary voltage/current
 observations, but not CT slew-rate shaping, QOD discharge, reverse current,
 current limiting, inrush, leakage, or thermal sign-off.
+`vendor.ti.tps25948_8a_rcb_dvdt` follows the same pattern for eFuse/load-switch
+observation: its TI source-backed voltage range, EN/UVLO threshold,
+current-limit class, maximum on-resistance, always-on reverse-current-blocking
+metadata, and static power-switch limits remain source-backed, while its
+generated-SPICE face uses a reduced smooth VIN-to-VOUT conductance. That model
+can exercise enabled protected-rail wiring and preliminary voltage/current
+observations, but not dVdt slew, ILM/ITIMER current-limit and fault timing,
+FLT/SPLYGD outputs, OVLO, RCBCTRL, reverse-current dynamics, thermal shutdown,
+inrush, or final eFuse/protection sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

@@ -221,7 +221,7 @@ Current analog support:
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
   ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux,
-  TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
+  TPS22918 load switch, TPS25948 eFuse, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
   divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
@@ -356,6 +356,13 @@ Current analog support:
   voltage/current/ON-threshold metadata remains available for static
   power-tree checks, while the transient face stays explicitly reduced-fidelity
   and omits CT, QOD, reverse-current, current-limit, inrush, and thermal
+  sign-off behavior.
+- The TI TPS25948 eFuse/load-switch pack now has a source-backed generated
+  SPICE observation face for active-high enabled 12 V protected-rail behavior.
+  Datasheet voltage/current-limit/on-resistance and reverse-current-blocking
+  metadata remains available for static power-switch checks, while the
+  transient face stays explicitly reduced-fidelity and omits dVdt, ILM/ITIMER,
+  FLT/SPLYGD, OVLO, RCBCTRL, reverse-current dynamics, inrush, and thermal
   sign-off behavior.
 - The Microchip MCP73831-2 charger pack now has a datasheet-backed generated
   SPICE observation face for 4.2 V PROG-programmed constant-current/

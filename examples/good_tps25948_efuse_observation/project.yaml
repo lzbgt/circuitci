@@ -1,0 +1,196 @@
+project:
+  name: good_tps25948_efuse_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/efuses
+
+board:
+  schematic:
+    component_symbols:
+      VBUS: Simulation_SPICE:VDC
+      VEN: Simulation_SPICE:VDC
+      UEFUSE: Power_Management:TPS25948
+      RLOAD: Device:R
+    node_styles:
+      component:VBUS: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UEFUSE: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VBUS: { x: 64.0, y: 176.0 }
+      component:VEN: { x: 64.0, y: 336.0 }
+      component:UEFUSE: { x: 336.0, y: 224.0 }
+      component:RLOAD: { x: 624.0, y: 336.0 }
+      net:input_12v: { x: 176.0, y: 176.0 }
+      net:efuse_enable: { x: 176.0, y: 336.0 }
+      net:protected_12v: { x: 512.0, y: 176.0 }
+      net:gnd: { x: 336.0, y: 544.0 }
+    wire_routes:
+      VBUS.P->input_12v:
+        points:
+          - { x: 144.0, y: 176.0 }
+      VBUS.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      VEN.P->efuse_enable:
+        points:
+          - { x: 144.0, y: 336.0 }
+      VEN.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      UEFUSE.VIN->input_12v:
+        points:
+          - { x: 256.0, y: 176.0 }
+      UEFUSE.EN->efuse_enable:
+        points:
+          - { x: 256.0, y: 336.0 }
+      UEFUSE.VOUT->protected_12v:
+        points:
+          - { x: 512.0, y: 176.0 }
+      UEFUSE.GND->gnd:
+        points:
+          - { x: 336.0, y: 544.0 }
+      RLOAD.A->protected_12v:
+        points:
+          - { x: 624.0, y: 176.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 624.0, y: 544.0 }
+  components:
+    VBUS:
+      model: generic.analog.dc_voltage_source
+      part_number: 12V_SOURCE
+      pins:
+        P: input_12v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 12.0
+    VEN:
+      model: generic.analog.dc_voltage_source
+      part_number: EN_2V_SOURCE
+      pins:
+        P: efuse_enable
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 2.0
+    UEFUSE:
+      model: vendor.ti.tps25948_8a_rcb_dvdt
+      part_number: TPS259480AYWP
+      power_domains:
+        VIN: input_12v
+        VOUT: protected_12v
+      pins:
+        VIN: input_12v
+        VOUT: protected_12v
+        GND: gnd
+        EN: efuse_enable
+    RLOAD:
+      model: generic.analog.resistor
+      part_number: 120R_1pct
+      pins:
+        A: protected_12v
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 120.0
+  nets:
+    input_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+      supply_current_limit_A: 1.0
+    protected_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+    efuse_enable:
+      kind: power
+      nominal_voltage: 2.0
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps25948_enabled_efuse_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VBUS
+          - VEN
+          - UEFUSE
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: ea269b3c0afe09905957f1162693634e0a3371df08d3ed5d79a87a2a8928fcf7
+      node_bindings:
+        - { node: vin12, net: input_12v }
+        - { node: en, net: efuse_enable }
+        - { node: protected12v, net: protected_12v }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vin12, endpoint: { component: VBUS, pin: P } }
+        - { node: "0", endpoint: { component: VBUS, pin: N } }
+        - { node: en, endpoint: { component: VEN, pin: P } }
+        - { node: "0", endpoint: { component: VEN, pin: N } }
+        - { node: vin12, endpoint: { component: UEFUSE, pin: VIN } }
+        - { node: protected12v, endpoint: { component: UEFUSE, pin: VOUT } }
+        - { node: "0", endpoint: { component: UEFUSE, pin: GND } }
+        - { node: en, endpoint: { component: UEFUSE, pin: EN } }
+        - { node: protected12v, endpoint: { component: RLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 80.0
+        max_step_us: 0.2
+      stimuli:
+        - name: enabled_12v_efuse
+          description: 12 V input and 2 V EN source enable TPS25948 behavioral eFuse into a 120 ohm load.
+      probes:
+        - name: v_input
+          expression: V(vin12)
+        - name: v_enable
+          expression: V(en)
+        - name: v_protected12v
+          expression: V(protected12v)
+        - name: i_load
+          expression: I(VCCI_RLOAD)
+          quantity: current
+      assertions:
+        - name: protected_rail_above_11p8v
+          probe: v_protected12v
+          aggregation: min
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 11.8
+        - name: protected_rail_below_12p2v
+          probe: v_protected12v
+          aggregation: max
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 12.2
+        - name: load_current_not_over_102ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_a: 0.102
+        - name: load_current_not_under_98ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_a: 0.098
