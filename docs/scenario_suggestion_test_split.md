@@ -17,6 +17,8 @@ suggestions their own integration-test home.
   because these reports are intended for downstream agents.
 - Runnable and non-runnable suggestions should both be asserted explicitly so the
   tool does not silently invent missing observations.
-- Manufacturing suggestion tests should include preset-backed runnable templates
-  and threshold-required non-runnable templates, since fabricated release
-  evidence often proves geometry exists before it proves every process limit.
+- Manufacturing suggestion tests should include preset-backed runnable templates,
+  threshold-required non-runnable templates, assembly/footprint evidence checks,
+  pin-1 orientation checks, stencil pitch checks, and route-physics suggestions.
+  Fabrication release evidence often proves geometry exists before it proves
+  every process limit.
