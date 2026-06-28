@@ -242,7 +242,8 @@ Current analog support:
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
-  divider-noise, NL27WZ17 logic-buffer, and RC Monte Carlo yield workflows.
+  divider-noise, NL27WZ17 logic-buffer, JST XH/VH connector contact-drop, and
+  RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -295,6 +296,12 @@ Current analog support:
   execution, oscillator accuracy, reset timing, UART/SWD protocol timing, flash
   programming effects, exhaustive package mapping, layout, thermal behavior,
   and EMC behavior explicitly out of scope.
+- The JST XH and VH connector packs now have source-backed generated SPICE
+  observation faces for mated-contact voltage drop using the datasheet
+  20 mOhm post-test/environment contact-resistance maximum per contact. Their
+  direct-open GUI fixtures bind explicit load-side connector pins and keep
+  cable resistance, crimp quality, temperature rise, retention, vibration,
+  signal integrity, and harness qualification explicitly out of scope.
 - The Silicon Labs CP2102N vendor component pack now has a datasheet-backed
   generated SPICE observation face for VREGIN-to-VDD regulator and UART
   output-state checks. Its VREGIN/VDD/VIO ranges, regulator output-current

@@ -191,6 +191,14 @@ model for a board-specific cable or derated assembly. This is static connector
 budget evidence; temperature rise, crimp quality, wire gauge, vibration, and
 pulsed-load behavior need separate validation evidence.
 
+Connector models can also declare a reduced generated-SPICE face when the model
+has explicit pass-through pins. The JST XH/VH connector packs use board-side
+pins plus matching load-side pins, for example `VCC`/`VCC_LOAD` or
+`VBAT`/`VBAT_LOAD`, and model each mated contact as the datasheet 20 mOhm
+post-test/environment maximum. This supports contact voltage-drop observation
+only; it does not replace cable resistance, crimp, temperature-rise, retention,
+vibration, signal-integrity, or harness qualification evidence.
+
 Cable or harness assemblies can declare separate static ratings:
 
 ```yaml

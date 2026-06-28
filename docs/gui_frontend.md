@@ -323,7 +323,9 @@ TXS0108E level-shifter fixture opens a
 mixed-voltage generated-SPICE A-to-B observation with rail, OE, input, and
 translated-output checks. The NL27WZ17 logic-buffer fixture opens a
 generated-SPICE VCC, input-state, and non-inverted output-state observation
-with explicit Board IR state parameters. The TPD2EUSB30 USB ESD fixture opens a
+with explicit Board IR state parameters. The JST XH and JST VH connector
+fixtures open generated-SPICE pass-through contact-drop observations with
+explicit board-side and load-side connector pins. The TPD2EUSB30 USB ESD fixture opens a
 normal-operation generated-SPICE D+/D- standoff observation with the
 source-backed line-capacitance load. The PRTR5V0U2X USB ESD fixture opens a
 rail-to-rail generated-SPICE VBUS/IO1/IO2 standoff observation with

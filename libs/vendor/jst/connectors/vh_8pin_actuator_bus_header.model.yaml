@@ -1,29 +1,81 @@
 component_id: vendor.jst.vh_8pin_actuator_bus_header
 version: 0.1.0
 category: connector
+simulation:
+  spice:
+    model_name: CIRCUITCI_JST_VH_8PIN_CONTACTS
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order:
+      - VBAT
+      - VBAT_LOAD
+      - GND
+      - GND_LOAD
+      - CANH
+      - CANH_LOAD
+      - CANL
+      - CANL_LOAD
+      - AUX_5V
+      - AUX_5V_LOAD
+      - ENABLE
+      - ENABLE_LOAD
+      - FAULT
+      - FAULT_LOAD
+      - SYNC
+      - SYNC_LOAD
+    valid_operating_notes:
+      - Reduced mated-contact voltage-drop observation model using the datasheet 20 mOhm maximum after tests on each contact.
+      - VBAT/GND/CANH/CANL/AUX_5V/ENABLE/FAULT/SYNC are board-side pins; matching *_LOAD pins are explicit cable/load-side observation pins.
+      - Static connector current and voltage ratings remain in connector metadata.
+      - Parallel-current sharing, cable resistance, crimp quality, temperature rise, retention, vibration, CAN signal integrity, EMC, and harness qualification are outside this model.
 ports:
   VBAT:
     kind: passive
     required: true
+  VBAT_LOAD:
+    kind: passive
+    required: false
   GND:
     kind: passive
     required: true
+  GND_LOAD:
+    kind: passive
+    required: false
   CANH:
     kind: passive
     required: true
+  CANH_LOAD:
+    kind: passive
+    required: false
   CANL:
     kind: passive
     required: true
+  CANL_LOAD:
+    kind: passive
+    required: false
   AUX_5V:
+    kind: passive
+    required: false
+  AUX_5V_LOAD:
     kind: passive
     required: false
   ENABLE:
     kind: passive
     required: false
+  ENABLE_LOAD:
+    kind: passive
+    required: false
   FAULT:
     kind: passive
     required: false
+  FAULT_LOAD:
+    kind: passive
+    required: false
   SYNC:
+    kind: passive
+    required: false
+  SYNC_LOAD:
     kind: passive
     required: false
 connector:
@@ -53,6 +105,14 @@ datasheet:
       conditions: VH connector specification.
       max: 250.0
       unit: V
+    initial_contact_resistance:
+      conditions: VH connector specification, mated contact.
+      max: 0.01
+      unit: ohm
+    post_test_contact_resistance:
+      conditions: VH connector specification, mated contact after test.
+      max: 0.02
+      unit: ohm
   documents:
     - title: JST VH Connector datasheet
       path: docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf
@@ -65,6 +125,7 @@ model_quality:
   intended_use:
     - static_connector_current_screening
     - smart_robot_actuator_bus_connector_budget
+    - generated_spice_contact_voltage_drop_observation
   not_valid_for:
     - connector_temperature_rise_signoff
     - cable_assembly_quality_signoff

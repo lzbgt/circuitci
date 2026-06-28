@@ -1,0 +1,230 @@
+project:
+  name: good_jst_vh_actuator_bus_connector_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/jst/connectors
+
+board:
+  components:
+    VBAT:
+      model: generic.analog.dc_voltage_source
+      part_number: ACTUATOR_12V_SOURCE
+      pins: { P: vbat_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 12.0 }
+    VAUX:
+      model: generic.analog.dc_voltage_source
+      part_number: AUX_5V_SOURCE
+      pins: { P: aux5_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    VCANH:
+      model: generic.analog.dc_voltage_source
+      part_number: CANH_RECESSIVE_SOURCE
+      pins: { P: canh_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 2.5 }
+    VCANL:
+      model: generic.analog.dc_voltage_source
+      part_number: CANL_RECESSIVE_SOURCE
+      pins: { P: canl_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 2.5 }
+    VEN:
+      model: generic.analog.dc_voltage_source
+      part_number: ENABLE_HIGH_SOURCE
+      pins: { P: enable_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VFAULT:
+      model: generic.analog.dc_voltage_source
+      part_number: FAULT_IDLE_HIGH_SOURCE
+      pins: { P: fault_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VSYNC:
+      model: generic.analog.dc_voltage_source
+      part_number: SYNC_LOW_SOURCE
+      pins: { P: sync_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 0.0 }
+    JVH:
+      model: vendor.jst.vh_8pin_actuator_bus_header
+      part_number: JST-VH-8
+      pins:
+        VBAT: vbat_board
+        VBAT_LOAD: vbat_load
+        GND: gnd_board
+        GND_LOAD: gnd_load
+        CANH: canh_board
+        CANH_LOAD: canh_load
+        CANL: canl_board
+        CANL_LOAD: canl_load
+        AUX_5V: aux5_board
+        AUX_5V_LOAD: aux5_load
+        ENABLE: enable_board
+        ENABLE_LOAD: enable_load
+        FAULT: fault_board
+        FAULT_LOAD: fault_load
+        SYNC: sync_board
+        SYNC_LOAD: sync_load
+    RLOAD:
+      model: generic.analog.resistor
+      part_number: ACTUATOR_5A_EQUIV_LOAD
+      pins: { A: vbat_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 2.4 }
+    RAUXLOAD:
+      model: generic.analog.resistor
+      part_number: AUX_50MA_EQUIV_LOAD
+      pins: { A: aux5_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100.0 }
+    RCANHLOAD:
+      model: generic.analog.resistor
+      part_number: CANH_100K_RECEIVER
+      pins: { A: canh_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RCANLLOAD:
+      model: generic.analog.resistor
+      part_number: CANL_100K_RECEIVER
+      pins: { A: canl_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RENLOAD:
+      model: generic.analog.resistor
+      part_number: ENABLE_100K_INPUT
+      pins: { A: enable_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RFAULTLOAD:
+      model: generic.analog.resistor
+      part_number: FAULT_100K_INPUT
+      pins: { A: fault_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+    RSYNCLOAD:
+      model: generic.analog.resistor
+      part_number: SYNC_100K_INPUT
+      pins: { A: sync_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+  nets:
+    vbat_board: { kind: power, nominal_voltage: 12.0, powered: true }
+    vbat_load: { kind: power, nominal_voltage: 12.0, powered: true }
+    aux5_board: { kind: power, nominal_voltage: 5.0, powered: true }
+    aux5_load: { kind: power, nominal_voltage: 5.0, powered: true }
+    canh_board: { kind: power, nominal_voltage: 3.3, powered: true }
+    canh_load: { kind: power, nominal_voltage: 3.3, powered: true }
+    canl_board: { kind: power, nominal_voltage: 3.3, powered: true }
+    canl_load: { kind: power, nominal_voltage: 3.3, powered: true }
+    enable_board: { kind: power, nominal_voltage: 3.3, powered: true }
+    enable_load: { kind: power, nominal_voltage: 3.3, powered: true }
+    fault_board: { kind: power, nominal_voltage: 3.3, powered: true }
+    fault_load: { kind: power, nominal_voltage: 3.3, powered: true }
+    sync_board: { kind: power, nominal_voltage: 0.0, powered: true }
+    sync_load: { kind: power, nominal_voltage: 0.0, powered: true }
+    gnd_board: { kind: ground }
+    gnd_load: { kind: ground }
+
+scenarios:
+  - name: jst_vh_actuator_bus_connector_observation
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd_board
+        components:
+          - VBAT
+          - VAUX
+          - VCANH
+          - VCANL
+          - VEN
+          - VFAULT
+          - VSYNC
+          - JVH
+          - RLOAD
+          - RAUXLOAD
+          - RCANHLOAD
+          - RCANLLOAD
+          - RENLOAD
+          - RFAULTLOAD
+          - RSYNCLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59
+      node_bindings:
+        - { node: vbat_board, net: vbat_board }
+        - { node: vbat_load, net: vbat_load }
+        - { node: aux5_board, net: aux5_board }
+        - { node: aux5_load, net: aux5_load }
+        - { node: canh_board, net: canh_board }
+        - { node: canh_load, net: canh_load }
+        - { node: canl_board, net: canl_board }
+        - { node: canl_load, net: canl_load }
+        - { node: enable_board, net: enable_board }
+        - { node: enable_load, net: enable_load }
+        - { node: fault_board, net: fault_board }
+        - { node: fault_load, net: fault_load }
+        - { node: sync_board, net: sync_board }
+        - { node: sync_load, net: sync_load }
+        - { node: "0", net: gnd_board }
+        - { node: gnd_load, net: gnd_load }
+      pin_bindings:
+        - { node: vbat_board, endpoint: { component: VBAT, pin: P } }
+        - { node: "0", endpoint: { component: VBAT, pin: N } }
+        - { node: aux5_board, endpoint: { component: VAUX, pin: P } }
+        - { node: "0", endpoint: { component: VAUX, pin: N } }
+        - { node: canh_board, endpoint: { component: VCANH, pin: P } }
+        - { node: "0", endpoint: { component: VCANH, pin: N } }
+        - { node: canl_board, endpoint: { component: VCANL, pin: P } }
+        - { node: "0", endpoint: { component: VCANL, pin: N } }
+        - { node: enable_board, endpoint: { component: VEN, pin: P } }
+        - { node: "0", endpoint: { component: VEN, pin: N } }
+        - { node: fault_board, endpoint: { component: VFAULT, pin: P } }
+        - { node: "0", endpoint: { component: VFAULT, pin: N } }
+        - { node: sync_board, endpoint: { component: VSYNC, pin: P } }
+        - { node: "0", endpoint: { component: VSYNC, pin: N } }
+        - { node: vbat_board, endpoint: { component: JVH, pin: VBAT } }
+        - { node: vbat_load, endpoint: { component: JVH, pin: VBAT_LOAD } }
+        - { node: "0", endpoint: { component: JVH, pin: GND } }
+        - { node: gnd_load, endpoint: { component: JVH, pin: GND_LOAD } }
+        - { node: canh_board, endpoint: { component: JVH, pin: CANH } }
+        - { node: canh_load, endpoint: { component: JVH, pin: CANH_LOAD } }
+        - { node: canl_board, endpoint: { component: JVH, pin: CANL } }
+        - { node: canl_load, endpoint: { component: JVH, pin: CANL_LOAD } }
+        - { node: aux5_board, endpoint: { component: JVH, pin: AUX_5V } }
+        - { node: aux5_load, endpoint: { component: JVH, pin: AUX_5V_LOAD } }
+        - { node: enable_board, endpoint: { component: JVH, pin: ENABLE } }
+        - { node: enable_load, endpoint: { component: JVH, pin: ENABLE_LOAD } }
+        - { node: fault_board, endpoint: { component: JVH, pin: FAULT } }
+        - { node: fault_load, endpoint: { component: JVH, pin: FAULT_LOAD } }
+        - { node: sync_board, endpoint: { component: JVH, pin: SYNC } }
+        - { node: sync_load, endpoint: { component: JVH, pin: SYNC_LOAD } }
+        - { node: vbat_load, endpoint: { component: RLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RLOAD, pin: B } }
+        - { node: aux5_load, endpoint: { component: RAUXLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RAUXLOAD, pin: B } }
+        - { node: canh_load, endpoint: { component: RCANHLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RCANHLOAD, pin: B } }
+        - { node: canl_load, endpoint: { component: RCANLLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RCANLLOAD, pin: B } }
+        - { node: enable_load, endpoint: { component: RENLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RENLOAD, pin: B } }
+        - { node: fault_load, endpoint: { component: RFAULTLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RFAULTLOAD, pin: B } }
+        - { node: sync_load, endpoint: { component: RSYNCLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RSYNCLOAD, pin: B } }
+      analysis: { type: tran, stop_time_us: 100.0, max_step_us: 0.2 }
+      stimuli:
+        - name: five_amp_actuator_contact_drop
+          description: 12 V/5 A equivalent actuator load through JST VH contacts using 20 mOhm per contact.
+      probes:
+        - { name: v_vbat_load, expression: V(vbat_load) }
+        - { name: v_aux5_load, expression: V(aux5_load) }
+        - { name: v_canh_load, expression: V(canh_load) }
+        - { name: v_canl_load, expression: V(canl_load) }
+        - { name: v_enable_load, expression: V(enable_load) }
+        - { name: v_fault_load, expression: V(fault_load) }
+        - { name: v_sync_load, expression: V(sync_load) }
+        - { name: v_gnd_load, expression: V(gnd_load) }
+      assertions:
+        - { name: load_side_vbat_above_11v85, probe: v_vbat_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 11.85 }
+        - { name: aux5_load_above_4v99, probe: v_aux5_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 4.99 }
+        - { name: canh_recessive_above_2v45, probe: v_canh_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 2.45 }
+        - { name: canl_recessive_above_2v45, probe: v_canl_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 2.45 }
+        - { name: enable_load_high, probe: v_enable_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 3.25 }
+        - { name: fault_load_high, probe: v_fault_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 3.25 }
+        - { name: sync_load_low, probe: v_sync_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: below, threshold_v: 0.05 }
+        - { name: return_contact_lift_below_120mv, probe: v_gnd_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: below, threshold_v: 0.12 }

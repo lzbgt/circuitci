@@ -248,6 +248,28 @@ const THVD1450_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const THVD1450_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V enabled THVD1450 RS-485 driver/receiver line-state observation";
+const JST_XH_CONNECTOR_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_jst_xh_servo_connector_observation/project.yaml";
+const JST_XH_CONNECTOR_SCOPE_EXAMPLE_NAME: &str = "good_jst_xh_servo_connector_observation";
+const JST_XH_CONNECTOR_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vcc_board", "v_vcc_load", "v_sig_load", "v_gnd_load"];
+const JST_XH_CONNECTOR_SCOPE_EXPECTED_FREQUENCY: &str =
+    "JST XH 3-pin servo connector contact-drop observation at 1 A equivalent load";
+const JST_VH_CONNECTOR_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_jst_vh_actuator_bus_connector_observation/project.yaml";
+const JST_VH_CONNECTOR_SCOPE_EXAMPLE_NAME: &str = "good_jst_vh_actuator_bus_connector_observation";
+const JST_VH_CONNECTOR_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vbat_load",
+    "v_aux5_load",
+    "v_canh_load",
+    "v_canl_load",
+    "v_enable_load",
+    "v_fault_load",
+    "v_sync_load",
+    "v_gnd_load",
+];
+const JST_VH_CONNECTOR_SCOPE_EXPECTED_FREQUENCY: &str =
+    "JST VH 8-pin actuator-bus connector contact-drop observation at 5 A equivalent load";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -599,6 +621,32 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: NL27WZ17_LOGIC_BUFFER_SCOPE_EXPECTED_TRACES,
         expected_frequency: NL27WZ17_LOGIC_BUFFER_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UBUF"),
+    },
+    GuiProjectExample {
+        id: "jst_xh_servo_connector_scope",
+        category: "Connector",
+        open_label: "Open JST XH Connector Example",
+        run_label: "Open JST XH + Run Scopes",
+        workflow_title: "JST XH Connector Workflow",
+        summary: "Source-backed JST XH mated-contact voltage-drop observation.",
+        project_path: JST_XH_CONNECTOR_SCOPE_EXAMPLE_PROJECT,
+        project_name: JST_XH_CONNECTOR_SCOPE_EXAMPLE_NAME,
+        expected_traces: JST_XH_CONNECTOR_SCOPE_EXPECTED_TRACES,
+        expected_frequency: JST_XH_CONNECTOR_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
+    },
+    GuiProjectExample {
+        id: "jst_vh_actuator_connector_scope",
+        category: "Connector",
+        open_label: "Open JST VH Connector Example",
+        run_label: "Open JST VH + Run Scopes",
+        workflow_title: "JST VH Connector Workflow",
+        summary: "Source-backed JST VH actuator-bus mated-contact voltage-drop observation.",
+        project_path: JST_VH_CONNECTOR_SCOPE_EXAMPLE_PROJECT,
+        project_name: JST_VH_CONNECTOR_SCOPE_EXAMPLE_NAME,
+        expected_traces: JST_VH_CONNECTOR_SCOPE_EXPECTED_TRACES,
+        expected_frequency: JST_VH_CONNECTOR_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
     },
     GuiProjectExample {
         id: "tpd2eusb30_esd_scope",

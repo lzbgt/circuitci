@@ -1033,3 +1033,58 @@ fn generated_tlv803ea29_reset_observation_uses_datasheet_backed_model_pack() {
     }
     assert_report_schema_valid(&report);
 }
+
+#[test]
+fn generated_jst_xh_connector_observation_uses_datasheet_backed_model_pack() {
+    let report = run_validation("examples/good_jst_xh_servo_connector_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/analog_behavioral.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_jst_vh_connector_observation_uses_datasheet_backed_model_pack() {
+    let report =
+        run_validation("examples/good_jst_vh_actuator_bus_connector_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/analog_behavioral.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}

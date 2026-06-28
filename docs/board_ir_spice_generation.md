@@ -224,6 +224,14 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   parameters, not inferred firmware execution, boot ROM timing, SWD
   transactions, flash programming effects, package mapping, layout, thermal, or
   EMC behavior.
+- `examples/good_jst_xh_servo_connector_observation` and
+  `examples/good_jst_vh_actuator_bus_connector_observation` prove the
+  source-backed JST XH/VH connector models can use reduced generated-SPICE
+  pass-through contact faces. The examples bind explicit load-side pins and
+  observe voltage drop from the datasheet 20 mOhm post-test/environment contact
+  resistance; cable resistance, crimp quality, temperature rise, retention,
+  vibration, CAN signal integrity, and harness qualification stay outside the
+  model.
 - `examples/good_esp32_s3_wroom_boot_usb_observation` proves the Espressif
   ESP32-S3-WROOM-1U-N16R8 module model can use a reduced generated-SPICE face
   for 3.3 V supply, EN release, GPIO0/GPIO46 boot straps, USB D-/D+ line-state,

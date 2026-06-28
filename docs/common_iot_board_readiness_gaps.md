@@ -86,7 +86,10 @@ ESP32-S3-WROOM-1U-N16R8 now cover common Wi-Fi/Bluetooth MCU-module packs for
 3.3 V rail budgeting and boot-strap screening. The gap remains broad library
 depth across other MCU/wireless modules, USB-UART bridges, debug probes,
 radios, sensors, regulators, advanced power muxes, reset supervisors, and protection
-devices.
+devices. JST XH/VH connector packs now also include reduced generated-SPICE
+contact-drop observation faces for explicit board-side/load-side pass-through
+fixtures, while cable/crimp/temperature-rise and mechanical qualification
+remain separate evidence.
 
 ## 2. Power-Tree Validation
 

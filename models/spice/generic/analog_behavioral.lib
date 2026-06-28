@@ -618,3 +618,29 @@ BY2 NY2 GND V={v(VCC,GND)*A2_STATE}
 RY2 NY2 Y2 50
 RVCC VCC GND 1G
 .ends CIRCUITCI_NL27WZ17_DUAL_BUFFER
+
+.subckt CIRCUITCI_JST_XH_3PIN_CONTACTS VCC VCC_LOAD GND GND_LOAD SIG SIG_LOAD
+* Reduced JST XH 3-circuit mated-contact observation behavior.
+* Each contact uses the datasheet post-environment maximum 20 mOhm value.
+* Housing, cable, crimp quality, temperature rise, retention, vibration, and
+* signal-integrity behavior are intentionally not modeled.
+RVCC VCC VCC_LOAD 0.02
+RGND GND GND_LOAD 0.02
+RSIG SIG SIG_LOAD 0.02
+.ends CIRCUITCI_JST_XH_3PIN_CONTACTS
+
+.subckt CIRCUITCI_JST_VH_8PIN_CONTACTS VBAT VBAT_LOAD GND GND_LOAD CANH CANH_LOAD CANL CANL_LOAD AUX_5V AUX_5V_LOAD ENABLE ENABLE_LOAD FAULT FAULT_LOAD SYNC SYNC_LOAD
+* Reduced JST VH 8-circuit mated-contact observation behavior.
+* Each contact uses the datasheet post-test maximum 20 mOhm value. Parallel
+* current sharing, cable/crimp/contact aging beyond the datasheet test value,
+* temperature rise, retention, vibration, CAN/EMC/SI behavior, and harness
+* qualification are intentionally not modeled.
+RVBAT VBAT VBAT_LOAD 0.02
+RGND GND GND_LOAD 0.02
+RCANH CANH CANH_LOAD 0.02
+RCANL CANL CANL_LOAD 0.02
+RAUX AUX_5V AUX_5V_LOAD 0.02
+REN ENABLE ENABLE_LOAD 0.02
+RFAULT FAULT FAULT_LOAD 0.02
+RSYNC SYNC SYNC_LOAD 0.02
+.ends CIRCUITCI_JST_VH_8PIN_CONTACTS

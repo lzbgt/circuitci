@@ -1,16 +1,37 @@
 component_id: vendor.jst.xh_3pin_servo_header
 version: 0.1.0
 category: connector
+simulation:
+  spice:
+    model_name: CIRCUITCI_JST_XH_3PIN_CONTACTS
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, VCC_LOAD, GND, GND_LOAD, SIG, SIG_LOAD]
+    valid_operating_notes:
+      - Reduced mated-contact voltage-drop observation model using the datasheet 20 mOhm maximum after environmental tests on each contact.
+      - VCC/GND/SIG are board-side pins; VCC_LOAD/GND_LOAD/SIG_LOAD are explicit cable/load-side observation pins.
+      - Static connector current and voltage ratings remain in connector metadata.
+      - Cable resistance, crimp quality, temperature rise, contact aging beyond the datasheet environmental-test value, retention, vibration, signal integrity, and connector qualification are outside this model.
 ports:
   VCC:
     kind: passive
     required: true
+  VCC_LOAD:
+    kind: passive
+    required: false
   GND:
     kind: passive
     required: true
+  GND_LOAD:
+    kind: passive
+    required: false
   SIG:
     kind: passive
     required: true
+  SIG_LOAD:
+    kind: passive
+    required: false
 connector:
   current_rating_A: 3.0
   voltage_rating_V: 250.0
@@ -33,6 +54,14 @@ datasheet:
       conditions: XH connector specification.
       max: 250.0
       unit: V
+    initial_contact_resistance:
+      conditions: XH connector specification, mated contact.
+      max: 0.01
+      unit: ohm
+    environmental_test_contact_resistance:
+      conditions: XH connector specification, mated contact after environmental tests.
+      max: 0.02
+      unit: ohm
   documents:
     - title: JST XH Connector datasheet
       path: docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf
@@ -45,6 +74,7 @@ model_quality:
   intended_use:
     - static_connector_current_screening
     - low_load_pwm_servo_connector_budget
+    - generated_spice_contact_voltage_drop_observation
   not_valid_for:
     - connector_temperature_rise_signoff
     - cable_assembly_quality_signoff

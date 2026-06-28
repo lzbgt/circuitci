@@ -1,0 +1,165 @@
+project:
+  name: good_jst_xh_servo_connector_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/jst/connectors
+
+board:
+  schematic:
+    component_symbols:
+      VSERVO: Simulation_SPICE:VDC
+      VSIG: Simulation_SPICE:VDC
+      JXH: Connector_Generic:Conn_01x03
+      RLOAD: Device:R
+      RSIGLOAD: Device:R
+    node_styles:
+      component:VSERVO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VSIG: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:JXH: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSIGLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VSERVO: { x: 64.0, y: 160.0 }
+      component:VSIG: { x: 64.0, y: 288.0 }
+      component:JXH: { x: 320.0, y: 224.0 }
+      component:RLOAD: { x: 560.0, y: 160.0 }
+      component:RSIGLOAD: { x: 560.0, y: 304.0 }
+      net:servo_5v_board: { x: 176.0, y: 112.0 }
+      net:servo_5v_load: { x: 448.0, y: 112.0 }
+      net:gnd_board: { x: 176.0, y: 464.0 }
+      net:gnd_load: { x: 448.0, y: 464.0 }
+      net:pwm_sig_board: { x: 176.0, y: 272.0 }
+      net:pwm_sig_load: { x: 448.0, y: 272.0 }
+    wire_routes:
+      VSERVO.P->servo_5v_board:
+        points:
+          - { x: 128.0, y: 112.0 }
+      VSERVO.N->gnd_board:
+        points:
+          - { x: 128.0, y: 464.0 }
+      VSIG.P->pwm_sig_board:
+        points:
+          - { x: 128.0, y: 272.0 }
+      VSIG.N->gnd_board:
+        points:
+          - { x: 128.0, y: 464.0 }
+      JXH.VCC->servo_5v_board:
+        points:
+          - { x: 256.0, y: 112.0 }
+      JXH.VCC_LOAD->servo_5v_load:
+        points:
+          - { x: 384.0, y: 112.0 }
+      JXH.GND->gnd_board:
+        points:
+          - { x: 256.0, y: 464.0 }
+      JXH.GND_LOAD->gnd_load:
+        points:
+          - { x: 384.0, y: 464.0 }
+      JXH.SIG->pwm_sig_board:
+        points:
+          - { x: 256.0, y: 272.0 }
+      JXH.SIG_LOAD->pwm_sig_load:
+        points:
+          - { x: 384.0, y: 272.0 }
+      RLOAD.A->servo_5v_load:
+        points:
+          - { x: 560.0, y: 112.0 }
+      RLOAD.B->gnd_load:
+        points:
+          - { x: 560.0, y: 464.0 }
+      RSIGLOAD.A->pwm_sig_load:
+        points:
+          - { x: 560.0, y: 272.0 }
+      RSIGLOAD.B->gnd_load:
+        points:
+          - { x: 560.0, y: 464.0 }
+  components:
+    VSERVO:
+      model: generic.analog.dc_voltage_source
+      part_number: SERVO_5V_SOURCE
+      pins: { P: servo_5v_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    VSIG:
+      model: generic.analog.dc_voltage_source
+      part_number: PWM_IDLE_HIGH_SOURCE
+      pins: { P: pwm_sig_board, N: gnd_board }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    JXH:
+      model: vendor.jst.xh_3pin_servo_header
+      part_number: JST-XH-3
+      pins:
+        VCC: servo_5v_board
+        VCC_LOAD: servo_5v_load
+        GND: gnd_board
+        GND_LOAD: gnd_load
+        SIG: pwm_sig_board
+        SIG_LOAD: pwm_sig_load
+    RLOAD:
+      model: generic.analog.resistor
+      part_number: SERVO_1A_EQUIV_LOAD
+      pins: { A: servo_5v_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 5.0 }
+    RSIGLOAD:
+      model: generic.analog.resistor
+      part_number: PWM_100K_INPUT
+      pins: { A: pwm_sig_load, B: gnd_load }
+      spice: { primitive: resistor, value_ohm: 100000.0 }
+  nets:
+    servo_5v_board: { kind: power, nominal_voltage: 5.0, powered: true }
+    servo_5v_load: { kind: power, nominal_voltage: 5.0, powered: true }
+    pwm_sig_board: { kind: power, nominal_voltage: 3.3, powered: true }
+    pwm_sig_load: { kind: power, nominal_voltage: 3.3, powered: true }
+    gnd_board: { kind: ground }
+    gnd_load: { kind: ground }
+
+scenarios:
+  - name: jst_xh_servo_connector_observation
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd_board
+        components: [VSERVO, VSIG, JXH, RLOAD, RSIGLOAD]
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59
+      node_bindings:
+        - { node: vcc_board, net: servo_5v_board }
+        - { node: vcc_load, net: servo_5v_load }
+        - { node: sig_board, net: pwm_sig_board }
+        - { node: sig_load, net: pwm_sig_load }
+        - { node: "0", net: gnd_board }
+        - { node: gnd_load, net: gnd_load }
+      pin_bindings:
+        - { node: vcc_board, endpoint: { component: VSERVO, pin: P } }
+        - { node: "0", endpoint: { component: VSERVO, pin: N } }
+        - { node: sig_board, endpoint: { component: VSIG, pin: P } }
+        - { node: "0", endpoint: { component: VSIG, pin: N } }
+        - { node: vcc_board, endpoint: { component: JXH, pin: VCC } }
+        - { node: vcc_load, endpoint: { component: JXH, pin: VCC_LOAD } }
+        - { node: "0", endpoint: { component: JXH, pin: GND } }
+        - { node: gnd_load, endpoint: { component: JXH, pin: GND_LOAD } }
+        - { node: sig_board, endpoint: { component: JXH, pin: SIG } }
+        - { node: sig_load, endpoint: { component: JXH, pin: SIG_LOAD } }
+        - { node: vcc_load, endpoint: { component: RLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RLOAD, pin: B } }
+        - { node: sig_load, endpoint: { component: RSIGLOAD, pin: A } }
+        - { node: gnd_load, endpoint: { component: RSIGLOAD, pin: B } }
+      analysis: { type: tran, stop_time_us: 100.0, max_step_us: 0.2 }
+      stimuli:
+        - name: one_amp_servo_contact_drop
+          description: 5 V/1 A equivalent servo load through JST XH contacts using 20 mOhm per contact.
+      probes:
+        - { name: v_vcc_board, expression: V(vcc_board) }
+        - { name: v_vcc_load, expression: V(vcc_load) }
+        - { name: v_sig_load, expression: V(sig_load) }
+        - { name: v_gnd_load, expression: V(gnd_load) }
+      assertions:
+        - { name: load_side_vcc_above_4v97, probe: v_vcc_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 4.97 }
+        - { name: load_side_vcc_below_5v01, probe: v_vcc_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: below, threshold_v: 5.01 }
+        - { name: pwm_load_idle_high_above_3v25, probe: v_sig_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: above, threshold_v: 3.25 }
+        - { name: return_contact_lift_below_30mv, probe: v_gnd_load, aggregation: mean, start_us: 5.0, end_us: 100.0, relation: below, threshold_v: 0.03 }
