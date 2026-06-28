@@ -217,7 +217,10 @@ evidence in a JSON manifest. Repeated `field=controlled_impedance_net` and
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated
 `field=thermal_measurement` rows append reviewed measured-temperature evidence
-under `board.manufacturing.thermal_measurements[]`:
+under `board.manufacturing.thermal_measurements[]`. Repeated
+`field=stackup_layer` rows create or replace reviewed
+`board.layout.stackup.layers[]` entries so stackup evidence can travel with
+fabrication/order metadata without hand-authored YAML:
 
 ```bash
 circuitci import-manufacturing-metadata \

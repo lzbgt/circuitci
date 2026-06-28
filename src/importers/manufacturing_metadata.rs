@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.3.0".to_string(),
+        schema_version: "0.4.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -168,7 +168,7 @@ fn apply_metadata(
         .as_mapping_mut()
         .context("Board IR project must be a YAML object.")?;
     let board = ensure_mapping_field_mut(root, "board")?;
-    let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+    let mut wrote_manufacturing = false;
     for field in fields {
         if field.field == ManufacturingField::ControlledImpedanceNet {
             let target = field
@@ -176,16 +176,19 @@ fn apply_metadata(
                 .as_ref()
                 .context("controlled_impedance_net field must have target value")?;
             let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             let controlled_impedance =
                 ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
             let targets = ensure_sequence_field_mut(controlled_impedance, "nets")?;
             upsert_controlled_impedance_net_value(targets, &target.net, value)?;
+            wrote_manufacturing = true;
         } else if field.field == ManufacturingField::ControlledImpedancePair {
             let target = field
                 .controlled_impedance_pair
                 .as_ref()
                 .context("controlled_impedance_pair field must have target value")?;
             let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             let controlled_impedance =
                 ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
             let targets = ensure_sequence_field_mut(controlled_impedance, "differential_pairs")?;
@@ -195,28 +198,48 @@ fn apply_metadata(
                 &target.second_net,
                 value,
             )?;
+            wrote_manufacturing = true;
         } else if field.field == ManufacturingField::ThermalCopper {
             let rule = field
                 .thermal_copper
                 .as_ref()
                 .context("thermal_copper field must have thermal copper value")?;
             let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             let rules = ensure_sequence_field_mut(manufacturing, "thermal_copper")?;
-            upsert_named_sequence_value(rules, &rule.name, value)?;
+            upsert_named_sequence_value(rules, &rule.name, value, "thermal_copper")?;
+            wrote_manufacturing = true;
         } else if field.field == ManufacturingField::ThermalMeasurement {
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             let measurements = ensure_sequence_field_mut(manufacturing, "thermal_measurements")?;
             measurements.push(normalized_yaml_value(field)?);
+            wrote_manufacturing = true;
+        } else if field.field == ManufacturingField::StackupLayer {
+            let layer = field
+                .stackup_layer
+                .as_ref()
+                .context("stackup_layer field must have stackup layer value")?;
+            let value = normalized_yaml_value(field)?;
+            let layout = ensure_mapping_field_mut(board, "layout")?;
+            let stackup = ensure_mapping_field_mut(layout, "stackup")?;
+            let layers = ensure_sequence_field_mut(stackup, "layers")?;
+            upsert_named_sequence_value(layers, &layer.name, value, "layout.stackup.layers")?;
         } else {
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             manufacturing.insert(
                 Value::String(field.field.board_key().to_string()),
                 normalized_yaml_value(field)?,
             );
+            wrote_manufacturing = true;
         }
     }
-    manufacturing.insert(
-        Value::String("source".to_string()),
-        Value::String(source_label.to_string()),
-    );
+    if wrote_manufacturing {
+        let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+        manufacturing.insert(
+            Value::String("source".to_string()),
+            Value::String(source_label.to_string()),
+        );
+    }
     Ok(())
 }
 
@@ -292,13 +315,18 @@ fn upsert_controlled_impedance_pair_value(
     Ok(())
 }
 
-fn upsert_named_sequence_value(sequence: &mut Vec<Value>, name: &str, value: Value) -> Result<()> {
+fn upsert_named_sequence_value(
+    sequence: &mut Vec<Value>,
+    name: &str,
+    value: Value,
+    field_name: &str,
+) -> Result<()> {
     let mut matched_index = None;
     for (index, item) in sequence.iter().enumerate() {
         if yaml_mapping_name(item) == Some(name) {
             if matched_index.is_some() {
                 bail!(
-                    "Board IR field thermal_copper has duplicate existing name {name}; refusing to update ambiguous policy."
+                    "Board IR field {field_name} has duplicate existing name {name}; refusing to update ambiguous target."
                 );
             }
             matched_index = Some(index);

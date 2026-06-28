@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.3.0" },
+    "schema_version": { "const": "0.4.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -93,6 +93,7 @@
             "controlled_impedance.differential_pairs[]",
             "thermal_copper[]",
             "thermal_measurements[]",
+            "layout.stackup.layers[]",
             "source"
           ]
         },
@@ -232,6 +233,30 @@
                   "type": "array",
                   "items": { "type": "string", "minLength": 1 }
                 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["name", "kind", "source"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "kind": {
+                  "type": "string",
+                  "enum": ["signal", "plane", "dielectric", "other"]
+                },
+                "reference_net": { "type": "string", "minLength": 1 },
+                "thickness_mm": { "type": "number", "exclusiveMinimum": 0 },
+                "copper_thickness_um": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "dielectric_constant": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "material": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
             }

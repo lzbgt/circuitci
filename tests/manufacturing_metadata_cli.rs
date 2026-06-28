@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.3.0");
+    assert_eq!(manifest["schema_version"], "0.4.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -289,12 +289,140 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     )
     .unwrap();
     remove_board_manufacturing(&mut project_yaml);
+    remove_layout_stackup(&mut project_yaml);
     std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
+    let csv_rows = [
+        [
+            "field",
+            "value",
+            "unit",
+            "source",
+            "notes",
+            "net",
+            "first_net",
+            "second_net",
+            "expected_width_mm",
+            "expected_gap_mm",
+            "max_width_error_mm",
+            "max_gap_error_mm",
+            "name",
+            "reference_net",
+            "thickness_mm",
+            "copper_thickness_um",
+            "dielectric_constant",
+            "material",
+        ],
+        [
+            "controlled_impedance_net",
+            "50",
+            "ohm",
+            "fab stackup table",
+            "reviewed RF target",
+            "RF",
+            "",
+            "",
+            "0.20",
+            "",
+            "0.03",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "controlled_impedance_pair",
+            "90",
+            "ohm",
+            "fab stackup table",
+            "reviewed USB target",
+            "",
+            "DP",
+            "DM",
+            "0.15",
+            "0.20",
+            "0.02",
+            "0.03",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "stackup_layer",
+            "signal",
+            "",
+            "fab stackup table",
+            "top copper",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "F.Cu",
+            "",
+            "",
+            "35.0",
+            "",
+            "",
+        ],
+        [
+            "stackup_layer",
+            "dielectric",
+            "",
+            "fab stackup table",
+            "prepreg",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "prepreg_1",
+            "",
+            "0.18",
+            "",
+            "4.1",
+            "FR-4 prepreg",
+        ],
+        [
+            "stackup_layer",
+            "plane",
+            "",
+            "fab stackup table",
+            "reference plane",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "In1.GND",
+            "GND",
+            "",
+            "17.5",
+            "",
+            "",
+        ],
+    ];
     std::fs::write(
         &metadata,
-        "field,value,unit,source,notes,net,first_net,second_net,expected_width_mm,expected_gap_mm,max_width_error_mm,max_gap_error_mm\n\
-         controlled_impedance_net,50,ohm,fab stackup table,reviewed RF target,RF,,,0.20,,0.03,\n\
-         controlled_impedance_pair,90,ohm,fab stackup table,reviewed USB target,,DP,DM,0.15,0.20,0.02,0.03\n",
+        format!(
+            "{}\n",
+            csv_rows
+                .iter()
+                .map(|row| row.join(","))
+                .collect::<Vec<_>>()
+                .join("\n")
+        ),
     )
     .unwrap();
 
@@ -315,7 +443,7 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
         "{}",
         String::from_utf8_lossy(&command_output.stderr)
     );
-    assert!(String::from_utf8_lossy(&command_output.stdout).contains("2 applied fields"));
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("5 applied fields"));
 
     let schema: serde_json::Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -342,6 +470,18 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
         controlled_impedance["differential_pairs"][0]["target_differential_impedance_ohm"],
         90.0
     );
+    let stackup_layers = enriched["board"]["layout"]["stackup"]["layers"]
+        .as_sequence()
+        .unwrap();
+    assert_eq!(stackup_layers.len(), 3);
+    assert_eq!(stackup_layers[0]["name"], "F.Cu");
+    assert_eq!(stackup_layers[0]["kind"], "signal");
+    assert_eq!(stackup_layers[0]["copper_thickness_um"], 35.0);
+    assert_eq!(stackup_layers[1]["name"], "prepreg_1");
+    assert_eq!(stackup_layers[1]["dielectric_constant"], 4.1);
+    assert_eq!(stackup_layers[1]["material"], "FR-4 prepreg");
+    assert_eq!(stackup_layers[2]["name"], "In1.GND");
+    assert_eq!(stackup_layers[2]["reference_net"], "GND");
 
     let manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
@@ -364,6 +504,15 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["target_differential_impedance_ohm"],
         90.0
+    );
+    assert_eq!(
+        manifest["rows"][2]["board_field"],
+        "layout.stackup.layers[]"
+    );
+    assert_eq!(manifest["rows"][2]["normalized_value"]["name"], "F.Cu");
+    assert_eq!(
+        manifest["rows"][4]["normalized_value"]["reference_net"],
+        "GND"
     );
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
@@ -463,7 +612,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.3.0");
+    assert_eq!(manifest["schema_version"], "0.4.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -519,6 +668,16 @@ fn import_manufacturing_metadata_rejects_unknown_fields_by_default() {
 fn remove_board_manufacturing(project_yaml: &mut Value) {
     let board = project_yaml["board"].as_mapping_mut().unwrap();
     board.remove(Value::String("manufacturing".to_string()));
+}
+
+fn remove_layout_stackup(project_yaml: &mut Value) {
+    let board = project_yaml["board"].as_mapping_mut().unwrap();
+    let layout = board
+        .get_mut(Value::String("layout".to_string()))
+        .unwrap()
+        .as_mapping_mut()
+        .unwrap();
+    layout.remove(Value::String("stackup".to_string()));
 }
 
 fn assert_runnable(suggestions: &serde_json::Value, id: &str) {

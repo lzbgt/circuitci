@@ -17,7 +17,8 @@ Input CSV columns:
   evidence. Repeated `thermal_copper` rows are supported for reviewed thermal
   layout policy, and repeated
   `thermal_measurement` rows are supported for reviewed measured-temperature
-  evidence.
+  evidence. Repeated `stackup_layer` rows are supported for reviewed stackup
+  layer evidence.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
@@ -25,6 +26,7 @@ Input CSV columns:
   `ohm`/`ohms` for the target impedance value.
   `thermal_copper` rows use `mm2`/square millimeters for minimum copper area.
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
+  `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
 
@@ -94,6 +96,27 @@ The importer appends measurement rows to
 `board.manufacturing.thermal_measurements[]` and preserves the raw columns in
 the manifest. It does not infer pass/fail limits from the measured temperature.
 
+`stackup_layer` rows use `value` as the layer `kind`. Accepted values are
+`signal`, `plane`, `dielectric`, and `other`, with conservative aliases such as
+`core`/`prepreg` for dielectric layers. They require extra columns:
+
+- `name`: stable stackup layer name matching imported route, zone, and
+  scenario layer references.
+
+Optional `stackup_layer` columns map directly to
+`board.layout.stackup.layers[]` fields:
+
+- `reference_net`
+- `thickness_mm`
+- `copper_thickness_um`
+- `dielectric_constant`
+- `material`
+
+The importer replaces an existing stackup layer with the same `name` so
+repeated imports stay deterministic. Duplicate CSV layer names fail closed.
+These rows are reviewed stackup evidence only; the importer does not calculate
+impedance, infer copper weights, or infer layer roles from names.
+
 Example:
 
 ```bash
@@ -119,6 +142,8 @@ The JSON manifest conforms to
 - every CSV row with raw columns, normalized Board IR field/value when applied,
   row-level source/notes, and skip reason for unsupported rows.
 
-This importer updates only `board.manufacturing` and preserves existing design,
-schematic, layout, Gerber, drill, and assembly evidence. It does not infer
-schematic connectivity, component pin behavior, or global JLCPCB defaults.
+This importer updates only explicit reviewed `board.manufacturing` fields and
+`board.layout.stackup.layers[]` entries while preserving existing design,
+schematic, Gerber, drill, and assembly evidence. It does not infer schematic
+connectivity, component pin behavior, stackup properties, or global JLCPCB
+defaults.

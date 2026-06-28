@@ -295,7 +295,12 @@ include reviewed policy columns such as `name`, `component`, `power_loss_w`,
 `min_total_thermal_via_barrel_cross_section_mm2`, `min_copper_thickness_um`,
 `rated_ambient_temperature_C`, `min_airflow_lfm`, and `enclosure_profile`.
 Thermal policy rows replace an existing `thermal_copper[]` entry with the same
-name. Duplicate CSV targets fail closed to avoid ambiguous validation inputs.
+name. Repeated `field=stackup_layer` rows use `value` as the stackup layer
+`kind` (`signal`, `plane`, `dielectric`, or `other`), require `name`, and may
+include `reference_net`, `thickness_mm`, `copper_thickness_um`,
+`dielectric_constant`, and `material`; they create or replace
+`board.layout.stackup.layers[]` entries by layer name. Duplicate CSV targets
+fail closed to avoid ambiguous validation inputs.
 
 ```bash
 circuitci import-manufacturing-metadata \
@@ -306,9 +311,9 @@ circuitci import-manufacturing-metadata \
   --allow-unknown-fields
 ```
 
-The importer still updates only `board.manufacturing`; it does not infer
-schematic connectivity, component pin behavior, or global process defaults from
-order text.
+The importer still updates only explicit reviewed manufacturing/layout evidence;
+it does not infer schematic connectivity, component pin behavior, stackup
+properties, or global process defaults from order text.
 
 Power semantics:
 

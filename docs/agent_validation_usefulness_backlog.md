@@ -80,8 +80,8 @@ Useful next slices:
   fabrication override, and assembly-footprint alignment suggestion evidence,
 - board/order metadata extraction workflows beyond the current reviewed
   manufacturing metadata CSV import manifest, including reviewed scalar,
-  controlled-impedance target, thermal-copper policy, and measured-temperature
-  evidence rows.
+  controlled-impedance target, stackup-layer, thermal-copper policy, and
+  measured-temperature evidence rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.

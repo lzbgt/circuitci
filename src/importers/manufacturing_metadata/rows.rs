@@ -32,6 +32,7 @@ pub(super) struct AppliedField {
     pub(super) controlled_impedance_pair: Option<AppliedControlledImpedancePair>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
+    pub(super) stackup_layer: Option<AppliedStackupLayer>,
 }
 
 #[derive(Debug, Clone)]
@@ -88,6 +89,18 @@ pub(super) struct AppliedThermalMeasurement {
     notes: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AppliedStackupLayer {
+    pub(super) name: String,
+    kind: String,
+    source: String,
+    reference_net: Option<String>,
+    thickness_mm: Option<f64>,
+    copper_thickness_um: Option<f64>,
+    dielectric_constant: Option<f64>,
+    material: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum ManufacturingField {
     StencilThicknessMm,
@@ -101,6 +114,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedancePair,
     ThermalCopper,
     ThermalMeasurement,
+    StackupLayer,
     Source,
 }
 
@@ -118,6 +132,7 @@ impl ManufacturingField {
             Self::ControlledImpedancePair => "controlled_impedance.differential_pairs[]",
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
+            Self::StackupLayer => "layout.stackup.layers[]",
             Self::Source => "source",
         }
     }
@@ -148,6 +163,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedancePair
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
+                | Self::StackupLayer
         )
     }
 }
@@ -248,6 +264,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            stackup_layer: None,
         });
     }
     if field == ManufacturingField::ControlledImpedanceNet {
@@ -259,6 +276,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            stackup_layer: None,
         });
     }
     if field == ManufacturingField::ControlledImpedancePair {
@@ -270,6 +288,7 @@ fn applied_field(
             controlled_impedance_pair: Some(applied_controlled_impedance_pair(row, path)?),
             thermal_copper: None,
             thermal_measurement: None,
+            stackup_layer: None,
         });
     }
     if field == ManufacturingField::ThermalCopper {
@@ -281,6 +300,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: Some(applied_thermal_copper(row, path)?),
             thermal_measurement: None,
+            stackup_layer: None,
         });
     }
     if field == ManufacturingField::ThermalMeasurement {
@@ -292,6 +312,19 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: Some(applied_thermal_measurement(row, path)?),
+            stackup_layer: None,
+        });
+    }
+    if field == ManufacturingField::StackupLayer {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+            stackup_layer: Some(applied_stackup_layer(row, path)?),
         });
     }
     let value = row.value.trim();
@@ -320,6 +353,7 @@ fn applied_field(
         controlled_impedance_pair: None,
         thermal_copper: None,
         thermal_measurement: None,
+        stackup_layer: None,
     })
 }
 
@@ -567,6 +601,58 @@ fn applied_thermal_measurement(
         measurement_point: optional_raw_column(row, "measurement_point"),
         notes: row.notes.clone(),
     })
+}
+
+fn applied_stackup_layer(row: &MetadataCsvRow, path: &Path) -> Result<AppliedStackupLayer> {
+    let name = required_raw_column_for(row, path, "name", "stackup_layer")?;
+    let stackup_source = optional_raw_column(row, "stackup_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(stackup_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} stackup_layer requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedStackupLayer {
+        name,
+        kind: parse_stackup_layer_kind(row.value.trim(), path, row)?,
+        source,
+        reference_net: optional_raw_column(row, "reference_net"),
+        thickness_mm: optional_raw_column(row, "thickness_mm")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "thickness_mm"))
+            .transpose()?,
+        copper_thickness_um: optional_raw_column(row, "copper_thickness_um")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "copper_thickness_um"))
+            .transpose()?,
+        dielectric_constant: optional_raw_column(row, "dielectric_constant")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "dielectric_constant"))
+            .transpose()?,
+        material: optional_raw_column(row, "material"),
+    })
+}
+
+fn parse_stackup_layer_kind(raw: &str, path: &Path, row: &MetadataCsvRow) -> Result<String> {
+    match normalize_name(raw).as_str() {
+        "signal" | "copper" | "routing" => Ok("signal".to_string()),
+        "plane" | "referenceplane" | "powerplane" | "groundplane" => Ok("plane".to_string()),
+        "dielectric" | "core" | "prepreg" | "insulator" => Ok("dielectric".to_string()),
+        "other" | "mask" | "soldermask" => Ok("other".to_string()),
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} stackup_layer kind must be signal, plane, dielectric, or other.",
+            path.display(),
+            row.row_number
+        ),
+    }
 }
 
 fn normalize_numeric_value(
@@ -929,6 +1015,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut stackup_layer_names = BTreeSet::new();
+    for layer in fields
+        .iter()
+        .filter_map(|field| field.stackup_layer.as_ref())
+    {
+        if !stackup_layer_names.insert(layer.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats stackup_layer row name {}.",
+                layer.name
+            );
+        }
+    }
     Ok(())
 }
 
@@ -978,6 +1076,14 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 )
             },
         );
+    }
+    if let Some(layer) = &field.stackup_layer {
+        return serde_yaml_ng::to_value(stackup_layer_mapping(layer)).with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
     }
     if let Some(value) = field.numeric_value {
         return serde_yaml_ng::to_value(value).with_context(|| {
@@ -1183,6 +1289,31 @@ fn thermal_measurement_mapping(measurement: &AppliedThermalMeasurement) -> BTree
     mapping
 }
 
+fn stackup_layer_mapping(layer: &AppliedStackupLayer) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(layer.name.clone()));
+    mapping.insert("kind".to_string(), Value::String(layer.kind.clone()));
+    if let Some(value) = &layer.reference_net {
+        mapping.insert("reference_net".to_string(), Value::String(value.clone()));
+    }
+    insert_optional_number(&mut mapping, "thickness_mm", layer.thickness_mm);
+    insert_optional_number(
+        &mut mapping,
+        "copper_thickness_um",
+        layer.copper_thickness_um,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "dielectric_constant",
+        layer.dielectric_constant,
+    );
+    if let Some(value) = &layer.material {
+        mapping.insert("material".to_string(), Value::String(value.clone()));
+    }
+    mapping.insert("source".to_string(), Value::String(layer.source.clone()));
+    mapping
+}
+
 fn row_manifest(
     row: &MetadataCsvRow,
     status: &str,
@@ -1242,6 +1373,9 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         }
         "thermalmeasurement" | "thermalmeasuredtemperature" | "measuredtemperature" => {
             Some(ManufacturingField::ThermalMeasurement)
+        }
+        "stackuplayer" | "stackuplayermetadata" | "boardstackuplayer" => {
+            Some(ManufacturingField::StackupLayer)
         }
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
