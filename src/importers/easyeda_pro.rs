@@ -27,6 +27,7 @@ pub struct EasyedaProInspectSummary {
     pub schematics: usize,
     pub sheets: usize,
     pub pcbs: usize,
+    pub structure_objects: usize,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -60,6 +61,7 @@ struct StructureSummary {
     schematics: Vec<NamedObject>,
     sheets: Vec<NamedObject>,
     pcbs: Vec<NamedObject>,
+    objects: Vec<StructureObjectManifest>,
 }
 
 #[derive(Debug, Serialize)]
@@ -120,6 +122,25 @@ struct StructureManifest {
     schematics: Vec<NamedObject>,
     sheets: Vec<NamedObject>,
     pcbs: Vec<NamedObject>,
+    objects: Vec<StructureObjectManifest>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct StructureObjectManifest {
+    kind: String,
+    map_key: String,
+    uuid: String,
+    title: String,
+    length_bytes: usize,
+    sha256: String,
+    field_names: Vec<String>,
+    references: Vec<StructureReferenceManifest>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct StructureReferenceManifest {
+    field: String,
+    value: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -152,6 +173,7 @@ impl From<&StructureManifest> for StructureSummary {
             schematics: structure.schematics.clone(),
             sheets: structure.sheets.clone(),
             pcbs: structure.pcbs.clone(),
+            objects: structure.objects.clone(),
         }
     }
 }
@@ -213,6 +235,10 @@ pub fn inspect_easyeda_pro_project(
             .as_ref()
             .map(|structure| structure.pcbs.len())
             .unwrap_or(0),
+        structure_objects: latest_structure
+            .as_ref()
+            .map(|structure| structure.objects.len())
+            .unwrap_or(0),
     };
 
     if let Some(parent) = options.output.parent() {
@@ -241,7 +267,7 @@ pub fn inspect_easyeda_pro_project(
         )
     })?;
     let manifest = InspectionManifest {
-        schema_version: "0.1.0".to_string(),
+        schema_version: "0.2.0".to_string(),
         source: SourceManifest {
             path: options.eprj2.display().to_string(),
             size_bytes: fs::metadata(&options.eprj2)
@@ -396,6 +422,7 @@ fn latest_structure_manifest(path: &Path) -> Result<Option<StructureManifest>> {
         schematics: named_objects(&value, "schematics", "name"),
         sheets: named_objects(&value, "sheets", "title"),
         pcbs: named_objects(&value, "pcbs", "title"),
+        objects: structure_object_manifests(&value)?,
     }))
 }
 
@@ -429,6 +456,76 @@ fn named_objects(value: &Value, key: &str, name_key: &str) -> Vec<NamedObject> {
             .then_with(|| left.uuid.cmp(&right.uuid))
     });
     objects
+}
+
+fn structure_object_manifests(value: &Value) -> Result<Vec<StructureObjectManifest>> {
+    let mut objects = Vec::new();
+    for (container_key, kind, name_key) in [
+        ("boards", "board", "title"),
+        ("schematics", "schematic", "name"),
+        ("sheets", "sheet", "title"),
+        ("pcbs", "pcb", "title"),
+    ] {
+        let Some(entries) = value.get(container_key).and_then(Value::as_object) else {
+            continue;
+        };
+        for (map_key, object) in entries {
+            let bytes = serde_json::to_vec(object)
+                .with_context(|| format!("Failed to canonicalize EasyEDA Pro {kind} object."))?;
+            let object_map = object.as_object();
+            let uuid = object_map
+                .and_then(|entries| entries.get("uuid"))
+                .and_then(Value::as_str)
+                .unwrap_or(map_key)
+                .to_string();
+            let title = object_map
+                .and_then(|entries| entries.get(name_key))
+                .or_else(|| object_map.and_then(|entries| entries.get("title")))
+                .or_else(|| object_map.and_then(|entries| entries.get("name")))
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let mut field_names = object_map
+                .map(|entries| entries.keys().cloned().collect::<Vec<_>>())
+                .unwrap_or_default();
+            field_names.sort();
+            let mut references = object_map
+                .map(|entries| {
+                    entries
+                        .iter()
+                        .filter_map(|(field, value)| {
+                            let lower = field.to_ascii_lowercase();
+                            if field == "uuid" || !lower.contains("uuid") {
+                                return None;
+                            }
+                            value.as_str().and_then(|reference| {
+                                (!reference.trim().is_empty()).then(|| StructureReferenceManifest {
+                                    field: field.clone(),
+                                    value: reference.trim().to_string(),
+                                })
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            references.sort_by(|left, right| {
+                left.field
+                    .cmp(&right.field)
+                    .then_with(|| left.value.cmp(&right.value))
+            });
+            objects.push(StructureObjectManifest {
+                kind: kind.to_string(),
+                map_key: map_key.clone(),
+                uuid,
+                title,
+                length_bytes: bytes.len(),
+                sha256: sha256_hex(&bytes),
+                field_names,
+                references,
+            });
+        }
+    }
+    Ok(objects)
 }
 
 fn sqlite_rows(path: &Path, sql: &str) -> Result<Vec<Vec<String>>> {
@@ -667,6 +764,7 @@ fn inspection_markdown(
         append_named_objects(&mut markdown, "Schematics", &structure.schematics);
         append_named_objects(&mut markdown, "Sheets", &structure.sheets);
         append_named_objects(&mut markdown, "PCBs", &structure.pcbs);
+        append_structure_object_evidence(&mut markdown, &structure.objects);
     } else {
         markdown.push_str("- No rows in `project_structures`.\n");
     }
@@ -682,6 +780,35 @@ fn inspection_markdown(
         );
     }
     markdown
+}
+
+fn append_structure_object_evidence(markdown: &mut String, objects: &[StructureObjectManifest]) {
+    markdown.push_str("\n### Object Evidence\n\n");
+    if objects.is_empty() {
+        markdown.push_str("- None.\n");
+        return;
+    }
+    for object in objects {
+        markdown.push_str(&format!(
+            "- `{}` `{}`: `{}`; `{}` bytes; sha256 `{}`; fields `{}`",
+            object.kind,
+            object.uuid,
+            object.title.replace('`', "'"),
+            object.length_bytes,
+            object.sha256,
+            object.field_names.len()
+        ));
+        if !object.references.is_empty() {
+            let references = object
+                .references
+                .iter()
+                .map(|reference| format!("{}={}", reference.field, reference.value))
+                .collect::<Vec<_>>()
+                .join(", ");
+            markdown.push_str(&format!("; references `{}`", references.replace('`', "'")));
+        }
+        markdown.push('\n');
+    }
 }
 
 fn append_named_objects(markdown: &mut String, title: &str, objects: &[NamedObject]) {

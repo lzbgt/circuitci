@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "source", "sqlite", "easyeda_pro", "importability"],
   "properties": {
-    "schema_version": { "const": "0.1.0" },
+    "schema_version": { "const": "0.2.0" },
     "source": {
       "type": "object",
       "required": ["path", "size_bytes", "sha256"],
@@ -133,7 +133,8 @@
         "boards",
         "schematics",
         "sheets",
-        "pcbs"
+        "pcbs",
+        "objects"
       ],
       "properties": {
         "ticket": { "type": "integer", "minimum": 0 },
@@ -154,7 +155,52 @@
         "pcbs": {
           "type": "array",
           "items": { "$ref": "#/$defs/named_object" }
+        },
+        "objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/structure_object" }
         }
+      },
+      "additionalProperties": false
+    },
+    "structure_object": {
+      "type": "object",
+      "required": [
+        "kind",
+        "map_key",
+        "uuid",
+        "title",
+        "length_bytes",
+        "sha256",
+        "field_names",
+        "references"
+      ],
+      "properties": {
+        "kind": {
+          "enum": ["board", "schematic", "sheet", "pcb"]
+        },
+        "map_key": { "type": "string", "minLength": 1 },
+        "uuid": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "length_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "field_names": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/structure_reference" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "structure_reference": {
+      "type": "object",
+      "required": ["field", "value"],
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     },

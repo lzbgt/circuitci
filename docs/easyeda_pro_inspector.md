@@ -12,6 +12,9 @@ The command currently extracts only the plaintext SQLite envelope:
 - branch rows,
 - the latest `project_structures.structure` JSON object,
 - board, schematic, sheet, and PCB identifiers from that structure,
+- per-object structure evidence for the latest board/schematic/sheet/PCB
+  entries, including map key, uuid/title, canonical JSON length, SHA-256, field
+  names, and UUID-like reference fields,
 - history payload counts and whether those payloads look like plaintext JSON.
 
 Example:
@@ -36,6 +39,8 @@ The JSON manifest conforms to
 - SQLite table names, column metadata, and row counts,
 - project and branch rows,
 - the latest plaintext project-structure object with length and SHA-256,
+- latest-structure object rows with canonical JSON hashes and reference-field
+  provenance,
 - `history_data` payload ids, byte lengths, SHA-256 values, and JSON-prefix
   classification,
 - an importability status explaining whether geometry conversion is blocked by

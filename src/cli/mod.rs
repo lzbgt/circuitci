@@ -812,7 +812,7 @@ fn run_inspect_easyeda_pro(
         },
     )?;
     println!(
-        "CircuitCI inspected EasyEDA Pro project: {} projects, {} branches, {} structures, latest ticket {}, {} boards, {} schematics, {} sheets, {} PCBs, {} encoded history payloads {} -> {}, manifest {}",
+        "CircuitCI inspected EasyEDA Pro project: {} projects, {} branches, {} structures, latest ticket {}, {} boards, {} schematics, {} sheets, {} PCBs, {} structure objects, {} encoded history payloads {} -> {}, manifest {}",
         summary.projects,
         summary.branches,
         summary.project_structures,
@@ -824,6 +824,7 @@ fn run_inspect_easyeda_pro(
         summary.schematics,
         summary.sheets,
         summary.pcbs,
+        summary.structure_objects,
         summary.encoded_history_payloads,
         eprj2.display(),
         output.display(),

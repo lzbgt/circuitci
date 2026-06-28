@@ -7,7 +7,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     let eprj2 = dir.path().join("fixture.eprj2");
     let output = dir.path().join("easyeda_report.md");
     let manifest_output = output.with_extension("json");
-    let structure = r#"{"boards":{"board1":{"uuid":"board1","title":"Board A"}},"schematics":{"sch1":{"uuid":"sch1","name":"Main Schematic"}},"sheets":{"sheet1":{"uuid":"sheet1","title":"Power"}},"pcbs":{"pcb1":{"uuid":"pcb1","title":"PCB A"}}}"#;
+    let structure = r#"{"boards":{"board1":{"uuid":"board1","title":"Board A","pcb_uuid":"pcb1"}},"schematics":{"sch1":{"uuid":"sch1","name":"Main Schematic","sheet_uuid":"sheet1"}},"sheets":{"sheet1":{"uuid":"sheet1","title":"Power"}},"pcbs":{"pcb1":{"uuid":"pcb1","title":"PCB A"}}}"#;
     let sql = format!(
         "CREATE TABLE projects (uuid varchar, name varchar, branch_uuid varchar, ticket integer);
          CREATE TABLE branches (id integer, uuid varchar, name varchar, history_uuid varchar);
@@ -54,6 +54,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     assert!(stdout.contains("1 schematics"));
     assert!(stdout.contains("1 sheets"));
     assert!(stdout.contains("1 PCBs"));
+    assert!(stdout.contains("4 structure objects"));
     assert!(stdout.contains("1 encoded history payloads"));
     assert!(stdout.contains("manifest"));
 
@@ -62,6 +63,8 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     assert!(report.contains("Board A"));
     assert!(report.contains("Main Schematic"));
     assert!(report.contains("PCB A"));
+    assert!(report.contains("Object Evidence"));
+    assert!(report.contains("pcb_uuid=pcb1"));
     assert!(report.contains("encoded/non-JSON"));
     assert!(report.contains("pad, via, route, zone, and net geometry as unavailable"));
 
@@ -75,7 +78,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     if let Err(error) = validator.validate(&manifest) {
         panic!("EasyEDA Pro manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.1.0");
+    assert_eq!(manifest["schema_version"], "0.2.0");
     assert_eq!(manifest["source"]["sha256"].as_str().unwrap().len(), 64);
     assert_eq!(manifest["sqlite"]["tables"].as_array().unwrap().len(), 4);
     assert!(
@@ -92,6 +95,26 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
         manifest["easyeda_pro"]["latest_structure"]["boards"][0]["title"],
         "Board A"
     );
+    let structure_objects = manifest["easyeda_pro"]["latest_structure"]["objects"]
+        .as_array()
+        .unwrap();
+    assert_eq!(structure_objects.len(), 4);
+    let board_object = structure_objects
+        .iter()
+        .find(|object| object["kind"] == "board" && object["uuid"] == "board1")
+        .expect("board structure object evidence");
+    assert_eq!(board_object["map_key"], "board1");
+    assert_eq!(board_object["title"], "Board A");
+    assert_eq!(board_object["sha256"].as_str().unwrap().len(), 64);
+    assert!(
+        board_object["field_names"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|field| field == "pcb_uuid")
+    );
+    assert_eq!(board_object["references"][0]["field"], "pcb_uuid");
+    assert_eq!(board_object["references"][0]["value"], "pcb1");
     assert_eq!(
         manifest["easyeda_pro"]["history_payloads"]["encoded_or_non_json"],
         1
