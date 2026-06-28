@@ -229,6 +229,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   PRTR5V0U2X datasheet-backed rail-to-rail USB ESD model can use a reduced
   generated-SPICE face for normal-operation VBUS, IO1, and IO2 standoff checks
   with source-backed IO/VCC capacitance loads.
+- `examples/good_ti_esd2can24_q1_can_esd_observation` proves the TI
+  ESD2CAN24-Q1 datasheet-backed CAN ESD model can use a reduced generated-SPICE
+  face for normal-operation CANH/CANL standoff checks with the source-backed
+  3 pF line-capacitance load.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

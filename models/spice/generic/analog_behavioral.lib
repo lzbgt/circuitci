@@ -152,6 +152,18 @@ RIO1 IO1 GND 1G
 RIO2 IO2 GND 1G
 .ends CIRCUITCI_PRTR5V0U2X_USB_ESD
 
+.subckt CIRCUITCI_ESD2CAN24_Q1_CAN_ESD CANH CANL GND
+* Reduced ESD2CAN24-Q1 CAN ESD observation behavior.
+* Normal-operation model only: 3 pF typical IO capacitance loads and
+* high-impedance leakage placeholders. ISO transients, ESD pulse clamping,
+* surge energy, CAN signal integrity, harness behavior, and layout/stub effects
+* are intentionally not modeled.
+CCANH CANH GND 3p
+CCANL CANL GND 3p
+RCANH CANH GND 1G
+RCANL CANL GND 1G
+.ends CIRCUITCI_ESD2CAN24_Q1_CAN_ESD
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

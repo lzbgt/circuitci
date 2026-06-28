@@ -195,6 +195,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UESD"),
         },
         ExpectedProjectExample {
+            id: "esd2can24_q1_scope",
+            category: "Protection",
+            open_label: "Open ESD2CAN24-Q1 Example",
+            run_label: "Open ESD2CAN24-Q1 + Run Scopes",
+            summary: "Source-backed CAN ESD standoff and line-capacitance observation.",
+            project_path: "examples/good_ti_esd2can24_q1_can_esd_observation/project.yaml",
+            project_name: "good_ti_esd2can24_q1_can_esd_observation",
+            expected_traces: &["v_canh", "v_canl", "i_canh_source", "i_canl_source"],
+            expected_frequency: "normal CANH/CANL voltages below the 24 V ESD2CAN24-Q1 standoff limit",
+            observation_preset_component: Some("UESD"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

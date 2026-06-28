@@ -200,6 +200,8 @@ Current analog support:
   observations,
   PRTR5V0U2X-style rail-to-rail USB ESD normal-operation standoff and
   capacitance observations,
+  ESD2CAN24-Q1-style CAN ESD normal-operation standoff and line-capacitance
+  observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -212,8 +214,8 @@ Current analog support:
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
-  TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, AP2112K LDO
-  rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
+  ESD2CAN24-Q1 CAN ESD, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux,
   TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -272,6 +274,13 @@ Current analog support:
   applies source-backed IO/VCC capacitance loads and explicitly omits IEC ESD
   pulse clamping, rail-to-rail snapback dynamics, leakage over temperature,
   USB eye margin, differential impedance, and layout sign-off.
+- The TI ESD2CAN24-Q1 vendor component pack now has a datasheet-backed
+  generated SPICE observation face for normal-operation CANH/CANL standoff
+  checks with source-backed `3 pF` line capacitance. Its static clamp metadata
+  still covers CAN ESD presence and ground-reference review, while the
+  transient face explicitly omits ISO 7637, ISO 10605, IEC ESD pulse clamping,
+  surge energy, CAN signal integrity, cable-harness behavior, route placement,
+  stub length, and final layout sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

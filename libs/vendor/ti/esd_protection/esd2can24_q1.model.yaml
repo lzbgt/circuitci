@@ -18,11 +18,13 @@ signal_conditioning:
       reference_pin: GND
       reference: ground
       working_voltage_max_V: 24.0
+      line_capacitance_F: 3.0e-12
     - name: canl
       protected_pin: CANL
       reference_pin: GND
       reference: ground
       working_voltage_max_V: 24.0
+      line_capacitance_F: 3.0e-12
 datasheet:
   manufacturer: Texas Instruments
   part_number: ESD2CAN24-Q1
@@ -40,6 +42,10 @@ datasheet:
     protected_interfaces:
       conditions: Two-channel ESD protection diode for CANH/CANL networks.
       unit: note
+    io_capacitance:
+      conditions: I/O capacitance per channel, typical.
+      typ: 3.0
+      unit: pF
   documents:
     - title: ESD2CANxx24-Q1 Automotive 24-V, 2-Channel ESD Protection Diode for In-Vehicle Networks datasheet
       path: docs/research/smart_robot/sources/ti_esd2can24_q1_datasheet.pdf
@@ -51,6 +57,17 @@ datasheet:
       source_url: https://www.ti.com/lit/an/slla530/slla530.pdf
       sha256: 207ed023ca70af6e1cb54c356e799d588ea9d4754f66875d09cfdc76f57eb364
       retrieved: "2026-06-17"
+simulation:
+  spice:
+    model_name: CIRCUITCI_ESD2CAN24_Q1_CAN_ESD
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [CANH, CANL, GND]
+    operating_notes:
+      - Reduced ESD2CAN24-Q1 observation model for preliminary CANH/CANL normal-line standoff and capacitance checks only.
+      - Uses source-backed plus/minus 24 V reverse standoff and 3 pF typical IO capacitance metadata while leaving CAN pins high impedance during normal operation.
+      - Does not model ISO 7637, ISO 10605, IEC ESD pulse clamping, surge energy, CAN signal integrity, cable harness behavior, or PCB placement/stub effects.
 model_quality:
   source: datasheet
   confidence: medium
@@ -59,6 +76,7 @@ model_quality:
     - interface_protection_review
     - preliminary_smart_robot_bus_validation
     - static_can_clamp_presence_and_ground_reference
+    - preliminary_generated_spice_observation
   not_valid_for:
     - esd_pulse_clamp_waveform
     - iso_7637_or_iso_10605_signoff

@@ -79,10 +79,12 @@ robot control-stack design pass.
   plus/minus 58 V. That makes it a sourced first CAN transceiver for the 3.3 V
   motion-core and wheel-actuator control buses.
 - TI's ESD2CAN24-Q1 datasheet identifies an automotive 24 V, two-channel ESD
-  protection diode for in-vehicle network lines including CANH/CANL. The first
-  CircuitCI model uses that source to check CANH/CANL clamp presence and ground
-  reference on the motion-core and wheel-actuator CAN ports. This is not an
-  ISO transient, placement, stub-length, or signal-integrity sign-off.
+  protection diode for in-vehicle network lines including CANH/CANL, with
+  typical 3 pF I/O capacitance. The first CircuitCI model uses that source to
+  check CANH/CANL clamp presence and ground reference on the motion-core and
+  wheel-actuator CAN ports, and the generated-SPICE face uses the same sourced
+  standoff and capacitance facts for normal-operation line observations. This
+  is not an ISO transient, placement, stub-length, or signal-integrity sign-off.
 - TI's THVD1450 product page identifies a 3.3 V to 5 V RS485/RS422
   transceiver with 50 Mbps signaling, one-eighth-unit-load bus loading,
   up to 256 bus nodes, and plus/minus 18 kV IEC ESD positioning. That makes it

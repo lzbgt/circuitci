@@ -101,6 +101,13 @@ const PRTR5V0U2X_ESD_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const PRTR5V0U2X_ESD_SCOPE_EXPECTED_FREQUENCY: &str =
     "normal USB VBUS and data-line voltages below the 5.5 V PRTR5V0U2X standoff limit";
+const ESD2CAN24_Q1_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ti_esd2can24_q1_can_esd_observation/project.yaml";
+const ESD2CAN24_Q1_SCOPE_EXAMPLE_NAME: &str = "good_ti_esd2can24_q1_can_esd_observation";
+const ESD2CAN24_Q1_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_canh", "v_canl", "i_canh_source", "i_canl_source"];
+const ESD2CAN24_Q1_SCOPE_EXPECTED_FREQUENCY: &str =
+    "normal CANH/CANL voltages below the 24 V ESD2CAN24-Q1 standoff limit";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -359,6 +366,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: PRTR5V0U2X_ESD_SCOPE_EXAMPLE_NAME,
         expected_traces: PRTR5V0U2X_ESD_SCOPE_EXPECTED_TRACES,
         expected_frequency: PRTR5V0U2X_ESD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UESD"),
+    },
+    GuiProjectExample {
+        id: "esd2can24_q1_scope",
+        category: "Protection",
+        open_label: "Open ESD2CAN24-Q1 Example",
+        run_label: "Open ESD2CAN24-Q1 + Run Scopes",
+        workflow_title: "ESD2CAN24-Q1 CAN ESD Workflow",
+        summary: "Source-backed CAN ESD standoff and line-capacitance observation.",
+        project_path: ESD2CAN24_Q1_SCOPE_EXAMPLE_PROJECT,
+        project_name: ESD2CAN24_Q1_SCOPE_EXAMPLE_NAME,
+        expected_traces: ESD2CAN24_Q1_SCOPE_EXPECTED_TRACES,
+        expected_frequency: ESD2CAN24_Q1_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UESD"),
     },
     GuiProjectExample {

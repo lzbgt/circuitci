@@ -1,88 +1,88 @@
 project:
-  name: good_tpd2eusb30_usb_esd_observation
+  name: good_ti_esd2can24_q1_can_esd_observation
   version: 0.1.0
 
 libraries:
   - ../../libs/generic/analog
-  - ../../libs/vendor/ti/protection
+  - ../../libs/vendor/ti/esd_protection
 
 board:
   schematic:
     component_symbols:
-      VDP: Simulation_SPICE:VDC
-      VDM: Simulation_SPICE:VDC
-      UESD: Interface_USB:TPD2EUSB30
+      VCANH: Simulation_SPICE:VDC
+      VCANL: Simulation_SPICE:VDC
+      UESD: Interface_CAN:ESD2CAN24-Q1
     node_styles:
-      component:VDP: { rotation_deg: 90, mirrored: false, pin_side: auto }
-      component:VDM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCANH: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCANL: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:UESD: { rotation_deg: 0, mirrored: false, pin_side: auto }
     node_positions:
-      component:VDP: { x: 64.0, y: 160.0 }
-      component:VDM: { x: 64.0, y: 320.0 }
+      component:VCANH: { x: 64.0, y: 160.0 }
+      component:VCANL: { x: 64.0, y: 320.0 }
       component:UESD: { x: 352.0, y: 240.0 }
-      net:usb_dp: { x: 208.0, y: 160.0 }
-      net:usb_dm: { x: 208.0, y: 320.0 }
+      net:canh: { x: 208.0, y: 160.0 }
+      net:canl: { x: 208.0, y: 320.0 }
       net:gnd: { x: 352.0, y: 480.0 }
     wire_routes:
-      VDP.P->usb_dp:
+      VCANH.P->canh:
         points:
           - { x: 160.0, y: 176.0 }
-      VDP.N->gnd:
+      VCANH.N->gnd:
         points:
           - { x: 112.0, y: 480.0 }
-      VDM.P->usb_dm:
+      VCANL.P->canl:
         points:
           - { x: 160.0, y: 336.0 }
-      VDM.N->gnd:
+      VCANL.N->gnd:
         points:
           - { x: 112.0, y: 480.0 }
-      UESD.D1+->usb_dp:
+      UESD.CANH->canh:
         points:
           - { x: 288.0, y: 176.0 }
-      UESD.D1-->usb_dm:
+      UESD.CANL->canl:
         points:
           - { x: 288.0, y: 336.0 }
       UESD.GND->gnd:
         points:
           - { x: 352.0, y: 480.0 }
   components:
-    VDP:
+    VCANH:
       model: generic.analog.dc_voltage_source
       pins:
-        P: usb_dp
+        P: canh
         N: gnd
       spice:
         primitive: dc_voltage_source
-        dc_v: 3.3
-    VDM:
+        dc_v: 3.5
+    VCANL:
       model: generic.analog.dc_voltage_source
       pins:
-        P: usb_dm
+        P: canl
         N: gnd
       spice:
         primitive: dc_voltage_source
-        dc_v: 0.0
+        dc_v: 1.5
     UESD:
-      model: vendor.ti.tpd2eusb30
-      part_number: TPD2EUSB30DRTR
+      model: vendor.ti.esd2can24_q1
+      part_number: ESD2CAN24-Q1
       pins:
-        "D1+": usb_dp
-        "D1-": usb_dm
+        CANH: canh
+        CANL: canl
         GND: gnd
   nets:
-    usb_dp:
+    canh:
       kind: power
-      nominal_voltage: 3.3
+      nominal_voltage: 3.5
       powered: true
-    usb_dm:
+    canl:
       kind: power
-      nominal_voltage: 0.0
+      nominal_voltage: 1.5
       powered: true
     gnd:
       kind: ground
 
 scenarios:
-  - name: tpd2eusb30_usb_esd_observation
+  - name: esd2can24_q1_can_esd_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -92,68 +92,68 @@ scenarios:
       generated:
         ground_net: gnd
         components:
-          - VDP
-          - VDM
+          - VCANH
+          - VCANL
           - UESD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 2e5dd987c65769a83311e970ffdf105794635203a89fb145e74ec919465f1b3f
       node_bindings:
-        - { node: dp, net: usb_dp }
-        - { node: dm, net: usb_dm }
+        - { node: canh, net: canh }
+        - { node: canl, net: canl }
         - { node: "0", net: gnd }
       pin_bindings:
-        - { node: dp, endpoint: { component: VDP, pin: P } }
-        - { node: "0", endpoint: { component: VDP, pin: N } }
-        - { node: dm, endpoint: { component: VDM, pin: P } }
-        - { node: "0", endpoint: { component: VDM, pin: N } }
-        - { node: dp, endpoint: { component: UESD, pin: "D1+" } }
-        - { node: dm, endpoint: { component: UESD, pin: "D1-" } }
+        - { node: canh, endpoint: { component: VCANH, pin: P } }
+        - { node: "0", endpoint: { component: VCANH, pin: N } }
+        - { node: canl, endpoint: { component: VCANL, pin: P } }
+        - { node: "0", endpoint: { component: VCANL, pin: N } }
+        - { node: canh, endpoint: { component: UESD, pin: CANH } }
+        - { node: canl, endpoint: { component: UESD, pin: CANL } }
         - { node: "0", endpoint: { component: UESD, pin: GND } }
       analysis:
         type: tran
         stop_time_us: 20.0
         max_step_us: 0.1
       stimuli:
-        - name: normal_usb_line_standoff
-          description: TPD2EUSB30 observes normal USB data-line voltages below the 5.5 V standoff limit with datasheet typical line capacitance.
+        - name: normal_can_dominant_line_standoff
+          description: ESD2CAN24-Q1 observes normal CAN dominant-state line voltages below the 24 V standoff limit with datasheet 3 pF line capacitance.
       probes:
-        - name: v_dp
-          expression: V(dp)
-        - name: v_dm
-          expression: V(dm)
-        - name: i_dp_source
-          expression: I(VDP)
+        - name: v_canh
+          expression: V(canh)
+        - name: v_canl
+          expression: V(canl)
+        - name: i_canh_source
+          expression: I(VCANH)
           quantity: current
-        - name: i_dm_source
-          expression: I(VDM)
+        - name: i_canl_source
+          expression: I(VCANL)
           quantity: current
       assertions:
-        - name: dp_below_standoff
-          probe: v_dp
+        - name: canh_below_standoff
+          probe: v_canh
           aggregation: max
           start_us: 1.0
           end_us: 20.0
           relation: below
-          threshold_v: 5.5
-        - name: dm_below_standoff
-          probe: v_dm
+          threshold_v: 24.0
+        - name: canl_below_standoff
+          probe: v_canl
           aggregation: max
           start_us: 1.0
           end_us: 20.0
           relation: below
-          threshold_v: 5.5
-        - name: dp_normal_high_level
-          probe: v_dp
+          threshold_v: 24.0
+        - name: canh_dominant_high_level
+          probe: v_canh
           aggregation: mean
           start_us: 1.0
           end_us: 20.0
           relation: above
           threshold_v: 3.0
-        - name: dm_normal_low_level
-          probe: v_dm
+        - name: canl_dominant_low_level
+          probe: v_canl
           aggregation: mean
           start_us: 1.0
           end_us: 20.0
           relation: below
-          threshold_v: 0.1
+          threshold_v: 2.0
