@@ -1,0 +1,235 @@
+project:
+  name: good_sipeed_licheerv_nano_w_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/sipeed/modules
+
+board:
+  schematic:
+    component_symbols:
+      V5V: Simulation_SPICE:VDC
+      VRX: Simulation_SPICE:VDC
+      VFAULT: Simulation_SPICE:VDC
+      USOM: Module:Sipeed_LicheeRV_Nano_W
+    node_styles:
+      component:V5V: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VRX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VFAULT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:USOM: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:V5V: { x: 80.0, y: 144.0 }
+      component:VRX: { x: 80.0, y: 304.0 }
+      component:VFAULT: { x: 80.0, y: 432.0 }
+      component:USOM: { x: 384.0, y: 256.0 }
+      net:module_5v: { x: 224.0, y: 112.0 }
+      net:uart0_tx: { x: 560.0, y: 192.0 }
+      net:uart0_rx: { x: 224.0, y: 304.0 }
+      net:motion_en: { x: 560.0, y: 336.0 }
+      net:fault_irq: { x: 224.0, y: 432.0 }
+      net:gnd: { x: 304.0, y: 544.0 }
+    wire_routes:
+      V5V.P->module_5v:
+        points:
+          - { x: 176.0, y: 112.0 }
+      V5V.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      VRX.P->uart0_rx:
+        points:
+          - { x: 176.0, y: 304.0 }
+      VRX.N->gnd:
+        points:
+          - { x: 144.0, y: 544.0 }
+      VFAULT.P->fault_irq:
+        points:
+          - { x: 176.0, y: 432.0 }
+      VFAULT.N->gnd:
+        points:
+          - { x: 176.0, y: 544.0 }
+      USOM.5V->module_5v:
+        points:
+          - { x: 304.0, y: 112.0 }
+      USOM.GND->gnd:
+        points:
+          - { x: 384.0, y: 544.0 }
+      USOM.UART0_TX_A16->uart0_tx:
+        points:
+          - { x: 512.0, y: 192.0 }
+      USOM.UART0_RX_A17->uart0_rx:
+        points:
+          - { x: 304.0, y: 304.0 }
+      USOM.GPIOA14_MOTION_EN->motion_en:
+        points:
+          - { x: 512.0, y: 336.0 }
+      USOM.GPIOA15_FAULT_IRQ->fault_irq:
+        points:
+          - { x: 304.0, y: 432.0 }
+  components:
+    V5V:
+      model: generic.analog.dc_voltage_source
+      part_number: MODULE_5V_SOURCE
+      pins:
+        P: module_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    VRX:
+      model: generic.analog.dc_voltage_source
+      part_number: UART0_RX_HIGH_SOURCE
+      pins:
+        P: uart0_rx
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VFAULT:
+      model: generic.analog.dc_voltage_source
+      part_number: FAULT_IRQ_LOW_SOURCE
+      pins:
+        P: fault_irq
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    USOM:
+      model: vendor.sipeed.licheerv_nano_w
+      part_number: LicheeRV-Nano-W
+      parameters:
+        observation_uart0_tx_a16_state: 1.0
+        observation_uart0_rx_a17_state: 1.0
+        observation_gpioa14_motion_en_state: 1.0
+        observation_gpioa15_fault_irq_state: 0.0
+      power_domains:
+        5V: module_5v
+      pins:
+        5V: module_5v
+        GND: gnd
+        UART0_TX_A16: uart0_tx
+        UART0_RX_A17: uart0_rx
+        GPIOA14_MOTION_EN: motion_en
+        GPIOA15_FAULT_IRQ: fault_irq
+  nets:
+    module_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 1.2
+    uart0_tx:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    uart0_rx:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    motion_en:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    fault_irq:
+      kind: power
+      nominal_voltage: 0.0
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: licheerv_nano_w_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - V5V
+          - VRX
+          - VFAULT
+          - USOM
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: bd1019af14aa1b04c5a90a902c63dade5783832521da34183d5ae2e69293ca7e
+      node_bindings:
+        - { node: v5, net: module_5v }
+        - { node: uart0_tx, net: uart0_tx }
+        - { node: uart0_rx, net: uart0_rx }
+        - { node: motion_en, net: motion_en }
+        - { node: fault_irq, net: fault_irq }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: v5, endpoint: { component: V5V, pin: P } }
+        - { node: "0", endpoint: { component: V5V, pin: N } }
+        - { node: uart0_rx, endpoint: { component: VRX, pin: P } }
+        - { node: "0", endpoint: { component: VRX, pin: N } }
+        - { node: fault_irq, endpoint: { component: VFAULT, pin: P } }
+        - { node: "0", endpoint: { component: VFAULT, pin: N } }
+        - { node: v5, endpoint: { component: USOM, pin: 5V } }
+        - { node: "0", endpoint: { component: USOM, pin: GND } }
+        - { node: uart0_tx, endpoint: { component: USOM, pin: UART0_TX_A16 } }
+        - { node: uart0_rx, endpoint: { component: USOM, pin: UART0_RX_A17 } }
+        - { node: motion_en, endpoint: { component: USOM, pin: GPIOA14_MOTION_EN } }
+        - { node: fault_irq, endpoint: { component: USOM, pin: GPIOA15_FAULT_IRQ } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.2
+      stimuli:
+        - name: uart_motion_ready_fault_clear
+          description: 5 V LicheeRV-Nano-W module with UART0 TX/RX high, motion enable high, and fault IRQ low.
+      probes:
+        - name: v_5v
+          expression: V(v5)
+        - name: v_uart0_tx
+          expression: V(uart0_tx)
+        - name: v_uart0_rx
+          expression: V(uart0_rx)
+        - name: v_motion_en
+          expression: V(motion_en)
+        - name: v_fault_irq
+          expression: V(fault_irq)
+      assertions:
+        - name: module_5v_above_min
+          probe: v_5v
+          aggregation: min
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 4.75
+        - name: module_5v_below_max
+          probe: v_5v
+          aggregation: max
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 5.25
+        - name: uart0_tx_idle_high
+          probe: v_uart0_tx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: uart0_rx_input_high
+          probe: v_uart0_rx
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0
+        - name: motion_enable_high
+          probe: v_motion_en
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3
+        - name: fault_irq_low
+          probe: v_fault_irq
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.8

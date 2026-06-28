@@ -342,6 +342,22 @@ RSDI SDI GND 1G
 RCS CS GND 1G
 .ends CIRCUITCI_ICM42688P_SPI_IMU
 
+.subckt CIRCUITCI_LICHEERV_NANO_W_MODULE V5 GND UART0_TX UART0_RX MOTION_EN FAULT_IRQ PARAMS: UART0_TX_STATE=1 MOTION_EN_STATE=1
+* Reduced LicheeRV-Nano-W module observation behavior.
+* The 5 V module rail, UART0 TX output, motion-enable GPIO output, and
+* high-impedance UART0 RX / fault-IRQ inputs are represented for preliminary
+* board-facing rail and line-state checks. Linux boot power transients, SoC
+* internal rails, MIPI/USB/high-speed behavior, firmware, and exact header
+* numbering are intentionally not modeled.
+BTX NTX GND V={3.3*UART0_TX_STATE}
+RTX NTX UART0_TX 50
+BMOTION NMOTION GND V={3.3*MOTION_EN_STATE}
+RMOTION NMOTION MOTION_EN 50
+RV5 V5 GND 1G
+RRX UART0_RX GND 1G
+RFAULT FAULT_IRQ GND 1G
+.ends CIRCUITCI_LICHEERV_NANO_W_MODULE
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

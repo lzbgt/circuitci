@@ -89,6 +89,18 @@ const ESP32_WROOM_32E_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_3v3", "v_en", "v_io0", "v_io2", "v_txd0"];
 const ESP32_WROOM_32E_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V ESP32-WROOM-32E module with EN high, GPIO0 high, GPIO2 low, and TXD0 idle high";
+const LICHEERV_NANO_W_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_sipeed_licheerv_nano_w_observation/project.yaml";
+const LICHEERV_NANO_W_SCOPE_EXAMPLE_NAME: &str = "good_sipeed_licheerv_nano_w_observation";
+const LICHEERV_NANO_W_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_5v",
+    "v_uart0_tx",
+    "v_uart0_rx",
+    "v_motion_en",
+    "v_fault_irq",
+];
+const LICHEERV_NANO_W_SCOPE_EXPECTED_FREQUENCY: &str =
+    "5 V LicheeRV-Nano-W module with UART0 TX/RX high, motion enable high, and fault IRQ low";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_txs0108e_level_shifter_observation/project.yaml";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME: &str = "good_ti_txs0108e_level_shifter_observation";
@@ -457,6 +469,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: ESP32_WROOM_32E_SCOPE_EXPECTED_TRACES,
         expected_frequency: ESP32_WROOM_32E_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UESP"),
+    },
+    GuiProjectExample {
+        id: "licheerv_nano_w_scope",
+        category: "Module",
+        open_label: "Open LicheeRV-Nano-W Example",
+        run_label: "Open LicheeRV-Nano-W + Run Scopes",
+        workflow_title: "LicheeRV-Nano-W Workflow",
+        summary: "Source-backed LicheeRV-Nano-W module power, UART, motion-enable, and fault-IRQ observation.",
+        project_path: LICHEERV_NANO_W_SCOPE_EXAMPLE_PROJECT,
+        project_name: LICHEERV_NANO_W_SCOPE_EXAMPLE_NAME,
+        expected_traces: LICHEERV_NANO_W_SCOPE_EXPECTED_TRACES,
+        expected_frequency: LICHEERV_NANO_W_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("USOM"),
     },
     GuiProjectExample {
         id: "txs0108e_level_scope",

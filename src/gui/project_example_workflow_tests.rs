@@ -525,6 +525,69 @@ fn esp32_wroom_32e_scope_example_workflow_creates_model_aware_observation_checks
 }
 
 #[test]
+fn licheerv_nano_w_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("licheerv_nano_w_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("USOM".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "usom_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "usom_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_usom_5v"));
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_usom_uart0_tx_a16")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usom_5v_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usom_uart0_tx_a16_output_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usom_uart0_rx_a17_input_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usom_gpioa14_motion_en_output_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usom_gpioa15_fault_irq_input_low")
+    );
+}
+
+#[test]
 fn txs0108e_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

@@ -229,6 +229,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   high-impedance connectivity observations. The model-state inputs are
   explicit Board IR component parameters, not inferred firmware, ROM serial
   protocol, RF, peak-current, or flash/PSRAM mux behavior.
+- `examples/good_sipeed_licheerv_nano_w_observation` proves the Sipeed
+  LicheeRV-Nano-W module model can use a reduced generated-SPICE face for
+  preliminary 5 V module power, UART0 TX/RX line-state, motion-enable output,
+  and fault-IRQ input observations. The model-state inputs are explicit Board
+  IR component parameters, not inferred Linux boot, firmware, USB/MIPI, RF,
+  high-speed, or thermal behavior.
 - `examples/good_ti_txs0108e_level_shifter_observation` proves the TI TXS0108E
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and

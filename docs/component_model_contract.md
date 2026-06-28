@@ -826,6 +826,19 @@ explicit SPICE output-state parameters. That model can exercise VDD/VDDIO, SPI
 line-state, SDO, and INT1 observations, but not sensor dynamics, register
 protocol, FIFO behavior, sampling timing, noise, bias stability, vibration,
 package stress, layout coupling, or final SPI timing sign-off.
+`vendor.sipeed.licheerv_nano_w` follows the same pattern for Linux module
+board-boundary observation: its Sipeed source-backed 5 V module supply range,
+1 A current-budget class, UART/GPIO threshold metadata, and project-facing
+low-speed pin roles remain source-backed, while its generated-SPICE face uses
+reduced high-impedance input pins and static output drivers. Its
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_uart0_tx_a16_state` and
+`observation_gpioa14_motion_en_state` into explicit SPICE output-state
+parameters. That model can exercise 5 V module power, UART0 TX/RX,
+motion-enable, and fault-IRQ observations, but not Linux boot power transients,
+internal SoC rails, firmware behavior, USB/MIPI/high-speed interfaces,
+RF/Wi-Fi behavior, thermal behavior, exact header-numbering sign-off, or final
+signal-integrity sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

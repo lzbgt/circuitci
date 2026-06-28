@@ -1,6 +1,24 @@
 component_id: vendor.sipeed.licheerv_nano_w
 version: 0.1.0
 category: linux_som
+simulation:
+  spice:
+    model_name: CIRCUITCI_LICHEERV_NANO_W_MODULE
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [5V, GND, UART0_TX_A16, UART0_RX_A17, GPIOA14_MOTION_EN, GPIOA15_FAULT_IRQ]
+    instance_parameters:
+      - spice_name: UART0_TX_STATE
+        component_parameter: observation_uart0_tx_a16_state
+        default_value: 1.0
+      - spice_name: MOTION_EN_STATE
+        component_parameter: observation_gpioa14_motion_en_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary 5 V module rail, UART0 TX/RX line-state, motion-enable output, and fault-IRQ input checks.
+      - Uses source-backed 4.75 V to 5.25 V module supply range, 1 A source-current budget, UART/GPIO threshold metadata, and board-facing output classes while emitting explicit static line states.
+      - Linux boot power transients, SoC internal rails, firmware behavior, high-speed MIPI/USB behavior, exact header numbering, thermal behavior, and final signal-integrity sign-off are out of scope.
 ports:
   5V:
     kind: electrical_power
