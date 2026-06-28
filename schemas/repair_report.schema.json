@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/repair_report.schema.json",
+  "title": "CircuitCI Board IR YAML Repair Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "profile",
+    "finding",
+    "result",
+    "summary",
+    "original_project",
+    "repaired_project",
+    "original_report",
+    "repaired_report",
+    "proposals",
+    "proof",
+    "reproduction"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "minLength": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "profile": { "type": "string", "minLength": 1 },
+    "finding": { "type": "string", "minLength": 1 },
+    "result": { "enum": ["pass", "fail"] },
+    "summary": {
+      "type": "object",
+      "required": [
+        "proposed",
+        "applied",
+        "original_matching_criticals",
+        "repaired_matching_criticals",
+        "new_criticals"
+      ],
+      "properties": {
+        "proposed": { "type": "integer", "minimum": 0 },
+        "applied": { "type": "integer", "minimum": 0 },
+        "original_matching_criticals": { "type": "integer", "minimum": 0 },
+        "repaired_matching_criticals": { "type": "integer", "minimum": 0 },
+        "new_criticals": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "original_project": { "type": "string", "minLength": 1 },
+    "repaired_project": { "type": "string", "minLength": 1 },
+    "original_report": { "type": "string", "minLength": 1 },
+    "repaired_report": { "type": "string", "minLength": 1 },
+    "proposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proposal" }
+    },
+    "proof": {
+      "type": "object",
+      "required": [
+        "original_finding_removed",
+        "no_new_criticals",
+        "original_matching_findings",
+        "repaired_matching_findings",
+        "new_critical_findings"
+      ],
+      "properties": {
+        "original_finding_removed": { "type": "boolean" },
+        "no_new_criticals": { "type": "boolean" },
+        "original_matching_findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding_evidence" }
+        },
+        "repaired_matching_findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding_evidence" }
+        },
+        "new_critical_findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding_evidence" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reproduction": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "proposal": {
+      "type": "object",
+      "required": [
+        "id",
+        "finding_id",
+        "status",
+        "description",
+        "yaml_path",
+        "affected_power_pins",
+        "edits"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "finding_id": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["proposed", "applied", "skipped"] },
+        "description": { "type": "string", "minLength": 1 },
+        "yaml_path": { "type": "string", "minLength": 1 },
+        "affected_power_pins": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "edits": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/edit" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "edit": {
+      "type": "object",
+      "required": ["op", "path", "from", "to", "reason"],
+      "properties": {
+        "op": { "enum": ["replace"] },
+        "path": { "type": "string", "minLength": 1 },
+        "from": {},
+        "to": {},
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "finding_evidence": {
+      "type": "object",
+      "required": ["id", "severity", "scenario", "message"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["critical", "warning", "info"] },
+        "scenario": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

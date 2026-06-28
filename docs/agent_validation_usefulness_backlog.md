@@ -31,19 +31,28 @@ Done means:
 ## Priority 2: Agent Repair Loop
 
 Reports already carry suggested fixes, and suites can compare bad and fixed
-cases. The missing agent step is a concrete patch-and-rerun workflow.
+cases. The first concrete patch-and-rerun workflow is now available for Board
+IR YAML `INVALID_POWER_DOMAIN` binding findings through
+`circuitci repair-yaml`.
 
-Useful next slice:
+Implemented slice:
 
-- select one artifact family, such as Board IR YAML or component model YAML,
-- generate a machine-readable repair proposal for one stable finding class,
-- apply the patch to a copy of the artifact,
+- select Board IR YAML as the first artifact family,
+- generate a machine-readable repair proposal for `INVALID_POWER_DOMAIN`,
+- apply the patch to a copied `project.yaml`,
 - rerun validation,
 - report whether the original finding disappeared without new critical
   findings.
 
-Do not start with arbitrary schematic or PCB editing. That is too broad until
-one narrow YAML repair loop is proven end to end.
+Useful next slice:
+
+- add a second deterministic Board IR YAML repair class, such as a bounded
+  `NET_NOT_FOUND` fix only when an agent supplies the desired net kind, or a
+  `PIN_NOT_DECLARED` removal when the undeclared pin is not required by any
+  model behavior.
+
+Do not start with arbitrary schematic or PCB editing. That remains too broad
+until several narrow YAML repair loops are proven end to end.
 
 ## Priority 3: Import More Real Evidence
 

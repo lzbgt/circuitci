@@ -1,3 +1,4 @@
+use crate::repair_yaml::{BoardYamlRepairFindingKind, BoardYamlRepairOptions};
 use crate::reports::write_suite_reports;
 use crate::suite::{run_suite, validate_and_write_project_report};
 use anyhow::{Context, Result, bail};
@@ -34,6 +35,15 @@ enum Command {
         manifest: PathBuf,
         #[arg(long, short = 'o', default_value = "out/suite")]
         output: PathBuf,
+    },
+    RepairYaml {
+        project: PathBuf,
+        #[arg(long, default_value = "iot_basic_v0")]
+        profile: String,
+        #[arg(long, short = 'o', default_value = "out/repair")]
+        output: PathBuf,
+        #[arg(long, value_enum, default_value_t = RepairYamlFinding::InvalidPowerDomain)]
+        finding: RepairYamlFinding,
     },
     SuggestScenarios {
         project: PathBuf,
@@ -174,6 +184,19 @@ enum ImportBackend {
     EmbeddedNgspice,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum RepairYamlFinding {
+    InvalidPowerDomain,
+}
+
+impl RepairYamlFinding {
+    fn as_repair_kind(self) -> BoardYamlRepairFindingKind {
+        match self {
+            Self::InvalidPowerDomain => BoardYamlRepairFindingKind::InvalidPowerDomain,
+        }
+    }
+}
+
 impl ImportBackend {
     fn as_board_ir(&self) -> &'static str {
         match self {
@@ -200,6 +223,12 @@ pub fn run() -> Result<()> {
             no_open_ui: _,
         }) => run_validate(project, profile, output, json),
         Some(Command::ValidateSuite { manifest, output }) => run_validate_suite(manifest, output),
+        Some(Command::RepairYaml {
+            project,
+            profile,
+            output,
+            finding,
+        }) => run_repair_yaml(project, profile, output, finding),
         Some(Command::SuggestScenarios {
             project,
             profile,
@@ -301,6 +330,32 @@ pub fn run() -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn run_repair_yaml(
+    project: PathBuf,
+    profile: String,
+    output: PathBuf,
+    finding: RepairYamlFinding,
+) -> Result<()> {
+    let report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
+        project,
+        profile,
+        output: output.clone(),
+        finding: finding.as_repair_kind(),
+    })?;
+    println!(
+        "CircuitCI YAML repair {}: {} (proposed={}, applied={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
+        report.finding,
+        report.result,
+        report.summary.proposed,
+        report.summary.applied,
+        report.summary.original_matching_criticals,
+        report.summary.repaired_matching_criticals,
+        report.summary.new_criticals,
+        output.join("repair_report.json").display()
+    );
+    Ok(())
 }
 
 fn run_suggest_scenarios(

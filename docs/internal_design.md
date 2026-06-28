@@ -746,6 +746,13 @@ and emits one non-blocking `PROFILE_COVERAGE_PARTIAL` limitation when coverage
 is incomplete. Do not make profiles auto-add scenarios; use
 `suggest-scenarios` or importer metadata to produce explicit scenario inputs.
 
+`src/repair_yaml.rs` owns copied-project Board IR YAML repair workflows. It
+validates the original project, proposes bounded YAML edits, writes a repaired
+copy with absolute `libraries:` paths, reruns validation, and emits
+`repair_report.json` proof. The initial repair class is limited to
+`INVALID_POWER_DOMAIN`, where a model power pin resolves to an existing net
+whose `kind` is not `power`.
+
 Resistor-programmed charger current inference is centralized in
 `src/charger_programming.rs`. It requires exactly one positive resistor between
 the model-declared programming and reference pins and computes
