@@ -466,6 +466,8 @@ pub struct LayoutConstraints {
     #[serde(default)]
     pub net_rules: BTreeMap<String, NetLayoutRule>,
     #[serde(default)]
+    pub rf_antenna: RfAntennaLayoutRules,
+    #[serde(default)]
     pub usb_connector: UsbConnectorLayoutRule,
     #[serde(default)]
     pub usb_route: UsbRouteLayoutRule,
@@ -473,6 +475,23 @@ pub struct LayoutConstraints {
     pub usb_vbus_route: UsbVbusRouteLayoutRule,
     #[serde(default)]
     pub usb_return_path: UsbReturnPathLayoutRule,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct RfAntennaLayoutRules {
+    #[serde(default)]
+    pub keepouts: Vec<RfAntennaKeepoutRule>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RfAntennaKeepoutRule {
+    pub name: String,
+    pub layer: String,
+    pub polygon: Vec<LayoutPoint>,
+    pub min_copper_clearance_mm: f64,
+    pub source: String,
+    #[serde(default)]
+    pub antenna_net: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

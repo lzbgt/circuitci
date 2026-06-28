@@ -108,8 +108,9 @@ CircuitCI now has executable USB connector, route, VBUS, same-layer return-path,
 filled-zone, stitching-via, controlled-impedance geometry with reviewed-target
 suggestions, controlled-impedance stackup material/copper-thickness evidence
 checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
-manufacturing-level stitching-via transition distance, and manufacturing
-geometry screens when explicit policy exists. It is not a field solver.
+manufacturing-level stitching-via transition distance, reviewed RF antenna
+keepout screens, and manufacturing geometry screens when explicit policy
+exists. It is not a field solver.
 
 Useful next slices:
 
@@ -119,7 +120,9 @@ Useful next slices:
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,
-- RF antenna keepout and matching evidence,
+- RF antenna proof beyond the current explicit keepout-to-copper screen, such
+  as matching network topology, antenna feed transition evidence, measured S11,
+  and enclosure/cable effects,
 - thermal copper and dissipation evidence,
 - creepage and clearance proof beyond the current explicit same-layer planar
   conductor screen, such as reviewed slot, barrier, coating, stackup, material,

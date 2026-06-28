@@ -232,6 +232,42 @@ fn suggest_scenarios_derives_return_path_stitching_via_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_rf_antenna_keepout_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_rf_antenna_keepout/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_rf_antenna_keepout"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert!(!suggested.is_empty());
+
+    let keepout = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "rf_antenna_keepout_chip_antenna_clearance")
+        .expect("RF antenna keepout suggestion");
+    assert_eq!(keepout["id"], "rf_antenna_keepout_chip_antenna_clearance");
+    assert_eq!(
+        keepout["kind"],
+        "manufacturing_rf_antenna_keepout_chip_antenna_clearance"
+    );
+    assert_eq!(keepout["runnable"], true);
+    assert_eq!(keepout["scenario"]["type"], "manufacturing");
+    assert_eq!(keepout["scenario"]["checks"][0], "RF_ANTENNA_KEEPOUT_VALID");
+    assert_eq!(
+        keepout["scenario"]["parameters"]["keepouts"][0]["name"],
+        "chip_antenna_clearance"
+    );
+    assert!(keepout.get("required_inputs").is_none());
+    assert!(
+        keepout["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed polygon/source metadata")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_manufacturing_artifacts/project.yaml");

@@ -1312,6 +1312,38 @@
                     "additionalProperties": false
                   }
                 },
+                "rf_antenna": {
+                  "type": "object",
+                  "properties": {
+                    "keepouts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "layer",
+                          "polygon",
+                          "min_copper_clearance_mm",
+                          "source"
+                        ],
+                        "properties": {
+                          "name": { "type": "string", "minLength": 1 },
+                          "antenna_net": { "type": "string", "minLength": 1 },
+                          "layer": { "type": "string", "minLength": 1 },
+                          "polygon": {
+                            "type": "array",
+                            "minItems": 3,
+                            "items": { "$ref": "#/$defs/layout_point" }
+                          },
+                          "min_copper_clearance_mm": { "type": "number", "minimum": 0 },
+                          "source": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
                 "usb_connector": {
                   "type": "object",
                   "properties": {

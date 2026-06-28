@@ -787,6 +787,35 @@ KiCad PCB import fills this from `net_class` entries and simple custom DRC
 CircuitCI does not treat net-class track width as a hard DRC limit; KiCad uses
 net-class widths as router defaults unless a custom rule constrains them.
 
+`board.layout.constraints.rf_antenna.keepouts[]` stores reviewed RF antenna
+layout keepout evidence. Each keepout names a layer, a polygon in board
+millimeters, the minimum same-layer copper clearance, a source identifier, and
+optionally the antenna feed/net whose copper should be excluded from the
+keepout check:
+
+```yaml
+board:
+  layout:
+    constraints:
+      rf_antenna:
+        keepouts:
+          - name: chip_antenna_clearance
+            antenna_net: ANT
+            layer: F.Cu
+            min_copper_clearance_mm: 1.0
+            source: antenna_layout_guide_rev_a
+            polygon:
+              - { x_mm: 0.0, y_mm: 0.0 }
+              - { x_mm: 10.0, y_mm: 0.0 }
+              - { x_mm: 10.0, y_mm: 10.0 }
+              - { x_mm: 0.0, y_mm: 10.0 }
+```
+
+These values must come from explicit antenna-module/layout guidance or a
+reviewed board RF rule. They are not inferred from net names, component
+positions, or copper absence, and they are not RF matching, tuning, radiation,
+or enclosure-performance evidence.
+
 `board.layout.constraints.usb_connector` is explicit board/layout policy for
 USB connector mechanical and ESD-placement checks. Scenario parameters still
 take precedence, but when a scenario omits one of these fields the validator and

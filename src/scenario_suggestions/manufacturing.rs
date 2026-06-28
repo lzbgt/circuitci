@@ -1,5 +1,5 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
-use crate::board_ir::{LayoutCopper, LayoutCopperFeature};
+use crate::board_ir::{LayoutCopper, LayoutCopperFeature, LayoutPoint, RfAntennaKeepoutRule};
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -15,6 +15,7 @@ const CASTELLATED_HOLE_VALID: &str = "CASTELLATED_HOLE_VALID";
 const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
 const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
+const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -71,6 +72,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     let paste_objects = copper_object_count(&layout.solder_paste);
     let has_castellated_drill = layout.drills.iter().any(|drill| drill.castellated);
 
+    suggestions.extend(rf_antenna_keepout_suggestions(bound, &project_name));
     if !layout.drills.is_empty() {
         push_if_not_declared(
             bound,
@@ -785,6 +787,129 @@ fn stencil_area_ratio_parameters(stencil_thickness_mm: Option<f64>) -> BTreeMap<
 
 fn copper_object_count(copper: &LayoutCopper) -> usize {
     copper.features.len() + copper.segments.len() + copper.regions.len()
+}
+
+fn rf_antenna_keepout_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for keepout in &bound.project.board.layout.constraints.rf_antenna.keepouts {
+        if !rf_antenna_keepout_has_evidence(bound, keepout)
+            || rf_antenna_keepout_check_declared(bound, &keepout.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("rf_antenna_keepout_{}", sanitized_name(&keepout.name)),
+            true,
+            &format!(
+                "RF antenna keepout {} has reviewed polygon/source metadata and imported same-layer copper evidence.",
+                keepout.name
+            ),
+            &format!(
+                "{}_{}_rf_antenna_keepout",
+                project_name,
+                sanitized_name(&keepout.name)
+            ),
+            RF_ANTENNA_KEEPOUT_VALID,
+            Some(BTreeMap::from([(
+                "keepouts".to_string(),
+                json!([{ "name": keepout.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn rf_antenna_keepout_has_evidence(bound: &BoundBoard<'_>, keepout: &RfAntennaKeepoutRule) -> bool {
+    let metadata_valid = !keepout.name.trim().is_empty()
+        && !keepout.layer.trim().is_empty()
+        && !keepout.source.trim().is_empty()
+        && keepout.min_copper_clearance_mm.is_finite()
+        && keepout.min_copper_clearance_mm >= 0.0
+        && keepout.polygon.len() >= 3
+        && keepout
+            .polygon
+            .iter()
+            .all(|point| point.x_mm.is_finite() && point.y_mm.is_finite())
+        && keepout_polygon_area_mm2(&keepout.polygon) > f64::EPSILON
+        && keepout
+            .antenna_net
+            .as_deref()
+            .is_none_or(|net| bound.project.board.nets.contains_key(net));
+    metadata_valid
+        && (bound
+            .project
+            .board
+            .layout
+            .copper
+            .features
+            .iter()
+            .any(|feature| {
+                feature.layer == keepout.layer && !same_antenna_net(keepout, feature.net.as_deref())
+            })
+            || bound
+                .project
+                .board
+                .layout
+                .copper
+                .segments
+                .iter()
+                .any(|segment| {
+                    segment.layer == keepout.layer
+                        && !same_antenna_net(keepout, segment.net.as_deref())
+                })
+            || bound
+                .project
+                .board
+                .layout
+                .copper
+                .regions
+                .iter()
+                .any(|region| {
+                    region.layer == keepout.layer
+                        && !same_antenna_net(keepout, region.net.as_deref())
+                }))
+}
+
+fn keepout_polygon_area_mm2(points: &[LayoutPoint]) -> f64 {
+    points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .take(points.len())
+        .map(|(left, right)| left.x_mm * right.y_mm - right.x_mm * left.y_mm)
+        .sum::<f64>()
+        .abs()
+        / 2.0
+}
+
+fn same_antenna_net(keepout: &RfAntennaKeepoutRule, net: Option<&str>) -> bool {
+    matches!((keepout.antenna_net.as_deref(), net), (Some(antenna), Some(candidate)) if antenna == candidate)
+}
+
+fn rf_antenna_keepout_check_declared(bound: &BoundBoard<'_>, keepout_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == RF_ANTENNA_KEEPOUT_VALID)
+            && scenario
+                .parameters
+                .get("keepouts")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|keepouts| {
+                    keepouts.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(keepout_name)
+                    })
+                })
+    })
 }
 
 #[derive(Debug, Clone, PartialEq)]

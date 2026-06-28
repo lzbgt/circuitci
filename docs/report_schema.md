@@ -179,6 +179,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
+- `RF_ANTENNA_KEEPOUT_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -599,6 +600,18 @@ limit, `nearest_reference_via_index`, `nearest_reference_via_distance_mm`,
 `nearest_reference_via_x_mm`, `nearest_reference_via_y_mm`, and
 `nearest_reference_via_layers`. Stable limit keys include
 `max_stitch_via_distance_mm` and `matching_layer_policy`.
+
+`RF_ANTENNA_KEEPOUT_VALID` reports are emitted by `manufacturing` scenarios
+that compare reviewed RF antenna keepout polygons against explicit same-layer
+imported copper evidence. Stable measured keys include `keepout_name`,
+`keepout_source`, `keepout_layer`, optional `antenna_net`,
+`keepout_polygon_point_count`, `copper_kind`, `copper_index`,
+optional `copper_net`, optional `copper_component`, and `clearance_mm`.
+Feature findings also report `copper_feature_shape`, `copper_feature_at`, and
+`copper_feature_size`. Segment findings also report `copper_segment_start`,
+`copper_segment_end`, and `copper_segment_width_mm`. Region findings also
+report `copper_region_point_count` and `copper_region_intrudes_keepout`.
+Stable limit keys include `min_copper_clearance_mm`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

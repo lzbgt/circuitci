@@ -142,6 +142,7 @@ Canonical executable check IDs:
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
+- `RF_ANTENNA_KEEPOUT_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1212,6 +1213,43 @@ the same planar same-layer copper spacing. This screen does not model slots,
 barriers, conformal coating, board-edge paths, layer-to-layer insulation,
 pollution degree, material group, altitude, or electric fields. Use it as an
 explicit geometry-evidence gate, not as final safety-standard certification.
+
+RF antenna keepout validation uses `RF_ANTENNA_KEEPOUT_VALID` when Board IR
+contains reviewed keepout polygons under
+`board.layout.constraints.rf_antenna.keepouts[]` and imported same-layer copper
+evidence. The scenario selects named keepouts; CircuitCI does not infer antenna
+areas or matching intent from net names.
+
+```yaml
+scenarios:
+  - name: antenna_keepout
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_KEEPOUT_VALID
+    parameters:
+      keepouts:
+        - name: chip_antenna_clearance
+```
+
+RF antenna keepout algorithm:
+
+1. Require `parameters.keepouts[]` with explicit keepout `name` values.
+2. Resolve each name from `board.layout.constraints.rf_antenna.keepouts[]`.
+3. Require a non-empty source, finite non-negative
+   `min_copper_clearance_mm`, a finite non-degenerate polygon with at least
+   three points, and a non-empty layer.
+4. If the keepout names `antenna_net`, require that net to exist and exclude
+   same-net copper from the comparison.
+5. Compare only same-layer imported copper features, segments, and regions
+   whose explicit net is not the excluded antenna net.
+6. Fail when any comparable copper is inside the keepout polygon or closer
+   than `min_copper_clearance_mm`.
+7. Fail closed when the keepout metadata is malformed or no comparable
+   same-layer copper evidence exists.
+
+This is a 2D imported-copper evidence screen. It does not model antenna
+radiation, matching, efficiency, enclosure/cable effects, solder mask,
+three-dimensional structures, or RF field behavior.
 
 Controlled-impedance geometry validation uses
 `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported

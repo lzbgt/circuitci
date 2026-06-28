@@ -439,6 +439,12 @@ The command is conservative:
   `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` templates. The suggestion does
   not solve impedance; it only proves the stackup metadata needed for a later
   solver, coupon, or SI review is present and topologically consistent.
+- When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
+  polygon/source/clearance metadata and same-layer imported copper evidence
+  exists outside any declared antenna-net exclusion, it emits a runnable
+  `RF_ANTENNA_KEEPOUT_VALID` template. The suggestion does not infer antenna
+  nets, matching networks, tuning quality, radiation behavior, or RF
+  performance from layout geometry.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

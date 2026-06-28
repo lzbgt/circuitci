@@ -414,26 +414,36 @@ fn copper_feature_to_copper_segment_clearance_mm(
         .map(|clearance| clearance - segment.width_mm / 2.0)
 }
 
-fn copper_feature_to_region_clearance_mm(
+pub(super) fn copper_feature_to_polygon_clearance_mm(
     feature: &LayoutCopperFeature,
-    region: &LayoutCopperRegion,
+    polygon: &[LayoutPoint],
 ) -> Option<f64> {
     let feature_points = feature_boundary_points(feature);
     if feature_points.is_empty() {
         return None;
     }
-    Some(polygon_to_polygon_clearance_mm(
-        &feature_points,
-        &region.points,
-    ))
+    Some(polygon_to_polygon_clearance_mm(&feature_points, polygon))
+}
+
+fn copper_feature_to_region_clearance_mm(
+    feature: &LayoutCopperFeature,
+    region: &LayoutCopperRegion,
+) -> Option<f64> {
+    copper_feature_to_polygon_clearance_mm(feature, &region.points)
+}
+
+pub(super) fn copper_segment_to_polygon_clearance_mm(
+    segment: &LayoutCopperSegment,
+    polygon: &[LayoutPoint],
+) -> f64 {
+    polygon_to_segment_clearance_mm(polygon, &segment.start, &segment.end) - segment.width_mm / 2.0
 }
 
 fn copper_segment_to_region_clearance_mm(
     segment: &LayoutCopperSegment,
     region: &LayoutCopperRegion,
 ) -> f64 {
-    polygon_to_segment_clearance_mm(&region.points, &segment.start, &segment.end)
-        - segment.width_mm / 2.0
+    copper_segment_to_polygon_clearance_mm(segment, &region.points)
 }
 
 fn copper_feature_to_segment_clearance_mm(
@@ -493,7 +503,10 @@ fn sampled_feature_to_feature_distance_mm(
     min_distance
 }
 
-fn polygon_to_polygon_clearance_mm(first: &[LayoutPoint], second: &[LayoutPoint]) -> f64 {
+pub(super) fn polygon_to_polygon_clearance_mm(
+    first: &[LayoutPoint],
+    second: &[LayoutPoint],
+) -> f64 {
     if first
         .iter()
         .any(|point| point_inside_polygon(point, second))

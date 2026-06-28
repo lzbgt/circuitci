@@ -8,6 +8,7 @@ mod drill_slot;
 mod geometry;
 mod pin1_orientation;
 mod process;
+mod rf_antenna;
 mod solder_mask;
 mod solder_paste_bga;
 mod solder_paste_ic;
@@ -49,6 +50,7 @@ pub(super) use drill_slot::{
     validate_slot_aspect_ratio, validate_slot_to_board_edge_clearance, validate_slot_width,
 };
 pub(super) use pin1_orientation::validate_pin_1_orientation;
+pub(super) use rf_antenna::validate_rf_antenna_keepout;
 pub(super) use solder_mask::{
     validate_solder_mask_dam, validate_solder_mask_opening,
     validate_solder_paste_aperture_area_ratio, validate_solder_paste_aperture_size,

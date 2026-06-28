@@ -1,0 +1,46 @@
+project:
+  name: scenario_suggestions_rf_antenna_keepout
+  version: "1"
+libraries: []
+board:
+  components: {}
+  nets:
+    ANT:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+    constraints:
+      rf_antenna:
+        keepouts:
+          - name: chip_antenna_clearance
+            antenna_net: ANT
+            layer: F.Cu
+            source: antenna_layout_guide_rev_a
+            min_copper_clearance_mm: 1.0
+            polygon:
+              - { x_mm: 0.0, y_mm: 0.0 }
+              - { x_mm: 10.0, y_mm: 0.0 }
+              - { x_mm: 10.0, y_mm: 10.0 }
+              - { x_mm: 0.0, y_mm: 10.0 }
+    copper:
+      features:
+        - at: { x_mm: 5.0, y_mm: 5.0 }
+          layer: F.Cu
+          polarity: dark
+          net: ANT
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 1.0, y_mm: 1.0 }
+        - at: { x_mm: 12.0, y_mm: 5.0 }
+          layer: F.Cu
+          polarity: dark
+          net: GND
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+scenarios: []

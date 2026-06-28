@@ -277,6 +277,13 @@ without explicit imported mechanical evidence.
   stitching density, connector launch quality, or solver-backed return-current
   continuity. Passing this rule only means each imported signal transition via
   has a nearby declared reference-net via within the reviewed distance limit.
+- `RF_ANTENNA_KEEPOUT_VALID` compares reviewed same-layer RF antenna keepout
+  polygons against imported copper features, segments, and regions while
+  optionally excluding a declared antenna net. It does not prove antenna
+  matching, tuning, radiation pattern, efficiency, enclosure/cable effects,
+  solder-mask loading, 3D structures, or RF field behavior. Passing this rule
+  only means comparable imported copper is outside the reviewed 2D keepout
+  clearance.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,
