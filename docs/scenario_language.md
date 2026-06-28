@@ -139,6 +139,7 @@ Canonical executable check IDs:
 - `CONDUCTOR_CREEPAGE_CLEARANCE_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
+- `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1301,6 +1302,46 @@ Adjacent-plane return-path algorithm:
    polygons on the resolved layer.
 7. Fail when total unreferenced length exceeds
    `max_unreferenced_length_mm`.
+
+Reference-plane slot-crossing validation uses
+`REFERENCE_PLANE_SLOT_CROSSING_VALID` when Board IR includes explicit
+`board.layout.stackup.layers`, route segments, and reference-plane zone
+polygons. It detects route centerlines that leave one reference-plane zone and
+re-enter another zone on the same adjacent plane layer, which is a bounded
+split-plane/slot evidence screen. It does not infer reference nets from names
+or model return current.
+
+```yaml
+scenarios:
+  - name: reference_plane_slot_crossing
+    type: manufacturing
+    checks:
+      - REFERENCE_PLANE_SLOT_CROSSING_VALID
+    parameters:
+      routes:
+        - net: USB_D+
+          reference_net: GND
+          reference_layer: In1.Cu
+          max_slot_crossings: 0
+```
+
+Reference-plane slot-crossing algorithm:
+
+1. Require non-empty `parameters.routes[]` with `net`, `reference_net`, and
+   integer `max_slot_crossings`.
+2. Require both nets to exist under `board.nets`.
+3. Require finite non-zero `board.layout.routes.<net>.segments[]` evidence.
+4. Resolve the reference plane from explicit `reference_layer` or from the
+   nearest conductive stackup layer above/below the route layer, skipping
+   dielectric layers. The resolved layer must be `kind: plane` and declare the
+   requested `reference_net`.
+5. Require `board.layout.zones.<reference_net>[]` polygons on the resolved
+   plane layer.
+6. Compute route centerline coverage intervals from segment/polygon
+   intersections on the reference plane.
+7. Count each internal uncovered gap between two covered intervals as one
+   slot crossing.
+8. Fail when the count exceeds `max_slot_crossings`.
 
 Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`

@@ -106,16 +106,16 @@ make suggestions runnable without inventing behavior.
 
 CircuitCI now has executable USB connector, route, VBUS, same-layer return-path,
 filled-zone, stitching-via, controlled-impedance geometry, adjacent-plane
-return-path coverage, and manufacturing geometry screens when explicit policy
-exists. It is not a field solver.
+return-path coverage, reference-plane slot-crossing, and manufacturing geometry
+screens when explicit policy exists. It is not a field solver.
 
 Useful next slices:
 
 - controlled impedance proof beyond the current explicit route width/gap to
   reviewed target screen, such as stackup material/copper-thickness modeling,
   solder-mask loading, field-solver integration, and fabricator coupon data,
-- return-path proof beyond sampled adjacent-plane zone evidence, such as
-  stitching topology, slot crossings, via transitions, and solver-backed
+- return-path proof beyond sampled adjacent-plane zone and slot-crossing
+  evidence, such as stitching topology, via transitions, and solver-backed
   return-current behavior,
 - RF antenna keepout and matching evidence,
 - thermal copper and dissipation evidence,

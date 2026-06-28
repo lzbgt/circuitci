@@ -176,6 +176,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_RETURN_PATH_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
+- `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -565,6 +566,15 @@ coverage evidence. Stable measured keys include `net`, `reference_net`,
 segment, `first_unreferenced_route_segment_index`,
 `first_unreferenced_route_layer`, and `first_unreferenced_reference_layer`.
 Stable limit keys include `max_unreferenced_length_mm`.
+
+`REFERENCE_PLANE_SLOT_CROSSING_VALID` reports are emitted by `manufacturing`
+scenarios that compare imported `board.layout.routes` evidence against
+explicit `board.layout.stackup.layers` and `board.layout.zones` reference-plane
+coverage intervals. Stable measured keys include `net`, `reference_net`,
+`total_route_length_mm`, `slot_crossing_count`, `reference_layers`, and, for
+the first crossing, `first_slot_route_segment_index`,
+`first_slot_route_layer`, `first_slot_reference_layer`, `first_slot_start_mm`,
+and `first_slot_end_mm`. Stable limit keys include `max_slot_crossings`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

@@ -68,6 +68,7 @@ pub(super) const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 pub(super) const CONDUCTOR_CREEPAGE_CLEARANCE_VALID: &str = "CONDUCTOR_CREEPAGE_CLEARANCE_VALID";
 pub(super) const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
 pub(super) const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
+pub(super) const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 pub(super) const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 pub(super) const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 pub(super) const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -494,6 +495,15 @@ where
                         &mut findings,
                     )
                 }
+                REFERENCE_PLANE_SLOT_CROSSING_VALID
+                    if scenario.scenario_type == "manufacturing" =>
+                {
+                    manufacturing::validate_reference_plane_slot_crossing(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 SOLDER_MASK_OPENING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_solder_mask_opening(bound, scenario, &mut findings)
                 }
@@ -715,6 +725,8 @@ where
                 | COPPER_SPACING_VALID
                 | CONDUCTOR_CREEPAGE_CLEARANCE_VALID
                 | CONTROLLED_IMPEDANCE_GEOMETRY_VALID
+                | ADJACENT_PLANE_RETURN_PATH_VALID
+                | REFERENCE_PLANE_SLOT_CROSSING_VALID
                 | SOLDER_MASK_OPENING_VALID
                 | SOLDER_MASK_DAM_VALID
                 | SOLDER_PASTE_OPENING_VALID

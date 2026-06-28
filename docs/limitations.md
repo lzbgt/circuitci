@@ -259,6 +259,13 @@ without explicit imported mechanical evidence.
   split-plane slots, copper roughness, dielectric fields, or EMI/SI behavior.
   Passing this rule only means sampled imported route points stay over declared
   adjacent reference-plane zone evidence within the reviewed length limit.
+- `REFERENCE_PLANE_SLOT_CROSSING_VALID` computes route-centerline coverage
+  intervals from explicit adjacent reference-plane zone polygons and counts
+  internal gaps between covered intervals. It does not model return-current
+  density, fringing fields, stitching-via effectiveness, via transitions,
+  plane impedance, or EMI/SI risk. Passing this rule only means the imported
+  route centerline did not cross more declared reference-plane zone gaps than
+  the scenario allowed.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,
