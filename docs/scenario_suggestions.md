@@ -432,6 +432,13 @@ The command is conservative:
   both routes have finite width evidence and parallel same-layer gap evidence.
   The suggestion does not compute impedance from dielectric constants, infer
   impedance from net names, or treat route width alone as intent.
+- When those same reviewed controlled-impedance targets also have imported
+  route evidence plus explicit `board.layout.stackup.layers` copper thickness,
+  dielectric thickness, dielectric constant, material, source, and adjacent
+  ground-plane reference evidence, it emits runnable
+  `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` templates. The suggestion does
+  not solve impedance; it only proves the stackup metadata needed for a later
+  solver, coupon, or SI review is present and topologically consistent.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

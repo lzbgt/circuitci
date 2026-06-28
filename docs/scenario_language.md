@@ -138,6 +138,7 @@ Canonical executable check IDs:
 - `COPPER_SPACING_VALID`
 - `CONDUCTOR_CREEPAGE_CLEARANCE_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
+- `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -1264,6 +1265,47 @@ This is a geometry-to-reviewed-target check. It does not solve characteristic
 or differential impedance, model stackup materials, prove copper thickness or
 etch compensation, account for solder mask, or replace a field solver,
 fabricator coupon, or SI review.
+
+Controlled-impedance stackup evidence validation uses
+`CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` when Board IR includes imported
+route evidence and reviewed `board.layout.stackup.layers` material/thickness
+metadata. This check proves that named route, dielectric, and reference-plane
+layers have explicit stackup evidence and that the dielectric layer is between
+the route and reference layers. It does not calculate impedance.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_stackup_evidence
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID
+    parameters:
+      routes:
+        - net: RF
+          route_layer: F.Cu
+          reference_layer: In1.GND
+          dielectric_layer: prepreg_1
+```
+
+Controlled-impedance stackup evidence algorithm:
+
+1. Require `parameters.routes[]` with explicit `net`, `route_layer`,
+   `reference_layer`, and `dielectric_layer`.
+2. Require the net to exist under `board.nets` and have finite imported route
+   segment evidence on `route_layer`.
+3. Require `route_layer` to be `kind: signal` with positive
+   `copper_thickness_um` and non-empty `source`.
+4. Require `reference_layer` to be `kind: plane` with non-empty
+   `reference_net`, positive `copper_thickness_um`, and non-empty `source`.
+5. Require `dielectric_layer` to be `kind: dielectric` with positive
+   `thickness_mm`, positive `dielectric_constant`, non-empty `material`, and
+   non-empty `source`.
+6. Fail when the named dielectric layer is not between the route and reference
+   layers in `board.layout.stackup.layers`.
+
+This is a stackup-evidence screen only. It does not model solder-mask loading,
+roughness, copper plating tolerances, etch compensation, field distribution, or
+fabricator coupon data.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

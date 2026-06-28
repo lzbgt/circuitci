@@ -292,9 +292,11 @@ connectivity by itself.
 Board IR can carry reviewed or imported stackup evidence under
 `board.layout.stackup.layers`. Layer `name` values must match route, zone, and
 copper layer names. `kind: plane` may declare a `reference_net` when a plane is
-explicitly assigned to a net. This is layer-order and reference-plane evidence
-only; it does not define dielectric constants, copper thickness, or field-solver
-properties.
+explicitly assigned to a net. Signal and plane layers may carry reviewed
+`copper_thickness_um`. Dielectric layers may carry reviewed `thickness_mm`,
+`dielectric_constant`, and `material`. These fields are evidence for stackup
+reviews and controlled-impedance boundary checks only; CircuitCI still does not
+solve impedance or infer stackup properties from layer names.
 
 ```yaml
 board:
@@ -303,13 +305,18 @@ board:
       layers:
         - name: F.Cu
           kind: signal
+          copper_thickness_um: 35.0
           source: reviewed_stackup
         - name: prepreg_1
           kind: dielectric
+          thickness_mm: 0.18
+          dielectric_constant: 4.1
+          material: FR-4 prepreg
           source: reviewed_stackup
         - name: In1.Cu
           kind: plane
           reference_net: GND
+          copper_thickness_um: 17.5
           source: reviewed_stackup
 ```
 

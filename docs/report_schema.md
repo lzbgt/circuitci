@@ -175,6 +175,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_VBUS_ROUTE_VALID`
 - `USB_RETURN_PATH_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
+- `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -557,6 +558,17 @@ Differential-pair findings use stable measured keys `first_net`, `second_net`,
 `measured_gap_mm`, `gap_error_mm`, `width_violation`, and `gap_violation`.
 Stable limit keys include `expected_width_mm`, `expected_gap_mm`,
 `max_width_error_mm`, and `max_gap_error_mm` when applicable.
+
+`CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` reports are emitted by
+`manufacturing` scenarios that verify reviewed stackup metadata for explicit
+route/reference/dielectric layer triples. Topology findings use stable measured
+keys `net`, `route_layer`, `reference_layer`, `dielectric_layer`,
+`route_layer_index`, `reference_layer_index`, `dielectric_layer_index`,
+`route_copper_thickness_um`, `reference_copper_thickness_um`,
+`dielectric_thickness_mm`, `dielectric_constant`, `dielectric_material`,
+`route_layer_source`, `reference_layer_source`, `dielectric_layer_source`, and
+`reference_net`. Stable limit keys include
+`dielectric_layer_must_be_between_route_and_reference`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

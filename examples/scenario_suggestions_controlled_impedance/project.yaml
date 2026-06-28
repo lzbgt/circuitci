@@ -11,6 +11,8 @@ board:
       kind: digital_or_analog
     DM:
       kind: digital_or_analog
+    GND:
+      kind: ground
   manufacturing:
     controlled_impedance:
       nets:
@@ -29,6 +31,23 @@ board:
           max_width_error_mm: 0.02
           max_gap_error_mm: 0.03
   layout:
+    stackup:
+      layers:
+        - name: F.Cu
+          kind: signal
+          copper_thickness_um: 35.0
+          source: fab_stackup_table_rev_a
+        - name: prepreg_1
+          kind: dielectric
+          thickness_mm: 0.18
+          dielectric_constant: 4.1
+          material: FR-4 prepreg
+          source: fab_stackup_table_rev_a
+        - name: In1.GND
+          kind: plane
+          reference_net: GND
+          copper_thickness_um: 17.5
+          source: fab_stackup_table_rev_a
     routes:
       RF:
         segments:

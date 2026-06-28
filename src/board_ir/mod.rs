@@ -307,6 +307,14 @@ pub struct StackupLayer {
     #[serde(default)]
     pub reference_net: Option<String>,
     #[serde(default)]
+    pub thickness_mm: Option<f64>,
+    #[serde(default)]
+    pub copper_thickness_um: Option<f64>,
+    #[serde(default)]
+    pub dielectric_constant: Option<f64>,
+    #[serde(default)]
+    pub material: Option<String>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 

@@ -252,6 +252,11 @@ without explicit imported mechanical evidence.
   solder-mask loading, copper thickness, etch compensation, or fabricator
   coupon results. Passing this rule only means the imported geometry matches
   the declared target dimensions within tolerance.
+- `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` verifies that explicit
+  route/reference/dielectric layer names have reviewed material,
+  dielectric-constant, dielectric-thickness, copper-thickness, source, and
+  layer-order evidence. It does not solve impedance, account for solder mask,
+  model roughness or plating tolerance, or replace field-solver/coupon signoff.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

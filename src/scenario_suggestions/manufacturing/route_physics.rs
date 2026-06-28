@@ -9,6 +9,8 @@ use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 
 const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
+const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
+    "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -19,6 +21,10 @@ pub(super) fn route_physics_suggestions(
 ) -> Vec<ScenarioSuggestion> {
     let mut suggestions = Vec::new();
     suggestions.extend(controlled_impedance_geometry_suggestions(
+        bound,
+        project_name,
+    ));
+    suggestions.extend(controlled_impedance_stackup_evidence_suggestions(
         bound,
         project_name,
     ));
@@ -262,6 +268,126 @@ fn controlled_impedance_geometry_suggestions(
     suggestions
 }
 
+fn controlled_impedance_stackup_evidence_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    let targets = &bound.project.board.manufacturing.controlled_impedance;
+    for target in &targets.nets {
+        if target.net.trim().is_empty()
+            || !bound
+                .project
+                .board
+                .nets
+                .get(&target.net)
+                .is_some_and(|net| net.kind == NetKind::DigitalOrAnalog)
+            || manufacturing_route_check_declared_for_net(
+                bound,
+                CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID,
+                &target.net,
+            )
+        {
+            continue;
+        }
+        let Some(evidence) = controlled_impedance_stackup_evidence_for_net(bound, &target.net)
+        else {
+            continue;
+        };
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_stackup_{}",
+                sanitized_name(&target.net)
+            ),
+            true,
+            &format!(
+                "Net {} has reviewed controlled-impedance target evidence from {}, imported route evidence on {}, and explicit stackup copper/dielectric metadata.",
+                target.net, target.source, evidence.route_layer
+            ),
+            &format!(
+                "{}_{}_controlled_impedance_stackup",
+                project_name,
+                sanitized_name(&target.net)
+            ),
+            CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID,
+            Some(BTreeMap::from([(
+                "routes".to_string(),
+                json!([stackup_route_parameter(&target.net, &evidence)]),
+            )])),
+            Vec::new(),
+        ));
+    }
+
+    for target in &targets.differential_pairs {
+        if target.first_net == target.second_net
+            || target.first_net.trim().is_empty()
+            || target.second_net.trim().is_empty()
+            || !bound
+                .project
+                .board
+                .nets
+                .get(&target.first_net)
+                .is_some_and(|net| net.kind == NetKind::DigitalOrAnalog)
+            || !bound
+                .project
+                .board
+                .nets
+                .get(&target.second_net)
+                .is_some_and(|net| net.kind == NetKind::DigitalOrAnalog)
+            || manufacturing_route_check_declared_for_net(
+                bound,
+                CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID,
+                &target.first_net,
+            )
+            || manufacturing_route_check_declared_for_net(
+                bound,
+                CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID,
+                &target.second_net,
+            )
+        {
+            continue;
+        }
+        let Some(first_evidence) =
+            controlled_impedance_stackup_evidence_for_net(bound, &target.first_net)
+        else {
+            continue;
+        };
+        let Some(second_evidence) =
+            controlled_impedance_stackup_evidence_for_net(bound, &target.second_net)
+        else {
+            continue;
+        };
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_stackup_{}_{}",
+                sanitized_name(&target.first_net),
+                sanitized_name(&target.second_net)
+            ),
+            true,
+            &format!(
+                "Differential pair {}/{} has reviewed controlled-impedance target evidence from {}, imported route evidence, and explicit stackup copper/dielectric metadata.",
+                target.first_net, target.second_net, target.source
+            ),
+            &format!(
+                "{}_{}_{}_controlled_impedance_stackup",
+                project_name,
+                sanitized_name(&target.first_net),
+                sanitized_name(&target.second_net)
+            ),
+            CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID,
+            Some(BTreeMap::from([(
+                "routes".to_string(),
+                json!([
+                    stackup_route_parameter(&target.first_net, &first_evidence),
+                    stackup_route_parameter(&target.second_net, &second_evidence)
+                ]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -280,6 +406,13 @@ struct StitchingViaEvidence {
     reference_net: String,
     signal_via_count: usize,
     reference_via_count: usize,
+}
+
+#[derive(Debug)]
+struct ControlledImpedanceStackupEvidence {
+    route_layer: String,
+    reference_layer: String,
+    dielectric_layer: String,
 }
 
 fn controlled_impedance_net_target_has_evidence(
@@ -343,6 +476,63 @@ fn controlled_impedance_pair_target_has_evidence(
     route_has_valid_segments(first_route)
         && route_has_valid_segments(second_route)
         && routes_have_parallel_gap_evidence(first_route, second_route)
+}
+
+fn controlled_impedance_stackup_evidence_for_net(
+    bound: &BoundBoard<'_>,
+    net_name: &str,
+) -> Option<ControlledImpedanceStackupEvidence> {
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if route.segments.is_empty() || bound.project.board.layout.stackup.layers.is_empty() {
+        return None;
+    }
+    let mut evidence = None::<ControlledImpedanceStackupEvidence>;
+    for segment in &route.segments {
+        if !usable_route_segment(segment) {
+            return None;
+        }
+        let route_layer = stackup_layer_by_name(bound, &segment.layer)?;
+        if route_layer.kind != StackupLayerKind::Signal
+            || !stackup_copper_layer_has_evidence(route_layer)
+        {
+            return None;
+        }
+        let reference_layer = adjacent_reference_plane(bound, &segment.layer)?;
+        if !stackup_copper_layer_has_evidence(reference_layer) {
+            return None;
+        }
+        let dielectric_layer =
+            dielectric_between_layers(bound, &segment.layer, &reference_layer.name)?;
+        if !stackup_dielectric_layer_has_evidence(dielectric_layer) {
+            return None;
+        }
+        let segment_evidence = ControlledImpedanceStackupEvidence {
+            route_layer: route_layer.name.clone(),
+            reference_layer: reference_layer.name.clone(),
+            dielectric_layer: dielectric_layer.name.clone(),
+        };
+        if evidence.as_ref().is_some_and(|current| {
+            current.route_layer != segment_evidence.route_layer
+                || current.reference_layer != segment_evidence.reference_layer
+                || current.dielectric_layer != segment_evidence.dielectric_layer
+        }) {
+            return None;
+        }
+        evidence = Some(segment_evidence);
+    }
+    evidence
+}
+
+fn stackup_route_parameter(
+    net_name: &str,
+    evidence: &ControlledImpedanceStackupEvidence,
+) -> serde_json::Value {
+    json!({
+        "net": net_name,
+        "route_layer": evidence.route_layer,
+        "reference_layer": evidence.reference_layer,
+        "dielectric_layer": evidence.dielectric_layer
+    })
 }
 
 fn positive_finite(value: f64) -> bool {
@@ -578,6 +768,66 @@ fn adjacent_reference_plane<'a>(
         }
     }
     (candidates.len() == 1).then(|| candidates[0])
+}
+
+fn stackup_layer_by_name<'a>(
+    bound: &'a BoundBoard<'_>,
+    layer_name: &str,
+) -> Option<&'a StackupLayer> {
+    bound
+        .project
+        .board
+        .layout
+        .stackup
+        .layers
+        .iter()
+        .find(|layer| layer.name == layer_name)
+}
+
+fn dielectric_between_layers<'a>(
+    bound: &'a BoundBoard<'_>,
+    route_layer: &str,
+    reference_layer: &str,
+) -> Option<&'a StackupLayer> {
+    let layers = &bound.project.board.layout.stackup.layers;
+    let route_index = layers.iter().position(|layer| layer.name == route_layer)?;
+    let reference_index = layers
+        .iter()
+        .position(|layer| layer.name == reference_layer)?;
+    let low = route_index.min(reference_index);
+    let high = route_index.max(reference_index);
+    let candidates = layers[(low + 1)..high]
+        .iter()
+        .filter(|layer| layer.kind == StackupLayerKind::Dielectric)
+        .collect::<Vec<_>>();
+    (candidates.len() == 1).then(|| candidates[0])
+}
+
+fn stackup_copper_layer_has_evidence(layer: &StackupLayer) -> bool {
+    layer
+        .copper_thickness_um
+        .is_some_and(|value| value.is_finite() && value > 0.0)
+        && layer
+            .source
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+}
+
+fn stackup_dielectric_layer_has_evidence(layer: &StackupLayer) -> bool {
+    layer
+        .thickness_mm
+        .is_some_and(|value| value.is_finite() && value > 0.0)
+        && layer
+            .dielectric_constant
+            .is_some_and(|value| value.is_finite() && value > 0.0)
+        && layer
+            .material
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && layer
+            .source
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
 }
 
 fn nearest_conductive_layer(

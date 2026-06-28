@@ -10,7 +10,7 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         "scenario_suggestions_controlled_impedance"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 2);
+    assert_eq!(suggested.len(), 4);
 
     let single_ended = &suggested[0];
     assert_eq!(single_ended["id"], "controlled_impedance_rf");
@@ -66,6 +66,56 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
             .unwrap()
             .contains("parallel same-layer gap evidence")
     );
+
+    let single_stackup = &suggested[2];
+    assert_eq!(single_stackup["id"], "controlled_impedance_stackup_rf");
+    assert_eq!(
+        single_stackup["kind"],
+        "manufacturing_controlled_impedance_stackup_rf"
+    );
+    assert_eq!(single_stackup["runnable"], true);
+    assert_eq!(single_stackup["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        single_stackup["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID"
+    );
+    let route = &single_stackup["scenario"]["parameters"]["routes"][0];
+    assert_eq!(route["net"], "RF");
+    assert_eq!(route["route_layer"], "F.Cu");
+    assert_eq!(route["reference_layer"], "In1.GND");
+    assert_eq!(route["dielectric_layer"], "prepreg_1");
+    assert!(
+        single_stackup["reason"]
+            .as_str()
+            .unwrap()
+            .contains("explicit stackup copper/dielectric metadata")
+    );
+
+    let differential_stackup = &suggested[3];
+    assert_eq!(
+        differential_stackup["id"],
+        "controlled_impedance_stackup_dp_dm"
+    );
+    assert_eq!(
+        differential_stackup["kind"],
+        "manufacturing_controlled_impedance_stackup_dp_dm"
+    );
+    assert_eq!(differential_stackup["runnable"], true);
+    assert_eq!(
+        differential_stackup["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID"
+    );
+    let routes = differential_stackup["scenario"]["parameters"]["routes"]
+        .as_array()
+        .unwrap();
+    assert_eq!(routes.len(), 2);
+    assert_eq!(routes[0]["net"], "DP");
+    assert_eq!(routes[1]["net"], "DM");
+    for route in routes {
+        assert_eq!(route["route_layer"], "F.Cu");
+        assert_eq!(route["reference_layer"], "In1.GND");
+        assert_eq!(route["dielectric_layer"], "prepreg_1");
+    }
 }
 
 #[test]

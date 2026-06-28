@@ -499,6 +499,10 @@
                         "enum": ["signal", "plane", "dielectric", "other"]
                       },
                       "reference_net": { "type": "string", "minLength": 1 },
+                      "thickness_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "copper_thickness_um": { "type": "number", "exclusiveMinimum": 0 },
+                      "dielectric_constant": { "type": "number", "exclusiveMinimum": 0 },
+                      "material": { "type": "string", "minLength": 1 },
                       "source": { "type": "string", "minLength": 1 }
                     },
                     "additionalProperties": false

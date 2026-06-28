@@ -67,6 +67,8 @@ pub(super) const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str =
 pub(super) const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 pub(super) const CONDUCTOR_CREEPAGE_CLEARANCE_VALID: &str = "CONDUCTOR_CREEPAGE_CLEARANCE_VALID";
 pub(super) const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
+pub(super) const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
+    "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID";
 pub(super) const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 pub(super) const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 pub(super) const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -489,6 +491,15 @@ where
                         &mut findings,
                     )
                 }
+                CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID
+                    if scenario.scenario_type == "manufacturing" =>
+                {
+                    manufacturing::validate_controlled_impedance_stackup_evidence(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 ADJACENT_PLANE_RETURN_PATH_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_adjacent_plane_return_path(
                         bound,
@@ -733,6 +744,7 @@ where
                 | COPPER_SPACING_VALID
                 | CONDUCTOR_CREEPAGE_CLEARANCE_VALID
                 | CONTROLLED_IMPEDANCE_GEOMETRY_VALID
+                | CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID
                 | ADJACENT_PLANE_RETURN_PATH_VALID
                 | REFERENCE_PLANE_SLOT_CROSSING_VALID
                 | RETURN_PATH_STITCHING_VIA_VALID

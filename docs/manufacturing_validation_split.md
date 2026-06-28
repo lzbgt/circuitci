@@ -11,6 +11,12 @@ parameter parsing, imported route width/gap evidence selection, fail-closed
 missing route/gap evidence, and stable report construction. It intentionally
 does not solve impedance.
 
+`src/validation/manufacturing/controlled_impedance_stackup.rs` owns
+`CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`, including explicit
+route/reference/dielectric layer parameter parsing, stackup material and
+copper-thickness evidence checks, dielectric-between-layer topology validation,
+and stable report construction. It intentionally does not solve impedance.
+
 `src/validation/manufacturing/adjacent_plane.rs` owns
 `ADJACENT_PLANE_RETURN_PATH_VALID` and
 `REFERENCE_PLANE_SLOT_CROSSING_VALID`, including explicit stackup/plane
