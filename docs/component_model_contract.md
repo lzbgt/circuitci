@@ -816,6 +816,16 @@ representative low-load PWM high/low sample observations, but not I2C protocol,
 register behavior, oscillator tolerance, phase staggering, LED/servo output
 current, pull-up rise time, servo position/stall/regeneration, disabled-output
 high-Z behavior, thermal behavior, or final PWM timing sign-off.
+`vendor.tdk.icm42688p` follows the same pattern for IMU board-boundary
+observation: its TDK source-backed 1.71 V to 3.6 V VDD/VDDIO ranges, SPI input
+thresholds, and SDO/INT1 output metadata remain source-backed, while its
+generated-SPICE face uses reduced high-impedance input pins and static output
+drivers. Its `simulation.spice.instance_parameters` map optional Board IR
+component parameters `observation_sdo_state` and `observation_int1_state` into
+explicit SPICE output-state parameters. That model can exercise VDD/VDDIO, SPI
+line-state, SDO, and INT1 observations, but not sensor dynamics, register
+protocol, FIFO behavior, sampling timing, noise, bias stability, vibration,
+package stress, layout coupling, or final SPI timing sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

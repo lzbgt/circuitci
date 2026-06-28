@@ -287,6 +287,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UPWM"),
         },
         ExpectedProjectExample {
+            id: "icm42688p_imu_scope",
+            category: "Sensor",
+            open_label: "Open ICM-42688-P IMU Example",
+            run_label: "Open ICM-42688-P + Run Scopes",
+            summary: "Source-backed ICM-42688-P rail, SPI line-state, and interrupt observation.",
+            project_path: "examples/good_tdk_icm42688p_imu_observation/project.yaml",
+            project_name: "good_tdk_icm42688p_imu_observation",
+            expected_traces: &[
+                "v_vdd", "v_vddio", "v_sclk", "v_sdi", "v_cs", "v_sdo", "v_int1",
+            ],
+            expected_frequency: "3.3 V ICM-42688-P IMU rails, SPI idle line states, SDO low, and INT1 high",
+            observation_preset_component: Some("UIMU"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

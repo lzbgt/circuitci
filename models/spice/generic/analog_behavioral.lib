@@ -325,6 +325,23 @@ RVDD VDD VSS 1G
 ROE OE VSS 1G
 .ends CIRCUITCI_PCA9685_PWM_DRIVER
 
+.subckt CIRCUITCI_ICM42688P_SPI_IMU VDD VDDIO GND SCLK SDI SDO CS INT1 PARAMS: SDO_STATE=0 INT1_STATE=1
+* Reduced ICM-42688-P SPI IMU observation behavior.
+* VDD/VDDIO, high-impedance SPI inputs, and SDO/INT1 output states are
+* represented for preliminary board-facing rail and line-state checks. Sensor
+* dynamics, register protocol, sampling, FIFO behavior, noise, bias stability,
+* vibration, and layout coupling are intentionally not modeled.
+BSDO NSDO GND V={v(VDDIO,GND)*SDO_STATE}
+RSDO NSDO SDO 80
+BINT1 NINT1 GND V={v(VDDIO,GND)*INT1_STATE}
+RINT1 NINT1 INT1 80
+RVDD VDD GND 1G
+RVDDIO VDDIO GND 1G
+RSCLK SCLK GND 1G
+RSDI SDI GND 1G
+RCS CS GND 1G
+.ends CIRCUITCI_ICM42688P_SPI_IMU
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

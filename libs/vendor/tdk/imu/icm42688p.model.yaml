@@ -1,6 +1,24 @@
 component_id: vendor.tdk.icm42688p
 version: 0.1.0
 category: imu
+simulation:
+  spice:
+    model_name: CIRCUITCI_ICM42688P_SPI_IMU
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VDDIO, GND, SCLK, SDI, SDO, CS, INT1]
+    instance_parameters:
+      - spice_name: SDO_STATE
+        component_parameter: observation_sdo_state
+        default_value: 0.0
+      - spice_name: INT1_STATE
+        component_parameter: observation_int1_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VDD/VDDIO rail, SPI pin line-state, and INT1 interrupt-output checks.
+      - Uses source-backed 1.71 V to 3.6 V VDD/VDDIO ranges, SPI input thresholds, and SDO/INT1 output metadata while emitting explicit board-facing static output states.
+      - Sensor dynamics, register protocol, FIFO behavior, sampling timing, noise, bias stability, vibration behavior, package stress, and layout coupling are out of scope.
 ports:
   VDD:
     kind: electrical_power

@@ -268,6 +268,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   frequency, duty, and I2C idle-state inputs are explicit Board IR component
   parameters, not inferred I2C protocol/register behavior, oscillator
   tolerance, load-current behavior, servo dynamics, or final PWM timing signoff.
+- `examples/good_tdk_icm42688p_imu_observation` proves the TDK InvenSense
+  ICM-42688-P source-backed IMU model can use a reduced generated-SPICE face
+  for VDD/VDDIO, host-driven SPI line-state, SDO, and INT1 observations. The
+  output-state inputs are explicit Board IR component parameters, and the host
+  SPI input states are explicit source components, not inferred register
+  protocol, sampling, FIFO, sensor-dynamics, noise, or final SPI timing
+  behavior.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

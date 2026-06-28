@@ -155,6 +155,14 @@ const PCA9685_PWM_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const PCA9685_PWM_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V enabled PCA9685 with 50 Hz low-load PWM output observation";
+const ICM42688P_IMU_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tdk_icm42688p_imu_observation/project.yaml";
+const ICM42688P_IMU_SCOPE_EXAMPLE_NAME: &str = "good_tdk_icm42688p_imu_observation";
+const ICM42688P_IMU_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd", "v_vddio", "v_sclk", "v_sdi", "v_cs", "v_sdo", "v_int1",
+];
+const ICM42688P_IMU_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V ICM-42688-P IMU rails, SPI idle line states, SDO low, and INT1 high";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -553,6 +561,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: PCA9685_PWM_SCOPE_EXPECTED_TRACES,
         expected_frequency: PCA9685_PWM_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UPWM"),
+    },
+    GuiProjectExample {
+        id: "icm42688p_imu_scope",
+        category: "Sensor",
+        open_label: "Open ICM-42688-P IMU Example",
+        run_label: "Open ICM-42688-P + Run Scopes",
+        workflow_title: "ICM-42688-P IMU Workflow",
+        summary: "Source-backed ICM-42688-P rail, SPI line-state, and interrupt observation.",
+        project_path: ICM42688P_IMU_SCOPE_EXAMPLE_PROJECT,
+        project_name: ICM42688P_IMU_SCOPE_EXAMPLE_NAME,
+        expected_traces: ICM42688P_IMU_SCOPE_EXPECTED_TRACES,
+        expected_frequency: ICM42688P_IMU_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UIMU"),
     },
     GuiProjectExample {
         id: "esds552_scope",

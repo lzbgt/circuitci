@@ -1,0 +1,327 @@
+project:
+  name: good_tdk_icm42688p_imu_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/tdk/imu
+
+board:
+  schematic:
+    component_symbols:
+      VVDD: Simulation_SPICE:VDC
+      VVDDIO: Simulation_SPICE:VDC
+      VSCLK: Simulation_SPICE:VDC
+      VSDI: Simulation_SPICE:VDC
+      VCS: Simulation_SPICE:VDC
+      UIMU: Sensor_Motion:ICM-42688-P
+    node_styles:
+      component:VVDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VVDDIO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VSCLK: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VSDI: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCS: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UIMU: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VVDD: { x: 64.0, y: 128.0 }
+      component:VVDDIO: { x: 64.0, y: 224.0 }
+      component:VSCLK: { x: 64.0, y: 320.0 }
+      component:VSDI: { x: 64.0, y: 416.0 }
+      component:VCS: { x: 64.0, y: 512.0 }
+      component:UIMU: { x: 384.0, y: 320.0 }
+      net:imu_vdd: { x: 192.0, y: 128.0 }
+      net:imu_vddio: { x: 192.0, y: 224.0 }
+      net:spi_sclk: { x: 192.0, y: 320.0 }
+      net:spi_sdi: { x: 192.0, y: 416.0 }
+      net:spi_cs: { x: 192.0, y: 512.0 }
+      net:spi_sdo: { x: 592.0, y: 288.0 }
+      net:imu_int1: { x: 592.0, y: 384.0 }
+      net:gnd: { x: 384.0, y: 608.0 }
+    wire_routes:
+      VVDD.P->imu_vdd:
+        points:
+          - { x: 144.0, y: 128.0 }
+      VVDD.N->gnd:
+        points:
+          - { x: 112.0, y: 608.0 }
+      VVDDIO.P->imu_vddio:
+        points:
+          - { x: 144.0, y: 224.0 }
+      VVDDIO.N->gnd:
+        points:
+          - { x: 112.0, y: 608.0 }
+      VSCLK.P->spi_sclk:
+        points:
+          - { x: 144.0, y: 320.0 }
+      VSCLK.N->gnd:
+        points:
+          - { x: 112.0, y: 608.0 }
+      VSDI.P->spi_sdi:
+        points:
+          - { x: 144.0, y: 416.0 }
+      VSDI.N->gnd:
+        points:
+          - { x: 112.0, y: 608.0 }
+      VCS.P->spi_cs:
+        points:
+          - { x: 144.0, y: 512.0 }
+      VCS.N->gnd:
+        points:
+          - { x: 112.0, y: 608.0 }
+      UIMU.VDD->imu_vdd:
+        points:
+          - { x: 304.0, y: 128.0 }
+      UIMU.VDDIO->imu_vddio:
+        points:
+          - { x: 304.0, y: 224.0 }
+      UIMU.GND->gnd:
+        points:
+          - { x: 384.0, y: 608.0 }
+      UIMU.SCLK->spi_sclk:
+        points:
+          - { x: 304.0, y: 320.0 }
+      UIMU.SDI->spi_sdi:
+        points:
+          - { x: 304.0, y: 416.0 }
+      UIMU.CS->spi_cs:
+        points:
+          - { x: 304.0, y: 512.0 }
+      UIMU.SDO->spi_sdo:
+        points:
+          - { x: 512.0, y: 288.0 }
+      UIMU.INT1->imu_int1:
+        points:
+          - { x: 512.0, y: 384.0 }
+  components:
+    VVDD:
+      model: generic.analog.dc_voltage_source
+      part_number: IMU_VDD_3V3_SOURCE
+      pins:
+        P: imu_vdd
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VVDDIO:
+      model: generic.analog.dc_voltage_source
+      part_number: IMU_VDDIO_3V3_SOURCE
+      pins:
+        P: imu_vddio
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VSCLK:
+      model: generic.analog.dc_voltage_source
+      part_number: IMU_SCLK_LOW_SOURCE
+      pins:
+        P: spi_sclk
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    VSDI:
+      model: generic.analog.dc_voltage_source
+      part_number: IMU_SDI_LOW_SOURCE
+      pins:
+        P: spi_sdi
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    VCS:
+      model: generic.analog.dc_voltage_source
+      part_number: IMU_CS_HIGH_SOURCE
+      pins:
+        P: spi_cs
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UIMU:
+      model: vendor.tdk.icm42688p
+      part_number: ICM-42688-P
+      parameters:
+        observation_sclk_state: 0.0
+        observation_sdi_state: 0.0
+        observation_cs_state: 1.0
+        observation_sdo_state: 0.0
+        observation_int1_state: 1.0
+      power_domains:
+        VDD: imu_vdd
+        VDDIO: imu_vddio
+      pins:
+        VDD: imu_vdd
+        VDDIO: imu_vddio
+        GND: gnd
+        SCLK: spi_sclk
+        SDI: spi_sdi
+        SDO: spi_sdo
+        CS: spi_cs
+        INT1: imu_int1
+  nets:
+    imu_vdd:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.02
+    imu_vddio:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.01
+    spi_sclk:
+      kind: power
+      nominal_voltage: 0.0
+      powered: true
+    spi_sdi:
+      kind: power
+      nominal_voltage: 0.0
+      powered: true
+    spi_cs:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    spi_sdo:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    imu_int1:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: icm42688p_imu_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VVDD
+          - VVDDIO
+          - VSCLK
+          - VSDI
+          - VCS
+          - UIMU
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: f60605ae432f40edfd66c43b4d8e99dad7c8220be2c0ecdc0fb7bd17be61296a
+      node_bindings:
+        - { node: vdd, net: imu_vdd }
+        - { node: vddio, net: imu_vddio }
+        - { node: sclk, net: spi_sclk }
+        - { node: sdi, net: spi_sdi }
+        - { node: cs, net: spi_cs }
+        - { node: sdo, net: spi_sdo }
+        - { node: int1, net: imu_int1 }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VVDD, pin: P } }
+        - { node: "0", endpoint: { component: VVDD, pin: N } }
+        - { node: vddio, endpoint: { component: VVDDIO, pin: P } }
+        - { node: "0", endpoint: { component: VVDDIO, pin: N } }
+        - { node: sclk, endpoint: { component: VSCLK, pin: P } }
+        - { node: "0", endpoint: { component: VSCLK, pin: N } }
+        - { node: sdi, endpoint: { component: VSDI, pin: P } }
+        - { node: "0", endpoint: { component: VSDI, pin: N } }
+        - { node: cs, endpoint: { component: VCS, pin: P } }
+        - { node: "0", endpoint: { component: VCS, pin: N } }
+        - { node: vdd, endpoint: { component: UIMU, pin: VDD } }
+        - { node: vddio, endpoint: { component: UIMU, pin: VDDIO } }
+        - { node: "0", endpoint: { component: UIMU, pin: GND } }
+        - { node: sclk, endpoint: { component: UIMU, pin: SCLK } }
+        - { node: sdi, endpoint: { component: UIMU, pin: SDI } }
+        - { node: sdo, endpoint: { component: UIMU, pin: SDO } }
+        - { node: cs, endpoint: { component: UIMU, pin: CS } }
+        - { node: int1, endpoint: { component: UIMU, pin: INT1 } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.2
+      stimuli:
+        - name: spi_idle_interrupt_observation
+          description: 3.3 V ICM-42688-P IMU observation with SPI idle lines, SDO low, and INT1 high.
+      probes:
+        - name: v_vdd
+          expression: V(vdd)
+        - name: v_vddio
+          expression: V(vddio)
+        - name: v_sclk
+          expression: V(sclk)
+        - name: v_sdi
+          expression: V(sdi)
+        - name: v_cs
+          expression: V(cs)
+        - name: v_sdo
+          expression: V(sdo)
+        - name: v_int1
+          expression: V(int1)
+      assertions:
+        - name: vdd_above_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 1.71
+        - name: vdd_below_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 3.6
+        - name: vddio_above_min
+          probe: v_vddio
+          aggregation: min
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 1.71
+        - name: vddio_below_max
+          probe: v_vddio
+          aggregation: max
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 3.6
+        - name: sclk_idle_low
+          probe: v_sclk
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.8
+        - name: sdi_idle_low
+          probe: v_sdi
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.8
+        - name: cs_idle_high
+          probe: v_cs
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0
+        - name: sdo_observed_low
+          probe: v_sdo
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.5
+        - name: int1_observed_high
+          probe: v_int1
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.0

@@ -214,6 +214,7 @@ Current analog support:
   DRV8323-style three-phase gate-driver supply, output-state, and current-sense
   observation-node checks,
   PCA9685-style PWM-driver VDD/OE, I2C idle-line, and low-load PWM output
+  observations, ICM-42688-P-style IMU VDD/VDDIO, SPI line-state, and INT1
   observations,
   AMS1117-style fixed 3.3 V LDO rail observations,
   TPS54331-style 5 V buck-regulator rail observations,
@@ -230,7 +231,7 @@ Current analog support:
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -401,6 +402,13 @@ Current analog support:
   protocol/register behavior, oscillator tolerance, phase staggering,
   LED/servo output current, pull-up rise time, servo dynamics, disabled-output
   high-Z behavior, thermal behavior, and final PWM timing sign-off.
+- The TDK InvenSense ICM-42688-P IMU pack now has a source-backed generated
+  SPICE observation face for VDD/VDDIO rails, host-driven SPI line states, SDO
+  output state, and INT1 interrupt-output state. Its 1.71 V to 3.6 V rail
+  ranges, SPI thresholds, and output metadata remain source-backed, while the
+  transient face stays explicitly reduced-fidelity and omits sensor dynamics,
+  register protocol, FIFO behavior, sampling timing, noise, bias stability,
+  vibration, package stress, layout coupling, and final SPI timing sign-off.
 - The onsemi NL27WZ17 logic-buffer pack now has a source-backed generated
   SPICE observation face for VCC, 1A/2A input-state, and non-inverted 1Y/2Y
   output-state checks. Its 1.65 V to 5.5 V supply range, SC-88/SOT-363 pinout,

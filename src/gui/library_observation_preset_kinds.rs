@@ -206,6 +206,95 @@ pub(super) fn add_pwm_driver_observation_assertions(
     }
 }
 
+pub(super) fn add_imu_observation_assertions(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "imu" {
+        return;
+    }
+    for pin in ["VDD", "VDDIO"] {
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            pin,
+            stop_time_us,
+            assertions,
+        );
+    }
+    for (pin, default_state) in [("SCLK", 0.0), ("SDI", 0.0), ("CS", 1.0)] {
+        let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let Some(port) = model.ports.get(pin) else {
+            continue;
+        };
+        let state = component_parameter_f64(
+            component,
+            &format!("observation_{}_state", pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(default_state);
+        let (suffix, relation, threshold) = if state >= 0.5 {
+            (
+                "spi_high",
+                "above",
+                port.electrical.vih_min_v.unwrap_or(2.0),
+            )
+        } else {
+            ("spi_low", "below", port.electrical.vil_max_v.unwrap_or(0.8))
+        };
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}", probe.probe_name, suffix),
+            &probe.probe_name,
+            "mean",
+            relation,
+            threshold,
+            (0.0, stop_time_us),
+        ));
+    }
+    for (pin, default_state) in [("SDO", 0.0), ("INT1", 1.0)] {
+        let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let Some(port) = model.ports.get(pin) else {
+            continue;
+        };
+        let state = component_parameter_f64(
+            component,
+            &format!("observation_{}_state", pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(default_state);
+        let (suffix, relation, threshold) = if state >= 0.5 {
+            (
+                "output_high",
+                "above",
+                port.electrical
+                    .drive_high_voltage_v
+                    .map(|level| level * 0.7)
+                    .unwrap_or(2.0),
+            )
+        } else {
+            ("output_low", "below", 0.5)
+        };
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}", probe.probe_name, suffix),
+            &probe.probe_name,
+            "mean",
+            relation,
+            threshold,
+            (0.0, stop_time_us),
+        ));
+    }
+}
+
 pub(super) fn add_level_shifter_observation_assertions(
     project: &crate::board_ir::BoardProject,
     component: &crate::board_ir::ComponentSpec,

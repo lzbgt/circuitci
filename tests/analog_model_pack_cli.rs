@@ -300,6 +300,33 @@ fn generated_txs0108e_level_shifter_observation_uses_datasheet_backed_model_pack
 }
 
 #[test]
+fn generated_icm42688p_imu_observation_uses_datasheet_backed_model_pack() {
+    let report = run_validation("examples/good_tdk_icm42688p_imu_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/analog_behavioral.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_tpd2eusb30_usb_esd_observation_uses_datasheet_backed_model_pack() {
     let report = run_validation("examples/good_tpd2eusb30_usb_esd_observation/project.yaml");
     if binary_available("ngspice") {
