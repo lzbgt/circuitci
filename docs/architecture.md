@@ -189,8 +189,9 @@ Importers append evidence instead of guessing missing intent. Examples:
   entries and RF antenna layout constraints, preserves raw row evidence and
   skipped unrelated order rows in a JSON manifest, and does not infer process
   defaults or RF topology from order text. The importer orchestration stays in
-  `src/importers/manufacturing_metadata.rs`; CSV row parsing, supported-field
-  normalization, and manifest row evidence live in
+  `src/importers/manufacturing_metadata.rs`; CSV file/header/token parsing
+  lives in `src/importers/manufacturing_metadata/rows/csv.rs`; supported-field
+  normalization, row-family validation, and manifest row evidence live in
   `src/importers/manufacturing_metadata/rows.rs`.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
