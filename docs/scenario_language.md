@@ -144,6 +144,7 @@ Canonical executable check IDs:
 - `SOLDER_PASTE_IC_PIN_APERTURE_VALID`
 - `SOLDER_PASTE_BGA_APERTURE_VALID`
 - `SOLDER_PASTE_SPACING_VALID`
+- `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_AC_ANALYSIS`
@@ -1473,9 +1474,47 @@ Solder-paste spacing algorithm:
 
 This is a static 2D stencil web screen. It can detect merged or too-close paste
 apertures between imported flash, linear/arc draw, and region openings, but it
-does not evaluate stencil thickness, paste volume, paste release,
-nested or overlapping paste-region holes, or package-specific intentional
-aperture merging.
+does not model paste slump, stencil fabrication tolerance, solder wetting, or
+component self-alignment.
+
+Assembly footprint alignment validation uses
+`ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` when Board IR contains JLC/EasyEDA
+assembly source metadata and imported KiCad PCB footprint or placement
+evidence for the same components.
+
+```yaml
+scenarios:
+  - name: assembly_footprint_alignment
+    type: manufacturing
+    checks:
+      - ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
+    parameters:
+      components: [U1, R3]
+      rotation_tolerance_deg: 0.01
+```
+
+Assembly footprint alignment algorithm:
+
+1. Use `parameters.components` when provided, otherwise `scenario.target`, then
+   all components whose `source.format` is `jlc_assembly`.
+2. Compare assembly `source.footprint` and `source.placement_footprint` against
+   imported KiCad footprint property values under
+   `board.layout.footprints.<ref>.properties` using a normalized package-token
+   comparison.
+3. Compare assembly supplier or manufacturer part fields only when the KiCad
+   footprint has comparable explicit part-number properties such as
+   `JLCPCB Part`, `LCSC Part`, `Supplier Part`, `MPN`, or
+   `Manufacturer Part Number`.
+4. Compare explicit placement side and rotation evidence when
+   `placement_side_confidence` or `placement_orientation_confidence` is
+   `source_explicit` and imported layout placement evidence exists.
+5. Fail closed with `VALIDATION_INPUT_MISSING` when the declared scenario has
+   no comparable assembly/footprint evidence.
+
+This is a source-consistency screen. It detects contradictions between BOM/CPL
+and KiCad PCB evidence, but it does not prove final assembly polarity, visual
+pin-1 interpretation, footprint land-pattern correctness, or manufacturer
+package compatibility.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule always checks

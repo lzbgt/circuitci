@@ -1296,3 +1296,182 @@ fn copper_spacing_fails_for_near_flash_and_region() {
     assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
     assert_report_schema_valid(&report);
 }
+
+#[test]
+fn assembly_footprint_alignment_passes_with_matching_evidence() {
+    let (_dir, project_path) = write_alignment_project(
+        r#"
+      source:
+        format: jlc_assembly
+        footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+        manufacturer_part: NE555D
+        supplier_part: C12345
+        placement_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+        placement_side: top
+        placement_side_confidence: source_explicit
+        placement_rotation_deg: 90
+        placement_orientation_confidence: source_explicit
+"#,
+        r#"
+        U1:
+          x_mm: 0.0
+          y_mm: 0.0
+          side: top
+          rotation_deg: 90.0
+"#,
+        r#"
+        U1:
+          properties:
+            - name: Footprint
+              value: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+              source: kicad_footprint_identifier
+            - name: JLCPCB Part
+              value: C12345
+              source: kicad_footprint_property
+            - name: MPN
+              value: NE555D
+              source: kicad_footprint_property
+"#,
+    );
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn assembly_footprint_alignment_fails_on_contradictory_evidence() {
+    let (_dir, project_path) = write_alignment_project(
+        r#"
+      source:
+        format: jlc_assembly
+        footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+        manufacturer_part: NE555D
+        supplier_part: C12345
+        placement_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+        placement_side: top
+        placement_side_confidence: source_explicit
+        placement_rotation_deg: 90
+        placement_orientation_confidence: source_explicit
+"#,
+        r#"
+        U1:
+          x_mm: 0.0
+          y_mm: 0.0
+          side: bottom
+          rotation_deg: 180.0
+"#,
+        r#"
+        U1:
+          properties:
+            - name: Footprint
+              value: Package_SO:TSSOP-8_3x3mm_P0.65mm
+              source: kicad_footprint_identifier
+            - name: JLCPCB Part
+              value: C99999
+              source: kicad_footprint_property
+            - name: MPN
+              value: TLC555ID
+              source: kicad_footprint_property
+"#,
+    );
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    assert!(
+        failures
+            .iter()
+            .all(|failure| failure["id"] == "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID")
+    );
+    assert!(failures.iter().any(|failure| {
+        failure["measured"]["reason"] == "footprint_name_mismatch" && failure["component"] == "U1"
+    }));
+    assert!(
+        failures
+            .iter()
+            .any(|failure| failure["measured"]["reason"] == "part_property_mismatch")
+    );
+    assert!(
+        failures
+            .iter()
+            .any(|failure| failure["measured"]["reason"] == "placement_side_mismatch")
+    );
+    assert!(failures.iter().any(|failure| {
+        failure["measured"]["reason"] == "placement_rotation_mismatch"
+            && failure["limit"]["rotation_tolerance_deg"] == 0.01
+    }));
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn assembly_footprint_alignment_fails_closed_without_comparable_evidence() {
+    let (_dir, project_path) = write_alignment_project("", "", "");
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID requires")
+    );
+    assert_report_schema_valid(&report);
+}
+
+fn write_alignment_project(
+    component_source: &str,
+    layout_placement: &str,
+    layout_footprint: &str,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let library_path = std::env::current_dir()
+        .unwrap()
+        .join("libs/generic/analog")
+        .to_string_lossy()
+        .into_owned();
+    let placements_yaml = if layout_placement.trim().is_empty() {
+        "    placements: {}\n".to_string()
+    } else {
+        format!("    placements:\n{layout_placement}")
+    };
+    let footprints_yaml = if layout_footprint.trim().is_empty() {
+        "    footprints: {}\n".to_string()
+    } else {
+        format!("    footprints:\n{layout_footprint}")
+    };
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: assembly_footprint_alignment_fixture
+  version: 1
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: NET1
+        B: GND
+{component_source}  nets:
+    NET1:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+{placements_yaml}{footprints_yaml}scenarios:
+  - name: assembly_alignment
+    type: manufacturing
+    checks:
+      - ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
+    parameters:
+      components: [U1]
+"#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}

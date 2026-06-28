@@ -768,6 +768,19 @@ optional `first_solder_paste_region_owner_kind`, optional
 `first_solder_paste_region_point_count`. Stable limit keys include
 `min_solder_paste_spacing_mm`.
 
+`ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` reports are emitted by `manufacturing`
+scenarios that compare JLC/EasyEDA BOM+CPL source metadata against imported
+KiCad PCB footprint and placement evidence. Stable measured keys include
+`reason`, `component`, and reason-specific source fields. `reason` is one of
+`footprint_name_mismatch`, `part_property_mismatch`,
+`placement_side_mismatch`, or `placement_rotation_mismatch`. Footprint-name
+findings include `assembly_field`, `assembly_footprint`, and
+`kicad_footprint_values`. Part-property findings include `assembly_field`,
+`assembly_part`, `kicad_property_name`, and `kicad_property_value`. Side
+findings include `assembly_side` and `layout_side`. Rotation findings include
+`assembly_rotation_deg`, `layout_rotation_deg`, `rotation_delta_deg`, and limit
+key `rotation_tolerance_deg`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

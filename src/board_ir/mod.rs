@@ -766,6 +766,22 @@ pub struct ComponentSourceSpec {
     #[serde(default)]
     pub format: Option<String>,
     #[serde(default)]
+    pub footprint: Option<String>,
+    #[serde(default)]
+    pub manufacturer_part: Option<String>,
+    #[serde(default)]
+    pub supplier_part: Option<String>,
+    #[serde(default)]
+    pub placement_footprint: Option<String>,
+    #[serde(default)]
+    pub placement_side: Option<PlacementSide>,
+    #[serde(default)]
+    pub placement_side_confidence: Option<String>,
+    #[serde(default)]
+    pub placement_rotation_deg: Option<f64>,
+    #[serde(default)]
+    pub placement_orientation_confidence: Option<String>,
+    #[serde(default)]
     pub board_pin_electrical_types: BTreeMap<String, String>,
     #[serde(default)]
     pub instances: Vec<ComponentSourceInstanceSpec>,

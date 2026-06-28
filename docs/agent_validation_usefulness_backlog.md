@@ -115,7 +115,8 @@ Useful next slices:
 - RF antenna keepout and matching evidence,
 - thermal copper and dissipation evidence,
 - creepage and clearance screens beyond current fabrication checks,
-- footprint, pin-1, BOM, and PNP alignment checks.
+- pin-1 polarity/orientation checks beyond the current
+  assembly-vs-footprint source-consistency screen.
 
 Done means each rule has explicit imported geometry or metadata, not guessed
 layout intent.
