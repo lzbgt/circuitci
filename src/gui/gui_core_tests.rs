@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 13);
+    assert_eq!(examples.len(), 14);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -830,6 +830,33 @@ fn gui_project_example_registry_lists_bq24075_power_path_scope_fixture() {
         "6 V adapter input, 5.5 V OUT path, and 450 mA ISET charge observation"
     );
     assert_eq!(example.observation_preset_component, Some("UCHG"));
+}
+
+#[test]
+fn gui_project_example_registry_lists_bq25798_nvdc_scope_fixture() {
+    let example = gui_project_example_by_id("bq25798_nvdc_scope");
+
+    assert_eq!(example.category, "Power Path");
+    assert_eq!(example.open_label, "Open BQ25798 NVDC Example");
+    assert_eq!(example.run_label, "Open BQ25798 + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "20 V adapter buck-boost/NVDC charger observation with SYS and BAT checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_bq25798_nvdc_observation/project.yaml"
+    );
+    assert_eq!(example.project_name, "good_bq25798_nvdc_observation");
+    assert_eq!(
+        example.expected_traces,
+        &["v_adapter", "v_sysout", "v_bat", "i_charge", "i_sys_load"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "20 V adapter input, 12 V SYS rail, and 2 A programmed charge observation"
+    );
+    assert_eq!(example.observation_preset_component, None);
 }
 
 #[test]

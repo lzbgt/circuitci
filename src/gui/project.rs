@@ -64,6 +64,13 @@ const BQ24075_POWER_PATH_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_adapter", "v_sysout", "v_bat", "i_charge", "i_sys_load"];
 const BQ24075_POWER_PATH_SCOPE_EXPECTED_FREQUENCY: &str =
     "6 V adapter input, 5.5 V OUT path, and 450 mA ISET charge observation";
+const BQ25798_NVDC_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_bq25798_nvdc_observation/project.yaml";
+const BQ25798_NVDC_SCOPE_EXAMPLE_NAME: &str = "good_bq25798_nvdc_observation";
+const BQ25798_NVDC_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_adapter", "v_sysout", "v_bat", "i_charge", "i_sys_load"];
+const BQ25798_NVDC_SCOPE_EXPECTED_FREQUENCY: &str =
+    "20 V adapter input, 12 V SYS rail, and 2 A programmed charge observation";
 const TLV803_RESET_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tlv803ea29_reset_observation/project.yaml";
 const TLV803_RESET_SCOPE_EXAMPLE_NAME: &str = "good_tlv803ea29_reset_observation";
@@ -205,6 +212,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: BQ24075_POWER_PATH_SCOPE_EXPECTED_TRACES,
         expected_frequency: BQ24075_POWER_PATH_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UCHG"),
+    },
+    GuiProjectExample {
+        id: "bq25798_nvdc_scope",
+        category: "Power Path",
+        open_label: "Open BQ25798 NVDC Example",
+        run_label: "Open BQ25798 + Run Scopes",
+        workflow_title: "BQ25798 NVDC Workflow",
+        summary: "20 V adapter buck-boost/NVDC charger observation with SYS and BAT checks.",
+        project_path: BQ25798_NVDC_SCOPE_EXAMPLE_PROJECT,
+        project_name: BQ25798_NVDC_SCOPE_EXAMPLE_NAME,
+        expected_traces: BQ25798_NVDC_SCOPE_EXPECTED_TRACES,
+        expected_frequency: BQ25798_NVDC_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: None,
     },
     GuiProjectExample {
         id: "tlv803_reset_scope",

@@ -130,7 +130,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
    otherwise fail before solver execution.
 8. Emit subcircuits as SPICE `X` devices only when the component model declares
    `simulation.spice.pin_order`; a `.subckt` without deterministic pin mapping
-   is a validation-input failure.
+   is a validation-input failure. Subcircuit models may also declare
+   `simulation.spice.instance_parameters` to map numeric Board IR component
+   parameters into SPICE instance assignments such as `ICHG_A=2`; a mapping may
+   declare `default_value` for observation defaults that are still visible in
+   component-model metadata.
 9. Require every generated semiconductor or subcircuit model file to appear in
    `analog.model_files` with a SHA-256 pin.
 10. Resolve model metadata paths from the Board IR project directory and its
@@ -180,6 +184,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   device emission with a SHA-pinned datasheet-fit BSS84 model.
 - `examples/good_subckt_rc_delay` proves generated subcircuit `X` device
   emission from explicit `simulation.spice.pin_order` metadata.
+- `examples/good_bq25798_nvdc_observation` proves generated subcircuit `X`
+  device emission can append model-declared instance parameters from Board IR
+  component parameters for a reduced BQ25798 NVDC charger observation.
 - `examples/good_ideal_opamp_buffer` proves reusable generic behavioral
   macro-model packs can drive generated Board IR decks through the same
   subcircuit, model-file, and SHA-pinned artifact path used by vendor models.
@@ -202,6 +209,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   generated-SPICE face in a direct-open GUI example with routed schematic
   metadata, ISET resistor, OUT/BAT voltage probes, charge-current probes, and
   executable power-path charger checks.
+- `examples/good_bq25798_nvdc_observation` proves the TI BQ25798
+  datasheet-backed buck-boost/NVDC charger model can map Board IR component
+  parameters into a reduced generated-SPICE face in a direct-open GUI example
+  with routed schematic metadata, SYS/BAT voltage probes, charge-current
+  probes, and executable preliminary charger observation checks.
 - `examples/loop_stability_bode_scope` proves file-backed AC/Bode loop-gain
   observation in a direct-open GUI example with routed schematic metadata,
   Bode artifact export, and executable phase/gain margin checks.

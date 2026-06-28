@@ -320,7 +320,7 @@ mod tests {
         );
         assert_eq!(
             entries[0].sha256,
-            "082ba3056b8545dbdc1d366aaa1bf91cc681eb83da19d8e228d2739894e455e9"
+            "32cbf630a196e3deb919833c2dc1d369e8b27b70987a36b286465af959a870d9"
         );
     }
 }

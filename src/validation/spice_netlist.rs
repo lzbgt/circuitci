@@ -1,7 +1,9 @@
 use crate::board_ir::{
     AnalogScenario, AnalogSweepComponentField, ComponentSpec, SpicePrimitive, SpicePulseSpec,
 };
-use crate::library::{BoundBoard, ComponentModel, SpiceModel, SpiceModelType};
+use crate::library::{
+    BoundBoard, ComponentModel, SpiceInstanceParameter, SpiceModel, SpiceModelType,
+};
 use crate::validation::analog_util::component_value_parameter_name;
 use std::collections::BTreeMap;
 use std::env;
@@ -490,7 +492,45 @@ fn subckt_line(
     }
     line.push(' ');
     line.push_str(&spice_model.model_name);
+    for parameter in &spice_model.instance_parameters {
+        line.push(' ');
+        line.push_str(&instance_parameter_assignment(
+            component_id,
+            component,
+            parameter,
+        )?);
+    }
     Ok(line)
+}
+
+fn instance_parameter_assignment(
+    component_id: &str,
+    component: &ComponentSpec,
+    parameter: &SpiceInstanceParameter,
+) -> Result<String, String> {
+    validate_spice_token("SPICE instance parameter", &parameter.spice_name)?;
+    let value = if let Some(value) = component.parameters.get(&parameter.component_parameter) {
+        value.as_f64().ok_or_else(|| {
+            format!(
+                "Generated SPICE subckt component {component_id} parameter {} must be numeric for SPICE instance parameter {}.",
+                parameter.component_parameter, parameter.spice_name
+            )
+        })?
+    } else if let Some(default_value) = parameter.default_value {
+        default_value
+    } else {
+        return Err(format!(
+            "Generated SPICE subckt component {component_id} requires component parameter {} for SPICE instance parameter {}.",
+            parameter.component_parameter, parameter.spice_name
+        ));
+    };
+    if !value.is_finite() {
+        return Err(format!(
+            "Generated SPICE subckt component {component_id} parameter {} must be finite for SPICE instance parameter {}.",
+            parameter.component_parameter, parameter.spice_name
+        ));
+    }
+    Ok(format!("{}={value}", parameter.spice_name))
 }
 
 fn voltage_pulse_line(
@@ -756,9 +796,12 @@ fn normalize_path(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::generate_board_netlist;
-    use crate::board_ir::load_project;
-    use crate::library::{bind_project, load_library};
+    use super::{generate_board_netlist, subckt_line};
+    use crate::board_ir::{ComponentSpec, load_project};
+    use crate::library::{
+        SpiceInstanceParameter, SpiceModel, SpiceModelType, bind_project, load_library,
+    };
+    use std::collections::BTreeMap;
     use std::path::Path;
 
     #[test]
@@ -778,6 +821,54 @@ mod tests {
         let sense = text.find("VCCI_D1 in cci_d1_a 0").unwrap();
         let diode = text.find("D1 cci_d1_a out ONSEMI_1N4148WS").unwrap();
         assert!(sense < diode);
+    }
+
+    #[test]
+    fn generated_subckt_maps_component_parameters_to_instance_parameters() {
+        let component: ComponentSpec = serde_yaml_ng::from_str(
+            "model: vendor.test.parameterized_subckt
+parameters:
+  programmed_charge_current_A: 2.0
+pins:
+  IN: input
+  OUT: output
+  GND: gnd
+",
+        )
+        .unwrap();
+        let node_by_net = BTreeMap::from([
+            ("input".to_string(), "vin".to_string()),
+            ("output".to_string(), "vout".to_string()),
+            ("gnd".to_string(), "0".to_string()),
+        ]);
+        let spice_model = SpiceModel {
+            model_name: "CIRCUITCI_PARAMETERIZED_SUBCKT".to_string(),
+            model_type: SpiceModelType::Subckt,
+            model_path: "models/spice/generic/analog_behavioral.lib".to_string(),
+            provenance: "datasheet_limited_generic_behavioral".to_string(),
+            body_pin_policy: None,
+            pin_order: vec!["IN".to_string(), "OUT".to_string(), "GND".to_string()],
+            instance_parameters: vec![
+                SpiceInstanceParameter {
+                    spice_name: "ICHG_A".to_string(),
+                    component_parameter: "programmed_charge_current_A".to_string(),
+                    default_value: None,
+                },
+                SpiceInstanceParameter {
+                    spice_name: "VSYS_V".to_string(),
+                    component_parameter: "observation_system_voltage_V".to_string(),
+                    default_value: Some(12.0),
+                },
+            ],
+            valid_operating_notes: Vec::new(),
+        };
+
+        let line = subckt_line("UCHG", &component, &node_by_net, &spice_model).unwrap();
+
+        assert_eq!(
+            line,
+            "XUCHG vin vout 0 CIRCUITCI_PARAMETERIZED_SUBCKT ICHG_A=2 VSYS_V=12"
+        );
     }
 
     #[test]

@@ -498,6 +498,19 @@
               "type": "array",
               "items": { "type": "string", "minLength": 1 }
             },
+            "instance_parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["spice_name", "component_parameter"],
+                "properties": {
+                  "spice_name": { "type": "string", "minLength": 1 },
+                  "component_parameter": { "type": "string", "minLength": 1 },
+                  "default_value": { "type": "number" }
+                },
+                "additionalProperties": false
+              }
+            },
             "valid_operating_notes": {
               "type": "array",
               "items": { "type": "string", "minLength": 1 }

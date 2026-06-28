@@ -101,6 +101,24 @@ datasheet:
       source_url: https://www.ti.com/lit/ds/symlink/bq25798.pdf
       sha256: 631d541679512116b5cf7ade0516000e78bc95f060b8b958e726c1b6eb74c27f
       retrieved: "2026-06-14"
+simulation:
+  spice:
+    model_name: CIRCUITCI_BQ25798_NVDC_CHARGER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VBUS, SYS, BAT, GND]
+    instance_parameters:
+      - spice_name: ICHG_A
+        component_parameter: programmed_charge_current_A
+      - spice_name: VSYS_V
+        component_parameter: observation_system_voltage_V
+        default_value: 12.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary generated-SPICE adapter, SYS, BAT, and configured charge-current checks only.
+      - ICHG_A is taken from the Board IR host-configured programmed_charge_current_A parameter and is not derived from BQ25798 I2C register sequencing.
+      - VSYS_V is a fixture-level observation rail target used to make the reduced NVDC path inspectable; it is not a datasheet-programmed regulation model.
+      - Buck-boost switching, DPM/MPPT, supplement mode, BATFET dynamics, thermal regulation, safety timers, chemistry, register programming, and final charger sign-off are out of scope.
 model_quality:
   source: datasheet
   confidence: medium

@@ -192,13 +192,15 @@ Current analog support:
   generated-board simulation of op-amp buffers, comparator threshold behavior,
   enabled 3.3 V regulator rails, enabled load-switch paths, MCP73831-style
   PROG-programmed Li-Ion charger observations, and BQ24075-style power-path
-  charger observations through explicit
+  charger observations, and BQ25798-style buck-boost/NVDC charger observations
+  through explicit
   `simulation.spice` subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, AP2112K LDO rail, TPS22918 load switch, MCP73831
-  charger, BQ24075 power path, TLV803 reset-supervisor, loop-stability Bode,
-  DC divider-bias, divider-noise, and RC Monte Carlo yield workflows.
+  charger, BQ24075 power path, BQ25798 NVDC power path, TLV803
+  reset-supervisor, loop-stability Bode, DC divider-bias, divider-noise, and
+  RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -229,6 +231,14 @@ Current analog support:
   supplement mode, ILIM/EN current-limit derivation, status pins, termination,
   thermal, timer, battery-chemistry, cell safety, and final charger sign-off
   behavior.
+- The TI BQ25798 buck-boost/NVDC charger pack now has a datasheet-backed
+  generated SPICE observation face for adapter/SYS/BAT wiring and
+  host-programmed charge-current behavior. The generated subcircuit can map
+  Board IR component parameters such as `programmed_charge_current_A` into
+  SPICE instance parameters, while the transient face stays explicitly
+  reduced-fidelity and omits buck-boost switching, DPM/MPPT, supplement mode,
+  BATFET dynamics, register sequencing, thermal regulation, timers,
+  battery-chemistry, cell safety, and final charger sign-off behavior.
 - GUI generated run-setup creation and generated component inclusion infer
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned

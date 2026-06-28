@@ -308,7 +308,9 @@ when the monitored rail is driven by a detectable pulse source; op-amp presets
 add follower tracking checks when feedback ties the inverting input to the
 output and the non-inverting input is pulse-driven; comparator presets add
 output-state checks when one input is pulse-driven and the other is a fixed
-reference. Inserted model-backed components use the selected model's declared
+reference. Direct-open charger/power-path examples include MCP73831, BQ24075,
+and BQ25798 fixtures for generated-SPICE charge-current and rail observations.
+Inserted model-backed components use the selected model's declared
 ports to seed editable Board IR pin bindings and generated per-pin nets, and
 Sketch-stage placement can target the current view center, an armed blank-canvas
 click, a drag/drop release with live ghost and snap feedback, or the
@@ -497,9 +499,9 @@ form:
   astable-style fixture, RC low-pass sine fixture, comparator threshold
   fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TPS22918
   load-switch fixture, MCP73831 charger fixture, BQ24075 power-path charger
-  fixture, TLV803 reset-supervisor fixture, loop-stability Bode fixture, DC
-  divider-bias fixture, divider-noise fixture, and RC Monte Carlo yield
-  fixture; all
+  fixture, BQ25798 NVDC charger fixture, TLV803 reset-supervisor fixture,
+  loop-stability Bode fixture, DC divider-bias fixture, divider-noise fixture,
+  and RC Monte Carlo yield fixture; all
   direct-open projects include display-only routed schematic waypoints. Opening
   one lands directly in Sketch with a deferred Fit All, so the first view is the
   readable connected network. When a scope-ready fixture

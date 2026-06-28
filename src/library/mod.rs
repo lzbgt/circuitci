@@ -530,7 +530,17 @@ pub struct SpiceModel {
     #[serde(default)]
     pub pin_order: Vec<String>,
     #[serde(default)]
+    pub instance_parameters: Vec<SpiceInstanceParameter>,
+    #[serde(default)]
     pub valid_operating_notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpiceInstanceParameter {
+    pub spice_name: String,
+    pub component_parameter: String,
+    #[serde(default)]
+    pub default_value: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

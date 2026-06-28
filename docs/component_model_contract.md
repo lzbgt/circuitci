@@ -702,6 +702,18 @@ behavior, battery-node voltage, and preliminary charge-current observations,
 but not DPPM, battery supplement mode, ILIM/EN current-limit derivation, status
 pins, termination, thermal regulation, timer behavior, battery chemistry, cell
 safety, package dissipation, or final charger sign-off.
+`vendor.ti.bq25798` follows the same pattern for buck-boost/NVDC charger
+observation: its TI source-pinned input range, 1- to 4-cell/5 A class charger
+metadata, NVDC power-path notes, and static charge-current parameter remain
+source-backed, while its generated-SPICE face uses a reduced SYS rail source
+and BAT charge-current source. Its `simulation.spice.instance_parameters` map
+`programmed_charge_current_A` and the fixture-level
+`observation_system_voltage_V` into SPICE instance parameters, with a visible
+12 V default for the preliminary SYS observation target. That model can
+exercise adapter/SYS/BAT wiring and preliminary configured-current observation,
+but not buck-boost switching, DPM/MPPT, BATFET supplement mode, register
+sequencing, thermal regulation, safety timers, battery chemistry, or final
+charger sign-off.
 
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital

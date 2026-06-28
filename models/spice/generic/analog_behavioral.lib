@@ -58,6 +58,19 @@ BCLAMP BAT VSS I={5*(v(BAT,VSS)-4.2+sqrt((v(BAT,VSS)-4.2)*(v(BAT,VSS)-4.2)+1e-8)
 RLEAK BAT VSS 1G
 .ends CIRCUITCI_BQ24075_POWER_PATH_CHARGER
 
+.subckt CIRCUITCI_BQ25798_NVDC_CHARGER VBUS SYS BAT GND PARAMS: ICHG_A=1 VSYS_V=12 VBAT_REG_V=16.8
+* Reduced BQ25798 buck-boost/NVDC charger observation behavior.
+* ICHG_A is a host-declared charge-current setting from Board IR component
+* parameters. SYS is an ideal preliminary observation rail while VBUS is above
+* the datasheet input floor. Buck-boost switching, DPM/MPPT, BATFET supplement
+* mode, register sequencing, thermal behavior, and cell-safety behavior are
+* intentionally not modeled.
+BCHG VBUS BAT I={ICHG_A/(1+exp(8*(v(BAT,GND)-VBAT_REG_V)))}
+BSYS SYS GND V={VSYS_V/(1+exp(-4*(v(VBUS,GND)-3.6)))}
+BCLAMP BAT GND I={2*(v(BAT,GND)-VBAT_REG_V+sqrt((v(BAT,GND)-VBAT_REG_V)*(v(BAT,GND)-VBAT_REG_V)+1e-8))}
+RLEAK BAT GND 1G
+.ends CIRCUITCI_BQ25798_NVDC_CHARGER
+
 .subckt CIRCUITCI_TLV803EA29_RESET_SUPERVISOR VDD GND RESET
 * Reduced TLV803EA29 active-low open-drain threshold behavior.
 * RESET is strongly pulled low while VDD is below the nominal 2.93 V threshold
