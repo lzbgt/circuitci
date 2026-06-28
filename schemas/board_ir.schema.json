@@ -1340,6 +1340,41 @@
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "feed_paths": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "antenna_net",
+                          "feed_component",
+                          "feed_pin",
+                          "max_feed_route_length_mm",
+                          "max_matching_component_distance_mm",
+                          "source"
+                        ],
+                        "properties": {
+                          "name": { "type": "string", "minLength": 1 },
+                          "antenna_net": { "type": "string", "minLength": 1 },
+                          "feed_component": { "type": "string", "minLength": 1 },
+                          "feed_pin": { "type": "string", "minLength": 1 },
+                          "matching_components": {
+                            "type": "array",
+                            "items": { "type": "string", "minLength": 1 }
+                          },
+                          "max_feed_route_length_mm": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "max_matching_component_distance_mm": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "source": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "additionalProperties": false

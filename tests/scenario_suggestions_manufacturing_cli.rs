@@ -265,6 +265,33 @@ fn suggest_scenarios_derives_rf_antenna_keepout_template() {
             .unwrap()
             .contains("reviewed polygon/source metadata")
     );
+
+    let feed_path = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "rf_antenna_feed_path_chip_antenna_feed")
+        .expect("RF antenna feed path suggestion");
+    assert_eq!(feed_path["id"], "rf_antenna_feed_path_chip_antenna_feed");
+    assert_eq!(
+        feed_path["kind"],
+        "manufacturing_rf_antenna_feed_path_chip_antenna_feed"
+    );
+    assert_eq!(feed_path["runnable"], true);
+    assert_eq!(feed_path["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        feed_path["scenario"]["checks"][0],
+        "RF_ANTENNA_FEED_PATH_VALID"
+    );
+    assert_eq!(
+        feed_path["scenario"]["parameters"]["feed_paths"][0]["name"],
+        "chip_antenna_feed"
+    );
+    assert!(feed_path.get("required_inputs").is_none());
+    assert!(
+        feed_path["reason"]
+            .as_str()
+            .unwrap()
+            .contains("imported route, pad, placement")
+    );
 }
 
 #[test]

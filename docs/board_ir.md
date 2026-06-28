@@ -809,7 +809,24 @@ board:
               - { x_mm: 10.0, y_mm: 0.0 }
               - { x_mm: 10.0, y_mm: 10.0 }
               - { x_mm: 0.0, y_mm: 10.0 }
+        feed_paths:
+          - name: chip_antenna_feed
+            antenna_net: ANT
+            feed_component: ANT1
+            feed_pin: A
+            matching_components: [C1]
+            max_feed_route_length_mm: 10.0
+            max_matching_component_distance_mm: 2.0
+            source: antenna_layout_guide_rev_a
 ```
+
+`board.layout.constraints.rf_antenna.feed_paths[]` stores reviewed antenna
+feed-path evidence. Each rule names the antenna net, the component/pin where
+the antenna feed starts, the matching components that must stay near that feed,
+and reviewed limits for imported route length and placement proximity. The
+matching components must still have explicit component-pin and layout-pad
+evidence on the antenna net; this field does not infer RF topology from part
+values or reference designators.
 
 These values must come from explicit antenna-module/layout guidance or a
 reviewed board RF rule. They are not inferred from net names, component

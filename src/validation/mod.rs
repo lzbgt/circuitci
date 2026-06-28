@@ -67,6 +67,7 @@ pub(super) const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str =
 pub(super) const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 pub(super) const CONDUCTOR_CREEPAGE_CLEARANCE_VALID: &str = "CONDUCTOR_CREEPAGE_CLEARANCE_VALID";
 pub(super) const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
+pub(super) const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 pub(super) const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
 pub(super) const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
     "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID";
@@ -486,6 +487,9 @@ where
                 RF_ANTENNA_KEEPOUT_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_rf_antenna_keepout(bound, scenario, &mut findings)
                 }
+                RF_ANTENNA_FEED_PATH_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_rf_antenna_feed_path(bound, scenario, &mut findings)
+                }
                 CONTROLLED_IMPEDANCE_GEOMETRY_VALID
                     if scenario.scenario_type == "manufacturing" =>
                 {
@@ -748,6 +752,7 @@ where
                 | COPPER_SPACING_VALID
                 | CONDUCTOR_CREEPAGE_CLEARANCE_VALID
                 | RF_ANTENNA_KEEPOUT_VALID
+                | RF_ANTENNA_FEED_PATH_VALID
                 | CONTROLLED_IMPEDANCE_GEOMETRY_VALID
                 | CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID
                 | ADJACENT_PLANE_RETURN_PATH_VALID

@@ -180,6 +180,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
+- `RF_ANTENNA_FEED_PATH_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -612,6 +613,16 @@ Feature findings also report `copper_feature_shape`, `copper_feature_at`, and
 `copper_segment_end`, and `copper_segment_width_mm`. Region findings also
 report `copper_region_point_count` and `copper_region_intrudes_keepout`.
 Stable limit keys include `min_copper_clearance_mm`.
+
+`RF_ANTENNA_FEED_PATH_VALID` reports are emitted by `manufacturing` scenarios
+that compare reviewed RF antenna feed-path metadata against imported route,
+pad, placement, and component-pin evidence. Stable measured keys include
+`feed_path_name`, `feed_path_source`, `antenna_net`, `feed_component`,
+`feed_pin`, and `matching_component_count`. Route-length findings also report
+`feed_route_length_mm` and `feed_route_segment_count`; stable limit keys
+include `max_feed_route_length_mm`. Matching-component distance findings also
+report `matching_component` and `matching_component_distance_mm`; stable limit
+keys include `max_matching_component_distance_mm`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

@@ -143,6 +143,7 @@ Canonical executable check IDs:
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
+- `RF_ANTENNA_FEED_PATH_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1250,6 +1251,47 @@ RF antenna keepout algorithm:
 This is a 2D imported-copper evidence screen. It does not model antenna
 radiation, matching, efficiency, enclosure/cable effects, solder mask,
 three-dimensional structures, or RF field behavior.
+
+RF antenna feed-path validation uses `RF_ANTENNA_FEED_PATH_VALID` when Board IR
+contains reviewed feed-path rules under
+`board.layout.constraints.rf_antenna.feed_paths[]`, imported antenna-net route
+evidence, feed-component pad evidence, matching-component placement evidence,
+and matching-component antenna-net pad evidence. CircuitCI does not infer
+matching topology from part numbers or designator names.
+
+```yaml
+scenarios:
+  - name: antenna_feed_path
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_FEED_PATH_VALID
+    parameters:
+      feed_paths:
+        - name: chip_antenna_feed
+```
+
+RF antenna feed-path algorithm:
+
+1. Require `parameters.feed_paths[]` with explicit feed-path `name` values.
+2. Resolve each name from `board.layout.constraints.rf_antenna.feed_paths[]`.
+3. Require the reviewed rule to name an existing `antenna_net`, feed component,
+   feed pin, non-empty source, at least one matching component, and finite
+   non-negative route/proximity limits.
+4. Require `board.components.<feed_component>.pins.<feed_pin>` and
+   `board.layout.pads.<feed_component>.<feed_pin>` to be on `antenna_net`.
+5. Require finite non-zero `board.layout.routes.<antenna_net>.segments[]`
+   evidence and check total route length against `max_feed_route_length_mm`.
+6. Require each matching component to have an explicit component pin and layout
+   pad on `antenna_net`, plus finite placement evidence.
+7. Check feed-component to matching-component placement distance against
+   `max_matching_component_distance_mm`.
+8. Fail closed when any required route, pad, pin, placement, or reviewed
+   metadata is absent.
+
+This is a static layout-evidence gate for reviewed antenna-feed rules. It does
+not solve impedance, verify L/C values, prove pi/t topology, model
+discontinuities, or replace RF simulation, VNA/S-parameter measurement, or
+antenna tuning.
 
 Controlled-impedance geometry validation uses
 `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported

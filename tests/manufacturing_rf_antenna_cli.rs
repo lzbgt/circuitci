@@ -55,6 +55,80 @@ fn rf_antenna_keepout_fails_closed_without_comparable_copper() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn rf_antenna_feed_path_passes_with_short_route_and_near_matching_component() {
+    let (_dir, project_path) = write_rf_feed_path_project(8.0, 1.2, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_feed_path_fails_when_feed_route_is_too_long() {
+    let (_dir, project_path) = write_rf_feed_path_project(12.0, 1.2, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "RF_ANTENNA_FEED_PATH_VALID")
+        .expect("feed path failure");
+    assert_eq!(failure["measured"]["feed_path_name"], "chip_antenna_feed");
+    assert_eq!(
+        failure["measured"]["feed_path_source"],
+        "antenna_layout_guide_rev_a"
+    );
+    assert_eq!(failure["measured"]["antenna_net"], "ANT");
+    assert_eq!(failure["measured"]["feed_component"], "ANT1");
+    assert_eq!(failure["measured"]["feed_pin"], "A");
+    assert_eq!(failure["measured"]["feed_route_length_mm"], 12.0);
+    assert_eq!(failure["limit"]["max_feed_route_length_mm"], 10.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_feed_path_fails_when_matching_component_is_too_far() {
+    let (_dir, project_path) = write_rf_feed_path_project(8.0, 4.0, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "RF_ANTENNA_FEED_PATH_VALID")
+        .expect("feed path failure");
+    assert_eq!(failure["measured"]["matching_component"], "C1");
+    assert_eq!(failure["measured"]["matching_component_distance_mm"], 4.0);
+    assert_eq!(failure["limit"]["max_matching_component_distance_mm"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_feed_path_fails_closed_without_matching_pad_evidence() {
+    let (_dir, project_path) = write_rf_feed_path_project(8.0, 1.2, false);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("matching component C1 lacks placement and antenna-net pad evidence")
+            || failure["message"]
+                .as_str()
+                .unwrap()
+                .contains("matching component C1 has no explicit pin")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_rf_keepout_project(
     non_antenna_x_mm: f64,
     include_non_antenna_copper: bool,
@@ -125,6 +199,113 @@ board:
       keepouts:
         - name: chip_antenna_clearance
 "#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_rf_feed_path_project(
+    route_end_x_mm: f64,
+    matching_component_x_mm: f64,
+    include_matching_antenna_pad: bool,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    let matching_pin_net = if include_matching_antenna_pad {
+        "ANT"
+    } else {
+        "GND"
+    };
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: rf_antenna_feed_path_fixture
+  version: 1
+libraries:
+  - {generic_library}
+board:
+  components:
+    ANT1:
+      model: generic.analog.resistor
+      pins:
+        A: ANT
+        B: GND
+    C1:
+      model: generic.analog.capacitor
+      pins:
+        A: {matching_pin_net}
+        B: GND
+  nets:
+    ANT:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+    constraints:
+      rf_antenna:
+        feed_paths:
+          - name: chip_antenna_feed
+            antenna_net: ANT
+            feed_component: ANT1
+            feed_pin: A
+            matching_components: [C1]
+            max_feed_route_length_mm: 10.0
+            max_matching_component_distance_mm: 2.0
+            source: antenna_layout_guide_rev_a
+    placements:
+      ANT1: {{ x_mm: 0.0, y_mm: 0.0, side: top, rotation_deg: 0.0 }}
+      C1: {{ x_mm: {matching_component_x_mm}, y_mm: 0.0, side: top, rotation_deg: 0.0 }}
+    pads:
+      ANT1:
+        A:
+          at: {{ x_mm: 0.0, y_mm: 0.0 }}
+          net: ANT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 1.0, y_mm: 0.5 }}
+        B:
+          at: {{ x_mm: -1.0, y_mm: 0.0 }}
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 1.0, y_mm: 0.5 }}
+      C1:
+        A:
+          at: {{ x_mm: {matching_component_x_mm}, y_mm: 0.0 }}
+          net: {matching_pin_net}
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 0.6, y_mm: 0.4 }}
+        B:
+          at: {{ x_mm: {matching_component_x_mm}, y_mm: 0.8 }}
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: {{ x_mm: 0.6, y_mm: 0.4 }}
+    routes:
+      ANT:
+        segments:
+          - start: {{ x_mm: 0.0, y_mm: 0.0 }}
+            end: {{ x_mm: {route_end_x_mm}, y_mm: 0.0 }}
+            width_mm: 0.25
+            layer: F.Cu
+scenarios:
+  - name: rf_antenna_feed_path
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_FEED_PATH_VALID
+    parameters:
+      feed_paths:
+        - name: chip_antenna_feed
+"#,
+            generic_library = repo.join("libs/generic").display()
         ),
     )
     .unwrap();

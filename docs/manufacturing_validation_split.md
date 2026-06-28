@@ -32,11 +32,12 @@ evidence, and stable report construction. It intentionally does not model via
 inductance, stitching density, or electromagnetic return current.
 
 `src/validation/manufacturing/rf_antenna.rs` owns
-`RF_ANTENNA_KEEPOUT_VALID`, including explicit keepout-name parameter parsing,
-reviewed antenna keepout metadata validation, same-layer copper comparison,
-antenna-net exclusion, fail-closed missing evidence, and stable report
-construction. It intentionally does not model RF matching, radiation, or field
-behavior.
+`RF_ANTENNA_KEEPOUT_VALID` and `RF_ANTENNA_FEED_PATH_VALID`, including
+explicit keepout/feed-path name parameter parsing, reviewed antenna layout
+metadata validation, same-layer copper comparison, antenna-net exclusion,
+feed-path route length/proximity checks, fail-closed missing evidence, and
+stable report construction. It intentionally does not model RF matching,
+radiation, or field behavior.
 
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,

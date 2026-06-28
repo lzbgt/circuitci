@@ -445,6 +445,12 @@ The command is conservative:
   `RF_ANTENNA_KEEPOUT_VALID` template. The suggestion does not infer antenna
   nets, matching networks, tuning quality, radiation behavior, or RF
   performance from layout geometry.
+- When `board.layout.constraints.rf_antenna.feed_paths[]` contains reviewed
+  feed-path source, route-length, and matching-component proximity metadata,
+  and the board has explicit antenna-net route, feed pad, matching-component
+  placement, and matching-component antenna-net pad evidence, it emits a
+  runnable `RF_ANTENNA_FEED_PATH_VALID` template. The suggestion does not infer
+  matching topology or RF quality from designators, part values, or net names.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

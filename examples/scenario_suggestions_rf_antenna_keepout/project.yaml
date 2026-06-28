@@ -1,9 +1,20 @@
 project:
   name: scenario_suggestions_rf_antenna_keepout
   version: "1"
-libraries: []
+libraries:
+  - ../../libs/generic
 board:
-  components: {}
+  components:
+    ANT1:
+      model: generic.analog.resistor
+      pins:
+        A: ANT
+        B: GND
+    C1:
+      model: generic.analog.capacitor
+      pins:
+        A: ANT
+        B: GND
   nets:
     ANT:
       kind: digital_or_analog
@@ -23,6 +34,56 @@ board:
               - { x_mm: 10.0, y_mm: 0.0 }
               - { x_mm: 10.0, y_mm: 10.0 }
               - { x_mm: 0.0, y_mm: 10.0 }
+        feed_paths:
+          - name: chip_antenna_feed
+            antenna_net: ANT
+            feed_component: ANT1
+            feed_pin: A
+            matching_components: [C1]
+            max_feed_route_length_mm: 10.0
+            max_matching_component_distance_mm: 2.0
+            source: antenna_layout_guide_rev_a
+    placements:
+      ANT1: { x_mm: 0.0, y_mm: 0.0, side: top, rotation_deg: 0.0 }
+      C1: { x_mm: 1.2, y_mm: 0.0, side: top, rotation_deg: 0.0 }
+    pads:
+      ANT1:
+        A:
+          at: { x_mm: 0.0, y_mm: 0.0 }
+          net: ANT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 0.5 }
+        B:
+          at: { x_mm: -1.0, y_mm: 0.0 }
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 0.5 }
+      C1:
+        A:
+          at: { x_mm: 1.2, y_mm: 0.0 }
+          net: ANT
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+        B:
+          at: { x_mm: 1.2, y_mm: 0.8 }
+          net: GND
+          layers: [F.Cu]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.6, y_mm: 0.4 }
+    routes:
+      ANT:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 0.0 }
+            end: { x_mm: 8.0, y_mm: 0.0 }
+            width_mm: 0.25
+            layer: F.Cu
     copper:
       features:
         - at: { x_mm: 5.0, y_mm: 5.0 }

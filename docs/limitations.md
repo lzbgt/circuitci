@@ -284,6 +284,14 @@ without explicit imported mechanical evidence.
   solder-mask loading, 3D structures, or RF field behavior. Passing this rule
   only means comparable imported copper is outside the reviewed 2D keepout
   clearance.
+- `RF_ANTENNA_FEED_PATH_VALID` compares reviewed antenna feed-path metadata
+  against explicit antenna-net route length, feed component/pin pad evidence,
+  matching component placement, and matching component antenna-net pad evidence.
+  It does not infer a pi/L/T matching topology, verify component values, solve
+  feed impedance, model launch discontinuities, prove radiation performance, or
+  replace RF simulation and VNA/S-parameter measurement. Passing this rule only
+  means the imported layout evidence satisfies the reviewed static feed-path
+  length and proximity limits.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

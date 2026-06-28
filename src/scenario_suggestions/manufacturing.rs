@@ -1,5 +1,8 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
-use crate::board_ir::{LayoutCopper, LayoutCopperFeature, LayoutPoint, RfAntennaKeepoutRule};
+use crate::board_ir::{
+    LayoutCopper, LayoutCopperFeature, LayoutPoint, NetRoute, RfAntennaFeedPathRule,
+    RfAntennaKeepoutRule, RouteSegment,
+};
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -16,6 +19,7 @@ const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
 const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
+const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -73,6 +77,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     let has_castellated_drill = layout.drills.iter().any(|drill| drill.castellated);
 
     suggestions.extend(rf_antenna_keepout_suggestions(bound, &project_name));
+    suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
     if !layout.drills.is_empty() {
         push_if_not_declared(
             bound,
@@ -907,6 +912,172 @@ fn rf_antenna_keepout_check_declared(bound: &BoundBoard<'_>, keepout_name: &str)
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(keepout_name)
+                    })
+                })
+    })
+}
+
+fn rf_antenna_feed_path_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for feed_path in &bound.project.board.layout.constraints.rf_antenna.feed_paths {
+        if !rf_antenna_feed_path_has_evidence(bound, feed_path)
+            || rf_antenna_feed_path_check_declared(bound, &feed_path.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("rf_antenna_feed_path_{}", sanitized_name(&feed_path.name)),
+            true,
+            &format!(
+                "RF antenna feed path {} has reviewed source metadata plus imported route, pad, placement, and matching-component evidence.",
+                feed_path.name
+            ),
+            &format!(
+                "{}_{}_rf_antenna_feed_path",
+                project_name,
+                sanitized_name(&feed_path.name)
+            ),
+            RF_ANTENNA_FEED_PATH_VALID,
+            Some(BTreeMap::from([(
+                "feed_paths".to_string(),
+                json!([{ "name": feed_path.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn rf_antenna_feed_path_has_evidence(
+    bound: &BoundBoard<'_>,
+    feed_path: &RfAntennaFeedPathRule,
+) -> bool {
+    !feed_path.name.trim().is_empty()
+        && !feed_path.source.trim().is_empty()
+        && bound
+            .project
+            .board
+            .nets
+            .contains_key(&feed_path.antenna_net)
+        && feed_path.max_feed_route_length_mm.is_finite()
+        && feed_path.max_feed_route_length_mm >= 0.0
+        && feed_path.max_matching_component_distance_mm.is_finite()
+        && feed_path.max_matching_component_distance_mm >= 0.0
+        && !feed_path.matching_components.is_empty()
+        && bound
+            .project
+            .board
+            .components
+            .get(&feed_path.feed_component)
+            .is_some_and(|component| {
+                component.pins.get(&feed_path.feed_pin) == Some(&feed_path.antenna_net)
+            })
+        && bound
+            .project
+            .board
+            .layout
+            .pads
+            .get(&feed_path.feed_component)
+            .and_then(|pads| pads.get(&feed_path.feed_pin))
+            .is_some_and(|pad| {
+                pad.net == feed_path.antenna_net
+                    && pad.at.x_mm.is_finite()
+                    && pad.at.y_mm.is_finite()
+            })
+        && bound
+            .project
+            .board
+            .layout
+            .routes
+            .get(&feed_path.antenna_net)
+            .is_some_and(route_has_finite_segments)
+        && feed_path.matching_components.iter().all(|component| {
+            bound.project.board.components.contains_key(component)
+                && component_has_antenna_pin(bound, component, &feed_path.antenna_net)
+                && bound
+                    .project
+                    .board
+                    .layout
+                    .placements
+                    .get(component)
+                    .is_some_and(|placement| {
+                        placement.x_mm.is_finite() && placement.y_mm.is_finite()
+                    })
+                && component_has_antenna_layout_pad(bound, component, &feed_path.antenna_net)
+        })
+        && bound
+            .project
+            .board
+            .layout
+            .placements
+            .get(&feed_path.feed_component)
+            .is_some_and(|placement| placement.x_mm.is_finite() && placement.y_mm.is_finite())
+}
+
+fn route_has_finite_segments(route: &NetRoute) -> bool {
+    !route.segments.is_empty() && route.segments.iter().all(route_segment_is_finite)
+}
+
+fn route_segment_is_finite(segment: &RouteSegment) -> bool {
+    !segment.layer.trim().is_empty()
+        && segment.width_mm.is_finite()
+        && segment.width_mm > 0.0
+        && segment.start.x_mm.is_finite()
+        && segment.start.y_mm.is_finite()
+        && segment.end.x_mm.is_finite()
+        && segment.end.y_mm.is_finite()
+        && (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+            > f64::EPSILON
+}
+
+fn component_has_antenna_pin(bound: &BoundBoard<'_>, component: &str, antenna_net: &str) -> bool {
+    bound
+        .project
+        .board
+        .components
+        .get(component)
+        .is_some_and(|spec| spec.pins.values().any(|net| net == antenna_net))
+}
+
+fn component_has_antenna_layout_pad(
+    bound: &BoundBoard<'_>,
+    component: &str,
+    antenna_net: &str,
+) -> bool {
+    bound
+        .project
+        .board
+        .layout
+        .pads
+        .get(component)
+        .is_some_and(|pads| {
+            pads.values().any(|pad| {
+                pad.net == antenna_net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite()
+            })
+        })
+}
+
+fn rf_antenna_feed_path_check_declared(bound: &BoundBoard<'_>, feed_path_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == RF_ANTENNA_FEED_PATH_VALID)
+            && scenario
+                .parameters
+                .get("feed_paths")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|feed_paths| {
+                    feed_paths.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(feed_path_name)
                     })
                 })
     })
