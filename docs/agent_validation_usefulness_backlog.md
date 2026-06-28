@@ -45,7 +45,8 @@ Implemented slice:
 - report whether the original finding disappeared across failures, warnings,
   and infos without new critical findings,
 - report guarded no-op and ambiguous cases in `repair_report.json`/`.md` via
-  `messages[]`, `summary.blocked`, `summary.skipped`, and blocked proposals,
+  `messages[]`, `reason_codes[]`, `summary.blocked`, `summary.skipped`, and
+  proposal-level `reason_code` values,
 - support `repair-yaml --dry-run`, which writes the original validation report
   and repair proposals without writing a repaired copy or rerunning validation,
 - support `repair-yaml --apply-report`, which consumes a previous dry-run
@@ -55,12 +56,6 @@ Implemented slice:
 - support selective report-driven apply with repeated `--proposal-id` values,
   preserving the stale-report guards while marking non-selected proposals as
   skipped in the apply report.
-
-Useful next slice:
-
-- add machine-readable repair reason codes for blocked and no-op proposal
-  reports, so agents can branch on unsupported/unsafe cases without matching
-  prose in `messages[]`.
 
 Do not start with arbitrary schematic or PCB editing. That remains too broad
 until several narrow YAML repair loops are proven end to end.

@@ -767,7 +767,10 @@ bindings that the resolved model does not declare, and
 `REQUIRED_PIN_FLOATING` connects a missing required pin only when existing
 component power-domain metadata already names a compatible existing net for
 that pin. Repair proof matching covers failures, warnings, and infos, while
-`no_new_criticals` remains the apply-mode safety gate.
+`no_new_criticals` remains the apply-mode safety gate. Repair reports include
+human `messages[]` plus stable `reason_codes[]`; blocked and skipped proposals
+also carry `reason_code` so agents can distinguish unsupported, unsafe,
+unselected, and stale/no-op cases without parsing prose.
 
 Resistor-programmed charger current inference is centralized in
 `src/charger_programming.rs`. It requires exactly one positive resistor between

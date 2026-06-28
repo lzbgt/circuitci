@@ -11,6 +11,7 @@
     "mode",
     "result",
     "messages",
+    "reason_codes",
     "summary",
     "original_project",
     "repaired_project",
@@ -28,6 +29,10 @@
     "mode": { "enum": ["apply", "dry_run", "apply_report"] },
     "result": { "enum": ["pass", "fail", "dry_run"] },
     "messages": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "reason_codes": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
@@ -118,6 +123,7 @@
         "id",
         "finding_id",
         "status",
+        "reason_code",
         "description",
         "yaml_path",
         "affected_pins",
@@ -127,6 +133,9 @@
         "id": { "type": "string", "minLength": 1 },
         "finding_id": { "type": "string", "minLength": 1 },
         "status": { "enum": ["proposed", "applied", "blocked", "skipped"] },
+        "reason_code": {
+          "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+        },
         "description": { "type": "string", "minLength": 1 },
         "yaml_path": { "type": "string", "minLength": 1 },
         "affected_pins": {

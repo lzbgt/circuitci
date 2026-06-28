@@ -36,6 +36,8 @@ pub struct BoardYamlRepairReport {
     pub mode: String,
     pub result: String,
     pub messages: Vec<String>,
+    #[serde(default)]
+    pub reason_codes: Vec<String>,
     pub summary: BoardYamlRepairSummary,
     pub original_project: String,
     pub repaired_project: Option<String>,
@@ -65,6 +67,8 @@ pub struct BoardYamlRepairProposal {
     pub id: String,
     pub finding_id: String,
     pub status: String,
+    #[serde(default)]
+    pub reason_code: Option<String>,
     pub description: String,
     pub yaml_path: String,
     pub affected_pins: Vec<String>,
@@ -164,7 +168,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             .iter()
             .filter(|proposal| proposal.status == "skipped")
             .count();
-        let messages = repair_messages(
+        let repair_messages = repair_messages(
             finding_id,
             RepairMessageContext {
                 original_matching: &original_matching,
@@ -178,13 +182,14 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             },
         );
         let report = BoardYamlRepairReport {
-            schema_version: "0.3.0".to_string(),
+            schema_version: "0.4.0".to_string(),
             project: project.project.name.clone(),
             profile: options.profile.clone(),
             finding: finding_id.to_string(),
             mode: "dry_run".to_string(),
             result: "dry_run".to_string(),
-            messages,
+            messages: repair_messages.messages,
+            reason_codes: repair_messages.reason_codes,
             summary: BoardYamlRepairSummary {
                 proposed: proposals.len(),
                 selected: 0,
@@ -288,7 +293,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         .iter()
         .filter(|proposal| proposal.status == "skipped")
         .count();
-    let messages = repair_messages(
+    let repair_messages = repair_messages(
         finding_id,
         RepairMessageContext {
             original_matching: &original_matching,
@@ -308,13 +313,14 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             "fail"
         };
     let report = BoardYamlRepairReport {
-        schema_version: "0.3.0".to_string(),
+        schema_version: "0.4.0".to_string(),
         project: project.project.name.clone(),
         profile: options.profile.clone(),
         finding: finding_id.to_string(),
         mode: mode.to_string(),
         result: result.to_string(),
-        messages,
+        messages: repair_messages.messages,
+        reason_codes: repair_messages.reason_codes,
         summary: BoardYamlRepairSummary {
             proposed: proposals.len(),
             selected,
@@ -350,8 +356,18 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
 fn load_apply_report(report_path: &Path) -> Result<BoardYamlRepairReport> {
     let report_text = std::fs::read_to_string(report_path)
         .with_context(|| format!("Failed to read repair report {}.", report_path.display()))?;
-    serde_json::from_str(&report_text)
-        .with_context(|| format!("Failed to parse repair report {}.", report_path.display()))
+    let mut report: BoardYamlRepairReport = serde_json::from_str(&report_text)
+        .with_context(|| format!("Failed to parse repair report {}.", report_path.display()))?;
+    for proposal in &mut report.proposals {
+        if proposal.reason_code.is_none()
+            && proposal.status == "blocked"
+            && proposal.finding_id == BoardYamlRepairFindingKind::NetNotFound.finding_id()
+            && proposal.edits.is_empty()
+        {
+            proposal.reason_code = Some("conflicting_inferred_net_kinds".to_string());
+        }
+    }
+    Ok(report)
 }
 
 fn validate_apply_report(
@@ -460,6 +476,7 @@ fn select_apply_report_proposals(
             }
         } else if proposal.status == "proposed" {
             proposal.status = "skipped".to_string();
+            proposal.reason_code = Some("not_selected".to_string());
         }
     }
 
@@ -522,6 +539,7 @@ fn invalid_power_domain_proposals(
                     .finding_id()
                     .to_string(),
                 status: "proposed".to_string(),
+                reason_code: None,
                 description: format!(
                     "Declare net {net} as power because it feeds model power pin(s) {}.",
                     affected_pins.join(", ")
@@ -581,6 +599,7 @@ fn net_not_found_proposals(
                     .finding_id()
                     .to_string(),
                 status: "blocked".to_string(),
+                reason_code: Some("conflicting_inferred_net_kinds".to_string()),
                 description: format!(
                     "Not repairing missing net {net} because declared model pins infer conflicting net kinds: {}.",
                     kinds.join(", ")
@@ -597,6 +616,7 @@ fn net_not_found_proposals(
                 .finding_id()
                 .to_string(),
             status: "proposed".to_string(),
+            reason_code: None,
             description: format!(
                 "Add missing net {net} as {kind} because it is referenced by declared model pin(s) {}.",
                 draft.affected_pins.join(", ")
@@ -637,6 +657,7 @@ fn pin_not_declared_proposals(
                     .finding_id()
                     .to_string(),
                 status: "proposed".to_string(),
+                reason_code: None,
                 description: format!(
                     "Remove stray pin binding {component_id}.{pin_name} because model {} does not declare it.",
                     model.component_id
@@ -688,6 +709,7 @@ fn required_pin_floating_proposals(
                     .finding_id()
                     .to_string(),
                 status: "proposed".to_string(),
+                reason_code: None,
                 description: format!(
                     "Connect required pin {component_id}.{pin_name} to existing {expected_kind} net {net_name} from {source}."
                 ),
@@ -769,6 +791,7 @@ fn apply_proposals(
                 .and_then(|kind| kind.as_str())
             else {
                 proposal.status = "skipped".to_string();
+                proposal.reason_code = Some("unapplicable_yaml_path".to_string());
                 continue;
             };
             add_net(project_yaml, net_name, kind)?;
@@ -778,6 +801,7 @@ fn apply_proposals(
                     let Some(net_name) = proposal.edits.first().and_then(|edit| edit.to.as_str())
                     else {
                         proposal.status = "skipped".to_string();
+                        proposal.reason_code = Some("unapplicable_yaml_path".to_string());
                         continue;
                     };
                     add_component_pin(project_yaml, component_id, pin_name, net_name)?;
@@ -785,11 +809,13 @@ fn apply_proposals(
                 Some("remove") => remove_component_pin(project_yaml, component_id, pin_name)?,
                 _ => {
                     proposal.status = "skipped".to_string();
+                    proposal.reason_code = Some("unapplicable_yaml_path".to_string());
                     continue;
                 }
             }
         } else {
             proposal.status = "skipped".to_string();
+            proposal.reason_code = Some("unapplicable_yaml_path".to_string());
             continue;
         }
         proposal.status = "applied".to_string();
@@ -1016,29 +1042,39 @@ struct RepairMessageContext<'a> {
     selective_apply: bool,
 }
 
-fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<String> {
+struct RepairMessages {
+    messages: Vec<String>,
+    reason_codes: Vec<String>,
+}
+
+fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> RepairMessages {
     let mut messages = Vec::new();
+    let mut reason_codes = Vec::new();
     if context.dry_run {
         messages.push(
             "Dry run skipped repaired project writing and repaired validation; proposal statuses were not applied."
                 .to_string(),
         );
+        reason_codes.push("dry_run_not_validated".to_string());
     }
     if context.original_matching.is_empty() {
         messages.push(format!(
             "Original validation report did not contain {finding_id}; no matching finding was available to repair."
         ));
+        reason_codes.push("target_finding_absent".to_string());
     }
     if context.proposed == 0 {
         messages.push(format!(
             "No supported {finding_id} repair proposal was generated."
         ));
+        reason_codes.push("no_supported_proposal".to_string());
     }
     if context.blocked > 0 {
         messages.push(format!(
             "{} repair proposal(s) were blocked as ambiguous or unsafe.",
             context.blocked
         ));
+        reason_codes.push("proposal_blocked".to_string());
     }
     if context.skipped > 0 {
         if context.selective_apply {
@@ -1046,11 +1082,13 @@ fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<S
                 "{} repair proposal(s) were skipped because they were not selected by --proposal-id.",
                 context.skipped
             ));
+            reason_codes.push("proposal_skipped_not_selected".to_string());
         } else {
             messages.push(format!(
                 "{} repair proposal(s) were skipped because their YAML edit path was not applicable.",
                 context.skipped
             ));
+            reason_codes.push("proposal_skipped_unapplicable_path".to_string());
         }
     }
     if !context.dry_run
@@ -1061,10 +1099,12 @@ fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<S
             messages.push(format!(
                 "Target finding {finding_id} remained after validating the selective repaired copy; non-selected findings may still require repair."
             ));
+            reason_codes.push("target_finding_remains_selective_apply".to_string());
         } else {
             messages.push(format!(
                 "Target finding {finding_id} remained after validating the repaired copy."
             ));
+            reason_codes.push("target_finding_remains".to_string());
         }
     }
     if !context.new_criticals.is_empty() {
@@ -1072,8 +1112,12 @@ fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<S
             "Repaired copy introduced {} new critical finding(s).",
             context.new_criticals.len()
         ));
+        reason_codes.push("new_criticals_introduced".to_string());
     }
-    messages
+    RepairMessages {
+        messages,
+        reason_codes,
+    }
 }
 
 fn repair_reproduction_command(options: &BoardYamlRepairOptions) -> String {
@@ -1132,8 +1176,12 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     if report.messages.is_empty() {
         text.push_str("None.\n\n");
     } else {
-        for message in &report.messages {
-            text.push_str(&format!("- {message}\n"));
+        for (index, message) in report.messages.iter().enumerate() {
+            if let Some(code) = report.reason_codes.get(index) {
+                text.push_str(&format!("- `{code}`: {message}\n"));
+            } else {
+                text.push_str(&format!("- {message}\n"));
+            }
         }
         text.push('\n');
     }
@@ -1143,8 +1191,11 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     } else {
         for proposal in &report.proposals {
             text.push_str(&format!(
-                "- `{}` `{}`: {}\n",
-                proposal.id, proposal.status, proposal.description
+                "- `{}` `{}` `{}`: {}\n",
+                proposal.id,
+                proposal.status,
+                proposal.reason_code.as_deref().unwrap_or("none"),
+                proposal.description
             ));
             for edit in &proposal.edits {
                 text.push_str(&format!(

@@ -185,6 +185,13 @@ board:
             .any(|message| message.as_str().unwrap().contains("Dry run skipped"))
     );
     assert!(
+        repair_report["reason_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|code| code == "dry_run_not_validated")
+    );
+    assert!(
         repair_report["reproduction"]["command"]
             .as_str()
             .unwrap()
@@ -398,6 +405,9 @@ board:
             .iter()
             .any(|proposal| { proposal["id"] != selected_id && proposal["status"] == "skipped" })
     );
+    assert!(proposals.iter().any(|proposal| {
+        proposal["id"] != selected_id && proposal["reason_code"] == "not_selected"
+    }));
     let messages = repair_report["messages"].as_array().unwrap();
     assert!(messages.iter().any(|message| {
         message
@@ -405,12 +415,26 @@ board:
             .unwrap()
             .contains("not selected by --proposal-id")
     }));
+    assert!(
+        repair_report["reason_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|code| code == "proposal_skipped_not_selected")
+    );
     assert!(messages.iter().any(|message| {
         message
             .as_str()
             .unwrap()
             .contains("selective repaired copy")
     }));
+    assert!(
+        repair_report["reason_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|code| code == "target_finding_remains_selective_apply")
+    );
     assert!(
         repair_report["reproduction"]["command"]
             .as_str()
@@ -671,6 +695,10 @@ board:
     assert_eq!(repair_report["proof"]["no_new_criticals"], true);
     assert_eq!(repair_report["proposals"][0]["status"], "blocked");
     assert_eq!(
+        repair_report["proposals"][0]["reason_code"],
+        "conflicting_inferred_net_kinds"
+    );
+    assert_eq!(
         repair_report["proposals"][0]["yaml_path"],
         "/board/nets/shared"
     );
@@ -691,6 +719,13 @@ board:
             .unwrap()
             .iter()
             .any(|message| message.as_str().unwrap().contains("blocked"))
+    );
+    assert!(
+        repair_report["reason_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|code| code == "proposal_blocked")
     );
     assert!(
         repair_report["proposals"][0]["description"]
@@ -1011,6 +1046,17 @@ board:
                 .unwrap()
                 .contains("No supported REQUIRED_PIN_FLOATING repair proposal"))
     );
+    let reason_codes = repair_report["reason_codes"].as_array().unwrap();
+    assert!(
+        reason_codes
+            .iter()
+            .any(|code| code == "no_supported_proposal")
+    );
+    assert!(
+        reason_codes
+            .iter()
+            .any(|code| code == "target_finding_remains")
+    );
 
     let repaired_yaml: Value = serde_yaml_ng::from_str(
         &std::fs::read_to_string(output.join("repaired/project.yaml")).unwrap(),
@@ -1093,6 +1139,17 @@ board:
             .unwrap()
             .contains("No supported PIN_NOT_DECLARED repair proposal")
     }));
+    let reason_codes = repair_report["reason_codes"].as_array().unwrap();
+    assert!(
+        reason_codes
+            .iter()
+            .any(|code| code == "target_finding_absent")
+    );
+    assert!(
+        reason_codes
+            .iter()
+            .any(|code| code == "no_supported_proposal")
+    );
 }
 
 fn assert_repair_report_schema_valid(report: &Value) {
