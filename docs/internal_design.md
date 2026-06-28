@@ -755,9 +755,12 @@ candidate edits in `status: proposed` for cheap agent inspection. Report-driven
 apply mode consumes a previous dry-run report only after checking the project
 path, project name, profile, finding, original matching findings, and
 regenerated proposal list still match; it then applies those proposed edits to a
-copied project and runs the same repaired validation proof. Supported repair
-classes are intentionally narrow: `INVALID_POWER_DOMAIN` changes an existing
-non-power net to `power` when a model power pin proves that role,
+copied project and runs the same repaired validation proof. With repeated
+`--proposal-id` values, report-driven apply selects only those still-proposed
+ids, marks other proposed edits as skipped, and leaves remaining same-class
+findings visible in repaired proof. Supported repair classes are intentionally
+narrow: `INVALID_POWER_DOMAIN` changes an existing non-power net to `power` when
+a model power pin proves that role,
 `NET_NOT_FOUND` adds a missing net only when declared model pins infer a single
 unambiguous net kind, and `PIN_NOT_DECLARED` removes only copied-project pin
 bindings that the resolved model does not declare. Repair proof matching covers

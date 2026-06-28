@@ -48,6 +48,8 @@ enum Command {
         dry_run: bool,
         #[arg(long)]
         apply_report: Option<PathBuf>,
+        #[arg(long = "proposal-id")]
+        proposal_ids: Vec<String>,
     },
     SuggestScenarios {
         project: PathBuf,
@@ -238,7 +240,16 @@ pub fn run() -> Result<()> {
             finding,
             dry_run,
             apply_report,
-        }) => run_repair_yaml(project, profile, output, finding, dry_run, apply_report),
+            proposal_ids,
+        }) => run_repair_yaml(
+            project,
+            profile,
+            output,
+            finding,
+            dry_run,
+            apply_report,
+            proposal_ids,
+        ),
         Some(Command::SuggestScenarios {
             project,
             profile,
@@ -349,9 +360,13 @@ fn run_repair_yaml(
     finding: RepairYamlFinding,
     dry_run: bool,
     apply_report: Option<PathBuf>,
+    proposal_ids: Vec<String>,
 ) -> Result<()> {
     if dry_run && apply_report.is_some() {
         anyhow::bail!("--dry-run and --apply-report cannot be used together.");
+    }
+    if !proposal_ids.is_empty() && apply_report.is_none() {
+        anyhow::bail!("--proposal-id can only be used with --apply-report.");
     }
     let report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
         project,
@@ -360,13 +375,15 @@ fn run_repair_yaml(
         finding: finding.as_repair_kind(),
         dry_run,
         apply_report,
+        proposal_ids,
     })?;
     println!(
-        "CircuitCI YAML repair {}: {} mode={} (proposed={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
+        "CircuitCI YAML repair {}: {} mode={} (proposed={}, selected={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
         report.finding,
         report.result,
         report.mode,
         report.summary.proposed,
+        report.summary.selected,
         report.summary.applied,
         report.summary.blocked,
         report.summary.skipped,

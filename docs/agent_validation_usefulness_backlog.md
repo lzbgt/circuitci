@@ -51,13 +51,16 @@ Implemented slice:
 - support `repair-yaml --apply-report`, which consumes a previous dry-run
   `repair_report.json`, verifies the project, profile, finding, original
   matching findings, and regenerated proposal list still match, then applies
-  exactly those proposed edits to a copied project and reruns validation.
+  exactly those proposed edits to a copied project and reruns validation,
+- support selective report-driven apply with repeated `--proposal-id` values,
+  preserving the stale-report guards while marking non-selected proposals as
+  skipped in the apply report.
 
 Useful next slice:
 
-- add selective proposal approval for report-driven apply, such as applying a
-  requested proposal id from a multi-proposal dry-run report while preserving the
-  same stale-report guards.
+- add a fourth deterministic YAML repair class for a common remaining Board IR
+  binding issue, only if it can be proven from model contracts without inventing
+  electrical intent.
 
 Do not start with arbitrary schematic or PCB editing. That remains too broad
 until several narrow YAML repair loops are proven end to end.

@@ -266,6 +266,7 @@ board:
     assert_eq!(repair_report["mode"], "apply_report");
     assert_eq!(repair_report["finding"], "INVALID_POWER_DOMAIN");
     assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["selected"], 1);
     assert_eq!(repair_report["summary"]["applied"], 1);
     assert_eq!(repair_report["summary"]["blocked"], 0);
     assert_eq!(repair_report["summary"]["skipped"], 0);
@@ -284,6 +285,151 @@ board:
     )
     .unwrap();
     assert_eq!(repaired_yaml["board"]["nets"]["vin"]["kind"], "power");
+}
+
+#[test]
+fn repair_yaml_apply_report_applies_selected_proposal_id_only() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: selective_apply_report_power_net_kind
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+    V2:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vaux
+        N: gnd
+  nets:
+    vin:
+      kind: digital_or_analog
+      nominal_voltage: 5.0
+      powered: true
+    vaux:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+    let dry_output = temp.path().join("repair_dry");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--dry-run",
+            "--output",
+            dry_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let dry_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(dry_output.join("repair_report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(dry_report["summary"]["proposed"], 2);
+    let selected_id = dry_report["proposals"][0]["id"].as_str().unwrap();
+    let selected_path = dry_report["proposals"][0]["yaml_path"].as_str().unwrap();
+    let selected_net = selected_path
+        .strip_prefix("/board/nets/")
+        .unwrap()
+        .strip_suffix("/kind")
+        .unwrap();
+    let unselected_net = if selected_net == "vin" { "vaux" } else { "vin" };
+
+    let apply_output = temp.path().join("repair_apply");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--apply-report",
+            dry_output.join("repair_report.json").to_str().unwrap(),
+            "--proposal-id",
+            selected_id,
+            "--output",
+            apply_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(apply_output.join("repair_report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "fail");
+    assert_eq!(repair_report["mode"], "apply_report");
+    assert_eq!(repair_report["summary"]["proposed"], 2);
+    assert_eq!(repair_report["summary"]["selected"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["skipped"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 1);
+    assert_eq!(repair_report["proof"]["original_finding_removed"], false);
+    assert_eq!(repair_report["proof"]["no_new_criticals"], true);
+    let proposals = repair_report["proposals"].as_array().unwrap();
+    assert!(
+        proposals
+            .iter()
+            .any(|proposal| { proposal["id"] == selected_id && proposal["status"] == "applied" })
+    );
+    assert!(
+        proposals
+            .iter()
+            .any(|proposal| { proposal["id"] != selected_id && proposal["status"] == "skipped" })
+    );
+    let messages = repair_report["messages"].as_array().unwrap();
+    assert!(messages.iter().any(|message| {
+        message
+            .as_str()
+            .unwrap()
+            .contains("not selected by --proposal-id")
+    }));
+    assert!(messages.iter().any(|message| {
+        message
+            .as_str()
+            .unwrap()
+            .contains("selective repaired copy")
+    }));
+    assert!(
+        repair_report["reproduction"]["command"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("--proposal-id {selected_id}"))
+    );
+
+    let repaired_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(apply_output.join("repaired/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        repaired_yaml["board"]["nets"][selected_net]["kind"],
+        "power"
+    );
+    assert_eq!(
+        repaired_yaml["board"]["nets"][unselected_net]["kind"],
+        "digital_or_analog"
+    );
 }
 
 #[test]

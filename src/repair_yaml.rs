@@ -23,6 +23,7 @@ pub struct BoardYamlRepairOptions {
     pub finding: BoardYamlRepairFindingKind,
     pub dry_run: bool,
     pub apply_report: Option<PathBuf>,
+    pub proposal_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -47,6 +48,7 @@ pub struct BoardYamlRepairReport {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BoardYamlRepairSummary {
     pub proposed: usize,
+    pub selected: usize,
     pub applied: usize,
     pub blocked: usize,
     pub skipped: usize,
@@ -168,10 +170,11 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
                 skipped,
                 new_criticals: &[],
                 dry_run: true,
+                selective_apply: false,
             },
         );
         let report = BoardYamlRepairReport {
-            schema_version: "0.2.0".to_string(),
+            schema_version: "0.3.0".to_string(),
             project: project.project.name.clone(),
             profile: options.profile.clone(),
             finding: finding_id.to_string(),
@@ -180,6 +183,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             messages,
             summary: BoardYamlRepairSummary {
                 proposed: proposals.len(),
+                selected: 0,
                 applied: 0,
                 blocked,
                 skipped,
@@ -218,12 +222,16 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             &original_matching,
             &proposals,
         )?;
-        proposals = dry_run_report.proposals;
+        proposals = select_apply_report_proposals(dry_run_report.proposals, &options.proposal_ids)?;
         "apply_report"
     } else {
         "apply"
     };
 
+    let selected = proposals
+        .iter()
+        .filter(|proposal| proposal.status == "proposed")
+        .count();
     let mut repaired_yaml = project_yaml;
     let applied = apply_proposals(&mut repaired_yaml, &mut proposals)?;
     absolutize_relative_libraries(
@@ -286,15 +294,17 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             skipped,
             new_criticals: &new_criticals,
             dry_run: false,
+            selective_apply: !options.proposal_ids.is_empty(),
         },
     );
-    let result = if original_finding_removed && no_new_criticals && applied == proposals.len() {
-        "pass"
-    } else {
-        "fail"
-    };
+    let result =
+        if original_finding_removed && no_new_criticals && selected > 0 && applied == selected {
+            "pass"
+        } else {
+            "fail"
+        };
     let report = BoardYamlRepairReport {
-        schema_version: "0.2.0".to_string(),
+        schema_version: "0.3.0".to_string(),
         project: project.project.name.clone(),
         profile: options.profile.clone(),
         finding: finding_id.to_string(),
@@ -303,6 +313,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         messages,
         summary: BoardYamlRepairSummary {
             proposed: proposals.len(),
+            selected,
             applied,
             blocked,
             skipped,
@@ -410,6 +421,45 @@ fn validate_apply_report(
         );
     }
     Ok(())
+}
+
+fn select_apply_report_proposals(
+    mut proposals: Vec<BoardYamlRepairProposal>,
+    proposal_ids: &[String],
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    if proposal_ids.is_empty() {
+        return Ok(proposals);
+    }
+
+    let requested: BTreeSet<_> = proposal_ids.iter().map(String::as_str).collect();
+    if requested.len() != proposal_ids.len() {
+        bail!("--proposal-id values must be unique.");
+    }
+    let known: BTreeSet<_> = proposals
+        .iter()
+        .map(|proposal| proposal.id.as_str())
+        .collect();
+    for proposal_id in &requested {
+        if !known.contains(proposal_id) {
+            bail!("Dry-run report does not contain requested proposal id {proposal_id}.");
+        }
+    }
+
+    for proposal in &mut proposals {
+        if requested.contains(proposal.id.as_str()) {
+            if proposal.status != "proposed" {
+                bail!(
+                    "Requested proposal id {} has status {} and cannot be applied.",
+                    proposal.id,
+                    proposal.status
+                );
+            }
+        } else if proposal.status == "proposed" {
+            proposal.status = "skipped".to_string();
+        }
+    }
+
+    Ok(proposals)
 }
 
 fn canonicalize_existing_path(path: &Path) -> Result<PathBuf> {
@@ -848,6 +898,7 @@ struct RepairMessageContext<'a> {
     skipped: usize,
     new_criticals: &'a [BoardYamlFindingEvidence],
     dry_run: bool,
+    selective_apply: bool,
 }
 
 fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<String> {
@@ -875,18 +926,31 @@ fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<S
         ));
     }
     if context.skipped > 0 {
-        messages.push(format!(
-            "{} repair proposal(s) were skipped because their YAML edit path was not applicable.",
-            context.skipped
-        ));
+        if context.selective_apply {
+            messages.push(format!(
+                "{} repair proposal(s) were skipped because they were not selected by --proposal-id.",
+                context.skipped
+            ));
+        } else {
+            messages.push(format!(
+                "{} repair proposal(s) were skipped because their YAML edit path was not applicable.",
+                context.skipped
+            ));
+        }
     }
     if !context.dry_run
         && !context.original_matching.is_empty()
         && !context.repaired_matching.is_empty()
     {
-        messages.push(format!(
-            "Target finding {finding_id} remained after validating the repaired copy."
-        ));
+        if context.selective_apply {
+            messages.push(format!(
+                "Target finding {finding_id} remained after validating the selective repaired copy; non-selected findings may still require repair."
+            ));
+        } else {
+            messages.push(format!(
+                "Target finding {finding_id} remained after validating the repaired copy."
+            ));
+        }
     }
     if !context.new_criticals.is_empty() {
         messages.push(format!(
@@ -911,6 +975,9 @@ fn repair_reproduction_command(options: &BoardYamlRepairOptions) -> String {
     if let Some(apply_report) = &options.apply_report {
         command.push_str(&format!(" --apply-report {}", apply_report.display()));
     }
+    for proposal_id in &options.proposal_ids {
+        command.push_str(&format!(" --proposal-id {proposal_id}"));
+    }
     command
 }
 
@@ -931,11 +998,12 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     let mut text = String::new();
     text.push_str(&format!("# CircuitCI YAML Repair: {}\n\n", report.project));
     text.push_str(&format!(
-        "- Result: `{}`\n- Mode: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Blocked: {}\n- Skipped: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
+        "- Result: `{}`\n- Mode: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Selected: {}\n- Applied: {}\n- Blocked: {}\n- Skipped: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
         report.result,
         report.mode,
         report.finding,
         report.summary.proposed,
+        report.summary.selected,
         report.summary.applied,
         report.summary.blocked,
         report.summary.skipped,

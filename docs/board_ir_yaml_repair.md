@@ -51,6 +51,18 @@ circuitci repair-yaml path/to/project.yaml \
   --apply-report out/repair_dry/repair_report.json
 ```
 
+When a dry-run report contains multiple proposed edits, pass one or more
+`--proposal-id` values to apply only the approved proposal ids:
+
+```sh
+circuitci repair-yaml path/to/project.yaml \
+  --finding net-not-found \
+  --profile iot_basic_v0 \
+  --output out/repair_apply_one \
+  --apply-report out/repair_dry/repair_report.json \
+  --proposal-id net_not_found_1
+```
+
 Apply-mode output contains:
 
 - `original/report.json` and `original/report.md`
@@ -68,18 +80,23 @@ report to have `mode: dry_run` and `result: dry_run`, and verifies the project
 path, project name, profile, requested finding, original matching findings, and
 regenerated proposal list before applying. If any of those inputs drift, the
 command fails before writing a repaired copy so agents can regenerate a fresh
-dry-run report.
+dry-run report. `--proposal-id` is valid only with `--apply-report`; requested
+ids must be unique, present in the dry-run report, and still in `status:
+proposed`. Non-selected proposed edits are written back as `status: skipped` in
+the apply report, and unresolved same-class findings remain visible in
+`proof.repaired_matching_findings`.
 
 `repair_report.json` follows `schemas/repair_report.schema.json`. Its
 `proposals[].edits[]` entries carry the YAML path, operation, previous value,
 new value, and reason. `proposals[].affected_pins[]` records the component pins
 that justified the edit. The `summary` and `proof` blocks record original and
 repaired matching findings across failures, warnings, and infos, while still
-tracking whether the repair introduced new critical findings. `mode: dry_run`
-reports `result: dry_run`, leaves applicable proposals in `status: proposed`,
-sets `repaired_project` and `repaired_report` to `null`, and leaves proof
-booleans such as `original_finding_removed` as `null` because no repaired copy
-was validated.
+tracking whether the repair introduced new critical findings.
+`summary.selected` records how many proposed edits were selected for application
+in the current run. `mode: dry_run` reports `result: dry_run`, leaves applicable
+proposals in `status: proposed`, sets `repaired_project` and `repaired_report`
+to `null`, and leaves proof booleans such as `original_finding_removed` as
+`null` because no repaired copy was validated.
 
 When a repair class is requested but no safe edit can be applied, the command
 still writes `repair_report.json` and `repair_report.md` with `result: fail`.

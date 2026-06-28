@@ -35,6 +35,7 @@
       "type": "object",
       "required": [
         "proposed",
+        "selected",
         "applied",
         "blocked",
         "skipped",
@@ -46,6 +47,7 @@
       ],
       "properties": {
         "proposed": { "type": "integer", "minimum": 0 },
+        "selected": { "type": "integer", "minimum": 0 },
         "applied": { "type": "integer", "minimum": 0 },
         "blocked": { "type": "integer", "minimum": 0 },
         "skipped": { "type": "integer", "minimum": 0 },
