@@ -327,7 +327,9 @@ line-capacitance load. The TCAN3413 CAN transceiver fixture opens a
 generated-SPICE VCC/VIO, TXD/STB, RXD, and CANH/CANL dominant line-state
 observation with explicit Board IR state parameters. The DRV8323 gate-driver
 fixture opens a generated-SPICE VM/DVDD/ENABLE, nFAULT/SDO, and SOA/SOB/SOC
-current-sense observation. The ESDS552 RS-485 ESD fixture opens a generated-SPICE
+current-sense observation. The PCA9685 PWM-driver fixture opens a
+generated-SPICE VDD/OE, idle SCL/SDA, and low-load 50 Hz PWM output observation.
+The ESDS552 RS-485 ESD fixture opens a generated-SPICE
 A/B standoff observation with the source-backed 11 pF maximum line-capacitance
 load. The THVD1450 RS-485 transceiver fixture opens a generated-SPICE VCC,
 DI/DE/RE_N, RO, and A/B line-state observation with explicit Board IR state
@@ -524,7 +526,7 @@ form:
   fixture, op-amp buffer fixture, CH340C USB-UART bridge fixture, CP2102N
   USB-UART bridge fixture, FT232R USB-UART bridge fixture, CH347 USB-JTAG
   debug bridge fixture, CMSIS-DAP SWD probe fixture, TXS0108E level-shifter
-  fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, ESD2CAN24-Q1 CAN ESD fixture, TCAN3413 CAN transceiver fixture, DRV8323 gate-driver fixture, ESDS552 RS-485 ESD fixture, THVD1450 RS-485 transceiver fixture, AP2112K LDO rail fixture, TPS54331 buck rail fixture,
+  fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, ESD2CAN24-Q1 CAN ESD fixture, TCAN3413 CAN transceiver fixture, DRV8323 gate-driver fixture, PCA9685 PWM-driver fixture, ESDS552 RS-485 ESD fixture, THVD1450 RS-485 transceiver fixture, AP2112K LDO rail fixture, TPS54331 buck rail fixture,
   TPS62162 buck rail fixture,
   TPS63802 buck-boost rail fixture, TPS61023 boost rail fixture, TPS2121
   power-mux fixture, TPS2115A power-mux fixture, TPS22918 load-switch fixture, TPS25948 eFuse fixture, TPS24751 hot-swap fixture, MCP73831 charger fixture, BQ24075
@@ -540,7 +542,7 @@ form:
   Readiness. Examples that contain a known SPICE-ready function block, such as
   the comparator threshold, op-amp buffer, CH340C USB-UART, CP2102N USB-UART,
   FT232R USB-UART, CH347 USB-JTAG, CMSIS-DAP SWD, TXS0108E level shifter,
-  TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux, TPS2115A power mux,
+  TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load-switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power-path charger, and
   TLV803 reset fixtures, also show `Create Checks` to append a generated run
   setup with model-aware probes and observation checks for the placed component.

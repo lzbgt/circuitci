@@ -637,6 +637,58 @@ fn drv8323_scope_example_workflow_creates_model_aware_observation_checks() {
 }
 
 #[test]
+fn pca9685_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("pca9685_pwm_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UPWM".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "upwm_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "upwm_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.analysis.stop_time_us, 40000.0);
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_upwm_pwm0")
+    );
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_upwm_scl"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_upwm_pwm0_pwm_high_sample")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_upwm_pwm0_pwm_low_sample")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_upwm_scl_idle_high")
+    );
+}
+
+#[test]
 fn esds552_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

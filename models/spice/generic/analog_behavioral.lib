@@ -246,6 +246,33 @@ RNFAULT_BIAS NFAULT GND 1G
 RSDO_BIAS SDO GND 1G
 .ends CIRCUITCI_DRV8323_GATE_DRIVER
 
+.subckt CIRCUITCI_PCA9685_PWM_DRIVER VDD VSS OE SCL SDA PWM0 PWM1 PWM2 PWM3 PARAMS: PWM_HIGH_V=3.3 PWM_FREQ_HZ=50 PWM0_DUTY_PERCENT=7.5 PWM1_DUTY_PERCENT=7.5 PWM2_DUTY_PERCENT=7.5 PWM3_DUTY_PERCENT=7.5 SCL_STATE=1 SDA_STATE=1
+* Reduced PCA9685 16-channel I2C PWM driver observation behavior.
+* Board-facing low-load model only: VDD/VSS, active-low OE, idle I2C
+* logic states, and four representative PWM outputs are represented with
+* explicit frequency/duty parameters. I2C protocol/registers, oscillator
+* tolerance, phase staggering, output current/thermal behavior, LED/servo
+* loading, and high-Z disabled-output behavior are intentionally not modeled.
+BI2CSCL NSCL VSS V={PWM_HIGH_V*SCL_STATE}
+RI2CSCL NSCL SCL 50
+BI2CSDA NSDA VSS V={PWM_HIGH_V*SDA_STATE}
+RI2CSDA NSDA SDA 50
+VO0 NRAW0 VSS PULSE(0 {PWM_HIGH_V} 0 1u 1u {PWM0_DUTY_PERCENT/100/PWM_FREQ_HZ} {1/PWM_FREQ_HZ})
+BPWM0 N0 VSS V={v(NRAW0,VSS)/(1+exp(20*(v(OE,VSS)-0.8)))}
+RPWM0 N0 PWM0 330
+VO1 NRAW1 VSS PULSE(0 {PWM_HIGH_V} 0 1u 1u {PWM1_DUTY_PERCENT/100/PWM_FREQ_HZ} {1/PWM_FREQ_HZ})
+BPWM1 N1 VSS V={v(NRAW1,VSS)/(1+exp(20*(v(OE,VSS)-0.8)))}
+RPWM1 N1 PWM1 330
+VO2 NRAW2 VSS PULSE(0 {PWM_HIGH_V} 0 1u 1u {PWM2_DUTY_PERCENT/100/PWM_FREQ_HZ} {1/PWM_FREQ_HZ})
+BPWM2 N2 VSS V={v(NRAW2,VSS)/(1+exp(20*(v(OE,VSS)-0.8)))}
+RPWM2 N2 PWM2 330
+VO3 NRAW3 VSS PULSE(0 {PWM_HIGH_V} 0 1u 1u {PWM3_DUTY_PERCENT/100/PWM_FREQ_HZ} {1/PWM_FREQ_HZ})
+BPWM3 N3 VSS V={v(NRAW3,VSS)/(1+exp(20*(v(OE,VSS)-0.8)))}
+RPWM3 N3 PWM3 330
+RVDD VDD VSS 1G
+ROE OE VSS 1G
+.ends CIRCUITCI_PCA9685_PWM_DRIVER
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

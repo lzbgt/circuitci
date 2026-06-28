@@ -131,7 +131,7 @@ scenarios:
           - RLOAD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: 67e29fee54f5bc360f58f6d4724bfd5024a5619d8aaf3af4e815b75756b5faef
+          sha256: 583ecbcec5da562e95c72e753b73810007432b144bbb2fe3061906a91e312d98
       node_bindings:
         - { node: vin12, net: input_12v }
         - { node: en, net: efuse_enable }

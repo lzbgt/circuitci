@@ -53,6 +53,7 @@ pub(super) fn create_component_observation_preset(
         format!("Component {component_id} has no non-ground pin nets to probe.")
     })?;
     let scenario_name = unique_observation_scenario_name(&project, component_id);
+    let (stop_time_us, max_step_us) = observation_transient_defaults(component, model);
     let mut updated = append_analog_transient_scenario_with_project_path(
         text,
         project_path,
@@ -61,8 +62,8 @@ pub(super) fn create_component_observation_preset(
             ground_net,
             probe_net: first.net.clone(),
             probe_name: first.probe_name.clone(),
-            stop_time_us: 100.0,
-            max_step_us: 0.2,
+            stop_time_us,
+            max_step_us,
         },
     )?;
     for probe in probe_specs.iter().skip(1) {
@@ -81,7 +82,7 @@ pub(super) fn create_component_observation_preset(
         model,
         &probe_specs,
         &scenario_name,
-        100.0,
+        stop_time_us,
     ) {
         updated = append_analog_assertion(&updated, &assertion)?;
     }
@@ -108,6 +109,24 @@ struct ComparatorPulseCheck<'a> {
     margin_v: f64,
     pulse_above_reference_drives_output_high: bool,
     stop_time_us: f64,
+}
+
+fn observation_transient_defaults(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+) -> (f64, f64) {
+    if model.category == "pwm_driver" {
+        let frequency_hz =
+            component_parameter_f64(component, "observation_pwm_frequency_hz").unwrap_or(50.0);
+        if frequency_hz.is_finite() && frequency_hz > 0.0 {
+            let period_us = 1_000_000.0 / frequency_hz;
+            return (
+                (period_us * 2.0).clamp(100.0, 200_000.0),
+                (period_us / 1000.0).clamp(0.2, 50.0),
+            );
+        }
+    }
+    (100.0, 0.2)
 }
 
 fn observation_ground_net(
@@ -372,6 +391,14 @@ fn observation_default_assertions(
         stop_time_us,
         &mut assertions,
     );
+    add_pwm_driver_observation_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        stop_time_us,
+        &mut assertions,
+    );
     add_level_shifter_observation_assertions(
         project,
         component,
@@ -502,6 +529,120 @@ fn add_gate_driver_observation_assertions(
             "below",
             target + 0.05,
             (0.0, stop_time_us),
+        ));
+    }
+}
+
+fn add_pwm_driver_observation_assertions(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "pwm_driver" {
+        return;
+    }
+    add_port_voltage_window_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        "VDD",
+        stop_time_us,
+        assertions,
+    );
+    if let Some(oe_probe) = probe_for_component_pin(probes, component, "OE") {
+        let threshold = model
+            .ports
+            .get("OE")
+            .and_then(|port| port.electrical.vil_max_v)
+            .unwrap_or(0.8);
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_enabled_low", oe_probe.probe_name),
+            &oe_probe.probe_name,
+            "mean",
+            "below",
+            threshold,
+            (0.0, stop_time_us),
+        ));
+    }
+    for pin in ["SCL", "SDA"] {
+        let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let Some(port) = model.ports.get(pin) else {
+            continue;
+        };
+        let state = component_parameter_f64(
+            component,
+            &format!("observation_{}_state", pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(1.0);
+        let (suffix, relation, threshold) = if state >= 0.5 {
+            (
+                "idle_high",
+                "above",
+                port.electrical
+                    .vih_min_v
+                    .or(port
+                        .electrical
+                        .drive_high_voltage_v
+                        .map(|level| level * 0.7))
+                    .unwrap_or(2.31),
+            )
+        } else {
+            (
+                "idle_low",
+                "below",
+                port.electrical.vil_max_v.unwrap_or(0.8),
+            )
+        };
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}", probe.probe_name, suffix),
+            &probe.probe_name,
+            "mean",
+            relation,
+            threshold,
+            (0.0, stop_time_us),
+        ));
+    }
+    let frequency_hz =
+        component_parameter_f64(component, "observation_pwm_frequency_hz").unwrap_or(50.0);
+    for pin in ["PWM0", "PWM1", "PWM2", "PWM3"] {
+        let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let Some(port) = model.ports.get(pin) else {
+            continue;
+        };
+        let high_level = component_parameter_f64(component, "observation_pwm_high_v")
+            .or(port.electrical.drive_high_voltage_v)
+            .unwrap_or(3.3);
+        let duty_percent = component_parameter_f64(
+            component,
+            &format!("observation_{}_duty_percent", pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(7.5);
+        let (high_at_us, low_at_us) = pwm_sample_times_us(frequency_hz, duty_percent, stop_time_us);
+        assertions.push(default_sample_assertion(
+            scenario_name,
+            &format!("{}_pwm_high_sample", probe.probe_name),
+            &probe.probe_name,
+            "above",
+            high_level * 0.7,
+            high_at_us,
+        ));
+        assertions.push(default_sample_assertion(
+            scenario_name,
+            &format!("{}_pwm_low_sample", probe.probe_name),
+            &probe.probe_name,
+            "below",
+            high_level * 0.3,
+            low_at_us,
         ));
     }
 }
@@ -980,6 +1121,19 @@ fn pulse_high_sample_time(pulse: &crate::board_ir::SpicePulseSpec, stop_time_us:
     high_time.clamp(0.0, stop_time_us)
 }
 
+fn pwm_sample_times_us(frequency_hz: f64, duty_percent: f64, stop_time_us: f64) -> (f64, f64) {
+    if !frequency_hz.is_finite() || frequency_hz <= 0.0 {
+        return (0.0, stop_time_us);
+    }
+    let period_us = 1_000_000.0 / frequency_hz;
+    let high_width_us = (period_us * (duty_percent.clamp(0.1, 99.9) / 100.0))
+        .min(period_us)
+        .max(0.0);
+    let high_at_us = (high_width_us * 0.5).clamp(0.0, stop_time_us);
+    let low_at_us = (high_width_us + (period_us - high_width_us) * 0.5).clamp(0.0, stop_time_us);
+    (high_at_us, low_at_us)
+}
+
 fn component_parameter_f64(
     component: &crate::board_ir::ComponentSpec,
     parameter: &str,
@@ -1289,6 +1443,43 @@ board:
     battery: { kind: power, nominal_voltage: 4.2, powered: true }
     sys_out: { kind: power, nominal_voltage: 5.5, powered: true }
     iset: { kind: digital_or_analog }
+    gnd: { kind: ground }
+"
+    }
+
+    fn pca9685_project_yaml() -> &'static str {
+        "project:
+  name: pca9685_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+  - libs/vendor/nxp/pwm_drivers
+board:
+  components:
+    VVDD:
+      model: generic.analog.dc_voltage_source
+      pins: { P: pwm_vdd, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VOE:
+      model: generic.analog.dc_voltage_source
+      pins: { P: pwm_oe, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 0.0 }
+    UPWM:
+      model: vendor.nxp.pca9685
+      parameters:
+        observation_pwm_frequency_hz: 50.0
+        observation_pwm0_duty_percent: 7.5
+        observation_pwm1_duty_percent: 5.0
+        observation_scl_state: 1.0
+        observation_sda_state: 1.0
+      pins: { VDD: pwm_vdd, VSS: gnd, OE: pwm_oe, SCL: i2c_scl, SDA: i2c_sda, PWM0: servo_pwm0, PWM1: servo_pwm1 }
+  nets:
+    pwm_vdd: { kind: power, nominal_voltage: 3.3, powered: true }
+    pwm_oe: { kind: power, nominal_voltage: 0.0, powered: true }
+    i2c_scl: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    i2c_sda: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    servo_pwm0: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    servo_pwm1: { kind: digital_or_analog, nominal_voltage: 3.3 }
     gnd: { kind: ground }
 "
     }
@@ -1619,6 +1810,59 @@ board:
                 ("v_uchg_bat_regulation_ceiling", "v_uchg_bat", Some(4.23)),
                 ("v_uchg_out_power_path_ceiling", "v_uchg_out", Some(5.6))
             ]
+        );
+    }
+
+    #[test]
+    fn observation_preset_adds_pwm_driver_waveform_checks() {
+        let result =
+            create_component_observation_preset(pca9685_project_yaml(), Path::new("."), "UPWM")
+                .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "upwm_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+
+        assert_eq!(analog.analysis.stop_time_us, 40000.0);
+        assert_eq!(analog.analysis.max_step_us, 20.0);
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "v_upwm_vdd",
+                "v_upwm_oe",
+                "v_upwm_scl",
+                "v_upwm_sda",
+                "v_upwm_pwm0",
+                "v_upwm_pwm1"
+            ]
+        );
+        assert!(analog.assertions.iter().any(|assertion| {
+            assertion.name == "v_upwm_pwm0_pwm_high_sample"
+                && assertion.at_us == Some(750.0)
+                && assertion
+                    .threshold_v
+                    .is_some_and(|threshold| (threshold - 2.31).abs() < 1e-9)
+        }));
+        assert!(analog.assertions.iter().any(|assertion| {
+            assertion.name == "v_upwm_pwm0_pwm_low_sample"
+                && assertion.at_us == Some(10750.0)
+                && assertion
+                    .threshold_v
+                    .is_some_and(|threshold| (threshold - 0.99).abs() < 1e-9)
+        }));
+        assert!(
+            analog
+                .assertions
+                .iter()
+                .any(|assertion| assertion.name == "v_upwm_scl_idle_high")
         );
     }
 

@@ -1,0 +1,286 @@
+project:
+  name: good_pca9685_pwm_driver_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/nxp/pwm_drivers
+
+board:
+  schematic:
+    component_symbols:
+      VVDD: Simulation_SPICE:VDC
+      VOE: Simulation_SPICE:VDC
+      UPWM: Driver_LED:PCA9685
+    node_styles:
+      component:VVDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VOE: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UPWM: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VVDD: { x: 64.0, y: 144.0 }
+      component:VOE: { x: 64.0, y: 272.0 }
+      component:UPWM: { x: 384.0, y: 256.0 }
+      net:pwm_vdd: { x: 192.0, y: 144.0 }
+      net:pwm_oe: { x: 192.0, y: 272.0 }
+      net:i2c_scl: { x: 192.0, y: 384.0 }
+      net:i2c_sda: { x: 192.0, y: 448.0 }
+      net:servo_pwm0: { x: 608.0, y: 160.0 }
+      net:servo_pwm1: { x: 608.0, y: 224.0 }
+      net:servo_pwm2: { x: 608.0, y: 288.0 }
+      net:servo_pwm3: { x: 608.0, y: 352.0 }
+      net:gnd: { x: 384.0, y: 560.0 }
+    wire_routes:
+      VVDD.P->pwm_vdd:
+        points:
+          - { x: 144.0, y: 144.0 }
+      VVDD.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      VOE.P->pwm_oe:
+        points:
+          - { x: 144.0, y: 272.0 }
+      VOE.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      UPWM.VDD->pwm_vdd:
+        points:
+          - { x: 288.0, y: 144.0 }
+      UPWM.VSS->gnd:
+        points:
+          - { x: 384.0, y: 560.0 }
+      UPWM.OE->pwm_oe:
+        points:
+          - { x: 288.0, y: 272.0 }
+      UPWM.SCL->i2c_scl:
+        points:
+          - { x: 288.0, y: 384.0 }
+      UPWM.SDA->i2c_sda:
+        points:
+          - { x: 288.0, y: 448.0 }
+      UPWM.PWM0->servo_pwm0:
+        points:
+          - { x: 544.0, y: 160.0 }
+      UPWM.PWM1->servo_pwm1:
+        points:
+          - { x: 544.0, y: 224.0 }
+      UPWM.PWM2->servo_pwm2:
+        points:
+          - { x: 544.0, y: 288.0 }
+      UPWM.PWM3->servo_pwm3:
+        points:
+          - { x: 544.0, y: 352.0 }
+  components:
+    VVDD:
+      model: generic.analog.dc_voltage_source
+      part_number: PWM_VDD_3V3_SOURCE
+      pins:
+        P: pwm_vdd
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VOE:
+      model: generic.analog.dc_voltage_source
+      part_number: PWM_OE_LOW_SOURCE
+      pins:
+        P: pwm_oe
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    UPWM:
+      model: vendor.nxp.pca9685
+      part_number: PCA9685PW
+      parameters:
+        observation_pwm_high_v: 3.3
+        observation_pwm_frequency_hz: 50.0
+        observation_pwm0_duty_percent: 7.5
+        observation_pwm1_duty_percent: 5.0
+        observation_pwm2_duty_percent: 10.0
+        observation_pwm3_duty_percent: 12.5
+        observation_scl_state: 1.0
+        observation_sda_state: 1.0
+      power_domains:
+        VDD: pwm_vdd
+      pins:
+        VDD: pwm_vdd
+        VSS: gnd
+        OE: pwm_oe
+        SCL: i2c_scl
+        SDA: i2c_sda
+        PWM0: servo_pwm0
+        PWM1: servo_pwm1
+        PWM2: servo_pwm2
+        PWM3: servo_pwm3
+  nets:
+    pwm_vdd:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    pwm_oe:
+      kind: power
+      nominal_voltage: 0.0
+      powered: true
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    servo_pwm0:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    servo_pwm1:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    servo_pwm2:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    servo_pwm3:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: pca9685_pwm_driver_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VVDD
+          - VOE
+          - UPWM
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 583ecbcec5da562e95c72e753b73810007432b144bbb2fe3061906a91e312d98
+      node_bindings:
+        - { node: vdd, net: pwm_vdd }
+        - { node: oe, net: pwm_oe }
+        - { node: scl, net: i2c_scl }
+        - { node: sda, net: i2c_sda }
+        - { node: pwm0, net: servo_pwm0 }
+        - { node: pwm1, net: servo_pwm1 }
+        - { node: pwm2, net: servo_pwm2 }
+        - { node: pwm3, net: servo_pwm3 }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VVDD, pin: P } }
+        - { node: "0", endpoint: { component: VVDD, pin: N } }
+        - { node: oe, endpoint: { component: VOE, pin: P } }
+        - { node: "0", endpoint: { component: VOE, pin: N } }
+        - { node: vdd, endpoint: { component: UPWM, pin: VDD } }
+        - { node: "0", endpoint: { component: UPWM, pin: VSS } }
+        - { node: oe, endpoint: { component: UPWM, pin: OE } }
+        - { node: scl, endpoint: { component: UPWM, pin: SCL } }
+        - { node: sda, endpoint: { component: UPWM, pin: SDA } }
+        - { node: pwm0, endpoint: { component: UPWM, pin: PWM0 } }
+        - { node: pwm1, endpoint: { component: UPWM, pin: PWM1 } }
+        - { node: pwm2, endpoint: { component: UPWM, pin: PWM2 } }
+        - { node: pwm3, endpoint: { component: UPWM, pin: PWM3 } }
+      analysis:
+        type: tran
+        stop_time_us: 40000.0
+        max_step_us: 20.0
+      stimuli:
+        - name: pca9685_enabled_low_load_pwm
+          description: 3.3 V VDD, OE low, idle I2C lines, and four representative 50 Hz PWM outputs from a reduced PCA9685 observation model.
+      probes:
+        - name: v_vdd
+          expression: V(vdd)
+        - name: v_oe
+          expression: V(oe)
+        - name: v_scl
+          expression: V(scl)
+        - name: v_sda
+          expression: V(sda)
+        - name: v_pwm0
+          expression: V(pwm0)
+        - name: v_pwm1
+          expression: V(pwm1)
+        - name: v_pwm2
+          expression: V(pwm2)
+        - name: v_pwm3
+          expression: V(pwm3)
+      assertions:
+        - name: vdd_above_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 0.0
+          end_us: 40000.0
+          relation: above
+          threshold_v: 3.2
+        - name: vdd_below_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 0.0
+          end_us: 40000.0
+          relation: below
+          threshold_v: 3.4
+        - name: oe_enabled_low
+          probe: v_oe
+          aggregation: mean
+          start_us: 0.0
+          end_us: 40000.0
+          relation: below
+          threshold_v: 0.2
+        - name: scl_idle_high
+          probe: v_scl
+          aggregation: mean
+          start_us: 0.0
+          end_us: 40000.0
+          relation: above
+          threshold_v: 3.0
+        - name: sda_idle_high
+          probe: v_sda
+          aggregation: mean
+          start_us: 0.0
+          end_us: 40000.0
+          relation: above
+          threshold_v: 3.0
+        - name: pwm0_high_sample
+          probe: v_pwm0
+          relation: above
+          threshold_v: 2.3
+          at_us: 750.0
+        - name: pwm0_low_sample
+          probe: v_pwm0
+          relation: below
+          threshold_v: 1.0
+          at_us: 10750.0
+        - name: pwm1_high_sample
+          probe: v_pwm1
+          relation: above
+          threshold_v: 2.3
+          at_us: 500.0
+        - name: pwm1_low_sample
+          probe: v_pwm1
+          relation: below
+          threshold_v: 1.0
+          at_us: 10500.0
+        - name: pwm2_high_sample
+          probe: v_pwm2
+          relation: above
+          threshold_v: 2.3
+          at_us: 1000.0
+        - name: pwm2_low_sample
+          probe: v_pwm2
+          relation: below
+          threshold_v: 1.0
+          at_us: 11000.0
+        - name: pwm3_high_sample
+          probe: v_pwm3
+          relation: above
+          threshold_v: 2.3
+          at_us: 1250.0
+        - name: pwm3_low_sample
+          probe: v_pwm3
+          relation: below
+          threshold_v: 1.0
+          at_us: 11250.0

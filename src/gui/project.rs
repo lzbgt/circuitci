@@ -124,6 +124,14 @@ const DRV8323_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const DRV8323_SCOPE_EXPECTED_FREQUENCY: &str =
     "24 V VM and 3.3 V DVDD/ENABLE DRV8323 gate-driver observation";
+const PCA9685_PWM_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_pca9685_pwm_driver_observation/project.yaml";
+const PCA9685_PWM_SCOPE_EXAMPLE_NAME: &str = "good_pca9685_pwm_driver_observation";
+const PCA9685_PWM_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd", "v_oe", "v_scl", "v_sda", "v_pwm0", "v_pwm1", "v_pwm2", "v_pwm3",
+];
+const PCA9685_PWM_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V enabled PCA9685 with 50 Hz low-load PWM output observation";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -464,6 +472,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: DRV8323_SCOPE_EXPECTED_TRACES,
         expected_frequency: DRV8323_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UDRV"),
+    },
+    GuiProjectExample {
+        id: "pca9685_pwm_scope",
+        category: "PWM Driver",
+        open_label: "Open PCA9685 PWM Example",
+        run_label: "Open PCA9685 + Run Scopes",
+        workflow_title: "PCA9685 PWM Workflow",
+        summary: "Source-backed PCA9685 VDD, OE, I2C idle, and low-load PWM output observation.",
+        project_path: PCA9685_PWM_SCOPE_EXAMPLE_PROJECT,
+        project_name: PCA9685_PWM_SCOPE_EXAMPLE_NAME,
+        expected_traces: PCA9685_PWM_SCOPE_EXPECTED_TRACES,
+        expected_frequency: PCA9685_PWM_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UPWM"),
     },
     GuiProjectExample {
         id: "esds552_scope",

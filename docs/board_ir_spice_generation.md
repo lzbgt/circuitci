@@ -244,6 +244,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   current-sense output-presence checks. The model-state inputs are explicit
   Board IR component parameters, not inferred SPI/protection behavior,
   half-bridge gate-drive dynamics, motor behavior, or current-sense accuracy.
+- `examples/good_pca9685_pwm_driver_observation` proves the NXP PCA9685
+  source-backed PWM-driver model can use a reduced generated-SPICE face for
+  VDD/OE, idle SCL/SDA, and representative low-load PWM output checks. The
+  frequency, duty, and I2C idle-state inputs are explicit Board IR component
+  parameters, not inferred I2C protocol/register behavior, oscillator
+  tolerance, load-current behavior, servo dynamics, or final PWM timing signoff.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

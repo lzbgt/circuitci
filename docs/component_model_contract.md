@@ -802,6 +802,20 @@ presence observations, but not MOSFET gate-drive strength, half-bridge
 switching, charge-pump/bootstrap behavior, dead time, SPI register/protection
 behavior, shunt gain/offset/noise, motor dynamics, layout, EMI, thermal
 behavior, or final motor-driver sign-off.
+`vendor.nxp.pca9685` follows the same pattern for PWM-driver observation: its
+NXP source-backed 2.3 V to 5.5 V VDD range, Fast-mode Plus I2C role, 12-bit PWM
+controller role, and low-load output class remain source-backed, while its
+generated-SPICE face uses reduced voltage-driver and pulse-source behavior. Its
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_pwm_high_v`, `observation_pwm_frequency_hz`,
+`observation_pwm0_duty_percent`, `observation_pwm1_duty_percent`,
+`observation_pwm2_duty_percent`, `observation_pwm3_duty_percent`,
+`observation_scl_state`, and `observation_sda_state` into explicit SPICE
+instance parameters. That model can exercise VDD/OE, I2C idle-line, and
+representative low-load PWM high/low sample observations, but not I2C protocol,
+register behavior, oscillator tolerance, phase staggering, LED/servo output
+current, pull-up rise time, servo position/stall/regeneration, disabled-output
+high-Z behavior, thermal behavior, or final PWM timing sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

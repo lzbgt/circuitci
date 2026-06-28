@@ -61,6 +61,42 @@ ports:
     electrical:
       drive_high_voltage_V: 3.3
       source_impedance_ohm: 330
+simulation:
+  spice:
+    model_name: CIRCUITCI_PCA9685_PWM_DRIVER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VSS, OE, SCL, SDA, PWM0, PWM1, PWM2, PWM3]
+    instance_parameters:
+      - spice_name: PWM_HIGH_V
+        component_parameter: observation_pwm_high_v
+        default_value: 3.3
+      - spice_name: PWM_FREQ_HZ
+        component_parameter: observation_pwm_frequency_hz
+        default_value: 50.0
+      - spice_name: PWM0_DUTY_PERCENT
+        component_parameter: observation_pwm0_duty_percent
+        default_value: 7.5
+      - spice_name: PWM1_DUTY_PERCENT
+        component_parameter: observation_pwm1_duty_percent
+        default_value: 7.5
+      - spice_name: PWM2_DUTY_PERCENT
+        component_parameter: observation_pwm2_duty_percent
+        default_value: 7.5
+      - spice_name: PWM3_DUTY_PERCENT
+        component_parameter: observation_pwm3_duty_percent
+        default_value: 7.5
+      - spice_name: SCL_STATE
+        component_parameter: observation_scl_state
+        default_value: 1.0
+      - spice_name: SDA_STATE
+        component_parameter: observation_sda_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VDD/OE, I2C idle-line, and low-load PWM output checks on four representative channels.
+      - Uses source-backed 2.3 V to 5.5 V VDD range, 12-bit PWM controller role, Fast-mode Plus I2C metadata, and low-load PWM output class while emitting ideal board-facing PWM pulses.
+      - I2C protocol/register behavior, oscillator tolerance, phase staggering, LED/servo output current, pull-up rise time, servo position/stall/regeneration, high-Z disabled outputs, and thermal sign-off are out of scope.
 datasheet:
   manufacturer: NXP Semiconductors
   part_number: PCA9685
@@ -117,8 +153,10 @@ model_quality:
     - static_power_tree
     - i2c_logic_voltage_screening
     - low_load_pwm_servo_signal_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - servo_position_feedback_signoff
     - servo_stall_or_regeneration_signoff
     - i2c_pullup_rise_time_signoff
     - led_or_servo_output_current_thermal_signoff
+    - oscillator_tolerance_or_pwm_jitter_signoff

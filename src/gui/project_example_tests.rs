@@ -235,6 +235,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UDRV"),
         },
         ExpectedProjectExample {
+            id: "pca9685_pwm_scope",
+            category: "PWM Driver",
+            open_label: "Open PCA9685 PWM Example",
+            run_label: "Open PCA9685 + Run Scopes",
+            summary: "Source-backed PCA9685 VDD, OE, I2C idle, and low-load PWM output observation.",
+            project_path: "examples/good_pca9685_pwm_driver_observation/project.yaml",
+            project_name: "good_pca9685_pwm_driver_observation",
+            expected_traces: &[
+                "v_vdd", "v_oe", "v_scl", "v_sda", "v_pwm0", "v_pwm1", "v_pwm2", "v_pwm3",
+            ],
+            expected_frequency: "3.3 V enabled PCA9685 with 50 Hz low-load PWM output observation",
+            observation_preset_component: Some("UPWM"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",
