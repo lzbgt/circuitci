@@ -237,6 +237,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the
   source-backed 11 pF maximum line-capacitance load.
+- `examples/good_ti_thvd1450_rs485_transceiver_observation` proves the TI
+  THVD1450 datasheet-backed RS-485 transceiver model can use a reduced
+  generated-SPICE face for VCC, DI, DE, RE_N, RO, and A/B line-state checks.
+  The model-state inputs are explicit Board IR component parameters, not
+  inferred RS-485 protocol, termination, or cable behavior.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

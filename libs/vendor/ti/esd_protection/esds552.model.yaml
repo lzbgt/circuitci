@@ -65,7 +65,7 @@ simulation:
     model_path: models/spice/generic/analog_behavioral.lib
     provenance: datasheet_limited_generic_behavioral
     pin_order: [A, B, GND]
-    operating_notes:
+    valid_operating_notes:
       - Reduced ESDS552 observation model for preliminary RS-485/RS-422 A/B normal-line standoff and capacitance checks only.
       - Uses source-backed plus/minus 12 V reverse standoff and 11 pF maximum IO-to-ground capacitance while leaving A/B pins high impedance during normal operation.
       - Does not model IEC 61000-4-2, IEC 61000-4-5, ESD pulse clamping, surge response, RS-485 common-mode stress, termination, cable harness behavior, or signal integrity.

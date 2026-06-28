@@ -176,6 +176,31 @@ RA A GND 1G
 RB B GND 1G
 .ends CIRCUITCI_ESDS552_RS485_ESD
 
+.subckt CIRCUITCI_THVD1450_RS485_TRANSCEIVER VCC GND DI RO DE RE_N A B PARAMS: DI_STATE=1 DE_STATE=1 RE_N_STATE=0
+* Reduced THVD1450 RS-485 transceiver observation behavior.
+* Normal-operation line-state model only: datasheet-backed pin roles and logic
+* thresholds are represented by parameterized DI/DE/RE_N states with simple
+* VCC-referenced A/B and RO levels. Termination, failsafe bias, common-mode
+* range, cable behavior, ESD/fault stress, timing, and signal integrity are
+* intentionally not modeled.
+BDI NDI GND V={v(VCC,GND)*DI_STATE}
+RDI NDI DI 1k
+BDE NDE GND V={v(VCC,GND)*DE_STATE}
+RDE NDE DE 1k
+BRE NRE GND V={v(VCC,GND)*RE_N_STATE}
+RRE NRE RE_N 1k
+BA NA GND V={v(VCC,GND)*(0.25+0.5*DI_STATE)}
+RA NA A {200+1e12*(1-DE_STATE)}
+BB NB GND V={v(VCC,GND)*(0.75-0.5*DI_STATE)}
+RB NB B {200+1e12*(1-DE_STATE)}
+BRO NRO GND V={v(VCC,GND)/(1+exp(-8*(v(A,GND)-v(B,GND))))/(1+exp(-20*(0.5*v(VCC,GND)-v(RE_N,GND))))}
+RRO NRO RO 50
+RDI_BIAS DI GND 1G
+RDE_BIAS DE GND 1G
+RRE_BIAS RE_N GND 1G
+RRO_BIAS RO GND 1G
+.ends CIRCUITCI_THVD1450_RS485_TRANSCEIVER
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

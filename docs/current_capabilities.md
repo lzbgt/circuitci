@@ -204,6 +204,7 @@ Current analog support:
   observations,
   ESDS552-style RS-485/RS-422 ESD/surge normal-operation standoff and
   line-capacitance observations,
+  THVD1450-style RS-485 transceiver line-state observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -217,7 +218,7 @@ Current analog support:
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, ESDS552 RS-485 ESD, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux,
   TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -291,6 +292,14 @@ Current analog support:
   pulse clamping, surge response, common-mode stress, bus termination,
   cable-harness behavior, signal integrity, route placement, stub length, and
   final layout sign-off.
+- The TI THVD1450 vendor component pack now has a datasheet-backed generated
+  SPICE observation face for 3.3 V VCC, DI/DE/RE_N state, RO state, and A/B
+  line-state checks. Its static metadata still covers the 3.0 V to 5.5 V supply
+  range, MCU-side logic thresholds, 50 Mbps class, 1/8 unit-load receiver, up
+  to 256 nodes, and TI product-page ESD class, while the transient face
+  explicitly omits RS-485 termination, failsafe biasing, common-mode range,
+  cable behavior, timing, EMC, ESD/fault energy, and final signal-integrity
+  sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

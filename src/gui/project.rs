@@ -115,6 +115,20 @@ const ESDS552_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_rs485_a", "v_rs485_b", "i_a_source", "i_b_source"];
 const ESDS552_SCOPE_EXPECTED_FREQUENCY: &str =
     "normal RS-485 A/B voltages below the 12 V ESDS552 standoff limit";
+const THVD1450_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ti_thvd1450_rs485_transceiver_observation/project.yaml";
+const THVD1450_SCOPE_EXAMPLE_NAME: &str = "good_ti_thvd1450_rs485_transceiver_observation";
+const THVD1450_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vcc",
+    "v_di",
+    "v_de",
+    "v_re_n",
+    "v_ro",
+    "v_rs485_a",
+    "v_rs485_b",
+];
+const THVD1450_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V enabled THVD1450 RS-485 driver/receiver line-state observation";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -400,6 +414,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: ESDS552_SCOPE_EXPECTED_TRACES,
         expected_frequency: ESDS552_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UESD"),
+    },
+    GuiProjectExample {
+        id: "thvd1450_rs485_scope",
+        category: "Interface",
+        open_label: "Open THVD1450 RS-485 Example",
+        run_label: "Open THVD1450 + Run Scopes",
+        workflow_title: "THVD1450 RS-485 Workflow",
+        summary: "Source-backed RS-485 transceiver line-state observation.",
+        project_path: THVD1450_SCOPE_EXAMPLE_PROJECT,
+        project_name: THVD1450_SCOPE_EXAMPLE_NAME,
+        expected_traces: THVD1450_SCOPE_EXPECTED_TRACES,
+        expected_frequency: THVD1450_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UTRX"),
     },
     GuiProjectExample {
         id: "ap2112k_ldo_scope",

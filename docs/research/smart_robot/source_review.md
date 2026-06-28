@@ -88,7 +88,12 @@ robot control-stack design pass.
 - TI's THVD1450 product page identifies a 3.3 V to 5 V RS485/RS422
   transceiver with 50 Mbps signaling, one-eighth-unit-load bus loading,
   up to 256 bus nodes, and plus/minus 18 kV IEC ESD positioning. That makes it
-  a sourced first RS485 transceiver for the motion-core smart-servo bus.
+  a sourced first RS485 transceiver for the motion-core smart-servo bus. The
+  generated-SPICE observation face uses these saved sources for supply, pinout,
+  logic-threshold, data-rate-class, unit-load, and ESD-class metadata while
+  only modeling explicit DI/DE/RE_N-driven RO and A/B line-state checks; it is
+  not termination, cable, common-mode, timing, ESD/fault-energy, or EMC
+  sign-off.
 - TI's ESDS552 product page identifies a 12 V, two-channel bidirectional ESD
   and surge protection diode for RS-485 and RS-422, and the saved datasheet
   states 9.5 pF typical / 11 pF maximum IO-to-ground line capacitance. The

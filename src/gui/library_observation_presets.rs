@@ -354,7 +354,7 @@ fn observation_default_assertions(
             (0.0, stop_time_us),
         ));
     }
-    if model.category == "comms" {
+    if supports_comms_output_observation(model) {
         add_comms_output_observation_assertions(
             component,
             model,
@@ -408,6 +408,10 @@ fn observation_default_assertions(
         }
     }
     assertions
+}
+
+fn supports_comms_output_observation(model: &crate::library::ComponentModel) -> bool {
+    matches!(model.category.as_str(), "comms" | "rs485_transceiver")
 }
 
 fn add_comms_output_observation_assertions(

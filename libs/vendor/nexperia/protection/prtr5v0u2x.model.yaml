@@ -72,7 +72,7 @@ simulation:
     model_path: models/spice/generic/analog_behavioral.lib
     provenance: datasheet_limited_generic_behavioral
     pin_order: [IO1, IO2, VCC, GND]
-    operating_notes:
+    valid_operating_notes:
       - Reduced PRTR5V0U2X observation model for preliminary USB IO1/IO2 normal-line standoff and capacitance checks only.
       - Uses source-backed 5.5 V reverse standoff, 1.5 pF maximum IO-to-ground capacitance, 0.6 pF typical IO-to-IO capacitance, and 16 pF typical VCC-to-ground capacitance metadata while leaving IO pins high impedance during normal operation.
       - Does not model IEC ESD pulse clamping, rail-to-rail snapback dynamics, leakage over temperature, USB eye margin, differential impedance, or PCB layout.

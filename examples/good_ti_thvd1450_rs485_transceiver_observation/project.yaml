@@ -1,0 +1,284 @@
+project:
+  name: good_ti_thvd1450_rs485_transceiver_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/rs485_transceivers
+
+board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      UTRX: Interface_RS485:THVD1450
+      RROLOAD: Device:R
+      RALOAD: Device:R
+      RBLOAD: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UTRX: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RROLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RALOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RBLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 64.0, y: 160.0 }
+      component:UTRX: { x: 352.0, y: 240.0 }
+      component:RROLOAD: { x: 608.0, y: 144.0 }
+      component:RALOAD: { x: 608.0, y: 280.0 }
+      component:RBLOAD: { x: 608.0, y: 400.0 }
+      net:vcc_3v3: { x: 176.0, y: 144.0 }
+      net:di: { x: 208.0, y: 208.0 }
+      net:de: { x: 208.0, y: 264.0 }
+      net:re_n: { x: 208.0, y: 320.0 }
+      net:ro: { x: 496.0, y: 144.0 }
+      net:rs485_a: { x: 496.0, y: 280.0 }
+      net:rs485_b: { x: 496.0, y: 400.0 }
+      net:gnd: { x: 352.0, y: 560.0 }
+    wire_routes:
+      VCC.P->vcc_3v3:
+        points:
+          - { x: 144.0, y: 160.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      UTRX.VCC->vcc_3v3:
+        points:
+          - { x: 256.0, y: 144.0 }
+      UTRX.GND->gnd:
+        points:
+          - { x: 352.0, y: 560.0 }
+      UTRX.DI->di:
+        points:
+          - { x: 208.0, y: 208.0 }
+      UTRX.DE->de:
+        points:
+          - { x: 208.0, y: 264.0 }
+      UTRX.RE_N->re_n:
+        points:
+          - { x: 208.0, y: 320.0 }
+      UTRX.RO->ro:
+        points:
+          - { x: 496.0, y: 144.0 }
+      UTRX.A->rs485_a:
+        points:
+          - { x: 496.0, y: 280.0 }
+      UTRX.B->rs485_b:
+        points:
+          - { x: 496.0, y: 400.0 }
+      RROLOAD.A->ro:
+        points:
+          - { x: 608.0, y: 144.0 }
+      RROLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 560.0 }
+      RALOAD.A->rs485_a:
+        points:
+          - { x: 608.0, y: 280.0 }
+      RALOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 560.0 }
+      RBLOAD.A->rs485_b:
+        points:
+          - { x: 608.0, y: 400.0 }
+      RBLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 560.0 }
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      part_number: RS485_3V3_SOURCE
+      pins:
+        P: vcc_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UTRX:
+      model: vendor.ti.thvd1450
+      part_number: THVD1450
+      parameters:
+        observation_di_state: 1.0
+        observation_de_state: 1.0
+        observation_re_n_state: 0.0
+        observation_ro_state: 1.0
+      pins:
+        VCC: vcc_3v3
+        GND: gnd
+        DI: di
+        RO: ro
+        DE: de
+        RE_N: re_n
+        A: rs485_a
+        B: rs485_b
+    RROLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: ro
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RALOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: rs485_a
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RBLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: rs485_b
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+  nets:
+    vcc_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.08
+    di:
+      kind: digital_or_analog
+    de:
+      kind: digital_or_analog
+    re_n:
+      kind: digital_or_analog
+    ro:
+      kind: digital_or_analog
+    rs485_a:
+      kind: digital_or_analog
+    rs485_b:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: thvd1450_rs485_transceiver_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCC
+          - UTRX
+          - RROLOAD
+          - RALOAD
+          - RBLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: c9582b919ee962c470a108c33570b5e49f8ebd243c23a461f9851beb1d8e499f
+      node_bindings:
+        - { node: vcc, net: vcc_3v3 }
+        - { node: di, net: di }
+        - { node: de, net: de }
+        - { node: re_n, net: re_n }
+        - { node: ro, net: ro }
+        - { node: rs485_a, net: rs485_a }
+        - { node: rs485_b, net: rs485_b }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VCC, pin: P } }
+        - { node: "0", endpoint: { component: VCC, pin: N } }
+        - { node: vcc, endpoint: { component: UTRX, pin: VCC } }
+        - { node: "0", endpoint: { component: UTRX, pin: GND } }
+        - { node: di, endpoint: { component: UTRX, pin: DI } }
+        - { node: ro, endpoint: { component: UTRX, pin: RO } }
+        - { node: de, endpoint: { component: UTRX, pin: DE } }
+        - { node: re_n, endpoint: { component: UTRX, pin: RE_N } }
+        - { node: rs485_a, endpoint: { component: UTRX, pin: A } }
+        - { node: rs485_b, endpoint: { component: UTRX, pin: B } }
+        - { node: ro, endpoint: { component: RROLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RROLOAD, pin: B } }
+        - { node: rs485_a, endpoint: { component: RALOAD, pin: A } }
+        - { node: "0", endpoint: { component: RALOAD, pin: B } }
+        - { node: rs485_b, endpoint: { component: RBLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RBLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: enabled_driver_receiver_snapshot
+          description: THVD1450 observes DI high, DE high, receiver enabled, RO high, and an A-high/B-low RS-485 line-state snapshot.
+      probes:
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_di
+          expression: V(di)
+        - name: v_de
+          expression: V(de)
+        - name: v_re_n
+          expression: V(re_n)
+        - name: v_ro
+          expression: V(ro)
+        - name: v_rs485_a
+          expression: V(rs485_a)
+        - name: v_rs485_b
+          expression: V(rs485_b)
+      assertions:
+        - name: vcc_within_3v3_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 3.0
+        - name: vcc_within_3v3_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: di_driver_input_high
+          probe: v_di
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.0
+        - name: de_driver_enabled_high
+          probe: v_de
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.0
+        - name: receiver_enabled_re_n_low
+          probe: v_re_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.8
+        - name: ro_receiver_high
+          probe: v_ro
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: rs485_a_driver_high
+          probe: v_rs485_a
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.0
+        - name: rs485_b_driver_low
+          probe: v_rs485_b
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 1.2

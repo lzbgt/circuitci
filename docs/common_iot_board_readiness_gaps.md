@@ -54,7 +54,10 @@ CANH/CANL clamp presence, ground reference, 24 V standoff, 3 pF line
 capacitance, and a reduced generated-SPICE normal-operation CAN line
 observation face. TI ESDS552 now covers RS-485/RS-422 A/B clamp presence,
 ground reference, 12 V standoff, 11 pF maximum line capacitance, and a reduced
-generated-SPICE normal-operation line observation face. TI BQ24075
+generated-SPICE normal-operation line observation face. TI THVD1450 now covers
+a source-backed RS-485 transceiver with static
+MCU-side/bus-role metadata plus a reduced generated-SPICE observation face for
+VCC, DI/DE/RE_N, RO, and A/B line-state checks. TI BQ24075
 now covers a peer-board 1-cell linear charger with power-path pack for static
 input-range, charge-current range, and input-source current-budget screening,
 plus a reduced generated-SPICE observation face for OUT/BAT/current checks. TI

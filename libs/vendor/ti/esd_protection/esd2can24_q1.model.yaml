@@ -64,7 +64,7 @@ simulation:
     model_path: models/spice/generic/analog_behavioral.lib
     provenance: datasheet_limited_generic_behavioral
     pin_order: [CANH, CANL, GND]
-    operating_notes:
+    valid_operating_notes:
       - Reduced ESD2CAN24-Q1 observation model for preliminary CANH/CANL normal-line standoff and capacitance checks only.
       - Uses source-backed plus/minus 24 V reverse standoff and 3 pF typical IO capacitance metadata while leaving CAN pins high impedance during normal operation.
       - Does not model ISO 7637, ISO 10605, IEC ESD pulse clamping, surge energy, CAN signal integrity, cable harness behavior, or PCB placement/stub effects.
