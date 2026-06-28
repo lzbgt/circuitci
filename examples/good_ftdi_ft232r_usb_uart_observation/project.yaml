@@ -1,16 +1,16 @@
 project:
-  name: good_silabs_cp2102n_usb_uart_observation
+  name: good_ftdi_ft232r_usb_uart_observation
   version: 0.1.0
 
 libraries:
   - ../../libs/generic/analog
-  - ../../libs/vendor/silabs
+  - ../../libs/vendor/ftdi
 
 board:
   schematic:
     component_symbols:
       VUSB: Simulation_SPICE:VDC
-      UUSB: Interface_USB:CP2102N
+      UUSB: Interface_USB:FT232R
       RTXLOAD: Device:R
       RRTSLOAD: Device:R
       RDTRLOAD: Device:R
@@ -30,12 +30,12 @@ board:
       component:RDTRLOAD: { x: 640.0, y: 368.0 }
       component:RRST: { x: 352.0, y: 432.0 }
       net:usb_5v: { x: 176.0, y: 160.0 }
-      net:cp2102n_vdd: { x: 176.0, y: 256.0 }
+      net:ft232r_3v3: { x: 176.0, y: 256.0 }
       net:uart_txd: { x: 512.0, y: 128.0 }
       net:uart_rxd: { x: 512.0, y: 192.0 }
-      net:cp2102n_rts: { x: 512.0, y: 248.0 }
-      net:cp2102n_dtr: { x: 512.0, y: 368.0 }
-      net:cp2102n_rstb: { x: 352.0, y: 384.0 }
+      net:ft232r_rts_n: { x: 512.0, y: 248.0 }
+      net:ft232r_dtr_n: { x: 512.0, y: 368.0 }
+      net:ft232r_reset_n: { x: 352.0, y: 384.0 }
       net:gnd: { x: 352.0, y: 544.0 }
     wire_routes:
       VUSB.P->usb_5v:
@@ -44,13 +44,13 @@ board:
       VUSB.N->gnd:
         points:
           - { x: 112.0, y: 544.0 }
-      UUSB.VREGIN->usb_5v:
+      UUSB.VCC->usb_5v:
         points:
           - { x: 256.0, y: 160.0 }
-      UUSB.VDD->cp2102n_vdd:
+      UUSB.3V3OUT->ft232r_3v3:
         points:
           - { x: 256.0, y: 256.0 }
-      UUSB.VIO->cp2102n_vdd:
+      UUSB.VCCIO->ft232r_3v3:
         points:
           - { x: 256.0, y: 256.0 }
       UUSB.GND->gnd:
@@ -62,13 +62,13 @@ board:
       UUSB.RXD->uart_rxd:
         points:
           - { x: 512.0, y: 192.0 }
-      UUSB.RTS->cp2102n_rts:
+      UUSB.RTS_N->ft232r_rts_n:
         points:
           - { x: 512.0, y: 248.0 }
-      UUSB.DTR->cp2102n_dtr:
+      UUSB.DTR_N->ft232r_dtr_n:
         points:
           - { x: 512.0, y: 368.0 }
-      UUSB.RSTb->cp2102n_rstb:
+      UUSB.RESET_N->ft232r_reset_n:
         points:
           - { x: 352.0, y: 384.0 }
       RTXLOAD.A->uart_txd:
@@ -77,22 +77,22 @@ board:
       RTXLOAD.B->gnd:
         points:
           - { x: 640.0, y: 544.0 }
-      RRTSLOAD.A->cp2102n_rts:
+      RRTSLOAD.A->ft232r_rts_n:
         points:
           - { x: 640.0, y: 248.0 }
       RRTSLOAD.B->gnd:
         points:
           - { x: 640.0, y: 544.0 }
-      RDTRLOAD.A->cp2102n_vdd:
+      RDTRLOAD.A->ft232r_3v3:
         points:
           - { x: 640.0, y: 256.0 }
-      RDTRLOAD.B->cp2102n_dtr:
+      RDTRLOAD.B->ft232r_dtr_n:
         points:
           - { x: 640.0, y: 368.0 }
-      RRST.A->cp2102n_vdd:
+      RRST.A->usb_5v:
         points:
-          - { x: 352.0, y: 256.0 }
-      RRST.B->cp2102n_rstb:
+          - { x: 352.0, y: 160.0 }
+      RRST.B->ft232r_reset_n:
         points:
           - { x: 352.0, y: 384.0 }
   components:
@@ -106,22 +106,22 @@ board:
         primitive: dc_voltage_source
         dc_v: 5.0
     UUSB:
-      model: vendor.silabs.cp2102n
-      part_number: CP2102N-A02-GQFN24
+      model: vendor.ftdi.ft232r
+      part_number: FT232RL
       parameters:
         observation_txd_state: 1.0
-        observation_rts_state: 1.0
-        observation_dtr_state: 0.0
+        observation_rts_n_state: 1.0
+        observation_dtr_n_state: 0.0
       pins:
-        VREGIN: usb_5v
-        VDD: cp2102n_vdd
-        VIO: cp2102n_vdd
+        VCC: usb_5v
+        VCCIO: ft232r_3v3
+        "3V3OUT": ft232r_3v3
         GND: gnd
         TXD: uart_txd
         RXD: uart_rxd
-        RTS: cp2102n_rts
-        DTR: cp2102n_dtr
-        RSTb: cp2102n_rstb
+        RTS_N: ft232r_rts_n
+        DTR_N: ft232r_dtr_n
+        RESET_N: ft232r_reset_n
     RTXLOAD:
       model: generic.analog.resistor
       part_number: 100k
@@ -135,7 +135,7 @@ board:
       model: generic.analog.resistor
       part_number: 100k
       pins:
-        A: cp2102n_rts
+        A: ft232r_rts_n
         B: gnd
       spice:
         primitive: resistor
@@ -144,46 +144,46 @@ board:
       model: generic.analog.resistor
       part_number: 10k_pullup
       pins:
-        A: cp2102n_vdd
-        B: cp2102n_dtr
+        A: ft232r_3v3
+        B: ft232r_dtr_n
       spice:
         primitive: resistor
         value_ohm: 10000.0
     RRST:
       model: generic.analog.resistor
-      part_number: 1k_pullup
+      part_number: 10k_pullup
       pins:
-        A: cp2102n_vdd
-        B: cp2102n_rstb
+        A: usb_5v
+        B: ft232r_reset_n
       spice:
         primitive: resistor
-        value_ohm: 1000.0
+        value_ohm: 10000.0
   nets:
     usb_5v:
       kind: power
       nominal_voltage: 5.0
       powered: true
       supply_current_limit_A: 0.5
-    cp2102n_vdd:
+    ft232r_3v3:
       kind: power
       nominal_voltage: 3.3
       powered: true
-      supply_current_limit_A: 0.1
+      supply_current_limit_A: 0.05
     uart_txd:
       kind: digital_or_analog
     uart_rxd:
       kind: digital_or_analog
-    cp2102n_rts:
+    ft232r_rts_n:
       kind: digital_or_analog
-    cp2102n_dtr:
+    ft232r_dtr_n:
       kind: digital_or_analog
-    cp2102n_rstb:
+    ft232r_reset_n:
       kind: digital_or_analog
     gnd:
       kind: ground
 
 scenarios:
-  - name: cp2102n_usb_uart_observation
+  - name: ft232r_usb_uart_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -203,76 +203,76 @@ scenarios:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 55ee444c24b0e8746083593b4caa68c2540f0486c4ca447a1c94aebea74ccaf2
       node_bindings:
-        - { node: vregin, net: usb_5v }
-        - { node: vdd, net: cp2102n_vdd }
+        - { node: vcc, net: usb_5v }
+        - { node: v3v3out, net: ft232r_3v3 }
         - { node: txd, net: uart_txd }
         - { node: rxd, net: uart_rxd }
-        - { node: rts, net: cp2102n_rts }
-        - { node: dtr, net: cp2102n_dtr }
-        - { node: rstb, net: cp2102n_rstb }
+        - { node: rts_n, net: ft232r_rts_n }
+        - { node: dtr_n, net: ft232r_dtr_n }
+        - { node: reset_n, net: ft232r_reset_n }
         - { node: "0", net: gnd }
       pin_bindings:
-        - { node: vregin, endpoint: { component: VUSB, pin: P } }
+        - { node: vcc, endpoint: { component: VUSB, pin: P } }
         - { node: "0", endpoint: { component: VUSB, pin: N } }
-        - { node: vregin, endpoint: { component: UUSB, pin: VREGIN } }
-        - { node: vdd, endpoint: { component: UUSB, pin: VDD } }
-        - { node: vdd, endpoint: { component: UUSB, pin: VIO } }
+        - { node: vcc, endpoint: { component: UUSB, pin: VCC } }
+        - { node: v3v3out, endpoint: { component: UUSB, pin: VCCIO } }
+        - { node: v3v3out, endpoint: { component: UUSB, pin: "3V3OUT" } }
         - { node: "0", endpoint: { component: UUSB, pin: GND } }
         - { node: txd, endpoint: { component: UUSB, pin: TXD } }
         - { node: rxd, endpoint: { component: UUSB, pin: RXD } }
-        - { node: rts, endpoint: { component: UUSB, pin: RTS } }
-        - { node: dtr, endpoint: { component: UUSB, pin: DTR } }
-        - { node: rstb, endpoint: { component: UUSB, pin: RSTb } }
+        - { node: rts_n, endpoint: { component: UUSB, pin: RTS_N } }
+        - { node: dtr_n, endpoint: { component: UUSB, pin: DTR_N } }
+        - { node: reset_n, endpoint: { component: UUSB, pin: RESET_N } }
         - { node: txd, endpoint: { component: RTXLOAD, pin: A } }
         - { node: "0", endpoint: { component: RTXLOAD, pin: B } }
-        - { node: rts, endpoint: { component: RRTSLOAD, pin: A } }
+        - { node: rts_n, endpoint: { component: RRTSLOAD, pin: A } }
         - { node: "0", endpoint: { component: RRTSLOAD, pin: B } }
-        - { node: vdd, endpoint: { component: RDTRLOAD, pin: A } }
-        - { node: dtr, endpoint: { component: RDTRLOAD, pin: B } }
-        - { node: vdd, endpoint: { component: RRST, pin: A } }
-        - { node: rstb, endpoint: { component: RRST, pin: B } }
+        - { node: v3v3out, endpoint: { component: RDTRLOAD, pin: A } }
+        - { node: dtr_n, endpoint: { component: RDTRLOAD, pin: B } }
+        - { node: vcc, endpoint: { component: RRST, pin: A } }
+        - { node: reset_n, endpoint: { component: RRST, pin: B } }
       analysis:
         type: tran
         stop_time_us: 60.0
         max_step_us: 0.2
       stimuli:
         - name: host_line_snapshot
-          description: CP2102N VREGIN powers its VDD/VIO rail while TXD and RTS idle high and DTR is explicitly asserted low.
+          description: FT232R VCC powers its 3V3OUT/VCCIO rail while TXD and RTS# idle high and DTR# is explicitly asserted low.
       probes:
-        - name: v_vregin
-          expression: V(vregin)
-        - name: v_vdd
-          expression: V(vdd)
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_3v3out
+          expression: V(v3v3out)
         - name: v_txd
           expression: V(txd)
-        - name: v_rts
-          expression: V(rts)
-        - name: v_dtr
-          expression: V(dtr)
+        - name: v_rts_n
+          expression: V(rts_n)
+        - name: v_dtr_n
+          expression: V(dtr_n)
       assertions:
-        - name: vregin_within_input_range_min
-          probe: v_vregin
+        - name: vcc_within_input_range_min
+          probe: v_vcc
           aggregation: min
           start_us: 1.0
           end_us: 60.0
           relation: above
-          threshold_v: 3.0
-        - name: vregin_within_input_range_max
-          probe: v_vregin
+          threshold_v: 4.0
+        - name: vcc_within_input_range_max
+          probe: v_vcc
           aggregation: max
           start_us: 1.0
           end_us: 60.0
           relation: below
           threshold_v: 5.25
-        - name: vdd_regulated_min
-          probe: v_vdd
+        - name: v3v3out_regulated_min
+          probe: v_3v3out
           aggregation: min
           start_us: 1.0
           end_us: 60.0
           relation: above
           threshold_v: 3.0
-        - name: vdd_regulated_max
-          probe: v_vdd
+        - name: v3v3out_regulated_max
+          probe: v_3v3out
           aggregation: max
           start_us: 1.0
           end_us: 60.0
@@ -284,18 +284,18 @@ scenarios:
           start_us: 1.0
           end_us: 60.0
           relation: above
-          threshold_v: 2.6
-        - name: rts_idle_high
-          probe: v_rts
+          threshold_v: 2.2
+        - name: rts_n_idle_high
+          probe: v_rts_n
           aggregation: mean
           start_us: 1.0
           end_us: 60.0
           relation: above
-          threshold_v: 2.6
-        - name: dtr_asserted_low
-          probe: v_dtr
+          threshold_v: 2.2
+        - name: dtr_n_asserted_low
+          probe: v_dtr_n
           aggregation: mean
           start_us: 1.0
           end_us: 60.0
           relation: below
-          threshold_v: 0.6
+          threshold_v: 0.5

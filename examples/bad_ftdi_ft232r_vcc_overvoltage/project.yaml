@@ -1,0 +1,38 @@
+project:
+  name: bad_ftdi_ft232r_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ftdi
+
+board:
+  components:
+    U7:
+      model: vendor.ftdi.ft232r
+      part_number: FT232RL
+      pins:
+        VCC: usb_6v_bad
+        VCCIO: uart_io_3v3
+        "3V3OUT": ft232r_3v3
+        GND: gnd
+  nets:
+    usb_6v_bad:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    uart_io_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    ft232r_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ft232r_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

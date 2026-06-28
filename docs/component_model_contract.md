@@ -718,6 +718,21 @@ but not USB PHY behavior, enumeration, baud-rate timing, oscillator accuracy,
 suspend behavior, regulator stability, transistor-level modem-line circuitry,
 or final I/O injection-current sign-off.
 
+`vendor.ftdi.ft232r` follows the same USB-UART generated-observation pattern
+for FTDI bridges with a `3V3OUT` regulator and separate `VCCIO` logic rail. Its
+source-backed VCC/VCCIO/3V3OUT rail limits, regulator output-current class,
+reset-pin note, CBUS configuration note, and UART input/output threshold
+metadata remain source-backed, while its generated-SPICE face uses a reduced
+VCC-to-3V3OUT rail source plus VCCIO-referenced TXD, RTS#, and DTR# voltage
+drivers. Its `simulation.spice.instance_parameters` map optional Board IR
+component parameters `observation_txd_state`, `observation_rts_n_state`, and
+`observation_dtr_n_state` into explicit SPICE output-state parameters. That
+model can exercise regulator-rail and host-control-line output-state
+observations, but not USB PHY behavior, enumeration, EEPROM/CBUS programming,
+baud-rate timing, oscillator accuracy, suspend behavior, regulator stability,
+transistor-level modem-line circuitry, or final I/O injection-current and
+thermal sign-off.
+
 `vendor.ti.tps2121` follows the same pattern for selected-source power-mux
 observation: its TI source-pinned input range, output-current class,
 reverse-blocking metadata, string `selected_input` static contract, and

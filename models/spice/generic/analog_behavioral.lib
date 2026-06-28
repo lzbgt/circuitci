@@ -56,6 +56,26 @@ RRXD RXD GND 1G
 RRST RSTB GND 1G
 .ends CIRCUITCI_CP2102N_USB_UART
 
+.subckt CIRCUITCI_FT232R_USB_UART VCC V3V3OUT VCCIO GND TXD RXD RTS_N DTR_N RESET_N PARAMS: TXD_STATE=1 RTS_N_STATE=1 DTR_N_STATE=1
+* Reduced FT232R USB-UART bridge observation behavior.
+* V3V3OUT is a preliminary internal-regulator rail from VCC. TXD, RTS_N, and
+* DTR_N are VCCIO-referenced voltage drivers with conservative source
+* impedance. RXD and RESET_N are represented as high-impedance inputs. USB
+* protocol, enumeration, EEPROM/CBUS programming, suspend, oscillator accuracy,
+* regulator stability, and transistor-level modem-line behavior are
+* intentionally not modeled.
+BREG NREG GND V={3.3/(1+exp(-4*(v(VCC,GND)-4.0)))}
+RREG NREG V3V3OUT 0.1
+BTXD NTXD GND V={v(VCCIO,GND)*TXD_STATE}
+RTXD NTXD TXD 1100
+BRTS NRTS GND V={v(VCCIO,GND)*RTS_N_STATE}
+RRTS NRTS RTS_N 1100
+BDTR NDTR GND V={v(VCCIO,GND)*DTR_N_STATE}
+RDTR NDTR DTR_N 1100
+RRXD RXD GND 1G
+RRST RESET_N GND 1G
+.ends CIRCUITCI_FT232R_USB_UART
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

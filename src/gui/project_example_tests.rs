@@ -114,6 +114,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UUSB"),
         },
         ExpectedProjectExample {
+            id: "ft232r_usb_uart_scope",
+            category: "USB-UART",
+            open_label: "Open FT232R USB-UART Example",
+            run_label: "Open FT232R + Run Scopes",
+            summary: "Source-backed FT232R bridge 3V3OUT and UART output-state observation.",
+            project_path: "examples/good_ftdi_ft232r_usb_uart_observation/project.yaml",
+            project_name: "good_ftdi_ft232r_usb_uart_observation",
+            expected_traces: &["v_vcc", "v_3v3out", "v_txd", "v_rts_n", "v_dtr_n"],
+            expected_frequency: "5 V VCC, generated 3V3OUT/VCCIO, TXD high, RTS# high, and DTR# low",
+            observation_preset_component: Some("UUSB"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

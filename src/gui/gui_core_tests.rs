@@ -612,6 +612,8 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     assert_eq!(app.selected_project_example().id, "ch340c_usb_uart_scope");
     app.selected_project_example_id = "cp2102n_usb_uart_scope".to_string();
     assert_eq!(app.selected_project_example().id, "cp2102n_usb_uart_scope");
+    app.selected_project_example_id = "ft232r_usb_uart_scope".to_string();
+    assert_eq!(app.selected_project_example().id, "ft232r_usb_uart_scope");
     app.selected_project_example_id = "ap2112k_ldo_scope".to_string();
     assert_eq!(app.selected_project_example().id, "ap2112k_ldo_scope");
     app.selected_project_example_id = "tps22918_load_switch_scope".to_string();
@@ -825,6 +827,53 @@ fn cp2102n_scope_example_workflow_creates_model_aware_observation_checks() {
             .assertions
             .iter()
             .any(|assertion| assertion.name == "v_uusb_dtr_output_low")
+    );
+}
+
+#[test]
+fn ft232r_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("ft232r_usb_uart_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UUSB".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "uusb_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "uusb_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_uusb_3v3out")
+    );
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_uusb_txd"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uusb_3v3out_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uusb_txd_output_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uusb_dtr_n_output_low")
     );
 }
 

@@ -202,6 +202,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   generated-SPICE face for VREGIN, generated VDD/VIO, TXD, RTS, and DTR
   output-state observations. The model-state inputs are explicit Board IR
   component parameters, not inferred USB protocol behavior.
+- `examples/good_ftdi_ft232r_usb_uart_observation` proves the FTDI FT232R
+  source-backed USB-UART bridge model can use a reduced generated-SPICE face
+  for VCC, generated 3V3OUT/VCCIO, TXD, RTS#, and DTR# output-state
+  observations. The model-state inputs are explicit Board IR component
+  parameters, not inferred USB protocol or EEPROM/CBUS configuration behavior.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

@@ -52,6 +52,13 @@ const CP2102N_USB_UART_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vregin", "v_vdd", "v_txd", "v_rts", "v_dtr"];
 const CP2102N_USB_UART_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V VREGIN, regulated VDD/VIO, TXD high, RTS high, and DTR low";
+const FT232R_USB_UART_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ftdi_ft232r_usb_uart_observation/project.yaml";
+const FT232R_USB_UART_SCOPE_EXAMPLE_NAME: &str = "good_ftdi_ft232r_usb_uart_observation";
+const FT232R_USB_UART_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vcc", "v_3v3out", "v_txd", "v_rts_n", "v_dtr_n"];
+const FT232R_USB_UART_SCOPE_EXPECTED_FREQUENCY: &str =
+    "5 V VCC, generated 3V3OUT/VCCIO, TXD high, RTS# high, and DTR# low";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -232,6 +239,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: CP2102N_USB_UART_SCOPE_EXAMPLE_NAME,
         expected_traces: CP2102N_USB_UART_SCOPE_EXPECTED_TRACES,
         expected_frequency: CP2102N_USB_UART_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UUSB"),
+    },
+    GuiProjectExample {
+        id: "ft232r_usb_uart_scope",
+        category: "USB-UART",
+        open_label: "Open FT232R USB-UART Example",
+        run_label: "Open FT232R + Run Scopes",
+        workflow_title: "FT232R USB-UART Workflow",
+        summary: "Source-backed FT232R bridge 3V3OUT and UART output-state observation.",
+        project_path: FT232R_USB_UART_SCOPE_EXAMPLE_PROJECT,
+        project_name: FT232R_USB_UART_SCOPE_EXAMPLE_NAME,
+        expected_traces: FT232R_USB_UART_SCOPE_EXPECTED_TRACES,
+        expected_frequency: FT232R_USB_UART_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UUSB"),
     },
     GuiProjectExample {

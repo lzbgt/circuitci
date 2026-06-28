@@ -28,7 +28,9 @@ Initial datasheet-backed packs now exist for selected parts used by common IoT
 bring-up paths, including WCH CH340C board-level USB-UART metadata plus a
 reduced generated-SPICE output-state observation face, Silicon Labs CP2102N
 board-level USB-UART metadata plus a reduced generated-SPICE VREGIN/VDD and
-output-state observation face, TI TXS0108E interface-protection metadata, TI
+output-state observation face, FTDI FT232R board-level USB-UART metadata plus a
+reduced generated-SPICE 3V3OUT/VCCIO and output-state observation face, TI
+TXS0108E interface-protection metadata, TI
 TPS22918 load-switch metadata plus a reduced generated-SPICE observation face
 for enabled load-path checks. Microchip MCP73831 charger metadata now includes both
 static charger screening and a reduced generated-SPICE observation face for

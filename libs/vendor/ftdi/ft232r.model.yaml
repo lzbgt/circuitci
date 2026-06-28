@@ -1,0 +1,273 @@
+component_id: vendor.ftdi.ft232r
+version: 0.1.0
+category: comms
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.0
+      operating_voltage_max_V: 5.25
+      max_supply_current_A: 0.015
+  VCCIO:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.8
+      operating_voltage_max_V: 5.25
+  "3V3OUT":
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.05
+  GND:
+    kind: electrical_ground
+    required: true
+  USBDP:
+    kind: passive
+    required: false
+  USBDM:
+    kind: passive
+    required: false
+  RESET_N:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 1.0
+  TXD:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.2
+      source_impedance_ohm: 1100
+  RXD:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 1.0
+      injection_current_limit_A: 0.0001
+  RTS_N:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.2
+      source_impedance_ohm: 1100
+  DTR_N:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.2
+      source_impedance_ohm: 1100
+  CTS_N:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 1.0
+      injection_current_limit_A: 0.0001
+  DSR_N:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 1.0
+      injection_current_limit_A: 0.0001
+  DCD_N:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 1.0
+      injection_current_limit_A: 0.0001
+  RI_N:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 1.0
+      injection_current_limit_A: 0.0001
+  CBUS0:
+    kind: passive
+    required: false
+  CBUS1:
+    kind: passive
+    required: false
+  CBUS2:
+    kind: passive
+    required: false
+  CBUS3:
+    kind: passive
+    required: false
+  CBUS4:
+    kind: passive
+    required: false
+power_conversion:
+  input_pin: VCC
+  output_pin: "3V3OUT"
+  max_output_current_A: 0.05
+datasheet:
+  manufacturer: FTDI
+  part_number: FT232R
+  package: SSOP-28
+  polarity: usb_uart_bridge
+  pinout:
+    VCC: VCC
+    VCCIO: VCCIO
+    "3V3OUT": 3V3OUT
+    GND: GND
+    USBDP: USBDP
+    USBDM: USBDM
+    RESET_N: RESET#
+    TXD: TXD
+    RXD: RXD
+    RTS_N: RTS#
+    DTR_N: DTR#
+    CTS_N: CTS#
+    DSR_N: DSR#
+    DCD_N: DCD#
+    RI_N: RI#
+    CBUS0: CBUS0
+    CBUS1: CBUS1
+    CBUS2: CBUS2
+    CBUS3: CBUS3
+    CBUS4: CBUS4
+  absolute_maximum_ratings:
+    VCC:
+      conditions: VCC supply voltage.
+      value: 6.0
+      unit: V
+    USB_IO:
+      conditions: DC input voltage on USBDP and USBDM.
+      value: 3.8
+      unit: V
+    non_usb_io:
+      conditions: DC input voltage on all other inputs and bidirectional pins.
+      value: 0.5
+      unit: V_above_VCC
+    output_current:
+      conditions: DC output current from outputs.
+      value: 24
+      unit: mA
+  electrical_characteristics:
+    VCC_internal_oscillator:
+      conditions: Operating supply voltage using internal oscillator.
+      min: 4.0
+      max: 5.25
+      unit: V
+    VCC_external_crystal:
+      conditions: Operating supply voltage using external crystal.
+      min: 3.3
+      max: 5.25
+      unit: V
+    VCCIO:
+      min: 1.8
+      max: 5.25
+      unit: V
+    ICC_normal:
+      conditions: Normal operation.
+      typ: 15
+      unit: mA
+    ICC_suspend:
+      conditions: USB suspend.
+      typ: 70
+      max: 100
+      unit: uA
+    V3V3OUT:
+      conditions: Integrated 3.3 V regulator output.
+      min: 3.0
+      typ: 3.3
+      max: 3.6
+      unit: V
+    V3V3OUT_current:
+      conditions: External logic current available from 3V3OUT.
+      max: 50
+      unit: mA
+    VOH_3V3_standard_drive:
+      conditions: VCCIO = 3.3 V, standard drive, source current 1 mA.
+      min: 2.2
+      unit: V
+    VOL_3V3_standard_drive:
+      conditions: VCCIO = 3.3 V, standard drive, sink current 2 mA.
+      max: 0.5
+      unit: V
+    VOH_5V_standard_drive:
+      conditions: VCCIO = 5.0 V, standard drive, source current 2 mA.
+      min: 3.2
+      unit: V
+    VOL_5V_standard_drive:
+      conditions: VCCIO = 5.0 V, standard drive, sink current 2 mA.
+      max: 0.6
+      unit: V
+    UART_CBUS_input_threshold:
+      conditions: UART and CBUS input switching threshold.
+      min: 1.0
+      typ: 1.2
+      max: 1.5
+      unit: V
+  device_parameters:
+    integrated_usb_uart:
+      conditions: Integrated USB full-speed transceiver, UART controller, EEPROM, USB termination resistors, clock generation, and CBUS configuration.
+      unit: note
+      simulation_relevance: Board validation should treat the bridge as a configurable functional block, not transistor-level USB logic.
+    vccio_level_converter:
+      conditions: VCCIO supplies UART and CBUS logic from 1.8 V to 5.25 V, including 3V3OUT-tied and VCC-tied designs.
+      unit: note
+      simulation_relevance: Supports UART level-compatibility checks when host bridge and target use different logic rails.
+    reset_pin:
+      conditions: RESET# is active low and may be tied to VCC or left unconnected if unused.
+      unit: note
+      simulation_relevance: Supports reset-net review in boards that wire the USB-UART bridge into reset circuits.
+    cbus_configuration:
+      conditions: CBUS pins are EEPROM-configurable, with default functions including TXLED#, RXLED#, TXDEN, PWREN#, and SLEEP#.
+      unit: note
+      simulation_relevance: CBUS behavior requires declared board-level intent before executable checks should infer meaning.
+  documents:
+    - title: FT232R data sheet PDF mirror for local extraction
+      path: docs/research/datasheets/ftdi/DS_FT232R_sparkfun_mirror.pdf
+      source_url: https://cdn.sparkfun.com/datasheets/BreakoutBoards/DS_FT232R.pdf
+      sha256: 0f4e94f51a392d253b28ee92e71b4c2f7636c7e82780af69ce4d00035f4e730c
+      retrieved: "2026-06-28"
+simulation:
+  spice:
+    model_name: CIRCUITCI_FT232R_USB_UART
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, "3V3OUT", VCCIO, GND, TXD, RXD, RTS_N, DTR_N, RESET_N]
+    instance_parameters:
+      - spice_name: TXD_STATE
+        component_parameter: observation_txd_state
+        default_value: 1.0
+      - spice_name: RTS_N_STATE
+        component_parameter: observation_rts_n_state
+        default_value: 1.0
+      - spice_name: DTR_N_STATE
+        component_parameter: observation_dtr_n_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced USB-UART observation model for preliminary FT232R VCC-to-3V3OUT regulator, VCCIO-referenced TXD idle-high, and MODEM output-state checks only.
+      - Uses FTDI source-backed FT232R pinout, VCC/VCCIO/3V3OUT rail limits, 3.3 V standard-drive VOH minimum, and conservative output source impedance.
+      - USB PHY behavior, enumeration, EEPROM/CBUS programming, suspend states, oscillator accuracy, UART baud timing, regulator stability, modem-line transistor circuitry, and final I/O injection-current or thermal sign-off are out of scope.
+rules:
+  - UART_BOOTLOADER_SYNC
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_connectivity
+    - uart_bootloader_sync
+    - power_tree_screening
+    - regulator_static_screening
+    - preliminary_gpio_backdrive_screening
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - full_usb_phy
+    - usb_protocol_or_enumeration
+    - eeprom_or_cbus_configuration_signoff
+    - final_io_injection_current_signoff
+    - regulator_transient_or_stability_signoff
+    - transistor_level_control_line_behavior
