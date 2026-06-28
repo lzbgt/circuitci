@@ -137,6 +137,7 @@ Canonical executable check IDs:
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `COPPER_SPACING_VALID`
 - `CONDUCTOR_CREEPAGE_CLEARANCE_VALID`
+- `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1207,6 +1208,59 @@ the same planar same-layer copper spacing. This screen does not model slots,
 barriers, conformal coating, board-edge paths, layer-to-layer insulation,
 pollution degree, material group, altitude, or electric fields. Use it as an
 explicit geometry-evidence gate, not as final safety-standard certification.
+
+Controlled-impedance geometry validation uses
+`CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported
+`board.layout.routes` evidence and the scenario declares reviewed target
+geometry from a stackup calculator, fabrication table, coupon requirement, or
+other explicit source. CircuitCI does not calculate impedance from dielectric
+constants or infer impedance targets from net names.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_geometry
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_GEOMETRY_VALID
+    parameters:
+      nets:
+        - net: RF
+          source: fab_stackup_table_rev_a
+          target_impedance_ohm: 50
+          expected_width_mm: 0.20
+          max_width_error_mm: 0.03
+      differential_pairs:
+        - first_net: DP
+          second_net: DM
+          source: fab_stackup_table_rev_a
+          target_differential_impedance_ohm: 90
+          expected_width_mm: 0.15
+          expected_gap_mm: 0.20
+          max_width_error_mm: 0.02
+          max_gap_error_mm: 0.03
+```
+
+Controlled-impedance geometry algorithm:
+
+1. Require at least one `parameters.nets[]` or
+   `parameters.differential_pairs[]` rule.
+2. Require every rule to declare a non-empty `source`, explicit impedance
+   target, expected route geometry, and geometry tolerance.
+3. Require every named net to exist under `board.nets` and have finite
+   `board.layout.routes` segment evidence.
+4. For single-ended rules, compare each route segment width against
+   `expected_width_mm` and fail on the worst width error when it exceeds
+   `max_width_error_mm`.
+5. For differential-pair rules, compare both route widths and the worst
+   same-layer parallel-overlap gap against `expected_width_mm` and
+   `expected_gap_mm`.
+6. Fail closed when a differential pair has no parallel overlapping same-layer
+   route evidence for gap measurement.
+
+This is a geometry-to-reviewed-target check. It does not solve characteristic
+or differential impedance, model stackup materials, prove copper thickness or
+etch compensation, account for solder mask, or replace a field solver,
+fabricator coupon, or SI review.
 
 Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`

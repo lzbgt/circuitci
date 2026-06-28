@@ -110,7 +110,9 @@ policy exists. It is not a field solver.
 
 Useful next slices:
 
-- controlled impedance metadata and static rule checks,
+- controlled impedance proof beyond the current explicit route width/gap to
+  reviewed target screen, such as stackup material/copper-thickness modeling,
+  solder-mask loading, field-solver integration, and fabricator coupon data,
 - stackup-aware adjacent-plane return-path evidence,
 - RF antenna keepout and matching evidence,
 - thermal copper and dissipation evidence,

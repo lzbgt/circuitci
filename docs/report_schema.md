@@ -174,6 +174,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_ROUTE_GEOMETRY_VALID`
 - `USB_VBUS_ROUTE_VALID`
 - `USB_RETURN_PATH_VALID`
+- `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -538,6 +539,21 @@ imported copper geometry. Stable measured keys include `first_net`,
 `creepage_violation`, plus the same prefixed copper operand keys used by
 `COPPER_SPACING_VALID`. Stable limit keys include `min_clearance_mm` and
 `min_creepage_mm`.
+
+`CONTROLLED_IMPEDANCE_GEOMETRY_VALID` reports are emitted by `manufacturing`
+scenarios that compare imported `board.layout.routes` evidence against
+explicit reviewed impedance-geometry targets. Single-ended findings use stable
+measured keys `net`, `target_source`, `target_impedance_ohm`, `route_net`,
+`route_segment_index`, `route_layer`, `route_measured_width_mm`,
+`route_width_error_mm`, `route_segment_start`, and `route_segment_end`.
+Differential-pair findings use stable measured keys `first_net`, `second_net`,
+`target_source`, `target_differential_impedance_ohm`, `worst_width_net`,
+`worst_width_segment_index`, `worst_width_layer`,
+`worst_width_measured_width_mm`, `worst_width_width_error_mm`, `gap_layer`,
+`first_gap_route_segment_index`, `second_gap_route_segment_index`,
+`measured_gap_mm`, `gap_error_mm`, `width_violation`, and `gap_violation`.
+Stable limit keys include `expected_width_mm`, `expected_gap_mm`,
+`max_width_error_mm`, and `max_gap_error_mm` when applicable.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

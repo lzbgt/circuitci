@@ -245,6 +245,13 @@ without explicit imported mechanical evidence.
   `jlcpcb_standard_2026_06` for minimum mask expansion. It does not yet
   evaluate nested or overlapping mask-region holes, full fab-specific mask swell,
   package-specific solder-mask-defined pad rules, or 3D solderability effects.
+- `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` compares imported route width and
+  same-layer parallel differential-pair gap evidence against explicit reviewed
+  target geometry declared by the scenario. It does not calculate
+  characteristic or differential impedance, model dielectric stackup,
+  solder-mask loading, copper thickness, etch compensation, or fabricator
+  coupon results. Passing this rule only means the imported geometry matches
+  the declared target dimensions within tolerance.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,
