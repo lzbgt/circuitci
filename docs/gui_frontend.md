@@ -19,6 +19,7 @@ the default CLI dependency graph:
 circuitci-gui
   -> src/gui.rs
   -> src/gui/gui_core_tests.rs (GUI test builds only)
+  -> src/gui/project_example_workflow_tests.rs (GUI example workflow tests only)
   -> src/gui/shell.rs
   -> src/gui/import_flow.rs
   -> src/gui/file_dialogs.rs
@@ -63,7 +64,8 @@ dependencies unless `--features gui` is explicitly enabled.
 
 `src/gui.rs` owns application state, the `eframe` update loop, and shared
 validation/report command helpers, with focused core GUI regressions split into
-`src/gui/gui_core_tests.rs`.
+`src/gui/gui_core_tests.rs` and direct-open example workflow regressions split
+into `src/gui/project_example_workflow_tests.rs`.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
 bar, project overlay, status panel, permanent Sketch central canvas,
 secondary overlay windows, Project landing view, Reports view, and

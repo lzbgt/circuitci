@@ -19,6 +19,8 @@ source-file rule.
   path, and VBUS route tests live in `tests/board_interface_protection_cli.rs`.
 - Analog SPICE, embedded-ngspice, generated-netlist, operating-limit, and
   SPICE-deck importer tests live in `tests/analog_spice_cli.rs`.
+- Generated-SPICE component/model-pack observation example tests live in
+  `tests/analog_model_pack_cli.rs`.
 - Scenario suggestion CLI tests live in `tests/scenario_suggestions_cli.rs`.
 - Native KiCad schematic mapped workflow tests live in
   `tests/kicad_import_cli.rs`.

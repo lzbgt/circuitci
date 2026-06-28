@@ -37,7 +37,9 @@ application's main workspace.
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, the `eframe`
 update loop, and shared validation/report command helpers, with focused core
-GUI regressions split into `src/gui/gui_core_tests.rs`. `src/gui/shell.rs`
+GUI regressions split into `src/gui/gui_core_tests.rs` and direct-open example
+workflow regressions split into `src/gui/project_example_workflow_tests.rs`.
+`src/gui/shell.rs`
 owns menus, workflow overlay routing, the project overlay, the status panel,
 Project/Reports views, and finding/limitation rendering. `src/gui/jobs.rs` owns background GUI job
 state, worker-thread launch, channel polling, stale-result rejection, and
