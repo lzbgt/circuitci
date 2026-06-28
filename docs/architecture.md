@@ -188,7 +188,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   `board.manufacturing` fields, can create or replace reviewed
   controlled-impedance targets and `thermal_copper[]` policy entries, preserves
   raw row evidence and skipped unrelated order rows in a JSON manifest, and
-  does not infer process defaults from order text.
+  does not infer process defaults from order text. The importer orchestration
+  stays in `src/importers/manufacturing_metadata.rs`; CSV row parsing,
+  supported-field normalization, and manifest row evidence live in
+  `src/importers/manufacturing_metadata/rows.rs`.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
   or flying-probe evidence uniquely proves net/island/owner metadata.
