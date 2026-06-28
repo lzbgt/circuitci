@@ -306,6 +306,13 @@ without explicit imported mechanical evidence.
   resistance, derating, or measured temperature rise. Passing this rule only
   means the imported via layer spans and stackup copper-thickness evidence meet
   the reviewed static minimums.
+- `THERMAL_PACKAGE_TEMPERATURE_VALID` compares reviewed static power loss and
+  source-backed component package Rja metadata against reviewed ambient and
+  temperature-rise limits. It does not model transient thermal impedance, board
+  spreading resistance, copper/via effectiveness, airflow, enclosure effects,
+  heatsinking, package mounting variation, derating curves, or measured
+  temperature behavior. Passing this rule only means the reviewed static
+  package estimate is within the declared limits.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

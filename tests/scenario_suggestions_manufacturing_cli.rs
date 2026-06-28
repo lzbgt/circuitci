@@ -348,6 +348,43 @@ fn suggest_scenarios_derives_thermal_copper_area_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_thermal_package_temperature_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_thermal_package_temperature/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_thermal_package_temperature"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+
+    let thermal_package = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "thermal_package_temperature_u1_regulator_loss")
+        .expect("thermal package temperature suggestion");
+    assert_eq!(thermal_package["runnable"], false);
+    assert_eq!(
+        thermal_package["scenario"]["checks"][0],
+        "THERMAL_PACKAGE_TEMPERATURE_VALID"
+    );
+    assert_eq!(
+        thermal_package["scenario"]["parameters"]["thermal_copper"][0]["name"],
+        "u1_regulator_loss"
+    );
+    let required = thermal_package["required_inputs"].as_array().unwrap();
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.ambient_temperature_C")
+    }));
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.max_temperature_rise_C")
+    }));
+}
+
+#[test]
 fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_manufacturing_artifacts/project.yaml");

@@ -24,6 +24,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub power_switch: Option<PowerSwitch>,
     #[serde(default)]
+    pub thermal_package: Option<ThermalPackage>,
+    #[serde(default)]
     pub battery_charger: Option<BatteryCharger>,
     #[serde(default)]
     pub power_mux: Option<PowerMux>,
@@ -129,6 +131,15 @@ pub enum PowerSwitchReverseCurrentBlockingMode {
 pub enum PowerSwitchState {
     High,
     Low,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThermalPackage {
+    #[serde(rename = "thermal_resistance_junction_to_ambient_C_per_W")]
+    pub thermal_resistance_junction_to_ambient_c_per_w: f64,
+    #[serde(rename = "max_junction_temperature_C")]
+    pub max_junction_temperature_c: f64,
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

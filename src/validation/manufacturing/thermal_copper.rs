@@ -7,7 +7,9 @@ use crate::reports::Finding;
 use serde_json::json;
 
 use super::super::common::validation_input_missing;
-use super::super::{THERMAL_COPPER_AREA_VALID, THERMAL_VIA_STACKUP_VALID};
+use super::super::{
+    THERMAL_COPPER_AREA_VALID, THERMAL_PACKAGE_TEMPERATURE_VALID, THERMAL_VIA_STACKUP_VALID,
+};
 use super::geometry::{
     validate_copper_feature_geometry, validate_copper_region_geometry,
     validate_copper_segment_geometry,
@@ -49,6 +51,65 @@ pub(in crate::validation) fn validate_thermal_via_stackup(
             return;
         };
         validate_via_stackup_rule(bound, scenario, findings, rule);
+    }
+}
+
+pub(in crate::validation) fn validate_thermal_package_temperature(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = named_thermal_rule_parameters(
+        scenario,
+        findings,
+        THERMAL_PACKAGE_TEMPERATURE_VALID,
+        "thermal_copper",
+    ) else {
+        return;
+    };
+    let Some(ambient_temperature_c) = required_finite_number(
+        scenario,
+        findings,
+        THERMAL_PACKAGE_TEMPERATURE_VALID,
+        "ambient_temperature_C",
+    ) else {
+        return;
+    };
+    let Some(max_temperature_rise_c) = required_positive_number(
+        scenario,
+        findings,
+        THERMAL_PACKAGE_TEMPERATURE_VALID,
+        "max_temperature_rise_C",
+    ) else {
+        return;
+    };
+    let Some(max_junction_temperature_margin_c) = optional_nonnegative_number(
+        scenario,
+        findings,
+        THERMAL_PACKAGE_TEMPERATURE_VALID,
+        "max_junction_temperature_margin_C",
+    ) else {
+        return;
+    };
+    for name in names {
+        let Some(rule) = thermal_rule(
+            bound,
+            scenario,
+            findings,
+            THERMAL_PACKAGE_TEMPERATURE_VALID,
+            &name,
+        ) else {
+            return;
+        };
+        validate_package_temperature_rule(
+            bound,
+            scenario,
+            findings,
+            rule,
+            ambient_temperature_c,
+            max_temperature_rise_c,
+            max_junction_temperature_margin_c,
+        );
     }
 }
 
@@ -399,6 +460,133 @@ fn validate_via_stackup_rule(
     }
 }
 
+fn validate_package_temperature_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    rule: &ThermalCopperRule,
+    ambient_temperature_c: f64,
+    max_temperature_rise_c: f64,
+    max_junction_temperature_margin_c: f64,
+) {
+    if let Err(message) = validate_rule_metadata(bound, rule) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    let Some(component) = bound.project.board.components.get(&rule.component) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID thermal copper rule {} component {} is absent from board.components.",
+                rule.name, rule.component
+            ),
+        );
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} is unresolved.",
+                rule.component, component.model
+            ),
+        );
+        return;
+    };
+    let Some(package) = &model.thermal_package else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} must declare thermal_package metadata.",
+                rule.component, component.model
+            ),
+        );
+        return;
+    };
+    let Some(rja_c_per_w) =
+        positive_number(Some(package.thermal_resistance_junction_to_ambient_c_per_w))
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} thermal_package.thermal_resistance_junction_to_ambient_C_per_W must be finite and positive.",
+                rule.component, component.model
+            ),
+        );
+        return;
+    };
+    let Some(max_junction_temperature_c) =
+        positive_number(Some(package.max_junction_temperature_c))
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} thermal_package.max_junction_temperature_C must be finite and positive.",
+                rule.component, component.model
+            ),
+        );
+        return;
+    };
+    if package.source.trim().is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} thermal_package.source must be non-empty.",
+                rule.component, component.model
+            ),
+        );
+        return;
+    }
+
+    let estimated_temperature_rise_c = rule.power_loss_w * rja_c_per_w;
+    let estimated_junction_temperature_c = ambient_temperature_c + estimated_temperature_rise_c;
+    let allowed_junction_temperature_c =
+        max_junction_temperature_c - max_junction_temperature_margin_c;
+
+    if estimated_temperature_rise_c > max_temperature_rise_c + f64::EPSILON {
+        findings.push(thermal_temperature_rise_finding(
+            scenario,
+            rule,
+            &PackageThermalEvidence {
+                model_id: &component.model,
+                package_source: package.source.as_str(),
+                rja_c_per_w,
+                max_junction_temperature_c,
+                ambient_temperature_c,
+                max_temperature_rise_c,
+                max_junction_temperature_margin_c,
+                estimated_temperature_rise_c,
+                estimated_junction_temperature_c,
+                allowed_junction_temperature_c,
+            },
+        ));
+    }
+    if estimated_junction_temperature_c > allowed_junction_temperature_c + f64::EPSILON {
+        findings.push(thermal_junction_temperature_finding(
+            scenario,
+            rule,
+            &PackageThermalEvidence {
+                model_id: &component.model,
+                package_source: package.source.as_str(),
+                rja_c_per_w,
+                max_junction_temperature_c,
+                ambient_temperature_c,
+                max_temperature_rise_c,
+                max_junction_temperature_margin_c,
+                estimated_temperature_rise_c,
+                estimated_junction_temperature_c,
+                allowed_junction_temperature_c,
+            },
+        ));
+    }
+}
+
 fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> Result<(), String> {
     if rule.name.trim().is_empty() {
         return Err(
@@ -442,6 +630,77 @@ fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> R
 
 fn positive_number(value: Option<f64>) -> Option<f64> {
     value.filter(|value| value.is_finite() && *value > 0.0)
+}
+
+fn required_finite_number(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    key: &str,
+) -> Option<f64> {
+    let Some(value) = scenario.parameters.get(key) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} requires parameters.{key}."),
+        );
+        return None;
+    };
+    let Some(number) = value.as_f64().filter(|number| number.is_finite()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be a finite number."),
+        );
+        return None;
+    };
+    Some(number)
+}
+
+fn required_positive_number(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    key: &str,
+) -> Option<f64> {
+    let number = required_finite_number(scenario, findings, check_id, key)?;
+    if number <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be positive."),
+        );
+        return None;
+    }
+    Some(number)
+}
+
+fn optional_nonnegative_number(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    key: &str,
+) -> Option<f64> {
+    let Some(value) = scenario.parameters.get(key) else {
+        return Some(0.0);
+    };
+    let Some(number) = value.as_f64().filter(|number| number.is_finite()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be a finite number when supplied."),
+        );
+        return None;
+    };
+    if number < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be non-negative."),
+        );
+        return None;
+    }
+    Some(number)
 }
 
 fn stackup_layer<'a>(layers: &'a [StackupLayer], name: &str) -> Option<&'a StackupLayer> {
@@ -597,6 +856,20 @@ struct ThermalAreaEvidence {
 struct ThermalViaEvidence {
     route_via_count: usize,
     thermal_via_count: usize,
+}
+
+#[derive(Debug)]
+struct PackageThermalEvidence<'a> {
+    model_id: &'a str,
+    package_source: &'a str,
+    rja_c_per_w: f64,
+    max_junction_temperature_c: f64,
+    ambient_temperature_c: f64,
+    max_temperature_rise_c: f64,
+    max_junction_temperature_margin_c: f64,
+    estimated_temperature_rise_c: f64,
+    estimated_junction_temperature_c: f64,
+    allowed_junction_temperature_c: f64,
 }
 
 impl ThermalAreaEvidence {
@@ -785,4 +1058,107 @@ fn thermal_via_count_finding(
         "If the via count requirement changed, update board.manufacturing.thermal_copper from the reviewed thermal layout policy.".to_string(),
     ];
     finding
+}
+
+fn thermal_temperature_rise_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    evidence: &PackageThermalEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_PACKAGE_TEMPERATURE_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} estimates {:.3} C package temperature rise, above the reviewed {:.3} C limit.",
+            rule.name, evidence.estimated_temperature_rise_c, evidence.max_temperature_rise_c
+        ),
+    );
+    populate_package_thermal_finding(&mut finding, rule, evidence);
+    finding.limit.insert(
+        "max_temperature_rise_C".to_string(),
+        json!(evidence.max_temperature_rise_c),
+    );
+    finding.suggested_fixes = vec![
+        "Reduce reviewed package power loss, improve the component thermal path, or select a package/model with lower junction-to-ambient thermal resistance.".to_string(),
+        "If the board accepts a higher temperature rise, update parameters.max_temperature_rise_C from reviewed thermal requirements or measured evidence.".to_string(),
+    ];
+    finding
+}
+
+fn thermal_junction_temperature_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    evidence: &PackageThermalEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_PACKAGE_TEMPERATURE_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} estimates {:.3} C junction temperature, above the allowed {:.3} C limit.",
+            rule.name,
+            evidence.estimated_junction_temperature_c,
+            evidence.allowed_junction_temperature_c
+        ),
+    );
+    populate_package_thermal_finding(&mut finding, rule, evidence);
+    finding.limit.insert(
+        "allowed_junction_temperature_C".to_string(),
+        json!(evidence.allowed_junction_temperature_c),
+    );
+    finding.suggested_fixes = vec![
+        "Reduce reviewed package power loss, lower ambient temperature, improve heat spreading, or select a package/model with a higher reviewed thermal margin.".to_string(),
+        "If the junction limit or margin changed, update the source-backed model thermal_package metadata or parameters.max_junction_temperature_margin_C.".to_string(),
+    ];
+    finding
+}
+
+fn populate_package_thermal_finding(
+    finding: &mut Finding,
+    rule: &ThermalCopperRule,
+    evidence: &PackageThermalEvidence<'_>,
+) {
+    finding.component = Some(rule.component.clone());
+    finding
+        .measured
+        .insert("thermal_copper_name".to_string(), json!(rule.name));
+    finding
+        .measured
+        .insert("thermal_copper_source".to_string(), json!(rule.source));
+    finding
+        .measured
+        .insert("component".to_string(), json!(rule.component));
+    finding
+        .measured
+        .insert("model".to_string(), json!(evidence.model_id));
+    finding.measured.insert(
+        "thermal_package_source".to_string(),
+        json!(evidence.package_source),
+    );
+    finding
+        .measured
+        .insert("power_loss_w".to_string(), json!(rule.power_loss_w));
+    finding.measured.insert(
+        "thermal_resistance_junction_to_ambient_C_per_W".to_string(),
+        json!(evidence.rja_c_per_w),
+    );
+    finding.measured.insert(
+        "ambient_temperature_C".to_string(),
+        json!(evidence.ambient_temperature_c),
+    );
+    finding.measured.insert(
+        "estimated_temperature_rise_C".to_string(),
+        json!(evidence.estimated_temperature_rise_c),
+    );
+    finding.measured.insert(
+        "estimated_junction_temperature_C".to_string(),
+        json!(evidence.estimated_junction_temperature_c),
+    );
+    finding.limit.insert(
+        "max_junction_temperature_C".to_string(),
+        json!(evidence.max_junction_temperature_c),
+    );
+    finding.limit.insert(
+        "max_junction_temperature_margin_C".to_string(),
+        json!(evidence.max_junction_temperature_margin_c),
+    );
 }

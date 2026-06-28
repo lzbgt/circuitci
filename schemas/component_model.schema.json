@@ -93,6 +93,26 @@
       },
       "additionalProperties": false
     },
+    "thermal_package": {
+      "type": "object",
+      "required": [
+        "thermal_resistance_junction_to_ambient_C_per_W",
+        "max_junction_temperature_C",
+        "source"
+      ],
+      "properties": {
+        "thermal_resistance_junction_to_ambient_C_per_W": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_junction_temperature_C": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "source": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "battery_charger": {
       "type": "object",
       "required": ["input_pin", "battery_pin"],

@@ -1,0 +1,24 @@
+component_id: example.thermal.package
+version: 0.1.0
+category: thermal_example_ic
+ports:
+  IN:
+    kind: electrical_power
+    required: true
+  OUT:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+thermal_package:
+  thermal_resistance_junction_to_ambient_C_per_W: 38.0
+  max_junction_temperature_C: 125.0
+  source: datasheet_package_table_rev_a
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - thermal_package_static_screening
+  not_valid_for:
+    - transient_thermal_solver

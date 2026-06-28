@@ -343,6 +343,23 @@ inrush, turn-on ramp, reverse current, switch SOA, current-limit waveform,
 repeated surge, or PCB copper temperature; those require SPICE, measurement,
 or a datasheet-backed transient/power-path model.
 
+Component models can declare source-backed package thermal screening metadata
+for manufacturing scenarios:
+
+```yaml
+thermal_package:
+  thermal_resistance_junction_to_ambient_C_per_W: 38.0
+  max_junction_temperature_C: 125.0
+  source: datasheet_package_table_rev_a
+```
+
+`THERMAL_PACKAGE_TEMPERATURE_VALID` combines this metadata with reviewed
+`board.manufacturing.thermal_copper[].power_loss_w` and scenario-declared
+ambient/temperature-rise limits to run a static package temperature screen. The
+metadata must identify the source and package/board assumption well enough for
+review. It is not a transient thermal model, board spreading solver, airflow
+model, enclosure model, or substitute for measured temperature evidence.
+
 Reset supervisor models can declare static threshold metadata:
 
 ```yaml

@@ -461,6 +461,12 @@ The command is conservative:
   copper layers, imported route-via evidence, and stackup copper-thickness
   metadata, it emits a runnable `THERMAL_VIA_STACKUP_VALID` template. The
   suggestion does not infer thermal vias from copper pours or solve heat flow.
+- When a reviewed thermal-copper entry declares component power-loss metadata
+  and the resolved component model declares source-backed `thermal_package`
+  metadata, it emits a non-runnable `THERMAL_PACKAGE_TEMPERATURE_VALID`
+  template requiring reviewed `ambient_temperature_C` and
+  `max_temperature_rise_C` inputs. The suggestion does not infer ambient
+  conditions or solve board/package heat flow.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

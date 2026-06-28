@@ -146,6 +146,7 @@ Canonical executable check IDs:
 - `RF_ANTENNA_FEED_PATH_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
+- `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1373,6 +1374,53 @@ This is a static via-count and stackup-evidence screen for reviewed thermal
 rules. It does not model plating thickness, via barrel resistance, spreading
 resistance, convection, package thermal resistance, temperature rise, or
 measured thermal behavior.
+
+Thermal package temperature validation uses `THERMAL_PACKAGE_TEMPERATURE_VALID`
+when the reviewed `board.manufacturing.thermal_copper[]` rule declares a static
+component power loss and the resolved component model declares
+`thermal_package` evidence.
+
+```yaml
+scenarios:
+  - name: thermal_package_temperature
+    type: manufacturing
+    checks:
+      - THERMAL_PACKAGE_TEMPERATURE_VALID
+    parameters:
+      ambient_temperature_C: 55.0
+      max_temperature_rise_C: 60.0
+      max_junction_temperature_margin_C: 10.0
+      thermal_copper:
+        - name: u1_heat_spreader
+```
+
+Thermal package temperature algorithm:
+
+1. Require `parameters.thermal_copper[]` with explicit rule `name` values.
+2. Require finite `parameters.ambient_temperature_C` and positive
+   `parameters.max_temperature_rise_C`. Optional
+   `parameters.max_junction_temperature_margin_C` must be non-negative.
+3. Resolve each name from `board.manufacturing.thermal_copper[]`.
+4. Require the reviewed rule to name an existing component, non-empty source,
+   positive `power_loss_w`, and valid shared thermal-copper metadata.
+5. Resolve the component model and require source-backed `thermal_package`
+   metadata with positive
+   `thermal_resistance_junction_to_ambient_C_per_W`, positive
+   `max_junction_temperature_C`, and non-empty `source`.
+6. Estimate static temperature rise as
+   `power_loss_w * thermal_resistance_junction_to_ambient_C_per_W`.
+7. Estimate static junction temperature as
+   `ambient_temperature_C + estimated_temperature_rise_C`.
+8. Fail when the estimated rise exceeds `max_temperature_rise_C` or the
+   estimated junction temperature exceeds
+   `max_junction_temperature_C - max_junction_temperature_margin_C`.
+9. Fail closed when reviewed rule metadata, model metadata, or scenario
+   temperature limits are absent or malformed.
+
+This is a static reviewed-loss and package-Rja evidence screen. It does not
+solve board spreading resistance, transient thermal impedance, airflow,
+enclosure effects, heatsinking, copper-via effectiveness, derating curves, or
+measured temperature behavior.
 
 Controlled-impedance geometry validation uses
 `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported

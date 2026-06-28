@@ -212,6 +212,14 @@ all reviewed thermal layers, and it checks `board.layout.stackup.layers[]`
 copper thickness for each reviewed layer. It does not infer thermal vias from
 zone geometry or solve heat flow.
 
+`THERMAL_PACKAGE_TEMPERATURE_VALID` also consumes reviewed
+`board.manufacturing.thermal_copper[]` entries for component identity, source,
+and static `power_loss_w`, then combines that evidence with the resolved
+component model's `thermal_package` metadata and scenario-declared ambient /
+temperature-rise limits. The Board IR rule does not itself prove package
+thermal resistance, ambient temperature, airflow, enclosure behavior, or
+temperature-rise acceptability.
+
 Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
 metadata to an imported Board IR without hand-editing YAML:
 

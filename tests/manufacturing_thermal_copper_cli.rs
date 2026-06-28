@@ -112,6 +112,86 @@ fn thermal_via_stackup_fails_closed_without_stackup_copper_thickness() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn thermal_package_temperature_passes_with_reviewed_loss_and_model_metadata() {
+    let (_dir, project_path) = write_thermal_package_project(1.0, 40.0, 125.0, true, 45.0, 60.0);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_package_temperature_fails_temperature_rise_limit() {
+    let (_dir, project_path) = write_thermal_package_project(2.0, 40.0, 125.0, true, 25.0, 60.0);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_PACKAGE_TEMPERATURE_VALID")
+        .expect("thermal package failure");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(
+        failure["measured"]["thermal_copper_name"],
+        "u1_package_loss"
+    );
+    assert_eq!(failure["measured"]["model"], "test.thermal.package");
+    assert_eq!(
+        failure["measured"]["thermal_package_source"],
+        "datasheet_package_table_rev_a"
+    );
+    assert_eq!(failure["measured"]["power_loss_w"], 2.0);
+    assert_eq!(
+        failure["measured"]["thermal_resistance_junction_to_ambient_C_per_W"],
+        40.0
+    );
+    assert_eq!(failure["measured"]["estimated_temperature_rise_C"], 80.0);
+    assert_eq!(failure["limit"]["max_temperature_rise_C"], 60.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_package_temperature_fails_junction_temperature_limit() {
+    let (_dir, project_path) = write_thermal_package_project(2.0, 40.0, 125.0, true, 60.0, 100.0);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_PACKAGE_TEMPERATURE_VALID")
+        .expect("thermal package failure");
+    assert_eq!(failure["measured"]["estimated_temperature_rise_C"], 80.0);
+    assert_eq!(
+        failure["measured"]["estimated_junction_temperature_C"],
+        140.0
+    );
+    assert_eq!(failure["limit"]["allowed_junction_temperature_C"], 125.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_package_temperature_fails_closed_without_model_metadata() {
+    let (_dir, project_path) = write_thermal_package_project(1.0, 40.0, 125.0, false, 45.0, 60.0);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("must declare thermal_package metadata")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_thermal_project(
     copper_area_mm2: f64,
     copper_net: &str,
@@ -173,6 +253,102 @@ scenarios:
         - name: u1_heat_spreader
 "#,
             generic_library = repo.join("libs/generic").display(),
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_thermal_package_project(
+    power_loss_w: f64,
+    rja_c_per_w: f64,
+    max_junction_c: f64,
+    include_thermal_package: bool,
+    ambient_temperature_c: f64,
+    max_temperature_rise_c: f64,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+    let thermal_package = if include_thermal_package {
+        format!(
+            r#"thermal_package:
+  thermal_resistance_junction_to_ambient_C_per_W: {rja_c_per_w}
+  max_junction_temperature_C: {max_junction_c}
+  source: datasheet_package_table_rev_a
+"#
+        )
+    } else {
+        String::new()
+    };
+    std::fs::write(
+        model_dir.join("test_thermal_package.model.yaml"),
+        format!(
+            r#"component_id: test.thermal.package
+version: 0.1.0
+category: thermal_test_ic
+ports:
+  IN:
+    kind: electrical_power
+    required: true
+  OUT:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+{thermal_package}model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - thermal_package_static_screening
+  not_valid_for:
+    - transient_thermal_solver
+"#,
+        ),
+    )
+    .unwrap();
+    let project_path = dir.path().join("project.yaml");
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  version: "1"
+  name: thermal_package_fixture
+libraries:
+  - {model_library}
+board:
+  nets:
+    VIN: {{ kind: power }}
+    VOUT: {{ kind: power }}
+    GND: {{ kind: ground }}
+  components:
+    U1:
+      model: test.thermal.package
+      pins:
+        IN: VIN
+        OUT: VOUT
+        GND: GND
+  manufacturing:
+    thermal_copper:
+      - name: u1_package_loss
+        component: U1
+        power_loss_w: {power_loss_w}
+        min_copper_area_mm2: 20.0
+        source: reviewed_loss_budget_rev_a
+scenarios:
+  - name: thermal_package_temperature
+    type: manufacturing
+    checks:
+      - THERMAL_PACKAGE_TEMPERATURE_VALID
+    parameters:
+      ambient_temperature_C: {ambient_temperature_c}
+      max_temperature_rise_C: {max_temperature_rise_c}
+      thermal_copper:
+        - name: u1_package_loss
+"#,
+            model_library = model_dir.display(),
         ),
     )
     .unwrap();

@@ -23,6 +23,7 @@ const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
+const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -83,6 +84,10 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
     suggestions.extend(thermal_copper_area_suggestions(bound, &project_name));
     suggestions.extend(thermal_via_stackup_suggestions(bound, &project_name));
+    suggestions.extend(thermal_package_temperature_suggestions(
+        bound,
+        &project_name,
+    ));
     if !layout.drills.is_empty() {
         push_if_not_declared(
             bound,
@@ -1358,6 +1363,92 @@ fn thermal_via_stackup_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -
                 .checks
                 .iter()
                 .any(|declared| declared == THERMAL_VIA_STACKUP_VALID)
+            && scenario
+                .parameters
+                .get("thermal_copper")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(rule_name)
+                    })
+                })
+    })
+}
+
+fn thermal_package_temperature_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for rule in &bound.project.board.manufacturing.thermal_copper {
+        if !thermal_package_rule_has_metadata(bound, rule)
+            || thermal_package_temperature_check_declared(bound, &rule.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("thermal_package_temperature_{}", sanitized_name(&rule.name)),
+            false,
+            &format!(
+                "Thermal copper rule {} has reviewed package power-loss metadata and component model thermal_package evidence; reviewed ambient and temperature-rise limits are still required.",
+                rule.name
+            ),
+            &format!(
+                "{}_{}_thermal_package_temperature",
+                project_name,
+                sanitized_name(&rule.name)
+            ),
+            THERMAL_PACKAGE_TEMPERATURE_VALID,
+            Some(BTreeMap::from([(
+                "thermal_copper".to_string(),
+                json!([{ "name": rule.name }]),
+            )])),
+            vec![
+                "Set parameters.ambient_temperature_C from the reviewed operating environment."
+                    .to_string(),
+                "Set parameters.max_temperature_rise_C from board or package thermal requirements."
+                    .to_string(),
+            ],
+        ));
+    }
+    suggestions
+}
+
+fn thermal_package_rule_has_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> bool {
+    !rule.name.trim().is_empty()
+        && !rule.component.trim().is_empty()
+        && !rule.source.trim().is_empty()
+        && rule.power_loss_w.is_finite()
+        && rule.power_loss_w > 0.0
+        && bound
+            .project
+            .board
+            .components
+            .get(&rule.component)
+            .and_then(|component| bound.library.get(&component.model))
+            .and_then(|model| model.thermal_package.as_ref())
+            .is_some_and(|package| {
+                package
+                    .thermal_resistance_junction_to_ambient_c_per_w
+                    .is_finite()
+                    && package.thermal_resistance_junction_to_ambient_c_per_w > 0.0
+                    && package.max_junction_temperature_c.is_finite()
+                    && package.max_junction_temperature_c > 0.0
+                    && !package.source.trim().is_empty()
+            })
+}
+
+fn thermal_package_temperature_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_PACKAGE_TEMPERATURE_VALID)
             && scenario
                 .parameters
                 .get("thermal_copper")
