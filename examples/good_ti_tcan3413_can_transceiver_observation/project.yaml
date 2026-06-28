@@ -1,0 +1,314 @@
+project:
+  name: good_ti_tcan3413_can_transceiver_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/can_transceivers
+
+board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      VIO: Simulation_SPICE:VDC
+      UCAN: Interface_CAN:TCAN3413
+      RRXDLOAD: Device:R
+      RHTERM: Device:R
+      RLTERM: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VIO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UCAN: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RRXDLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RHTERM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RLTERM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 64.0, y: 160.0 }
+      component:VIO: { x: 64.0, y: 240.0 }
+      component:UCAN: { x: 352.0, y: 240.0 }
+      component:RRXDLOAD: { x: 608.0, y: 144.0 }
+      component:RHTERM: { x: 608.0, y: 304.0 }
+      component:RLTERM: { x: 608.0, y: 424.0 }
+      net:can_3v3: { x: 176.0, y: 144.0 }
+      net:vio_3v3: { x: 176.0, y: 208.0 }
+      net:txd: { x: 208.0, y: 224.0 }
+      net:stb: { x: 208.0, y: 304.0 }
+      net:rxd: { x: 496.0, y: 144.0 }
+      net:canh: { x: 496.0, y: 304.0 }
+      net:canl: { x: 496.0, y: 424.0 }
+      net:gnd: { x: 352.0, y: 568.0 }
+    wire_routes:
+      VCC.P->can_3v3:
+        points:
+          - { x: 144.0, y: 160.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 112.0, y: 568.0 }
+      VIO.P->vio_3v3:
+        points:
+          - { x: 144.0, y: 240.0 }
+      VIO.N->gnd:
+        points:
+          - { x: 112.0, y: 568.0 }
+      UCAN.VCC->can_3v3:
+        points:
+          - { x: 256.0, y: 144.0 }
+      UCAN.VIO->vio_3v3:
+        points:
+          - { x: 256.0, y: 208.0 }
+      UCAN.GND->gnd:
+        points:
+          - { x: 352.0, y: 568.0 }
+      UCAN.TXD->txd:
+        points:
+          - { x: 208.0, y: 224.0 }
+      UCAN.STB->stb:
+        points:
+          - { x: 208.0, y: 304.0 }
+      UCAN.RXD->rxd:
+        points:
+          - { x: 496.0, y: 144.0 }
+      UCAN.CANH->canh:
+        points:
+          - { x: 496.0, y: 304.0 }
+      UCAN.CANL->canl:
+        points:
+          - { x: 496.0, y: 424.0 }
+      RRXDLOAD.A->rxd:
+        points:
+          - { x: 608.0, y: 144.0 }
+      RRXDLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 568.0 }
+      RHTERM.A->canh:
+        points:
+          - { x: 608.0, y: 304.0 }
+      RHTERM.B->gnd:
+        points:
+          - { x: 608.0, y: 568.0 }
+      RLTERM.A->canl:
+        points:
+          - { x: 608.0, y: 424.0 }
+      RLTERM.B->gnd:
+        points:
+          - { x: 608.0, y: 568.0 }
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      part_number: CAN_3V3_SOURCE
+      pins:
+        P: can_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VIO:
+      model: generic.analog.dc_voltage_source
+      part_number: CAN_VIO_3V3_SOURCE
+      pins:
+        P: vio_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UCAN:
+      model: vendor.ti.tcan3413
+      part_number: TCAN3413
+      parameters:
+        observation_txd_state: 0.0
+        observation_stb_state: 0.0
+        observation_rxd_state: 0.0
+      pins:
+        VCC: can_3v3
+        VIO: vio_3v3
+        GND: gnd
+        TXD: txd
+        RXD: rxd
+        STB: stb
+        CANH: canh
+        CANL: canl
+    RRXDLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: rxd
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RHTERM:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: canh
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RLTERM:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: canl
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+  nets:
+    can_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.08
+    vio_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.005
+    txd:
+      kind: digital_or_analog
+    stb:
+      kind: digital_or_analog
+    rxd:
+      kind: digital_or_analog
+    canh:
+      kind: digital_or_analog
+    canl:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tcan3413_can_transceiver_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCC
+          - VIO
+          - UCAN
+          - RRXDLOAD
+          - RHTERM
+          - RLTERM
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: a6cf0aa0df3043986604cfecb2d3b4428d496e7151ccb7b162afc79a8af3d2c6
+      node_bindings:
+        - { node: vcc, net: can_3v3 }
+        - { node: vio, net: vio_3v3 }
+        - { node: txd, net: txd }
+        - { node: stb, net: stb }
+        - { node: rxd, net: rxd }
+        - { node: canh, net: canh }
+        - { node: canl, net: canl }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VCC, pin: P } }
+        - { node: "0", endpoint: { component: VCC, pin: N } }
+        - { node: vio, endpoint: { component: VIO, pin: P } }
+        - { node: "0", endpoint: { component: VIO, pin: N } }
+        - { node: vcc, endpoint: { component: UCAN, pin: VCC } }
+        - { node: vio, endpoint: { component: UCAN, pin: VIO } }
+        - { node: "0", endpoint: { component: UCAN, pin: GND } }
+        - { node: txd, endpoint: { component: UCAN, pin: TXD } }
+        - { node: rxd, endpoint: { component: UCAN, pin: RXD } }
+        - { node: stb, endpoint: { component: UCAN, pin: STB } }
+        - { node: canh, endpoint: { component: UCAN, pin: CANH } }
+        - { node: canl, endpoint: { component: UCAN, pin: CANL } }
+        - { node: rxd, endpoint: { component: RRXDLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RRXDLOAD, pin: B } }
+        - { node: canh, endpoint: { component: RHTERM, pin: A } }
+        - { node: "0", endpoint: { component: RHTERM, pin: B } }
+        - { node: canl, endpoint: { component: RLTERM, pin: A } }
+        - { node: "0", endpoint: { component: RLTERM, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: dominant_line_snapshot
+          description: TCAN3413 observes TXD low and STB low in normal mode, with RXD low and CANH/CANL in a dominant line-state snapshot.
+      probes:
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_vio
+          expression: V(vio)
+        - name: v_txd
+          expression: V(txd)
+        - name: v_stb
+          expression: V(stb)
+        - name: v_rxd
+          expression: V(rxd)
+        - name: v_canh
+          expression: V(canh)
+        - name: v_canl
+          expression: V(canl)
+      assertions:
+        - name: vcc_within_3v3_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 3.0
+        - name: vcc_within_3v3_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: vio_within_3v3_min
+          probe: v_vio
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 3.0
+        - name: vio_within_3v3_max
+          probe: v_vio
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: txd_dominant_low
+          probe: v_txd
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.8
+        - name: stb_normal_mode_low
+          probe: v_stb
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.8
+        - name: rxd_dominant_low
+          probe: v_rxd
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.8
+        - name: canh_dominant_high
+          probe: v_canh
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.0
+        - name: canl_dominant_low
+          probe: v_canl
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 1.2

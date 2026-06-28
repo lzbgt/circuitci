@@ -233,6 +233,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   ESD2CAN24-Q1 datasheet-backed CAN ESD model can use a reduced generated-SPICE
   face for normal-operation CANH/CANL standoff checks with the source-backed
   3 pF line-capacitance load.
+- `examples/good_ti_tcan3413_can_transceiver_observation` proves the TI
+  TCAN3413 datasheet-backed CAN transceiver model can use a reduced
+  generated-SPICE face for VCC, VIO, TXD, STB, RXD, and CANH/CANL line-state
+  checks. The model-state inputs are explicit Board IR component parameters,
+  not inferred CAN protocol, termination, or cable behavior.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

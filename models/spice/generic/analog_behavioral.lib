@@ -201,6 +201,28 @@ RRE_BIAS RE_N GND 1G
 RRO_BIAS RO GND 1G
 .ends CIRCUITCI_THVD1450_RS485_TRANSCEIVER
 
+.subckt CIRCUITCI_TCAN3413_CAN_TRANSCEIVER VCC VIO GND TXD RXD STB CANH CANL PARAMS: TXD_STATE=0 STB_STATE=0
+* Reduced TCAN3413 CAN transceiver observation behavior.
+* Normal-operation line-state model only: datasheet-backed pin roles and logic
+* thresholds are represented by parameterized TXD/STB states with simple
+* VCC/VIO-referenced CANH/CANL and RXD levels. CAN termination, common-mode
+* range, cable behavior, CAN FD timing, fault stress, EMC, and signal
+* integrity are intentionally not modeled.
+BTXD NTXD GND V={v(VIO,GND)*TXD_STATE}
+RTXD NTXD TXD 1k
+BSTB NSTB GND V={v(VIO,GND)*STB_STATE}
+RSTB NSTB STB 1k
+BCANH NH GND V={v(VCC,GND)*(0.5+0.25*(1-TXD_STATE)*(1-STB_STATE))}
+RCANH NH CANH 200
+BCANL NL GND V={v(VCC,GND)*(0.5-0.25*(1-TXD_STATE)*(1-STB_STATE))}
+RCANL NL CANL 200
+BRXD NRXD GND V={v(VIO,GND)*(TXD_STATE+(1-TXD_STATE)*STB_STATE)}
+RRXD NRXD RXD 50
+RTXD_BIAS TXD GND 1G
+RSTB_BIAS STB GND 1G
+RRXD_BIAS RXD GND 1G
+.ends CIRCUITCI_TCAN3413_CAN_TRANSCEIVER
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

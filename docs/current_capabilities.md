@@ -202,6 +202,7 @@ Current analog support:
   capacitance observations,
   ESD2CAN24-Q1-style CAN ESD normal-operation standoff and line-capacitance
   observations,
+  TCAN3413-style CAN transceiver line-state observations,
   ESDS552-style RS-485/RS-422 ESD/surge normal-operation standoff and
   line-capacitance observations,
   THVD1450-style RS-485 transceiver line-state observations,
@@ -218,7 +219,7 @@ Current analog support:
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux,
   TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -284,6 +285,14 @@ Current analog support:
   transient face explicitly omits ISO 7637, ISO 10605, IEC ESD pulse clamping,
   surge energy, CAN signal integrity, cable-harness behavior, route placement,
   stub length, and final layout sign-off.
+- The TI TCAN3413 vendor component pack now has a datasheet-backed generated
+  SPICE observation face for 3.3 V VCC/VIO, TXD/STB state, RXD state, and
+  CANH/CANL dominant line-state checks. Its static metadata still covers the
+  3.0 V to 3.6 V VCC range, 1.7 V to 3.6 V VIO range, MCU-side logic
+  thresholds, 5 Mbps CAN FD class, 8 Mbps light-bus class, and `+/-58 V`
+  bus-fault class, while the transient face explicitly omits CAN termination,
+  stub length, common-mode range, cable behavior, CAN FD timing, EMC,
+  bus-fault energy, and final signal-integrity sign-off.
 - The TI ESDS552 vendor component pack now has a datasheet-backed generated
   SPICE observation face for normal-operation RS-485/RS-422 A/B standoff checks
   with source-backed `11 pF` maximum line capacitance. Its static clamp metadata

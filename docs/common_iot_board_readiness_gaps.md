@@ -52,7 +52,10 @@ validation plus a reduced generated-SPICE face for normal-operation
 VBUS/IO1/IO2 standoff and capacitance-load checks. TI ESD2CAN24-Q1 now covers
 CANH/CANL clamp presence, ground reference, 24 V standoff, 3 pF line
 capacitance, and a reduced generated-SPICE normal-operation CAN line
-observation face. TI ESDS552 now covers RS-485/RS-422 A/B clamp presence,
+observation face. TI TCAN3413 now covers a source-backed CAN transceiver with
+static VCC/VIO, MCU-side, data-rate, and bus-fault metadata plus a reduced
+generated-SPICE observation face for TXD/STB, RXD, and CANH/CANL line-state
+checks. TI ESDS552 now covers RS-485/RS-422 A/B clamp presence,
 ground reference, 12 V standoff, 11 pF maximum line capacitance, and a reduced
 generated-SPICE normal-operation line observation face. TI THVD1450 now covers
 a source-backed RS-485 transceiver with static

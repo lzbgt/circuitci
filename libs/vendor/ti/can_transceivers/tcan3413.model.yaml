@@ -1,6 +1,24 @@
 component_id: vendor.ti.tcan3413
 version: 0.1.0
 category: can_transceiver
+simulation:
+  spice:
+    model_name: CIRCUITCI_TCAN3413_CAN_TRANSCEIVER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, VIO, GND, TXD, RXD, STB, CANH, CANL]
+    instance_parameters:
+      - spice_name: TXD_STATE
+        component_parameter: observation_txd_state
+        default: 0.0
+      - spice_name: STB_STATE
+        component_parameter: observation_stb_state
+        default: 0.0
+    valid_operating_notes:
+      - Preliminary generated-SPICE observation face for VCC, VIO, TXD, STB, RXD, and CANH/CANL line-state checks.
+      - Uses source-backed supply range, VIO range, pinout, logic thresholds, CAN FD data-rate class, and bus-fault metadata; behavioral bus voltages are reduced design-observation placeholders.
+      - Not valid for CAN signal integrity, termination, stub length, common-mode behavior, CAN FD timing, EMC, bus fault energy, or final transceiver sign-off.
 ports:
   VCC:
     kind: electrical_power
@@ -100,6 +118,7 @@ model_quality:
     - static_power_tree
     - mcu_side_io_voltage_screening
     - smart_robot_can_transceiver_selection
+    - preliminary_generated_spice_observation
   not_valid_for:
     - can_signal_integrity
     - can_termination_or_stub_length_signoff

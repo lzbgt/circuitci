@@ -207,6 +207,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UESD"),
         },
         ExpectedProjectExample {
+            id: "tcan3413_can_scope",
+            category: "Interface",
+            open_label: "Open TCAN3413 CAN Example",
+            run_label: "Open TCAN3413 + Run Scopes",
+            summary: "Source-backed CAN transceiver dominant line-state observation.",
+            project_path: "examples/good_ti_tcan3413_can_transceiver_observation/project.yaml",
+            project_name: "good_ti_tcan3413_can_transceiver_observation",
+            expected_traces: &[
+                "v_vcc", "v_vio", "v_txd", "v_stb", "v_rxd", "v_canh", "v_canl",
+            ],
+            expected_frequency: "3.3 V normal-mode TCAN3413 CAN dominant line-state observation",
+            observation_preset_component: Some("UCAN"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

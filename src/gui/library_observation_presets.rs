@@ -411,7 +411,10 @@ fn observation_default_assertions(
 }
 
 fn supports_comms_output_observation(model: &crate::library::ComponentModel) -> bool {
-    matches!(model.category.as_str(), "comms" | "rs485_transceiver")
+    matches!(
+        model.category.as_str(),
+        "comms" | "rs485_transceiver" | "can_transceiver"
+    )
 }
 
 fn add_comms_output_observation_assertions(

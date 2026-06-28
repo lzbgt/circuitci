@@ -1344,6 +1344,34 @@ fn generated_esd2can24_q1_can_esd_observation_uses_datasheet_backed_model_pack()
 }
 
 #[test]
+fn generated_tcan3413_can_transceiver_observation_uses_datasheet_backed_model_pack() {
+    let report =
+        run_validation("examples/good_ti_tcan3413_can_transceiver_observation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/analog_behavioral.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_esds552_rs485_esd_observation_uses_datasheet_backed_model_pack() {
     let report = run_validation("examples/good_ti_esds552_rs485_esd_observation/project.yaml");
     if binary_available("ngspice") {

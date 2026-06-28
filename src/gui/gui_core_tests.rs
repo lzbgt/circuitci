@@ -1156,6 +1156,54 @@ fn esd2can24_q1_scope_example_workflow_creates_model_aware_observation_checks() 
 }
 
 #[test]
+fn tcan3413_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tcan3413_can_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UCAN".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "ucan_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "ucan_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ucan_vcc"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ucan_vio"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ucan_txd"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_ucan_rxd"));
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_ucan_canh")
+    );
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_ucan_canl")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_ucan_rxd_output_low")
+    );
+}
+
+#[test]
 fn esds552_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

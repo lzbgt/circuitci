@@ -77,7 +77,12 @@ robot control-stack design pass.
   separate VIO support from 1.7 V to 3.6 V, VCC operation from 3.0 V to 3.6 V,
   ISO 11898-2:2016 compliance, standby mode, and bus fault protection up to
   plus/minus 58 V. That makes it a sourced first CAN transceiver for the 3.3 V
-  motion-core and wheel-actuator control buses.
+  motion-core and wheel-actuator control buses. The generated-SPICE observation
+  face uses these saved sources for supply, VIO, pinout, logic-threshold,
+  data-rate-class, and bus-fault metadata while only modeling explicit
+  TXD/STB-driven RXD and CANH/CANL line-state checks; it is not termination,
+  stub-length, cable, common-mode, CAN FD timing, bus-fault-energy, or EMC
+  sign-off.
 - TI's ESD2CAN24-Q1 datasheet identifies an automotive 24 V, two-channel ESD
   protection diode for in-vehicle network lines including CANH/CANL, with
   typical 3 pF I/O capacitance. The first CircuitCI model uses that source to
