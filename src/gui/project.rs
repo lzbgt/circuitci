@@ -59,8 +59,7 @@ const TPS62162_BUCK_SCOPE_EXPECTED_FREQUENCY: &str =
     "12 V input, 3.3 V enable, and 3.3 V buck-regulator rail observation";
 const TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tps63802_3v3_buck_boost_observation/project.yaml";
-const TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_NAME: &str =
-    "good_tps63802_3v3_buck_boost_observation";
+const TPS63802_BUCK_BOOST_SCOPE_EXAMPLE_NAME: &str = "good_tps63802_3v3_buck_boost_observation";
 const TPS63802_BUCK_BOOST_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_battery", "v_enable", "v_rail3v3", "i_load"];
 const TPS63802_BUCK_BOOST_SCOPE_EXPECTED_FREQUENCY: &str =

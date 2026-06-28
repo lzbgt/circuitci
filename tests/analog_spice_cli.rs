@@ -1155,8 +1155,7 @@ fn generated_tps62162_buck_observation_uses_datasheet_backed_model_pack() {
 
 #[test]
 fn generated_tps63802_buck_boost_observation_uses_datasheet_backed_model_pack() {
-    let report =
-        run_validation("examples/good_tps63802_3v3_buck_boost_observation/project.yaml");
+    let report = run_validation("examples/good_tps63802_3v3_buck_boost_observation/project.yaml");
     if binary_available("ngspice") {
         assert_eq!(report["result"], "pass");
         assert_eq!(report["summary"]["critical"], 0);

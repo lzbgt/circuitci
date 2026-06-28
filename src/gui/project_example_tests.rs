@@ -1,0 +1,286 @@
+use super::project::{GuiProjectExample, gui_project_examples};
+
+fn gui_project_example_by_id(id: &str) -> GuiProjectExample {
+    gui_project_examples()
+        .iter()
+        .copied()
+        .find(|example| example.id == id)
+        .unwrap()
+}
+
+struct ExpectedProjectExample {
+    id: &'static str,
+    category: &'static str,
+    open_label: &'static str,
+    run_label: &'static str,
+    summary: &'static str,
+    project_path: &'static str,
+    project_name: &'static str,
+    expected_traces: &'static [&'static str],
+    expected_frequency: &'static str,
+    observation_preset_component: Option<&'static str>,
+}
+
+#[test]
+fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
+    const EXPECTED: &[ExpectedProjectExample] = &[
+        ExpectedProjectExample {
+            id: "ne555_astable_scope",
+            category: "Timer",
+            open_label: "Open NE555 Scope Example",
+            run_label: "Open NE555 + Run Scopes",
+            summary: "Astable-style timer output with timing-node and source-current traces.",
+            project_path: "examples/ne555_astable_scope_smoke/project.yaml",
+            project_name: "ne555_astable_scope",
+            expected_traces: &["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"],
+            expected_frequency: "about 1.46 kHz",
+            observation_preset_component: None,
+        },
+        ExpectedProjectExample {
+            id: "rc_lowpass_scope",
+            category: "Filter",
+            open_label: "Open RC Low-Pass Scope Example",
+            run_label: "Open RC Low-Pass + Run Scopes",
+            summary: "1 kHz sine into a first-order low-pass for input/output comparison.",
+            project_path: "examples/rc_lowpass_scope/project.yaml",
+            project_name: "rc_lowpass_scope",
+            expected_traces: &["v(input)", "v(filtered)", "i(VSIN)"],
+            expected_frequency: "1.00 kHz sine, fc about 1.59 kHz",
+            observation_preset_component: None,
+        },
+        ExpectedProjectExample {
+            id: "rc_monte_carlo_bode",
+            category: "Yield",
+            open_label: "Open RC Monte Carlo Example",
+            run_label: "Open RC Monte Carlo + Run Observations",
+            summary: "Generated RC low-pass Bode run with sampled R/C tolerances and yield checks.",
+            project_path: "examples/good_generated_rc_lowpass_monte_carlo_observation/project.yaml",
+            project_name: "good_generated_rc_lowpass_monte_carlo_observation",
+            expected_traces: &[
+                "input_gain_db",
+                "filtered_gain_db",
+                "filtered_phase_deg",
+                "filtered_mag",
+            ],
+            expected_frequency: "5 sampled R/C tolerance Bode runs with yield and P5 margin criteria",
+            observation_preset_component: None,
+        },
+        ExpectedProjectExample {
+            id: "comparator_threshold_scope",
+            category: "Comparator",
+            open_label: "Open Comparator Threshold Example",
+            run_label: "Open Comparator + Run Scopes",
+            summary: "Pulse input against a DC reference for output-state threshold checks.",
+            project_path: "examples/comparator_threshold_scope/project.yaml",
+            project_name: "comparator_threshold_scope",
+            expected_traces: &["v(input)", "v(reference)", "v(output)", "v(vcc)"],
+            expected_frequency: "80 us input pulse crossing a 1.2 V reference",
+            observation_preset_component: Some("XU1"),
+        },
+        ExpectedProjectExample {
+            id: "opamp_buffer_scope",
+            category: "Op-Amp",
+            open_label: "Open Op-Amp Buffer Example",
+            run_label: "Open Op-Amp Buffer + Run Scopes",
+            summary: "Unity-gain buffer tracking a pulse input with output settling checks.",
+            project_path: "examples/good_ideal_opamp_buffer/project.yaml",
+            project_name: "good_ideal_opamp_buffer",
+            expected_traces: &["v(input)", "v(output)", "v(vcc)"],
+            expected_frequency: "80 us input pulse through unity feedback",
+            observation_preset_component: Some("XU1"),
+        },
+        ExpectedProjectExample {
+            id: "ap2112k_ldo_scope",
+            category: "Regulator",
+            open_label: "Open AP2112K LDO Example",
+            run_label: "Open AP2112K + Run Scopes",
+            summary: "Enabled 3.3 V LDO rail with load-current and output-window checks.",
+            project_path: "examples/good_ap2112k_3v3_ldo_observation/project.yaml",
+            project_name: "good_ap2112k_3v3_ldo_observation",
+            expected_traces: &["v_usb", "v_en", "v_rail3v3", "i_load"],
+            expected_frequency: "5 V enabled input, 3.3 V regulated load rail",
+            observation_preset_component: Some("UREG"),
+        },
+        ExpectedProjectExample {
+            id: "tps54331_buck_scope",
+            category: "Regulator",
+            open_label: "Open TPS54331 Buck Example",
+            run_label: "Open TPS54331 + Run Scopes",
+            summary: "Enabled 12 V to 5 V buck-regulator rail observation with load-current checks.",
+            project_path: "examples/good_tps54331_5v_buck_observation/project.yaml",
+            project_name: "good_tps54331_5v_buck_observation",
+            expected_traces: &["v_input", "v_enable", "v_rail5v", "i_load"],
+            expected_frequency: "12 V input, 3.3 V enable, and 5 V buck-regulator rail observation",
+            observation_preset_component: Some("UBUCK"),
+        },
+        ExpectedProjectExample {
+            id: "tps62162_buck_scope",
+            category: "Regulator",
+            open_label: "Open TPS62162 Buck Example",
+            run_label: "Open TPS62162 + Run Scopes",
+            summary: "Enabled 12 V to 3.3 V buck-regulator rail observation with load-current checks.",
+            project_path: "examples/good_tps62162_3v3_buck_observation/project.yaml",
+            project_name: "good_tps62162_3v3_buck_observation",
+            expected_traces: &["v_input", "v_enable", "v_rail3v3", "i_load"],
+            expected_frequency: "12 V input, 3.3 V enable, and 3.3 V buck-regulator rail observation",
+            observation_preset_component: Some("UBUCK"),
+        },
+        ExpectedProjectExample {
+            id: "tps63802_buck_boost_scope",
+            category: "Regulator",
+            open_label: "Open TPS63802 Buck-Boost Example",
+            run_label: "Open TPS63802 + Run Scopes",
+            summary: "Enabled Li-Ion input to 3.3 V buck-boost rail observation with load-current checks.",
+            project_path: "examples/good_tps63802_3v3_buck_boost_observation/project.yaml",
+            project_name: "good_tps63802_3v3_buck_boost_observation",
+            expected_traces: &["v_battery", "v_enable", "v_rail3v3", "i_load"],
+            expected_frequency: "3.7 V input, 3.3 V enable, and 3.3 V buck-boost rail observation",
+            observation_preset_component: Some("UREG"),
+        },
+        ExpectedProjectExample {
+            id: "tps61023_boost_scope",
+            category: "Regulator",
+            open_label: "Open TPS61023 Boost Example",
+            run_label: "Open TPS61023 + Run Scopes",
+            summary: "Enabled Li-Ion input to 5 V boost-regulator rail observation with load-current checks.",
+            project_path: "examples/good_tps61023_5v_boost_observation/project.yaml",
+            project_name: "good_tps61023_5v_boost_observation",
+            expected_traces: &["v_battery", "v_enable", "v_rail5v", "i_load"],
+            expected_frequency: "3.7 V input, 3.3 V enable, and 5 V boost-regulator rail observation",
+            observation_preset_component: Some("UBOOST"),
+        },
+        ExpectedProjectExample {
+            id: "tps22918_load_switch_scope",
+            category: "Load Switch",
+            open_label: "Open TPS22918 Load Switch Example",
+            run_label: "Open TPS22918 + Run Scopes",
+            summary: "Enabled 5 V load switch path with switched-rail and load-current checks.",
+            project_path: "examples/good_tps22918_load_switch_observation/project.yaml",
+            project_name: "good_tps22918_load_switch_observation",
+            expected_traces: &["v_usb", "v_on", "v_switched5v", "i_load"],
+            expected_frequency: "5 V enabled load switch into a 1 kOhm load",
+            observation_preset_component: Some("USW"),
+        },
+        ExpectedProjectExample {
+            id: "tps2121_power_mux_scope",
+            category: "Power Mux",
+            open_label: "Open TPS2121 Power Mux Example",
+            run_label: "Open TPS2121 + Run Scopes",
+            summary: "USB-selected 5 V power-mux path with output rail and load-current checks.",
+            project_path: "examples/good_tps2121_power_mux_observation/project.yaml",
+            project_name: "good_tps2121_power_mux_observation",
+            expected_traces: &["v_usb", "v_backup", "v_sys5v", "i_load"],
+            expected_frequency: "5 V USB-selected input through a TPS2121 power-mux rail observation",
+            observation_preset_component: Some("UMUX"),
+        },
+        ExpectedProjectExample {
+            id: "mcp73831_charger_scope",
+            category: "Charger",
+            open_label: "Open MCP73831 Charger Example",
+            run_label: "Open MCP73831 + Run Scopes",
+            summary: "USB-powered Li-Ion charger with PROG-current and VBAT checks.",
+            project_path: "examples/good_mcp73831_charger_observation/project.yaml",
+            project_name: "good_mcp73831_charger_observation",
+            expected_traces: &["v_usb", "v_bat", "i_charge"],
+            expected_frequency: "5 V USB input, 10 kOhm PROG resistor, and 100 mA charge observation",
+            observation_preset_component: Some("UCHG"),
+        },
+        ExpectedProjectExample {
+            id: "bq24075_power_path_scope",
+            category: "Power Path",
+            open_label: "Open BQ24075 Power Path Example",
+            run_label: "Open BQ24075 + Run Scopes",
+            summary: "Adapter-powered charger with OUT rail and BAT charge-current checks.",
+            project_path: "examples/good_bq24075_power_path_observation/project.yaml",
+            project_name: "good_bq24075_power_path_observation",
+            expected_traces: &["v_adapter", "v_sysout", "v_bat", "i_charge", "i_sys_load"],
+            expected_frequency: "6 V adapter input, 5.5 V OUT path, and 450 mA ISET charge observation",
+            observation_preset_component: Some("UCHG"),
+        },
+        ExpectedProjectExample {
+            id: "bq25798_nvdc_scope",
+            category: "Power Path",
+            open_label: "Open BQ25798 NVDC Example",
+            run_label: "Open BQ25798 + Run Scopes",
+            summary: "20 V adapter buck-boost/NVDC charger observation with SYS and BAT checks.",
+            project_path: "examples/good_bq25798_nvdc_observation/project.yaml",
+            project_name: "good_bq25798_nvdc_observation",
+            expected_traces: &["v_adapter", "v_sysout", "v_bat", "i_charge", "i_sys_load"],
+            expected_frequency: "20 V adapter input, 12 V SYS rail, and 2 A programmed charge observation",
+            observation_preset_component: None,
+        },
+        ExpectedProjectExample {
+            id: "tlv803_reset_scope",
+            category: "Reset",
+            open_label: "Open TLV803 Reset Example",
+            run_label: "Open TLV803 + Run Scopes",
+            summary: "Reset-supervisor threshold release from a pulsed 3.3 V rail.",
+            project_path: "examples/good_tlv803ea29_reset_observation/project.yaml",
+            project_name: "good_tlv803ea29_reset_observation",
+            expected_traces: &["v_rail", "reset_n"],
+            expected_frequency: "3.3 V rail ramp with reset release",
+            observation_preset_component: Some("URESET"),
+        },
+        ExpectedProjectExample {
+            id: "loop_stability_bode_scope",
+            category: "Stability",
+            open_label: "Open Loop Stability Bode Example",
+            run_label: "Open Loop Stability + Run Scopes",
+            summary: "Open-loop Bode response with executable phase and gain margin checks.",
+            project_path: "examples/loop_stability_bode_scope/project.yaml",
+            project_name: "loop_stability_bode_scope",
+            expected_traces: &["loop_mag_db", "loop_phase_deg", "loop_mag"],
+            expected_frequency: "Bode loop gain with phase margin >45 deg and gain margin >6 dB",
+            observation_preset_component: None,
+        },
+        ExpectedProjectExample {
+            id: "dc_bias_observation",
+            category: "Bias",
+            open_label: "Open DC Bias Example",
+            run_label: "Open DC Bias + Run Observations",
+            summary: "Generated operating-point divider bias with resistor-tolerance margin checks.",
+            project_path: "examples/good_dc_bias_observation/project.yaml",
+            project_name: "good_dc_bias_observation",
+            expected_traces: &["vin", "midpoint"],
+            expected_frequency: "DC operating point with 9 divider-tolerance corners",
+            observation_preset_component: None,
+        },
+        ExpectedProjectExample {
+            id: "noise_observation",
+            category: "Noise",
+            open_label: "Open Noise Observation Example",
+            run_label: "Open Noise + Run Observations",
+            summary: "Generated divider noise density and integrated RMS noise checks.",
+            project_path: "examples/good_noise_observation/project.yaml",
+            project_name: "good_noise_observation",
+            expected_traces: &[
+                "onoise_density",
+                "inoise_density",
+                "onoise_total",
+                "inoise_total",
+            ],
+            expected_frequency: "10 Hz to 100 kHz divider output and input-referred RMS noise",
+            observation_preset_component: None,
+        },
+    ];
+
+    let examples = gui_project_examples();
+    assert_eq!(examples.len(), EXPECTED.len());
+
+    for expected in EXPECTED {
+        let example = gui_project_example_by_id(expected.id);
+        assert_eq!(example.id, expected.id);
+        assert_eq!(example.category, expected.category);
+        assert_eq!(example.open_label, expected.open_label);
+        assert_eq!(example.run_label, expected.run_label);
+        assert_eq!(example.summary, expected.summary);
+        assert_eq!(example.project_path, expected.project_path);
+        assert_eq!(example.project_name, expected.project_name);
+        assert_eq!(example.expected_traces, expected.expected_traces);
+        assert_eq!(example.expected_frequency, expected.expected_frequency);
+        assert_eq!(
+            example.observation_preset_component,
+            expected.observation_preset_component
+        );
+    }
+}
