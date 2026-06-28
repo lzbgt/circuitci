@@ -187,12 +187,14 @@ enum ImportBackend {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum RepairYamlFinding {
     InvalidPowerDomain,
+    NetNotFound,
 }
 
 impl RepairYamlFinding {
     fn as_repair_kind(self) -> BoardYamlRepairFindingKind {
         match self {
             Self::InvalidPowerDomain => BoardYamlRepairFindingKind::InvalidPowerDomain,
+            Self::NetNotFound => BoardYamlRepairFindingKind::NetNotFound,
         }
     }
 }

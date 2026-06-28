@@ -95,7 +95,7 @@
         "status",
         "description",
         "yaml_path",
-        "affected_power_pins",
+        "affected_pins",
         "edits"
       ],
       "properties": {
@@ -104,7 +104,7 @@
         "status": { "enum": ["proposed", "applied", "skipped"] },
         "description": { "type": "string", "minLength": 1 },
         "yaml_path": { "type": "string", "minLength": 1 },
-        "affected_power_pins": {
+        "affected_pins": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
@@ -119,7 +119,7 @@
       "type": "object",
       "required": ["op", "path", "from", "to", "reason"],
       "properties": {
-        "op": { "enum": ["replace"] },
+        "op": { "enum": ["add", "replace"] },
         "path": { "type": "string", "minLength": 1 },
         "from": {},
         "to": {},

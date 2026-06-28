@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardYamlRepairFindingKind {
     InvalidPowerDomain,
+    NetNotFound,
 }
 
 #[derive(Debug, Clone)]
@@ -54,7 +55,7 @@ pub struct BoardYamlRepairProposal {
     pub status: String,
     pub description: String,
     pub yaml_path: String,
-    pub affected_power_pins: Vec<String>,
+    pub affected_pins: Vec<String>,
     pub edits: Vec<BoardYamlRepairEdit>,
 }
 
@@ -130,6 +131,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         BoardYamlRepairFindingKind::InvalidPowerDomain => {
             invalid_power_domain_proposals(&project, &library)?
         }
+        BoardYamlRepairFindingKind::NetNotFound => net_not_found_proposals(&project, &library)?,
     };
 
     let mut repaired_yaml = project_yaml;
@@ -258,7 +260,7 @@ fn invalid_power_domain_proposals(
     by_net
         .into_iter()
         .enumerate()
-        .map(|(index, (net, affected_power_pins))| {
+        .map(|(index, (net, affected_pins))| {
             let net_kind = project
                 .board
                 .nets
@@ -274,10 +276,10 @@ fn invalid_power_domain_proposals(
                 status: "proposed".to_string(),
                 description: format!(
                     "Declare net {net} as power because it feeds model power pin(s) {}.",
-                    affected_power_pins.join(", ")
+                    affected_pins.join(", ")
                 ),
                 yaml_path: yaml_path.clone(),
-                affected_power_pins,
+                affected_pins,
                 edits: vec![BoardYamlRepairEdit {
                     op: "replace".to_string(),
                     path: yaml_path,
@@ -291,21 +293,115 @@ fn invalid_power_domain_proposals(
         .collect()
 }
 
+fn net_not_found_proposals(
+    project: &BoardProject,
+    library: &crate::library::ComponentLibrary,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let mut by_net: std::collections::BTreeMap<String, MissingNetProposalDraft> =
+        std::collections::BTreeMap::new();
+    for (component_id, component) in &project.board.components {
+        let Some(model) = library.get(&component.model) else {
+            continue;
+        };
+        for (pin_name, net_name) in &component.pins {
+            if project.board.nets.contains_key(net_name) {
+                continue;
+            }
+            let Some(port) = model.ports.get(pin_name) else {
+                continue;
+            };
+            let kind = inferred_net_kind(&port.kind);
+            let draft = by_net.entry(net_name.clone()).or_default();
+            draft
+                .affected_pins
+                .push(format!("{component_id}.{pin_name}"));
+            draft.inferred_kinds.insert(kind);
+        }
+    }
+
+    by_net
+        .into_iter()
+        .filter_map(|(net, draft)| {
+            let mut kinds = draft.inferred_kinds.into_iter();
+            let kind = kinds.next()?;
+            if kinds.next().is_some() {
+                return None;
+            }
+            Some((net, draft.affected_pins, kind))
+        })
+        .enumerate()
+        .map(|(index, (net, affected_pins, kind))| {
+            let yaml_path = format!("/board/nets/{net}");
+            Ok(BoardYamlRepairProposal {
+                id: format!("net_not_found_{}", index + 1),
+                finding_id: BoardYamlRepairFindingKind::NetNotFound
+                    .finding_id()
+                    .to_string(),
+                status: "proposed".to_string(),
+                description: format!(
+                    "Add missing net {net} as {kind} because it is referenced by declared model pin(s) {}.",
+                    affected_pins.join(", ")
+                ),
+                yaml_path: yaml_path.clone(),
+                affected_pins,
+                edits: vec![BoardYamlRepairEdit {
+                    op: "add".to_string(),
+                    path: yaml_path,
+                    from: serde_json::Value::Null,
+                    to: serde_json::json!({ "kind": kind }),
+                    reason:
+                        "Missing nets referenced by declared model pins can be added with kind inferred from the model port kind."
+                            .to_string(),
+                }],
+            })
+        })
+        .collect()
+}
+
+#[derive(Debug, Default)]
+struct MissingNetProposalDraft {
+    affected_pins: Vec<String>,
+    inferred_kinds: BTreeSet<&'static str>,
+}
+
+fn inferred_net_kind(port_kind: &PortKind) -> &'static str {
+    match port_kind {
+        PortKind::ElectricalPower => "power",
+        PortKind::ElectricalGround => "ground",
+        PortKind::DigitalElectricalInput
+        | PortKind::DigitalElectricalOutput
+        | PortKind::DigitalElectricalIo
+        | PortKind::Passive => "digital_or_analog",
+    }
+}
+
 fn apply_proposals(
     project_yaml: &mut Value,
     proposals: &mut [BoardYamlRepairProposal],
 ) -> Result<usize> {
     let mut applied = 0;
     for proposal in proposals {
-        let Some(net_name) = proposal
+        if let Some(net_name) = proposal
             .yaml_path
             .strip_prefix("/board/nets/")
             .and_then(|rest| rest.strip_suffix("/kind"))
-        else {
+        {
+            replace_net_kind(project_yaml, net_name, "power")?;
+        } else if let Some(net_name) = proposal.yaml_path.strip_prefix("/board/nets/") {
+            let Some(kind) = proposal
+                .edits
+                .first()
+                .and_then(|edit| edit.to.get("kind"))
+                .and_then(|kind| kind.as_str())
+            else {
+                proposal.status = "skipped".to_string();
+                continue;
+            };
+            add_net(project_yaml, net_name, kind)?;
+        } else {
             proposal.status = "skipped".to_string();
             continue;
-        };
-        replace_net_kind(project_yaml, net_name, "power")?;
+        }
         proposal.status = "applied".to_string();
         applied += 1;
     }
@@ -330,10 +426,41 @@ fn replace_net_kind(project_yaml: &mut Value, net_name: &str, kind: &str) -> Res
     Ok(())
 }
 
+fn add_net(project_yaml: &mut Value, net_name: &str, kind: &str) -> Result<()> {
+    let root = project_yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?;
+    let board = ensure_mapping_field_mut(root, "board")?;
+    let nets = ensure_mapping_field_mut(board, "nets")?;
+    let net_key = Value::String(net_name.to_string());
+    if nets.contains_key(&net_key) {
+        bail!("Board IR net {net_name} already exists.");
+    }
+    let mut net = Mapping::new();
+    net.insert(
+        Value::String("kind".to_string()),
+        Value::String(kind.to_string()),
+    );
+    nets.insert(net_key, Value::Mapping(net));
+    Ok(())
+}
+
 fn get_mapping_field_mut<'a>(mapping: &'a mut Mapping, key: &str) -> Result<&'a mut Mapping> {
     mapping
         .get_mut(Value::String(key.to_string()))
         .with_context(|| format!("Board IR field {key} is missing."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR field {key} must be an object."))
+}
+
+fn ensure_mapping_field_mut<'a>(mapping: &'a mut Mapping, key: &str) -> Result<&'a mut Mapping> {
+    let key_value = Value::String(key.to_string());
+    if !mapping.contains_key(&key_value) {
+        mapping.insert(key_value.clone(), Value::Mapping(Mapping::new()));
+    }
+    mapping
+        .get_mut(&key_value)
+        .expect("field was inserted when absent")
         .as_mapping_mut()
         .with_context(|| format!("Board IR field {key} must be an object."))
 }
@@ -481,12 +608,14 @@ impl BoardYamlRepairFindingKind {
     pub fn finding_id(self) -> &'static str {
         match self {
             Self::InvalidPowerDomain => "INVALID_POWER_DOMAIN",
+            Self::NetNotFound => "NET_NOT_FOUND",
         }
     }
 
     pub fn as_cli_value(self) -> &'static str {
         match self {
             Self::InvalidPowerDomain => "invalid-power-domain",
+            Self::NetNotFound => "net-not-found",
         }
     }
 }
