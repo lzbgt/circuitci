@@ -163,6 +163,12 @@ board:
         source: datasheet_package_table_rev_b
         thermal_resistance_junction_to_ambient_C_per_W: 40.0
         max_junction_temperature_C: 125.0
+    thermal_environments:
+      - name: lab_ambient
+        source: thermal_chamber_log_rev_b
+        ambient_temperature_C: 45.0
+        airflow_lfm: 250.0
+        enclosure_profile: vented_ip20
     source: jlc_stencil_order
 ```
 
@@ -247,6 +253,13 @@ operating environment. CircuitCI only checks direct contradictions between
 those explicit values; it does not infer airflow, enclosure behavior, or
 derating curves.
 
+`board.manufacturing.thermal_environments[]` stores reviewed operating
+environment evidence for suggestion generation. Each entry names the source,
+ambient temperature, and optional airflow/enclosure values. Validators still
+consume explicit scenario parameters; `suggest-scenarios` may populate those
+parameters from a reviewed environment row when creating thermal derating or
+package-temperature templates.
+
 `THERMAL_PACKAGE_TEMPERATURE_VALID` also consumes reviewed
 `board.manufacturing.thermal_copper[]` entries for component identity, source,
 and static `power_loss_w`, then combines that evidence with the resolved
@@ -308,6 +321,10 @@ name. Repeated `field=thermal_package` rows use `value` as reviewed
 `thermal_resistance_junction_to_ambient_C_per_W`, require `component` and
 `max_junction_temperature_C`, and create or replace
 `board.manufacturing.thermal_packages[]` entries by component. Repeated
+`field=thermal_environment` rows use `value` as reviewed
+`ambient_temperature_C`, may include `airflow_lfm` and `enclosure_profile`, and
+create or replace `board.manufacturing.thermal_environments[]` entries by
+name. Repeated
 `field=stackup_layer` rows use `value` as the stackup layer
 `kind` (`signal`, `plane`, `dielectric`, or `other`), require `name`, and may
 include `reference_net`, `thickness_mm`, `copper_thickness_um`,

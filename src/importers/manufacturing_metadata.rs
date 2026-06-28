@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.6.0".to_string(),
+        schema_version: "0.7.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -227,6 +227,21 @@ fn apply_metadata(
                 &package.component,
                 value,
                 "thermal_packages",
+            )?;
+            wrote_manufacturing = true;
+        } else if field.field == ManufacturingField::ThermalEnvironment {
+            let environment = field
+                .thermal_environment
+                .as_ref()
+                .context("thermal_environment field must have thermal environment value")?;
+            let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+            let environments = ensure_sequence_field_mut(manufacturing, "thermal_environments")?;
+            upsert_named_sequence_value(
+                environments,
+                &environment.name,
+                value,
+                "thermal_environments",
             )?;
             wrote_manufacturing = true;
         } else if field.field == ManufacturingField::StackupLayer {

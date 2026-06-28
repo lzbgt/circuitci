@@ -439,6 +439,21 @@
                 "additionalProperties": false
               }
             },
+            "thermal_environments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "source", "ambient_temperature_C"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "source": { "type": "string", "minLength": 1 },
+                  "ambient_temperature_C": { "type": "number" },
+                  "airflow_lfm": { "type": "number", "minimum": 0 },
+                  "enclosure_profile": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              }
+            },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": true

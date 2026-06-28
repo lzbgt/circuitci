@@ -1,12 +1,12 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
     AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
-    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
-    parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
-    parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
-    parse_temperature_c, required_nonnegative_number, required_positive_number,
-    required_positive_watts, required_raw_column_for,
+    AppliedThermalEnvironment, AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow,
+    normalize_name, optional_raw_column, parse_nonempty_list, parse_nonnegative_mm,
+    parse_nonnegative_number, parse_nonnegative_temperature_delta_c, parse_positive_area_mm2,
+    parse_positive_c_per_w, parse_positive_number, parse_positive_ohms, parse_positive_usize,
+    parse_positive_watts, parse_temperature_c, required_nonnegative_number,
+    required_positive_number, required_positive_watts, required_raw_column_for,
 };
 use anyhow::{Context, Result, bail};
 use std::path::Path;
@@ -296,6 +296,44 @@ pub(super) fn applied_thermal_package(
             row,
             "max_junction_temperature_C",
         )?,
+    })
+}
+
+pub(super) fn applied_thermal_environment(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedThermalEnvironment> {
+    let name = required_raw_column_for(row, path, "name", "thermal_environment")?;
+    let environment_source = optional_raw_column(row, "environment_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(environment_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} thermal_environment requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedThermalEnvironment {
+        name,
+        source,
+        ambient_temperature_c: parse_temperature_c(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        airflow_lfm: optional_raw_column(row, "airflow_lfm")
+            .as_deref()
+            .map(|value| parse_nonnegative_number(value, path, row, "airflow_lfm"))
+            .transpose()?,
+        enclosure_profile: optional_raw_column(row, "enclosure_profile"),
     })
 }
 

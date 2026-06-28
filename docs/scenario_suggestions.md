@@ -478,8 +478,11 @@ The command is conservative:
 - When a reviewed thermal-copper entry declares `rated_ambient_temperature_C`,
   `min_airflow_lfm`, or `enclosure_profile`, it emits a non-runnable
   `THERMAL_DERATING_ENVIRONMENT_VALID` template requiring reviewed operating
-  environment inputs. The suggestion does not infer airflow, enclosure behavior,
-  or derating curves from board geometry.
+  environment inputs. When
+  `board.manufacturing.thermal_environments[]` contains a reviewed environment
+  row with the required ambient, airflow, and enclosure values, it emits a
+  runnable environment-specific template instead. The suggestion does not infer
+  airflow, enclosure behavior, or derating curves from board geometry.
 - When a reviewed thermal-copper entry declares component power-loss metadata
   and source-backed package thermal evidence exists in either
   `board.manufacturing.thermal_packages[]` or the resolved component model's
@@ -488,7 +491,9 @@ The command is conservative:
   template requiring reviewed `ambient_temperature_C` and
   `max_temperature_rise_C` inputs. If both Board IR and model package metadata
   exist for the component, the suggestion requires matching reviewed Rja and
-  max-junction values. The suggestion does not infer ambient conditions or
+  max-junction values. When reviewed thermal environment evidence exists, the
+  suggestion pre-fills `ambient_temperature_C` and still requires a reviewed
+  temperature-rise limit. The suggestion does not infer acceptable limits or
   solve board/package heat flow.
 - When `board.manufacturing.thermal_measurements[]` contains reviewed
   component measurement rows, it emits a non-runnable

@@ -1,7 +1,7 @@
 use super::manufacturing_suggestion;
 use crate::board_ir::{
     LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, RouteVia,
-    StackupLayerKind, ThermalCopperRule, ThermalMeasurement,
+    StackupLayerKind, ThermalCopperRule, ThermalEnvironment, ThermalMeasurement,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -568,10 +568,49 @@ fn thermal_package_temperature_suggestions(
     project_name: &str,
 ) -> Vec<ScenarioSuggestion> {
     let mut suggestions = Vec::new();
+    let environments = reviewed_thermal_environments(bound);
     for rule in &bound.project.board.manufacturing.thermal_copper {
         if !thermal_package_rule_has_metadata(bound, rule)
             || thermal_package_temperature_check_declared(bound, &rule.name)
         {
+            continue;
+        }
+        if !environments.is_empty() {
+            for environment in &environments {
+                suggestions.push(manufacturing_suggestion(
+                    &format!(
+                        "thermal_package_temperature_{}_{}",
+                        sanitized_name(&rule.name),
+                        sanitized_name(&environment.name)
+                    ),
+                    false,
+                    &format!(
+                        "Thermal copper rule {} has reviewed package power-loss metadata, source-backed package thermal evidence, and reviewed environment {}; reviewed temperature-rise limits are still required.",
+                        rule.name, environment.name
+                    ),
+                    &format!(
+                        "{}_{}_{}_thermal_package_temperature",
+                        project_name,
+                        sanitized_name(&rule.name),
+                        sanitized_name(&environment.name)
+                    ),
+                    THERMAL_PACKAGE_TEMPERATURE_VALID,
+                    Some(BTreeMap::from([
+                        (
+                            "thermal_copper".to_string(),
+                            json!([{ "name": rule.name }]),
+                        ),
+                        (
+                            "ambient_temperature_C".to_string(),
+                            json!(environment.ambient_temperature_c),
+                        ),
+                    ])),
+                    vec![
+                        "Set parameters.max_temperature_rise_C from board or package thermal requirements."
+                            .to_string(),
+                    ],
+                ));
+            }
             continue;
         }
         suggestions.push(manufacturing_suggestion(
@@ -803,10 +842,42 @@ fn thermal_derating_environment_suggestions(
     project_name: &str,
 ) -> Vec<ScenarioSuggestion> {
     let mut suggestions = Vec::new();
+    let environments = reviewed_thermal_environments(bound);
     for rule in &bound.project.board.manufacturing.thermal_copper {
         if !thermal_derating_rule_has_metadata(bound, rule)
             || thermal_derating_environment_check_declared(bound, &rule.name)
         {
+            continue;
+        }
+        let mut emitted_environment = false;
+        for environment in environments
+            .iter()
+            .filter(|environment| thermal_environment_satisfies_rule(rule, environment))
+        {
+            emitted_environment = true;
+            suggestions.push(manufacturing_suggestion(
+                &format!(
+                    "thermal_derating_environment_{}_{}",
+                    sanitized_name(&rule.name),
+                    sanitized_name(&environment.name)
+                ),
+                true,
+                &format!(
+                    "Thermal copper rule {} has reviewed ambient/airflow/enclosure derating metadata and reviewed operating environment {}.",
+                    rule.name, environment.name
+                ),
+                &format!(
+                    "{}_{}_{}_thermal_derating_environment",
+                    project_name,
+                    sanitized_name(&rule.name),
+                    sanitized_name(&environment.name)
+                ),
+                THERMAL_DERATING_ENVIRONMENT_VALID,
+                Some(thermal_derating_environment_parameters(rule, environment)),
+                Vec::new(),
+            ));
+        }
+        if emitted_environment {
             continue;
         }
         let mut required_inputs = Vec::new();
@@ -876,6 +947,73 @@ fn thermal_derating_rule_has_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopp
         && (rule.rated_ambient_temperature_c.is_some()
             || rule.min_airflow_lfm.is_some()
             || rule.enclosure_profile.is_some())
+}
+
+fn reviewed_thermal_environments<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a ThermalEnvironment> {
+    let mut counts = BTreeMap::new();
+    for environment in &bound.project.board.manufacturing.thermal_environments {
+        *counts.entry(environment.name.as_str()).or_insert(0usize) += 1;
+    }
+    bound
+        .project
+        .board
+        .manufacturing
+        .thermal_environments
+        .iter()
+        .filter(|environment| {
+            counts.get(environment.name.as_str()) == Some(&1)
+                && thermal_environment_has_evidence(environment)
+        })
+        .collect()
+}
+
+fn thermal_environment_has_evidence(environment: &ThermalEnvironment) -> bool {
+    !environment.name.trim().is_empty()
+        && !environment.source.trim().is_empty()
+        && environment.ambient_temperature_c.is_finite()
+        && environment
+            .airflow_lfm
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
+        && environment
+            .enclosure_profile
+            .as_deref()
+            .is_none_or(|value| !value.trim().is_empty())
+}
+
+fn thermal_environment_satisfies_rule(
+    rule: &ThermalCopperRule,
+    environment: &ThermalEnvironment,
+) -> bool {
+    rule.min_airflow_lfm
+        .is_none_or(|_| environment.airflow_lfm.is_some())
+        && rule
+            .enclosure_profile
+            .as_deref()
+            .is_none_or(|_| environment.enclosure_profile.is_some())
+}
+
+fn thermal_derating_environment_parameters(
+    rule: &ThermalCopperRule,
+    environment: &ThermalEnvironment,
+) -> BTreeMap<String, serde_json::Value> {
+    let mut parameters = BTreeMap::from([
+        ("thermal_copper".to_string(), json!([{ "name": rule.name }])),
+        (
+            "ambient_temperature_C".to_string(),
+            json!(environment.ambient_temperature_c),
+        ),
+    ]);
+    if rule.min_airflow_lfm.is_some()
+        && let Some(value) = environment.airflow_lfm
+    {
+        parameters.insert("airflow_lfm".to_string(), json!(value));
+    }
+    if rule.enclosure_profile.is_some()
+        && let Some(value) = environment.enclosure_profile.as_deref()
+    {
+        parameters.insert("enclosure_profile".to_string(), json!(value));
+    }
+    parameters
 }
 
 fn thermal_derating_environment_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {

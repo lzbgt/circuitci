@@ -17,8 +17,9 @@ Input CSV columns:
   evidence. Repeated `thermal_copper` rows are supported for reviewed thermal
   layout policy, and repeated
   `thermal_measurement` rows are supported for reviewed measured-temperature
-  evidence. Repeated `stackup_layer` rows are supported for reviewed stackup
-  layer evidence. Repeated `rf_antenna_keepout` and
+  evidence. Repeated `thermal_environment` rows are supported for reviewed
+  operating environment evidence. Repeated `stackup_layer` rows are supported
+  for reviewed stackup layer evidence. Repeated `rf_antenna_keepout` and
   `rf_antenna_feed_path` rows are supported for reviewed RF antenna layout
   constraints.
 - `value`: required for supported fields.
@@ -30,6 +31,7 @@ Input CSV columns:
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
   `thermal_package` rows use `C/W` for junction-to-ambient package thermal
   resistance.
+  `thermal_environment` rows use `C`/`celsius` for ambient temperature.
   `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
   `rf_antenna_keepout` and `rf_antenna_feed_path` rows use `mm` for the
   distance value when a unit is supplied.
@@ -113,6 +115,22 @@ create or replace entries under `board.manufacturing.thermal_packages[]` by
 `component`. Duplicate CSV components fail closed. These rows are reviewed
 package thermal evidence only; the importer does not infer package metadata
 from model names, designators, or power-loss text.
+
+`thermal_environment` rows use `value` as `ambient_temperature_C` and require
+extra columns:
+
+- `name`: stable reviewed environment identifier.
+
+Optional `thermal_environment` columns:
+
+- `airflow_lfm`: reviewed non-negative airflow.
+- `enclosure_profile`: reviewed enclosure/product configuration label.
+
+`source` or `environment_source` must name the reviewed environment source.
+Rows create or replace entries under
+`board.manufacturing.thermal_environments[]` by `name`. Duplicate CSV names
+fail closed. These rows are reviewed operating environment evidence only; the
+importer does not infer airflow, enclosure, or acceptable thermal limits.
 
 `stackup_layer` rows use `value` as the layer `kind`. Accepted values are
 `signal`, `plane`, `dielectric`, and `other`, with conservative aliases such as

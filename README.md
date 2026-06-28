@@ -220,6 +220,9 @@ evidence in a JSON manifest. Repeated `field=controlled_impedance_net` and
 under `board.manufacturing.thermal_measurements[]`. Repeated
 `field=thermal_package` rows create or replace reviewed component package
 thermal metadata under `board.manufacturing.thermal_packages[]`. Repeated
+`field=thermal_environment` rows create or replace reviewed operating
+environment evidence under `board.manufacturing.thermal_environments[]`.
+Repeated
 `field=stackup_layer` rows create or replace reviewed
 `board.layout.stackup.layers[]` entries so stackup evidence can travel with
 fabrication/order metadata without hand-authored YAML. Repeated

@@ -81,8 +81,8 @@ Useful next slices:
 - board/order metadata extraction workflows beyond the current reviewed
   manufacturing metadata CSV import manifest, including reviewed scalar,
   controlled-impedance target, stackup-layer, thermal-copper policy, and
-  measured-temperature and package thermal evidence rows plus RF antenna
-  keepout/feed-path constraint rows.
+  measured-temperature, package thermal, and operating-environment evidence
+  rows plus RF antenna keepout/feed-path constraint rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.

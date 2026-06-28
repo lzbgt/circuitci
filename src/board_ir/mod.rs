@@ -185,6 +185,8 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub thermal_packages: Vec<ThermalPackageRule>,
     #[serde(default)]
+    pub thermal_environments: Vec<ThermalEnvironment>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 
@@ -275,6 +277,18 @@ pub struct ThermalPackageRule {
     pub thermal_resistance_junction_to_ambient_c_per_w: f64,
     #[serde(rename = "max_junction_temperature_C")]
     pub max_junction_temperature_c: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThermalEnvironment {
+    pub name: String,
+    pub source: String,
+    #[serde(rename = "ambient_temperature_C")]
+    pub ambient_temperature_c: f64,
+    #[serde(default)]
+    pub airflow_lfm: Option<f64>,
+    #[serde(default)]
+    pub enclosure_profile: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

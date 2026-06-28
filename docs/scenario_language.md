@@ -1469,7 +1469,10 @@ Thermal package temperature validation uses `THERMAL_PACKAGE_TEMPERATURE_VALID`
 when the reviewed `board.manufacturing.thermal_copper[]` rule declares a static
 component power loss and either the resolved component model declares
 `thermal_package` evidence or `board.manufacturing.thermal_packages[]` contains
-a reviewed package metadata entry for the component.
+a reviewed package metadata entry for the component. Scenario suggestions can
+populate `parameters.ambient_temperature_C` from reviewed
+`board.manufacturing.thermal_environments[]` evidence, but validation still
+requires explicit scenario limits.
 
 ```yaml
 scenarios:
@@ -1520,7 +1523,9 @@ Thermal derating environment validation uses
 `THERMAL_DERATING_ENVIRONMENT_VALID` when the reviewed
 `board.manufacturing.thermal_copper[]` rule declares explicit environment
 assumptions such as `rated_ambient_temperature_C`, `min_airflow_lfm`, or
-`enclosure_profile`.
+`enclosure_profile`. Scenario suggestions can populate runnable templates from
+reviewed `board.manufacturing.thermal_environments[]` rows when the environment
+row supplies every actual input required by the rule.
 
 ```yaml
 scenarios:

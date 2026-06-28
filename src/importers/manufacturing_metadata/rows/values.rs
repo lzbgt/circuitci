@@ -1,7 +1,8 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalMeasurement, AppliedThermalPackage,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalMeasurement,
+    AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -54,6 +55,16 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 field.field.board_key()
             )
         });
+    }
+    if let Some(environment) = &field.thermal_environment {
+        return serde_yaml_ng::to_value(thermal_environment_mapping(environment)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
     }
     if let Some(layer) = &field.stackup_layer {
         return serde_yaml_ng::to_value(stackup_layer_mapping(layer)).with_context(|| {
@@ -301,6 +312,27 @@ fn thermal_package_mapping(package: &AppliedThermalPackage) -> BTreeMap<String, 
         "max_junction_temperature_C".to_string(),
         serde_yaml_ng::to_value(package.max_junction_temperature_c).unwrap_or(Value::Null),
     );
+    mapping
+}
+
+fn thermal_environment_mapping(environment: &AppliedThermalEnvironment) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(environment.name.clone()));
+    mapping.insert(
+        "source".to_string(),
+        Value::String(environment.source.clone()),
+    );
+    mapping.insert(
+        "ambient_temperature_C".to_string(),
+        serde_yaml_ng::to_value(environment.ambient_temperature_c).unwrap_or(Value::Null),
+    );
+    insert_optional_number(&mut mapping, "airflow_lfm", environment.airflow_lfm);
+    if let Some(value) = &environment.enclosure_profile {
+        mapping.insert(
+            "enclosure_profile".to_string(),
+            Value::String(value.clone()),
+        );
+    }
     mapping
 }
 
