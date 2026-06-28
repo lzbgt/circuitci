@@ -423,6 +423,15 @@ The command is conservative:
   `RETURN_PATH_STITCHING_VIA_VALID` template. The suggestion does not infer a
   stitching distance or reference net from names; the distance must come from
   reviewed board/order/layout policy metadata.
+- When `board.manufacturing.controlled_impedance.nets[]` names reviewed
+  single-ended impedance targets and matching digital/analog route-width
+  evidence exists, it emits runnable `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
+  templates. When
+  `board.manufacturing.controlled_impedance.differential_pairs[]` names
+  reviewed differential-pair targets, it emits runnable templates only when
+  both routes have finite width evidence and parallel same-layer gap evidence.
+  The suggestion does not compute impedance from dielectric constants, infer
+  impedance from net names, or treat route width alone as intent.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

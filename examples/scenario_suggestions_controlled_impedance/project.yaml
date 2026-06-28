@@ -1,0 +1,51 @@
+project:
+  name: scenario_suggestions_controlled_impedance
+  version: "1"
+libraries: []
+board:
+  components: {}
+  nets:
+    RF:
+      kind: digital_or_analog
+    DP:
+      kind: digital_or_analog
+    DM:
+      kind: digital_or_analog
+  manufacturing:
+    controlled_impedance:
+      nets:
+        - net: RF
+          source: fab_stackup_table_rev_a
+          target_impedance_ohm: 50
+          expected_width_mm: 0.20
+          max_width_error_mm: 0.03
+      differential_pairs:
+        - first_net: DP
+          second_net: DM
+          source: fab_stackup_table_rev_a
+          target_differential_impedance_ohm: 90
+          expected_width_mm: 0.15
+          expected_gap_mm: 0.20
+          max_width_error_mm: 0.02
+          max_gap_error_mm: 0.03
+  layout:
+    routes:
+      RF:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 2.0 }
+            end: { x_mm: 10.0, y_mm: 2.0 }
+            width_mm: 0.20
+            layer: F.Cu
+      DP:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 0.0 }
+            end: { x_mm: 10.0, y_mm: 0.0 }
+            width_mm: 0.15
+            layer: F.Cu
+      DM:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 0.35 }
+            end: { x_mm: 10.0, y_mm: 0.35 }
+            width_mm: 0.15
+            layer: F.Cu
+scenarios: []

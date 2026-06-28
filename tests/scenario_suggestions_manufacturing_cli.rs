@@ -2,6 +2,73 @@ use serde_json::Value;
 use std::process::Command;
 
 #[test]
+fn suggest_scenarios_derives_controlled_impedance_templates() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_controlled_impedance/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_controlled_impedance"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 2);
+
+    let single_ended = &suggested[0];
+    assert_eq!(single_ended["id"], "controlled_impedance_rf");
+    assert_eq!(
+        single_ended["kind"],
+        "manufacturing_controlled_impedance_rf"
+    );
+    assert_eq!(single_ended["runnable"], true);
+    assert_eq!(single_ended["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        single_ended["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_GEOMETRY_VALID"
+    );
+    let net = &single_ended["scenario"]["parameters"]["nets"][0];
+    assert_eq!(net["net"], "RF");
+    assert_eq!(net["source"], "fab_stackup_table_rev_a");
+    assert_eq!(net["target_impedance_ohm"], 50.0);
+    assert_eq!(net["expected_width_mm"], 0.20);
+    assert_eq!(net["max_width_error_mm"], 0.03);
+    assert!(single_ended.get("required_inputs").is_none());
+    assert!(
+        single_ended["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed board.manufacturing.controlled_impedance")
+    );
+
+    let differential = &suggested[1];
+    assert_eq!(differential["id"], "controlled_impedance_dp_dm");
+    assert_eq!(
+        differential["kind"],
+        "manufacturing_controlled_impedance_dp_dm"
+    );
+    assert_eq!(differential["runnable"], true);
+    assert_eq!(differential["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        differential["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_GEOMETRY_VALID"
+    );
+    let pair = &differential["scenario"]["parameters"]["differential_pairs"][0];
+    assert_eq!(pair["first_net"], "DP");
+    assert_eq!(pair["second_net"], "DM");
+    assert_eq!(pair["source"], "fab_stackup_table_rev_a");
+    assert_eq!(pair["target_differential_impedance_ohm"], 90.0);
+    assert_eq!(pair["expected_width_mm"], 0.15);
+    assert_eq!(pair["expected_gap_mm"], 0.20);
+    assert_eq!(pair["max_width_error_mm"], 0.02);
+    assert_eq!(pair["max_gap_error_mm"], 0.03);
+    assert!(differential.get("required_inputs").is_none());
+    assert!(
+        differential["reason"]
+            .as_str()
+            .unwrap()
+            .contains("parallel same-layer gap evidence")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_adjacent_plane_return_path_template() {
     let suggestions = run_suggest_scenarios(
         "examples/scenario_suggestions_adjacent_plane_return_path/project.yaml",

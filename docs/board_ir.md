@@ -128,6 +128,22 @@ board:
     max_paste_area_ratio: 1.00
     min_solder_paste_spacing_mm: 0.15
     max_stitch_via_distance_mm: 1.00
+    controlled_impedance:
+      nets:
+        - net: RF
+          source: fab_stackup_table_rev_a
+          target_impedance_ohm: 50
+          expected_width_mm: 0.20
+          max_width_error_mm: 0.03
+      differential_pairs:
+        - first_net: DP
+          second_net: DM
+          source: fab_stackup_table_rev_a
+          target_differential_impedance_ohm: 90
+          expected_width_mm: 0.15
+          expected_gap_mm: 0.20
+          max_width_error_mm: 0.02
+          max_gap_error_mm: 0.03
     source: jlc_stencil_order
 ```
 
@@ -159,6 +175,15 @@ order evidence supplies the values.
 limit for nearby reference-net stitching vias at signal route layer
 transitions. CircuitCI does not infer this distance from net names, stackup
 shape, or fabricator defaults.
+
+`CONTROLLED_IMPEDANCE_GEOMETRY_VALID` suggestions consume
+`board.manufacturing.controlled_impedance.nets[]` and
+`board.manufacturing.controlled_impedance.differential_pairs[]` as reviewed
+stackup, coupon, calculator, or fabricator-table targets. CircuitCI only turns
+these targets into runnable suggestions when imported route width evidence
+exists, and differential pairs also need explicit parallel same-layer route-gap
+evidence. It does not calculate impedance from stackup fields or infer targets
+from net names.
 
 Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
 metadata to an imported Board IR without hand-editing YAML:

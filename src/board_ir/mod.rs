@@ -177,7 +177,38 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub max_stitch_via_distance_mm: Option<f64>,
     #[serde(default)]
+    pub controlled_impedance: ControlledImpedanceTargets,
+    #[serde(default)]
     pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ControlledImpedanceTargets {
+    #[serde(default)]
+    pub nets: Vec<ControlledImpedanceNetTarget>,
+    #[serde(default)]
+    pub differential_pairs: Vec<ControlledImpedanceDifferentialPairTarget>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceNetTarget {
+    pub net: String,
+    pub source: String,
+    pub target_impedance_ohm: f64,
+    pub expected_width_mm: f64,
+    pub max_width_error_mm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceDifferentialPairTarget {
+    pub first_net: String,
+    pub second_net: String,
+    pub source: String,
+    pub target_differential_impedance_ohm: f64,
+    pub expected_width_mm: f64,
+    pub expected_gap_mm: f64,
+    pub max_width_error_mm: f64,
+    pub max_gap_error_mm: f64,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

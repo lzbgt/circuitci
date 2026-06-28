@@ -105,10 +105,11 @@ make suggestions runnable without inventing behavior.
 ## Priority 5: Layout Physics Boundaries
 
 CircuitCI now has executable USB connector, route, VBUS, same-layer return-path,
-filled-zone, stitching-via, controlled-impedance geometry, adjacent-plane
-return-path coverage, reference-plane slot-crossing, manufacturing-level
-stitching-via transition distance, and manufacturing geometry screens when
-explicit policy exists. It is not a field solver.
+filled-zone, stitching-via, controlled-impedance geometry with reviewed-target
+suggestions, adjacent-plane return-path coverage, reference-plane
+slot-crossing, manufacturing-level stitching-via transition distance, and
+manufacturing geometry screens when explicit policy exists. It is not a field
+solver.
 
 Useful next slices:
 

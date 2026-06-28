@@ -1,6 +1,7 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
-    CopperZone, LayoutCopper, LayoutCopperFeature, LayoutPoint, NetKind, RouteSegment, RouteVia,
+    ControlledImpedanceDifferentialPairTarget, ControlledImpedanceNetTarget, CopperZone,
+    LayoutCopper, LayoutCopperFeature, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia,
     StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
@@ -24,6 +25,7 @@ const SOLDER_PASTE_APERTURE_AREA_RATIO_VALID: &str = "SOLDER_PASTE_APERTURE_AREA
 const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
+const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -476,6 +478,10 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         bound,
         &project_name,
     ));
+    suggestions.extend(controlled_impedance_geometry_suggestions(
+        bound,
+        &project_name,
+    ));
     suggestions.extend(adjacent_plane_return_path_suggestions(bound, &project_name));
     suggestions.extend(reference_plane_slot_crossing_suggestions(
         bound,
@@ -629,6 +635,91 @@ fn return_path_stitching_via_suggestions(
     suggestions
 }
 
+fn controlled_impedance_geometry_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    let targets = &bound.project.board.manufacturing.controlled_impedance;
+    for target in &targets.nets {
+        if !controlled_impedance_net_target_has_evidence(bound, target)
+            || controlled_impedance_net_check_declared(bound, &target.net)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("controlled_impedance_{}", sanitized_name(&target.net)),
+            true,
+            &format!(
+                "Net {} has reviewed board.manufacturing.controlled_impedance target evidence from {} and imported route-width evidence.",
+                target.net, target.source
+            ),
+            &format!(
+                "{}_{}_controlled_impedance",
+                project_name,
+                sanitized_name(&target.net)
+            ),
+            CONTROLLED_IMPEDANCE_GEOMETRY_VALID,
+            Some(BTreeMap::from([(
+                "nets".to_string(),
+                json!([{
+                    "net": target.net,
+                    "source": target.source,
+                    "target_impedance_ohm": target.target_impedance_ohm,
+                    "expected_width_mm": target.expected_width_mm,
+                    "max_width_error_mm": target.max_width_error_mm
+                }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    for target in &targets.differential_pairs {
+        if !controlled_impedance_pair_target_has_evidence(bound, target)
+            || controlled_impedance_pair_check_declared(
+                bound,
+                &target.first_net,
+                &target.second_net,
+            )
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_{}_{}",
+                sanitized_name(&target.first_net),
+                sanitized_name(&target.second_net)
+            ),
+            true,
+            &format!(
+                "Differential pair {}/{} has reviewed board.manufacturing.controlled_impedance target evidence from {}, imported route-width evidence, and parallel same-layer gap evidence.",
+                target.first_net, target.second_net, target.source
+            ),
+            &format!(
+                "{}_{}_{}_controlled_impedance",
+                project_name,
+                sanitized_name(&target.first_net),
+                sanitized_name(&target.second_net)
+            ),
+            CONTROLLED_IMPEDANCE_GEOMETRY_VALID,
+            Some(BTreeMap::from([(
+                "differential_pairs".to_string(),
+                json!([{
+                    "first_net": target.first_net,
+                    "second_net": target.second_net,
+                    "source": target.source,
+                    "target_differential_impedance_ohm": target.target_differential_impedance_ohm,
+                    "expected_width_mm": target.expected_width_mm,
+                    "expected_gap_mm": target.expected_gap_mm,
+                    "max_width_error_mm": target.max_width_error_mm,
+                    "max_gap_error_mm": target.max_gap_error_mm
+                }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -647,6 +738,123 @@ struct StitchingViaEvidence {
     reference_net: String,
     signal_via_count: usize,
     reference_via_count: usize,
+}
+
+fn controlled_impedance_net_target_has_evidence(
+    bound: &BoundBoard<'_>,
+    target: &ControlledImpedanceNetTarget,
+) -> bool {
+    !target.net.trim().is_empty()
+        && !target.source.trim().is_empty()
+        && positive_finite(target.target_impedance_ohm)
+        && positive_finite(target.expected_width_mm)
+        && non_negative_finite(target.max_width_error_mm)
+        && bound
+            .project
+            .board
+            .nets
+            .get(&target.net)
+            .is_some_and(|net| net.kind == NetKind::DigitalOrAnalog)
+        && bound
+            .project
+            .board
+            .layout
+            .routes
+            .get(&target.net)
+            .is_some_and(route_has_valid_segments)
+}
+
+fn controlled_impedance_pair_target_has_evidence(
+    bound: &BoundBoard<'_>,
+    target: &ControlledImpedanceDifferentialPairTarget,
+) -> bool {
+    if target.first_net == target.second_net
+        || target.first_net.trim().is_empty()
+        || target.second_net.trim().is_empty()
+        || target.source.trim().is_empty()
+        || !positive_finite(target.target_differential_impedance_ohm)
+        || !positive_finite(target.expected_width_mm)
+        || !positive_finite(target.expected_gap_mm)
+        || !non_negative_finite(target.max_width_error_mm)
+        || !non_negative_finite(target.max_gap_error_mm)
+        || !bound
+            .project
+            .board
+            .nets
+            .get(&target.first_net)
+            .is_some_and(|net| net.kind == NetKind::DigitalOrAnalog)
+        || !bound
+            .project
+            .board
+            .nets
+            .get(&target.second_net)
+            .is_some_and(|net| net.kind == NetKind::DigitalOrAnalog)
+    {
+        return false;
+    }
+    let Some(first_route) = bound.project.board.layout.routes.get(&target.first_net) else {
+        return false;
+    };
+    let Some(second_route) = bound.project.board.layout.routes.get(&target.second_net) else {
+        return false;
+    };
+    route_has_valid_segments(first_route)
+        && route_has_valid_segments(second_route)
+        && routes_have_parallel_gap_evidence(first_route, second_route)
+}
+
+fn positive_finite(value: f64) -> bool {
+    value.is_finite() && value > 0.0
+}
+
+fn non_negative_finite(value: f64) -> bool {
+    value.is_finite() && value >= 0.0
+}
+
+fn route_has_valid_segments(route: &NetRoute) -> bool {
+    !route.segments.is_empty() && route.segments.iter().all(usable_route_segment)
+}
+
+fn routes_have_parallel_gap_evidence(first_route: &NetRoute, second_route: &NetRoute) -> bool {
+    first_route.segments.iter().any(|first| {
+        second_route.segments.iter().any(|second| {
+            first.layer == second.layer
+                && parallel_overlap_gap_mm(first, second).is_some_and(f64::is_finite)
+        })
+    })
+}
+
+fn parallel_overlap_gap_mm(first: &RouteSegment, second: &RouteSegment) -> Option<f64> {
+    let first_dx = first.end.x_mm - first.start.x_mm;
+    let first_dy = first.end.y_mm - first.start.y_mm;
+    let second_dx = second.end.x_mm - second.start.x_mm;
+    let second_dy = second.end.y_mm - second.start.y_mm;
+    let first_len = first_dx.hypot(first_dy);
+    let second_len = second_dx.hypot(second_dy);
+    if first_len <= f64::EPSILON || second_len <= f64::EPSILON {
+        return None;
+    }
+    let first_unit_x = first_dx / first_len;
+    let first_unit_y = first_dy / first_len;
+    let second_unit_x = second_dx / second_len;
+    let second_unit_y = second_dy / second_len;
+    let cross = (first_unit_x * second_unit_y - first_unit_y * second_unit_x).abs();
+    if cross > 1.0e-6 {
+        return None;
+    }
+    let projection_a = (second.start.x_mm - first.start.x_mm) * first_unit_x
+        + (second.start.y_mm - first.start.y_mm) * first_unit_y;
+    let projection_b = (second.end.x_mm - first.start.x_mm) * first_unit_x
+        + (second.end.y_mm - first.start.y_mm) * first_unit_y;
+    let overlap_start = projection_a.min(projection_b).max(0.0);
+    let overlap_end = projection_a.max(projection_b).min(first_len);
+    if overlap_end - overlap_start <= f64::EPSILON {
+        return None;
+    }
+    let centerline_distance_mm = ((second.start.x_mm - first.start.x_mm) * first_unit_y
+        - (second.start.y_mm - first.start.y_mm) * first_unit_x)
+        .abs();
+    Some(centerline_distance_mm - (first.width_mm + second.width_mm) / 2.0)
 }
 
 fn adjacent_plane_return_path_evidence(
@@ -1329,6 +1537,66 @@ fn manufacturing_route_check_declared_for_net(
                                 .get(serde_yaml_ng::Value::String("net".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(net_name)
+                    })
+                })
+    })
+}
+
+fn controlled_impedance_net_check_declared(bound: &BoundBoard<'_>, net_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == CONTROLLED_IMPEDANCE_GEOMETRY_VALID)
+            && scenario
+                .parameters
+                .get("nets")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|nets| {
+                    nets.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("net".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(net_name)
+                    })
+                })
+    })
+}
+
+fn controlled_impedance_pair_check_declared(
+    bound: &BoundBoard<'_>,
+    first_net: &str,
+    second_net: &str,
+) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == CONTROLLED_IMPEDANCE_GEOMETRY_VALID)
+            && scenario
+                .parameters
+                .get("differential_pairs")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|pairs| {
+                    pairs.iter().any(|item| {
+                        let Some(mapping) = item.as_mapping() else {
+                            return false;
+                        };
+                        let declared_first = mapping
+                            .get(serde_yaml_ng::Value::String("first_net".to_string()))
+                            .and_then(serde_yaml_ng::Value::as_str);
+                        let declared_second = mapping
+                            .get(serde_yaml_ng::Value::String("second_net".to_string()))
+                            .and_then(serde_yaml_ng::Value::as_str);
+                        matches!(
+                            (declared_first, declared_second),
+                            (Some(left), Some(right))
+                                if (left == first_net && right == second_net)
+                                    || (left == second_net && right == first_net)
+                        )
                     })
                 })
     })
