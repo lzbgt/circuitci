@@ -370,6 +370,10 @@
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
+                  "min_total_thermal_via_barrel_cross_section_mm2": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
                   "min_copper_thickness_um": { "type": "number", "exclusiveMinimum": 0 },
                   "rated_ambient_temperature_C": { "type": "number" },
                   "min_airflow_lfm": { "type": "number", "minimum": 0 },

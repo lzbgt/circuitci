@@ -184,6 +184,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
 - `THERMAL_VIA_PLATING_VALID`
+- `THERMAL_VIA_BARREL_CROSS_SECTION_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `THERMAL_MEASURED_TEMPERATURE_VALID`
 - `THERMAL_DERATING_ENVIRONMENT_VALID`
@@ -660,6 +661,19 @@ include `thermal_copper_name`, `thermal_copper_source`, `component`,
 `observed_min_thermal_via_plating_thickness_um`. Stable limit keys include
 `min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, and optional
 `min_thermal_via_plating_thickness_um`.
+
+`THERMAL_VIA_BARREL_CROSS_SECTION_VALID` reports are emitted by
+`manufacturing` scenarios that compare reviewed total thermal via barrel
+cross-section policy against explicit route-via and plated drill
+diameter/thickness evidence. Stable measured keys include
+`thermal_copper_name`, `thermal_copper_source`, `component`, `power_loss_w`,
+`nets`, `layers`, `route_via_count`, `thermal_via_count`,
+`matched_drill_count`, `plated_thermal_via_count`,
+`non_plated_or_unknown_drill_count`, `plating_thickness_evidence_count`,
+`observed_min_thermal_via_drill_mm`,
+`observed_min_thermal_via_plating_thickness_um`, and
+`observed_total_thermal_via_barrel_cross_section_mm2`. Stable limit keys
+include `min_total_thermal_via_barrel_cross_section_mm2`.
 
 `THERMAL_PACKAGE_TEMPERATURE_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed component power-loss metadata and component

@@ -27,6 +27,7 @@ board:
         min_plated_thermal_via_count: 2
         min_thermal_via_drill_mm: 0.25
         min_thermal_via_plating_thickness_um: 20.0
+        min_total_thermal_via_barrel_cross_section_mm2: 0.04
         nets: [HOT]
         layers: [F.Cu, B.Cu]
 

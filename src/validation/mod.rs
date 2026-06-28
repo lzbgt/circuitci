@@ -71,6 +71,8 @@ pub(super) const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID"
 pub(super) const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 pub(super) const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
 pub(super) const THERMAL_VIA_PLATING_VALID: &str = "THERMAL_VIA_PLATING_VALID";
+pub(super) const THERMAL_VIA_BARREL_CROSS_SECTION_VALID: &str =
+    "THERMAL_VIA_BARREL_CROSS_SECTION_VALID";
 pub(super) const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
 pub(super) const THERMAL_MEASURED_TEMPERATURE_VALID: &str = "THERMAL_MEASURED_TEMPERATURE_VALID";
 pub(super) const THERMAL_DERATING_ENVIRONMENT_VALID: &str = "THERMAL_DERATING_ENVIRONMENT_VALID";
@@ -505,6 +507,15 @@ where
                 THERMAL_VIA_PLATING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_thermal_via_plating(bound, scenario, &mut findings)
                 }
+                THERMAL_VIA_BARREL_CROSS_SECTION_VALID
+                    if scenario.scenario_type == "manufacturing" =>
+                {
+                    manufacturing::validate_thermal_via_barrel_cross_section(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 THERMAL_PACKAGE_TEMPERATURE_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_thermal_package_temperature(
                         bound,
@@ -792,6 +803,7 @@ where
                 | THERMAL_COPPER_AREA_VALID
                 | THERMAL_VIA_STACKUP_VALID
                 | THERMAL_VIA_PLATING_VALID
+                | THERMAL_VIA_BARREL_CROSS_SECTION_VALID
                 | THERMAL_PACKAGE_TEMPERATURE_VALID
                 | THERMAL_MEASURED_TEMPERATURE_VALID
                 | THERMAL_DERATING_ENVIRONMENT_VALID

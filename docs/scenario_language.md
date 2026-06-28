@@ -147,6 +147,7 @@ Canonical executable check IDs:
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
 - `THERMAL_VIA_PLATING_VALID`
+- `THERMAL_VIA_BARREL_CROSS_SECTION_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `THERMAL_MEASURED_TEMPERATURE_VALID`
 - `THERMAL_DERATING_ENVIRONMENT_VALID`
@@ -1425,6 +1426,44 @@ Thermal via plating algorithm:
 This is a static imported-drill evidence screen for reviewed thermal rules. It
 does not model via barrel resistance, spreading resistance, convection, package
 thermal resistance, temperature rise, or measured thermal behavior.
+
+Thermal via barrel cross-section validation uses
+`THERMAL_VIA_BARREL_CROSS_SECTION_VALID` when the same reviewed
+`board.manufacturing.thermal_copper[]` rule declares
+`min_total_thermal_via_barrel_cross_section_mm2`, reviewed nets, and reviewed
+copper layers.
+
+```yaml
+scenarios:
+  - name: thermal_via_barrel_cross_section
+    type: manufacturing
+    checks:
+      - THERMAL_VIA_BARREL_CROSS_SECTION_VALID
+    parameters:
+      thermal_copper:
+        - name: u1_heat_spreader
+```
+
+Thermal via barrel cross-section algorithm:
+
+1. Require `parameters.thermal_copper[]` with explicit rule `name` values.
+2. Resolve each name from `board.manufacturing.thermal_copper[]`.
+3. Require the reviewed rule to name an existing component, non-empty source,
+   positive `power_loss_w`, positive
+   `min_total_thermal_via_barrel_cross_section_mm2`, at least one reviewed net,
+   and at least two reviewed copper layers.
+4. Match reviewed route vias to drill rows with the same evidence rules as
+   `THERMAL_VIA_PLATING_VALID`.
+5. For each matched `plated` thermal-via drill, require positive
+   `plating_thickness_um` and compute the annular barrel cross-section as
+   `pi * (drill_mm * plating_thickness_mm + plating_thickness_mm^2)`.
+6. Sum the computed cross-sections and compare the total to
+   `min_total_thermal_via_barrel_cross_section_mm2`.
+7. Fail closed when route-via, drill, plating, plating-thickness, or layer-span
+   evidence is absent or malformed.
+
+This is a static geometry evidence screen. It does not model barrel thermal
+resistance, copper spreading, convection, or temperature rise.
 
 Thermal package temperature validation uses `THERMAL_PACKAGE_TEMPERATURE_VALID`
 when the reviewed `board.manufacturing.thermal_copper[]` rule declares a static

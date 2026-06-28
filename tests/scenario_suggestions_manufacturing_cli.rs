@@ -377,6 +377,27 @@ fn suggest_scenarios_derives_thermal_via_plating_template() {
             .unwrap()
             .contains("reviewed plated-via/drill policy")
     );
+
+    let barrel = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "thermal_via_barrel_cross_section_u1_heat_spreader")
+        .expect("thermal via barrel cross-section suggestion");
+    assert_eq!(barrel["runnable"], true);
+    assert_eq!(
+        barrel["scenario"]["checks"][0],
+        "THERMAL_VIA_BARREL_CROSS_SECTION_VALID"
+    );
+    assert_eq!(
+        barrel["scenario"]["parameters"]["thermal_copper"][0]["name"],
+        "u1_heat_spreader"
+    );
+    assert!(barrel.get("required_inputs").is_none());
+    assert!(
+        barrel["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed via-barrel cross-section policy")
+    );
 }
 
 #[test]

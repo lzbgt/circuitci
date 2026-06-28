@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
 const THERMAL_VIA_PLATING_VALID: &str = "THERMAL_VIA_PLATING_VALID";
+const THERMAL_VIA_BARREL_CROSS_SECTION_VALID: &str = "THERMAL_VIA_BARREL_CROSS_SECTION_VALID";
 const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
 const THERMAL_MEASURED_TEMPERATURE_VALID: &str = "THERMAL_MEASURED_TEMPERATURE_VALID";
 const THERMAL_DERATING_ENVIRONMENT_VALID: &str = "THERMAL_DERATING_ENVIRONMENT_VALID";
@@ -23,6 +24,10 @@ pub(super) fn thermal_suggestions(
     suggestions.extend(thermal_copper_area_suggestions(bound, project_name));
     suggestions.extend(thermal_via_stackup_suggestions(bound, project_name));
     suggestions.extend(thermal_via_plating_suggestions(bound, project_name));
+    suggestions.extend(thermal_via_barrel_cross_section_suggestions(
+        bound,
+        project_name,
+    ));
     suggestions.extend(thermal_package_temperature_suggestions(bound, project_name));
     suggestions.extend(thermal_measured_temperature_suggestions(
         bound,
@@ -444,6 +449,104 @@ fn thermal_via_plating_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -
                 .checks
                 .iter()
                 .any(|declared| declared == THERMAL_VIA_PLATING_VALID)
+            && scenario
+                .parameters
+                .get("thermal_copper")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(rule_name)
+                    })
+                })
+    })
+}
+
+fn thermal_via_barrel_cross_section_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for rule in &bound.project.board.manufacturing.thermal_copper {
+        if !thermal_via_barrel_cross_section_rule_has_evidence(bound, rule)
+            || thermal_via_barrel_cross_section_check_declared(bound, &rule.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "thermal_via_barrel_cross_section_{}",
+                sanitized_name(&rule.name)
+            ),
+            true,
+            &format!(
+                "Thermal copper rule {} has reviewed via-barrel cross-section policy plus imported plated drill diameter/thickness evidence.",
+                rule.name
+            ),
+            &format!(
+                "{}_{}_thermal_via_barrel_cross_section",
+                project_name,
+                sanitized_name(&rule.name)
+            ),
+            THERMAL_VIA_BARREL_CROSS_SECTION_VALID,
+            Some(BTreeMap::from([(
+                "thermal_copper".to_string(),
+                json!([{ "name": rule.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn thermal_via_barrel_cross_section_rule_has_evidence(
+    bound: &BoundBoard<'_>,
+    rule: &ThermalCopperRule,
+) -> bool {
+    thermal_copper_rule_has_evidence(bound, rule)
+        && rule
+            .min_total_thermal_via_barrel_cross_section_mm2
+            .is_some_and(|value| value.is_finite() && value > 0.0)
+        && !rule.nets.is_empty()
+        && rule.layers.len() >= 2
+        && rule.nets.iter().all(|net| {
+            bound
+                .project
+                .board
+                .layout
+                .routes
+                .get(net)
+                .is_some_and(|route| {
+                    route.vias.iter().enumerate().any(|(index, via)| {
+                        valid_thermal_route_via(via)
+                            && rule.layers.iter().all(|layer| via.layers.contains(layer))
+                            && matching_thermal_via_drill(bound, net, index, via).is_some_and(
+                                |drill| {
+                                    valid_thermal_drill(drill)
+                                        && drill.plating == "plated"
+                                        && drill
+                                            .plating_thickness_um
+                                            .is_some_and(|value| value.is_finite() && value > 0.0)
+                                },
+                            )
+                    })
+                })
+        })
+}
+
+fn thermal_via_barrel_cross_section_check_declared(
+    bound: &BoundBoard<'_>,
+    rule_name: &str,
+) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_VIA_BARREL_CROSS_SECTION_VALID)
             && scenario
                 .parameters
                 .get("thermal_copper")

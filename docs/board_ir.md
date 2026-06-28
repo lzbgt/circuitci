@@ -155,6 +155,7 @@ board:
         min_plated_thermal_via_count: 6
         min_thermal_via_drill_mm: 0.25
         min_thermal_via_plating_thickness_um: 20.0
+        min_total_thermal_via_barrel_cross_section_mm2: 0.12
         nets: [SW]
         layers: [F.Cu, B.Cu]
     source: jlc_stencil_order
@@ -224,6 +225,14 @@ exact imported coordinate/drill evidence, then counts only drills whose
 matched plated thermal-via drill must also carry explicit
 `plating_thickness_um` evidence. It does not model via barrel resistance or heat
 flow.
+
+`THERMAL_VIA_BARREL_CROSS_SECTION_VALID` consumes the same reviewed thermal
+rules when they declare `min_total_thermal_via_barrel_cross_section_mm2`,
+reviewed nets, and reviewed layers. The check matches route vias to plated
+drills with explicit `plating_thickness_um`, computes each annular barrel copper
+cross-section from imported drill diameter and plating thickness, and compares
+the summed area to the reviewed minimum. It does not solve barrel thermal
+resistance or temperature rise.
 
 `THERMAL_DERATING_ENVIRONMENT_VALID` consumes the same reviewed
 `board.manufacturing.thermal_copper[]` entries when they also declare explicit

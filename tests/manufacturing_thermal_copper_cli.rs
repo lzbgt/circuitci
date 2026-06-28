@@ -247,6 +247,88 @@ fn thermal_via_plating_fails_closed_without_plating_thickness_evidence() {
 }
 
 #[test]
+fn thermal_via_barrel_cross_section_passes_for_reviewed_policy() {
+    let (_dir, project_path) =
+        write_thermal_via_plating_project_with_policy(ThermalViaPolicyFixture {
+            via_count: 2,
+            plated_count: 2,
+            drill_mm: 0.30,
+            include_drills: true,
+            drill_plating_thickness_um: Some(25.0),
+            min_total_barrel_cross_section_mm2: Some(0.04),
+            check_id: "THERMAL_VIA_BARREL_CROSS_SECTION_VALID",
+            ..ThermalViaPolicyFixture::default()
+        });
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_barrel_cross_section_fails_below_reviewed_policy() {
+    let (_dir, project_path) =
+        write_thermal_via_plating_project_with_policy(ThermalViaPolicyFixture {
+            via_count: 2,
+            plated_count: 2,
+            drill_mm: 0.30,
+            include_drills: true,
+            drill_plating_thickness_um: Some(25.0),
+            min_total_barrel_cross_section_mm2: Some(0.08),
+            check_id: "THERMAL_VIA_BARREL_CROSS_SECTION_VALID",
+            ..ThermalViaPolicyFixture::default()
+        });
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_VIA_BARREL_CROSS_SECTION_VALID")
+        .expect("thermal via barrel cross-section failure");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["measured"]["plated_thermal_via_count"], 2);
+    assert_eq!(failure["measured"]["plating_thickness_evidence_count"], 2);
+    let total = failure["measured"]["observed_total_thermal_via_barrel_cross_section_mm2"]
+        .as_f64()
+        .unwrap();
+    assert!((total - 0.051050880620834135).abs() < 1.0e-12);
+    assert_eq!(
+        failure["limit"]["min_total_thermal_via_barrel_cross_section_mm2"],
+        0.08
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_barrel_cross_section_fails_closed_without_thickness_evidence() {
+    let (_dir, project_path) =
+        write_thermal_via_plating_project_with_policy(ThermalViaPolicyFixture {
+            via_count: 2,
+            plated_count: 2,
+            drill_mm: 0.30,
+            include_drills: true,
+            min_total_barrel_cross_section_mm2: Some(0.04),
+            check_id: "THERMAL_VIA_BARREL_CROSS_SECTION_VALID",
+            ..ThermalViaPolicyFixture::default()
+        });
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires plating_thickness_um")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_derating_environment_passes_for_reviewed_context() {
     let (_dir, project_path) =
         write_thermal_derating_project(Some(55.0), Some(250.0), Some("vented_ip20"), true);
@@ -1039,11 +1121,53 @@ fn write_thermal_via_plating_project_with_thickness(
     min_plating_thickness_um: Option<f64>,
     drill_plating_thickness_um: Option<f64>,
 ) -> (tempfile::TempDir, std::path::PathBuf) {
+    write_thermal_via_plating_project_with_policy(ThermalViaPolicyFixture {
+        via_count,
+        plated_count,
+        drill_mm,
+        include_drills,
+        min_plating_thickness_um,
+        drill_plating_thickness_um,
+        check_id: "THERMAL_VIA_PLATING_VALID",
+        ..ThermalViaPolicyFixture::default()
+    })
+}
+
+#[derive(Clone, Copy)]
+struct ThermalViaPolicyFixture {
+    via_count: usize,
+    plated_count: usize,
+    drill_mm: f64,
+    include_drills: bool,
+    min_plating_thickness_um: Option<f64>,
+    drill_plating_thickness_um: Option<f64>,
+    min_total_barrel_cross_section_mm2: Option<f64>,
+    check_id: &'static str,
+}
+
+impl Default for ThermalViaPolicyFixture {
+    fn default() -> Self {
+        Self {
+            via_count: 0,
+            plated_count: 0,
+            drill_mm: 0.0,
+            include_drills: false,
+            min_plating_thickness_um: None,
+            drill_plating_thickness_um: None,
+            min_total_barrel_cross_section_mm2: None,
+            check_id: "THERMAL_VIA_PLATING_VALID",
+        }
+    }
+}
+
+fn write_thermal_via_plating_project_with_policy(
+    fixture: ThermalViaPolicyFixture,
+) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let repo = std::env::current_dir().unwrap();
     let project_path = dir.path().join("project.yaml");
-    let vias = (0..via_count)
+    let vias = (0..fixture.via_count)
         .map(|index| {
             format!(
                 r#"          - at: {{ x_mm: {}, y_mm: 1.0 }}
@@ -1051,20 +1175,22 @@ fn write_thermal_via_plating_project_with_thickness(
             drill_mm: {drill_mm}
             layers: [F.Cu, B.Cu]
 "#,
-                index + 1
+                index + 1,
+                drill_mm = fixture.drill_mm
             )
         })
         .collect::<String>();
-    let drills = if include_drills {
-        let rows = (0..via_count)
+    let drills = if fixture.include_drills {
+        let rows = (0..fixture.via_count)
             .map(|index| {
-                let plating = if index < plated_count {
+                let plating = if index < fixture.plated_count {
                     "plated"
                 } else {
                     "non_plated"
                 };
                 let plating_thickness = if plating == "plated" {
-                    drill_plating_thickness_um
+                    fixture
+                        .drill_plating_thickness_um
                         .map(|value| format!("          plating_thickness_um: {value}\n"))
                         .unwrap_or_default()
                 } else {
@@ -1077,7 +1203,8 @@ fn write_thermal_via_plating_project_with_thickness(
 {plating_thickness}          net: HOT
           via_index: {index}
 "#,
-                    index + 1
+                    index + 1,
+                    drill_mm = fixture.drill_mm
                 )
             })
             .collect::<String>();
@@ -1085,8 +1212,13 @@ fn write_thermal_via_plating_project_with_thickness(
     } else {
         String::new()
     };
-    let min_plating_thickness = min_plating_thickness_um
+    let min_plating_thickness = fixture
+        .min_plating_thickness_um
         .map(|value| format!("        min_thermal_via_plating_thickness_um: {value}\n"))
+        .unwrap_or_default();
+    let min_total_barrel_cross_section = fixture
+        .min_total_barrel_cross_section_mm2
+        .map(|value| format!("        min_total_thermal_via_barrel_cross_section_mm2: {value}\n"))
         .unwrap_or_default();
     std::fs::write(
         &project_path,
@@ -1114,7 +1246,7 @@ board:
         min_copper_area_mm2: 20.0
         min_plated_thermal_via_count: 2
         min_thermal_via_drill_mm: 0.25
-{min_plating_thickness}        layers: [F.Cu, B.Cu]
+{min_plating_thickness}{min_total_barrel_cross_section}        layers: [F.Cu, B.Cu]
         nets: [HOT]
         source: thermal_layout_note_rev_a
   layout:
@@ -1125,12 +1257,13 @@ board:
   - name: thermal_via_plating
     type: manufacturing
     checks:
-      - THERMAL_VIA_PLATING_VALID
+      - {check_id}
     parameters:
       thermal_copper:
         - name: u1_heat_spreader
 "#,
             generic_library = repo.join("libs/generic").display(),
+            check_id = fixture.check_id,
         ),
     )
     .unwrap();

@@ -313,6 +313,13 @@ without explicit imported mechanical evidence.
   enclosure, package thermal resistance, derating, or measured temperature rise.
   Passing this rule only means the imported drill plating, drill-diameter, and
   optional plating-thickness evidence meet the reviewed static minimums.
+- `THERMAL_VIA_BARREL_CROSS_SECTION_VALID` sums explicit annular barrel copper
+  cross-section from imported plated drill diameter and plating-thickness
+  evidence for reviewed thermal route vias. It does not model via barrel
+  thermal resistance, spreading resistance, convection, enclosure, package
+  thermal resistance, derating, or measured temperature rise. Passing this rule
+  only means the imported static barrel geometry evidence meets the reviewed
+  minimum.
 - `THERMAL_DERATING_ENVIRONMENT_VALID` compares reviewed thermal-copper
   environment assumptions against explicit scenario ambient, airflow, and
   enclosure-profile inputs. It does not model airflow distribution, convection,

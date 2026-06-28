@@ -3,8 +3,8 @@ use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
-use super::super::THERMAL_VIA_PLATING_VALID;
 use super::super::common::validation_input_missing;
+use super::super::{THERMAL_VIA_BARREL_CROSS_SECTION_VALID, THERMAL_VIA_PLATING_VALID};
 use super::thermal_copper::{
     named_thermal_rule_parameters, positive_number, thermal_rule, thermal_via_spans_layers,
     valid_route_via, validate_rule_metadata,
@@ -29,6 +29,33 @@ pub(in crate::validation) fn validate_thermal_via_plating(
             return;
         };
         validate_via_plating_rule(bound, scenario, findings, rule);
+    }
+}
+
+pub(in crate::validation) fn validate_thermal_via_barrel_cross_section(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = named_thermal_rule_parameters(
+        scenario,
+        findings,
+        THERMAL_VIA_BARREL_CROSS_SECTION_VALID,
+        "thermal_copper",
+    ) else {
+        return;
+    };
+    for name in names {
+        let Some(rule) = thermal_rule(
+            bound,
+            scenario,
+            findings,
+            THERMAL_VIA_BARREL_CROSS_SECTION_VALID,
+            &name,
+        ) else {
+            return;
+        };
+        validate_via_barrel_cross_section_rule(bound, scenario, findings, rule);
     }
 }
 
@@ -166,6 +193,96 @@ fn validate_via_plating_rule(
     }
 }
 
+fn validate_via_barrel_cross_section_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    rule: &ThermalCopperRule,
+) {
+    if let Err(message) = validate_rule_metadata(bound, rule) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    let Some(min_total_cross_section_mm2) =
+        positive_number(rule.min_total_thermal_via_barrel_cross_section_mm2)
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_BARREL_CROSS_SECTION_VALID thermal copper rule {} must declare finite positive min_total_thermal_via_barrel_cross_section_mm2.",
+                rule.name
+            ),
+        );
+        return;
+    };
+    if rule.nets.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_BARREL_CROSS_SECTION_VALID thermal copper rule {} requires at least one reviewed net in board.manufacturing.thermal_copper[].nets.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if rule.layers.len() < 2 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_BARREL_CROSS_SECTION_VALID thermal copper rule {} requires at least two reviewed copper layers.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if bound.project.board.layout.drills.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "THERMAL_VIA_BARREL_CROSS_SECTION_VALID requires board.layout.drills evidence with plating metadata.",
+        );
+        return;
+    }
+    let Some(evidence) = thermal_via_plating_evidence(bound, scenario, findings, rule) else {
+        return;
+    };
+    if evidence.matched_drill_count == 0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_BARREL_CROSS_SECTION_VALID thermal copper rule {} has no matching board.layout.drills evidence for reviewed route vias.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if evidence.plating_thickness_evidence_count < evidence.plated_thermal_via_count {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_VIA_BARREL_CROSS_SECTION_VALID thermal copper rule {} requires plating_thickness_um on every matched plated thermal via drill.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if evidence.observed_total_thermal_via_barrel_cross_section_mm2 + f64::EPSILON
+        < min_total_cross_section_mm2
+    {
+        findings.push(thermal_via_barrel_cross_section_finding(
+            scenario,
+            rule,
+            &evidence,
+            min_total_cross_section_mm2,
+        ));
+    }
+}
+
 fn thermal_via_plating_evidence(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -229,6 +346,8 @@ fn thermal_via_plating_evidence(
                     evidence.observed_min_thermal_via_plating_thickness_um = evidence
                         .observed_min_thermal_via_plating_thickness_um
                         .min(thickness_um);
+                    evidence.observed_total_thermal_via_barrel_cross_section_mm2 +=
+                        thermal_via_barrel_cross_section_mm2(drill.drill_mm, thickness_um);
                 }
             } else {
                 evidence.non_plated_or_unknown_drill_count += 1;
@@ -245,6 +364,11 @@ fn thermal_via_plating_evidence(
         evidence.observed_min_thermal_via_plating_thickness_um = 0.0;
     }
     Some(evidence)
+}
+
+fn thermal_via_barrel_cross_section_mm2(drill_mm: f64, plating_thickness_um: f64) -> f64 {
+    let plating_thickness_mm = plating_thickness_um / 1000.0;
+    std::f64::consts::PI * (drill_mm * plating_thickness_mm + plating_thickness_mm.powi(2))
 }
 
 fn matching_thermal_via_drill<'a>(
@@ -294,6 +418,7 @@ struct ThermalViaPlatingEvidence {
     plating_thickness_evidence_count: usize,
     observed_min_thermal_via_drill_mm: f64,
     observed_min_thermal_via_plating_thickness_um: f64,
+    observed_total_thermal_via_barrel_cross_section_mm2: f64,
 }
 
 fn thermal_via_plated_count_finding(
@@ -389,6 +514,35 @@ fn thermal_via_plating_thickness_finding(
     finding
 }
 
+fn thermal_via_barrel_cross_section_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    evidence: &ThermalViaPlatingEvidence,
+    min_total_cross_section_mm2: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_VIA_BARREL_CROSS_SECTION_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} has total thermal via barrel cross-section {:.6} mm^2, below the reviewed {:.6} mm^2 minimum.",
+            rule.name,
+            evidence.observed_total_thermal_via_barrel_cross_section_mm2,
+            min_total_cross_section_mm2
+        ),
+    );
+    finding.component = Some(rule.component.clone());
+    populate_via_plating_measured(&mut finding, rule, evidence);
+    finding.limit.insert(
+        "min_total_thermal_via_barrel_cross_section_mm2".to_string(),
+        json!(min_total_cross_section_mm2),
+    );
+    finding.suggested_fixes = vec![
+        "Increase reviewed plated thermal via count, drill diameter, or plating thickness evidence until the total barrel cross-section satisfies the reviewed policy.".to_string(),
+        "If the barrel cross-section requirement changed, update board.manufacturing.thermal_copper from the reviewed thermal policy.".to_string(),
+    ];
+    finding
+}
+
 fn populate_via_plating_finding(
     finding: &mut Finding,
     rule: &ThermalCopperRule,
@@ -396,6 +550,28 @@ fn populate_via_plating_finding(
     min_plated_thermal_via_count: usize,
     min_thermal_via_drill_mm: f64,
     min_thermal_via_plating_thickness_um: Option<f64>,
+) {
+    populate_via_plating_measured(finding, rule, evidence);
+    finding.limit.insert(
+        "min_plated_thermal_via_count".to_string(),
+        json!(min_plated_thermal_via_count),
+    );
+    finding.limit.insert(
+        "min_thermal_via_drill_mm".to_string(),
+        json!(min_thermal_via_drill_mm),
+    );
+    if let Some(value) = min_thermal_via_plating_thickness_um {
+        finding.limit.insert(
+            "min_thermal_via_plating_thickness_um".to_string(),
+            json!(value),
+        );
+    }
+}
+
+fn populate_via_plating_measured(
+    finding: &mut Finding,
+    rule: &ThermalCopperRule,
+    evidence: &ThermalViaPlatingEvidence,
 ) {
     finding.component = Some(rule.component.clone());
     finding
@@ -448,18 +624,8 @@ fn populate_via_plating_finding(
         "observed_min_thermal_via_plating_thickness_um".to_string(),
         json!(evidence.observed_min_thermal_via_plating_thickness_um),
     );
-    finding.limit.insert(
-        "min_plated_thermal_via_count".to_string(),
-        json!(min_plated_thermal_via_count),
+    finding.measured.insert(
+        "observed_total_thermal_via_barrel_cross_section_mm2".to_string(),
+        json!(evidence.observed_total_thermal_via_barrel_cross_section_mm2),
     );
-    finding.limit.insert(
-        "min_thermal_via_drill_mm".to_string(),
-        json!(min_thermal_via_drill_mm),
-    );
-    if let Some(value) = min_thermal_via_plating_thickness_um {
-        finding.limit.insert(
-            "min_thermal_via_plating_thickness_um".to_string(),
-            json!(value),
-        );
-    }
 }

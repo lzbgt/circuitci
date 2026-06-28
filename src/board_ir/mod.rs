@@ -231,6 +231,8 @@ pub struct ThermalCopperRule {
     #[serde(default)]
     pub min_thermal_via_plating_thickness_um: Option<f64>,
     #[serde(default)]
+    pub min_total_thermal_via_barrel_cross_section_mm2: Option<f64>,
+    #[serde(default)]
     pub min_copper_thickness_um: Option<f64>,
     #[serde(default, rename = "rated_ambient_temperature_C")]
     pub rated_ambient_temperature_c: Option<f64>,

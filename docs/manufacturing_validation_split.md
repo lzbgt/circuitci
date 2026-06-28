@@ -54,10 +54,12 @@ spreading, airflow distribution, enclosure behavior, or measured thermal
 response.
 
 `src/validation/manufacturing/thermal_via_plating.rs` owns
-`THERMAL_VIA_PLATING_VALID`, including reviewed thermal-copper rule lookup,
-route-via to drill matching, and drill plating / drill-diameter /
-plating-thickness evidence checks for reviewed thermal vias. It intentionally
-does not solve via barrel resistance or heat flow.
+`THERMAL_VIA_PLATING_VALID` and
+`THERMAL_VIA_BARREL_CROSS_SECTION_VALID`, including reviewed thermal-copper rule
+lookup, route-via to drill matching, drill plating / drill-diameter /
+plating-thickness evidence checks, and static annular barrel cross-section
+summing for reviewed thermal vias. It intentionally does not solve via thermal
+resistance or heat flow.
 
 `src/validation/manufacturing/thermal_measurement.rs` owns
 `THERMAL_MEASURED_TEMPERATURE_VALID`, including reviewed

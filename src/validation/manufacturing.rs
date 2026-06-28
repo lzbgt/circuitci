@@ -67,7 +67,9 @@ pub(super) use thermal_copper::{
     validate_thermal_package_temperature, validate_thermal_via_stackup,
 };
 pub(super) use thermal_measurement::validate_thermal_measured_temperature;
-pub(super) use thermal_via_plating::validate_thermal_via_plating;
+pub(super) use thermal_via_plating::{
+    validate_thermal_via_barrel_cross_section, validate_thermal_via_plating,
+};
 
 pub(super) fn validate_copper_to_board_edge_clearance(
     bound: &BoundBoard<'_>,
