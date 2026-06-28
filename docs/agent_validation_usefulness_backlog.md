@@ -114,7 +114,9 @@ Useful next slices:
 - stackup-aware adjacent-plane return-path evidence,
 - RF antenna keepout and matching evidence,
 - thermal copper and dissipation evidence,
-- creepage and clearance screens beyond current fabrication checks,
+- creepage and clearance proof beyond the current explicit same-layer planar
+  conductor screen, such as reviewed slot, barrier, coating, stackup, material,
+  altitude, and standards-class evidence,
 - pin-1 polarity/orientation proof beyond the current explicit pin-1 marker
   direction and assembly-vs-footprint source-consistency screens.
 

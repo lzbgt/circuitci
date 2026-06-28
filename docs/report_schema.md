@@ -530,6 +530,15 @@ optional `first_copper_region_net`, optional
 `first_copper_region_point_count`; the same keys may appear with the
 `second_` prefix. Stable limit keys include `min_copper_spacing_mm`.
 
+`CONDUCTOR_CREEPAGE_CLEARANCE_VALID` reports are emitted by `manufacturing`
+scenarios that compare explicitly declared net pairs against same-layer
+imported copper geometry. Stable measured keys include `first_net`,
+`second_net`, `copper_layer`, `planar_conductor_spacing_mm`,
+`clearance_distance_mm`, `creepage_distance_mm`, `clearance_violation`, and
+`creepage_violation`, plus the same prefixed copper operand keys used by
+`COPPER_SPACING_VALID`. Stable limit keys include `min_clearance_mm` and
+`min_creepage_mm`.
+
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`
 with Gerber solder-mask opening evidence under `board.layout.solder_mask`.

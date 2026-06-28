@@ -1298,6 +1298,81 @@ fn copper_spacing_fails_for_near_flash_and_region() {
 }
 
 #[test]
+fn conductor_creepage_clearance_passes_for_explicit_net_pair_spacing() {
+    let (_dir, project_path) = write_conductor_creepage_clearance_project(
+        r#"      - first_net: HV
+        second_net: GND
+        min_clearance_mm: 0.1
+        min_creepage_mm: 0.1
+"#,
+    );
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn conductor_creepage_clearance_fails_for_explicit_net_pair_spacing() {
+    let (_dir, project_path) = write_conductor_creepage_clearance_project(
+        r#"      - first_net: HV
+        second_net: GND
+        min_clearance_mm: 0.25
+        min_creepage_mm: 0.3
+"#,
+    );
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "CONDUCTOR_CREEPAGE_CLEARANCE_VALID");
+    assert_eq!(failure["measured"]["first_net"], "HV");
+    assert_eq!(failure["measured"]["second_net"], "GND");
+    assert_eq!(failure["measured"]["copper_layer"], "F.Cu");
+    assert_eq!(failure["measured"]["first_copper_feature_net"], "HV");
+    assert_eq!(failure["measured"]["second_copper_feature_net"], "GND");
+    let spacing = failure["measured"]["planar_conductor_spacing_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((spacing - 0.2).abs() < 1.0e-12);
+    assert_eq!(failure["measured"]["clearance_distance_mm"], spacing);
+    assert_eq!(failure["measured"]["creepage_distance_mm"], spacing);
+    assert_eq!(failure["measured"]["clearance_violation"], true);
+    assert_eq!(failure["measured"]["creepage_violation"], true);
+    assert_eq!(failure["limit"]["min_clearance_mm"], 0.25);
+    assert_eq!(failure["limit"]["min_creepage_mm"], 0.3);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn conductor_creepage_clearance_fails_closed_without_comparable_net_pair() {
+    let (_dir, project_path) = write_conductor_creepage_clearance_project(
+        r#"      - first_net: HV
+        second_net: GND
+        min_clearance_mm: 0.1
+        min_creepage_mm: 0.1
+"#,
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          layer: F.Cu\n          polarity: dark\n          net: GND",
+        "          layer: B.Cu\n          polarity: dark\n          net: GND",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("found no same-layer imported copper evidence between nets HV and GND")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn assembly_footprint_alignment_passes_with_matching_evidence() {
     let (_dir, project_path) = write_alignment_project(
         r#"
@@ -1515,6 +1590,62 @@ board:
     parameters:
       components: [U1]
 "#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_conductor_creepage_clearance_project(
+    net_pairs: &str,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: conductor_creepage_clearance_fixture
+  version: 1
+libraries: []
+board:
+  components: {{}}
+  nets:
+    HV:
+      kind: power
+    GND:
+      kind: ground
+  layout:
+    copper:
+      features:
+        - at: {{ x_mm: 1.0, y_mm: 1.0 }}
+          layer: F.Cu
+          polarity: dark
+          net: HV
+          island_id: F_Cu_HV_0
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: {{ x_mm: 0.5, y_mm: 0.5 }}
+        - at: {{ x_mm: 1.7, y_mm: 1.0 }}
+          layer: F.Cu
+          polarity: dark
+          net: GND
+          island_id: F_Cu_GND_0
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: rect
+          size: {{ x_mm: 0.5, y_mm: 0.5 }}
+scenarios:
+  - name: conductor_creepage_clearance
+    type: manufacturing
+    checks:
+      - CONDUCTOR_CREEPAGE_CLEARANCE_VALID
+    parameters:
+      net_pairs:
+{net_pairs}"#
         ),
     )
     .unwrap();

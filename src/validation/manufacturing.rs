@@ -10,8 +10,8 @@ mod solder_paste_bga;
 mod solder_paste_ic;
 
 use crate::board_ir::{
-    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, LayoutSegment,
-    Scenario,
+    LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill,
+    LayoutSegment, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -28,6 +28,7 @@ use self::process::{
     explicit_numeric_parameter, optional_numeric_parameter, required_numeric_parameter,
     required_numeric_parameter_with_board_default,
 };
+use super::CONDUCTOR_CREEPAGE_CLEARANCE_VALID;
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::common::validation_input_missing;
@@ -189,6 +190,88 @@ pub(super) fn validate_copper_spacing(
         );
         return;
     }
+    let copper_objects = collect_valid_copper_objects(copper, scenario, findings);
+    for (first_index, first_object) in copper_objects.iter().enumerate() {
+        for second_object in copper_objects.iter().skip(first_index + 1) {
+            maybe_report_copper_spacing(
+                scenario,
+                findings,
+                *first_object,
+                *second_object,
+                min_spacing_mm,
+            );
+        }
+    }
+}
+
+pub(super) fn validate_conductor_creepage_clearance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(rules) = conductor_creepage_clearance_rules(bound, scenario, findings) else {
+        return;
+    };
+    let copper = &bound.project.board.layout.copper;
+    if copper.features.len() + copper.segments.len() + copper.regions.len() < 2 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CONDUCTOR_CREEPAGE_CLEARANCE_VALID requires at least two board.layout.copper features, segments, or regions.",
+        );
+        return;
+    }
+    let copper_objects = collect_valid_copper_objects(copper, scenario, findings);
+    for rule in rules {
+        let mut comparable_pairs = 0usize;
+        for (first_index, first_object) in copper_objects.iter().enumerate() {
+            for second_object in copper_objects.iter().skip(first_index + 1) {
+                if first_object.layer() != second_object.layer()
+                    || !objects_match_creepage_clearance_rule(*first_object, *second_object, &rule)
+                {
+                    continue;
+                }
+                let Some(spacing_mm) = copper_object_spacing_mm(*first_object, *second_object)
+                else {
+                    validation_input_missing(
+                        findings,
+                        scenario,
+                        "CONDUCTOR_CREEPAGE_CLEARANCE_VALID could not compute finite same-layer conductor spacing for supported imported copper geometry.",
+                    );
+                    continue;
+                };
+                comparable_pairs += 1;
+                if spacing_mm + f64::EPSILON < rule.min_clearance_mm
+                    || spacing_mm + f64::EPSILON < rule.min_creepage_mm
+                {
+                    findings.push(conductor_creepage_clearance_finding(
+                        scenario,
+                        *first_object,
+                        *second_object,
+                        spacing_mm.max(0.0),
+                        &rule,
+                    ));
+                }
+            }
+        }
+        if comparable_pairs == 0 {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONDUCTOR_CREEPAGE_CLEARANCE_VALID found no same-layer imported copper evidence between nets {} and {}.",
+                    rule.first_net, rule.second_net
+                ),
+            );
+        }
+    }
+}
+
+fn collect_valid_copper_objects<'a>(
+    copper: &'a LayoutCopper,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Vec<CopperObjectRef<'a>> {
     let mut copper_objects = Vec::new();
     for (first_index, first_feature) in copper.features.iter().enumerate() {
         if let Err(message) = validate_copper_feature_geometry(first_feature, first_index) {
@@ -220,17 +303,166 @@ pub(super) fn validate_copper_spacing(
             index: region_index,
         });
     }
-    for (first_index, first_object) in copper_objects.iter().enumerate() {
-        for second_object in copper_objects.iter().skip(first_index + 1) {
-            maybe_report_copper_spacing(
-                scenario,
+    copper_objects
+}
+
+#[derive(Debug, Clone)]
+struct ConductorCreepageClearanceRule {
+    first_net: String,
+    second_net: String,
+    min_clearance_mm: f64,
+    min_creepage_mm: f64,
+}
+
+fn conductor_creepage_clearance_rules(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<Vec<ConductorCreepageClearanceRule>> {
+    let Some(net_pairs) = scenario.parameters.get("net_pairs") else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CONDUCTOR_CREEPAGE_CLEARANCE_VALID requires parameters.net_pairs.",
+        );
+        return None;
+    };
+    let Some(items) = net_pairs.as_sequence() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs must be a list.",
+        );
+        return None;
+    };
+    if items.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs must not be empty.",
+        );
+        return None;
+    }
+    let mut rules = Vec::with_capacity(items.len());
+    for (index, item) in items.iter().enumerate() {
+        let rule = parse_conductor_creepage_clearance_rule(bound, scenario, findings, index, item)?;
+        rules.push(rule);
+    }
+    Some(rules)
+}
+
+fn parse_conductor_creepage_clearance_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    index: usize,
+    item: &serde_yaml_ng::Value,
+) -> Option<ConductorCreepageClearanceRule> {
+    let Some(mapping) = item.as_mapping() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs[{index}] must be an object."
+            ),
+        );
+        return None;
+    };
+    let first_net = required_rule_string(mapping, scenario, findings, index, "first_net")?;
+    let second_net = required_rule_string(mapping, scenario, findings, index, "second_net")?;
+    if first_net == second_net {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs[{index}] must name two distinct nets."
+            ),
+        );
+        return None;
+    }
+    for net in [&first_net, &second_net] {
+        if !bound.project.board.nets.contains_key(net.as_str()) {
+            validation_input_missing(
                 findings,
-                *first_object,
-                *second_object,
-                min_spacing_mm,
+                scenario,
+                format!(
+                    "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs[{index}] references undeclared net {net}."
+                ),
             );
+            return None;
         }
     }
+    let min_clearance_mm =
+        required_non_negative_rule_number(mapping, scenario, findings, index, "min_clearance_mm")?;
+    let min_creepage_mm =
+        required_non_negative_rule_number(mapping, scenario, findings, index, "min_creepage_mm")?;
+    Some(ConductorCreepageClearanceRule {
+        first_net,
+        second_net,
+        min_clearance_mm,
+        min_creepage_mm,
+    })
+}
+
+fn required_rule_string(
+    mapping: &serde_yaml_ng::Mapping,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    index: usize,
+    key: &str,
+) -> Option<String> {
+    let value = mapping
+        .get(serde_yaml_ng::Value::String(key.to_string()))
+        .and_then(serde_yaml_ng::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    if value.is_none() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs[{index}].{key} must be a non-empty string."
+            ),
+        );
+    }
+    value
+}
+
+fn required_non_negative_rule_number(
+    mapping: &serde_yaml_ng::Mapping,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    index: usize,
+    key: &str,
+) -> Option<f64> {
+    let value = mapping
+        .get(serde_yaml_ng::Value::String(key.to_string()))
+        .and_then(serde_yaml_ng::Value::as_f64);
+    let valid_value = value.filter(|value| value.is_finite() && *value >= 0.0);
+    if valid_value.is_none() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONDUCTOR_CREEPAGE_CLEARANCE_VALID parameters.net_pairs[{index}].{key} must be a finite non-negative number."
+            ),
+        );
+    }
+    valid_value
+}
+
+fn objects_match_creepage_clearance_rule(
+    first: CopperObjectRef<'_>,
+    second: CopperObjectRef<'_>,
+    rule: &ConductorCreepageClearanceRule,
+) -> bool {
+    matches!(
+        (first.net(), second.net()),
+        (Some(first_net), Some(second_net))
+            if (first_net == rule.first_net && second_net == rule.second_net)
+                || (first_net == rule.second_net && second_net == rule.first_net)
+    )
 }
 
 fn maybe_report_copper_spacing(
@@ -458,6 +690,63 @@ fn copper_spacing_finding(
             .to_string(),
         "Move pads or reroute traces to satisfy the fabrication copper-spacing rule.".to_string(),
         "If the copper objects are intentionally connected, use net-aware PCB evidence instead of anonymous Gerber spacing for sign-off.".to_string(),
+    ];
+    finding
+}
+
+fn conductor_creepage_clearance_finding(
+    scenario: &Scenario,
+    first: CopperObjectRef<'_>,
+    second: CopperObjectRef<'_>,
+    spacing_mm: f64,
+    rule: &ConductorCreepageClearanceRule,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CONDUCTOR_CREEPAGE_CLEARANCE_VALID,
+        &scenario.name,
+        format!(
+            "Imported copper on nets {} and {} has {:.3} mm same-layer planar spacing, below the declared clearance or creepage limit.",
+            rule.first_net, rule.second_net, spacing_mm
+        ),
+    );
+    insert_copper_object_measurements(&mut finding, "first", first);
+    insert_copper_object_measurements(&mut finding, "second", second);
+    finding
+        .measured
+        .insert("first_net".to_string(), json!(rule.first_net));
+    finding
+        .measured
+        .insert("second_net".to_string(), json!(rule.second_net));
+    finding
+        .measured
+        .insert("copper_layer".to_string(), json!(first.layer()));
+    finding
+        .measured
+        .insert("planar_conductor_spacing_mm".to_string(), json!(spacing_mm));
+    finding
+        .measured
+        .insert("clearance_distance_mm".to_string(), json!(spacing_mm));
+    finding
+        .measured
+        .insert("creepage_distance_mm".to_string(), json!(spacing_mm));
+    finding.measured.insert(
+        "clearance_violation".to_string(),
+        json!(spacing_mm + f64::EPSILON < rule.min_clearance_mm),
+    );
+    finding.measured.insert(
+        "creepage_violation".to_string(),
+        json!(spacing_mm + f64::EPSILON < rule.min_creepage_mm),
+    );
+    finding
+        .limit
+        .insert("min_clearance_mm".to_string(), json!(rule.min_clearance_mm));
+    finding
+        .limit
+        .insert("min_creepage_mm".to_string(), json!(rule.min_creepage_mm));
+    finding.suggested_fixes = vec![
+        "Increase same-layer spacing between the named conductor nets in the imported copper geometry.".to_string(),
+        "Reroute one conductor or move pads/features so the explicit clearance and creepage limits are both met.".to_string(),
+        "If insulation slots, barriers, coating, or different-layer spacing are intended to satisfy the requirement, add reviewed evidence and a more specific scenario instead of relying on this same-layer planar screen.".to_string(),
     ];
     finding
 }

@@ -65,6 +65,7 @@ pub(super) const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 pub(super) const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str =
     "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
+pub(super) const CONDUCTOR_CREEPAGE_CLEARANCE_VALID: &str = "CONDUCTOR_CREEPAGE_CLEARANCE_VALID";
 pub(super) const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 pub(super) const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 pub(super) const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -468,6 +469,13 @@ where
                 COPPER_SPACING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_copper_spacing(bound, scenario, &mut findings)
                 }
+                CONDUCTOR_CREEPAGE_CLEARANCE_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_conductor_creepage_clearance(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 SOLDER_MASK_OPENING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_solder_mask_opening(bound, scenario, &mut findings)
                 }
@@ -687,6 +695,7 @@ where
                 | DRILL_ANNULAR_RING_VALID
                 | COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
                 | COPPER_SPACING_VALID
+                | CONDUCTOR_CREEPAGE_CLEARANCE_VALID
                 | SOLDER_MASK_OPENING_VALID
                 | SOLDER_MASK_DAM_VALID
                 | SOLDER_PASTE_OPENING_VALID

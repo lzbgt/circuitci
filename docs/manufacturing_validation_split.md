@@ -1,8 +1,9 @@
 # Manufacturing Validation Split
 
 `src/validation/manufacturing.rs` owns manufacturing-rule orchestration,
-shared manufacturing report helpers, and stable copper-edge/copper-spacing
-report construction.
+shared manufacturing report helpers, stable copper-edge/copper-spacing report
+construction, and the explicit net-pair same-layer conductor
+creepage/clearance screen.
 
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,

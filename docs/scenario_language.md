@@ -136,6 +136,7 @@ Canonical executable check IDs:
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `COPPER_SPACING_VALID`
+- `CONDUCTOR_CREEPAGE_CLEARANCE_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1167,6 +1168,45 @@ This is a static 2D fabrication screen. It can find too-tight same-layer copper
 spacing in Gerber evidence, but it cannot prove shorts, same-net intent,
 copper-island connectivity, solder-mask margin, etch compensation, or
 fab-specific spacing rules without richer PCB/net evidence.
+
+Conductor creepage/clearance validation uses
+`CONDUCTOR_CREEPAGE_CLEARANCE_VALID` when the Board IR includes same-layer
+imported copper objects with explicit `net` ownership. The scenario must
+declare the compared net pairs and both distance limits; CircuitCI does not
+infer safety requirements from net names, voltages, or board metadata.
+
+```yaml
+scenarios:
+  - name: hv_to_ground_spacing
+    type: manufacturing
+    checks:
+      - CONDUCTOR_CREEPAGE_CLEARANCE_VALID
+    parameters:
+      net_pairs:
+        - first_net: HV
+          second_net: GND
+          min_clearance_mm: 0.25
+          min_creepage_mm: 0.30
+```
+
+Conductor creepage/clearance algorithm:
+
+1. Require `parameters.net_pairs[]` entries with `first_net`, `second_net`,
+   `min_clearance_mm`, and `min_creepage_mm`.
+2. Require both named nets to exist under `board.nets`.
+3. Compare only same-layer copper features, segments, or regions whose explicit
+   `net` values match the declared pair.
+4. Use the existing imported-copper 2D spacing geometry for supported flash,
+   trace-segment, and simple region evidence.
+5. Report a failure when the planar spacing is below either declared limit.
+6. Fail closed when no same-layer imported copper evidence exists for a
+   declared pair.
+
+The measured `clearance_distance_mm` and `creepage_distance_mm` are currently
+the same planar same-layer copper spacing. This screen does not model slots,
+barriers, conformal coating, board-edge paths, layer-to-layer insulation,
+pollution degree, material group, altitude, or electric fields. Use it as an
+explicit geometry-evidence gate, not as final safety-standard certification.
 
 Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`
