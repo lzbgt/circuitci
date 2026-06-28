@@ -70,6 +70,7 @@ pub(super) const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 pub(super) const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 pub(super) const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 pub(super) const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
+pub(super) const THERMAL_VIA_PLATING_VALID: &str = "THERMAL_VIA_PLATING_VALID";
 pub(super) const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
 pub(super) const THERMAL_MEASURED_TEMPERATURE_VALID: &str = "THERMAL_MEASURED_TEMPERATURE_VALID";
 pub(super) const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
@@ -500,6 +501,9 @@ where
                 THERMAL_VIA_STACKUP_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_thermal_via_stackup(bound, scenario, &mut findings)
                 }
+                THERMAL_VIA_PLATING_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_thermal_via_plating(bound, scenario, &mut findings)
+                }
                 THERMAL_PACKAGE_TEMPERATURE_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_thermal_package_temperature(
                         bound,
@@ -779,6 +783,7 @@ where
                 | RF_ANTENNA_FEED_PATH_VALID
                 | THERMAL_COPPER_AREA_VALID
                 | THERMAL_VIA_STACKUP_VALID
+                | THERMAL_VIA_PLATING_VALID
                 | THERMAL_PACKAGE_TEMPERATURE_VALID
                 | THERMAL_MEASURED_TEMPERATURE_VALID
                 | CONTROLLED_IMPEDANCE_GEOMETRY_VALID

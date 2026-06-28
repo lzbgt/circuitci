@@ -146,6 +146,7 @@ Canonical executable check IDs:
 - `RF_ANTENNA_FEED_PATH_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
+- `THERMAL_VIA_PLATING_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `THERMAL_MEASURED_TEMPERATURE_VALID`
 - `SOLDER_MASK_OPENING_VALID`
@@ -1372,9 +1373,52 @@ Thermal via and stackup algorithm:
    is absent or malformed.
 
 This is a static via-count and stackup-evidence screen for reviewed thermal
-rules. It does not model plating thickness, via barrel resistance, spreading
-resistance, convection, package thermal resistance, temperature rise, or
-measured thermal behavior.
+rules. It does not model via barrel resistance, spreading resistance,
+convection, package thermal resistance, temperature rise, or measured thermal
+behavior.
+
+Thermal via plating validation uses `THERMAL_VIA_PLATING_VALID` when the same
+reviewed `board.manufacturing.thermal_copper[]` rule also declares
+`min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, reviewed nets, and
+reviewed copper layers.
+
+```yaml
+scenarios:
+  - name: thermal_via_plating
+    type: manufacturing
+    checks:
+      - THERMAL_VIA_PLATING_VALID
+    parameters:
+      thermal_copper:
+        - name: u1_heat_spreader
+```
+
+Thermal via plating algorithm:
+
+1. Require `parameters.thermal_copper[]` with explicit rule `name` values.
+2. Resolve each name from `board.manufacturing.thermal_copper[]`.
+3. Require the reviewed rule to name an existing component, non-empty source,
+   positive `power_loss_w`, positive `min_plated_thermal_via_count`, positive
+   `min_thermal_via_drill_mm`, at least one reviewed net, and at least two
+   reviewed copper layers.
+4. Require every reviewed net to exist and to have explicit
+   `board.layout.routes.<net>` route-via evidence.
+5. Require `board.layout.drills[]` evidence with `plating` set to `plated`,
+   `non_plated`, or `unknown`.
+6. Count route vias whose explicit `layers[]` include all reviewed thermal
+   layers.
+7. Match counted route vias to drill rows by `via_index`, falling back to exact
+   imported coordinate and drill-diameter equality.
+8. Count only matched drill rows with `plating: plated` toward the reviewed
+   plated-via minimum, and check the smallest plated drill diameter against
+   `min_thermal_via_drill_mm`.
+9. Fail closed when route-via or drill coordinates, drill diameter, plating, or
+   layer-span evidence is absent or malformed.
+
+This is a static imported-drill evidence screen for reviewed thermal rules. It
+does not model plating thickness, via barrel resistance, spreading resistance,
+convection, package thermal resistance, temperature rise, or measured thermal
+behavior.
 
 Thermal package temperature validation uses `THERMAL_PACKAGE_TEMPERATURE_VALID`
 when the reviewed `board.manufacturing.thermal_copper[]` rule declares a static

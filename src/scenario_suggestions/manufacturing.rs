@@ -1,7 +1,7 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
-    LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPoint,
-    NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, RouteVia,
+    LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill,
+    LayoutPoint, NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, RouteVia,
     StackupLayerKind, ThermalCopperRule, ThermalMeasurement,
 };
 use crate::library::BoundBoard;
@@ -23,6 +23,7 @@ const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
+const THERMAL_VIA_PLATING_VALID: &str = "THERMAL_VIA_PLATING_VALID";
 const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
 const THERMAL_MEASURED_TEMPERATURE_VALID: &str = "THERMAL_MEASURED_TEMPERATURE_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
@@ -85,6 +86,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
     suggestions.extend(thermal_copper_area_suggestions(bound, &project_name));
     suggestions.extend(thermal_via_stackup_suggestions(bound, &project_name));
+    suggestions.extend(thermal_via_plating_suggestions(bound, &project_name));
     suggestions.extend(thermal_package_temperature_suggestions(
         bound,
         &project_name,
@@ -1368,6 +1370,125 @@ fn thermal_via_stackup_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -
                 .checks
                 .iter()
                 .any(|declared| declared == THERMAL_VIA_STACKUP_VALID)
+            && scenario
+                .parameters
+                .get("thermal_copper")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(rule_name)
+                    })
+                })
+    })
+}
+
+fn thermal_via_plating_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for rule in &bound.project.board.manufacturing.thermal_copper {
+        if !thermal_via_plating_rule_has_evidence(bound, rule)
+            || thermal_via_plating_check_declared(bound, &rule.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("thermal_via_plating_{}", sanitized_name(&rule.name)),
+            true,
+            &format!(
+                "Thermal copper rule {} has reviewed plated-via/drill policy plus imported route-via and drill plating evidence.",
+                rule.name
+            ),
+            &format!(
+                "{}_{}_thermal_via_plating",
+                project_name,
+                sanitized_name(&rule.name)
+            ),
+            THERMAL_VIA_PLATING_VALID,
+            Some(BTreeMap::from([(
+                "thermal_copper".to_string(),
+                json!([{ "name": rule.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn thermal_via_plating_rule_has_evidence(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> bool {
+    thermal_copper_rule_has_evidence(bound, rule)
+        && rule
+            .min_plated_thermal_via_count
+            .is_some_and(|count| count > 0)
+        && rule
+            .min_thermal_via_drill_mm
+            .is_some_and(|value| value.is_finite() && value > 0.0)
+        && !rule.nets.is_empty()
+        && rule.layers.len() >= 2
+        && rule.nets.iter().all(|net| {
+            bound
+                .project
+                .board
+                .layout
+                .routes
+                .get(net)
+                .is_some_and(|route| {
+                    route.vias.iter().enumerate().any(|(index, via)| {
+                        valid_thermal_route_via(via)
+                            && rule.layers.iter().all(|layer| via.layers.contains(layer))
+                            && matching_thermal_via_drill(bound, net, index, via)
+                                .is_some_and(valid_thermal_drill)
+                    })
+                })
+        })
+}
+
+fn matching_thermal_via_drill<'a>(
+    bound: &'a BoundBoard<'_>,
+    net: &str,
+    via_index: usize,
+    via: &RouteVia,
+) -> Option<&'a LayoutDrill> {
+    bound
+        .project
+        .board
+        .layout
+        .drills
+        .iter()
+        .find(|drill| {
+            drill.via_index == Some(via_index)
+                && drill.net.as_deref().is_none_or(|value| value == net)
+        })
+        .or_else(|| {
+            bound.project.board.layout.drills.iter().find(|drill| {
+                drill.net.as_deref().is_none_or(|value| value == net)
+                    && (drill.at.x_mm - via.at.x_mm).abs() <= 1.0e-6
+                    && (drill.at.y_mm - via.at.y_mm).abs() <= 1.0e-6
+                    && (drill.drill_mm - via.drill_mm).abs() <= 1.0e-6
+            })
+        })
+}
+
+fn valid_thermal_drill(drill: &LayoutDrill) -> bool {
+    drill.at.x_mm.is_finite()
+        && drill.at.y_mm.is_finite()
+        && drill.drill_mm.is_finite()
+        && drill.drill_mm > 0.0
+        && matches!(drill.plating.as_str(), "plated" | "non_plated" | "unknown")
+}
+
+fn thermal_via_plating_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_VIA_PLATING_VALID)
             && scenario
                 .parameters
                 .get("thermal_copper")

@@ -225,6 +225,10 @@ pub struct ThermalCopperRule {
     #[serde(default)]
     pub min_thermal_via_count: Option<usize>,
     #[serde(default)]
+    pub min_plated_thermal_via_count: Option<usize>,
+    #[serde(default)]
+    pub min_thermal_via_drill_mm: Option<f64>,
+    #[serde(default)]
     pub min_copper_thickness_um: Option<f64>,
     #[serde(default)]
     pub nets: Vec<String>,

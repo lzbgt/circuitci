@@ -183,6 +183,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `RF_ANTENNA_FEED_PATH_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
+- `THERMAL_VIA_PLATING_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `THERMAL_MEASURED_TEMPERATURE_VALID`
 - `CLOCK_SOURCE_VALID`
@@ -646,6 +647,16 @@ explicit route-via and stackup-layer evidence. Stable measured keys include
 findings report `stackup_layer`, `stackup_layer_kind`, `stackup_layer_source`,
 and `layer_copper_thickness_um`. Stable limit keys include
 `min_thermal_via_count` and `min_copper_thickness_um`.
+
+`THERMAL_VIA_PLATING_VALID` reports are emitted by `manufacturing` scenarios
+that compare reviewed plated thermal-via count and drill-diameter policy
+against explicit route-via and drill plating evidence. Stable measured keys
+include `thermal_copper_name`, `thermal_copper_source`, `component`,
+`power_loss_w`, `nets`, `layers`, `route_via_count`, `thermal_via_count`,
+`matched_drill_count`, `plated_thermal_via_count`,
+`non_plated_or_unknown_drill_count`, and
+`observed_min_thermal_via_drill_mm`. Stable limit keys include
+`min_plated_thermal_via_count` and `min_thermal_via_drill_mm`.
 
 `THERMAL_PACKAGE_TEMPERATURE_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed component power-loss metadata and component

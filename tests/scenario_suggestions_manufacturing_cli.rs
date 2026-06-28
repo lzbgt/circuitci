@@ -348,6 +348,38 @@ fn suggest_scenarios_derives_thermal_copper_area_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_thermal_via_plating_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_thermal_via_plating/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_thermal_via_plating"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+
+    let thermal_via_plating = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "thermal_via_plating_u1_heat_spreader")
+        .expect("thermal via plating suggestion");
+    assert_eq!(thermal_via_plating["runnable"], true);
+    assert_eq!(
+        thermal_via_plating["scenario"]["checks"][0],
+        "THERMAL_VIA_PLATING_VALID"
+    );
+    assert_eq!(
+        thermal_via_plating["scenario"]["parameters"]["thermal_copper"][0]["name"],
+        "u1_heat_spreader"
+    );
+    assert!(thermal_via_plating.get("required_inputs").is_none());
+    assert!(
+        thermal_via_plating["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed plated-via/drill policy")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_thermal_package_temperature_template() {
     let suggestions = run_suggest_scenarios(
         "examples/scenario_suggestions_thermal_package_temperature/project.yaml",

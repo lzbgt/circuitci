@@ -152,6 +152,8 @@ board:
         min_copper_area_mm2: 20.0
         min_thermal_via_count: 6
         min_copper_thickness_um: 35.0
+        min_plated_thermal_via_count: 6
+        min_thermal_via_drill_mm: 0.25
         nets: [SW]
         layers: [F.Cu, B.Cu]
     source: jlc_stencil_order
@@ -211,6 +213,13 @@ and at least two reviewed copper layers. The check counts imported
 all reviewed thermal layers, and it checks `board.layout.stackup.layers[]`
 copper thickness for each reviewed layer. It does not infer thermal vias from
 zone geometry or solve heat flow.
+
+`THERMAL_VIA_PLATING_VALID` consumes the same reviewed thermal rules when they
+declare `min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, reviewed
+nets, and reviewed layers. The check matches imported route vias to
+`board.layout.drills[]` by `via_index` or exact imported coordinate/drill
+evidence, then counts only drills whose `plating` is `plated`. It does not
+model plating thickness, via barrel resistance, or heat flow.
 
 `THERMAL_PACKAGE_TEMPERATURE_VALID` also consumes reviewed
 `board.manufacturing.thermal_copper[]` entries for component identity, source,

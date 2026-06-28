@@ -301,11 +301,18 @@ without explicit imported mechanical evidence.
   the reviewed static minimum.
 - `THERMAL_VIA_STACKUP_VALID` compares reviewed thermal via-count and
   copper-thickness metadata against explicit imported route vias and stackup
-  layer copper thickness. It does not model via plating thickness, via barrel
-  resistance, spreading resistance, convection, enclosure, package thermal
-  resistance, derating, or measured temperature rise. Passing this rule only
-  means the imported via layer spans and stackup copper-thickness evidence meet
-  the reviewed static minimums.
+  layer copper thickness. It does not model via barrel resistance, spreading
+  resistance, convection, enclosure, package thermal resistance, derating, or
+  measured temperature rise. Passing this rule only means the imported via layer
+  spans and stackup copper-thickness evidence meet the reviewed static
+  minimums.
+- `THERMAL_VIA_PLATING_VALID` compares reviewed plated thermal-via count and
+  drill-diameter metadata against explicit imported route-via and drill plating
+  evidence. It does not model plating thickness, via barrel resistance,
+  spreading resistance, convection, enclosure, package thermal resistance,
+  derating, or measured temperature rise. Passing this rule only means the
+  imported drill plating and drill-diameter evidence meet the reviewed static
+  minimums.
 - `THERMAL_PACKAGE_TEMPERATURE_VALID` compares reviewed static power loss and
   source-backed component package Rja metadata against reviewed ambient and
   temperature-rise limits. It does not model transient thermal impedance, board

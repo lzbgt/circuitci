@@ -113,6 +113,85 @@ fn thermal_via_stackup_fails_closed_without_stackup_copper_thickness() {
 }
 
 #[test]
+fn thermal_via_plating_passes_for_reviewed_plated_vias() {
+    let (_dir, project_path) = write_thermal_via_plating_project(2, 2, 0.30, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_plating_fails_below_reviewed_plated_via_count() {
+    let (_dir, project_path) = write_thermal_via_plating_project(2, 1, 0.30, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_VIA_PLATING_VALID")
+        .expect("thermal via plating failure");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(
+        failure["measured"]["thermal_copper_name"],
+        "u1_heat_spreader"
+    );
+    assert_eq!(failure["measured"]["route_via_count"], 2);
+    assert_eq!(failure["measured"]["thermal_via_count"], 2);
+    assert_eq!(failure["measured"]["matched_drill_count"], 2);
+    assert_eq!(failure["measured"]["plated_thermal_via_count"], 1);
+    assert_eq!(failure["measured"]["non_plated_or_unknown_drill_count"], 1);
+    assert_eq!(
+        failure["measured"]["observed_min_thermal_via_drill_mm"],
+        0.30
+    );
+    assert_eq!(failure["limit"]["min_plated_thermal_via_count"], 2);
+    assert_eq!(failure["limit"]["min_thermal_via_drill_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_plating_fails_below_reviewed_drill_diameter() {
+    let (_dir, project_path) = write_thermal_via_plating_project(2, 2, 0.20, true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_VIA_PLATING_VALID")
+        .expect("thermal via drill failure");
+    assert_eq!(failure["measured"]["plated_thermal_via_count"], 2);
+    assert_eq!(
+        failure["measured"]["observed_min_thermal_via_drill_mm"],
+        0.20
+    );
+    assert_eq!(failure["limit"]["min_thermal_via_drill_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_plating_fails_closed_without_drill_evidence() {
+    let (_dir, project_path) = write_thermal_via_plating_project(2, 2, 0.30, false);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires board.layout.drills evidence")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_package_temperature_passes_with_reviewed_loss_and_model_metadata() {
     let (_dir, project_path) = write_thermal_package_project(1.0, 40.0, 125.0, true, 45.0, 60.0);
 
@@ -578,6 +657,100 @@ scenarios:
     type: manufacturing
     checks:
       - THERMAL_VIA_STACKUP_VALID
+    parameters:
+      thermal_copper:
+        - name: u1_heat_spreader
+"#,
+            generic_library = repo.join("libs/generic").display(),
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_thermal_via_plating_project(
+    via_count: usize,
+    plated_count: usize,
+    drill_mm: f64,
+    include_drills: bool,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let vias = (0..via_count)
+        .map(|index| {
+            format!(
+                r#"          - at: {{ x_mm: {}, y_mm: 1.0 }}
+            size_mm: 0.6
+            drill_mm: {drill_mm}
+            layers: [F.Cu, B.Cu]
+"#,
+                index + 1
+            )
+        })
+        .collect::<String>();
+    let drills = if include_drills {
+        let rows = (0..via_count)
+            .map(|index| {
+                let plating = if index < plated_count {
+                    "plated"
+                } else {
+                    "non_plated"
+                };
+                format!(
+                    r#"        - at: {{ x_mm: {}, y_mm: 1.0 }}
+          drill_mm: {drill_mm}
+          plating: {plating}
+          net: HOT
+          via_index: {index}
+"#,
+                    index + 1
+                )
+            })
+            .collect::<String>();
+        format!("    drills:\n{rows}")
+    } else {
+        String::new()
+    };
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  version: "1"
+  name: thermal_via_plating_fixture
+libraries:
+  - {generic_library}
+board:
+  nets:
+    HOT: {{ kind: power }}
+    GND: {{ kind: ground }}
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: HOT
+        B: GND
+  manufacturing:
+    thermal_copper:
+      - name: u1_heat_spreader
+        component: U1
+        power_loss_w: 1.5
+        min_copper_area_mm2: 20.0
+        min_plated_thermal_via_count: 2
+        min_thermal_via_drill_mm: 0.25
+        layers: [F.Cu, B.Cu]
+        nets: [HOT]
+        source: thermal_layout_note_rev_a
+  layout:
+    routes:
+      HOT:
+        vias:
+{vias}{drills}scenarios:
+  - name: thermal_via_plating
+    type: manufacturing
+    checks:
+      - THERMAL_VIA_PLATING_VALID
     parameters:
       thermal_copper:
         - name: u1_heat_spreader

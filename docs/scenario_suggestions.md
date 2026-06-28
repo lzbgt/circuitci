@@ -461,6 +461,12 @@ The command is conservative:
   copper layers, imported route-via evidence, and stackup copper-thickness
   metadata, it emits a runnable `THERMAL_VIA_STACKUP_VALID` template. The
   suggestion does not infer thermal vias from copper pours or solve heat flow.
+- When those same reviewed thermal-copper entries also declare
+  `min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, reviewed nets,
+  reviewed copper layers, imported route-via evidence, and matching drill
+  plating evidence, it emits a runnable `THERMAL_VIA_PLATING_VALID` template.
+  The suggestion does not infer plating from route geometry or solve via barrel
+  heat flow.
 - When a reviewed thermal-copper entry declares component power-loss metadata
   and the resolved component model declares source-backed `thermal_package`
   metadata, it emits a non-runnable `THERMAL_PACKAGE_TEMPERATURE_VALID`
