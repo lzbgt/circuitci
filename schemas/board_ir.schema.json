@@ -1025,6 +1025,22 @@
                   "properties": {
                     "at": { "$ref": "#/$defs/layout_point" },
                     "net": { "type": "string", "minLength": 1 },
+                    "source": {
+                      "type": "object",
+                      "required": ["format"],
+                      "properties": {
+                        "format": { "type": "string", "minLength": 1 },
+                        "row_index": { "type": "integer", "minimum": 0 },
+                        "pin_name": { "type": "string", "minLength": 1 },
+                        "pin_no": { "type": "string", "minLength": 1 },
+                        "net_type": { "type": "string", "minLength": 1 },
+                        "hole_len_mm": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "additionalProperties": false
+                    },
                     "layers": {
                       "type": "array",
                       "items": { "type": "string", "minLength": 1 }

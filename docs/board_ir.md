@@ -535,6 +535,11 @@ board:
         D+:
           at: { x_mm: 0.0, y_mm: 0.0 }
           net: usb_dp
+          source:
+            format: easyeda_flying_probe
+            row_index: 0
+            pin_name: J1_D+
+            pin_no: "4"
           kind: smd
           shape: rect
           size: { x_mm: 0.3, y_mm: 0.3 }
@@ -553,9 +558,12 @@ EasyEDA/JLC flying-probe importer can also fill this from
 fabrication evidence names a component absent from the assembly import. When
 JLC placement side evidence is available, the importer uses it to put
 bottom-side SMD pads on `B.Cu`; through-hole/drilled pads are emitted on both
-`F.Cu` and `B.Cu`. Unconnected pads are skipped. This is static pad evidence
-only: it does not model solder mask expansion, thermal relief, plated-hole
-barrel geometry, or copper-island connectivity.
+`F.Cu` and `B.Cu`. EasyEDA/JLC pad evidence may carry a provenance-only
+`source` block with the source row, raw pin name, optional pin number, optional
+net type, and optional positive `HOLE_LEN` value. Those source fields are not
+used to infer rail semantics or slot geometry. Unconnected pads are skipped.
+This is static pad evidence only: it does not model solder mask expansion,
+thermal relief, plated-hole barrel geometry, or copper-island connectivity.
 
 ## Layout Route Evidence
 

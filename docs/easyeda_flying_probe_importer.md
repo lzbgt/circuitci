@@ -39,6 +39,13 @@ Pad shape, size, and rotation are preserved so later Gerber imports can perform
 owner association against rotated rectangular, oval, and polygon-style pad
 bounding geometry.
 
+Each imported pad also carries a `source` block with the original
+`easyeda_flying_probe` format tag, zero-based source row index, raw `PIN_NAME`,
+and optional `PIN_NO`, `NET_TYPE`, and positive `HOLE_LEN` values when those
+columns are present. These fields are provenance for agents and import audits;
+`NET_TYPE` is not used to infer Board IR net kind, and `HOLE_LEN` is not used to
+invent slot geometry.
+
 The importer creates `board.nets` entries for observed net names. Because the
 flying-probe file proves connectivity but not rail semantics, imported nets are
 classified conservatively:

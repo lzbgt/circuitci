@@ -42,12 +42,20 @@ fn import_easyeda_flying_probe_adds_schema_valid_pad_evidence() {
     assert_eq!(j1_pad_1["layers"], serde_json::json!(["F.Cu"]));
     assert_eq!(j1_pad_1["kind"], "smd");
     assert_eq!(j1_pad_1["shape"], "rect");
+    assert_eq!(j1_pad_1["source"]["format"], "easyeda_flying_probe");
+    assert_eq!(j1_pad_1["source"]["row_index"], 0);
+    assert_eq!(j1_pad_1["source"]["pin_name"], "J1_1");
+    assert_eq!(j1_pad_1["source"]["pin_no"], "1");
+    assert!(j1_pad_1["source"]["net_type"].is_null());
+    assert!(j1_pad_1["source"]["hole_len_mm"].is_null());
     assert!((j1_pad_1["at"]["x_mm"].as_f64().unwrap() - 25.4).abs() < 1.0e-12);
     assert!((j1_pad_1["size"]["y_mm"].as_f64().unwrap() - 0.508).abs() < 1.0e-12);
     let j1_pad_2 = &imported["board"]["layout"]["pads"]["J1"]["2"];
     assert_eq!(j1_pad_2["layers"], serde_json::json!(["F.Cu", "B.Cu"]));
     assert_eq!(j1_pad_2["kind"], "through_hole");
     assert_eq!(j1_pad_2["shape"], "circle");
+    assert_eq!(j1_pad_2["source"]["row_index"], 2);
+    assert_eq!(j1_pad_2["source"]["pin_no"], "3");
     assert!((j1_pad_2["drill_mm"].as_f64().unwrap() - 0.508).abs() < 1.0e-12);
     let u2_pad_1 = &imported["board"]["layout"]["pads"]["U2"]["1"];
     assert_eq!(u2_pad_1["net"], "BOTTOM_NET");
@@ -68,6 +76,55 @@ fn import_easyeda_flying_probe_adds_schema_valid_pad_evidence() {
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");
     assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_easyeda_flying_probe_preserves_optional_source_fields() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let input = dir.path().join("flying_probe_with_source_fields.json");
+    let output = dir.path().join("with_source_fields.project.yaml");
+    std::fs::write(
+        &input,
+        r#"{
+  "lengthUnit": "mm",
+  "pins": {
+    "fields": ["PIN_NO", "PIN_NAME", "PIN_X", "PIN_Y", "LAYER", "PIN_TYPE", "NET_NAME", "NET_TYPE", "PAD_SHAPE", "PAD_SIZEX", "PAD_SIZEY", "HOLE_SIZE", "HOLE_LEN", "PAD_ANGLE"],
+    "rows": [
+      [7, "J1_2", "1.25", "2.5", "T", "DIP", "VBUS", "Power", "O", "1.8", "0.8", "0.5", "1.6", "0"]
+    ]
+  }
+}"#,
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-easyeda-flying-probe",
+            input.to_str().unwrap(),
+            "--project",
+            "examples/import_easyeda_flying_probe_pads/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let pad = &imported["board"]["layout"]["pads"]["J1"]["2"];
+    assert_eq!(pad["source"]["format"], "easyeda_flying_probe");
+    assert_eq!(pad["source"]["row_index"], 0);
+    assert_eq!(pad["source"]["pin_name"], "J1_2");
+    assert_eq!(pad["source"]["pin_no"], "7");
+    assert_eq!(pad["source"]["net_type"], "Power");
+    assert!((pad["source"]["hole_len_mm"].as_f64().unwrap() - 1.6).abs() < 1.0e-12);
+    assert_eq!(pad["shape"], "oval");
+    assert_eq!(pad["layers"], serde_json::json!(["F.Cu", "B.Cu"]));
 }
 
 #[test]

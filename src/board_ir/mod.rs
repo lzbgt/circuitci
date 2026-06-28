@@ -475,6 +475,8 @@ pub struct LayoutPad {
     pub at: LayoutPoint,
     pub net: String,
     #[serde(default)]
+    pub source: Option<LayoutPadSource>,
+    #[serde(default)]
     pub layers: Vec<String>,
     #[serde(default)]
     pub kind: Option<String>,
@@ -486,6 +488,21 @@ pub struct LayoutPad {
     pub rotation_deg: Option<f64>,
     #[serde(default)]
     pub drill_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutPadSource {
+    pub format: String,
+    #[serde(default)]
+    pub row_index: Option<usize>,
+    #[serde(default)]
+    pub pin_name: Option<String>,
+    #[serde(default)]
+    pub pin_no: Option<String>,
+    #[serde(default)]
+    pub net_type: Option<String>,
+    #[serde(default)]
+    pub hole_len_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

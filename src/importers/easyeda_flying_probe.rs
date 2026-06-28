@@ -39,6 +39,7 @@ struct ImportedPad {
     component: String,
     pin: String,
     net: String,
+    source: LayoutPadSourceYaml,
     at: LayoutPointYaml,
     layers: Vec<String>,
     kind: String,
@@ -60,10 +61,24 @@ struct LayoutSizeYaml {
     y_mm: f64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct LayoutPadSourceYaml {
+    format: String,
+    row_index: usize,
+    pin_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pin_no: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    net_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hole_len_mm: Option<f64>,
+}
+
 #[derive(Debug, Serialize)]
 struct LayoutPadYaml {
     at: LayoutPointYaml,
     net: String,
+    source: LayoutPadSourceYaml,
     layers: Vec<String>,
     kind: String,
     shape: String,
@@ -229,10 +244,20 @@ fn parse_easyeda_flying_probe(text: &str, input: &Path) -> Result<ParsedFlyingPr
         let rotation_deg = cell_number(row, &field_indices, "PAD_ANGLE", row_index)?;
         let drill_mm = positive_optional_number(row, &field_indices, "HOLE_SIZE", row_index)?
             .map(|drill| drill * unit_scale);
+        let source = LayoutPadSourceYaml {
+            format: "easyeda_flying_probe".to_string(),
+            row_index,
+            pin_name: pin_name.to_string(),
+            pin_no: optional_cell_text(row, &field_indices, "PIN_NO", row_index)?,
+            net_type: optional_cell_text(row, &field_indices, "NET_TYPE", row_index)?,
+            hole_len_mm: optional_positive_number(row, &field_indices, "HOLE_LEN", row_index)?
+                .map(|hole_len| hole_len * unit_scale),
+        };
         let pad = ImportedPad {
             component: component.to_string(),
             pin: pin.to_string(),
             net: net.to_string(),
+            source,
             at: LayoutPointYaml { x_mm, y_mm },
             layers: vec![layer],
             kind,
@@ -382,6 +407,7 @@ fn merge_pads_into_project(
             serde_yaml_ng::to_value(LayoutPadYaml {
                 at: pad.at.clone(),
                 net: pad.net.clone(),
+                source: pad.source.clone(),
                 layers,
                 kind: pad.kind.clone(),
                 shape: pad.shape.clone(),
@@ -517,6 +543,67 @@ fn positive_optional_number(
     let number = cell_number(row, fields, field, row_index)?;
     if number < 0.0 {
         bail!("EasyEDA flying-probe pin row {row_index} field {field} is negative.");
+    }
+    Ok((number > 0.0).then_some(number))
+}
+
+fn optional_cell_text(
+    row: &[JsonValue],
+    fields: &BTreeMap<&str, usize>,
+    field: &str,
+    row_index: usize,
+) -> Result<Option<String>> {
+    let Some(field_index) = fields.get(field) else {
+        return Ok(None);
+    };
+    let Some(value) = row.get(*field_index) else {
+        return Ok(None);
+    };
+    match value {
+        JsonValue::Null => Ok(None),
+        JsonValue::String(text) => {
+            let trimmed = text.trim();
+            Ok((!trimmed.is_empty()).then(|| trimmed.to_string()))
+        }
+        JsonValue::Number(number) => Ok(Some(number.to_string())),
+        JsonValue::Bool(value) => Ok(Some(value.to_string())),
+        _ => {
+            bail!("EasyEDA flying-probe pin row {row_index} optional field {field} must be scalar.")
+        }
+    }
+}
+
+fn optional_positive_number(
+    row: &[JsonValue],
+    fields: &BTreeMap<&str, usize>,
+    field: &str,
+    row_index: usize,
+) -> Result<Option<f64>> {
+    let Some(field_index) = fields.get(field) else {
+        return Ok(None);
+    };
+    let Some(value) = row.get(*field_index) else {
+        return Ok(None);
+    };
+    if value.is_null() {
+        return Ok(None);
+    }
+    if value.as_str().is_some_and(|text| text.trim().is_empty()) {
+        return Ok(None);
+    }
+    let number = match value {
+        JsonValue::Number(number) => number.as_f64(),
+        JsonValue::String(text) => text.trim().parse::<f64>().ok(),
+        _ => None,
+    }
+    .with_context(|| {
+        format!("EasyEDA flying-probe pin row {row_index} optional field {field} must be numeric.")
+    })?;
+    if !number.is_finite() {
+        bail!("EasyEDA flying-probe pin row {row_index} optional field {field} is not finite.");
+    }
+    if number < 0.0 {
+        bail!("EasyEDA flying-probe pin row {row_index} optional field {field} is negative.");
     }
     Ok((number > 0.0).then_some(number))
 }
@@ -665,8 +752,15 @@ mod tests {
         assert_eq!(parsed.pads[0].pin, "1");
         assert_eq!(parsed.pads[0].layers, ["F.Cu"]);
         assert_eq!(parsed.pads[0].kind, "smd");
+        assert_eq!(parsed.pads[0].source.format, "easyeda_flying_probe");
+        assert_eq!(parsed.pads[0].source.row_index, 0);
+        assert_eq!(parsed.pads[0].source.pin_name, "J1_1");
+        assert_eq!(parsed.pads[0].source.pin_no.as_deref(), Some("1"));
+        assert_eq!(parsed.pads[0].source.net_type, None);
         assert!((parsed.pads[0].at.x_mm - 25.4).abs() < 1.0e-12);
         assert!((parsed.pads[1].drill_mm.unwrap() - 0.508).abs() < 1.0e-12);
+        assert_eq!(parsed.pads[1].source.row_index, 2);
+        assert_eq!(parsed.pads[1].source.pin_no.as_deref(), Some("3"));
     }
 
     #[test]
