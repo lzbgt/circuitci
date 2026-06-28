@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.7.0");
+    assert_eq!(manifest["schema_version"], "0.8.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -607,7 +607,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.7.0");
+    assert_eq!(manifest["schema_version"], "0.8.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.keepouts[]"
@@ -723,7 +723,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.7.0");
+    assert_eq!(manifest["schema_version"], "0.8.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -891,7 +891,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.7.0");
+    assert_eq!(manifest["schema_version"], "0.8.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
@@ -1031,7 +1031,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.7.0");
+    assert_eq!(manifest["schema_version"], "0.8.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_environments[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["ambient_temperature_C"],
@@ -1081,6 +1081,250 @@ board:
                     .unwrap()
                     .contains("parameters.ambient_temperature_C")
             })
+    );
+}
+
+#[test]
+fn import_manufacturing_metadata_applies_thermal_limit_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+    std::fs::write(
+        model_dir.join("thermal_limit_import.model.yaml"),
+        r#"component_id: test.thermal.limit.import
+version: 0.1.0
+category: thermal_test_ic
+ports:
+  IN:
+    kind: electrical_power
+    required: true
+  OUT:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+thermal_package:
+  thermal_resistance_junction_to_ambient_C_per_W: 38.0
+  max_junction_temperature_C: 125.0
+  source: datasheet_package_table_rev_a
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - thermal_package_static_screening
+"#,
+    )
+    .unwrap();
+    let input = dir.path().join("without_limit_metadata.project.yaml");
+    let metadata = dir.path().join("thermal_limit_metadata.csv");
+    let output = dir.path().join("with_limit_metadata.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    std::fs::write(
+        &input,
+        format!(
+            r#"project:
+  version: "1"
+  name: thermal_limit_metadata_import
+libraries:
+  - {model_dir}
+board:
+  nets:
+    VIN: {{ kind: power }}
+    VOUT: {{ kind: power }}
+    GND: {{ kind: ground }}
+  components:
+    U1:
+      model: test.thermal.limit.import
+      pins:
+        IN: VIN
+        OUT: VOUT
+        GND: GND
+  manufacturing: {{}}
+"#,
+            model_dir = model_dir.display()
+        ),
+    )
+    .unwrap();
+    let csv_rows = [
+        [
+            "field",
+            "value",
+            "unit",
+            "source",
+            "notes",
+            "name",
+            "component",
+            "power_loss_w",
+            "ambient_temperature_C",
+            "airflow_lfm",
+            "enclosure_profile",
+            "max_temperature_rise_C",
+            "max_junction_temperature_margin_C",
+        ],
+        [
+            "thermal_copper",
+            "20.0",
+            "mm2",
+            "reviewed_loss_budget_rev_a",
+            "reviewed thermal policy",
+            "u1_regulator_loss",
+            "U1",
+            "1.4",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "thermal_environment",
+            "45.0",
+            "C",
+            "thermal_chamber_log_rev_b",
+            "reviewed operating environment",
+            "lab_ambient",
+            "",
+            "",
+            "",
+            "250.0",
+            "vented_ip20",
+            "",
+            "",
+        ],
+        [
+            "thermal_measurement",
+            "72.0",
+            "C",
+            "ir_camera_review_rev_c",
+            "steady-state hotspot",
+            "u1_hotspot",
+            "U1",
+            "",
+            "45.0",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "thermal_limit",
+            "85.0",
+            "C",
+            "thermal_requirement_rev_d",
+            "reviewed operating limit",
+            "u1_lab_limit",
+            "U1",
+            "",
+            "",
+            "",
+            "",
+            "50.0",
+            "5.0",
+        ],
+    ];
+    std::fs::write(
+        &metadata,
+        csv_rows
+            .iter()
+            .map(|row| row.join(","))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--source",
+            "thermal_review",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let limits = enriched["board"]["manufacturing"]["thermal_limits"]
+        .as_sequence()
+        .unwrap();
+    assert_eq!(limits.len(), 1);
+    assert_eq!(limits[0]["name"], "u1_lab_limit");
+    assert_eq!(limits[0]["max_measured_temperature_C"], 85.0);
+    assert_eq!(limits[0]["max_temperature_rise_C"], 50.0);
+    assert_eq!(limits[0]["max_junction_temperature_margin_C"], 5.0);
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.8.0");
+    assert_eq!(manifest["rows"][3]["board_field"], "thermal_limits[]");
+    assert_eq!(
+        manifest["rows"][3]["normalized_value"]["max_measured_temperature_C"],
+        85.0
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    let measured = assert_runnable(
+        &suggestions,
+        "thermal_measured_temperature_u1_hotspot_u1_lab_limit",
+    );
+    assert_eq!(
+        measured["scenario"]["parameters"]["max_measured_temperature_C"],
+        85.0
+    );
+    assert_eq!(
+        measured["scenario"]["parameters"]["max_temperature_rise_C"],
+        50.0
+    );
+    let package = assert_runnable(
+        &suggestions,
+        "thermal_package_temperature_u1_regulator_loss_lab_ambient_u1_lab_limit",
+    );
+    assert_eq!(
+        package["scenario"]["parameters"]["ambient_temperature_C"],
+        45.0
+    );
+    assert_eq!(
+        package["scenario"]["parameters"]["max_temperature_rise_C"],
+        50.0
+    );
+    assert_eq!(
+        package["scenario"]["parameters"]["max_junction_temperature_margin_C"],
+        5.0
     );
 }
 

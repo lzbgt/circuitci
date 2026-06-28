@@ -187,6 +187,8 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub thermal_environments: Vec<ThermalEnvironment>,
     #[serde(default)]
+    pub thermal_limits: Vec<ThermalLimit>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 
@@ -267,6 +269,20 @@ pub struct ThermalMeasurement {
     pub measurement_point: Option<String>,
     #[serde(default)]
     pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThermalLimit {
+    pub name: String,
+    pub source: String,
+    #[serde(default)]
+    pub component: Option<String>,
+    #[serde(default, rename = "max_measured_temperature_C")]
+    pub max_measured_temperature_c: Option<f64>,
+    #[serde(default, rename = "max_temperature_rise_C")]
+    pub max_temperature_rise_c: Option<f64>,
+    #[serde(default, rename = "max_junction_temperature_margin_C")]
+    pub max_junction_temperature_margin_c: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

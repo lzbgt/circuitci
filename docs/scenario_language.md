@@ -1471,8 +1471,10 @@ component power loss and either the resolved component model declares
 `thermal_package` evidence or `board.manufacturing.thermal_packages[]` contains
 a reviewed package metadata entry for the component. Scenario suggestions can
 populate `parameters.ambient_temperature_C` from reviewed
-`board.manufacturing.thermal_environments[]` evidence, but validation still
-requires explicit scenario limits.
+`board.manufacturing.thermal_environments[]` evidence and can populate
+temperature-rise and junction-margin parameters from reviewed
+`board.manufacturing.thermal_limits[]` evidence, but validation still consumes
+only explicit scenario parameters.
 
 ```yaml
 scenarios:
@@ -1566,7 +1568,9 @@ fans, heatsinks, component derating curves, or measured temperature behavior.
 
 Measured thermal validation uses `THERMAL_MEASURED_TEMPERATURE_VALID` when
 Board IR contains reviewed `board.manufacturing.thermal_measurements[]`
-evidence.
+evidence. Scenario suggestions can populate `max_measured_temperature_C` and,
+when the measurement has ambient evidence, `max_temperature_rise_C` from
+matching reviewed `board.manufacturing.thermal_limits[]` rows.
 
 ```yaml
 scenarios:

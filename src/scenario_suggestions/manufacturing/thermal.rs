@@ -1,7 +1,7 @@
 use super::manufacturing_suggestion;
 use crate::board_ir::{
     LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, RouteVia,
-    StackupLayerKind, ThermalCopperRule, ThermalEnvironment, ThermalMeasurement,
+    StackupLayerKind, ThermalCopperRule, ThermalEnvironment, ThermalLimit, ThermalMeasurement,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -569,10 +569,84 @@ fn thermal_package_temperature_suggestions(
 ) -> Vec<ScenarioSuggestion> {
     let mut suggestions = Vec::new();
     let environments = reviewed_thermal_environments(bound);
+    let limits = reviewed_thermal_limits(bound);
     for rule in &bound.project.board.manufacturing.thermal_copper {
         if !thermal_package_rule_has_metadata(bound, rule)
             || thermal_package_temperature_check_declared(bound, &rule.name)
         {
+            continue;
+        }
+        let matching_limits: Vec<_> = limits
+            .iter()
+            .copied()
+            .filter(|limit| {
+                thermal_limit_matches_component(limit, &rule.component)
+                    && limit
+                        .max_temperature_rise_c
+                        .is_some_and(|value| value.is_finite() && value > 0.0)
+            })
+            .collect();
+        if !matching_limits.is_empty() {
+            if !environments.is_empty() {
+                for environment in &environments {
+                    for limit in &matching_limits {
+                        suggestions.push(manufacturing_suggestion(
+                            &format!(
+                                "thermal_package_temperature_{}_{}_{}",
+                                sanitized_name(&rule.name),
+                                sanitized_name(&environment.name),
+                                sanitized_name(&limit.name)
+                            ),
+                            true,
+                            &format!(
+                                "Thermal copper rule {} has reviewed package power-loss metadata, source-backed package thermal evidence, reviewed environment {}, and reviewed thermal limit {}.",
+                                rule.name, environment.name, limit.name
+                            ),
+                            &format!(
+                                "{}_{}_{}_{}_thermal_package_temperature",
+                                project_name,
+                                sanitized_name(&rule.name),
+                                sanitized_name(&environment.name),
+                                sanitized_name(&limit.name)
+                            ),
+                            THERMAL_PACKAGE_TEMPERATURE_VALID,
+                            Some(thermal_package_temperature_parameters(
+                                rule,
+                                Some(environment),
+                                Some(limit),
+                            )),
+                            Vec::new(),
+                        ));
+                    }
+                }
+                continue;
+            }
+            for limit in &matching_limits {
+                suggestions.push(manufacturing_suggestion(
+                    &format!(
+                        "thermal_package_temperature_{}_{}",
+                        sanitized_name(&rule.name),
+                        sanitized_name(&limit.name)
+                    ),
+                    false,
+                    &format!(
+                        "Thermal copper rule {} has reviewed package power-loss metadata, source-backed package thermal evidence, and reviewed thermal limit {}; reviewed ambient input is still required.",
+                        rule.name, limit.name
+                    ),
+                    &format!(
+                        "{}_{}_{}_thermal_package_temperature",
+                        project_name,
+                        sanitized_name(&rule.name),
+                        sanitized_name(&limit.name)
+                    ),
+                    THERMAL_PACKAGE_TEMPERATURE_VALID,
+                    Some(thermal_package_temperature_parameters(rule, None, Some(limit))),
+                    vec![
+                        "Set parameters.ambient_temperature_C from the reviewed operating environment."
+                            .to_string(),
+                    ],
+                ));
+            }
             continue;
         }
         if !environments.is_empty() {
@@ -595,16 +669,11 @@ fn thermal_package_temperature_suggestions(
                         sanitized_name(&environment.name)
                     ),
                     THERMAL_PACKAGE_TEMPERATURE_VALID,
-                    Some(BTreeMap::from([
-                        (
-                            "thermal_copper".to_string(),
-                            json!([{ "name": rule.name }]),
-                        ),
-                        (
-                            "ambient_temperature_C".to_string(),
-                            json!(environment.ambient_temperature_c),
-                        ),
-                    ])),
+                    Some(thermal_package_temperature_parameters(
+                        rule,
+                        Some(environment),
+                        None,
+                    )),
                     vec![
                         "Set parameters.max_temperature_rise_C from board or package thermal requirements."
                             .to_string(),
@@ -626,10 +695,7 @@ fn thermal_package_temperature_suggestions(
                 sanitized_name(&rule.name)
             ),
             THERMAL_PACKAGE_TEMPERATURE_VALID,
-            Some(BTreeMap::from([(
-                "thermal_copper".to_string(),
-                json!([{ "name": rule.name }]),
-            )])),
+            Some(thermal_package_temperature_parameters(rule, None, None)),
             vec![
                 "Set parameters.ambient_temperature_C from the reviewed operating environment."
                     .to_string(),
@@ -677,6 +743,33 @@ fn thermal_package_rule_has_metadata(bound: &BoundBoard<'_>, rule: &ThermalCoppe
                     (None, None) => false,
                 }
             })
+}
+
+fn thermal_package_temperature_parameters(
+    rule: &ThermalCopperRule,
+    environment: Option<&ThermalEnvironment>,
+    limit: Option<&ThermalLimit>,
+) -> BTreeMap<String, serde_json::Value> {
+    let mut parameters =
+        BTreeMap::from([("thermal_copper".to_string(), json!([{ "name": rule.name }]))]);
+    if let Some(environment) = environment {
+        parameters.insert(
+            "ambient_temperature_C".to_string(),
+            json!(environment.ambient_temperature_c),
+        );
+    }
+    if let Some(limit) = limit {
+        if let Some(value) = limit.max_temperature_rise_c {
+            parameters.insert("max_temperature_rise_C".to_string(), json!(value));
+        }
+        if let Some(value) = limit.max_junction_temperature_margin_c {
+            parameters.insert(
+                "max_junction_temperature_margin_C".to_string(),
+                json!(value),
+            );
+        }
+    }
+    parameters
 }
 
 fn reviewed_package_metadata<'a>(
@@ -743,10 +836,50 @@ fn thermal_measured_temperature_suggestions(
     project_name: &str,
 ) -> Vec<ScenarioSuggestion> {
     let mut suggestions = Vec::new();
+    let limits = reviewed_thermal_limits(bound);
     for measurement in &bound.project.board.manufacturing.thermal_measurements {
         if !thermal_measurement_has_evidence(bound, measurement)
             || thermal_measurement_check_declared(bound, &measurement.name)
         {
+            continue;
+        }
+        let matching_limits: Vec<_> = limits
+            .iter()
+            .copied()
+            .filter(|limit| {
+                thermal_limit_matches_component(limit, &measurement.component)
+                    && limit
+                        .max_measured_temperature_c
+                        .is_some_and(|value| value.is_finite())
+            })
+            .collect();
+        if !matching_limits.is_empty() {
+            for limit in matching_limits {
+                suggestions.push(manufacturing_suggestion(
+                    &format!(
+                        "thermal_measured_temperature_{}_{}",
+                        sanitized_name(&measurement.name),
+                        sanitized_name(&limit.name)
+                    ),
+                    true,
+                    &format!(
+                        "Thermal measurement {} has reviewed measured-temperature evidence for component {} and reviewed thermal limit {}.",
+                        measurement.name, measurement.component, limit.name
+                    ),
+                    &format!(
+                        "{}_{}_{}_thermal_measured_temperature",
+                        project_name,
+                        sanitized_name(&measurement.name),
+                        sanitized_name(&limit.name)
+                    ),
+                    THERMAL_MEASURED_TEMPERATURE_VALID,
+                    Some(thermal_measured_temperature_parameters(
+                        measurement,
+                        Some(limit),
+                    )),
+                    Vec::new(),
+                ));
+            }
             continue;
         }
         let mut required_inputs = vec![
@@ -780,14 +913,34 @@ fn thermal_measured_temperature_suggestions(
                 sanitized_name(&measurement.name)
             ),
             THERMAL_MEASURED_TEMPERATURE_VALID,
-            Some(BTreeMap::from([(
-                "thermal_measurements".to_string(),
-                json!([{ "name": measurement.name }]),
-            )])),
+            Some(thermal_measured_temperature_parameters(measurement, None)),
             required_inputs,
         ));
     }
     suggestions
+}
+
+fn thermal_measured_temperature_parameters(
+    measurement: &ThermalMeasurement,
+    limit: Option<&ThermalLimit>,
+) -> BTreeMap<String, serde_json::Value> {
+    let mut parameters = BTreeMap::from([(
+        "thermal_measurements".to_string(),
+        json!([{ "name": measurement.name }]),
+    )]);
+    if let Some(limit) = limit {
+        if let Some(value) = limit.max_measured_temperature_c {
+            parameters.insert("max_measured_temperature_C".to_string(), json!(value));
+        }
+        if measurement.ambient_temperature_c.is_some()
+            && let Some(value) = limit.max_temperature_rise_c
+            && value.is_finite()
+            && value > 0.0
+        {
+            parameters.insert("max_temperature_rise_C".to_string(), json!(value));
+        }
+    }
+    parameters
 }
 
 fn thermal_measurement_has_evidence(
@@ -965,6 +1118,48 @@ fn reviewed_thermal_environments<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a Therm
                 && thermal_environment_has_evidence(environment)
         })
         .collect()
+}
+
+fn reviewed_thermal_limits<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a ThermalLimit> {
+    let mut counts = BTreeMap::new();
+    for limit in &bound.project.board.manufacturing.thermal_limits {
+        *counts.entry(limit.name.as_str()).or_insert(0usize) += 1;
+    }
+    bound
+        .project
+        .board
+        .manufacturing
+        .thermal_limits
+        .iter()
+        .filter(|limit| {
+            counts.get(limit.name.as_str()) == Some(&1) && thermal_limit_has_evidence(limit)
+        })
+        .collect()
+}
+
+fn thermal_limit_has_evidence(limit: &ThermalLimit) -> bool {
+    !limit.name.trim().is_empty()
+        && !limit.source.trim().is_empty()
+        && limit
+            .component
+            .as_deref()
+            .is_none_or(|component| !component.trim().is_empty())
+        && limit
+            .max_measured_temperature_c
+            .is_some_and(|value| value.is_finite())
+        && limit
+            .max_temperature_rise_c
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
+        && limit
+            .max_junction_temperature_margin_c
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
+}
+
+fn thermal_limit_matches_component(limit: &ThermalLimit, component: &str) -> bool {
+    limit
+        .component
+        .as_deref()
+        .is_none_or(|limit_component| limit_component == component)
 }
 
 fn thermal_environment_has_evidence(environment: &ThermalEnvironment) -> bool {

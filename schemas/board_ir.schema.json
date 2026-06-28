@@ -454,6 +454,28 @@
                 "additionalProperties": false
               }
             },
+            "thermal_limits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "source", "max_measured_temperature_C"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "source": { "type": "string", "minLength": 1 },
+                  "component": { "type": "string", "minLength": 1 },
+                  "max_measured_temperature_C": { "type": "number" },
+                  "max_temperature_rise_C": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "max_junction_temperature_margin_C": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": true

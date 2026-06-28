@@ -1,8 +1,8 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalMeasurement,
-    AppliedThermalPackage,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -65,6 +65,14 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 )
             },
         );
+    }
+    if let Some(limit) = &field.thermal_limit {
+        return serde_yaml_ng::to_value(thermal_limit_mapping(limit)).with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
     }
     if let Some(layer) = &field.stackup_layer {
         return serde_yaml_ng::to_value(stackup_layer_mapping(layer)).with_context(|| {
@@ -333,6 +341,30 @@ fn thermal_environment_mapping(environment: &AppliedThermalEnvironment) -> BTree
             Value::String(value.clone()),
         );
     }
+    mapping
+}
+
+fn thermal_limit_mapping(limit: &AppliedThermalLimit) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(limit.name.clone()));
+    mapping.insert("source".to_string(), Value::String(limit.source.clone()));
+    if let Some(component) = &limit.component {
+        mapping.insert("component".to_string(), Value::String(component.clone()));
+    }
+    mapping.insert(
+        "max_measured_temperature_C".to_string(),
+        serde_yaml_ng::to_value(limit.max_measured_temperature_c).unwrap_or(Value::Null),
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_temperature_rise_C",
+        limit.max_temperature_rise_c,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_junction_temperature_margin_C",
+        limit.max_junction_temperature_margin_c,
+    );
     mapping
 }
 

@@ -222,6 +222,8 @@ under `board.manufacturing.thermal_measurements[]`. Repeated
 thermal metadata under `board.manufacturing.thermal_packages[]`. Repeated
 `field=thermal_environment` rows create or replace reviewed operating
 environment evidence under `board.manufacturing.thermal_environments[]`.
+Repeated `field=thermal_limit` rows create or replace reviewed measured and
+package temperature limits under `board.manufacturing.thermal_limits[]`.
 Repeated
 `field=stackup_layer` rows create or replace reviewed
 `board.layout.stackup.layers[]` entries so stackup evidence can travel with

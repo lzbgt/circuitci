@@ -493,14 +493,18 @@ The command is conservative:
   exist for the component, the suggestion requires matching reviewed Rja and
   max-junction values. When reviewed thermal environment evidence exists, the
   suggestion pre-fills `ambient_temperature_C` and still requires a reviewed
-  temperature-rise limit. The suggestion does not infer acceptable limits or
-  solve board/package heat flow.
+  temperature-rise limit. When matching reviewed
+  `board.manufacturing.thermal_limits[]` evidence supplies that rise limit, the
+  environment-specific suggestion becomes runnable. The suggestion does not
+  infer acceptable limits or solve board/package heat flow.
 - When `board.manufacturing.thermal_measurements[]` contains reviewed
   component measurement rows, it emits a non-runnable
   `THERMAL_MEASURED_TEMPERATURE_VALID` template requiring reviewed
   `max_measured_temperature_C` input. If ambient evidence is present it also
   asks whether to add `max_temperature_rise_C`; if uncertainty evidence is
-  present it asks whether to set `include_measurement_uncertainty: true`. The
+  present it asks whether to set `include_measurement_uncertainty: true`. When
+  matching reviewed `board.manufacturing.thermal_limits[]` evidence supplies a
+  measured-temperature limit, it emits runnable limit-specific templates. The
   suggestion does not infer acceptable temperature limits from the measurement
   itself.
 - When a component has `source.format: jlc_assembly` plus comparable imported

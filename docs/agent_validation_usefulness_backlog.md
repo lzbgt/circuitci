@@ -81,8 +81,9 @@ Useful next slices:
 - board/order metadata extraction workflows beyond the current reviewed
   manufacturing metadata CSV import manifest, including reviewed scalar,
   controlled-impedance target, stackup-layer, thermal-copper policy, and
-  measured-temperature, package thermal, and operating-environment evidence
-  rows plus RF antenna keepout/feed-path constraint rows.
+  measured-temperature, package thermal, operating-environment, and
+  thermal-limit evidence rows plus RF antenna keepout/feed-path constraint
+  rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.
@@ -113,8 +114,9 @@ suggestions, controlled-impedance stackup material/copper-thickness evidence
 checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
 manufacturing-level stitching-via transition distance, reviewed RF antenna
 keepout and feed-path route/proximity screens, reviewed thermal copper-area,
-thermal via/stackup, via-plating/drill/plating-thickness/barrel cross-section evidence, package static
-temperature-rise, and measured-temperature screens, and manufacturing geometry
+thermal via/stackup, via-plating/drill/plating-thickness/barrel cross-section
+evidence, package static temperature-rise, and measured-temperature screens
+with reviewed environment/limit metadata import, and manufacturing geometry
 screens when explicit policy exists. It is not a field solver.
 
 Useful next slices:

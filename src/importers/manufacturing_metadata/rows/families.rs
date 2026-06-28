@@ -1,12 +1,13 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
     AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow,
-    normalize_name, optional_raw_column, parse_nonempty_list, parse_nonnegative_mm,
-    parse_nonnegative_number, parse_nonnegative_temperature_delta_c, parse_positive_area_mm2,
-    parse_positive_c_per_w, parse_positive_number, parse_positive_ohms, parse_positive_usize,
-    parse_positive_watts, parse_temperature_c, required_nonnegative_number,
-    required_positive_number, required_positive_watts, required_raw_column_for,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
+    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
+    parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
+    parse_temperature_c, required_nonnegative_number, required_positive_number,
+    required_positive_watts, required_raw_column_for,
 };
 use anyhow::{Context, Result, bail};
 use std::path::Path;
@@ -334,6 +335,58 @@ pub(super) fn applied_thermal_environment(
             .map(|value| parse_nonnegative_number(value, path, row, "airflow_lfm"))
             .transpose()?,
         enclosure_profile: optional_raw_column(row, "enclosure_profile"),
+    })
+}
+
+pub(super) fn applied_thermal_limit(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedThermalLimit> {
+    let name = required_raw_column_for(row, path, "name", "thermal_limit")?;
+    let limit_source = optional_raw_column(row, "limit_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(limit_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} thermal_limit requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedThermalLimit {
+        name,
+        source,
+        component: optional_raw_column(row, "component"),
+        max_measured_temperature_c: parse_temperature_c(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        max_temperature_rise_c: optional_raw_column(row, "max_temperature_rise_C")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "max_temperature_rise_C"))
+            .transpose()?,
+        max_junction_temperature_margin_c: optional_raw_column(
+            row,
+            "max_junction_temperature_margin_C",
+        )
+        .as_deref()
+        .map(|value| {
+            parse_nonnegative_temperature_delta_c(
+                value,
+                path,
+                row,
+                "max_junction_temperature_margin_C",
+            )
+        })
+        .transpose()?,
     })
 }
 

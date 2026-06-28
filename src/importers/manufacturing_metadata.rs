@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.7.0".to_string(),
+        schema_version: "0.8.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -243,6 +243,16 @@ fn apply_metadata(
                 value,
                 "thermal_environments",
             )?;
+            wrote_manufacturing = true;
+        } else if field.field == ManufacturingField::ThermalLimit {
+            let limit = field
+                .thermal_limit
+                .as_ref()
+                .context("thermal_limit field must have thermal limit value")?;
+            let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+            let limits = ensure_sequence_field_mut(manufacturing, "thermal_limits")?;
+            upsert_named_sequence_value(limits, &limit.name, value, "thermal_limits")?;
             wrote_manufacturing = true;
         } else if field.field == ManufacturingField::StackupLayer {
             let layer = field

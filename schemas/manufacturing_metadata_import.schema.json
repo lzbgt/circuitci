@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.7.0" },
+    "schema_version": { "const": "0.8.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -95,6 +95,7 @@
             "thermal_measurements[]",
             "thermal_packages[]",
             "thermal_environments[]",
+            "thermal_limits[]",
             "layout.stackup.layers[]",
             "layout.constraints.rf_antenna.keepouts[]",
             "layout.constraints.rf_antenna.feed_paths[]",
@@ -215,6 +216,25 @@
                 "ambient_temperature_C": { "type": "number" },
                 "airflow_lfm": { "type": "number", "minimum": 0 },
                 "enclosure_profile": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["name", "source", "max_measured_temperature_C"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "component": { "type": "string", "minLength": 1 },
+                "max_measured_temperature_C": { "type": "number" },
+                "max_temperature_rise_C": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_junction_temperature_margin_C": {
+                  "type": "number",
+                  "minimum": 0
+                }
               },
               "additionalProperties": false
             },

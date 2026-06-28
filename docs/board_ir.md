@@ -169,6 +169,13 @@ board:
         ambient_temperature_C: 45.0
         airflow_lfm: 250.0
         enclosure_profile: vented_ip20
+    thermal_limits:
+      - name: u1_lab_limit
+        component: U1
+        source: thermal_requirement_rev_d
+        max_measured_temperature_C: 85.0
+        max_temperature_rise_C: 50.0
+        max_junction_temperature_margin_C: 5.0
     source: jlc_stencil_order
 ```
 
@@ -260,6 +267,15 @@ consume explicit scenario parameters; `suggest-scenarios` may populate those
 parameters from a reviewed environment row when creating thermal derating or
 package-temperature templates.
 
+`board.manufacturing.thermal_limits[]` stores reviewed thermal limit evidence
+for suggestion generation. Each entry names the source, a required
+`max_measured_temperature_C`, and optional `component`,
+`max_temperature_rise_C`, and `max_junction_temperature_margin_C` values.
+Validators still consume explicit scenario parameters; `suggest-scenarios` may
+copy matching reviewed limits into measured-temperature and package-temperature
+templates instead of inferring acceptable temperatures from measurements,
+packages, environments, or component names.
+
 `THERMAL_PACKAGE_TEMPERATURE_VALID` also consumes reviewed
 `board.manufacturing.thermal_copper[]` entries for component identity, source,
 and static `power_loss_w`, then combines that evidence with the resolved
@@ -324,7 +340,10 @@ name. Repeated `field=thermal_package` rows use `value` as reviewed
 `field=thermal_environment` rows use `value` as reviewed
 `ambient_temperature_C`, may include `airflow_lfm` and `enclosure_profile`, and
 create or replace `board.manufacturing.thermal_environments[]` entries by
-name. Repeated
+name. Repeated `field=thermal_limit` rows use `value` as reviewed
+`max_measured_temperature_C`, may include `component`,
+`max_temperature_rise_C`, and `max_junction_temperature_margin_C`, and create
+or replace `board.manufacturing.thermal_limits[]` entries by name. Repeated
 `field=stackup_layer` rows use `value` as the stackup layer
 `kind` (`signal`, `plane`, `dielectric`, or `other`), require `name`, and may
 include `reference_net`, `thickness_mm`, `copper_thickness_um`,

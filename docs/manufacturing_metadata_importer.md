@@ -18,10 +18,11 @@ Input CSV columns:
   layout policy, and repeated
   `thermal_measurement` rows are supported for reviewed measured-temperature
   evidence. Repeated `thermal_environment` rows are supported for reviewed
-  operating environment evidence. Repeated `stackup_layer` rows are supported
-  for reviewed stackup layer evidence. Repeated `rf_antenna_keepout` and
-  `rf_antenna_feed_path` rows are supported for reviewed RF antenna layout
-  constraints.
+  operating environment evidence. Repeated `thermal_limit` rows are supported
+  for reviewed measured/package temperature limits. Repeated `stackup_layer`
+  rows are supported for reviewed stackup layer evidence. Repeated
+  `rf_antenna_keepout` and `rf_antenna_feed_path` rows are supported for
+  reviewed RF antenna layout constraints.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
@@ -32,6 +33,7 @@ Input CSV columns:
   `thermal_package` rows use `C/W` for junction-to-ambient package thermal
   resistance.
   `thermal_environment` rows use `C`/`celsius` for ambient temperature.
+  `thermal_limit` rows use `C`/`celsius` for max measured temperature.
   `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
   `rf_antenna_keepout` and `rf_antenna_feed_path` rows use `mm` for the
   distance value when a unit is supplied.
@@ -131,6 +133,27 @@ Rows create or replace entries under
 `board.manufacturing.thermal_environments[]` by `name`. Duplicate CSV names
 fail closed. These rows are reviewed operating environment evidence only; the
 importer does not infer airflow, enclosure, or acceptable thermal limits.
+
+`thermal_limit` rows use `value` as `max_measured_temperature_C` and require
+extra columns:
+
+- `name`: stable reviewed limit identifier.
+
+Optional `thermal_limit` columns:
+
+- `component`: component reference the limit applies to. When omitted, the
+  limit is treated as a reviewed board/global limit by scenario suggestion.
+- `max_temperature_rise_C`: positive reviewed package or measurement rise
+  limit.
+- `max_junction_temperature_margin_C`: reviewed non-negative margin below the
+  source-backed package max-junction temperature.
+
+`source` or `limit_source` must name the reviewed limit source. Rows create or
+replace entries under `board.manufacturing.thermal_limits[]` by `name`.
+Duplicate CSV names fail closed. These rows are reviewed limit evidence for
+scenario suggestion only; validators still consume explicit scenario
+parameters and the importer does not infer acceptable temperatures from
+measurements, package ratings, environments, or component names.
 
 `stackup_layer` rows use `value` as the layer `kind`. Accepted values are
 `signal`, `plane`, `dielectric`, and `other`, with conservative aliases such as
