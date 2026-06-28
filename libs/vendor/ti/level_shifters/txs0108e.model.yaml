@@ -215,6 +215,17 @@ datasheet:
       source_url: https://www.ti.com/lit/ds/symlink/txs0108e.pdf
       sha256: 90d330e0340a76d71856b2dc2b85a7b824b37adb5419c77f0533a20d1fc9ceb8
       retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCCA, VCCB, GND, OE, A1, B1]
+    valid_operating_notes:
+      - Reduced TXS0108E observation model for preliminary enabled A1-to-B1 level-shift checks only.
+      - Uses source-backed VCCA/VCCB operating ranges, VCCA <= VCCB supply constraint, OE enable guidance, and channel pin roles while emitting an idealized one-channel translated output.
+      - Automatic bidirectional sensing, one-shot edge accelerators, pass-gate analog behavior, pull-up sizing, capacitive loading, high-speed timing, partial-power behavior, and signal-integrity sign-off are out of scope.
 model_quality:
   source: datasheet
   confidence: medium
@@ -222,6 +233,7 @@ model_quality:
     - interface_protection_review
     - level_translation_connectivity
     - preliminary_power_domain_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - high_speed_signal_integrity
     - analog_transient_without_datasheet_or_vendor_spice_model

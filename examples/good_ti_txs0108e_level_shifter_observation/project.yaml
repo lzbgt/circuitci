@@ -1,0 +1,285 @@
+project:
+  name: good_ti_txs0108e_level_shifter_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/level_shifters
+
+board:
+  schematic:
+    component_symbols:
+      VCCA: Simulation_SPICE:VDC
+      VCCB: Simulation_SPICE:VDC
+      VOE: Simulation_SPICE:VDC
+      VA1: Simulation_SPICE:VDC
+      ULS: Interface_LevelTranslator:TXS0108E
+      RLOADB: Device:R
+    node_styles:
+      component:VCCA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VCCB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VOE: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VA1: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:ULS: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RLOADB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCCA: { x: 64.0, y: 144.0 }
+      component:VCCB: { x: 64.0, y: 272.0 }
+      component:VOE: { x: 64.0, y: 400.0 }
+      component:VA1: { x: 64.0, y: 528.0 }
+      component:ULS: { x: 352.0, y: 304.0 }
+      component:RLOADB: { x: 608.0, y: 336.0 }
+      net:vcca_1v8: { x: 208.0, y: 144.0 }
+      net:vccb_3v3: { x: 208.0, y: 272.0 }
+      net:oe_enable: { x: 208.0, y: 400.0 }
+      net:sensor_int_1v8: { x: 208.0, y: 528.0 }
+      net:mcu_int_3v3: { x: 512.0, y: 304.0 }
+      net:gnd: { x: 352.0, y: 672.0 }
+    wire_routes:
+      VCCA.P->vcca_1v8:
+        points:
+          - { x: 160.0, y: 160.0 }
+      VCCA.N->gnd:
+        points:
+          - { x: 112.0, y: 672.0 }
+      VCCB.P->vccb_3v3:
+        points:
+          - { x: 160.0, y: 288.0 }
+      VCCB.N->gnd:
+        points:
+          - { x: 112.0, y: 672.0 }
+      VOE.P->oe_enable:
+        points:
+          - { x: 160.0, y: 416.0 }
+      VOE.N->gnd:
+        points:
+          - { x: 112.0, y: 672.0 }
+      VA1.P->sensor_int_1v8:
+        points:
+          - { x: 160.0, y: 544.0 }
+      VA1.N->gnd:
+        points:
+          - { x: 112.0, y: 672.0 }
+      ULS.VCCA->vcca_1v8:
+        points:
+          - { x: 280.0, y: 160.0 }
+      ULS.VCCB->vccb_3v3:
+        points:
+          - { x: 280.0, y: 288.0 }
+      ULS.OE->oe_enable:
+        points:
+          - { x: 280.0, y: 416.0 }
+      ULS.A1->sensor_int_1v8:
+        points:
+          - { x: 280.0, y: 544.0 }
+      ULS.B1->mcu_int_3v3:
+        points:
+          - { x: 496.0, y: 304.0 }
+      ULS.GND->gnd:
+        points:
+          - { x: 352.0, y: 672.0 }
+      RLOADB.A->mcu_int_3v3:
+        points:
+          - { x: 608.0, y: 304.0 }
+      RLOADB.B->gnd:
+        points:
+          - { x: 608.0, y: 672.0 }
+  components:
+    VCCA:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vcca_1v8
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 1.8
+    VCCB:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vccb_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VOE:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: oe_enable
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 1.8
+    VA1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: sensor_int_1v8
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 1.8
+    ULS:
+      model: vendor.ti.txs0108e
+      part_number: TXS0108EPWR
+      power_domains:
+        VCCA: vcca_1v8
+        VCCB: vccb_3v3
+      pins:
+        VCCA: vcca_1v8
+        VCCB: vccb_3v3
+        GND: gnd
+        OE: oe_enable
+        A1: sensor_int_1v8
+        B1: mcu_int_3v3
+    RLOADB:
+      model: generic.analog.resistor
+      pins:
+        A: mcu_int_3v3
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+  nets:
+    vcca_1v8:
+      kind: power
+      nominal_voltage: 1.8
+      powered: true
+    vccb_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    oe_enable:
+      kind: power
+      nominal_voltage: 1.8
+      powered: true
+    sensor_int_1v8:
+      kind: power
+      nominal_voltage: 1.8
+      powered: true
+    mcu_int_3v3:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: txs0108e_level_shift_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCCA
+          - VCCB
+          - VOE
+          - VA1
+          - ULS
+          - RLOADB
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 1ecc5fcf92c86179e5fbdb43c577fe3af82481e509e18db03e640d6f8e89b8d5
+      node_bindings:
+        - { node: vcca, net: vcca_1v8 }
+        - { node: vccb, net: vccb_3v3 }
+        - { node: oe, net: oe_enable }
+        - { node: a1, net: sensor_int_1v8 }
+        - { node: b1, net: mcu_int_3v3 }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcca, endpoint: { component: VCCA, pin: P } }
+        - { node: "0", endpoint: { component: VCCA, pin: N } }
+        - { node: vccb, endpoint: { component: VCCB, pin: P } }
+        - { node: "0", endpoint: { component: VCCB, pin: N } }
+        - { node: oe, endpoint: { component: VOE, pin: P } }
+        - { node: "0", endpoint: { component: VOE, pin: N } }
+        - { node: a1, endpoint: { component: VA1, pin: P } }
+        - { node: "0", endpoint: { component: VA1, pin: N } }
+        - { node: vcca, endpoint: { component: ULS, pin: VCCA } }
+        - { node: vccb, endpoint: { component: ULS, pin: VCCB } }
+        - { node: "0", endpoint: { component: ULS, pin: GND } }
+        - { node: oe, endpoint: { component: ULS, pin: OE } }
+        - { node: a1, endpoint: { component: ULS, pin: A1 } }
+        - { node: b1, endpoint: { component: ULS, pin: B1 } }
+        - { node: b1, endpoint: { component: RLOADB, pin: A } }
+        - { node: "0", endpoint: { component: RLOADB, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 50.0
+        max_step_us: 0.2
+      stimuli:
+        - name: enabled_a_to_b_translation
+          description: TXS0108E observes an enabled 1.8 V A1 high translated to a 3.3 V B1 high into a light load.
+      probes:
+        - name: v_vcca
+          expression: V(vcca)
+        - name: v_vccb
+          expression: V(vccb)
+        - name: v_oe
+          expression: V(oe)
+        - name: v_a1
+          expression: V(a1)
+        - name: v_b1
+          expression: V(b1)
+        - name: i_b1_load
+          expression: I(VCCI_RLOADB)
+          quantity: current
+      assertions:
+        - name: vcca_above_1v77
+          probe: v_vcca
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_v: 1.77
+        - name: vcca_below_1v83
+          probe: v_vcca
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: below
+          threshold_v: 1.83
+        - name: vccb_above_3v25
+          probe: v_vccb
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_v: 3.25
+        - name: vccb_below_3v35
+          probe: v_vccb
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: below
+          threshold_v: 3.35
+        - name: oe_enabled_high
+          probe: v_oe
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_v: 1.4
+        - name: a1_input_high
+          probe: v_a1
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_v: 1.4
+        - name: b1_translated_high
+          probe: v_b1
+          aggregation: mean
+          start_us: 5.0
+          end_us: 50.0
+          relation: above
+          threshold_v: 3.0
+        - name: b1_translated_below_rail
+          probe: v_b1
+          aggregation: max
+          start_us: 5.0
+          end_us: 50.0
+          relation: below
+          threshold_v: 3.35

@@ -647,7 +647,11 @@ fn opamp_scope_example_workflow_creates_model_aware_observation_checks() {
 
     app.request_project_example_load(gui_project_example_by_id("opamp_buffer_scope"), None);
 
-    assert!(app.create_scope_example_observation_preset());
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
     assert!(app.project_yaml_dirty);
     assert_eq!(app.stage, Stage::Sketch);
     assert_eq!(
@@ -682,7 +686,11 @@ fn comparator_scope_example_workflow_creates_model_aware_observation_checks() {
         None,
     );
 
-    assert!(app.create_scope_example_observation_preset());
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
     assert_eq!(app.analog_generated_scenario, "xu1_observation");
     let project: crate::board_ir::BoardProject =
         serde_yaml_ng::from_str(&app.project_yaml).unwrap();
@@ -962,6 +970,52 @@ fn cmsis_dap_swd_scope_example_workflow_creates_model_aware_observation_checks()
             .assertions
             .iter()
             .any(|assertion| assertion.name == "v_uprobe_swdio_output_high")
+    );
+}
+
+#[test]
+fn txs0108e_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("txs0108e_level_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("ULS".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "uls_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "uls_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_uls_a1"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_uls_b1"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uls_vcca_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uls_oe_enable_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uls_b1_translated_high")
     );
 }
 

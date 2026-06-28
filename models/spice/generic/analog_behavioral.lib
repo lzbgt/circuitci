@@ -114,6 +114,18 @@ RNRST NNRST NRESET {1e12/(1+1e9*NRESET_ASSERT)}
 RSWO SWO GND 1G
 .ends CIRCUITCI_CMSIS_DAP_SWD_PROBE
 
+.subckt CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER VCCA VCCB GND OE A1 B1
+* Reduced TXS0108E level-shifter observation behavior.
+* This face models only enabled A1-to-B1 high/low translation for preliminary
+* mixed-voltage checks. Automatic bidirectional sensing, edge accelerators,
+* pull-up sizing, capacitive loading, partial-power behavior, timing, and signal
+* integrity are intentionally not modeled.
+BOUT NB1 GND V={v(VCCB,GND)/(1+exp(-20*(v(OE,GND)-0.5*v(VCCA,GND))))/(1+exp(-20*(v(A1,GND)-0.5*v(VCCA,GND))))}
+RBOUT NB1 B1 200
+RAIN A1 GND 1G
+ROE OE GND 1G
+.ends CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

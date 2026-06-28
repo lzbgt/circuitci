@@ -33,9 +33,9 @@ reduced generated-SPICE 3V3OUT/VCCIO and output-state observation face, WCH
 CH347 board-level USB-JTAG/debug bridge metadata plus a reduced generated-SPICE
 VCC and line-state observation face, generic CMSIS-DAP SWD probe metadata plus
 a reduced VTREF-referenced generated-SPICE line-state observation face, TI
-TXS0108E interface-protection metadata, TI
-TPS22918 load-switch metadata plus a reduced generated-SPICE observation face
-for enabled load-path checks. Microchip MCP73831 charger metadata now includes both
+TXS0108E interface-protection metadata plus a reduced generated-SPICE
+A-to-B level-shift observation face, TI TPS22918 load-switch metadata plus a
+reduced generated-SPICE observation face for enabled load-path checks. Microchip MCP73831 charger metadata now includes both
 static charger screening and a reduced generated-SPICE observation face for
 PROG-current and battery-node checks. TI TPS2115A and TI TPS2121 now cover
 datasheet-backed power-mux source-selection, reverse-blocking, rail-range, and

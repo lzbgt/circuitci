@@ -74,6 +74,13 @@ const CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vtref", "v_swclk", "v_swdio", "v_nreset", "v_swo"];
 const CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V target reference with CMSIS-DAP SWD idle high lines and released reset";
+const TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ti_txs0108e_level_shifter_observation/project.yaml";
+const TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME: &str = "good_ti_txs0108e_level_shifter_observation";
+const TXS0108E_LEVEL_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vcca", "v_vccb", "v_oe", "v_a1", "v_b1", "i_b1_load"];
+const TXS0108E_LEVEL_SCOPE_EXPECTED_FREQUENCY: &str =
+    "1.8 V A-side input translated to a 3.3 V B-side high level";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -294,6 +301,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES,
         expected_frequency: CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UPROBE"),
+    },
+    GuiProjectExample {
+        id: "txs0108e_level_scope",
+        category: "Level Shifter",
+        open_label: "Open TXS0108E Level-Shifter Example",
+        run_label: "Open TXS0108E + Run Scopes",
+        workflow_title: "TXS0108E Level-Shifter Workflow",
+        summary: "Source-backed TXS0108E enabled A-to-B mixed-voltage observation.",
+        project_path: TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT,
+        project_name: TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME,
+        expected_traces: TXS0108E_LEVEL_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TXS0108E_LEVEL_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("ULS"),
     },
     GuiProjectExample {
         id: "ap2112k_ldo_scope",

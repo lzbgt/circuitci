@@ -362,6 +362,15 @@ fn observation_default_assertions(
             &mut assertions,
         );
     }
+    add_level_shifter_observation_assertions(
+        project,
+        component,
+        model,
+        probes,
+        scenario_name,
+        stop_time_us,
+        &mut assertions,
+    );
     if let Some(function) = &model.analog_function {
         match function.kind {
             crate::library::AnalogFunctionKind::OpAmp => {
@@ -554,6 +563,158 @@ fn add_comparator_observation_assertions(
     }
 }
 
+fn add_level_shifter_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    for channel in &model.signal_conditioning.channels {
+        if channel.kind != crate::library::SignalConditioningKind::LevelShifter {
+            continue;
+        }
+        let Some(side_a_probe) = probe_for_component_pin(probes, component, &channel.side_a_pin)
+        else {
+            continue;
+        };
+        let Some(side_b_probe) = probe_for_component_pin(probes, component, &channel.side_b_pin)
+        else {
+            continue;
+        };
+        let Some(side_a_supply_pin) = channel.side_a_supply_pin.as_deref() else {
+            continue;
+        };
+        let Some(side_b_supply_pin) = channel.side_b_supply_pin.as_deref() else {
+            continue;
+        };
+        let Some(side_a_v) = voltage_for_component_pin(project, component, side_a_supply_pin)
+        else {
+            continue;
+        };
+        let Some(side_b_v) = voltage_for_component_pin(project, component, side_b_supply_pin)
+        else {
+            continue;
+        };
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            side_a_supply_pin,
+            stop_time_us,
+            assertions,
+        );
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            side_b_supply_pin,
+            stop_time_us,
+            assertions,
+        );
+        if let Some(enable_pin) = channel.enable_pin.as_deref()
+            && let Some(enable_probe) = probe_for_component_pin(probes, component, enable_pin)
+        {
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_enable_high", enable_probe.probe_name),
+                &enable_probe.probe_name,
+                "mean",
+                "above",
+                side_a_v * 0.7,
+                (0.0, stop_time_us),
+            ));
+        }
+        let state = component_parameter_f64(
+            component,
+            &format!("observation_{}_state", channel.name.to_ascii_lowercase()),
+        )
+        .unwrap_or(1.0);
+        if state >= 0.5 {
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_input_high", side_a_probe.probe_name),
+                &side_a_probe.probe_name,
+                "mean",
+                "above",
+                side_a_v * 0.7,
+                (0.0, stop_time_us),
+            ));
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_translated_high", side_b_probe.probe_name),
+                &side_b_probe.probe_name,
+                "mean",
+                "above",
+                side_b_v * 0.7,
+                (0.0, stop_time_us),
+            ));
+        } else {
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_input_low", side_a_probe.probe_name),
+                &side_a_probe.probe_name,
+                "mean",
+                "below",
+                side_a_v * 0.3,
+                (0.0, stop_time_us),
+            ));
+            assertions.push(default_voltage_assertion(
+                scenario_name,
+                &format!("{}_translated_low", side_b_probe.probe_name),
+                &side_b_probe.probe_name,
+                "mean",
+                "below",
+                side_b_v * 0.3,
+                (0.0, stop_time_us),
+            ));
+        }
+    }
+}
+
+fn add_port_voltage_window_assertions(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    pin: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+        return;
+    };
+    let Some(port) = model.ports.get(pin) else {
+        return;
+    };
+    if let Some(min_v) = port.electrical.operating_voltage_min_v {
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_min_voltage", probe.probe_name),
+            &probe.probe_name,
+            "mean",
+            "above",
+            min_v,
+            (0.0, stop_time_us),
+        ));
+    }
+    if let Some(max_v) = port.electrical.operating_voltage_max_v {
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_max_voltage", probe.probe_name),
+            &probe.probe_name,
+            "mean",
+            "below",
+            max_v,
+            (0.0, stop_time_us),
+        ));
+    }
+}
+
 fn add_tracks_pulse_assertions(
     scenario_name: &str,
     output_probe_name: &str,
@@ -710,6 +871,15 @@ fn nominal_voltage_for_net(project: &crate::board_ir::BoardProject, net_id: &str
         .nets
         .get(net_id)
         .and_then(|net| net.nominal_voltage)
+}
+
+fn voltage_for_component_pin(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    pin: &str,
+) -> Option<f64> {
+    let net = component.pins.get(pin)?;
+    dc_voltage_for_net(project, net).or_else(|| nominal_voltage_for_net(project, net))
 }
 
 fn pulse_high_sample_time(pulse: &crate::board_ir::SpicePulseSpec, stop_time_us: f64) -> f64 {

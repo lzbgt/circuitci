@@ -152,6 +152,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UPROBE"),
         },
         ExpectedProjectExample {
+            id: "txs0108e_level_scope",
+            category: "Level Shifter",
+            open_label: "Open TXS0108E Level-Shifter Example",
+            run_label: "Open TXS0108E + Run Scopes",
+            summary: "Source-backed TXS0108E enabled A-to-B mixed-voltage observation.",
+            project_path: "examples/good_ti_txs0108e_level_shifter_observation/project.yaml",
+            project_name: "good_ti_txs0108e_level_shifter_observation",
+            expected_traces: &["v_vcca", "v_vccb", "v_oe", "v_a1", "v_b1", "i_b1_load"],
+            expected_frequency: "1.8 V A-side input translated to a 3.3 V B-side high level",
+            observation_preset_component: Some("ULS"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

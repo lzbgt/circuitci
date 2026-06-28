@@ -195,6 +195,7 @@ Current analog support:
   observations, FT232R-style USB-UART 3V3OUT/VCCIO and output-state
   observations, CH347-style USB-JTAG debug bridge line-state observations,
   CMSIS-DAP-style SWD probe line-state observations,
+  TXS0108E-style A-to-B mixed-voltage level-shifter observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -207,10 +208,11 @@ Current analog support:
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
-  AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail, TPS61023 boost rail,
-  TPS2121 power mux, TPS22918 load switch, MCP73831 charger, BQ24075 power
-  path, BQ25798 NVDC power path, TLV803 reset-supervisor, loop-stability Bode,
-  DC divider-bias, divider-noise, and RC Monte Carlo yield workflows.
+  TXS0108E level shifter, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck
+  rail, TPS63802 buck-boost rail, TPS61023 boost rail, TPS2121 power mux,
+  TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
+  power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
+  divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -245,6 +247,13 @@ Current analog support:
   reduced-fidelity and omits USB transport, SWD turnaround/protocol transfers,
   target-specific voltage limits, trace bandwidth, and probe-vendor drive
   strength.
+- The TI TXS0108E vendor component pack now has a datasheet-backed generated
+  SPICE observation face for an enabled A1-to-B1 mixed-voltage level-shift
+  workflow. Its supply ranges, `VCCA <= VCCB` constraint, OE guidance, and
+  channel pin roles remain source-backed, while the transient face stays
+  explicitly reduced-fidelity and omits automatic bidirectional sensing,
+  one-shot edge accelerators, pass-gate analog behavior, high-speed timing, and
+  signal-integrity sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

@@ -217,6 +217,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   VTREF-referenced SWCLK, SWDIO, nRESET, and SWO line-state observations. The
   model-state inputs are explicit Board IR component parameters, not inferred
   USB transport, SWD protocol transfer, or probe-vendor electrical behavior.
+- `examples/good_ti_txs0108e_level_shifter_observation` proves the TI TXS0108E
+  datasheet-backed level-shifter model can use a reduced generated-SPICE face
+  for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and
+  translated-output checks.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

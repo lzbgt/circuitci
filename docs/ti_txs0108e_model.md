@@ -46,5 +46,21 @@ for TXS0108E channels because this model is datasheet-backed and carries the
 required direction, supply, isolation, OE, and supply-order metadata. When OE is
 directly tied to ground, the suggestion includes an `OE` low pin-state entry.
 
-The model is not a SPICE model and is not valid for high-speed signal-integrity
-or analog edge-rate sign-off.
+The model also declares a reduced generated-SPICE observation face:
+
+```text
+CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER VCCA VCCB GND OE A1 B1
+```
+
+This face models an enabled A1-to-B1 level translation only. It is useful for
+GUI-generated observations that check both rails, OE state, the A-side input,
+and the B-side translated output for a representative mixed-voltage channel.
+It intentionally does not model automatic bidirectional sensing, one-shot edge
+accelerators, pass-gate analog behavior, pull-up sizing, capacitive loading,
+partial-power behavior, or high-speed timing.
+
+The direct-open GUI fixture lives at:
+
+```text
+examples/good_ti_txs0108e_level_shifter_observation/project.yaml
+```
