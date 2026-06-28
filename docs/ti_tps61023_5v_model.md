@@ -28,6 +28,27 @@ datasheet gives a valley switch-current limit, while actual output current
 depends on VIN, VOUT, efficiency, ripple current, inductor value, saturation
 current, thermal conditions, and layout.
 
+The model also declares `simulation.spice` metadata for generated Board IR
+observation. Its SPICE face points to
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+```text
+VIN EN GND VOUT
+```
+
+The generated subcircuit instance can map a Board IR component parameter into
+the output target:
+
+```yaml
+instance_parameters:
+  - spice_name: VOUT_V
+    component_parameter: observation_output_voltage_V
+    default_value: 5.0
+```
+
+This supports GUI-created preliminary VIN/EN/VOUT rail checks while keeping the
+5 V output target explicit in component metadata.
+
 ## Validation Use
 
 `POWER_TREE_VALID` uses this model through `power_conversion` metadata:
@@ -37,6 +58,13 @@ current, thermal conditions, and layout.
 - boost input inductance is checked as the direct inductance between the input
   rail and `SW`.
 
-The check is a static screen. It does not sign off inductor saturation,
-current ripple, DCR loss, loop stability, thermal margin, feedback tolerance,
-startup from deeply depleted cells, or PCB layout.
+The check is a static screen plus a reduced generated-SPICE rail observation
+face. It does not sign off SW switching behavior, inductor saturation, current
+ripple, DCR loss, loop stability, thermal margin, feedback tolerance, valley
+current-limit behavior, startup from deeply depleted cells, or PCB layout.
+
+The direct-open GUI fixture lives at:
+
+```text
+examples/good_tps61023_5v_boost_observation/project.yaml
+```

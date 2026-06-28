@@ -54,6 +54,17 @@ ROUT VOUT GND 1G
 RBIAS EN GND 1G
 .ends CIRCUITCI_TPS63802_3V3_BUCK_BOOST
 
+.subckt CIRCUITCI_TPS61023_5V_BOOST VIN EN GND VOUT PARAMS: VOUT_V=5
+* Reduced TPS61023 5 V boost-regulator observation behavior.
+* The output is an ideal preliminary rail source gated by the datasheet startup
+* input floor and EN. SW switching, FB-loop dynamics, inductor current, ripple,
+* current limit, thermal behavior, layout, EMI, and loop stability are
+* intentionally not modeled.
+BOUT VOUT GND V={VOUT_V/(1+exp(-4*(v(VIN,GND)-1.8)))/(1+exp(-20*(v(EN,GND)-1)))}
+ROUT VOUT GND 1G
+RBIAS EN GND 1G
+.ends CIRCUITCI_TPS61023_5V_BOOST
+
 .subckt CIRCUITCI_TPS22918_LOAD_SWITCH VIN VOUT GND ON
 * Reduced TPS22918 enabled high-side switch behavior.
 * ON controls a smooth VIN-to-VOUT conductance near the datasheet typical

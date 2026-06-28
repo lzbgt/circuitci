@@ -681,15 +681,16 @@ exercise VIN/EN/VSENSE wiring and preliminary output/load-current observation,
 but not PH/BOOT switching, compensation, inductor ripple/current, output ripple,
 current limit, Eco-mode, startup timing, thermal behavior, layout, EMI, or
 loop-stability sign-off.
-`vendor.ti.tps62162_3v3` and `vendor.ti.tps63802_3v3` follow the same pattern
-for common 3.3 V switch-mode rail observation. Their source-pinned input ranges,
-output-current classes, support-component constraints, and static
-power-conversion metadata remain source-backed, while their generated-SPICE
-faces use reduced enabled output sources with optional `VOUT_V` instance
-parameters. These models can exercise VIN/EN/VOS or VIN/EN/VOUT wiring and
-preliminary output/load-current observation, but not SW/L1/L2 switching,
-feedback-loop dynamics, ripple, current limit, PG/MODE behavior, thermal
-behavior, layout, EMI, or loop-stability sign-off.
+`vendor.ti.tps62162_3v3`, `vendor.ti.tps63802_3v3`, and
+`vendor.ti.tps61023_5v` follow the same pattern for common switch-mode rail
+observation. Their source-pinned input ranges, output classes or current-limit
+classes, support-component constraints, and static power-conversion metadata
+remain source-backed, while their generated-SPICE faces use reduced enabled
+output sources with optional `VOUT_V` instance parameters. These models can
+exercise VIN/EN/VOS or VIN/EN/VOUT wiring and preliminary output/load-current
+observation, but not SW/L1/L2 switching, feedback-loop dynamics, ripple, current
+limit, PG/MODE behavior, thermal behavior, layout, EMI, or loop-stability
+sign-off.
 `vendor.ti.tlv803ea29` follows the same pattern for reset-supervisor threshold
 observation: its datasheet threshold, delay, active-low open-drain topology, and
 pin metadata remain source-backed, while its generated-SPICE face points at a

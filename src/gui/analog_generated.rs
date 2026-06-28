@@ -1164,7 +1164,7 @@ scenarios:
         );
         assert_eq!(
             analog.model_files[0].sha256.as_deref(),
-            Some("7abc3f8dff5b41047d13ce92d43bd5c5ba44a3c8aaff6dcfaff754e92670e192")
+            Some("6d4392ef2b9d911fe02d705c2516deefb290ab2dc7a826b3ed65fe23a200b19b")
         );
     }
 

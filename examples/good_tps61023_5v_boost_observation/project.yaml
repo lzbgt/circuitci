@@ -1,5 +1,5 @@
 project:
-  name: good_tps62162_3v3_buck_observation
+  name: good_tps61023_5v_boost_observation
   version: 0.1.0
 
 libraries:
@@ -9,39 +9,39 @@ libraries:
 board:
   schematic:
     component_symbols:
-      VIN: Simulation_SPICE:VDC
+      VBAT: Simulation_SPICE:VDC
       VEN: Simulation_SPICE:VDC
-      UBUCK: Regulator_Switching:TPS62162
+      UBOOST: Regulator_Switching:TPS61023
       L1: Device:L
       CIN: Device:C
       COUT: Device:C
       RLOAD: Device:R
     node_styles:
-      component:VIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VBAT: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
-      component:UBUCK: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:UBOOST: { rotation_deg: 0, mirrored: false, pin_side: auto }
       component:L1: { rotation_deg: 0, mirrored: false, pin_side: auto }
       component:CIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:COUT: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
-      component:VIN: { x: 64.0, y: 192.0 }
+      component:VBAT: { x: 64.0, y: 192.0 }
       component:VEN: { x: 64.0, y: 336.0 }
-      component:UBUCK: { x: 320.0, y: 224.0 }
-      component:L1: { x: 496.0, y: 192.0 }
-      component:CIN: { x: 192.0, y: 432.0 }
+      component:UBOOST: { x: 320.0, y: 224.0 }
+      component:L1: { x: 224.0, y: 176.0 }
+      component:CIN: { x: 176.0, y: 432.0 }
       component:COUT: { x: 592.0, y: 432.0 }
       component:RLOAD: { x: 704.0, y: 336.0 }
-      net:input_12v: { x: 176.0, y: 176.0 }
+      net:battery: { x: 160.0, y: 176.0 }
+      net:boost_sw: { x: 272.0, y: 176.0 }
       net:enable: { x: 176.0, y: 304.0 }
-      net:switch_node: { x: 432.0, y: 176.0 }
-      net:rail_3v3: { x: 592.0, y: 176.0 }
+      net:vext_5v: { x: 592.0, y: 176.0 }
       net:gnd: { x: 336.0, y: 544.0 }
     wire_routes:
-      VIN.P->input_12v:
+      VBAT.P->battery:
         points:
-          - { x: 160.0, y: 192.0 }
-      VIN.N->gnd:
+          - { x: 128.0, y: 192.0 }
+      VBAT.N->gnd:
         points:
           - { x: 112.0, y: 544.0 }
       VEN.P->enable:
@@ -50,55 +50,55 @@ board:
       VEN.N->gnd:
         points:
           - { x: 112.0, y: 544.0 }
-      UBUCK.VIN->input_12v:
+      L1.A->battery:
+        points:
+          - { x: 176.0, y: 176.0 }
+      L1.B->boost_sw:
+        points:
+          - { x: 272.0, y: 176.0 }
+      UBOOST.VIN->battery:
         points:
           - { x: 240.0, y: 192.0 }
-      UBUCK.EN->enable:
+      UBOOST.SW->boost_sw:
+        points:
+          - { x: 272.0, y: 176.0 }
+      UBOOST.EN->enable:
         points:
           - { x: 240.0, y: 320.0 }
-      UBUCK.SW->switch_node:
-        points:
-          - { x: 432.0, y: 176.0 }
-      UBUCK.VOS->rail_3v3:
+      UBOOST.VOUT->vext_5v:
         points:
           - { x: 592.0, y: 176.0 }
-      UBUCK.GND->gnd:
+      UBOOST.GND->gnd:
         points:
           - { x: 320.0, y: 544.0 }
-      L1.A->switch_node:
+      CIN.A->battery:
         points:
-          - { x: 464.0, y: 176.0 }
-      L1.B->rail_3v3:
-        points:
-          - { x: 592.0, y: 176.0 }
-      CIN.A->input_12v:
-        points:
-          - { x: 192.0, y: 176.0 }
+          - { x: 176.0, y: 176.0 }
       CIN.B->gnd:
         points:
-          - { x: 192.0, y: 544.0 }
-      COUT.A->rail_3v3:
+          - { x: 176.0, y: 544.0 }
+      COUT.A->vext_5v:
         points:
           - { x: 592.0, y: 176.0 }
       COUT.B->gnd:
         points:
           - { x: 592.0, y: 544.0 }
-      RLOAD.A->rail_3v3:
+      RLOAD.A->vext_5v:
         points:
           - { x: 704.0, y: 176.0 }
       RLOAD.B->gnd:
         points:
           - { x: 704.0, y: 544.0 }
   components:
-    VIN:
+    VBAT:
       model: generic.analog.dc_voltage_source
-      part_number: 12V_SOURCE
+      part_number: LIION_SOURCE
       pins:
-        P: input_12v
+        P: battery
         N: gnd
       spice:
         primitive: dc_voltage_source
-        dc_v: 12.0
+        dc_v: 3.7
     VEN:
       model: generic.analog.dc_voltage_source
       pins:
@@ -107,35 +107,35 @@ board:
       spice:
         primitive: dc_voltage_source
         dc_v: 3.3
-    UBUCK:
-      model: vendor.ti.tps62162_3v3
-      part_number: TPS62162DSG
+    UBOOST:
+      model: vendor.ti.tps61023_5v
+      part_number: TPS61023DRLT
       parameters:
-        observation_output_voltage_V: 3.3
+        observation_output_voltage_V: 5.0
       power_domains:
-        VIN: input_12v
-        VOS: rail_3v3
+        VIN: battery
+        VOUT: vext_5v
       pins:
-        VIN: input_12v
+        VIN: battery
         EN: enable
-        SW: switch_node
-        VOS: rail_3v3
+        SW: boost_sw
+        VOUT: vext_5v
+        FB: feedback
         GND: gnd
-        PG: power_good
     L1:
       model: generic.analog.inductor
-      part_number: 2.2uH
+      part_number: 1uH
       pins:
-        A: switch_node
-        B: rail_3v3
+        A: battery
+        B: boost_sw
       spice:
         primitive: inductor
-        value_h: 0.0000022
+        value_h: 0.000001
     CIN:
       model: generic.analog.capacitor
       part_number: 10uF
       pins:
-        A: input_12v
+        A: battery
         B: gnd
       spice:
         primitive: capacitor
@@ -144,43 +144,43 @@ board:
       model: generic.analog.capacitor
       part_number: 22uF
       pins:
-        A: rail_3v3
+        A: vext_5v
         B: gnd
       spice:
         primitive: capacitor
         value_f: 0.000022
     RLOAD:
       model: generic.analog.resistor
-      part_number: 330R_1pct
+      part_number: 100R_1pct
       pins:
-        A: rail_3v3
+        A: vext_5v
         B: gnd
       spice:
         primitive: resistor
-        value_ohm: 330.0
+        value_ohm: 100.0
   nets:
-    input_12v:
+    battery:
       kind: power
-      nominal_voltage: 12.0
+      nominal_voltage: 3.7
       powered: true
       supply_current_limit_A: 1.0
     enable:
       kind: power
       nominal_voltage: 3.3
       powered: true
-    switch_node:
+    boost_sw:
       kind: digital_or_analog
-    power_good:
+    feedback:
       kind: digital_or_analog
-    rail_3v3:
+    vext_5v:
       kind: power
-      nominal_voltage: 3.3
+      nominal_voltage: 5.0
       powered: true
     gnd:
       kind: ground
 
 scenarios:
-  - name: tps62162_3v3_buck_observation
+  - name: tps61023_5v_boost_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -190,65 +190,65 @@ scenarios:
       generated:
         ground_net: gnd
         components:
-          - VIN
+          - VBAT
           - VEN
-          - UBUCK
+          - UBOOST
           - RLOAD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 6d4392ef2b9d911fe02d705c2516deefb290ab2dc7a826b3ed65fe23a200b19b
       node_bindings:
-        - { node: vin, net: input_12v }
+        - { node: vbat, net: battery }
         - { node: en, net: enable }
-        - { node: out3v3, net: rail_3v3 }
+        - { node: out5v, net: vext_5v }
         - { node: "0", net: gnd }
       pin_bindings:
-        - { node: vin, endpoint: { component: VIN, pin: P } }
-        - { node: "0", endpoint: { component: VIN, pin: N } }
+        - { node: vbat, endpoint: { component: VBAT, pin: P } }
+        - { node: "0", endpoint: { component: VBAT, pin: N } }
         - { node: en, endpoint: { component: VEN, pin: P } }
         - { node: "0", endpoint: { component: VEN, pin: N } }
-        - { node: vin, endpoint: { component: UBUCK, pin: VIN } }
-        - { node: en, endpoint: { component: UBUCK, pin: EN } }
-        - { node: out3v3, endpoint: { component: UBUCK, pin: VOS } }
-        - { node: "0", endpoint: { component: UBUCK, pin: GND } }
-        - { node: out3v3, endpoint: { component: RLOAD, pin: A } }
+        - { node: vbat, endpoint: { component: UBOOST, pin: VIN } }
+        - { node: en, endpoint: { component: UBOOST, pin: EN } }
+        - { node: out5v, endpoint: { component: UBOOST, pin: VOUT } }
+        - { node: "0", endpoint: { component: UBOOST, pin: GND } }
+        - { node: out5v, endpoint: { component: RLOAD, pin: A } }
         - { node: "0", endpoint: { component: RLOAD, pin: B } }
       analysis:
         type: tran
         stop_time_us: 80.0
         max_step_us: 0.2
       stimuli:
-        - name: enabled_12v_to_3v3_buck
-          description: 12 V input and 3.3 V enable drive a reduced TPS62162 3.3 V observation model feeding a 330 ohm load.
+        - name: enabled_liion_to_5v_boost
+          description: 3.7 V input and 3.3 V enable drive a reduced TPS61023 5 V boost observation model feeding a 100 ohm load.
       probes:
-        - name: v_input
-          expression: V(vin)
+        - name: v_battery
+          expression: V(vbat)
         - name: v_enable
           expression: V(en)
-        - name: v_rail3v3
-          expression: V(out3v3)
+        - name: v_rail5v
+          expression: V(out5v)
         - name: i_load
           expression: I(VCCI_RLOAD)
           quantity: current
       assertions:
-        - name: rail_above_3p2v
-          probe: v_rail3v3
+        - name: rail_above_4p9v
+          probe: v_rail5v
           aggregation: min
           start_us: 5.0
           end_us: 80.0
           relation: above
-          threshold_v: 3.2
-        - name: rail_below_3p4v
-          probe: v_rail3v3
+          threshold_v: 4.9
+        - name: rail_below_5p1v
+          probe: v_rail5v
           aggregation: max
           start_us: 5.0
           end_us: 80.0
           relation: below
-          threshold_v: 3.4
-        - name: load_current_below_12ma
+          threshold_v: 5.1
+        - name: load_current_below_55ma
           probe: i_load
           aggregation: mean
           start_us: 5.0
           end_us: 80.0
           relation: below
-          threshold_a: 0.012
+          threshold_a: 0.055

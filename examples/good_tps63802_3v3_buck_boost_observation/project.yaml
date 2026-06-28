@@ -210,7 +210,7 @@ scenarios:
           - RLOAD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
-          sha256: 7abc3f8dff5b41047d13ce92d43bd5c5ba44a3c8aaff6dcfaff754e92670e192
+          sha256: 6d4392ef2b9d911fe02d705c2516deefb290ab2dc7a826b3ed65fe23a200b19b
       node_bindings:
         - { node: vbat, net: battery }
         - { node: en, net: enable }

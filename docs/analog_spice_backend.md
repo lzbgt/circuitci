@@ -37,10 +37,11 @@ mode?"
   subcircuits must be supported through backend model libraries.
 - Reusable generic macro-models must enter through the same component-library
   and `simulation.spice` subcircuit path as vendor models. Generic op-amp,
-  comparator, 3.3 V regulator, buck regulator, and buck-boost regulator models
-  are allowed for preliminary topology, waveform, and GUI workflow checks, but
-  their low-confidence model metadata must keep them out of stability, noise,
-  current-limit, thermal, switching-ripple, EMI, or final sign-off claims.
+  comparator, 3.3 V regulator, buck regulator, buck-boost regulator, and boost
+  regulator models are allowed for preliminary topology, waveform, and GUI
+  workflow checks, but their low-confidence model metadata must keep them out of
+  stability, noise, current-limit, thermal, switching-ripple, EMI, or final
+  sign-off claims.
 - Keep chip behavior out of the analog solver. MCU pins become electrical
   thresholds, leakage/current limits, capacitance, clamps, and stimulus/load
   models. Firmware and boot ROM behavior stays in digital/protocol validators.

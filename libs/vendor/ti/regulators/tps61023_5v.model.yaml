@@ -34,6 +34,21 @@ power_conversion:
   output_capacitance_min_F: 0.000004
   input_inductance_min_H: 0.00000037
   input_inductance_max_H: 0.0000029
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS61023_5V_BOOST
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, EN, GND, VOUT]
+    instance_parameters:
+      - spice_name: VOUT_V
+        component_parameter: observation_output_voltage_V
+        default_value: 5.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VIN/EN/VOUT generated-SPICE rail checks only.
+      - Uses the source-backed 0.5 V to 5.5 V input range, 1.8 V startup floor, boost-inductor support range, and 5 V configured output metadata while emitting an ideal enabled output source.
+      - SW switching, FB-loop dynamics, inductor current/ripple, output ripple, valley current-limit behavior, thermal behavior, layout, EMI, and loop-stability sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS61023DRLT

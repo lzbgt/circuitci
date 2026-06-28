@@ -65,6 +65,13 @@ const TPS63802_BUCK_BOOST_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_battery", "v_enable", "v_rail3v3", "i_load"];
 const TPS63802_BUCK_BOOST_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.7 V input, 3.3 V enable, and 3.3 V buck-boost rail observation";
+const TPS61023_BOOST_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps61023_5v_boost_observation/project.yaml";
+const TPS61023_BOOST_SCOPE_EXAMPLE_NAME: &str = "good_tps61023_5v_boost_observation";
+const TPS61023_BOOST_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_battery", "v_enable", "v_rail5v", "i_load"];
+const TPS61023_BOOST_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.7 V input, 3.3 V enable, and 5 V boost-regulator rail observation";
 const TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tps22918_load_switch_observation/project.yaml";
 const TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_NAME: &str = "good_tps22918_load_switch_observation";
@@ -233,6 +240,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TPS63802_BUCK_BOOST_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPS63802_BUCK_BOOST_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UREG"),
+    },
+    GuiProjectExample {
+        id: "tps61023_boost_scope",
+        category: "Regulator",
+        open_label: "Open TPS61023 Boost Example",
+        run_label: "Open TPS61023 + Run Scopes",
+        workflow_title: "TPS61023 Boost Workflow",
+        summary: "Enabled Li-Ion input to 5 V boost-regulator rail observation with load-current checks.",
+        project_path: TPS61023_BOOST_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS61023_BOOST_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS61023_BOOST_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS61023_BOOST_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UBOOST"),
     },
     GuiProjectExample {
         id: "tps22918_load_switch_scope",
