@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 pub enum BoardYamlRepairFindingKind {
     InvalidPowerDomain,
     NetNotFound,
+    PinNotDeclared,
 }
 
 #[derive(Debug, Clone)]
@@ -43,6 +44,8 @@ pub struct BoardYamlRepairReport {
 pub struct BoardYamlRepairSummary {
     pub proposed: usize,
     pub applied: usize,
+    pub original_matching_findings: usize,
+    pub repaired_matching_findings: usize,
     pub original_matching_criticals: usize,
     pub repaired_matching_criticals: usize,
     pub new_criticals: usize,
@@ -132,6 +135,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             invalid_power_domain_proposals(&project, &library)?
         }
         BoardYamlRepairFindingKind::NetNotFound => net_not_found_proposals(&project, &library)?,
+        BoardYamlRepairFindingKind::PinNotDeclared => {
+            pin_not_declared_proposals(&project, &library)?
+        }
     };
 
     let mut repaired_yaml = project_yaml;
@@ -174,8 +180,10 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
     )?;
 
     let finding_id = options.finding.finding_id();
-    let original_matching = matching_critical_findings(&original_report, finding_id);
-    let repaired_matching = matching_critical_findings(&repaired_report, finding_id);
+    let original_matching = matching_findings(&original_report, finding_id);
+    let repaired_matching = matching_findings(&repaired_report, finding_id);
+    let original_matching_criticals = matching_critical_findings(&original_report, finding_id);
+    let repaired_matching_criticals = matching_critical_findings(&repaired_report, finding_id);
     let new_criticals = new_critical_findings(&original_report, &repaired_report);
     let original_finding_removed = !original_matching.is_empty() && repaired_matching.is_empty();
     let no_new_criticals = new_criticals.is_empty();
@@ -193,8 +201,10 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         summary: BoardYamlRepairSummary {
             proposed: proposals.len(),
             applied,
-            original_matching_criticals: original_matching.len(),
-            repaired_matching_criticals: repaired_matching.len(),
+            original_matching_findings: original_matching.len(),
+            repaired_matching_findings: repaired_matching.len(),
+            original_matching_criticals: original_matching_criticals.len(),
+            repaired_matching_criticals: repaired_matching_criticals.len(),
             new_criticals: new_criticals.len(),
         },
         original_project: options.project.display().to_string(),
@@ -358,6 +368,46 @@ fn net_not_found_proposals(
         .collect()
 }
 
+fn pin_not_declared_proposals(
+    project: &BoardProject,
+    library: &crate::library::ComponentLibrary,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let mut proposals = Vec::new();
+    for (component_id, component) in &project.board.components {
+        let Some(model) = library.get(&component.model) else {
+            continue;
+        };
+        for (pin_name, net_name) in &component.pins {
+            if model.ports.contains_key(pin_name) {
+                continue;
+            }
+            let yaml_path = format!("/board/components/{component_id}/pins/{pin_name}");
+            proposals.push(BoardYamlRepairProposal {
+                id: format!("pin_not_declared_{}", proposals.len() + 1),
+                finding_id: BoardYamlRepairFindingKind::PinNotDeclared
+                    .finding_id()
+                    .to_string(),
+                status: "proposed".to_string(),
+                description: format!(
+                    "Remove stray pin binding {component_id}.{pin_name} because model {} does not declare it.",
+                    model.component_id
+                ),
+                yaml_path: yaml_path.clone(),
+                affected_pins: vec![format!("{component_id}.{pin_name}")],
+                edits: vec![BoardYamlRepairEdit {
+                    op: "remove".to_string(),
+                    path: yaml_path,
+                    from: serde_json::Value::String(net_name.clone()),
+                    to: serde_json::Value::Null,
+                    reason: "Undeclared component pins are outside the resolved model contract and produce PIN_NOT_DECLARED warnings."
+                        .to_string(),
+                }],
+            });
+        }
+    }
+    Ok(proposals)
+}
+
 #[derive(Debug, Default)]
 struct MissingNetProposalDraft {
     affected_pins: Vec<String>,
@@ -398,6 +448,8 @@ fn apply_proposals(
                 continue;
             };
             add_net(project_yaml, net_name, kind)?;
+        } else if let Some((component_id, pin_name)) = component_pin_path(&proposal.yaml_path) {
+            remove_component_pin(project_yaml, component_id, pin_name)?;
         } else {
             proposal.status = "skipped".to_string();
             continue;
@@ -406,6 +458,15 @@ fn apply_proposals(
         applied += 1;
     }
     Ok(applied)
+}
+
+fn component_pin_path(path: &str) -> Option<(&str, &str)> {
+    let rest = path.strip_prefix("/board/components/")?;
+    let (component_id, pin_path) = rest.split_once("/pins/")?;
+    if component_id.is_empty() || pin_path.is_empty() || pin_path.contains('/') {
+        return None;
+    }
+    Some((component_id, pin_path))
 }
 
 fn replace_net_kind(project_yaml: &mut Value, net_name: &str, kind: &str) -> Result<()> {
@@ -423,6 +484,29 @@ fn replace_net_kind(project_yaml: &mut Value, net_name: &str, kind: &str) -> Res
         Value::String("kind".to_string()),
         Value::String(kind.to_string()),
     );
+    Ok(())
+}
+
+fn remove_component_pin(
+    project_yaml: &mut Value,
+    component_id: &str,
+    pin_name: &str,
+) -> Result<()> {
+    let root = project_yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?;
+    let board = get_mapping_field_mut(root, "board")?;
+    let components = get_mapping_field_mut(board, "components")?;
+    let component = components
+        .get_mut(Value::String(component_id.to_string()))
+        .with_context(|| format!("Board IR component {component_id} is missing."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR component {component_id} must be an object."))?;
+    let pins = get_mapping_field_mut(component, "pins")?;
+    let removed = pins.remove(Value::String(pin_name.to_string()));
+    if removed.is_none() {
+        bail!("Board IR pin binding {component_id}.{pin_name} is missing.");
+    }
     Ok(())
 }
 
@@ -504,6 +588,17 @@ fn normalize_path(path: &Path) -> PathBuf {
     normalized
 }
 
+fn matching_findings(report: &ValidationReport, finding_id: &str) -> Vec<BoardYamlFindingEvidence> {
+    report
+        .failures
+        .iter()
+        .chain(report.warnings.iter())
+        .chain(report.infos.iter())
+        .filter(|finding| finding.id == finding_id)
+        .map(finding_evidence)
+        .collect()
+}
+
 fn matching_critical_findings(
     report: &ValidationReport,
     finding_id: &str,
@@ -564,11 +659,13 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     let mut text = String::new();
     text.push_str(&format!("# CircuitCI YAML Repair: {}\n\n", report.project));
     text.push_str(&format!(
-        "- Result: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
+        "- Result: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
         report.result,
         report.finding,
         report.summary.proposed,
         report.summary.applied,
+        report.summary.original_matching_findings,
+        report.summary.repaired_matching_findings,
         report.summary.original_matching_criticals,
         report.summary.repaired_matching_criticals,
         report.summary.new_criticals
@@ -609,6 +706,7 @@ impl BoardYamlRepairFindingKind {
         match self {
             Self::InvalidPowerDomain => "INVALID_POWER_DOMAIN",
             Self::NetNotFound => "NET_NOT_FOUND",
+            Self::PinNotDeclared => "PIN_NOT_DECLARED",
         }
     }
 
@@ -616,6 +714,7 @@ impl BoardYamlRepairFindingKind {
         match self {
             Self::InvalidPowerDomain => "invalid-power-domain",
             Self::NetNotFound => "net-not-found",
+            Self::PinNotDeclared => "pin-not-declared",
         }
     }
 }

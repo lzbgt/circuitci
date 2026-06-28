@@ -15,6 +15,9 @@ Supported repair classes:
   missing net when the pin is declared by the component model. The new net kind
   is inferred from the model port kind: power ports become `power`, ground ports
   become `ground`, and passive or digital ports become `digital_or_analog`.
+- `pin-not-declared`: fixes warning-level `PIN_NOT_DECLARED` findings by
+  removing a copied project's stray `board.components.<component>.pins.<pin>`
+  binding when the resolved component model does not declare that pin.
 
 Example:
 
@@ -35,11 +38,13 @@ The output directory contains:
 `repair_report.json` follows `schemas/repair_report.schema.json`. Its
 `proposals[].edits[]` entries carry the YAML path, operation, previous value,
 new value, and reason. `proposals[].affected_pins[]` records the component pins
-that justified the edit. The `proof` block records original matching findings,
-repaired matching findings, and any new critical findings.
+that justified the edit. The `summary` and `proof` blocks record original and
+repaired matching findings across failures, warnings, and infos, while still
+tracking whether the repair introduced new critical findings.
 
 This command is intentionally narrow. It does not choose nominal rail voltages,
 invent nets for undeclared model pins, repair ambiguous missing nets with
-conflicting inferred kinds, edit component models, or repair schematic/PCB
-geometry. Relative `libraries:` entries are converted to absolute paths in the
-repaired copy so the copied project validates from the repair output directory.
+conflicting inferred kinds, remove required declared pins, edit component
+models, or repair schematic/PCB geometry. Relative `libraries:` entries are
+converted to absolute paths in the repaired copy so the copied project validates
+from the repair output directory.

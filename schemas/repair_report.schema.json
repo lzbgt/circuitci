@@ -29,6 +29,8 @@
       "required": [
         "proposed",
         "applied",
+        "original_matching_findings",
+        "repaired_matching_findings",
         "original_matching_criticals",
         "repaired_matching_criticals",
         "new_criticals"
@@ -36,6 +38,8 @@
       "properties": {
         "proposed": { "type": "integer", "minimum": 0 },
         "applied": { "type": "integer", "minimum": 0 },
+        "original_matching_findings": { "type": "integer", "minimum": 0 },
+        "repaired_matching_findings": { "type": "integer", "minimum": 0 },
         "original_matching_criticals": { "type": "integer", "minimum": 0 },
         "repaired_matching_criticals": { "type": "integer", "minimum": 0 },
         "new_criticals": { "type": "integer", "minimum": 0 }
@@ -119,7 +123,7 @@
       "type": "object",
       "required": ["op", "path", "from", "to", "reason"],
       "properties": {
-        "op": { "enum": ["add", "replace"] },
+        "op": { "enum": ["add", "remove", "replace"] },
         "path": { "type": "string", "minLength": 1 },
         "from": {},
         "to": {},

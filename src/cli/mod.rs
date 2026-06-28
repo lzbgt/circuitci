@@ -188,6 +188,7 @@ enum ImportBackend {
 enum RepairYamlFinding {
     InvalidPowerDomain,
     NetNotFound,
+    PinNotDeclared,
 }
 
 impl RepairYamlFinding {
@@ -195,6 +196,7 @@ impl RepairYamlFinding {
         match self {
             Self::InvalidPowerDomain => BoardYamlRepairFindingKind::InvalidPowerDomain,
             Self::NetNotFound => BoardYamlRepairFindingKind::NetNotFound,
+            Self::PinNotDeclared => BoardYamlRepairFindingKind::PinNotDeclared,
         }
     }
 }

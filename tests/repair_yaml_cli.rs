@@ -59,6 +59,8 @@ board:
     assert_eq!(repair_report["finding"], "INVALID_POWER_DOMAIN");
     assert_eq!(repair_report["summary"]["proposed"], 1);
     assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 0);
     assert_eq!(repair_report["summary"]["original_matching_criticals"], 1);
     assert_eq!(repair_report["summary"]["repaired_matching_criticals"], 0);
     assert_eq!(repair_report["summary"]["new_criticals"], 0);
@@ -151,6 +153,8 @@ board:
     assert_eq!(repair_report["finding"], "NET_NOT_FOUND");
     assert_eq!(repair_report["summary"]["proposed"], 1);
     assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 0);
     assert_eq!(repair_report["summary"]["original_matching_criticals"], 1);
     assert_eq!(repair_report["summary"]["repaired_matching_criticals"], 0);
     assert_eq!(repair_report["summary"]["new_criticals"], 0);
@@ -195,6 +199,123 @@ board:
     )
     .unwrap();
     assert_eq!(repaired_yaml["board"]["nets"]["vin"]["kind"], "power");
+}
+
+#[test]
+fn repair_yaml_removes_pin_not_declared_warning_on_project_copy() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: stray_pin_binding
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+        EXTRA: spare
+  nets:
+    vin:
+      kind: power
+    gnd:
+      kind: ground
+    spare:
+      kind: digital_or_analog
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+    let output = temp.path().join("repair");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--finding",
+            "pin-not-declared",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("repair_report.json")).unwrap())
+            .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "pass");
+    assert_eq!(repair_report["finding"], "PIN_NOT_DECLARED");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 0);
+    assert_eq!(repair_report["summary"]["original_matching_criticals"], 0);
+    assert_eq!(repair_report["summary"]["repaired_matching_criticals"], 0);
+    assert_eq!(repair_report["summary"]["new_criticals"], 0);
+    assert_eq!(repair_report["proof"]["original_finding_removed"], true);
+    assert_eq!(repair_report["proof"]["no_new_criticals"], true);
+    assert_eq!(
+        repair_report["proof"]["original_matching_findings"][0]["severity"],
+        "warning"
+    );
+    assert_eq!(
+        repair_report["proposals"][0]["yaml_path"],
+        "/board/components/V1/pins/EXTRA"
+    );
+    assert_eq!(
+        repair_report["proposals"][0]["affected_pins"][0],
+        "V1.EXTRA"
+    );
+    assert_eq!(repair_report["proposals"][0]["edits"][0]["op"], "remove");
+    assert_eq!(repair_report["proposals"][0]["edits"][0]["from"], "spare");
+    assert!(repair_report["proposals"][0]["edits"][0]["to"].is_null());
+
+    let original_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(output.join("original/report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_report_schema_valid(&original_report);
+    assert_eq!(original_report["result"], "pass");
+    assert!(
+        original_report["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|warning| warning["id"] == "PIN_NOT_DECLARED")
+    );
+
+    let repaired_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(output.join("repaired/report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_report_schema_valid(&repaired_report);
+    assert_eq!(repaired_report["result"], "pass");
+    assert_eq!(repaired_report["summary"]["critical"], 0);
+    assert!(
+        repaired_report["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|warning| warning["id"] != "PIN_NOT_DECLARED")
+    );
+
+    let repaired_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(output.join("repaired/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert!(repaired_yaml["board"]["components"]["V1"]["pins"]["EXTRA"].is_null());
 }
 
 fn assert_repair_report_schema_valid(report: &Value) {
