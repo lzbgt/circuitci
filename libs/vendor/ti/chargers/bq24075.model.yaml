@@ -61,6 +61,17 @@ battery_charger:
   min_charge_current_A: 0.15
   max_charge_current_A: 1.5
   regulation_voltage_V: 4.2
+simulation:
+  spice:
+    model_name: CIRCUITCI_BQ24075_POWER_PATH_CHARGER
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [IN, BAT, OUT, VSS, ISET]
+    valid_operating_notes:
+      - Uses BQ24075 datasheet pinout, 4.2 V BAT regulation target, 5.5 V OUT regulation target, and ISET resistor charge-current equation as a smooth behavioral source.
+      - Suitable for generated-SPICE wiring, ISET resistor, OUT rail voltage, BAT voltage, charge-current probe, and preliminary power-path observation workflows.
+      - Omits DPPM, battery supplement mode, ILIM/EN input-current state derivation, charge termination, CHG/PGOOD behavior, thermal regulation, timer behavior, battery chemistry, cell safety, package dissipation, and final charger sign-off.
 datasheet:
   manufacturer: Texas Instruments
   part_number: BQ24075RGTR
@@ -142,6 +153,7 @@ model_quality:
     - power_tree_validation
     - battery_charger_static_screening
     - usb_charge_current_budget_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - charger_thermal_signoff
     - battery_safety_or_chemistry_signoff

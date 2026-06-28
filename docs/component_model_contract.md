@@ -692,6 +692,16 @@ charger wiring, PROG resistor behavior, battery-node voltage, and preliminary
 charge-current observations, but not preconditioning, termination, STAT,
 thermal regulation, timer behavior, battery chemistry, cell safety, package
 dissipation, or final charger sign-off.
+`vendor.ti.bq24075` follows the same pattern for power-path charger
+observation: its datasheet pinout, IN/BAT/OUT ranges, battery regulation
+target, ISET resistor charge-current equation, and static charger metadata
+remain source-backed, while its generated-SPICE face uses a reduced OUT rail
+source plus constant-current/constant-voltage BAT charger. That model can
+exercise power-path charger wiring, OUT rail observation, ISET resistor
+behavior, battery-node voltage, and preliminary charge-current observations,
+but not DPPM, battery supplement mode, ILIM/EN current-limit derivation, status
+pins, termination, thermal regulation, timer behavior, battery chemistry, cell
+safety, package dissipation, or final charger sign-off.
 
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital

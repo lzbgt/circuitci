@@ -311,6 +311,21 @@ fn observation_default_assertions(
             ));
         }
     }
+    if model.battery_charger.is_some()
+        && let Some(output_probe) = probe_for_component_pin(probes, component, "OUT")
+        && let Some(output_port) = model.ports.get("OUT")
+        && let Some(max_v) = output_port.electrical.operating_voltage_max_v
+    {
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_power_path_ceiling", output_probe.probe_name),
+            &output_probe.probe_name,
+            "max",
+            "below",
+            max_v,
+            (0.0, stop_time_us),
+        ));
+    }
     if let Some(function) = &model.analog_function {
         match function.kind {
             crate::library::AnalogFunctionKind::OpAmp => {
@@ -877,6 +892,45 @@ board:
 "
     }
 
+    fn bq24075_project_yaml() -> &'static str {
+        "project:
+  name: bq24075_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+  - libs/vendor/ti/chargers
+board:
+  components:
+    VIN:
+      model: generic.analog.dc_voltage_source
+      pins: { P: adapter_6v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 6.0 }
+    UCHG:
+      model: vendor.ti.bq24075
+      parameters:
+        programmed_charge_current_A: 0.45
+      power_domains:
+        IN: adapter_6v
+        BAT: battery
+        OUT: sys_out
+      pins: { IN: adapter_6v, BAT: battery, OUT: sys_out, VSS: gnd, ISET: iset }
+    RISET:
+      model: generic.analog.resistor
+      pins: { A: iset, B: gnd }
+      spice: { primitive: resistor, value_ohm: 1977.7777777778 }
+    RLOAD:
+      model: generic.analog.resistor
+      pins: { A: sys_out, B: gnd }
+      spice: { primitive: resistor, value_ohm: 5500.0 }
+  nets:
+    adapter_6v: { kind: power, nominal_voltage: 6.0, powered: true }
+    battery: { kind: power, nominal_voltage: 4.2, powered: true }
+    sys_out: { kind: power, nominal_voltage: 5.5, powered: true }
+    iset: { kind: digital_or_analog }
+    gnd: { kind: ground }
+"
+    }
+
     fn opamp_buffer_project_yaml() -> &'static str {
         "project:
   name: opamp_observation_preset_test
@@ -1162,6 +1216,47 @@ board:
                 crate::board_ir::AnalogRelation::Below,
                 Some(4.232)
             )]
+        );
+    }
+
+    #[test]
+    fn observation_preset_adds_power_path_charger_voltage_checks() {
+        let result =
+            create_component_observation_preset(bq24075_project_yaml(), Path::new("."), "UCHG")
+                .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "uchg_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["v_uchg_in", "v_uchg_bat", "v_uchg_out", "v_uchg_iset"]
+        );
+        assert_eq!(
+            analog
+                .assertions
+                .iter()
+                .map(|assertion| {
+                    (
+                        assertion.name.as_str(),
+                        assertion.probe.as_str(),
+                        assertion.threshold_v,
+                    )
+                })
+                .collect::<Vec<_>>(),
+            vec![
+                ("v_uchg_bat_regulation_ceiling", "v_uchg_bat", Some(4.23)),
+                ("v_uchg_out_power_path_ceiling", "v_uchg_out", Some(5.6))
+            ]
         );
     }
 

@@ -1,0 +1,279 @@
+project:
+  name: good_bq24075_power_path_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/chargers
+
+board:
+  schematic:
+    component_symbols:
+      VIN: Simulation_SPICE:VDC
+      UCHG: Battery_Management:BQ24075
+      RISET: Device:R
+      VSENSE: Simulation_SPICE:VDC
+      CBAT: Device:C
+      RLOAD: Device:R
+    node_styles:
+      component:VIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UCHG: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RISET: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VSENSE: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CBAT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VIN: { x: 64.0, y: 224.0 }
+      component:UCHG: { x: 320.0, y: 224.0 }
+      component:RISET: { x: 320.0, y: 400.0 }
+      component:VSENSE: { x: 496.0, y: 192.0 }
+      component:CBAT: { x: 640.0, y: 288.0 }
+      component:RLOAD: { x: 640.0, y: 432.0 }
+      net:adapter_6v: { x: 176.0, y: 176.0 }
+      net:charge_out: { x: 432.0, y: 176.0 }
+      net:battery: { x: 592.0, y: 176.0 }
+      net:sys_out: { x: 496.0, y: 320.0 }
+      net:iset: { x: 320.0, y: 320.0 }
+      net:gnd: { x: 352.0, y: 560.0 }
+    wire_routes:
+      VIN.P->adapter_6v:
+        points:
+          - { x: 160.0, y: 192.0 }
+      VIN.N->gnd:
+        points:
+          - { x: 112.0, y: 560.0 }
+      UCHG.IN->adapter_6v:
+        points:
+          - { x: 240.0, y: 192.0 }
+      UCHG.BAT->charge_out:
+        points:
+          - { x: 432.0, y: 176.0 }
+      UCHG.OUT->sys_out:
+        points:
+          - { x: 496.0, y: 320.0 }
+      UCHG.VSS->gnd:
+        points:
+          - { x: 320.0, y: 560.0 }
+      UCHG.ISET->iset:
+        points:
+          - { x: 320.0, y: 320.0 }
+      RISET.A->iset:
+        points:
+          - { x: 368.0, y: 320.0 }
+      RISET.B->gnd:
+        points:
+          - { x: 368.0, y: 560.0 }
+      VSENSE.P->charge_out:
+        points:
+          - { x: 464.0, y: 176.0 }
+      VSENSE.N->battery:
+        points:
+          - { x: 592.0, y: 176.0 }
+      CBAT.A->battery:
+        points:
+          - { x: 688.0, y: 176.0 }
+      CBAT.B->gnd:
+        points:
+          - { x: 688.0, y: 560.0 }
+      RLOAD.A->sys_out:
+        points:
+          - { x: 688.0, y: 320.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 688.0, y: 560.0 }
+  components:
+    VIN:
+      model: generic.analog.dc_voltage_source
+      part_number: ADAPTER_6V_SOURCE
+      pins:
+        P: adapter_6v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 6.0
+    UCHG:
+      model: vendor.ti.bq24075
+      part_number: BQ24075RGTR
+      parameters:
+        programmed_charge_current_A: 0.45
+      power_domains:
+        IN: adapter_6v
+        BAT: charge_out
+        OUT: sys_out
+      pins:
+        IN: adapter_6v
+        BAT: charge_out
+        OUT: sys_out
+        VSS: gnd
+        ISET: iset
+    RISET:
+      model: generic.analog.resistor
+      part_number: 1k98_1pct
+      pins:
+        A: iset
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1977.7777777778
+    VSENSE:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: charge_out
+        N: battery
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    CBAT:
+      model: generic.analog.capacitor
+      pins:
+        A: battery
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
+        initial_v: 0.0
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: sys_out
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 5500.0
+  nets:
+    adapter_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+      supply_current_limit_A: 1.0
+    charge_out:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    battery:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    sys_out:
+      kind: power
+      nominal_voltage: 5.5
+      powered: true
+    iset:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: bq24075_power_path_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VIN
+          - UCHG
+          - RISET
+          - VSENSE
+          - CBAT
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 082ba3056b8545dbdc1d366aaa1bf91cc681eb83da19d8e228d2739894e455e9
+      node_bindings:
+        - { node: adapter, net: adapter_6v }
+        - { node: charge, net: charge_out }
+        - { node: battery, net: battery }
+        - { node: sysout, net: sys_out }
+        - { node: iset, net: iset }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: adapter, endpoint: { component: VIN, pin: P } }
+        - { node: "0", endpoint: { component: VIN, pin: N } }
+        - { node: adapter, endpoint: { component: UCHG, pin: IN } }
+        - { node: charge, endpoint: { component: UCHG, pin: BAT } }
+        - { node: sysout, endpoint: { component: UCHG, pin: OUT } }
+        - { node: "0", endpoint: { component: UCHG, pin: VSS } }
+        - { node: iset, endpoint: { component: UCHG, pin: ISET } }
+        - { node: iset, endpoint: { component: RISET, pin: A } }
+        - { node: "0", endpoint: { component: RISET, pin: B } }
+        - { node: charge, endpoint: { component: VSENSE, pin: P } }
+        - { node: battery, endpoint: { component: VSENSE, pin: N } }
+        - { node: battery, endpoint: { component: CBAT, pin: A } }
+        - { node: "0", endpoint: { component: CBAT, pin: B } }
+        - { node: sysout, endpoint: { component: RLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 30.0
+        max_step_us: 0.05
+      stimuli:
+        - name: adapter_power_path_charge
+          description: 6 V adapter source feeds a BQ24075 behavioral power-path charger with a 1.98 kOhm ISET resistor, 5.5 kOhm system load, and 1 uF battery-node capacitor.
+      probes:
+        - name: v_adapter
+          expression: V(adapter)
+        - name: v_sysout
+          expression: V(sysout)
+        - name: v_bat
+          expression: V(battery)
+        - name: i_charge
+          expression: I(VSENSE)
+          quantity: current
+        - name: i_sys_load
+          expression: I(VCCI_RLOAD)
+          quantity: current
+      assertions:
+        - name: system_out_above_5p4v
+          probe: v_sysout
+          aggregation: min
+          start_us: 0.001
+          end_us: 29.0
+          relation: above
+          threshold_v: 5.4
+        - name: system_out_below_5p6v
+          probe: v_sysout
+          aggregation: max
+          start_us: 0.001
+          end_us: 29.0
+          relation: below
+          threshold_v: 5.6
+        - name: charge_current_above_400ma
+          probe: i_charge
+          aggregation: mean
+          start_us: 1.0
+          end_us: 5.0
+          relation: above
+          threshold_a: 0.4
+        - name: charge_current_below_500ma
+          probe: i_charge
+          aggregation: mean
+          start_us: 1.0
+          end_us: 5.0
+          relation: below
+          threshold_a: 0.5
+        - name: battery_rises_above_4v
+          probe: v_bat
+          aggregation: rising_crossing_time
+          start_us: 0.001
+          end_us: 29.0
+          threshold_v: 4.0
+          time_limit_us: 12.0
+          relation: below
+        - name: battery_below_regulation_max
+          probe: v_bat
+          aggregation: max
+          start_us: 0.001
+          end_us: 29.0
+          relation: below
+          threshold_v: 4.24
+        - name: system_load_current_near_1ma
+          probe: i_sys_load
+          aggregation: mean
+          start_us: 1.0
+          end_us: 29.0
+          relation: below
+          threshold_a: 0.0011

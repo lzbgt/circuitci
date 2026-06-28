@@ -197,6 +197,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   in a direct-open GUI example with routed schematic metadata, PROG resistor,
   battery-node voltage probes, charge-current probes, and executable charger
   checks.
+- `examples/good_bq24075_power_path_observation` proves the TI BQ24075
+  datasheet-backed power-path charger model can use a reduced generic
+  generated-SPICE face in a direct-open GUI example with routed schematic
+  metadata, ISET resistor, OUT/BAT voltage probes, charge-current probes, and
+  executable power-path charger checks.
 - `examples/loop_stability_bode_scope` proves file-backed AC/Bode loop-gain
   observation in a direct-open GUI example with routed schematic metadata,
   Bode artifact export, and executable phase/gain margin checks.

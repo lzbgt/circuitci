@@ -44,6 +44,20 @@ BCLAMP VBAT VSS I={5*(v(VBAT,VSS)-4.2+sqrt((v(VBAT,VSS)-4.2)*(v(VBAT,VSS)-4.2)+1
 RLEAK VBAT VSS 1G
 .ends CIRCUITCI_MCP73831_4V2_CHARGER
 
+.subckt CIRCUITCI_BQ24075_POWER_PATH_CHARGER IN BAT OUT VSS ISET
+* Reduced BQ24075 power-path charger behavior.
+* A 1 uA ISET bias makes the external RISET voltage encode the datasheet
+* ICHG = 890 / RISET relationship as ICHG = 0.00089 / V(ISET,VSS).
+* OUT is a smooth preliminary min(IN, 5.5 V) behavioral rail source. DPPM,
+* supplement mode, input-current limiting, thermal behavior, and termination
+* are intentionally not modeled.
+BISET ISET VSS I=1u
+BCHG IN BAT I={(0.00089/sqrt(v(ISET,VSS)*v(ISET,VSS)+1e-12))/(1+exp(25*(v(BAT,VSS)-4.2)))}
+BOUT OUT VSS V={0.5*(v(IN,VSS)+5.5-sqrt((v(IN,VSS)-5.5)*(v(IN,VSS)-5.5)+1e-6))}
+BCLAMP BAT VSS I={5*(v(BAT,VSS)-4.2+sqrt((v(BAT,VSS)-4.2)*(v(BAT,VSS)-4.2)+1e-8))}
+RLEAK BAT VSS 1G
+.ends CIRCUITCI_BQ24075_POWER_PATH_CHARGER
+
 .subckt CIRCUITCI_TLV803EA29_RESET_SUPERVISOR VDD GND RESET
 * Reduced TLV803EA29 active-low open-drain threshold behavior.
 * RESET is strongly pulled low while VDD is below the nominal 2.93 V threshold

@@ -49,3 +49,23 @@ requires the explicit parameter.
 This is intentionally static. It does not validate battery chemistry, thermal
 foldback, DPPM/supplement-mode transient behavior, charge termination, USB
 enumeration, ILIM/EN-derived current-limit state, or thermal dissipation.
+
+The model also declares `simulation.spice` metadata for generated Board IR
+SPICE. The generated-SPICE face points at the reduced-fidelity
+`CIRCUITCI_BQ24075_POWER_PATH_CHARGER` subcircuit in
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+`IN, BAT, OUT, VSS, ISET`
+
+That subcircuit models the datasheet 4.2 V BAT regulation target, a preliminary
+`min(IN, 5.5 V)` OUT rail source, and charge current from the external ISET
+resistor equation. It lets users observe power-path charger wiring, OUT rail
+voltage, battery-node voltage, and charge-current probes in Sketch/Scopes. It
+intentionally omits DPPM, battery supplement mode, ILIM/EN input-current state
+derivation, charge termination, CHG/PGOOD behavior, thermal regulation, timer
+behavior, battery chemistry, cell safety, package dissipation, and final
+charger sign-off.
+
+`examples/good_bq24075_power_path_observation` proves the BQ24075 generated
+SPICE workflow with OUT/BAT/current probes and executable checks. The GUI
+Examples picker registers the same fixture as `BQ24075 Power Path`.

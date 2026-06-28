@@ -57,6 +57,13 @@ const MCP73831_CHARGER_SCOPE_EXAMPLE_NAME: &str = "good_mcp73831_charger_observa
 const MCP73831_CHARGER_SCOPE_EXPECTED_TRACES: &[&str] = &["v_usb", "v_bat", "i_charge"];
 const MCP73831_CHARGER_SCOPE_EXPECTED_FREQUENCY: &str =
     "5 V USB input, 10 kOhm PROG resistor, and 100 mA charge observation";
+const BQ24075_POWER_PATH_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_bq24075_power_path_observation/project.yaml";
+const BQ24075_POWER_PATH_SCOPE_EXAMPLE_NAME: &str = "good_bq24075_power_path_observation";
+const BQ24075_POWER_PATH_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_adapter", "v_sysout", "v_bat", "i_charge", "i_sys_load"];
+const BQ24075_POWER_PATH_SCOPE_EXPECTED_FREQUENCY: &str =
+    "6 V adapter input, 5.5 V OUT path, and 450 mA ISET charge observation";
 const TLV803_RESET_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tlv803ea29_reset_observation/project.yaml";
 const TLV803_RESET_SCOPE_EXAMPLE_NAME: &str = "good_tlv803ea29_reset_observation";
@@ -184,6 +191,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: MCP73831_CHARGER_SCOPE_EXAMPLE_NAME,
         expected_traces: MCP73831_CHARGER_SCOPE_EXPECTED_TRACES,
         expected_frequency: MCP73831_CHARGER_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UCHG"),
+    },
+    GuiProjectExample {
+        id: "bq24075_power_path_scope",
+        category: "Power Path",
+        open_label: "Open BQ24075 Power Path Example",
+        run_label: "Open BQ24075 + Run Scopes",
+        workflow_title: "BQ24075 Power Path Workflow",
+        summary: "Adapter-powered charger with OUT rail and BAT charge-current checks.",
+        project_path: BQ24075_POWER_PATH_SCOPE_EXAMPLE_PROJECT,
+        project_name: BQ24075_POWER_PATH_SCOPE_EXAMPLE_NAME,
+        expected_traces: BQ24075_POWER_PATH_SCOPE_EXPECTED_TRACES,
+        expected_frequency: BQ24075_POWER_PATH_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UCHG"),
     },
     GuiProjectExample {

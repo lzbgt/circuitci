@@ -190,14 +190,15 @@ Current analog support:
   metadata paths.
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
-  enabled 3.3 V regulator rails, enabled load-switch paths, and MCP73831-style
-  PROG-programmed Li-Ion charger observations through explicit
+  enabled 3.3 V regulator rails, enabled load-switch paths, MCP73831-style
+  PROG-programmed Li-Ion charger observations, and BQ24075-style power-path
+  charger observations through explicit
   `simulation.spice` subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, AP2112K LDO rail, TPS22918 load switch, MCP73831
-  charger, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
-  divider-noise, and RC Monte Carlo yield workflows.
+  charger, BQ24075 power path, TLV803 reset-supervisor, loop-stability Bode,
+  DC divider-bias, divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -220,6 +221,14 @@ Current analog support:
   while the transient face stays explicitly reduced-fidelity and omits
   preconditioning, termination, STAT, thermal, timer, battery-chemistry, cell
   safety, and final charger sign-off behavior.
+- The TI BQ24075 power-path charger pack now has a datasheet-backed generated
+  SPICE observation face for adapter-fed OUT rail and ISET-programmed BAT
+  current behavior. Datasheet charge-current, ISET equation, IN/BAT/OUT
+  voltage metadata, and static power-tree limits remain source-backed, while
+  the transient face stays explicitly reduced-fidelity and omits DPPM,
+  supplement mode, ILIM/EN current-limit derivation, status pins, termination,
+  thermal, timer, battery-chemistry, cell safety, and final charger sign-off
+  behavior.
 - GUI generated run-setup creation and generated component inclusion infer
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned
