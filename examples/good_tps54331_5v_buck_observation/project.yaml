@@ -1,0 +1,240 @@
+project:
+  name: good_tps54331_5v_buck_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/regulators
+
+board:
+  schematic:
+    component_symbols:
+      VIN: Simulation_SPICE:VDC
+      VEN: Simulation_SPICE:VDC
+      UBUCK: Regulator_Switching:TPS54331
+      L1: Device:L
+      CBOOT: Device:C
+      RLOAD: Device:R
+    node_styles:
+      component:VIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UBUCK: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:L1: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CBOOT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VIN: { x: 64.0, y: 192.0 }
+      component:VEN: { x: 64.0, y: 336.0 }
+      component:UBUCK: { x: 320.0, y: 224.0 }
+      component:L1: { x: 496.0, y: 192.0 }
+      component:CBOOT: { x: 496.0, y: 320.0 }
+      component:RLOAD: { x: 656.0, y: 336.0 }
+      net:input_12v: { x: 176.0, y: 176.0 }
+      net:enable: { x: 176.0, y: 304.0 }
+      net:switch_node: { x: 432.0, y: 176.0 }
+      net:boot: { x: 432.0, y: 304.0 }
+      net:rail_5v: { x: 592.0, y: 176.0 }
+      net:gnd: { x: 336.0, y: 544.0 }
+    wire_routes:
+      VIN.P->input_12v:
+        points:
+          - { x: 160.0, y: 192.0 }
+      VIN.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      VEN.P->enable:
+        points:
+          - { x: 160.0, y: 336.0 }
+      VEN.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      UBUCK.VIN->input_12v:
+        points:
+          - { x: 240.0, y: 192.0 }
+      UBUCK.EN->enable:
+        points:
+          - { x: 240.0, y: 320.0 }
+      UBUCK.PH->switch_node:
+        points:
+          - { x: 432.0, y: 176.0 }
+      UBUCK.BOOT->boot:
+        points:
+          - { x: 432.0, y: 304.0 }
+      UBUCK.VSENSE->rail_5v:
+        points:
+          - { x: 592.0, y: 176.0 }
+      UBUCK.GND->gnd:
+        points:
+          - { x: 320.0, y: 544.0 }
+      L1.A->switch_node:
+        points:
+          - { x: 464.0, y: 176.0 }
+      L1.B->rail_5v:
+        points:
+          - { x: 592.0, y: 176.0 }
+      CBOOT.A->boot:
+        points:
+          - { x: 464.0, y: 304.0 }
+      CBOOT.B->switch_node:
+        points:
+          - { x: 464.0, y: 176.0 }
+      RLOAD.A->rail_5v:
+        points:
+          - { x: 704.0, y: 176.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 704.0, y: 544.0 }
+  components:
+    VIN:
+      model: generic.analog.dc_voltage_source
+      part_number: 12V_SOURCE
+      pins:
+        P: input_12v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 12.0
+    VEN:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: enable
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UBUCK:
+      model: vendor.ti.tps54331_5v
+      part_number: TPS54331DR
+      parameters:
+        observation_output_voltage_V: 5.0
+      power_domains:
+        VIN: input_12v
+        VSENSE: rail_5v
+      pins:
+        VIN: input_12v
+        EN: enable
+        PH: switch_node
+        BOOT: boot
+        VSENSE: rail_5v
+        GND: gnd
+    L1:
+      model: generic.analog.inductor
+      part_number: 10uH
+      pins:
+        A: switch_node
+        B: rail_5v
+      spice:
+        primitive: inductor
+        value_h: 0.000010
+    CBOOT:
+      model: generic.analog.capacitor
+      part_number: 100nF
+      pins:
+        A: boot
+        B: switch_node
+      spice:
+        primitive: capacitor
+        value_f: 0.0000001
+    RLOAD:
+      model: generic.analog.resistor
+      part_number: 50R_1pct
+      pins:
+        A: rail_5v
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 50.0
+  nets:
+    input_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+      supply_current_limit_A: 1.0
+    enable:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    switch_node:
+      kind: digital_or_analog
+    boot:
+      kind: digital_or_analog
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps54331_5v_buck_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VIN
+          - VEN
+          - UBUCK
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: e7a43c92e0023d2cc9fcb68ba5a2568d5da3ad0565afe1d90e5b3a8d71c80dd1
+      node_bindings:
+        - { node: vin, net: input_12v }
+        - { node: en, net: enable }
+        - { node: out5v, net: rail_5v }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vin, endpoint: { component: VIN, pin: P } }
+        - { node: "0", endpoint: { component: VIN, pin: N } }
+        - { node: en, endpoint: { component: VEN, pin: P } }
+        - { node: "0", endpoint: { component: VEN, pin: N } }
+        - { node: vin, endpoint: { component: UBUCK, pin: VIN } }
+        - { node: en, endpoint: { component: UBUCK, pin: EN } }
+        - { node: out5v, endpoint: { component: UBUCK, pin: VSENSE } }
+        - { node: "0", endpoint: { component: UBUCK, pin: GND } }
+        - { node: out5v, endpoint: { component: RLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 80.0
+        max_step_us: 0.2
+      stimuli:
+        - name: enabled_12v_to_5v_buck
+          description: 12 V input and 3.3 V enable drive a reduced TPS54331 5 V observation model feeding a 50 ohm load.
+      probes:
+        - name: v_input
+          expression: V(vin)
+        - name: v_enable
+          expression: V(en)
+        - name: v_rail5v
+          expression: V(out5v)
+        - name: i_load
+          expression: I(VCCI_RLOAD)
+          quantity: current
+      assertions:
+        - name: rail_above_4p9v
+          probe: v_rail5v
+          aggregation: min
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 4.9
+        - name: rail_below_5p1v
+          probe: v_rail5v
+          aggregation: max
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 5.1
+        - name: load_current_below_110ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_a: 0.11

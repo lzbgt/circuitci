@@ -308,8 +308,9 @@ when the monitored rail is driven by a detectable pulse source; op-amp presets
 add follower tracking checks when feedback ties the inverting input to the
 output and the non-inverting input is pulse-driven; comparator presets add
 output-state checks when one input is pulse-driven and the other is a fixed
-reference. Direct-open charger/power-path examples include MCP73831, BQ24075,
-and BQ25798 fixtures for generated-SPICE charge-current and rail observations.
+reference. Direct-open regulator and charger/power-path examples include
+TPS54331, MCP73831, BQ24075, and BQ25798 fixtures for generated-SPICE rail,
+charge-current, and load-current observations.
 Inserted model-backed components use the selected model's declared
 ports to seed editable Board IR pin bindings and generated per-pin nets, and
 Sketch-stage placement can target the current view center, an armed blank-canvas
@@ -497,11 +498,11 @@ form:
   traces or observations, and expected frequency or operating point before
   `Open` or `Run + Scopes`. The current entries cover the checked-in NE555
   astable-style fixture, RC low-pass sine fixture, comparator threshold
-  fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TPS22918
-  load-switch fixture, MCP73831 charger fixture, BQ24075 power-path charger
-  fixture, BQ25798 NVDC charger fixture, TLV803 reset-supervisor fixture,
-  loop-stability Bode fixture, DC divider-bias fixture, divider-noise fixture,
-  and RC Monte Carlo yield fixture; all
+  fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TPS54331 buck rail
+  fixture, TPS22918 load-switch fixture, MCP73831 charger fixture, BQ24075
+  power-path charger fixture, BQ25798 NVDC charger fixture, TLV803
+  reset-supervisor fixture, loop-stability Bode fixture, DC divider-bias
+  fixture, divider-noise fixture, and RC Monte Carlo yield fixture; all
   direct-open projects include display-only routed schematic waypoints. Opening
   one lands directly in Sketch with a deferred Fit All, so the first view is the
   readable connected network. When a scope-ready fixture
@@ -509,8 +510,9 @@ form:
   a workflow status with direct `Run + Scopes` / `Open Scope Activity` actions,
   and the Sketch side dock mirrors those compact workflow actions above Run
   Readiness. Examples that contain a known SPICE-ready function block, such as
-  the comparator threshold, op-amp buffer, AP2112K LDO, TPS22918 load-switch,
-  MCP73831 charger, BQ24075 power-path charger, and TLV803 reset fixtures, also
+  the comparator threshold, op-amp buffer, AP2112K LDO, TPS54331 buck,
+  TPS22918 load-switch, MCP73831 charger, BQ24075 power-path charger, and
+  TLV803 reset fixtures, also
   show `Create Checks` to append a generated run setup with model-aware probes
   and observation checks for the placed component.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,

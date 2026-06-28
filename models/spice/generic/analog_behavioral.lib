@@ -22,6 +22,16 @@ BOUT VOUT GND V={3.3/(1+exp(-20*(v(EN,GND)-1)))}
 ROUT VOUT GND 1G
 .ends CIRCUITCI_IDEAL_LDO_3V3
 
+.subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
+* Reduced TPS54331 5 V buck-regulator observation behavior.
+* The output is an ideal preliminary rail source gated by VIN input range and
+* EN. Switching action, PH/BOOT behavior, compensation, ripple, current limit,
+* thermal behavior, and Eco-mode are intentionally not modeled.
+BOUT VSENSE GND V={VOUT_V/(1+exp(-4*(v(VIN,GND)-3.5)))/(1+exp(-20*(v(EN,GND)-1)))}
+ROUT VSENSE GND 1G
+RBIAS EN GND 1G
+.ends CIRCUITCI_TPS54331_5V_BUCK
+
 .subckt CIRCUITCI_TPS22918_LOAD_SWITCH VIN VOUT GND ON
 * Reduced TPS22918 enabled high-side switch behavior.
 * ON controls a smooth VIN-to-VOUT conductance near the datasheet typical

@@ -670,6 +670,17 @@ enable, and capacitor metadata while its generated-SPICE face points at
 `CIRCUITCI_IDEAL_LDO_3V3`. That lets users place and observe the real part in
 Sketch/Scopes without pretending the generic subcircuit is a vendor transient,
 thermal, stability, or PSRR model.
+`vendor.ti.tps54331_5v` follows the same pattern for 5 V buck-regulator rail
+observation: its TI source-pinned input range, output-current class,
+switching-frequency class, configured output-voltage metadata, and static
+power-conversion metadata remain source-backed, while its generated-SPICE face
+uses a reduced enabled output source. Its `simulation.spice.instance_parameters`
+map an optional `observation_output_voltage_V` Board IR component parameter into
+the SPICE `VOUT_V` instance parameter with a visible 5 V default. That model can
+exercise VIN/EN/VSENSE wiring and preliminary output/load-current observation,
+but not PH/BOOT switching, compensation, inductor ripple/current, output ripple,
+current limit, Eco-mode, startup timing, thermal behavior, layout, EMI, or
+loop-stability sign-off.
 `vendor.ti.tlv803ea29` follows the same pattern for reset-supervisor threshold
 observation: its datasheet threshold, delay, active-low open-drain topology, and
 pin metadata remain source-backed, while its generated-SPICE face points at a

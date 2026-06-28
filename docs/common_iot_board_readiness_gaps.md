@@ -45,6 +45,9 @@ plus a reduced generated-SPICE observation face for OUT/BAT/current checks. TI
 BQ25798 now covers a 1- to 4-cell buck-boost/NVDC charger pack for static
 input/current-budget screening plus a reduced generated-SPICE observation face
 for adapter/SYS/BAT/current checks driven by Board IR component parameters. TI
+TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
+static input/output current screening plus a reduced generated-SPICE observation
+face for VIN/EN/VSENSE/load-current checks. TI
 TPS62162-3.3 now covers a common 3 V to 17 V, 1 A fixed 3.3 V synchronous buck
 regulator for static input-range, output-current, support-capacitance, and
 direct output-inductance screening. TI TPS61023 now covers the peer-board 5 V

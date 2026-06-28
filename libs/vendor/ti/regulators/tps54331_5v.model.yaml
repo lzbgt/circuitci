@@ -37,6 +37,21 @@ power_conversion:
   output_pin: VSENSE
   switch_pin: PH
   max_output_current_A: 3.0
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS54331_5V_BUCK
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, EN, GND, VSENSE]
+    instance_parameters:
+      - spice_name: VOUT_V
+        component_parameter: observation_output_voltage_V
+        default_value: 5.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary VIN/EN/VSENSE generated-SPICE rail checks only.
+      - Uses the source-backed 3.5 V to 28 V input range, 3 A output-current class, and 5 V configured output metadata while emitting an ideal enabled output source.
+      - PH, BOOT, compensation, inductor ripple/current, output ripple, current limit, Eco-mode, thermal behavior, layout, EMI, and loop-stability sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS54331

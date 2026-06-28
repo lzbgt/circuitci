@@ -192,6 +192,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   subcircuit, model-file, and SHA-pinned artifact path used by vendor models.
   The same fixture is registered as a direct-open GUI scope example with routed
   schematic metadata for op-amp buffer observation.
+- `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
+  datasheet-backed buck-regulator model can use a reduced generated-SPICE face
+  in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE
+  voltage probes, load-current probes, and executable preliminary rail checks.
 - `examples/comparator_threshold_scope` proves the generic comparator
   macro-model in a direct-open GUI example with routed schematic metadata,
   named scope probes, and executable threshold/output-state waveform checks.

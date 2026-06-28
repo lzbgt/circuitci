@@ -190,21 +190,28 @@ Current analog support:
   metadata paths.
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
-  enabled 3.3 V regulator rails, enabled load-switch paths, MCP73831-style
-  PROG-programmed Li-Ion charger observations, and BQ24075-style power-path
-  charger observations, and BQ25798-style buck-boost/NVDC charger observations
-  through explicit
+  enabled 3.3 V regulator rails, TPS54331-style 5 V buck-regulator rail
+  observations, enabled load-switch paths, MCP73831-style PROG-programmed
+  Li-Ion charger observations, BQ24075-style power-path charger observations,
+  and BQ25798-style buck-boost/NVDC charger observations through explicit
   `simulation.spice` subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
-  threshold, op-amp buffer, AP2112K LDO rail, TPS22918 load switch, MCP73831
-  charger, BQ24075 power path, BQ25798 NVDC power path, TLV803
-  reset-supervisor, loop-stability Bode, DC divider-bias, divider-noise, and
-  RC Monte Carlo yield workflows.
+  threshold, op-amp buffer, AP2112K LDO rail, TPS54331 buck rail, TPS22918
+  load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC power path,
+  TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
+  divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
   3.3 V LDO macro-model for preliminary rail observation.
+- The TI TPS54331-5V vendor component pack now has a datasheet-backed
+  generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
+  input range, 3 A output-current class, switching-frequency class, and
+  5 V configured output metadata remain source-backed, while the transient face
+  stays explicitly reduced-fidelity and omits PH/BOOT switching, compensation,
+  inductor ripple/current, output ripple, current limit, Eco-mode, startup
+  timing, thermal behavior, layout, EMI, and loop-stability sign-off.
 - The TI TLV803EA29 reset-supervisor pack now has a datasheet-backed generated
   SPICE observation face for active-low open-drain threshold behavior with an
   external pull-up. Datasheet delay and threshold metadata remain available for
