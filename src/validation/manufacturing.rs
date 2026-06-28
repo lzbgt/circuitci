@@ -9,6 +9,7 @@ mod geometry;
 mod pin1_orientation;
 mod process;
 mod rf_antenna;
+mod rf_antenna_measurement;
 mod solder_mask;
 mod solder_paste_bga;
 mod solder_paste_ic;
@@ -55,8 +56,9 @@ pub(super) use drill_slot::{
 pub(super) use pin1_orientation::validate_pin_1_orientation;
 pub(super) use rf_antenna::{
     validate_rf_antenna_feed_path, validate_rf_antenna_keepout,
-    validate_rf_antenna_matching_topology, validate_rf_antenna_measured_performance,
+    validate_rf_antenna_matching_topology,
 };
+pub(super) use rf_antenna_measurement::validate_rf_antenna_measured_performance;
 pub(super) use solder_mask::{
     validate_solder_mask_dam, validate_solder_mask_opening,
     validate_solder_paste_aperture_area_ratio, validate_solder_paste_aperture_size,

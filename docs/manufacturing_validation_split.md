@@ -33,15 +33,20 @@ inductance, stitching density, or electromagnetic return current.
 
 `src/validation/manufacturing/rf_antenna.rs` owns
 `RF_ANTENNA_KEEPOUT_VALID`, `RF_ANTENNA_FEED_PATH_VALID`,
-`RF_ANTENNA_MATCHING_TOPOLOGY_VALID`, and
-`RF_ANTENNA_MEASURED_PERFORMANCE_VALID`, including explicit keepout/feed-path
-/ matching-network / measurement name parameter parsing, reviewed antenna
-layout and measurement metadata validation, same-layer copper comparison,
-antenna-net exclusion, feed-path route length/proximity checks, reviewed
-matching topology role-count checks, measured return-loss/frequency-band
-checks, sampled sweep point-count/frequency-step checks, fail-closed missing
-evidence, and stable report construction. It
+and `RF_ANTENNA_MATCHING_TOPOLOGY_VALID`, including explicit keepout/feed-path
+/ matching-network name parameter parsing, reviewed antenna layout/topology
+metadata validation, same-layer copper comparison, antenna-net exclusion,
+feed-path route length/proximity checks, reviewed matching topology role-count
+checks, fail-closed missing evidence, and stable report construction. It
 intentionally does not model RF matching, radiation, or field behavior.
+
+`src/validation/manufacturing/rf_antenna_measurement.rs` owns
+`RF_ANTENNA_MEASURED_PERFORMANCE_VALID`, including explicit measurement name
+parameter parsing, reviewed RF measurement metadata validation, measured
+return-loss/frequency-band checks, sampled sweep point-count/frequency-step
+checks, fail-closed missing evidence, and stable report construction. It
+intentionally does not interpolate S-parameters, model enclosure/cable effects,
+or replace RF qualification measurements.
 
 `src/validation/manufacturing/thermal_copper.rs` owns
 `THERMAL_COPPER_AREA_VALID`, `THERMAL_VIA_STACKUP_VALID`,
