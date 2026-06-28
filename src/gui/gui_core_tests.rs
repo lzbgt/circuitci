@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 18);
+    assert_eq!(examples.len(), 19);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -890,6 +890,46 @@ fn gui_project_example_registry_lists_tps22918_load_switch_scope_fixture() {
         "5 V enabled load switch into a 1 kOhm load"
     );
     assert_eq!(example.observation_preset_component, Some("USW"));
+}
+
+#[test]
+fn tps2121_power_mux_scope_fixture_is_registered_and_creates_checks() {
+    let example = gui_project_example_by_id("tps2121_power_mux_scope");
+    assert_eq!(example.category, "Power Mux");
+    assert_eq!(example.open_label, "Open TPS2121 Power Mux Example");
+    assert_eq!(
+        example.project_path,
+        "examples/good_tps2121_power_mux_observation/project.yaml"
+    );
+    assert_eq!(
+        example.expected_traces,
+        &["v_usb", "v_backup", "v_sys5v", "i_load"]
+    );
+    assert_eq!(example.observation_preset_component, Some("UMUX"));
+
+    let mut app = CircuitCiApp::default();
+    app.request_project_example_load(example, None);
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UMUX".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "umux_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "umux_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_umux_out"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umux_out_selected_source_min_voltage")
+    );
 }
 
 #[test]

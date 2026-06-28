@@ -1,0 +1,227 @@
+project:
+  name: good_tps2121_power_mux_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/power_muxes
+
+board:
+  schematic:
+    component_symbols:
+      VUSB: Simulation_SPICE:VDC
+      VBACKUP: Simulation_SPICE:VDC
+      UMUX: Power_Management:TPS2121
+      RILIM: Device:R
+      RLOAD: Device:R
+    node_styles:
+      component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VBACKUP: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UMUX: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RILIM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VUSB: { x: 64.0, y: 176.0 }
+      component:VBACKUP: { x: 64.0, y: 320.0 }
+      component:UMUX: { x: 336.0, y: 224.0 }
+      component:RILIM: { x: 336.0, y: 432.0 }
+      component:RLOAD: { x: 640.0, y: 336.0 }
+      net:usb_5v: { x: 176.0, y: 160.0 }
+      net:backup_5v: { x: 176.0, y: 304.0 }
+      net:sys_5v: { x: 544.0, y: 160.0 }
+      net:mux_ilim: { x: 336.0, y: 368.0 }
+      net:gnd: { x: 336.0, y: 544.0 }
+    wire_routes:
+      VUSB.P->usb_5v:
+        points:
+          - { x: 144.0, y: 176.0 }
+      VUSB.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      VBACKUP.P->backup_5v:
+        points:
+          - { x: 144.0, y: 320.0 }
+      VBACKUP.N->gnd:
+        points:
+          - { x: 112.0, y: 544.0 }
+      UMUX.IN1->usb_5v:
+        points:
+          - { x: 256.0, y: 160.0 }
+      UMUX.IN2->backup_5v:
+        points:
+          - { x: 256.0, y: 304.0 }
+      UMUX.OUT->sys_5v:
+        points:
+          - { x: 544.0, y: 160.0 }
+      UMUX.ILIM->mux_ilim:
+        points:
+          - { x: 336.0, y: 368.0 }
+      UMUX.GND->gnd:
+        points:
+          - { x: 336.0, y: 544.0 }
+      RILIM.A->mux_ilim:
+        points:
+          - { x: 336.0, y: 368.0 }
+      RILIM.B->gnd:
+        points:
+          - { x: 336.0, y: 544.0 }
+      RLOAD.A->sys_5v:
+        points:
+          - { x: 640.0, y: 160.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 640.0, y: 544.0 }
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    VBACKUP:
+      model: generic.analog.dc_voltage_source
+      part_number: INACTIVE_BACKUP_SOURCE
+      pins:
+        P: backup_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 0.0
+    UMUX:
+      model: vendor.ti.tps2121
+      part_number: TPS2121RUXT
+      parameters:
+        selected_input: in1
+        observation_selected_input_index: 1.0
+      power_domains:
+        IN1: usb_5v
+        IN2: backup_5v
+        OUT: sys_5v
+      pins:
+        IN1: usb_5v
+        IN2: backup_5v
+        OUT: sys_5v
+        GND: gnd
+        ILIM: mux_ilim
+    RILIM:
+      model: generic.analog.resistor
+      part_number: 22.1k
+      pins:
+        A: mux_ilim
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 22100.0
+    RLOAD:
+      model: generic.analog.resistor
+      part_number: 100R_1pct
+      pins:
+        A: sys_5v
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100.0
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 1.0
+    backup_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: false
+    sys_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    mux_ilim:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps2121_power_mux_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VUSB
+          - VBACKUP
+          - UMUX
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 918f3fa4c6f15f8a383e847d2120d32784dcba76a3212d18503b9e9f4fb036b3
+      node_bindings:
+        - { node: in1, net: usb_5v }
+        - { node: in2, net: backup_5v }
+        - { node: out5v, net: sys_5v }
+        - { node: ilim, net: mux_ilim }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: in1, endpoint: { component: VUSB, pin: P } }
+        - { node: "0", endpoint: { component: VUSB, pin: N } }
+        - { node: in2, endpoint: { component: VBACKUP, pin: P } }
+        - { node: "0", endpoint: { component: VBACKUP, pin: N } }
+        - { node: in1, endpoint: { component: UMUX, pin: IN1 } }
+        - { node: in2, endpoint: { component: UMUX, pin: IN2 } }
+        - { node: out5v, endpoint: { component: UMUX, pin: OUT } }
+        - { node: "0", endpoint: { component: UMUX, pin: GND } }
+        - { node: ilim, endpoint: { component: UMUX, pin: ILIM } }
+        - { node: out5v, endpoint: { component: RLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 80.0
+        max_step_us: 0.2
+      stimuli:
+        - name: usb_selected_power_mux
+          description: 5 V USB input is selected through a reduced TPS2121 power-mux observation model while the backup input is inactive.
+      probes:
+        - name: v_usb
+          expression: V(in1)
+        - name: v_backup
+          expression: V(in2)
+        - name: v_sys5v
+          expression: V(out5v)
+        - name: i_load
+          expression: I(VCCI_RLOAD)
+          quantity: current
+      assertions:
+        - name: sys_above_4p9v
+          probe: v_sys5v
+          aggregation: min
+          start_us: 5.0
+          end_us: 80.0
+          relation: above
+          threshold_v: 4.9
+        - name: sys_below_5p1v
+          probe: v_sys5v
+          aggregation: max
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 5.1
+        - name: backup_below_100mv
+          probe: v_backup
+          aggregation: max
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_v: 0.1
+        - name: load_current_below_55ma
+          probe: i_load
+          aggregation: mean
+          start_us: 5.0
+          end_us: 80.0
+          relation: below
+          threshold_a: 0.055

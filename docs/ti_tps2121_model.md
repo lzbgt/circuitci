@@ -32,6 +32,28 @@ parameters:
 That value represents the board's intended static source-selection state for
 `POWER_TREE_VALID`.
 
+The model also declares `simulation.spice` metadata for generated Board IR
+observation. Its SPICE face points to
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+```text
+IN1 IN2 GND OUT ILIM
+```
+
+The generated subcircuit instance can map a numeric Board IR component
+parameter into the selected source:
+
+```yaml
+instance_parameters:
+  - spice_name: SELECT_INPUT
+    component_parameter: observation_selected_input_index
+    default_value: 1.0
+```
+
+`observation_selected_input_index: 1.0` selects `IN1`; `2.0` selects `IN2`.
+This numeric setting is only for generated-SPICE observation. The string
+`selected_input` parameter remains the static power-tree contract.
+
 ## Validation Use
 
 `POWER_TREE_VALID` uses the model's `power_mux` metadata to check:
@@ -41,6 +63,13 @@ That value represents the board's intended static source-selection state for
 - output load current does not exceed the modeled mux current capability,
 - input/output rail voltages are within modeled port ranges.
 
-This is intentionally static. It does not validate switchover droop, reverse
-current magnitude, ILIM resistor-derived current limits, priority divider
-thresholds, soft-start timing, thermal behavior, or layout.
+This is a static power-mux screen plus a reduced generated-SPICE selected-source
+observation face. It does not validate switchover droop, reverse current
+magnitude, ILIM resistor-derived current limits, priority divider thresholds,
+soft-start timing, thermal behavior, status output behavior, or layout.
+
+The direct-open GUI fixture lives at:
+
+```text
+examples/good_tps2121_power_mux_observation/project.yaml
+```

@@ -208,6 +208,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed 5 V boost model can use a reduced generated-SPICE face with
   VIN/EN/VOUT probes, load-current probes, and executable preliminary rail
   checks.
+- `examples/good_tps2121_power_mux_observation` proves the TI TPS2121
+  datasheet-backed power-mux model can use a reduced generated-SPICE face with
+  IN1/IN2/OUT probes, load-current probes, and executable preliminary
+  selected-source rail checks.
 - `examples/comparator_threshold_scope` proves the generic comparator
   macro-model in a direct-open GUI example with routed schematic metadata,
   named scope probes, and executable threshold/output-state waveform checks.

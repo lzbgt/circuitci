@@ -691,6 +691,18 @@ exercise VIN/EN/VOS or VIN/EN/VOUT wiring and preliminary output/load-current
 observation, but not SW/L1/L2 switching, feedback-loop dynamics, ripple, current
 limit, PG/MODE behavior, thermal behavior, layout, EMI, or loop-stability
 sign-off.
+`vendor.ti.tps2121` follows the same pattern for selected-source power-mux
+observation: its TI source-pinned input range, output-current class,
+reverse-blocking metadata, string `selected_input` static contract, and
+`power_mux` metadata remain source-backed, while its generated-SPICE face uses a
+reduced ideal selected-source output. Its `simulation.spice.instance_parameters`
+map optional numeric `observation_selected_input_index` into the SPICE
+`SELECT_INPUT` parameter so generated observations can choose IN1 or IN2 without
+changing the static power-tree parameter. That model can exercise IN1/IN2/OUT
+wiring and preliminary output/load-current observation, but not priority
+threshold comparators, switchover droop, reverse-current magnitude,
+ILIM-derived current limit, soft-start timing, thermal behavior, status output,
+layout, or final mux sign-off.
 `vendor.ti.tlv803ea29` follows the same pattern for reset-supervisor threshold
 observation: its datasheet threshold, delay, active-low open-drain topology, and
 pin metadata remain source-backed, while its generated-SPICE face points at a

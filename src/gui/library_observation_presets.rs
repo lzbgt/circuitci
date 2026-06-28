@@ -290,6 +290,32 @@ fn observation_default_assertions(
             (0.0, stop_time_us),
         ));
     }
+    if let Some(power_mux) = &model.power_mux
+        && let Some(output_probe) =
+            probe_for_component_pin(probes, component, &power_mux.output_pin)
+        && let Some(output_net) = component.pins.get(&power_mux.output_pin)
+        && let Some(nominal_v) = nominal_voltage_for_net(project, output_net)
+        && nominal_v > 0.0
+    {
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_selected_source_min_voltage", output_probe.probe_name),
+            &output_probe.probe_name,
+            "min",
+            "above",
+            nominal_v * 0.98,
+            (0.0, stop_time_us),
+        ));
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_selected_source_max_voltage", output_probe.probe_name),
+            &output_probe.probe_name,
+            "max",
+            "below",
+            nominal_v * 1.02,
+            (0.0, stop_time_us),
+        ));
+    }
     if let Some(charger) = &model.battery_charger
         && let Some(battery_probe) =
             probe_for_component_pin(probes, component, &charger.battery_pin)

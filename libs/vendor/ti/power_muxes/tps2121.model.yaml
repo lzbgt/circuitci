@@ -55,6 +55,21 @@ power_mux:
     - name: in2
       input_pin: IN2
       reverse_blocking: true
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS2121_POWER_MUX
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [IN1, IN2, GND, OUT, ILIM]
+    instance_parameters:
+      - spice_name: SELECT_INPUT
+        component_parameter: observation_selected_input_index
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary selected-input IN1/IN2 to OUT generated-SPICE rail checks only.
+      - Uses source-backed 2.8 V to 22 V input range, 4.5 A current class, reverse-blocking metadata, and selected-input Board IR metadata while emitting an ideal selected-source output.
+      - Priority threshold comparators, switchover droop, reverse-current magnitude, ILIM resistor-derived current limit, soft-start timing, thermal behavior, status output, and layout sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS2121RUXT
