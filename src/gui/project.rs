@@ -108,6 +108,13 @@ const ESD2CAN24_Q1_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_canh", "v_canl", "i_canh_source", "i_canl_source"];
 const ESD2CAN24_Q1_SCOPE_EXPECTED_FREQUENCY: &str =
     "normal CANH/CANL voltages below the 24 V ESD2CAN24-Q1 standoff limit";
+const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
+const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
+const ESDS552_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_rs485_a", "v_rs485_b", "i_a_source", "i_b_source"];
+const ESDS552_SCOPE_EXPECTED_FREQUENCY: &str =
+    "normal RS-485 A/B voltages below the 12 V ESDS552 standoff limit";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -379,6 +386,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: ESD2CAN24_Q1_SCOPE_EXAMPLE_NAME,
         expected_traces: ESD2CAN24_Q1_SCOPE_EXPECTED_TRACES,
         expected_frequency: ESD2CAN24_Q1_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UESD"),
+    },
+    GuiProjectExample {
+        id: "esds552_scope",
+        category: "Protection",
+        open_label: "Open ESDS552 Example",
+        run_label: "Open ESDS552 + Run Scopes",
+        workflow_title: "ESDS552 RS-485 ESD Workflow",
+        summary: "Source-backed RS-485/RS-422 ESD standoff and line-capacitance observation.",
+        project_path: ESDS552_SCOPE_EXAMPLE_PROJECT,
+        project_name: ESDS552_SCOPE_EXAMPLE_NAME,
+        expected_traces: ESDS552_SCOPE_EXPECTED_TRACES,
+        expected_frequency: ESDS552_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UESD"),
     },
     GuiProjectExample {

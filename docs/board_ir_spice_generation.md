@@ -233,6 +233,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   ESD2CAN24-Q1 datasheet-backed CAN ESD model can use a reduced generated-SPICE
   face for normal-operation CANH/CANL standoff checks with the source-backed
   3 pF line-capacitance load.
+- `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
+  datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
+  generated-SPICE face for normal-operation A/B standoff checks with the
+  source-backed 11 pF maximum line-capacitance load.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

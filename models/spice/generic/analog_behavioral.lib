@@ -164,6 +164,18 @@ RCANH CANH GND 1G
 RCANL CANL GND 1G
 .ends CIRCUITCI_ESD2CAN24_Q1_CAN_ESD
 
+.subckt CIRCUITCI_ESDS552_RS485_ESD A B GND
+* Reduced ESDS552 RS-485/RS-422 ESD/surge observation behavior.
+* Normal-operation model only: 11 pF maximum IO-to-ground capacitance loads and
+* high-impedance leakage placeholders. IEC ESD/surge pulse clamping, surge
+* response, RS-485 common-mode stress, termination, cable harness behavior, and
+* signal integrity are intentionally not modeled.
+CA A GND 11p
+CB B GND 11p
+RA A GND 1G
+RB B GND 1G
+.ends CIRCUITCI_ESDS552_RS485_ESD
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

@@ -1,5 +1,5 @@
 project:
-  name: good_ti_esd2can24_q1_can_esd_observation
+  name: good_ti_esds552_rs485_esd_observation
   version: 0.1.0
 
 libraries:
@@ -9,80 +9,80 @@ libraries:
 board:
   schematic:
     component_symbols:
-      VCANH: Simulation_SPICE:VDC
-      VCANL: Simulation_SPICE:VDC
-      UESD: Interface_CAN:ESD2CAN24-Q1
+      VA: Simulation_SPICE:VDC
+      VB: Simulation_SPICE:VDC
+      UESD: Interface_RS485:ESDS552
     node_styles:
-      component:VCANH: { rotation_deg: 90, mirrored: false, pin_side: auto }
-      component:VCANL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VB: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:UESD: { rotation_deg: 0, mirrored: false, pin_side: auto }
     node_positions:
-      component:VCANH: { x: 64.0, y: 160.0 }
-      component:VCANL: { x: 64.0, y: 320.0 }
+      component:VA: { x: 64.0, y: 160.0 }
+      component:VB: { x: 64.0, y: 320.0 }
       component:UESD: { x: 352.0, y: 240.0 }
-      net:canh: { x: 208.0, y: 160.0 }
-      net:canl: { x: 208.0, y: 320.0 }
+      net:rs485_a: { x: 208.0, y: 160.0 }
+      net:rs485_b: { x: 208.0, y: 320.0 }
       net:gnd: { x: 352.0, y: 480.0 }
     wire_routes:
-      VCANH.P->canh:
+      VA.P->rs485_a:
         points:
           - { x: 160.0, y: 176.0 }
-      VCANH.N->gnd:
+      VA.N->gnd:
         points:
           - { x: 112.0, y: 480.0 }
-      VCANL.P->canl:
+      VB.P->rs485_b:
         points:
           - { x: 160.0, y: 336.0 }
-      VCANL.N->gnd:
+      VB.N->gnd:
         points:
           - { x: 112.0, y: 480.0 }
-      UESD.CANH->canh:
+      UESD.A->rs485_a:
         points:
           - { x: 288.0, y: 176.0 }
-      UESD.CANL->canl:
+      UESD.B->rs485_b:
         points:
           - { x: 288.0, y: 336.0 }
       UESD.GND->gnd:
         points:
           - { x: 352.0, y: 480.0 }
   components:
-    VCANH:
+    VA:
       model: generic.analog.dc_voltage_source
       pins:
-        P: canh
+        P: rs485_a
         N: gnd
       spice:
         primitive: dc_voltage_source
-        dc_v: 3.5
-    VCANL:
+        dc_v: 2.5
+    VB:
       model: generic.analog.dc_voltage_source
       pins:
-        P: canl
+        P: rs485_b
         N: gnd
       spice:
         primitive: dc_voltage_source
-        dc_v: 1.5
+        dc_v: 0.5
     UESD:
-      model: vendor.ti.esd2can24_q1
-      part_number: ESD2CAN24-Q1
+      model: vendor.ti.esds552
+      part_number: ESDS552
       pins:
-        CANH: canh
-        CANL: canl
+        A: rs485_a
+        B: rs485_b
         GND: gnd
   nets:
-    canh:
+    rs485_a:
       kind: power
-      nominal_voltage: 3.5
+      nominal_voltage: 2.5
       powered: true
-    canl:
+    rs485_b:
       kind: power
-      nominal_voltage: 1.5
+      nominal_voltage: 0.5
       powered: true
     gnd:
       kind: ground
 
 scenarios:
-  - name: esd2can24_q1_can_esd_observation
+  - name: esds552_rs485_esd_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -92,68 +92,68 @@ scenarios:
       generated:
         ground_net: gnd
         components:
-          - VCANH
-          - VCANL
+          - VA
+          - VB
           - UESD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 488b9908b8c41c7b104fa65cf64e8b889d1773e1bcdb51e4d52d73cea9cac677
       node_bindings:
-        - { node: canh, net: canh }
-        - { node: canl, net: canl }
+        - { node: rs485_a, net: rs485_a }
+        - { node: rs485_b, net: rs485_b }
         - { node: "0", net: gnd }
       pin_bindings:
-        - { node: canh, endpoint: { component: VCANH, pin: P } }
-        - { node: "0", endpoint: { component: VCANH, pin: N } }
-        - { node: canl, endpoint: { component: VCANL, pin: P } }
-        - { node: "0", endpoint: { component: VCANL, pin: N } }
-        - { node: canh, endpoint: { component: UESD, pin: CANH } }
-        - { node: canl, endpoint: { component: UESD, pin: CANL } }
+        - { node: rs485_a, endpoint: { component: VA, pin: P } }
+        - { node: "0", endpoint: { component: VA, pin: N } }
+        - { node: rs485_b, endpoint: { component: VB, pin: P } }
+        - { node: "0", endpoint: { component: VB, pin: N } }
+        - { node: rs485_a, endpoint: { component: UESD, pin: A } }
+        - { node: rs485_b, endpoint: { component: UESD, pin: B } }
         - { node: "0", endpoint: { component: UESD, pin: GND } }
       analysis:
         type: tran
         stop_time_us: 20.0
         max_step_us: 0.1
       stimuli:
-        - name: normal_can_dominant_line_standoff
-          description: ESD2CAN24-Q1 observes normal CAN dominant-state line voltages below the 24 V standoff limit with datasheet 3 pF line capacitance.
+        - name: normal_rs485_line_standoff
+          description: ESDS552 observes normal RS-485 A/B line voltages below the 12 V standoff limit with datasheet 11 pF line capacitance.
       probes:
-        - name: v_canh
-          expression: V(canh)
-        - name: v_canl
-          expression: V(canl)
-        - name: i_canh_source
-          expression: I(VCANH)
+        - name: v_rs485_a
+          expression: V(rs485_a)
+        - name: v_rs485_b
+          expression: V(rs485_b)
+        - name: i_a_source
+          expression: I(VA)
           quantity: current
-        - name: i_canl_source
-          expression: I(VCANL)
+        - name: i_b_source
+          expression: I(VB)
           quantity: current
       assertions:
-        - name: canh_below_standoff
-          probe: v_canh
+        - name: a_below_standoff
+          probe: v_rs485_a
           aggregation: max
           start_us: 1.0
           end_us: 20.0
           relation: below
-          threshold_v: 24.0
-        - name: canl_below_standoff
-          probe: v_canl
+          threshold_v: 12.0
+        - name: b_below_standoff
+          probe: v_rs485_b
           aggregation: max
           start_us: 1.0
           end_us: 20.0
           relation: below
-          threshold_v: 24.0
-        - name: canh_dominant_high_level
-          probe: v_canh
+          threshold_v: 12.0
+        - name: a_normal_high_level
+          probe: v_rs485_a
           aggregation: mean
           start_us: 1.0
           end_us: 20.0
           relation: above
-          threshold_v: 3.0
-        - name: canl_dominant_low_level
-          probe: v_canl
+          threshold_v: 2.0
+        - name: b_normal_low_level
+          probe: v_rs485_b
           aggregation: mean
           start_us: 1.0
           end_us: 20.0
           relation: below
-          threshold_v: 2.0
+          threshold_v: 1.0

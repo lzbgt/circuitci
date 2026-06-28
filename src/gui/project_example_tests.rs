@@ -207,6 +207,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UESD"),
         },
         ExpectedProjectExample {
+            id: "esds552_scope",
+            category: "Protection",
+            open_label: "Open ESDS552 Example",
+            run_label: "Open ESDS552 + Run Scopes",
+            summary: "Source-backed RS-485/RS-422 ESD standoff and line-capacitance observation.",
+            project_path: "examples/good_ti_esds552_rs485_esd_observation/project.yaml",
+            project_name: "good_ti_esds552_rs485_esd_observation",
+            expected_traces: &["v_rs485_a", "v_rs485_b", "i_a_source", "i_b_source"],
+            expected_frequency: "normal RS-485 A/B voltages below the 12 V ESDS552 standoff limit",
+            observation_preset_component: Some("UESD"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

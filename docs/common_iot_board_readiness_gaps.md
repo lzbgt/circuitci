@@ -52,7 +52,9 @@ validation plus a reduced generated-SPICE face for normal-operation
 VBUS/IO1/IO2 standoff and capacitance-load checks. TI ESD2CAN24-Q1 now covers
 CANH/CANL clamp presence, ground reference, 24 V standoff, 3 pF line
 capacitance, and a reduced generated-SPICE normal-operation CAN line
-observation face. TI BQ24075
+observation face. TI ESDS552 now covers RS-485/RS-422 A/B clamp presence,
+ground reference, 12 V standoff, 11 pF maximum line capacitance, and a reduced
+generated-SPICE normal-operation line observation face. TI BQ24075
 now covers a peer-board 1-cell linear charger with power-path pack for static
 input-range, charge-current range, and input-source current-budget screening,
 plus a reduced generated-SPICE observation face for OUT/BAT/current checks. TI

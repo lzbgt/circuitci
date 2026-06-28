@@ -18,11 +18,13 @@ signal_conditioning:
       reference_pin: GND
       reference: ground
       working_voltage_max_V: 12.0
+      line_capacitance_F: 11.0e-12
     - name: b
       protected_pin: B
       reference_pin: GND
       reference: ground
       working_voltage_max_V: 12.0
+      line_capacitance_F: 11.0e-12
 datasheet:
   manufacturer: Texas Instruments
   part_number: ESDS552
@@ -40,6 +42,11 @@ datasheet:
     protected_interfaces:
       conditions: Two-channel bidirectional ESD and surge protection for RS-485 and RS-422 interface lines.
       unit: note
+    line_capacitance:
+      conditions: IO to GND, VIO = 0 V, f = 1 MHz.
+      typ: 9.5
+      max: 11.0
+      unit: pF
   documents:
     - title: ESDS552 product page
       path: docs/research/smart_robot/sources/esds552_product.html
@@ -51,6 +58,17 @@ datasheet:
       source_url: https://www.ti.com/lit/gpn/ESDS552
       sha256: 3ce62d5dbb2b1637cb8591437db132fd4d1771059051ee0ab58aa2d0332fc936
       retrieved: "2026-06-17"
+simulation:
+  spice:
+    model_name: CIRCUITCI_ESDS552_RS485_ESD
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [A, B, GND]
+    operating_notes:
+      - Reduced ESDS552 observation model for preliminary RS-485/RS-422 A/B normal-line standoff and capacitance checks only.
+      - Uses source-backed plus/minus 12 V reverse standoff and 11 pF maximum IO-to-ground capacitance while leaving A/B pins high impedance during normal operation.
+      - Does not model IEC 61000-4-2, IEC 61000-4-5, ESD pulse clamping, surge response, RS-485 common-mode stress, termination, cable harness behavior, or signal integrity.
 model_quality:
   source: datasheet
   confidence: medium
@@ -58,6 +76,7 @@ model_quality:
     - rs485_esd_static_screening
     - interface_protection_review
     - static_rs485_clamp_presence_and_ground_reference
+    - preliminary_generated_spice_observation
   not_valid_for:
     - esd_or_surge_pulse_waveform
     - iec_61000_4_2_or_iec_61000_4_5_signoff

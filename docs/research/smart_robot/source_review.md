@@ -90,10 +90,13 @@ robot control-stack design pass.
   up to 256 bus nodes, and plus/minus 18 kV IEC ESD positioning. That makes it
   a sourced first RS485 transceiver for the motion-core smart-servo bus.
 - TI's ESDS552 product page identifies a 12 V, two-channel bidirectional ESD
-  and surge protection diode for RS-485 and RS-422. The first CircuitCI model
-  uses that source to check RS485 A/B clamp presence and ground reference on
-  the motion-core smart-servo port. This is not IEC surge/ESD pulse,
-  termination, placement, common-mode, or signal-integrity sign-off.
+  and surge protection diode for RS-485 and RS-422, and the saved datasheet
+  states 9.5 pF typical / 11 pF maximum IO-to-ground line capacitance. The
+  first CircuitCI model uses that source to check RS485 A/B clamp presence and
+  ground reference on the motion-core smart-servo port, and the generated-SPICE
+  face uses the same sourced standoff and capacitance facts for normal-line
+  observations. This is not IEC surge/ESD pulse, termination, placement,
+  common-mode, cable-harness, or signal-integrity sign-off.
 - TI's RS-485 and CAN termination source material supports using explicit
   endpoint topology before validating 120 ohm line termination. CircuitCI now
   checks the smart-robot endpoint-population variants by requiring a declared

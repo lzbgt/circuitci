@@ -202,6 +202,8 @@ Current analog support:
   capacitance observations,
   ESD2CAN24-Q1-style CAN ESD normal-operation standoff and line-capacitance
   observations,
+  ESDS552-style RS-485/RS-422 ESD/surge normal-operation standoff and
+  line-capacitance observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -215,7 +217,7 @@ Current analog support:
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, ESDS552 RS-485 ESD, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux,
   TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
@@ -281,6 +283,14 @@ Current analog support:
   transient face explicitly omits ISO 7637, ISO 10605, IEC ESD pulse clamping,
   surge energy, CAN signal integrity, cable-harness behavior, route placement,
   stub length, and final layout sign-off.
+- The TI ESDS552 vendor component pack now has a datasheet-backed generated
+  SPICE observation face for normal-operation RS-485/RS-422 A/B standoff checks
+  with source-backed `11 pF` maximum line capacitance. Its static clamp metadata
+  still covers RS-485 protection presence and ground-reference review, while
+  the transient face explicitly omits IEC 61000-4-2, IEC 61000-4-5, ESD/surge
+  pulse clamping, surge response, common-mode stress, bus termination,
+  cable-harness behavior, signal integrity, route placement, stub length, and
+  final layout sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and
