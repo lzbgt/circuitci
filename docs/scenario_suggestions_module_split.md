@@ -44,11 +44,12 @@ suggestions.
   suggestion templates, including process-preset suggestions, manufacturing
   metadata-gated templates, assembly/footprint evidence alignment, pin-1 marker
   templates, RF antenna keepout/feed-path templates from reviewed layout
-  constraints and imported copper/route/pad/placement evidence, reviewed
+  constraints and imported copper/route/pad/placement evidence, and
+  manufacturing suggestion orchestration.
+- `src/scenario_suggestions/manufacturing/thermal.rs` owns reviewed
   thermal-copper area, via/stackup, via-plating, package-temperature, and
   measured-temperature templates from board manufacturing metadata, model
-  metadata, and imported copper/route-via/stackup/drill evidence, and
-  manufacturing suggestion orchestration.
+  metadata, and imported copper/route-via/stackup/drill evidence.
 - `src/scenario_suggestions/manufacturing/route_physics.rs` owns
   stackup-aware adjacent-plane return-path and reference-plane slot-crossing
   discovery from explicit route/stackup/zone evidence, stitching-via discovery
