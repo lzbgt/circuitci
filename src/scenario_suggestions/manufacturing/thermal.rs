@@ -615,20 +615,35 @@ fn thermal_package_rule_has_metadata(bound: &BoundBoard<'_>, rule: &ThermalCoppe
             .get(&rule.component)
             .and_then(|component| bound.library.get(&component.model))
             .is_some_and(|model| {
-                reviewed_package_metadata_valid(bound, &rule.component)
-                    || model.thermal_package.as_ref().is_some_and(|package| {
-                        package
-                            .thermal_resistance_junction_to_ambient_c_per_w
-                            .is_finite()
-                            && package.thermal_resistance_junction_to_ambient_c_per_w > 0.0
-                            && package.max_junction_temperature_c.is_finite()
-                            && package.max_junction_temperature_c > 0.0
-                            && !package.source.trim().is_empty()
-                    })
+                let board_package = reviewed_package_metadata(bound, &rule.component);
+                let model_package = model.thermal_package.as_ref().filter(|package| {
+                    package_thermal_metadata_valid(
+                        package.thermal_resistance_junction_to_ambient_c_per_w,
+                        package.max_junction_temperature_c,
+                        &package.source,
+                    )
+                });
+                match (board_package, model_package) {
+                    (Some(board_package), Some(model_package)) => {
+                        (board_package.thermal_resistance_junction_to_ambient_c_per_w
+                            - model_package.thermal_resistance_junction_to_ambient_c_per_w)
+                            .abs()
+                            <= f64::EPSILON
+                            && (board_package.max_junction_temperature_c
+                                - model_package.max_junction_temperature_c)
+                                .abs()
+                                <= f64::EPSILON
+                    }
+                    (Some(_), None) | (None, Some(_)) => true,
+                    (None, None) => false,
+                }
             })
 }
 
-fn reviewed_package_metadata_valid(bound: &BoundBoard<'_>, component: &str) -> bool {
+fn reviewed_package_metadata<'a>(
+    bound: &'a BoundBoard<'_>,
+    component: &str,
+) -> Option<&'a crate::board_ir::ThermalPackageRule> {
     let mut matches = bound
         .project
         .board
@@ -636,19 +651,29 @@ fn reviewed_package_metadata_valid(bound: &BoundBoard<'_>, component: &str) -> b
         .thermal_packages
         .iter()
         .filter(|package| package.component == component);
-    let Some(package) = matches.next() else {
-        return false;
-    };
-    if matches.next().is_some() {
-        return false;
+    let package = matches.next()?;
+    if matches.next().is_some()
+        || !package_thermal_metadata_valid(
+            package.thermal_resistance_junction_to_ambient_c_per_w,
+            package.max_junction_temperature_c,
+            &package.source,
+        )
+    {
+        return None;
     }
-    package
-        .thermal_resistance_junction_to_ambient_c_per_w
-        .is_finite()
-        && package.thermal_resistance_junction_to_ambient_c_per_w > 0.0
-        && package.max_junction_temperature_c.is_finite()
-        && package.max_junction_temperature_c > 0.0
-        && !package.source.trim().is_empty()
+    Some(package)
+}
+
+fn package_thermal_metadata_valid(
+    rja_c_per_w: f64,
+    max_junction_temperature_c: f64,
+    source: &str,
+) -> bool {
+    rja_c_per_w.is_finite()
+        && rja_c_per_w > 0.0
+        && max_junction_temperature_c.is_finite()
+        && max_junction_temperature_c > 0.0
+        && !source.trim().is_empty()
 }
 
 fn thermal_package_temperature_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {

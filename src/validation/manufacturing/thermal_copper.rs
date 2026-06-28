@@ -670,9 +670,28 @@ fn package_thermal_metadata(
                 "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} has duplicate board.manufacturing.thermal_packages entries."
             ));
         }
-        return package_thermal_metadata_from_board(component_id, package);
+        let board_package = package_thermal_metadata_from_board(component_id, package)?;
+        if model.thermal_package.is_some() {
+            let model_package = package_thermal_metadata_from_model(component_id, model_id, model)?;
+            if !package_thermal_metadata_matches(&board_package, &model_package) {
+                return Err(format!(
+                    "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} board.manufacturing.thermal_packages evidence contradicts model {model_id} thermal_package metadata."
+                ));
+            }
+        }
+        return Ok(board_package);
     }
     package_thermal_metadata_from_model(component_id, model_id, model)
+}
+
+fn package_thermal_metadata_matches(
+    board_package: &PackageThermalMetadata,
+    model_package: &PackageThermalMetadata,
+) -> bool {
+    (board_package.rja_c_per_w - model_package.rja_c_per_w).abs() <= f64::EPSILON
+        && (board_package.max_junction_temperature_c - model_package.max_junction_temperature_c)
+            .abs()
+            <= f64::EPSILON
 }
 
 fn package_thermal_metadata_from_board(

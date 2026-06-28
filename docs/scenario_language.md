@@ -1498,7 +1498,9 @@ Thermal package temperature algorithm:
    metadata, either from `board.manufacturing.thermal_packages[]` for the
    component or from the model's `thermal_package` block, with positive
    `thermal_resistance_junction_to_ambient_C_per_W`, positive
-   `max_junction_temperature_C`, and non-empty `source`.
+   `max_junction_temperature_C`, and non-empty `source`. If both sources are
+   present for the component, require the reviewed Rja and max-junction values
+   to match exactly after parsing.
 6. Estimate static temperature rise as
    `power_loss_w * thermal_resistance_junction_to_ambient_C_per_W`.
 7. Estimate static junction temperature as
@@ -1507,7 +1509,7 @@ Thermal package temperature algorithm:
    estimated junction temperature exceeds
    `max_junction_temperature_C - max_junction_temperature_margin_C`.
 9. Fail closed when reviewed rule metadata, package metadata, or scenario
-   temperature limits are absent or malformed.
+   temperature limits are absent, malformed, duplicated, or contradictory.
 
 This is a static reviewed-loss and package-Rja evidence screen. It does not
 solve board spreading resistance, transient thermal impedance, airflow,

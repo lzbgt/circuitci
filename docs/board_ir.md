@@ -252,7 +252,10 @@ derating curves.
 and static `power_loss_w`, then combines that evidence with the resolved
 component model's `thermal_package` metadata or a matching reviewed
 `board.manufacturing.thermal_packages[]` entry, plus scenario-declared ambient
-/ temperature-rise limits. The Board IR rule does not itself prove package
+/ temperature-rise limits. When both Board IR and model package metadata are
+present for the component, their reviewed Rja and max-junction values must
+match; conflicting package evidence fails closed instead of silently choosing a
+source. The Board IR rule does not itself prove package
 thermal resistance, ambient temperature, airflow, enclosure behavior, or
 temperature-rise acceptability.
 

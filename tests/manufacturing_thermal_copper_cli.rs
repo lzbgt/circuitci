@@ -534,6 +534,39 @@ fn thermal_package_temperature_passes_with_reviewed_board_package_metadata() {
 }
 
 #[test]
+fn thermal_package_temperature_fails_closed_on_conflicting_board_and_model_package_metadata() {
+    let (_dir, project_path) = write_thermal_package_project(1.0, 40.0, 125.0, true, 45.0, 60.0);
+    let mut project_yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&project_path).unwrap()).unwrap();
+    project_yaml["board"]["manufacturing"]["thermal_packages"] = serde_yaml_ng::from_str(
+        r#"
+- component: U1
+  source: reviewed_package_table_rev_b
+  thermal_resistance_junction_to_ambient_C_per_W: 35.0
+  max_junction_temperature_C: 125.0
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &project_path,
+        serde_yaml_ng::to_string(&project_yaml).unwrap(),
+    )
+    .unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("board.manufacturing.thermal_packages evidence contradicts model")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_measured_temperature_passes_with_reviewed_measurement() {
     let (_dir, project_path) =
         write_thermal_measurement_project(72.0, Some(45.0), 85.0, Some(35.0));

@@ -486,8 +486,10 @@ The command is conservative:
   `thermal_package` metadata, it emits a non-runnable
   `THERMAL_PACKAGE_TEMPERATURE_VALID`
   template requiring reviewed `ambient_temperature_C` and
-  `max_temperature_rise_C` inputs. The suggestion does not infer ambient
-  conditions or solve board/package heat flow.
+  `max_temperature_rise_C` inputs. If both Board IR and model package metadata
+  exist for the component, the suggestion requires matching reviewed Rja and
+  max-junction values. The suggestion does not infer ambient conditions or
+  solve board/package heat flow.
 - When `board.manufacturing.thermal_measurements[]` contains reviewed
   component measurement rows, it emits a non-runnable
   `THERMAL_MEASURED_TEMPERATURE_VALID` template requiring reviewed
