@@ -139,9 +139,10 @@ existing CircuitCI checks:
    schematic/layout import.
 2. Add the remaining ESP32-S3-WROOM and STM32L431 component packs using the
    peer datasheets and public vendor datasheets as authoritative sources.
-3. Expand `TPS63802`, `TPS61023`, and `TPS2121` beyond static screening with
-   current-limit resistor,
-   operating-point, switchover, and inductor saturation evidence.
+3. Continue the `TPS63802`, `TPS61023`, and `TPS2121` model-pack path beyond
+   their reduced generated-SPICE observation faces with deeper sign-off evidence:
+   current-limit resistor behavior, operating-point detail, switchover behavior,
+   and inductor saturation evidence.
 4. Add memory/security/sensor packs for the fitted STM32L4 peripherals so
    scenario suggestions can recognize common pull-up, rail, and bus checks.
 5. Use the fabricated release as an end-to-end benchmark suite once enough
