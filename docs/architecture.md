@@ -181,8 +181,9 @@ helpers return no value for ambiguous evidence.
 
 Importers append evidence instead of guessing missing intent. Examples:
 
-- JLC/EasyEDA BOM+CPL import adds components and placements, but does not infer
-  nets or pins from assembly files.
+- JLC/EasyEDA BOM+CPL import adds components and placements plus a JSON
+  source/row/component manifest, but does not infer nets or pins from assembly
+  files.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
   or flying-probe evidence uniquely proves net/island/owner metadata.

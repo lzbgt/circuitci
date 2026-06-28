@@ -61,7 +61,7 @@ evidence.
 | SPICE | `import-spice` preserves deck nodes, model includes, probes, and a file-backed transient scenario. | Imported decks need assertions for sign-off and accurate external models. |
 | KiCad schematic | Native `.kicad_sch` import plus mapping files for model bindings, net classes, scenarios, and SPICE/passive metadata. | Connectivity bridge, not full KiCad ERC/DRC semantics. |
 | KiCad PCB | Placement, pad, board-outline, route, via, zone, and net-rule evidence for selected validations. | Compact layout evidence, not full fabrication DRC or field solving. |
-| JLC/EasyEDA assembly | BOM/CPL import, EasyEDA Pro envelope inspection with Markdown plus JSON table/payload-hash manifest, flying-probe pad/net evidence. | Assembly evidence does not imply schematic intent or electrical pin behavior by itself; opaque EasyEDA Pro history payloads block geometry conversion. |
+| JLC/EasyEDA assembly | BOM/CPL import with JSON source/row/component manifest, EasyEDA Pro envelope inspection with Markdown plus JSON table/payload-hash manifest, flying-probe pad/net evidence. | Assembly evidence does not imply schematic intent or electrical pin behavior by itself; opaque EasyEDA Pro history payloads block geometry conversion. |
 | Gerber/Excellon | Outline, copper, mask, paste, PTH/NPTH/via drill evidence and manufacturing metadata overlays. | Complex/nested hole-bearing regions remain bounded by Board IR geometry support. |
 
 ## Validation Coverage

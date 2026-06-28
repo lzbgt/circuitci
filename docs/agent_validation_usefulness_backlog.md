@@ -71,7 +71,8 @@ Useful next slices:
 - EasyEDA Pro `.eprj2` evidence normalization beyond the current SQLite
   envelope/table/payload-hash manifest,
 - broader EasyEDA schematic/PCB import,
-- BOM and pick-and-place normalization beyond current assembly imports,
+- BOM and pick-and-place normalization beyond the current source/row/component
+  assembly manifest,
 - vendor reference-design adapters,
 - package/footprint semantics for pin 1, body/courtyard, connector entry, and
   paste/mask exceptions,

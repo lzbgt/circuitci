@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,6 +10,7 @@ pub struct JlcAssemblyImportOptions {
     pub bom: PathBuf,
     pub placement: PathBuf,
     pub output: PathBuf,
+    pub manifest: PathBuf,
     pub name: String,
     pub default_model: String,
 }
@@ -38,6 +40,7 @@ struct BomEntry {
 
 #[derive(Debug, Clone)]
 struct PlacementEntry {
+    row_number: usize,
     designator: String,
     device: Option<String>,
     footprint: Option<String>,
@@ -49,6 +52,20 @@ struct PlacementEntry {
     comment: Option<String>,
     name: Option<String>,
     pins: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+struct ParsedBom {
+    headers: Vec<String>,
+    data_rows: usize,
+    entries: BTreeMap<usize, BTreeMap<String, BomEntry>>,
+}
+
+#[derive(Debug, Clone)]
+struct ParsedPlacements {
+    headers: Vec<String>,
+    data_rows: usize,
+    entries: BTreeMap<String, PlacementEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -147,10 +164,131 @@ enum PlacementSideYaml {
 #[derive(Debug, Serialize)]
 struct ScenarioYaml {}
 
+#[derive(Debug, Serialize)]
+struct AssemblyManifest {
+    schema_version: String,
+    sources: AssemblySourceManifest,
+    import: AssemblyImportManifest,
+    bom_rows: Vec<BomRowManifest>,
+    placement_rows: Vec<PlacementRowManifest>,
+    components: Vec<ComponentManifest>,
+}
+
+#[derive(Debug, Serialize)]
+struct AssemblySourceManifest {
+    bom: SourceCsvManifest,
+    placement: SourceCsvManifest,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceCsvManifest {
+    path: String,
+    size_bytes: u64,
+    sha256: String,
+    columns: Vec<String>,
+    data_rows: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct AssemblyImportManifest {
+    project_name: String,
+    default_model: String,
+    components: usize,
+    bom_rows: usize,
+    placements: usize,
+    components_with_bom: usize,
+    components_with_placement: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct BomRowManifest {
+    row_number: usize,
+    designator_group: String,
+    designators: Vec<String>,
+    quantity: usize,
+    fields: BomFieldManifest,
+}
+
+#[derive(Debug, Serialize)]
+struct BomFieldManifest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    footprint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    manufacturer_part: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    manufacturer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supplier_part: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supplier: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PlacementRowManifest {
+    row_number: usize,
+    designator: String,
+    fields: PlacementFieldManifest,
+}
+
+#[derive(Debug, Serialize)]
+struct PlacementFieldManifest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    device: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    footprint: Option<String>,
+    x_mm: f64,
+    y_mm: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    layer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    side: Option<PlacementSideYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rotation_deg: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    smd: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pins: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+struct ComponentManifest {
+    designator: String,
+    has_bom: bool,
+    has_placement: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bom_row: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_row: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    part_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    footprint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    manufacturer_part: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supplier_part: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    x_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    y_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    side: Option<PlacementSideYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rotation_deg: Option<f64>,
+}
+
 pub fn import_jlc_assembly(options: &JlcAssemblyImportOptions) -> Result<JlcAssemblyImportSummary> {
-    let bom_rows = parse_bom(&options.bom)?;
+    let bom = parse_bom(&options.bom)?;
     let placements = parse_placements(&options.placement)?;
-    let project = build_project(options, &bom_rows, &placements)?;
+    let project = build_project(options, &bom.entries, &placements.entries)?;
     if let Some(parent) = options.output.parent() {
         fs::create_dir_all(parent).with_context(|| {
             format!(
@@ -166,18 +304,21 @@ pub fn import_jlc_assembly(options: &JlcAssemblyImportOptions) -> Result<JlcAsse
     );
     fs::write(&options.output, yaml)
         .with_context(|| format!("Failed to write {}", options.output.display()))?;
-    let components_with_bom = bom_rows
+    let components_with_bom = bom
+        .entries
         .values()
         .flat_map(|designators| designators.keys())
         .collect::<BTreeSet<_>>()
         .len();
-    Ok(JlcAssemblyImportSummary {
+    let summary = JlcAssemblyImportSummary {
         components: project.board.components.len(),
-        bom_rows: bom_rows.len(),
+        bom_rows: bom.entries.len(),
         placements: project.board.layout.placements.len(),
         components_with_bom,
-        components_with_placement: placements.len(),
-    })
+        components_with_placement: placements.entries.len(),
+    };
+    write_manifest(options, &bom, &placements, &project, &summary)?;
+    Ok(summary)
 }
 
 fn build_project(
@@ -284,7 +425,171 @@ fn source_yaml(bom: Option<&BomEntry>, placement: Option<&PlacementEntry>) -> So
     }
 }
 
-fn parse_bom(path: &Path) -> Result<BTreeMap<usize, BTreeMap<String, BomEntry>>> {
+fn write_manifest(
+    options: &JlcAssemblyImportOptions,
+    bom: &ParsedBom,
+    placements: &ParsedPlacements,
+    project: &ProjectYaml,
+    summary: &JlcAssemblyImportSummary,
+) -> Result<()> {
+    if let Some(parent) = options.manifest.parent() {
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "Failed to create JLC/EasyEDA assembly manifest output directory {}",
+                parent.display()
+            )
+        })?;
+    }
+    let manifest = AssemblyManifest {
+        schema_version: "0.1.0".to_string(),
+        sources: AssemblySourceManifest {
+            bom: source_csv_manifest(&options.bom, &bom.headers, bom.data_rows)?,
+            placement: source_csv_manifest(
+                &options.placement,
+                &placements.headers,
+                placements.data_rows,
+            )?,
+        },
+        import: AssemblyImportManifest {
+            project_name: options.name.clone(),
+            default_model: options.default_model.clone(),
+            components: summary.components,
+            bom_rows: summary.bom_rows,
+            placements: summary.placements,
+            components_with_bom: summary.components_with_bom,
+            components_with_placement: summary.components_with_placement,
+        },
+        bom_rows: bom_row_manifests(bom),
+        placement_rows: placement_row_manifests(placements),
+        components: component_manifests(project, bom, placements),
+    };
+    fs::write(
+        &options.manifest,
+        serde_json::to_string_pretty(&manifest)?.as_bytes(),
+    )
+    .with_context(|| {
+        format!(
+            "Failed to write JLC/EasyEDA assembly manifest {}",
+            options.manifest.display()
+        )
+    })
+}
+
+fn source_csv_manifest(
+    path: &Path,
+    headers: &[String],
+    data_rows: usize,
+) -> Result<SourceCsvManifest> {
+    Ok(SourceCsvManifest {
+        path: path.display().to_string(),
+        size_bytes: fs::metadata(path)
+            .with_context(|| format!("Failed to stat JLC/EasyEDA CSV {}", path.display()))?
+            .len(),
+        sha256: file_sha256_hex(path)?,
+        columns: headers.to_vec(),
+        data_rows,
+    })
+}
+
+fn bom_row_manifests(bom: &ParsedBom) -> Vec<BomRowManifest> {
+    bom.entries
+        .iter()
+        .filter_map(|(row_number, entries)| {
+            let first = entries.values().next()?;
+            Some(BomRowManifest {
+                row_number: *row_number,
+                designator_group: first.designator_group.clone(),
+                designators: entries.keys().cloned().collect(),
+                quantity: first.quantity,
+                fields: BomFieldManifest {
+                    comment: first.comment.clone(),
+                    footprint: first.footprint.clone(),
+                    value: first.value.clone(),
+                    manufacturer_part: first.manufacturer_part.clone(),
+                    manufacturer: first.manufacturer.clone(),
+                    supplier_part: first.supplier_part.clone(),
+                    supplier: first.supplier.clone(),
+                },
+            })
+        })
+        .collect()
+}
+
+fn placement_row_manifests(placements: &ParsedPlacements) -> Vec<PlacementRowManifest> {
+    placements
+        .entries
+        .values()
+        .map(|entry| PlacementRowManifest {
+            row_number: entry.row_number,
+            designator: entry.designator.clone(),
+            fields: PlacementFieldManifest {
+                device: entry.device.clone(),
+                footprint: entry.footprint.clone(),
+                x_mm: entry.x_mm,
+                y_mm: entry.y_mm,
+                layer: entry.layer.clone(),
+                side: placement_side(entry.layer.as_deref()),
+                rotation_deg: entry.rotation_deg,
+                smd: entry.smd,
+                comment: entry.comment.clone(),
+                name: entry.name.clone(),
+                pins: entry.pins,
+            },
+        })
+        .collect()
+}
+
+fn component_manifests(
+    project: &ProjectYaml,
+    bom: &ParsedBom,
+    placements: &ParsedPlacements,
+) -> Vec<ComponentManifest> {
+    let bom_by_designator = bom
+        .entries
+        .values()
+        .flat_map(|entries| entries.iter())
+        .map(|(designator, entry)| (designator.as_str(), entry))
+        .collect::<BTreeMap<_, _>>();
+    project
+        .board
+        .components
+        .keys()
+        .map(|designator| {
+            let bom = bom_by_designator.get(designator.as_str()).copied();
+            let placement = placements.entries.get(designator);
+            ComponentManifest {
+                designator: designator.clone(),
+                has_bom: bom.is_some(),
+                has_placement: placement.is_some(),
+                bom_row: bom.map(|entry| entry.row_number),
+                placement_row: placement.map(|entry| entry.row_number),
+                part_number: component_part_number(bom, placement),
+                footprint: bom
+                    .and_then(|entry| entry.footprint.clone())
+                    .or_else(|| placement.and_then(|entry| entry.footprint.clone())),
+                manufacturer_part: bom.and_then(|entry| entry.manufacturer_part.clone()),
+                supplier_part: bom.and_then(|entry| entry.supplier_part.clone()),
+                x_mm: placement.map(|entry| entry.x_mm),
+                y_mm: placement.map(|entry| entry.y_mm),
+                side: placement.and_then(|entry| placement_side(entry.layer.as_deref())),
+                rotation_deg: placement.and_then(|entry| entry.rotation_deg),
+            }
+        })
+        .collect()
+}
+
+fn file_sha256_hex(path: &Path) -> Result<String> {
+    let bytes = fs::read(path)
+        .with_context(|| format!("Failed to hash JLC/EasyEDA CSV {}", path.display()))?;
+    Ok(sha256_hex(&bytes))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn parse_bom(path: &Path) -> Result<ParsedBom> {
     let table = read_csv_table(path)?;
     let (headers, rows) = table
         .split_first()
@@ -353,10 +658,14 @@ fn parse_bom(path: &Path) -> Result<BTreeMap<usize, BTreeMap<String, BomEntry>>>
             }
         }
     }
-    Ok(parsed)
+    Ok(ParsedBom {
+        headers: headers.clone(),
+        data_rows: rows.len(),
+        entries: parsed,
+    })
 }
 
-fn parse_placements(path: &Path) -> Result<BTreeMap<String, PlacementEntry>> {
+fn parse_placements(path: &Path) -> Result<ParsedPlacements> {
     let table = read_csv_table(path)?;
     let (headers, rows) = table
         .split_first()
@@ -380,6 +689,7 @@ fn parse_placements(path: &Path) -> Result<BTreeMap<String, PlacementEntry>> {
             );
         }
         let entry = PlacementEntry {
+            row_number,
             designator: designator.to_string(),
             device: optional_string(row, columns.optional("Device")),
             footprint: optional_string(row, columns.optional("Footprint")),
@@ -400,7 +710,11 @@ fn parse_placements(path: &Path) -> Result<BTreeMap<String, PlacementEntry>> {
             );
         }
     }
-    Ok(placements)
+    Ok(ParsedPlacements {
+        headers: headers.clone(),
+        data_rows: rows.len(),
+        entries: placements,
+    })
 }
 
 fn read_csv_table(path: &Path) -> Result<Vec<Vec<String>>> {

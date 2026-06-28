@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/jlc_assembly_import.schema.json",
+  "title": "CircuitCI JLC/EasyEDA Assembly Import Manifest",
+  "type": "object",
+  "required": ["schema_version", "sources", "import", "bom_rows", "placement_rows", "components"],
+  "properties": {
+    "schema_version": { "const": "0.1.0" },
+    "sources": {
+      "type": "object",
+      "required": ["bom", "placement"],
+      "properties": {
+        "bom": { "$ref": "#/$defs/source_csv" },
+        "placement": { "$ref": "#/$defs/source_csv" }
+      },
+      "additionalProperties": false
+    },
+    "import": {
+      "type": "object",
+      "required": [
+        "project_name",
+        "default_model",
+        "components",
+        "bom_rows",
+        "placements",
+        "components_with_bom",
+        "components_with_placement"
+      ],
+      "properties": {
+        "project_name": { "type": "string", "minLength": 1 },
+        "default_model": { "type": "string", "minLength": 1 },
+        "components": { "type": "integer", "minimum": 0 },
+        "bom_rows": { "type": "integer", "minimum": 0 },
+        "placements": { "type": "integer", "minimum": 0 },
+        "components_with_bom": { "type": "integer", "minimum": 0 },
+        "components_with_placement": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "bom_rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bom_row" }
+    },
+    "placement_rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/placement_row" }
+    },
+    "components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_csv": {
+      "type": "object",
+      "required": ["path", "size_bytes", "sha256", "columns", "data_rows"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "data_rows": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "bom_row": {
+      "type": "object",
+      "required": ["row_number", "designator_group", "designators", "quantity", "fields"],
+      "properties": {
+        "row_number": { "type": "integer", "minimum": 2 },
+        "designator_group": { "type": "string", "minLength": 1 },
+        "designators": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "fields": { "$ref": "#/$defs/bom_fields" }
+      },
+      "additionalProperties": false
+    },
+    "bom_fields": {
+      "type": "object",
+      "properties": {
+        "comment": { "type": "string", "minLength": 1 },
+        "footprint": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 },
+        "manufacturer_part": { "type": "string", "minLength": 1 },
+        "manufacturer": { "type": "string", "minLength": 1 },
+        "supplier_part": { "type": "string", "minLength": 1 },
+        "supplier": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "placement_row": {
+      "type": "object",
+      "required": ["row_number", "designator", "fields"],
+      "properties": {
+        "row_number": { "type": "integer", "minimum": 2 },
+        "designator": { "type": "string", "minLength": 1 },
+        "fields": { "$ref": "#/$defs/placement_fields" }
+      },
+      "additionalProperties": false
+    },
+    "placement_fields": {
+      "type": "object",
+      "required": ["x_mm", "y_mm"],
+      "properties": {
+        "device": { "type": "string", "minLength": 1 },
+        "footprint": { "type": "string", "minLength": 1 },
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" },
+        "layer": { "type": "string", "minLength": 1 },
+        "side": { "enum": ["top", "bottom"] },
+        "rotation_deg": { "type": "number" },
+        "smd": { "type": "boolean" },
+        "comment": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "pins": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "component": {
+      "type": "object",
+      "required": ["designator", "has_bom", "has_placement"],
+      "properties": {
+        "designator": { "type": "string", "minLength": 1 },
+        "has_bom": { "type": "boolean" },
+        "has_placement": { "type": "boolean" },
+        "bom_row": { "type": "integer", "minimum": 2 },
+        "placement_row": { "type": "integer", "minimum": 2 },
+        "part_number": { "type": "string", "minLength": 1 },
+        "footprint": { "type": "string", "minLength": 1 },
+        "manufacturer_part": { "type": "string", "minLength": 1 },
+        "supplier_part": { "type": "string", "minLength": 1 },
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" },
+        "side": { "enum": ["top", "bottom"] },
+        "rotation_deg": { "type": "number" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

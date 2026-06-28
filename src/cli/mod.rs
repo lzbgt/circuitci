@@ -128,6 +128,8 @@ enum Command {
         output: PathBuf,
         #[arg(long)]
         name: Option<String>,
+        #[arg(long)]
+        manifest: Option<PathBuf>,
         #[arg(long, default_value = "generic.schematic.imported_component")]
         default_model: String,
     },
@@ -314,8 +316,9 @@ pub fn run() -> Result<()> {
             placement,
             output,
             name,
+            manifest,
             default_model,
-        }) => run_import_jlc_assembly(bom, placement, output, name, default_model),
+        }) => run_import_jlc_assembly(bom, placement, output, name, manifest, default_model),
         Some(Command::InspectEasyedaPro {
             eprj2,
             output,
@@ -765,20 +768,23 @@ fn run_import_jlc_assembly(
     placement: PathBuf,
     output: PathBuf,
     name: Option<String>,
+    manifest: Option<PathBuf>,
     default_model: String,
 ) -> Result<()> {
     let name = name.unwrap_or_else(|| sanitized_project_name(&bom, "imported_jlc_assembly"));
+    let manifest = manifest.unwrap_or_else(|| output.with_extension("json"));
     let summary = crate::importers::jlc::import_jlc_assembly(
         &crate::importers::jlc::JlcAssemblyImportOptions {
             bom: bom.clone(),
             placement: placement.clone(),
             output: output.clone(),
+            manifest: manifest.clone(),
             name,
             default_model,
         },
     )?;
     println!(
-        "CircuitCI imported JLC/EasyEDA assembly: {} components, {} BOM rows, {} placements, {} BOM-matched components, {} placement-matched components {} + {} -> {}",
+        "CircuitCI imported JLC/EasyEDA assembly: {} components, {} BOM rows, {} placements, {} BOM-matched components, {} placement-matched components {} + {} -> {}, manifest {}",
         summary.components,
         summary.bom_rows,
         summary.placements,
@@ -786,7 +792,8 @@ fn run_import_jlc_assembly(
         summary.components_with_placement,
         bom.display(),
         placement.display(),
-        output.display()
+        output.display(),
+        manifest.display()
     );
     Ok(())
 }

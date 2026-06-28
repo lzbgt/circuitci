@@ -1,13 +1,17 @@
 # JLC/EasyEDA Assembly Importer
 
 `circuitci import-jlc-assembly` converts a JLC/EasyEDA-style BOM CSV plus
-placement/CPL CSV into assembly-evidence Board IR.
+placement/CPL CSV into assembly-evidence Board IR and writes a schema-validated
+JSON import manifest beside the generated project. By default, the manifest
+uses the output path with a `.json` extension; pass `--manifest` to choose an
+explicit path.
 
 ```bash
 circuitci import-jlc-assembly \
   --bom assembly/bom_STM32_ESP32_V01_2026-04-28.csv \
   --placement assembly/placement_STM32_ESP32_V01_2026-04-28.csv \
   --output out/imported_assembly.project.yaml \
+  --manifest out/imported_assembly_manifest.json \
   --name um_stm32_esp32_assembly
 ```
 
@@ -19,6 +23,19 @@ circuitci import-jlc-assembly \
   manufacturer part, manufacturer, supplier part, and supplier,
 - placement device, footprint, comment/name, pin count, SMD flag,
 - `board.layout.placements.<ref>.x_mm`, `y_mm`, `side`, and `rotation_deg`.
+
+The JSON manifest conforms to `schemas/jlc_assembly_import.schema.json` and
+records:
+
+- BOM and placement source paths, sizes, SHA-256 hashes, raw column names, and
+  data-row counts,
+- accepted BOM rows with source row number, designator group, split
+  designators, quantity, manufacturer, supplier, value, and footprint fields,
+- accepted placement rows with source row number, designator, coordinates,
+  layer, normalized side, rotation, SMD flag, comment/name, and pin count,
+- one component join row per generated component showing whether BOM and/or
+  placement evidence was present, the source row numbers, selected part number,
+  selected footprint, and placement coordinates.
 
 The importer validates required headers, quoted CSV fields, duplicate
 designators, quantity/designator-count mismatches, non-finite placement
