@@ -186,9 +186,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   files.
 - Reviewed manufacturing metadata CSV import can create or replace reviewed
   `board.manufacturing` fields plus reviewed `board.layout.stackup.layers[]`
-  entries and RF antenna layout constraints, preserves raw row evidence and
-  skipped unrelated order rows in a JSON manifest, and does not infer process
-  defaults or RF topology from order text. The importer orchestration stays in
+  entries, RF antenna layout constraints, and package thermal metadata,
+  preserves raw row evidence and skipped unrelated order rows in a JSON
+  manifest, and does not infer process defaults, package thermal data, or RF
+  topology from order text. The importer orchestration stays in
   `src/importers/manufacturing_metadata.rs`; CSV file/header/token parsing
   lives in `src/importers/manufacturing_metadata/rows/csv.rs`; reviewed
   row-family parsing lives in

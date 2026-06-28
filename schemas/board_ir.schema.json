@@ -414,6 +414,31 @@
                 "additionalProperties": false
               }
             },
+            "thermal_packages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "component",
+                  "source",
+                  "thermal_resistance_junction_to_ambient_C_per_W",
+                  "max_junction_temperature_C"
+                ],
+                "properties": {
+                  "component": { "type": "string", "minLength": 1 },
+                  "source": { "type": "string", "minLength": 1 },
+                  "thermal_resistance_junction_to_ambient_C_per_W": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "max_junction_temperature_C": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": true

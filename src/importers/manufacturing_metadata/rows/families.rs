@@ -1,12 +1,12 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
     AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalMeasurement, MetadataCsvRow, normalize_name, optional_raw_column,
-    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
-    parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_number,
-    parse_positive_ohms, parse_positive_usize, parse_positive_watts, parse_temperature_c,
-    required_nonnegative_number, required_positive_number, required_positive_watts,
-    required_raw_column_for,
+    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
+    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
+    parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
+    parse_temperature_c, required_nonnegative_number, required_positive_number,
+    required_positive_watts, required_raw_column_for,
 };
 use anyhow::{Context, Result, bail};
 use std::path::Path;
@@ -257,6 +257,45 @@ pub(super) fn applied_thermal_measurement(
         power_loss_w,
         measurement_point: optional_raw_column(row, "measurement_point"),
         notes: row.notes.clone(),
+    })
+}
+
+pub(super) fn applied_thermal_package(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedThermalPackage> {
+    let package_source = optional_raw_column(row, "package_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(package_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} thermal_package requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedThermalPackage {
+        component: required_raw_column_for(row, path, "component", "thermal_package")?,
+        source,
+        thermal_resistance_junction_to_ambient_c_per_w: parse_positive_c_per_w(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        max_junction_temperature_c: parse_temperature_c(
+            &required_raw_column_for(row, path, "max_junction_temperature_C", "thermal_package")?,
+            None,
+            path,
+            row,
+            "max_junction_temperature_C",
+        )?,
     })
 }
 

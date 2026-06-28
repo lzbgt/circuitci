@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.5.0".to_string(),
+        schema_version: "0.6.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -213,6 +213,21 @@ fn apply_metadata(
             let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             let measurements = ensure_sequence_field_mut(manufacturing, "thermal_measurements")?;
             measurements.push(normalized_yaml_value(field)?);
+            wrote_manufacturing = true;
+        } else if field.field == ManufacturingField::ThermalPackage {
+            let package = field
+                .thermal_package
+                .as_ref()
+                .context("thermal_package field must have thermal package value")?;
+            let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+            let packages = ensure_sequence_field_mut(manufacturing, "thermal_packages")?;
+            upsert_component_sequence_value(
+                packages,
+                &package.component,
+                value,
+                "thermal_packages",
+            )?;
             wrote_manufacturing = true;
         } else if field.field == ManufacturingField::StackupLayer {
             let layer = field
@@ -359,6 +374,31 @@ fn upsert_named_sequence_value(
             if matched_index.is_some() {
                 bail!(
                     "Board IR field {field_name} has duplicate existing name {name}; refusing to update ambiguous target."
+                );
+            }
+            matched_index = Some(index);
+        }
+    }
+    if let Some(index) = matched_index {
+        sequence[index] = value;
+    } else {
+        sequence.push(value);
+    }
+    Ok(())
+}
+
+fn upsert_component_sequence_value(
+    sequence: &mut Vec<Value>,
+    component: &str,
+    value: Value,
+    field_name: &str,
+) -> Result<()> {
+    let mut matched_index = None;
+    for (index, item) in sequence.iter().enumerate() {
+        if yaml_mapping_string(item, "component") == Some(component) {
+            if matched_index.is_some() {
+                bail!(
+                    "Board IR field {field_name} has duplicate existing component {component}; refusing to update ambiguous target."
                 );
             }
             matched_index = Some(index);

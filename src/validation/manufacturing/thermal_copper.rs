@@ -1,8 +1,8 @@
 use crate::board_ir::{
     LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, RouteVia, Scenario, StackupLayer,
-    StackupLayerKind, ThermalCopperRule,
+    StackupLayerKind, ThermalCopperRule, ThermalPackageRule,
 };
-use crate::library::BoundBoard;
+use crate::library::{BoundBoard, ComponentModel};
 use crate::reports::Finding;
 use serde_json::json;
 
@@ -600,59 +600,18 @@ fn validate_package_temperature_rule(
         );
         return;
     };
-    let Some(package) = &model.thermal_package else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} must declare thermal_package metadata.",
-                rule.component, component.model
-            ),
-        );
-        return;
+    let package = match package_thermal_metadata(bound, &rule.component, &component.model, model) {
+        Ok(package) => package,
+        Err(message) => {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
     };
-    let Some(rja_c_per_w) =
-        positive_number(Some(package.thermal_resistance_junction_to_ambient_c_per_w))
-    else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} thermal_package.thermal_resistance_junction_to_ambient_C_per_W must be finite and positive.",
-                rule.component, component.model
-            ),
-        );
-        return;
-    };
-    let Some(max_junction_temperature_c) =
-        positive_number(Some(package.max_junction_temperature_c))
-    else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} thermal_package.max_junction_temperature_C must be finite and positive.",
-                rule.component, component.model
-            ),
-        );
-        return;
-    };
-    if package.source.trim().is_empty() {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_PACKAGE_TEMPERATURE_VALID component {} model {} thermal_package.source must be non-empty.",
-                rule.component, component.model
-            ),
-        );
-        return;
-    }
 
-    let estimated_temperature_rise_c = rule.power_loss_w * rja_c_per_w;
+    let estimated_temperature_rise_c = rule.power_loss_w * package.rja_c_per_w;
     let estimated_junction_temperature_c = ambient_temperature_c + estimated_temperature_rise_c;
     let allowed_junction_temperature_c =
-        max_junction_temperature_c - max_junction_temperature_margin_c;
+        package.max_junction_temperature_c - max_junction_temperature_margin_c;
 
     if estimated_temperature_rise_c > max_temperature_rise_c + f64::EPSILON {
         findings.push(thermal_temperature_rise_finding(
@@ -661,8 +620,8 @@ fn validate_package_temperature_rule(
             &PackageThermalEvidence {
                 model_id: &component.model,
                 package_source: package.source.as_str(),
-                rja_c_per_w,
-                max_junction_temperature_c,
+                rja_c_per_w: package.rja_c_per_w,
+                max_junction_temperature_c: package.max_junction_temperature_c,
                 ambient_temperature_c,
                 max_temperature_rise_c,
                 max_junction_temperature_margin_c,
@@ -679,8 +638,8 @@ fn validate_package_temperature_rule(
             &PackageThermalEvidence {
                 model_id: &component.model,
                 package_source: package.source.as_str(),
-                rja_c_per_w,
-                max_junction_temperature_c,
+                rja_c_per_w: package.rja_c_per_w,
+                max_junction_temperature_c: package.max_junction_temperature_c,
                 ambient_temperature_c,
                 max_temperature_rise_c,
                 max_junction_temperature_margin_c,
@@ -690,6 +649,96 @@ fn validate_package_temperature_rule(
             },
         ));
     }
+}
+
+fn package_thermal_metadata(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    model_id: &str,
+    model: &ComponentModel,
+) -> Result<PackageThermalMetadata, String> {
+    let mut package_matches = bound
+        .project
+        .board
+        .manufacturing
+        .thermal_packages
+        .iter()
+        .filter(|package| package.component == component_id);
+    if let Some(package) = package_matches.next() {
+        if package_matches.next().is_some() {
+            return Err(format!(
+                "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} has duplicate board.manufacturing.thermal_packages entries."
+            ));
+        }
+        return package_thermal_metadata_from_board(component_id, package);
+    }
+    package_thermal_metadata_from_model(component_id, model_id, model)
+}
+
+fn package_thermal_metadata_from_board(
+    component_id: &str,
+    package: &ThermalPackageRule,
+) -> Result<PackageThermalMetadata, String> {
+    let Some(rja_c_per_w) =
+        positive_number(Some(package.thermal_resistance_junction_to_ambient_c_per_w))
+    else {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} board.manufacturing.thermal_packages thermal_resistance_junction_to_ambient_C_per_W must be finite and positive."
+        ));
+    };
+    let Some(max_junction_temperature_c) =
+        positive_number(Some(package.max_junction_temperature_c))
+    else {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} board.manufacturing.thermal_packages max_junction_temperature_C must be finite and positive."
+        ));
+    };
+    if package.source.trim().is_empty() {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} board.manufacturing.thermal_packages source must be non-empty."
+        ));
+    }
+    Ok(PackageThermalMetadata {
+        source: package.source.clone(),
+        rja_c_per_w,
+        max_junction_temperature_c,
+    })
+}
+
+fn package_thermal_metadata_from_model(
+    component_id: &str,
+    model_id: &str,
+    model: &ComponentModel,
+) -> Result<PackageThermalMetadata, String> {
+    let Some(package) = &model.thermal_package else {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} model {model_id} must declare thermal_package metadata or board.manufacturing.thermal_packages evidence."
+        ));
+    };
+    let Some(rja_c_per_w) =
+        positive_number(Some(package.thermal_resistance_junction_to_ambient_c_per_w))
+    else {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} model {model_id} thermal_package.thermal_resistance_junction_to_ambient_C_per_W must be finite and positive."
+        ));
+    };
+    let Some(max_junction_temperature_c) =
+        positive_number(Some(package.max_junction_temperature_c))
+    else {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} model {model_id} thermal_package.max_junction_temperature_C must be finite and positive."
+        ));
+    };
+    if package.source.trim().is_empty() {
+        return Err(format!(
+            "THERMAL_PACKAGE_TEMPERATURE_VALID component {component_id} model {model_id} thermal_package.source must be non-empty."
+        ));
+    }
+    Ok(PackageThermalMetadata {
+        source: package.source.clone(),
+        rja_c_per_w,
+        max_junction_temperature_c,
+    })
 }
 
 pub(super) fn validate_rule_metadata(
@@ -1066,6 +1115,12 @@ struct PackageThermalEvidence<'a> {
     estimated_temperature_rise_c: f64,
     estimated_junction_temperature_c: f64,
     allowed_junction_temperature_c: f64,
+}
+
+struct PackageThermalMetadata {
+    source: String,
+    rja_c_per_w: f64,
+    max_junction_temperature_c: f64,
 }
 
 impl ThermalAreaEvidence {

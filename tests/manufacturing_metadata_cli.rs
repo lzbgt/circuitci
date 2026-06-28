@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.5.0");
+    assert_eq!(manifest["schema_version"], "0.6.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -607,7 +607,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.5.0");
+    assert_eq!(manifest["schema_version"], "0.6.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.keepouts[]"
@@ -723,7 +723,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.5.0");
+    assert_eq!(manifest["schema_version"], "0.6.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -776,6 +776,145 @@ fn import_manufacturing_metadata_rejects_unknown_fields_by_default() {
     assert!(String::from_utf8_lossy(&command_output.stderr).contains("unsupported field"));
 }
 
+#[test]
+fn import_manufacturing_metadata_applies_thermal_package_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+    std::fs::write(
+        model_dir.join("thermal_package_import.model.yaml"),
+        r#"component_id: test.thermal.package.import
+version: 0.1.0
+category: thermal_test_ic
+ports:
+  IN:
+    kind: electrical_power
+    required: true
+  OUT:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - thermal_package_static_screening
+"#,
+    )
+    .unwrap();
+    let input = dir.path().join("without_package_metadata.project.yaml");
+    let metadata = dir.path().join("thermal_package_metadata.csv");
+    let output = dir.path().join("with_package_metadata.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    std::fs::write(
+        &input,
+        format!(
+            r#"project:
+  version: "1"
+  name: thermal_package_metadata_import
+libraries:
+  - {model_dir}
+board:
+  nets:
+    VIN: {{ kind: power }}
+    VOUT: {{ kind: power }}
+    GND: {{ kind: ground }}
+  components:
+    U1:
+      model: test.thermal.package.import
+      pins:
+        IN: VIN
+        OUT: VOUT
+        GND: GND
+  manufacturing: {{}}
+"#,
+            model_dir = model_dir.display()
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        &metadata,
+        "field,value,unit,source,notes,name,component,power_loss_w,max_junction_temperature_C\n\
+         thermal_copper,20.0,mm2,reviewed_loss_budget_rev_a,reviewed power loss,u1_regulator_loss,U1,1.4,\n\
+         thermal_package,38.0,C/W,datasheet_package_table_rev_b,reviewed package thermal row,,U1,,125.0\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--source",
+            "thermal_review",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let packages = enriched["board"]["manufacturing"]["thermal_packages"]
+        .as_sequence()
+        .unwrap();
+    assert_eq!(packages.len(), 1);
+    assert_eq!(packages[0]["component"], "U1");
+    assert_eq!(
+        packages[0]["thermal_resistance_junction_to_ambient_C_per_W"],
+        38.0
+    );
+    assert_eq!(packages[0]["max_junction_temperature_C"], 125.0);
+    assert_eq!(packages[0]["source"], "datasheet_package_table_rev_b");
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.6.0");
+    assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
+    assert_eq!(
+        manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
+        38.0
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    assert_non_runnable(
+        &suggestions,
+        "thermal_package_temperature_u1_regulator_loss",
+    );
+}
+
 fn remove_board_manufacturing(project_yaml: &mut Value) {
     let board = project_yaml["board"].as_mapping_mut().unwrap();
     board.remove(Value::String("manufacturing".to_string()));
@@ -807,4 +946,15 @@ fn assert_runnable(suggestions: &serde_json::Value, id: &str) {
         .unwrap_or_else(|| panic!("missing suggestion {id}"));
     assert_eq!(suggestion["runnable"], true, "{id}");
     assert!(suggestion.get("required_inputs").is_none(), "{id}");
+}
+
+fn assert_non_runnable(suggestions: &serde_json::Value, id: &str) {
+    let suggestion = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == id)
+        .unwrap_or_else(|| panic!("missing suggestion {id}"));
+    assert_eq!(suggestion["runnable"], false, "{id}");
+    assert!(suggestion.get("required_inputs").is_some(), "{id}");
 }

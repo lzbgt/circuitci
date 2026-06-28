@@ -1,7 +1,7 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalMeasurement,
+    AppliedThermalCopper, AppliedThermalMeasurement, AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -46,6 +46,14 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 )
             },
         );
+    }
+    if let Some(package) = &field.thermal_package {
+        return serde_yaml_ng::to_value(thermal_package_mapping(package)).with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
     }
     if let Some(layer) = &field.stackup_layer {
         return serde_yaml_ng::to_value(stackup_layer_mapping(layer)).with_context(|| {
@@ -274,6 +282,25 @@ fn thermal_measurement_mapping(measurement: &AppliedThermalMeasurement) -> BTree
     if let Some(value) = &measurement.notes {
         mapping.insert("notes".to_string(), Value::String(value.clone()));
     }
+    mapping
+}
+
+fn thermal_package_mapping(package: &AppliedThermalPackage) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert(
+        "component".to_string(),
+        Value::String(package.component.clone()),
+    );
+    mapping.insert("source".to_string(), Value::String(package.source.clone()));
+    mapping.insert(
+        "thermal_resistance_junction_to_ambient_C_per_W".to_string(),
+        serde_yaml_ng::to_value(package.thermal_resistance_junction_to_ambient_c_per_w)
+            .unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_junction_temperature_C".to_string(),
+        serde_yaml_ng::to_value(package.max_junction_temperature_c).unwrap_or(Value::Null),
+    );
     mapping
 }
 

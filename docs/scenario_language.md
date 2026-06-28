@@ -1467,8 +1467,9 @@ resistance, copper spreading, convection, or temperature rise.
 
 Thermal package temperature validation uses `THERMAL_PACKAGE_TEMPERATURE_VALID`
 when the reviewed `board.manufacturing.thermal_copper[]` rule declares a static
-component power loss and the resolved component model declares
-`thermal_package` evidence.
+component power loss and either the resolved component model declares
+`thermal_package` evidence or `board.manufacturing.thermal_packages[]` contains
+a reviewed package metadata entry for the component.
 
 ```yaml
 scenarios:
@@ -1493,8 +1494,9 @@ Thermal package temperature algorithm:
 3. Resolve each name from `board.manufacturing.thermal_copper[]`.
 4. Require the reviewed rule to name an existing component, non-empty source,
    positive `power_loss_w`, and valid shared thermal-copper metadata.
-5. Resolve the component model and require source-backed `thermal_package`
-   metadata with positive
+5. Resolve the component model and require source-backed package thermal
+   metadata, either from `board.manufacturing.thermal_packages[]` for the
+   component or from the model's `thermal_package` block, with positive
    `thermal_resistance_junction_to_ambient_C_per_W`, positive
    `max_junction_temperature_C`, and non-empty `source`.
 6. Estimate static temperature rise as
@@ -1504,7 +1506,7 @@ Thermal package temperature algorithm:
 8. Fail when the estimated rise exceeds `max_temperature_rise_C` or the
    estimated junction temperature exceeds
    `max_junction_temperature_C - max_junction_temperature_margin_C`.
-9. Fail closed when reviewed rule metadata, model metadata, or scenario
+9. Fail closed when reviewed rule metadata, package metadata, or scenario
    temperature limits are absent or malformed.
 
 This is a static reviewed-loss and package-Rja evidence screen. It does not

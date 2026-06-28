@@ -21,6 +21,7 @@ pub(super) struct AppliedField {
     pub(super) controlled_impedance_pair: Option<AppliedControlledImpedancePair>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
+    pub(super) thermal_package: Option<AppliedThermalPackage>,
     pub(super) stackup_layer: Option<AppliedStackupLayer>,
     pub(super) rf_antenna_keepout: Option<AppliedRfAntennaKeepout>,
     pub(super) rf_antenna_feed_path: Option<AppliedRfAntennaFeedPath>,
@@ -81,6 +82,14 @@ pub(super) struct AppliedThermalMeasurement {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AppliedThermalPackage {
+    pub(super) component: String,
+    source: String,
+    thermal_resistance_junction_to_ambient_c_per_w: f64,
+    max_junction_temperature_c: f64,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AppliedStackupLayer {
     pub(super) name: String,
     kind: String,
@@ -133,6 +142,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedancePair,
     ThermalCopper,
     ThermalMeasurement,
+    ThermalPackage,
     StackupLayer,
     RfAntennaKeepout,
     RfAntennaFeedPath,
@@ -153,6 +163,7 @@ impl ManufacturingField {
             Self::ControlledImpedancePair => "controlled_impedance.differential_pairs[]",
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
+            Self::ThermalPackage => "thermal_packages[]",
             Self::StackupLayer => "layout.stackup.layers[]",
             Self::RfAntennaKeepout => "layout.constraints.rf_antenna.keepouts[]",
             Self::RfAntennaFeedPath => "layout.constraints.rf_antenna.feed_paths[]",
@@ -186,6 +197,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedancePair
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
+                | Self::ThermalPackage
                 | Self::StackupLayer
                 | Self::RfAntennaKeepout
                 | Self::RfAntennaFeedPath
@@ -289,6 +301,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
@@ -303,6 +316,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
@@ -317,6 +331,7 @@ fn applied_field(
             controlled_impedance_pair: Some(applied_controlled_impedance_pair(row, path)?),
             thermal_copper: None,
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
@@ -331,6 +346,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: Some(applied_thermal_copper(row, path)?),
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
@@ -345,6 +361,22 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: Some(applied_thermal_measurement(row, path)?),
+            thermal_package: None,
+            stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
+        });
+    }
+    if field == ManufacturingField::ThermalPackage {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+            thermal_package: Some(applied_thermal_package(row, path)?),
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
@@ -359,6 +391,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: Some(applied_stackup_layer(row, path)?),
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
@@ -373,6 +406,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: None,
             rf_antenna_keepout: Some(applied_rf_antenna_keepout(row, path)?),
             rf_antenna_feed_path: None,
@@ -387,6 +421,7 @@ fn applied_field(
             controlled_impedance_pair: None,
             thermal_copper: None,
             thermal_measurement: None,
+            thermal_package: None,
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: Some(applied_rf_antenna_feed_path(row, path)?),
@@ -418,6 +453,7 @@ fn applied_field(
         controlled_impedance_pair: None,
         thermal_copper: None,
         thermal_measurement: None,
+        thermal_package: None,
         stackup_layer: None,
         rf_antenna_keepout: None,
         rf_antenna_feed_path: None,
@@ -447,6 +483,10 @@ fn applied_thermal_measurement(
     path: &Path,
 ) -> Result<AppliedThermalMeasurement> {
     families::applied_thermal_measurement(row, path)
+}
+
+fn applied_thermal_package(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalPackage> {
+    families::applied_thermal_package(row, path)
 }
 
 fn applied_stackup_layer(row: &MetadataCsvRow, path: &Path) -> Result<AppliedStackupLayer> {
@@ -674,6 +714,29 @@ fn parse_positive_area_mm2(
     Ok(value)
 }
 
+fn parse_positive_c_per_w(
+    raw: &str,
+    unit: Option<&str>,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = parse_positive_number(raw, path, row, column)?;
+    let unit = unit.map(normalize_unit);
+    let normalized_unit = unit.as_deref().map(normalize_name);
+    if !matches!(
+        normalized_unit.as_deref(),
+        None | Some("") | Some("cw") | Some("cperw") | Some("celsiusperwatt") | Some("celsiusperw")
+    ) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} must use C/W for {column}.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
 fn parse_nonnegative_mm(
     raw: &str,
     unit: Option<&str>,
@@ -861,6 +924,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut thermal_package_components = BTreeSet::new();
+    for package in fields
+        .iter()
+        .filter_map(|field| field.thermal_package.as_ref())
+    {
+        if !thermal_package_components.insert(package.component.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats thermal_package row component {}.",
+                package.component
+            );
+        }
+    }
     let mut rf_antenna_keepout_names = BTreeSet::new();
     for keepout in fields
         .iter()
@@ -959,6 +1034,9 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         }
         "thermalmeasurement" | "thermalmeasuredtemperature" | "measuredtemperature" => {
             Some(ManufacturingField::ThermalMeasurement)
+        }
+        "thermalpackage" | "packagethermal" | "componentthermalpackage" => {
+            Some(ManufacturingField::ThermalPackage)
         }
         "stackuplayer" | "stackuplayermetadata" | "boardstackuplayer" => {
             Some(ManufacturingField::StackupLayer)

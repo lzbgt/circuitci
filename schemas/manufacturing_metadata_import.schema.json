@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.5.0" },
+    "schema_version": { "const": "0.6.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -93,6 +93,7 @@
             "controlled_impedance.differential_pairs[]",
             "thermal_copper[]",
             "thermal_measurements[]",
+            "thermal_packages[]",
             "layout.stackup.layers[]",
             "layout.constraints.rf_antenna.keepouts[]",
             "layout.constraints.rf_antenna.feed_paths[]",
@@ -179,6 +180,28 @@
                 "power_loss_w": { "type": "number", "exclusiveMinimum": 0 },
                 "measurement_point": { "type": "string", "minLength": 1 },
                 "notes": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "component",
+                "source",
+                "thermal_resistance_junction_to_ambient_C_per_W",
+                "max_junction_temperature_C"
+              ],
+              "properties": {
+                "component": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "thermal_resistance_junction_to_ambient_C_per_W": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_junction_temperature_C": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
               },
               "additionalProperties": false
             },

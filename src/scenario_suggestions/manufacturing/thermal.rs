@@ -578,7 +578,7 @@ fn thermal_package_temperature_suggestions(
             &format!("thermal_package_temperature_{}", sanitized_name(&rule.name)),
             false,
             &format!(
-                "Thermal copper rule {} has reviewed package power-loss metadata and component model thermal_package evidence; reviewed ambient and temperature-rise limits are still required.",
+                "Thermal copper rule {} has reviewed package power-loss metadata and source-backed package thermal evidence; reviewed ambient and temperature-rise limits are still required.",
                 rule.name
             ),
             &format!(
@@ -614,16 +614,41 @@ fn thermal_package_rule_has_metadata(bound: &BoundBoard<'_>, rule: &ThermalCoppe
             .components
             .get(&rule.component)
             .and_then(|component| bound.library.get(&component.model))
-            .and_then(|model| model.thermal_package.as_ref())
-            .is_some_and(|package| {
-                package
-                    .thermal_resistance_junction_to_ambient_c_per_w
-                    .is_finite()
-                    && package.thermal_resistance_junction_to_ambient_c_per_w > 0.0
-                    && package.max_junction_temperature_c.is_finite()
-                    && package.max_junction_temperature_c > 0.0
-                    && !package.source.trim().is_empty()
+            .is_some_and(|model| {
+                reviewed_package_metadata_valid(bound, &rule.component)
+                    || model.thermal_package.as_ref().is_some_and(|package| {
+                        package
+                            .thermal_resistance_junction_to_ambient_c_per_w
+                            .is_finite()
+                            && package.thermal_resistance_junction_to_ambient_c_per_w > 0.0
+                            && package.max_junction_temperature_c.is_finite()
+                            && package.max_junction_temperature_c > 0.0
+                            && !package.source.trim().is_empty()
+                    })
             })
+}
+
+fn reviewed_package_metadata_valid(bound: &BoundBoard<'_>, component: &str) -> bool {
+    let mut matches = bound
+        .project
+        .board
+        .manufacturing
+        .thermal_packages
+        .iter()
+        .filter(|package| package.component == component);
+    let Some(package) = matches.next() else {
+        return false;
+    };
+    if matches.next().is_some() {
+        return false;
+    }
+    package
+        .thermal_resistance_junction_to_ambient_c_per_w
+        .is_finite()
+        && package.thermal_resistance_junction_to_ambient_c_per_w > 0.0
+        && package.max_junction_temperature_c.is_finite()
+        && package.max_junction_temperature_c > 0.0
+        && !package.source.trim().is_empty()
 }
 
 fn thermal_package_temperature_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {

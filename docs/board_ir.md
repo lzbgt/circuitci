@@ -158,6 +158,11 @@ board:
         min_total_thermal_via_barrel_cross_section_mm2: 0.12
         nets: [SW]
         layers: [F.Cu, B.Cu]
+    thermal_packages:
+      - component: U1
+        source: datasheet_package_table_rev_b
+        thermal_resistance_junction_to_ambient_C_per_W: 40.0
+        max_junction_temperature_C: 125.0
     source: jlc_stencil_order
 ```
 
@@ -245,8 +250,9 @@ derating curves.
 `THERMAL_PACKAGE_TEMPERATURE_VALID` also consumes reviewed
 `board.manufacturing.thermal_copper[]` entries for component identity, source,
 and static `power_loss_w`, then combines that evidence with the resolved
-component model's `thermal_package` metadata and scenario-declared ambient /
-temperature-rise limits. The Board IR rule does not itself prove package
+component model's `thermal_package` metadata or a matching reviewed
+`board.manufacturing.thermal_packages[]` entry, plus scenario-declared ambient
+/ temperature-rise limits. The Board IR rule does not itself prove package
 thermal resistance, ambient temperature, airflow, enclosure behavior, or
 temperature-rise acceptability.
 
@@ -295,7 +301,11 @@ include reviewed policy columns such as `name`, `component`, `power_loss_w`,
 `min_total_thermal_via_barrel_cross_section_mm2`, `min_copper_thickness_um`,
 `rated_ambient_temperature_C`, `min_airflow_lfm`, and `enclosure_profile`.
 Thermal policy rows replace an existing `thermal_copper[]` entry with the same
-name. Repeated `field=stackup_layer` rows use `value` as the stackup layer
+name. Repeated `field=thermal_package` rows use `value` as reviewed
+`thermal_resistance_junction_to_ambient_C_per_W`, require `component` and
+`max_junction_temperature_C`, and create or replace
+`board.manufacturing.thermal_packages[]` entries by component. Repeated
+`field=stackup_layer` rows use `value` as the stackup layer
 `kind` (`signal`, `plane`, `dielectric`, or `other`), require `name`, and may
 include `reference_net`, `thickness_mm`, `copper_thickness_um`,
 `dielectric_constant`, and `material`; they create or replace

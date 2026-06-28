@@ -481,8 +481,10 @@ The command is conservative:
   environment inputs. The suggestion does not infer airflow, enclosure behavior,
   or derating curves from board geometry.
 - When a reviewed thermal-copper entry declares component power-loss metadata
-  and the resolved component model declares source-backed `thermal_package`
-  metadata, it emits a non-runnable `THERMAL_PACKAGE_TEMPERATURE_VALID`
+  and source-backed package thermal evidence exists in either
+  `board.manufacturing.thermal_packages[]` or the resolved component model's
+  `thermal_package` metadata, it emits a non-runnable
+  `THERMAL_PACKAGE_TEMPERATURE_VALID`
   template requiring reviewed `ambient_temperature_C` and
   `max_temperature_rise_C` inputs. The suggestion does not infer ambient
   conditions or solve board/package heat flow.

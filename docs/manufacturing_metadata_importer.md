@@ -28,6 +28,8 @@ Input CSV columns:
   `ohm`/`ohms` for the target impedance value.
   `thermal_copper` rows use `mm2`/square millimeters for minimum copper area.
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
+  `thermal_package` rows use `C/W` for junction-to-ambient package thermal
+  resistance.
   `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
   `rf_antenna_keepout` and `rf_antenna_feed_path` rows use `mm` for the
   distance value when a unit is supplied.
@@ -99,6 +101,18 @@ nets, layers, vias, package limits, or heat-flow behavior.
 The importer appends measurement rows to
 `board.manufacturing.thermal_measurements[]` and preserves the raw columns in
 the manifest. It does not infer pass/fail limits from the measured temperature.
+
+`thermal_package` rows use `value` as
+`thermal_resistance_junction_to_ambient_C_per_W` and require extra columns:
+
+- `component`: Board IR component reference.
+- `max_junction_temperature_C`: reviewed package junction limit.
+
+`source` or `package_source` must name the reviewed package-table source. Rows
+create or replace entries under `board.manufacturing.thermal_packages[]` by
+`component`. Duplicate CSV components fail closed. These rows are reviewed
+package thermal evidence only; the importer does not infer package metadata
+from model names, designators, or power-loss text.
 
 `stackup_layer` rows use `value` as the layer `kind`. Accepted values are
 `signal`, `plane`, `dielectric`, and `other`, with conservative aliases such as
