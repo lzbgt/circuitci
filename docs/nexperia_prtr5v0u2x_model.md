@@ -17,7 +17,9 @@ the SOT143B package:
 - pins: `GND`, `IO1`, `IO2`, and `VCC`,
 - rail-to-rail ESD protection for two high-speed data lines,
 - reverse standoff voltage: `5.5 V`,
-- maximum I/O-to-ground capacitance: `1.5 pF`.
+- maximum I/O-to-ground capacitance: `1.5 pF`,
+- typical I/O-to-I/O capacitance: `0.6 pF`,
+- typical VCC-to-ground capacitance: `16 pF`.
 
 The model encodes two `signal_conditioning.protection_clamps`:
 `io1_to_vcc` and `io2_to_vcc`. They use `VCC` as the power reference so
@@ -32,6 +34,28 @@ The model encodes two `signal_conditioning.protection_clamps`:
 - normal protected-net voltage does not exceed the `5.5 V` standoff limit,
 - the `1.5 pF` line capacitance fits the declared interface budget.
 
-This is a static screening model. It is not a SPICE clamp model and does not
-prove IEC ESD pulse behavior, USB eye margin, differential impedance, return
-path quality, or final PCB layout sign-off.
+## Generated SPICE Observation
+
+The model also declares a reduced generated-SPICE subcircuit in
+`models/spice/generic/analog_behavioral.lib`:
+
+```text
+CIRCUITCI_PRTR5V0U2X_USB_ESD IO1 IO2 VCC GND
+```
+
+That face is intentionally limited to normal-operation standoff and capacitance
+loading. It leaves IO pins high impedance, applies `1.5 pF` IO-to-ground,
+`0.6 pF` IO-to-IO, and `16 pF` VCC-to-ground capacitance, and lets generated
+transient observations verify that USB line and VCC voltages remain below the
+`5.5 V` standoff limit.
+
+Executable example:
+
+```text
+examples/good_nexperia_prtr5v0u2x_usb_esd_observation/project.yaml
+```
+
+This is a preliminary screening model. It does not prove IEC ESD pulse clamp
+waveforms, rail-to-rail snapback dynamics, leakage over temperature, USB eye
+margin, differential impedance, return path quality, or final PCB layout
+sign-off.

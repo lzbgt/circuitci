@@ -225,6 +225,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   datasheet-backed USB ESD model can use a reduced generated-SPICE face for
   normal-operation D+/D- standoff checks with the source-backed 0.7 pF
   line-capacitance load.
+- `examples/good_nexperia_prtr5v0u2x_usb_esd_observation` proves the Nexperia
+  PRTR5V0U2X datasheet-backed rail-to-rail USB ESD model can use a reduced
+  generated-SPICE face for normal-operation VBUS, IO1, and IO2 standoff checks
+  with source-backed IO/VCC capacitance loads.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

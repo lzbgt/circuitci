@@ -198,6 +198,8 @@ Current analog support:
   TXS0108E-style A-to-B mixed-voltage level-shifter observations,
   TPD2EUSB30-style USB ESD normal-operation standoff and line-capacitance
   observations,
+  PRTR5V0U2X-style rail-to-rail USB ESD normal-operation standoff and
+  capacitance observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
@@ -210,8 +212,9 @@ Current analog support:
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
-  TXS0108E level shifter, TPD2EUSB30 USB ESD, AP2112K LDO rail, TPS54331 buck rail, TPS62162 buck
-  rail, TPS63802 buck-boost rail, TPS61023 boost rail, TPS2121 power mux,
+  TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, AP2112K LDO
+  rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  TPS61023 boost rail, TPS2121 power mux,
   TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
   divider-noise, and RC Monte Carlo yield workflows.
@@ -262,6 +265,13 @@ Current analog support:
   metadata still covers 5.5 V standoff and capacitance-budget review, while the
   transient face explicitly omits IEC ESD pulse clamping, dynamic snapback,
   leakage over temperature, USB eye margin, and layout sign-off.
+- The Nexperia PRTR5V0U2X vendor component pack now has a datasheet-backed
+  generated SPICE observation face for normal-operation rail-to-rail USB ESD
+  checks. Its static clamp metadata still covers VCC reference validation,
+  5.5 V standoff, and capacitance-budget review, while the transient face
+  applies source-backed IO/VCC capacitance loads and explicitly omits IEC ESD
+  pulse clamping, rail-to-rail snapback dynamics, leakage over temperature,
+  USB eye margin, differential impedance, and layout sign-off.
 - The TI TPS54331-5V vendor component pack now has a datasheet-backed
   generated SPICE observation face for VIN/EN/VSENSE rail checks. Its static
   input range, 3 A output-current class, switching-frequency class, and

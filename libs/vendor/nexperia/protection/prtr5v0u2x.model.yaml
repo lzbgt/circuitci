@@ -65,6 +65,17 @@ datasheet:
       source_url: https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf
       sha256: 70105e57571142f00f389b9bf6fe5145cc4832232ec71730d818a77a655bde11
       retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: CIRCUITCI_PRTR5V0U2X_USB_ESD
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [IO1, IO2, VCC, GND]
+    operating_notes:
+      - Reduced PRTR5V0U2X observation model for preliminary USB IO1/IO2 normal-line standoff and capacitance checks only.
+      - Uses source-backed 5.5 V reverse standoff, 1.5 pF maximum IO-to-ground capacitance, 0.6 pF typical IO-to-IO capacitance, and 16 pF typical VCC-to-ground capacitance metadata while leaving IO pins high impedance during normal operation.
+      - Does not model IEC ESD pulse clamping, rail-to-rail snapback dynamics, leakage over temperature, USB eye margin, differential impedance, or PCB layout.
 model_quality:
   source: datasheet
   confidence: medium
@@ -72,6 +83,7 @@ model_quality:
     - usb_esd_static_screening
     - interface_protection_review
     - preliminary_usb_board_validation
+    - preliminary_generated_spice_observation
   not_valid_for:
     - esd_pulse_clamp_waveform
     - usb_signal_integrity_signoff

@@ -317,7 +317,9 @@ output-state observations. The TXS0108E level-shifter fixture opens a
 mixed-voltage generated-SPICE A-to-B observation with rail, OE, input, and
 translated-output checks. The TPD2EUSB30 USB ESD fixture opens a
 normal-operation generated-SPICE D+/D- standoff observation with the
-source-backed line-capacitance load.
+source-backed line-capacitance load. The PRTR5V0U2X USB ESD fixture opens a
+rail-to-rail generated-SPICE VBUS/IO1/IO2 standoff observation with
+source-backed IO/VCC capacitance loads.
 Inserted model-backed components use the selected model's declared
 ports to seed editable Board IR pin bindings and generated per-pin nets, and
 Sketch-stage placement can target the current view center, an armed blank-canvas
@@ -508,7 +510,7 @@ form:
   fixture, op-amp buffer fixture, CH340C USB-UART bridge fixture, CP2102N
   USB-UART bridge fixture, FT232R USB-UART bridge fixture, CH347 USB-JTAG
   debug bridge fixture, CMSIS-DAP SWD probe fixture, TXS0108E level-shifter
-  fixture, TPD2EUSB30 USB ESD fixture, AP2112K LDO rail fixture, TPS54331 buck rail fixture,
+  fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, AP2112K LDO rail fixture, TPS54331 buck rail fixture,
   TPS62162 buck rail fixture,
   TPS63802 buck-boost rail fixture, TPS61023 boost rail fixture, TPS2121
   power-mux fixture, TPS22918 load-switch fixture, MCP73831 charger fixture, BQ24075
@@ -524,7 +526,7 @@ form:
   Readiness. Examples that contain a known SPICE-ready function block, such as
   the comparator threshold, op-amp buffer, CH340C USB-UART, CP2102N USB-UART,
   FT232R USB-UART, CH347 USB-JTAG, CMSIS-DAP SWD, TXS0108E level shifter,
-  TPD2EUSB30 USB ESD, AP2112K LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux,
+  TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, AP2112K LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux,
   TPS22918 load-switch, MCP73831 charger, BQ24075 power-path charger, and
   TLV803 reset fixtures, also show `Create Checks` to append a generated run
   setup with model-aware probes and observation checks for the placed component.

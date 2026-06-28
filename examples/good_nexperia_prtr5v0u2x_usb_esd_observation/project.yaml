@@ -1,51 +1,72 @@
 project:
-  name: good_tpd2eusb30_usb_esd_observation
+  name: good_nexperia_prtr5v0u2x_usb_esd_observation
   version: 0.1.0
 
 libraries:
   - ../../libs/generic/analog
-  - ../../libs/vendor/ti/protection
+  - ../../libs/vendor/nexperia/protection
 
 board:
   schematic:
     component_symbols:
+      VBUS: Simulation_SPICE:VDC
       VDP: Simulation_SPICE:VDC
       VDM: Simulation_SPICE:VDC
-      UESD: Interface_USB:TPD2EUSB30
+      UESD: Interface_USB:PRTR5V0U2X
     node_styles:
+      component:VBUS: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:VDP: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:VDM: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:UESD: { rotation_deg: 0, mirrored: false, pin_side: auto }
     node_positions:
-      component:VDP: { x: 64.0, y: 160.0 }
-      component:VDM: { x: 64.0, y: 320.0 }
-      component:UESD: { x: 352.0, y: 240.0 }
-      net:usb_dp: { x: 208.0, y: 160.0 }
-      net:usb_dm: { x: 208.0, y: 320.0 }
-      net:gnd: { x: 352.0, y: 480.0 }
+      component:VBUS: { x: 64.0, y: 112.0 }
+      component:VDP: { x: 64.0, y: 240.0 }
+      component:VDM: { x: 64.0, y: 368.0 }
+      component:UESD: { x: 368.0, y: 240.0 }
+      net:usb_vbus: { x: 224.0, y: 112.0 }
+      net:usb_dp: { x: 224.0, y: 240.0 }
+      net:usb_dm: { x: 224.0, y: 368.0 }
+      net:gnd: { x: 368.0, y: 512.0 }
     wire_routes:
+      VBUS.P->usb_vbus:
+        points:
+          - { x: 160.0, y: 128.0 }
+      VBUS.N->gnd:
+        points:
+          - { x: 112.0, y: 512.0 }
       VDP.P->usb_dp:
         points:
-          - { x: 160.0, y: 176.0 }
+          - { x: 160.0, y: 256.0 }
       VDP.N->gnd:
         points:
-          - { x: 112.0, y: 480.0 }
+          - { x: 112.0, y: 512.0 }
       VDM.P->usb_dm:
         points:
-          - { x: 160.0, y: 336.0 }
+          - { x: 160.0, y: 384.0 }
       VDM.N->gnd:
         points:
-          - { x: 112.0, y: 480.0 }
-      UESD.D1+->usb_dp:
+          - { x: 112.0, y: 512.0 }
+      UESD.VCC->usb_vbus:
         points:
-          - { x: 288.0, y: 176.0 }
-      UESD.D1-->usb_dm:
+          - { x: 304.0, y: 128.0 }
+      UESD.IO1->usb_dp:
         points:
-          - { x: 288.0, y: 336.0 }
+          - { x: 304.0, y: 256.0 }
+      UESD.IO2->usb_dm:
+        points:
+          - { x: 304.0, y: 384.0 }
       UESD.GND->gnd:
         points:
-          - { x: 352.0, y: 480.0 }
+          - { x: 368.0, y: 512.0 }
   components:
+    VBUS:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: usb_vbus
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
     VDP:
       model: generic.analog.dc_voltage_source
       pins:
@@ -63,13 +84,18 @@ board:
         primitive: dc_voltage_source
         dc_v: 0.0
     UESD:
-      model: vendor.ti.tpd2eusb30
-      part_number: TPD2EUSB30DRTR
+      model: vendor.nexperia.prtr5v0u2x
+      part_number: PRTR5V0U2X
       pins:
-        "D1+": usb_dp
-        "D1-": usb_dm
         GND: gnd
+        IO1: usb_dp
+        IO2: usb_dm
+        VCC: usb_vbus
   nets:
+    usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
     usb_dp:
       kind: power
       nominal_voltage: 3.3
@@ -82,7 +108,7 @@ board:
       kind: ground
 
 scenarios:
-  - name: tpd2eusb30_usb_esd_observation
+  - name: prtr5v0u2x_usb_esd_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -92,6 +118,7 @@ scenarios:
       generated:
         ground_net: gnd
         components:
+          - VBUS
           - VDP
           - VDM
           - UESD
@@ -99,29 +126,38 @@ scenarios:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 3d420cc1d7a497b6af1b24f443254eb3062603e562e068a4b304dd7bf8b2095b
       node_bindings:
+        - { node: vbus, net: usb_vbus }
         - { node: dp, net: usb_dp }
         - { node: dm, net: usb_dm }
         - { node: "0", net: gnd }
       pin_bindings:
+        - { node: vbus, endpoint: { component: VBUS, pin: P } }
+        - { node: "0", endpoint: { component: VBUS, pin: N } }
         - { node: dp, endpoint: { component: VDP, pin: P } }
         - { node: "0", endpoint: { component: VDP, pin: N } }
         - { node: dm, endpoint: { component: VDM, pin: P } }
         - { node: "0", endpoint: { component: VDM, pin: N } }
-        - { node: dp, endpoint: { component: UESD, pin: "D1+" } }
-        - { node: dm, endpoint: { component: UESD, pin: "D1-" } }
+        - { node: vbus, endpoint: { component: UESD, pin: VCC } }
+        - { node: dp, endpoint: { component: UESD, pin: IO1 } }
+        - { node: dm, endpoint: { component: UESD, pin: IO2 } }
         - { node: "0", endpoint: { component: UESD, pin: GND } }
       analysis:
         type: tran
         stop_time_us: 20.0
         max_step_us: 0.1
       stimuli:
-        - name: normal_usb_line_standoff
-          description: TPD2EUSB30 observes normal USB data-line voltages below the 5.5 V standoff limit with datasheet typical line capacitance.
+        - name: normal_usb_rail_to_rail_standoff
+          description: PRTR5V0U2X observes normal USB line voltages and VBUS below the 5.5 V standoff limit with datasheet capacitance loads.
       probes:
+        - name: v_vbus
+          expression: V(vbus)
         - name: v_dp
           expression: V(dp)
         - name: v_dm
           expression: V(dm)
+        - name: i_vbus_source
+          expression: I(VBUS)
+          quantity: current
         - name: i_dp_source
           expression: I(VDP)
           quantity: current
@@ -129,6 +165,13 @@ scenarios:
           expression: I(VDM)
           quantity: current
       assertions:
+        - name: vbus_below_standoff
+          probe: v_vbus
+          aggregation: max
+          start_us: 1.0
+          end_us: 20.0
+          relation: below
+          threshold_v: 5.5
         - name: dp_below_standoff
           probe: v_dp
           aggregation: max
@@ -143,6 +186,13 @@ scenarios:
           end_us: 20.0
           relation: below
           threshold_v: 5.5
+        - name: vbus_nominal
+          probe: v_vbus
+          aggregation: mean
+          start_us: 1.0
+          end_us: 20.0
+          relation: above
+          threshold_v: 4.75
         - name: dp_normal_high_level
           probe: v_dp
           aggregation: mean

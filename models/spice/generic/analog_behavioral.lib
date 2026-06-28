@@ -138,6 +138,20 @@ RDP DP GND 1G
 RDM DM GND 1G
 .ends CIRCUITCI_TPD2EUSB30_USB_ESD
 
+.subckt CIRCUITCI_PRTR5V0U2X_USB_ESD IO1 IO2 VCC GND
+* Reduced PRTR5V0U2X rail-to-rail USB ESD observation behavior.
+* Normal-operation model only: datasheet capacitance loads and high-impedance
+* leakage placeholders. IEC ESD pulse clamping, rail-to-rail snapback dynamics,
+* leakage over temperature, USB eye margin, differential impedance, and layout
+* are intentionally not modeled.
+CIO1 IO1 GND 1.5p
+CIO2 IO2 GND 1.5p
+CIO12 IO1 IO2 0.6p
+CVCC VCC GND 16p
+RIO1 IO1 GND 1G
+RIO2 IO2 GND 1G
+.ends CIRCUITCI_PRTR5V0U2X_USB_ESD
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

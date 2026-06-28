@@ -88,6 +88,19 @@ const TPD2EUSB30_ESD_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_dp", "v_dm", "i_dp_source", "i_dm_source"];
 const TPD2EUSB30_ESD_SCOPE_EXPECTED_FREQUENCY: &str =
     "normal USB data-line voltages below the 5.5 V TPD2EUSB30 standoff limit";
+const PRTR5V0U2X_ESD_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_nexperia_prtr5v0u2x_usb_esd_observation/project.yaml";
+const PRTR5V0U2X_ESD_SCOPE_EXAMPLE_NAME: &str = "good_nexperia_prtr5v0u2x_usb_esd_observation";
+const PRTR5V0U2X_ESD_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vbus",
+    "v_dp",
+    "v_dm",
+    "i_vbus_source",
+    "i_dp_source",
+    "i_dm_source",
+];
+const PRTR5V0U2X_ESD_SCOPE_EXPECTED_FREQUENCY: &str =
+    "normal USB VBUS and data-line voltages below the 5.5 V PRTR5V0U2X standoff limit";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -333,6 +346,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: TPD2EUSB30_ESD_SCOPE_EXAMPLE_NAME,
         expected_traces: TPD2EUSB30_ESD_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPD2EUSB30_ESD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UESD"),
+    },
+    GuiProjectExample {
+        id: "prtr5v0u2x_esd_scope",
+        category: "Protection",
+        open_label: "Open PRTR5V0U2X ESD Example",
+        run_label: "Open PRTR5V0U2X + Run Scopes",
+        workflow_title: "PRTR5V0U2X USB ESD Workflow",
+        summary: "Source-backed rail-to-rail USB ESD standoff and capacitance observation.",
+        project_path: PRTR5V0U2X_ESD_SCOPE_EXAMPLE_PROJECT,
+        project_name: PRTR5V0U2X_ESD_SCOPE_EXAMPLE_NAME,
+        expected_traces: PRTR5V0U2X_ESD_SCOPE_EXPECTED_TRACES,
+        expected_frequency: PRTR5V0U2X_ESD_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UESD"),
     },
     GuiProjectExample {
