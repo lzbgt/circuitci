@@ -154,6 +154,7 @@ board:
         min_copper_thickness_um: 35.0
         min_plated_thermal_via_count: 6
         min_thermal_via_drill_mm: 0.25
+        min_thermal_via_plating_thickness_um: 20.0
         nets: [SW]
         layers: [F.Cu, B.Cu]
     source: jlc_stencil_order
@@ -215,11 +216,14 @@ copper thickness for each reviewed layer. It does not infer thermal vias from
 zone geometry or solve heat flow.
 
 `THERMAL_VIA_PLATING_VALID` consumes the same reviewed thermal rules when they
-declare `min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, reviewed
-nets, and reviewed layers. The check matches imported route vias to
-`board.layout.drills[]` by `via_index` or exact imported coordinate/drill
-evidence, then counts only drills whose `plating` is `plated`. It does not
-model plating thickness, via barrel resistance, or heat flow.
+declare `min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, optional
+`min_thermal_via_plating_thickness_um`, reviewed nets, and reviewed layers. The
+check matches imported route vias to `board.layout.drills[]` by `via_index` or
+exact imported coordinate/drill evidence, then counts only drills whose
+`plating` is `plated`. When a plating-thickness minimum is declared, every
+matched plated thermal-via drill must also carry explicit
+`plating_thickness_um` evidence. It does not model via barrel resistance or heat
+flow.
 
 `THERMAL_DERATING_ENVIRONMENT_VALID` consumes the same reviewed
 `board.manufacturing.thermal_copper[]` entries when they also declare explicit
@@ -550,6 +554,7 @@ board:
       - at: { x_mm: 29.3, y_mm: -8.64001 }
         drill_mm: 0.305
         plating: plated
+        plating_thickness_um: 25.0
         castellated: true
         owner_kind: pad
         net: GND
@@ -560,9 +565,11 @@ board:
         source_hit_index: 0
 ```
 
-`plating` is `plated`, `non_plated`, or `unknown`. Drill evidence is
-fabrication evidence only by default. When existing Board IR pad or route-via
-layout evidence uniquely matches a drill center and diameter,
+`plating` is `plated`, `non_plated`, or `unknown`. Optional
+`plating_thickness_um` is reviewed or imported fabrication evidence for plated
+drills and must be positive when present. Drill evidence is fabrication evidence
+only by default. When existing Board IR pad or route-via layout evidence
+uniquely matches a drill center and diameter,
 `import-excellon-drill` can annotate the hit with `owner_kind: pad` plus
 `component`/`pin`/`net`, or `owner_kind: via` plus `net`/`via_index`. Ambiguous
 or missing matches remain anonymous. `castellated: true` is an explicit

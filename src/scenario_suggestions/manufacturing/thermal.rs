@@ -363,6 +363,9 @@ fn thermal_via_plating_rule_has_evidence(bound: &BoundBoard<'_>, rule: &ThermalC
         && rule
             .min_thermal_via_drill_mm
             .is_some_and(|value| value.is_finite() && value > 0.0)
+        && rule
+            .min_thermal_via_plating_thickness_um
+            .is_none_or(|value| value.is_finite() && value > 0.0)
         && !rule.nets.is_empty()
         && rule.layers.len() >= 2
         && rule.nets.iter().all(|net| {
@@ -376,10 +379,24 @@ fn thermal_via_plating_rule_has_evidence(bound: &BoundBoard<'_>, rule: &ThermalC
                     route.vias.iter().enumerate().any(|(index, via)| {
                         valid_thermal_route_via(via)
                             && rule.layers.iter().all(|layer| via.layers.contains(layer))
-                            && matching_thermal_via_drill(bound, net, index, via)
-                                .is_some_and(valid_thermal_drill)
+                            && matching_thermal_via_drill(bound, net, index, via).is_some_and(
+                                |drill| thermal_plating_drill_has_required_evidence(rule, drill),
+                            )
                     })
                 })
+        })
+}
+
+fn thermal_plating_drill_has_required_evidence(
+    rule: &ThermalCopperRule,
+    drill: &LayoutDrill,
+) -> bool {
+    valid_thermal_drill(drill)
+        && rule.min_thermal_via_plating_thickness_um.is_none_or(|_| {
+            drill.plating == "plated"
+                && drill
+                    .plating_thickness_um
+                    .is_some_and(|value| value.is_finite() && value > 0.0)
         })
 }
 
@@ -414,6 +431,9 @@ fn valid_thermal_drill(drill: &LayoutDrill) -> bool {
         && drill.at.y_mm.is_finite()
         && drill.drill_mm.is_finite()
         && drill.drill_mm > 0.0
+        && drill
+            .plating_thickness_um
+            .is_none_or(|value| value.is_finite() && value > 0.0)
         && matches!(drill.plating.as_str(), "plated" | "non_plated" | "unknown")
 }
 

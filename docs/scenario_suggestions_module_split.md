@@ -47,7 +47,7 @@ suggestions.
   constraints and imported copper/route/pad/placement evidence, and
   manufacturing suggestion orchestration.
 - `src/scenario_suggestions/manufacturing/thermal.rs` owns reviewed
-  thermal-copper area, via/stackup, via-plating, derating-environment,
+  thermal-copper area, via/stackup, via-plating/plating-thickness, derating-environment,
   package-temperature, and measured-temperature templates from board
   manufacturing metadata, model metadata, and imported copper, route-via,
   stackup, and drill evidence.

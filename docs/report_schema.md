@@ -655,9 +655,11 @@ against explicit route-via and drill plating evidence. Stable measured keys
 include `thermal_copper_name`, `thermal_copper_source`, `component`,
 `power_loss_w`, `nets`, `layers`, `route_via_count`, `thermal_via_count`,
 `matched_drill_count`, `plated_thermal_via_count`,
-`non_plated_or_unknown_drill_count`, and
-`observed_min_thermal_via_drill_mm`. Stable limit keys include
-`min_plated_thermal_via_count` and `min_thermal_via_drill_mm`.
+`non_plated_or_unknown_drill_count`, `plating_thickness_evidence_count`,
+`observed_min_thermal_via_drill_mm`, and
+`observed_min_thermal_via_plating_thickness_um`. Stable limit keys include
+`min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, and optional
+`min_thermal_via_plating_thickness_um`.
 
 `THERMAL_PACKAGE_TEMPERATURE_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed component power-loss metadata and component

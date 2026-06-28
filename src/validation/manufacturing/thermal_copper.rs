@@ -1,6 +1,6 @@
 use crate::board_ir::{
-    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, RouteVia, Scenario,
-    StackupLayer, StackupLayerKind, ThermalCopperRule,
+    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, RouteVia, Scenario, StackupLayer,
+    StackupLayerKind, ThermalCopperRule,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -9,7 +9,7 @@ use serde_json::json;
 use super::super::common::validation_input_missing;
 use super::super::{
     THERMAL_COPPER_AREA_VALID, THERMAL_DERATING_ENVIRONMENT_VALID,
-    THERMAL_PACKAGE_TEMPERATURE_VALID, THERMAL_VIA_PLATING_VALID, THERMAL_VIA_STACKUP_VALID,
+    THERMAL_PACKAGE_TEMPERATURE_VALID, THERMAL_VIA_STACKUP_VALID,
 };
 use super::geometry::{
     validate_copper_feature_geometry, validate_copper_region_geometry,
@@ -52,28 +52,6 @@ pub(in crate::validation) fn validate_thermal_via_stackup(
             return;
         };
         validate_via_stackup_rule(bound, scenario, findings, rule);
-    }
-}
-
-pub(in crate::validation) fn validate_thermal_via_plating(
-    bound: &BoundBoard<'_>,
-    scenario: &Scenario,
-    findings: &mut Vec<Finding>,
-) {
-    let Some(names) = named_thermal_rule_parameters(
-        scenario,
-        findings,
-        THERMAL_VIA_PLATING_VALID,
-        "thermal_copper",
-    ) else {
-        return;
-    };
-    for name in names {
-        let Some(rule) = thermal_rule(bound, scenario, findings, THERMAL_VIA_PLATING_VALID, &name)
-        else {
-            return;
-        };
-        validate_via_plating_rule(bound, scenario, findings, rule);
     }
 }
 
@@ -172,7 +150,7 @@ fn thermal_rule_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Optio
     )
 }
 
-fn named_thermal_rule_parameters(
+pub(super) fn named_thermal_rule_parameters(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
     check_id: &str,
@@ -233,7 +211,7 @@ fn named_thermal_rule_parameters(
     Some(names)
 }
 
-fn thermal_rule<'a>(
+pub(super) fn thermal_rule<'a>(
     bound: &'a BoundBoard<'_>,
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
@@ -587,113 +565,6 @@ fn validate_via_stackup_rule(
     }
 }
 
-fn validate_via_plating_rule(
-    bound: &BoundBoard<'_>,
-    scenario: &Scenario,
-    findings: &mut Vec<Finding>,
-    rule: &ThermalCopperRule,
-) {
-    if let Err(message) = validate_rule_metadata(bound, rule) {
-        validation_input_missing(findings, scenario, message);
-        return;
-    }
-    let Some(min_plated_thermal_via_count) = rule.min_plated_thermal_via_count else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_VIA_PLATING_VALID thermal copper rule {} must declare min_plated_thermal_via_count.",
-                rule.name
-            ),
-        );
-        return;
-    };
-    if min_plated_thermal_via_count == 0 {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_VIA_PLATING_VALID thermal copper rule {} min_plated_thermal_via_count must be positive.",
-                rule.name
-            ),
-        );
-        return;
-    }
-    let Some(min_thermal_via_drill_mm) = positive_number(rule.min_thermal_via_drill_mm) else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_VIA_PLATING_VALID thermal copper rule {} must declare finite positive min_thermal_via_drill_mm.",
-                rule.name
-            ),
-        );
-        return;
-    };
-    if rule.nets.is_empty() {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_VIA_PLATING_VALID thermal copper rule {} requires at least one reviewed net in board.manufacturing.thermal_copper[].nets.",
-                rule.name
-            ),
-        );
-        return;
-    }
-    if rule.layers.len() < 2 {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_VIA_PLATING_VALID thermal copper rule {} requires at least two reviewed copper layers.",
-                rule.name
-            ),
-        );
-        return;
-    }
-    if bound.project.board.layout.drills.is_empty() {
-        validation_input_missing(
-            findings,
-            scenario,
-            "THERMAL_VIA_PLATING_VALID requires board.layout.drills evidence with plating metadata.",
-        );
-        return;
-    }
-    let Some(evidence) = thermal_via_plating_evidence(bound, scenario, findings, rule) else {
-        return;
-    };
-    if evidence.matched_drill_count == 0 {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "THERMAL_VIA_PLATING_VALID thermal copper rule {} has no matching board.layout.drills evidence for reviewed route vias.",
-                rule.name
-            ),
-        );
-        return;
-    }
-    if evidence.plated_thermal_via_count < min_plated_thermal_via_count {
-        findings.push(thermal_via_plated_count_finding(
-            scenario,
-            rule,
-            &evidence,
-            min_plated_thermal_via_count,
-            min_thermal_via_drill_mm,
-        ));
-    }
-    if evidence.observed_min_thermal_via_drill_mm + f64::EPSILON < min_thermal_via_drill_mm {
-        findings.push(thermal_via_drill_diameter_finding(
-            scenario,
-            rule,
-            &evidence,
-            min_plated_thermal_via_count,
-            min_thermal_via_drill_mm,
-        ));
-    }
-}
-
 fn validate_package_temperature_rule(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -821,7 +692,10 @@ fn validate_package_temperature_rule(
     }
 }
 
-fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> Result<(), String> {
+pub(super) fn validate_rule_metadata(
+    bound: &BoundBoard<'_>,
+    rule: &ThermalCopperRule,
+) -> Result<(), String> {
     if rule.name.trim().is_empty() {
         return Err(
             "THERMAL_COPPER_AREA_VALID thermal copper rule name must be non-empty.".to_string(),
@@ -875,6 +749,15 @@ fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> R
             rule.name
         ));
     }
+    if let Some(min_thermal_via_plating_thickness_um) = rule.min_thermal_via_plating_thickness_um
+        && (!min_thermal_via_plating_thickness_um.is_finite()
+            || min_thermal_via_plating_thickness_um <= 0.0)
+    {
+        return Err(format!(
+            "THERMAL_COPPER_AREA_VALID thermal copper rule {} min_thermal_via_plating_thickness_um must be finite and positive when supplied.",
+            rule.name
+        ));
+    }
     if rule
         .enclosure_profile
         .as_deref()
@@ -894,7 +777,7 @@ fn has_derating_metadata(rule: &ThermalCopperRule) -> bool {
         || rule.enclosure_profile.is_some()
 }
 
-fn positive_number(value: Option<f64>) -> Option<f64> {
+pub(super) fn positive_number(value: Option<f64>) -> Option<f64> {
     value.filter(|value| value.is_finite() && *value > 0.0)
 }
 
@@ -1059,109 +942,7 @@ fn thermal_via_evidence(
     Some(evidence)
 }
 
-fn thermal_via_plating_evidence(
-    bound: &BoundBoard<'_>,
-    scenario: &Scenario,
-    findings: &mut Vec<Finding>,
-    rule: &ThermalCopperRule,
-) -> Option<ThermalViaPlatingEvidence> {
-    let mut evidence = ThermalViaPlatingEvidence {
-        observed_min_thermal_via_drill_mm: f64::INFINITY,
-        ..ThermalViaPlatingEvidence::default()
-    };
-    for net in &rule.nets {
-        let Some(route) = bound.project.board.layout.routes.get(net) else {
-            validation_input_missing(
-                findings,
-                scenario,
-                format!(
-                    "THERMAL_VIA_PLATING_VALID thermal copper rule {} net {net} has no board.layout.routes evidence.",
-                    rule.name
-                ),
-            );
-            return None;
-        };
-        evidence.route_via_count += route.vias.len();
-        for (via_index, via) in route.vias.iter().enumerate() {
-            if !valid_route_via(via) {
-                validation_input_missing(
-                    findings,
-                    scenario,
-                    format!(
-                        "THERMAL_VIA_PLATING_VALID net {net} via {via_index} must have finite coordinates, positive size/drill, and at least two explicit layers."
-                    ),
-                );
-                return None;
-            }
-            if !thermal_via_spans_layers(via, &rule.layers) {
-                continue;
-            }
-            evidence.thermal_via_count += 1;
-            let Some(drill) = matching_thermal_via_drill(bound, net, via_index, via) else {
-                continue;
-            };
-            if !valid_thermal_drill(drill) {
-                validation_input_missing(
-                    findings,
-                    scenario,
-                    format!(
-                        "THERMAL_VIA_PLATING_VALID matching drill evidence for net {net} via {via_index} must have finite coordinates, positive drill_mm, and plating of plated/non_plated/unknown."
-                    ),
-                );
-                return None;
-            }
-            evidence.matched_drill_count += 1;
-            if drill.plating == "plated" {
-                evidence.plated_thermal_via_count += 1;
-                evidence.observed_min_thermal_via_drill_mm = evidence
-                    .observed_min_thermal_via_drill_mm
-                    .min(drill.drill_mm);
-            } else {
-                evidence.non_plated_or_unknown_drill_count += 1;
-            }
-        }
-    }
-    if !evidence.observed_min_thermal_via_drill_mm.is_finite() {
-        evidence.observed_min_thermal_via_drill_mm = 0.0;
-    }
-    Some(evidence)
-}
-
-fn matching_thermal_via_drill<'a>(
-    bound: &'a BoundBoard<'_>,
-    net: &str,
-    via_index: usize,
-    via: &RouteVia,
-) -> Option<&'a LayoutDrill> {
-    bound
-        .project
-        .board
-        .layout
-        .drills
-        .iter()
-        .find(|drill| {
-            drill.via_index == Some(via_index)
-                && drill.net.as_deref().is_none_or(|value| value == net)
-        })
-        .or_else(|| {
-            bound.project.board.layout.drills.iter().find(|drill| {
-                drill.net.as_deref().is_none_or(|value| value == net)
-                    && (drill.at.x_mm - via.at.x_mm).abs() <= 1.0e-6
-                    && (drill.at.y_mm - via.at.y_mm).abs() <= 1.0e-6
-                    && (drill.drill_mm - via.drill_mm).abs() <= 1.0e-6
-            })
-        })
-}
-
-fn valid_thermal_drill(drill: &LayoutDrill) -> bool {
-    drill.at.x_mm.is_finite()
-        && drill.at.y_mm.is_finite()
-        && drill.drill_mm.is_finite()
-        && drill.drill_mm > 0.0
-        && matches!(drill.plating.as_str(), "plated" | "non_plated" | "unknown")
-}
-
-fn valid_route_via(via: &RouteVia) -> bool {
+pub(super) fn valid_route_via(via: &RouteVia) -> bool {
     via.at.x_mm.is_finite()
         && via.at.y_mm.is_finite()
         && via.size_mm.is_finite()
@@ -1172,7 +953,7 @@ fn valid_route_via(via: &RouteVia) -> bool {
         && via.layers.iter().all(|layer| !layer.trim().is_empty())
 }
 
-fn thermal_via_spans_layers(via: &RouteVia, layers: &[String]) -> bool {
+pub(super) fn thermal_via_spans_layers(via: &RouteVia, layers: &[String]) -> bool {
     layers
         .iter()
         .all(|layer| via.layers.iter().any(|candidate| candidate == layer))
@@ -1271,16 +1052,6 @@ struct ThermalAreaEvidence {
 struct ThermalViaEvidence {
     route_via_count: usize,
     thermal_via_count: usize,
-}
-
-#[derive(Debug, Default)]
-struct ThermalViaPlatingEvidence {
-    route_via_count: usize,
-    thermal_via_count: usize,
-    matched_drill_count: usize,
-    plated_thermal_via_count: usize,
-    non_plated_or_unknown_drill_count: usize,
-    observed_min_thermal_via_drill_mm: f64,
 }
 
 #[derive(Debug)]
@@ -1483,124 +1254,6 @@ fn thermal_via_count_finding(
         "If the via count requirement changed, update board.manufacturing.thermal_copper from the reviewed thermal layout policy.".to_string(),
     ];
     finding
-}
-
-fn thermal_via_plated_count_finding(
-    scenario: &Scenario,
-    rule: &ThermalCopperRule,
-    evidence: &ThermalViaPlatingEvidence,
-    min_plated_thermal_via_count: usize,
-    min_thermal_via_drill_mm: f64,
-) -> Finding {
-    let mut finding = Finding::critical(
-        THERMAL_VIA_PLATING_VALID,
-        &scenario.name,
-        format!(
-            "Thermal copper rule {} has {} plated thermal via(s), below the reviewed {} minimum.",
-            rule.name, evidence.plated_thermal_via_count, min_plated_thermal_via_count
-        ),
-    );
-    populate_via_plating_finding(
-        &mut finding,
-        rule,
-        evidence,
-        min_plated_thermal_via_count,
-        min_thermal_via_drill_mm,
-    );
-    finding.suggested_fixes = vec![
-        "Add explicit plated drill evidence for the reviewed thermal route vias, then re-import the drill/layout evidence.".to_string(),
-        "If non-plated or unknown drills are intentional, update the reviewed thermal via policy before using this check for sign-off.".to_string(),
-    ];
-    finding
-}
-
-fn thermal_via_drill_diameter_finding(
-    scenario: &Scenario,
-    rule: &ThermalCopperRule,
-    evidence: &ThermalViaPlatingEvidence,
-    min_plated_thermal_via_count: usize,
-    min_thermal_via_drill_mm: f64,
-) -> Finding {
-    let mut finding = Finding::critical(
-        THERMAL_VIA_PLATING_VALID,
-        &scenario.name,
-        format!(
-            "Thermal copper rule {} has minimum plated thermal via drill {:.3} mm, below the reviewed {:.3} mm minimum.",
-            rule.name, evidence.observed_min_thermal_via_drill_mm, min_thermal_via_drill_mm
-        ),
-    );
-    populate_via_plating_finding(
-        &mut finding,
-        rule,
-        evidence,
-        min_plated_thermal_via_count,
-        min_thermal_via_drill_mm,
-    );
-    finding.suggested_fixes = vec![
-        "Increase reviewed thermal via drill diameter or add larger plated thermal vias tied to the reviewed thermal net/layers.".to_string(),
-        "If the drill requirement changed, update board.manufacturing.thermal_copper from the reviewed thermal policy.".to_string(),
-    ];
-    finding
-}
-
-fn populate_via_plating_finding(
-    finding: &mut Finding,
-    rule: &ThermalCopperRule,
-    evidence: &ThermalViaPlatingEvidence,
-    min_plated_thermal_via_count: usize,
-    min_thermal_via_drill_mm: f64,
-) {
-    finding.component = Some(rule.component.clone());
-    finding
-        .measured
-        .insert("thermal_copper_name".to_string(), json!(rule.name));
-    finding
-        .measured
-        .insert("thermal_copper_source".to_string(), json!(rule.source));
-    finding
-        .measured
-        .insert("component".to_string(), json!(rule.component));
-    finding
-        .measured
-        .insert("power_loss_w".to_string(), json!(rule.power_loss_w));
-    finding
-        .measured
-        .insert("nets".to_string(), json!(rule.nets));
-    finding
-        .measured
-        .insert("layers".to_string(), json!(rule.layers));
-    finding.measured.insert(
-        "route_via_count".to_string(),
-        json!(evidence.route_via_count),
-    );
-    finding.measured.insert(
-        "thermal_via_count".to_string(),
-        json!(evidence.thermal_via_count),
-    );
-    finding.measured.insert(
-        "matched_drill_count".to_string(),
-        json!(evidence.matched_drill_count),
-    );
-    finding.measured.insert(
-        "plated_thermal_via_count".to_string(),
-        json!(evidence.plated_thermal_via_count),
-    );
-    finding.measured.insert(
-        "non_plated_or_unknown_drill_count".to_string(),
-        json!(evidence.non_plated_or_unknown_drill_count),
-    );
-    finding.measured.insert(
-        "observed_min_thermal_via_drill_mm".to_string(),
-        json!(evidence.observed_min_thermal_via_drill_mm),
-    );
-    finding.limit.insert(
-        "min_plated_thermal_via_count".to_string(),
-        json!(min_plated_thermal_via_count),
-    );
-    finding.limit.insert(
-        "min_thermal_via_drill_mm".to_string(),
-        json!(min_thermal_via_drill_mm),
-    );
 }
 
 fn thermal_temperature_rise_finding(

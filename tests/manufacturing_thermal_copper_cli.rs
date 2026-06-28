@@ -192,6 +192,61 @@ fn thermal_via_plating_fails_closed_without_drill_evidence() {
 }
 
 #[test]
+fn thermal_via_plating_passes_for_reviewed_plating_thickness() {
+    let (_dir, project_path) =
+        write_thermal_via_plating_project_with_thickness(2, 2, 0.30, true, Some(20.0), Some(25.0));
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_plating_fails_below_reviewed_plating_thickness() {
+    let (_dir, project_path) =
+        write_thermal_via_plating_project_with_thickness(2, 2, 0.30, true, Some(20.0), Some(12.0));
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_VIA_PLATING_VALID")
+        .expect("thermal via plating thickness failure");
+    assert_eq!(failure["measured"]["plated_thermal_via_count"], 2);
+    assert_eq!(failure["measured"]["plating_thickness_evidence_count"], 2);
+    assert_eq!(
+        failure["measured"]["observed_min_thermal_via_plating_thickness_um"],
+        12.0
+    );
+    assert_eq!(
+        failure["limit"]["min_thermal_via_plating_thickness_um"],
+        20.0
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_via_plating_fails_closed_without_plating_thickness_evidence() {
+    let (_dir, project_path) =
+        write_thermal_via_plating_project_with_thickness(2, 2, 0.30, true, Some(20.0), None);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires plating_thickness_um")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_derating_environment_passes_for_reviewed_context() {
     let (_dir, project_path) =
         write_thermal_derating_project(Some(55.0), Some(250.0), Some("vented_ip20"), true);
@@ -966,6 +1021,24 @@ fn write_thermal_via_plating_project(
     drill_mm: f64,
     include_drills: bool,
 ) -> (tempfile::TempDir, std::path::PathBuf) {
+    write_thermal_via_plating_project_with_thickness(
+        via_count,
+        plated_count,
+        drill_mm,
+        include_drills,
+        None,
+        None,
+    )
+}
+
+fn write_thermal_via_plating_project_with_thickness(
+    via_count: usize,
+    plated_count: usize,
+    drill_mm: f64,
+    include_drills: bool,
+    min_plating_thickness_um: Option<f64>,
+    drill_plating_thickness_um: Option<f64>,
+) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let repo = std::env::current_dir().unwrap();
@@ -990,11 +1063,18 @@ fn write_thermal_via_plating_project(
                 } else {
                     "non_plated"
                 };
+                let plating_thickness = if plating == "plated" {
+                    drill_plating_thickness_um
+                        .map(|value| format!("          plating_thickness_um: {value}\n"))
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
                 format!(
                     r#"        - at: {{ x_mm: {}, y_mm: 1.0 }}
           drill_mm: {drill_mm}
           plating: {plating}
-          net: HOT
+{plating_thickness}          net: HOT
           via_index: {index}
 "#,
                     index + 1
@@ -1005,6 +1085,9 @@ fn write_thermal_via_plating_project(
     } else {
         String::new()
     };
+    let min_plating_thickness = min_plating_thickness_um
+        .map(|value| format!("        min_thermal_via_plating_thickness_um: {value}\n"))
+        .unwrap_or_default();
     std::fs::write(
         &project_path,
         format!(
@@ -1031,7 +1114,7 @@ board:
         min_copper_area_mm2: 20.0
         min_plated_thermal_via_count: 2
         min_thermal_via_drill_mm: 0.25
-        layers: [F.Cu, B.Cu]
+{min_plating_thickness}        layers: [F.Cu, B.Cu]
         nets: [HOT]
         source: thermal_layout_note_rev_a
   layout:

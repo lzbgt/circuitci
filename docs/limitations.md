@@ -307,12 +307,12 @@ without explicit imported mechanical evidence.
   spans and stackup copper-thickness evidence meet the reviewed static
   minimums.
 - `THERMAL_VIA_PLATING_VALID` compares reviewed plated thermal-via count and
-  drill-diameter metadata against explicit imported route-via and drill plating
-  evidence. It does not model plating thickness, via barrel resistance,
-  spreading resistance, convection, enclosure, package thermal resistance,
-  derating, or measured temperature rise. Passing this rule only means the
-  imported drill plating and drill-diameter evidence meet the reviewed static
-  minimums.
+  drill-diameter metadata, plus optional reviewed via plating-thickness
+  metadata, against explicit imported route-via and drill plating evidence. It
+  does not model via barrel resistance, spreading resistance, convection,
+  enclosure, package thermal resistance, derating, or measured temperature rise.
+  Passing this rule only means the imported drill plating, drill-diameter, and
+  optional plating-thickness evidence meet the reviewed static minimums.
 - `THERMAL_DERATING_ENVIRONMENT_VALID` compares reviewed thermal-copper
   environment assumptions against explicit scenario ambient, airflow, and
   enclosure-profile inputs. It does not model airflow distribution, convection,

@@ -465,8 +465,10 @@ The command is conservative:
   `min_plated_thermal_via_count`, `min_thermal_via_drill_mm`, reviewed nets,
   reviewed copper layers, imported route-via evidence, and matching drill
   plating evidence, it emits a runnable `THERMAL_VIA_PLATING_VALID` template.
-  The suggestion does not infer plating from route geometry or solve via barrel
-  heat flow.
+  If the rule also declares `min_thermal_via_plating_thickness_um`, matching
+  plated drill rows must carry explicit `plating_thickness_um` evidence before
+  the suggestion is emitted. The suggestion does not infer plating from route
+  geometry or solve via barrel heat flow.
 - When a reviewed thermal-copper entry declares `rated_ambient_temperature_C`,
   `min_airflow_lfm`, or `enclosure_profile`, it emits a non-runnable
   `THERMAL_DERATING_ENVIRONMENT_VALID` template requiring reviewed operating

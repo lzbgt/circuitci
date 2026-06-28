@@ -229,6 +229,8 @@ pub struct ThermalCopperRule {
     #[serde(default)]
     pub min_thermal_via_drill_mm: Option<f64>,
     #[serde(default)]
+    pub min_thermal_via_plating_thickness_um: Option<f64>,
+    #[serde(default)]
     pub min_copper_thickness_um: Option<f64>,
     #[serde(default, rename = "rated_ambient_temperature_C")]
     pub rated_ambient_temperature_c: Option<f64>,
@@ -722,6 +724,8 @@ pub struct LayoutDrill {
     pub at: LayoutPoint,
     pub drill_mm: f64,
     pub plating: String,
+    #[serde(default)]
+    pub plating_thickness_um: Option<f64>,
     #[serde(default)]
     pub castellated: bool,
     #[serde(default)]

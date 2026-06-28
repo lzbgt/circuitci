@@ -15,6 +15,7 @@ mod solder_paste_ic;
 mod stitching_via;
 mod thermal_copper;
 mod thermal_measurement;
+mod thermal_via_plating;
 
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill,
@@ -63,10 +64,10 @@ pub(super) use solder_paste_ic::validate_solder_paste_ic_pin_aperture;
 pub(super) use stitching_via::validate_return_path_stitching_via;
 pub(super) use thermal_copper::{
     validate_thermal_copper_area, validate_thermal_derating_environment,
-    validate_thermal_package_temperature, validate_thermal_via_plating,
-    validate_thermal_via_stackup,
+    validate_thermal_package_temperature, validate_thermal_via_stackup,
 };
 pub(super) use thermal_measurement::validate_thermal_measured_temperature;
+pub(super) use thermal_via_plating::validate_thermal_via_plating;
 
 pub(super) fn validate_copper_to_board_edge_clearance(
     bound: &BoundBoard<'_>,
