@@ -166,6 +166,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UMCU"),
         },
         ExpectedProjectExample {
+            id: "esp32_wroom_32e_boot_uart_scope",
+            category: "MCU",
+            open_label: "Open ESP32-WROOM-32E Boot/UART Example",
+            run_label: "Open ESP32-WROOM-32E + Run Scopes",
+            summary: "Source-backed ESP32-WROOM-32E module supply, EN, boot-strap, and UART line-state observation.",
+            project_path: "examples/good_esp32_wroom_32e_boot_uart_observation/project.yaml",
+            project_name: "good_esp32_wroom_32e_boot_uart_observation",
+            expected_traces: &["v_3v3", "v_en", "v_io0", "v_io2", "v_txd0"],
+            expected_frequency: "3.3 V ESP32-WROOM-32E module with EN high, GPIO0 high, GPIO2 low, and TXD0 idle high",
+            observation_preset_component: Some("UESP"),
+        },
+        ExpectedProjectExample {
             id: "txs0108e_level_scope",
             category: "Level Shifter",
             open_label: "Open TXS0108E Level-Shifter Example",

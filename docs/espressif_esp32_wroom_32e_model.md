@@ -33,6 +33,24 @@ board-boundary checks for the common ESP32-WROOM-32E Wi-Fi/Bluetooth module:
 datasheet GPIO thresholds. `BOOT_STRAP_DEFINED` can also be used when an
 external scenario supplies explicit observed strap states.
 
+The generated-SPICE observation face
+`CIRCUITCI_ESP32_WROOM_32E_BOOT_UART` adds a preliminary board-boundary
+simulation for 3.3 V supply, EN release, GPIO0/GPIO2 strap state, TXD0 idle
+state, and RXD0 high-impedance connectivity. Its state parameters are explicit
+Board IR component parameters:
+
+- `observation_en_state`
+- `observation_io0_state`
+- `observation_io2_state`
+- `observation_txd0_state`
+
+The direct-open GUI fixture is:
+
+- `examples/good_esp32_wroom_32e_boot_uart_observation/project.yaml`
+
+Its `Create Checks` action regenerates rail, EN, strap, and TXD0 idle checks
+for the placed module without editing YAML.
+
 The passing public fixture is:
 
 - `examples/good_espressif_esp32_wroom_32e_application/project.yaml`
@@ -46,5 +64,5 @@ The paired injected-error fixtures are:
 
 This model is not valid for RF matching, antenna layout, EMC, ESP ROM serial
 packet timing, firmware behavior, flash/PSRAM pin-mux safety, thermal sign-off,
-or transient current waveform shape. Those require separate rules or simulation
-evidence.
+peak-current waveform shape, regulator/transient supply droop, or UART
+protocol timing. Those require separate rules or simulation evidence.

@@ -148,6 +148,24 @@ RRXD0 RXD0 GND 1G
 RVDD VDD GND 1G
 .ends CIRCUITCI_ESP32_S3_WROOM_BOOT_USB
 
+.subckt CIRCUITCI_ESP32_WROOM_32E_BOOT_UART VDD GND EN IO0 IO2 TXD0 RXD0 PARAMS: EN_STATE=1 IO0_STATE=1 IO2_STATE=0 TXD0_STATE=1
+* Reduced ESP32-WROOM-32E boot/UART observation behavior.
+* VDD, EN, GPIO0/GPIO2 boot straps, and TXD0 idle state are represented as
+* preliminary board-facing line states. RF, firmware execution, ROM serial
+* protocol, flash/PSRAM mux safety, current peaks, and thermal behavior are
+* intentionally not modeled.
+BEN NEN GND V={v(VDD,GND)*EN_STATE}
+REN NEN EN 1000
+BIO0 NIO0 GND V={v(VDD,GND)*IO0_STATE}
+RIO0 NIO0 IO0 10000
+BIO2 NIO2 GND V={v(VDD,GND)*IO2_STATE}
+RIO2 NIO2 IO2 10000
+BTXD0 NTXD0 GND V={2.64*TXD0_STATE}
+RTXD0 NTXD0 TXD0 82.5
+RRXD0 RXD0 GND 1G
+RVDD VDD GND 1G
+.ends CIRCUITCI_ESP32_WROOM_32E_BOOT_UART
+
 .subckt CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER VCCA VCCB GND OE A1 B1
 * Reduced TXS0108E level-shifter observation behavior.
 * This face models only enabled A1-to-B1 high/low translation for preliminary

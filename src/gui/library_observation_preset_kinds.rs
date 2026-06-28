@@ -399,6 +399,7 @@ pub(super) fn add_mcu_observation_assertions(
     for (pin, parameter, high_suffix, low_suffix) in [
         ("EN", "observation_en_state", "released_high", "held_low"),
         ("IO0", "observation_io0_state", "boot_high", "boot_low"),
+        ("IO2", "observation_io2_state", "strap_high", "strap_low"),
         ("IO46", "observation_io46_state", "strap_high", "strap_low"),
         (
             "IO19",

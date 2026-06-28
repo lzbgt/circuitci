@@ -223,6 +223,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   and TXD0 idle-state observations. The model-state inputs are explicit Board
   IR component parameters, not inferred firmware, ROM boot protocol, USB PHY,
   RF, or peak-current behavior.
+- `examples/good_esp32_wroom_32e_boot_uart_observation` proves the Espressif
+  ESP32-WROOM-32E module model can use a reduced generated-SPICE face for
+  3.3 V supply, EN release, GPIO0/GPIO2 boot straps, TXD0 idle state, and RXD0
+  high-impedance connectivity observations. The model-state inputs are
+  explicit Board IR component parameters, not inferred firmware, ROM serial
+  protocol, RF, peak-current, or flash/PSRAM mux behavior.
 - `examples/good_ti_txs0108e_level_shifter_observation` proves the TI TXS0108E
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and

@@ -82,6 +82,13 @@ const ESP32_S3_WROOM_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const ESP32_S3_WROOM_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V ESP32-S3 module with EN high, GPIO0 high, GPIO46 low, USB D+ high, and D- low";
+const ESP32_WROOM_32E_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_esp32_wroom_32e_boot_uart_observation/project.yaml";
+const ESP32_WROOM_32E_SCOPE_EXAMPLE_NAME: &str = "good_esp32_wroom_32e_boot_uart_observation";
+const ESP32_WROOM_32E_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_3v3", "v_en", "v_io0", "v_io2", "v_txd0"];
+const ESP32_WROOM_32E_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V ESP32-WROOM-32E module with EN high, GPIO0 high, GPIO2 low, and TXD0 idle high";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_txs0108e_level_shifter_observation/project.yaml";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME: &str = "good_ti_txs0108e_level_shifter_observation";
@@ -429,6 +436,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: ESP32_S3_WROOM_SCOPE_EXPECTED_TRACES,
         expected_frequency: ESP32_S3_WROOM_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UMCU"),
+    },
+    GuiProjectExample {
+        id: "esp32_wroom_32e_boot_uart_scope",
+        category: "MCU",
+        open_label: "Open ESP32-WROOM-32E Boot/UART Example",
+        run_label: "Open ESP32-WROOM-32E + Run Scopes",
+        workflow_title: "ESP32-WROOM-32E Boot/UART Workflow",
+        summary: "Source-backed ESP32-WROOM-32E module supply, EN, boot-strap, and UART line-state observation.",
+        project_path: ESP32_WROOM_32E_SCOPE_EXAMPLE_PROJECT,
+        project_name: ESP32_WROOM_32E_SCOPE_EXAMPLE_NAME,
+        expected_traces: ESP32_WROOM_32E_SCOPE_EXPECTED_TRACES,
+        expected_frequency: ESP32_WROOM_32E_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UESP"),
     },
     GuiProjectExample {
         id: "txs0108e_level_scope",

@@ -459,6 +459,72 @@ fn esp32_s3_wroom_scope_example_workflow_creates_model_aware_observation_checks(
 }
 
 #[test]
+fn esp32_wroom_32e_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(
+        gui_project_example_by_id("esp32_wroom_32e_boot_uart_scope"),
+        None,
+    );
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UESP".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "uesp_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "uesp_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_uesp_3v3"));
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_uesp_txd0")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uesp_3v3_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uesp_en_released_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uesp_io0_boot_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uesp_io2_strap_low")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uesp_txd0_idle_high")
+    );
+}
+
+#[test]
 fn txs0108e_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 
