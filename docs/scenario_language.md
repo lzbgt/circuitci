@@ -144,6 +144,7 @@ Canonical executable check IDs:
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
+- `THERMAL_COPPER_AREA_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1292,6 +1293,43 @@ This is a static layout-evidence gate for reviewed antenna-feed rules. It does
 not solve impedance, verify L/C values, prove pi/t topology, model
 discontinuities, or replace RF simulation, VNA/S-parameter measurement, or
 antenna tuning.
+
+Thermal copper area validation uses `THERMAL_COPPER_AREA_VALID` when Board IR
+contains reviewed thermal copper rules under
+`board.manufacturing.thermal_copper[]` and imported copper evidence tied to the
+reviewed component or reviewed nets/layers.
+
+```yaml
+scenarios:
+  - name: thermal_copper_area
+    type: manufacturing
+    checks:
+      - THERMAL_COPPER_AREA_VALID
+    parameters:
+      thermal_copper:
+        - name: u1_heat_spreader
+```
+
+Thermal copper area algorithm:
+
+1. Require `parameters.thermal_copper[]` with explicit rule `name` values.
+2. Resolve each name from `board.manufacturing.thermal_copper[]`.
+3. Require the reviewed rule to name an existing component, non-empty source,
+   positive `power_loss_w`, positive `min_copper_area_mm2`, and existing nets
+   when `nets[]` is supplied.
+4. Count only imported copper features, segments, and regions whose explicit
+   `component` matches the reviewed component or whose explicit `net` matches a
+   reviewed net. When `layers[]` is supplied, count only those layers.
+5. Approximate feature area from supported rect/circle/oval geometry, segment
+   area from length times width, and region area from the polygon shoelace
+   area.
+6. Fail when summed explicit copper area is below `min_copper_area_mm2`.
+7. Fail closed when the rule metadata is malformed, comparable copper evidence
+   is absent, or comparable copper geometry cannot be measured.
+
+This is a static copper-area evidence screen for reviewed thermal rules. It
+does not model copper thickness, vias, convection, enclosure, component thermal
+resistance, temperature rise, derating, or measured thermal behavior.
 
 Controlled-impedance geometry validation uses
 `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported

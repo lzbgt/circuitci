@@ -179,6 +179,8 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub controlled_impedance: ControlledImpedanceTargets,
     #[serde(default)]
+    pub thermal_copper: Vec<ThermalCopperRule>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 
@@ -209,6 +211,19 @@ pub struct ControlledImpedanceDifferentialPairTarget {
     pub expected_gap_mm: f64,
     pub max_width_error_mm: f64,
     pub max_gap_error_mm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThermalCopperRule {
+    pub name: String,
+    pub component: String,
+    pub source: String,
+    pub power_loss_w: f64,
+    pub min_copper_area_mm2: f64,
+    #[serde(default)]
+    pub nets: Vec<String>,
+    #[serde(default)]
+    pub layers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

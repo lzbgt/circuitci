@@ -1,7 +1,7 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
-    LayoutCopper, LayoutCopperFeature, LayoutPoint, NetRoute, RfAntennaFeedPathRule,
-    RfAntennaKeepoutRule, RouteSegment,
+    LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPoint,
+    NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, ThermalCopperRule,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -20,6 +20,7 @@ const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARAN
 const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
+const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -78,6 +79,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
 
     suggestions.extend(rf_antenna_keepout_suggestions(bound, &project_name));
     suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
+    suggestions.extend(thermal_copper_area_suggestions(bound, &project_name));
     if !layout.drills.is_empty() {
         push_if_not_declared(
             bound,
@@ -1078,6 +1080,179 @@ fn rf_antenna_feed_path_check_declared(bound: &BoundBoard<'_>, feed_path_name: &
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(feed_path_name)
+                    })
+                })
+    })
+}
+
+fn thermal_copper_area_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for rule in &bound.project.board.manufacturing.thermal_copper {
+        if !thermal_copper_rule_has_evidence(bound, rule)
+            || thermal_copper_rule_check_declared(bound, &rule.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!("thermal_copper_area_{}", sanitized_name(&rule.name)),
+            true,
+            &format!(
+                "Thermal copper rule {} has reviewed power-loss/source metadata and imported copper area evidence for component {}.",
+                rule.name, rule.component
+            ),
+            &format!(
+                "{}_{}_thermal_copper_area",
+                project_name,
+                sanitized_name(&rule.name)
+            ),
+            THERMAL_COPPER_AREA_VALID,
+            Some(BTreeMap::from([(
+                "thermal_copper".to_string(),
+                json!([{ "name": rule.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn thermal_copper_rule_has_evidence(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> bool {
+    !rule.name.trim().is_empty()
+        && !rule.component.trim().is_empty()
+        && !rule.source.trim().is_empty()
+        && rule.power_loss_w.is_finite()
+        && rule.power_loss_w > 0.0
+        && rule.min_copper_area_mm2.is_finite()
+        && rule.min_copper_area_mm2 > 0.0
+        && bound.project.board.components.contains_key(&rule.component)
+        && rule
+            .nets
+            .iter()
+            .all(|net| bound.project.board.nets.contains_key(net))
+        && thermal_copper_area_mm2(bound, rule) > f64::EPSILON
+}
+
+fn thermal_copper_area_mm2(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> f64 {
+    let copper = &bound.project.board.layout.copper;
+    copper
+        .features
+        .iter()
+        .filter(|feature| thermal_feature_matches(rule, feature))
+        .filter_map(thermal_feature_area_mm2)
+        .sum::<f64>()
+        + copper
+            .segments
+            .iter()
+            .filter(|segment| thermal_segment_matches(rule, segment))
+            .map(thermal_segment_area_mm2)
+            .sum::<f64>()
+        + copper
+            .regions
+            .iter()
+            .filter(|region| thermal_region_matches(rule, region))
+            .map(thermal_region_area_mm2)
+            .sum::<f64>()
+}
+
+fn thermal_feature_matches(rule: &ThermalCopperRule, feature: &LayoutCopperFeature) -> bool {
+    thermal_copper_matches(
+        rule,
+        feature.component.as_deref(),
+        feature.net.as_deref(),
+        &feature.layer,
+    )
+}
+
+fn thermal_segment_matches(rule: &ThermalCopperRule, segment: &LayoutCopperSegment) -> bool {
+    thermal_copper_matches(
+        rule,
+        segment.component.as_deref(),
+        segment.net.as_deref(),
+        &segment.layer,
+    )
+}
+
+fn thermal_region_matches(rule: &ThermalCopperRule, region: &LayoutCopperRegion) -> bool {
+    thermal_copper_matches(
+        rule,
+        region.component.as_deref(),
+        region.net.as_deref(),
+        &region.layer,
+    )
+}
+
+fn thermal_copper_matches(
+    rule: &ThermalCopperRule,
+    component: Option<&str>,
+    net: Option<&str>,
+    layer: &str,
+) -> bool {
+    if !rule.layers.is_empty() && !rule.layers.iter().any(|candidate| candidate == layer) {
+        return false;
+    }
+    let component_match = component == Some(rule.component.as_str());
+    let net_match = net.is_some_and(|candidate| rule.nets.iter().any(|net| net == candidate));
+    component_match || (!rule.nets.is_empty() && net_match)
+}
+
+fn thermal_feature_area_mm2(feature: &LayoutCopperFeature) -> Option<f64> {
+    let x = feature.size.x_mm;
+    let y = feature.size.y_mm;
+    if !x.is_finite() || !y.is_finite() || x <= 0.0 || y <= 0.0 {
+        return None;
+    }
+    match feature.shape.as_str() {
+        "rect" | "rectangle" => Some(x * y),
+        "circle" => Some(std::f64::consts::PI * (x.min(y) / 2.0).powi(2)),
+        "oval" | "roundrect" => Some(thermal_oval_area_mm2(x, y)),
+        _ => None,
+    }
+}
+
+fn thermal_oval_area_mm2(x_mm: f64, y_mm: f64) -> f64 {
+    let major = x_mm.max(y_mm);
+    let minor = x_mm.min(y_mm);
+    (major - minor) * minor + std::f64::consts::PI * (minor / 2.0).powi(2)
+}
+
+fn thermal_segment_area_mm2(segment: &LayoutCopperSegment) -> f64 {
+    (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+        * segment.width_mm
+}
+
+fn thermal_region_area_mm2(region: &LayoutCopperRegion) -> f64 {
+    region
+        .points
+        .iter()
+        .zip(region.points.iter().cycle().skip(1))
+        .take(region.points.len())
+        .map(|(left, right)| left.x_mm * right.y_mm - right.x_mm * left.y_mm)
+        .sum::<f64>()
+        .abs()
+        / 2.0
+}
+
+fn thermal_copper_rule_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_COPPER_AREA_VALID)
+            && scenario
+                .parameters
+                .get("thermal_copper")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(rule_name)
                     })
                 })
     })

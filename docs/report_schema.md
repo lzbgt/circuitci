@@ -181,6 +181,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
+- `THERMAL_COPPER_AREA_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -623,6 +624,15 @@ pad, placement, and component-pin evidence. Stable measured keys include
 include `max_feed_route_length_mm`. Matching-component distance findings also
 report `matching_component` and `matching_component_distance_mm`; stable limit
 keys include `max_matching_component_distance_mm`.
+
+`THERMAL_COPPER_AREA_VALID` reports are emitted by `manufacturing` scenarios
+that compare reviewed component thermal-copper area rules against explicit
+imported copper feature, segment, and region evidence. Stable measured keys
+include `thermal_copper_name`, `thermal_copper_source`, `component`,
+`power_loss_w`, `nets`, `layers`, `copper_area_mm2`,
+`copper_feature_area_mm2`, `copper_segment_area_mm2`,
+`copper_region_area_mm2`, and `copper_object_count`. Stable limit keys include
+`min_copper_area_mm2`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

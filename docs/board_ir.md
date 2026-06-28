@@ -144,6 +144,14 @@ board:
           expected_gap_mm: 0.20
           max_width_error_mm: 0.02
           max_gap_error_mm: 0.03
+    thermal_copper:
+      - name: u1_heat_spreader
+        component: U1
+        source: reviewed_thermal_note_rev_a
+        power_loss_w: 1.5
+        min_copper_area_mm2: 20.0
+        nets: [SW]
+        layers: [F.Cu, B.Cu]
     source: jlc_stencil_order
 ```
 
@@ -184,6 +192,14 @@ these targets into runnable suggestions when imported route width evidence
 exists, and differential pairs also need explicit parallel same-layer route-gap
 evidence. It does not calculate impedance from stackup fields or infer targets
 from net names.
+
+`THERMAL_COPPER_AREA_VALID` suggestions consume
+`board.manufacturing.thermal_copper[]` as reviewed thermal layout policy. Each
+entry names the component, the source-backed loss assumption, the minimum
+explicit copper area, and optional nets/layers that bound which imported copper
+can be counted. CircuitCI measures only imported copper features, route
+segments, and zone regions tied to that component or those reviewed nets/layers;
+it does not infer thermal copper from designators or solve temperature rise.
 
 Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
 metadata to an imported Board IR without hand-editing YAML:

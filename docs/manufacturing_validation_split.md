@@ -39,6 +39,13 @@ feed-path route length/proximity checks, fail-closed missing evidence, and
 stable report construction. It intentionally does not model RF matching,
 radiation, or field behavior.
 
+`src/validation/manufacturing/thermal_copper.rs` owns
+`THERMAL_COPPER_AREA_VALID`, including reviewed thermal-copper rule lookup,
+component/net/layer evidence filtering, bounded 2D copper area measurement for
+features, segments, and regions, fail-closed missing evidence, and stable
+report construction. It intentionally does not solve thermal resistance,
+temperature rise, copper thickness effects, or convection.
+
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,
 pad/via/copper owner consistency, required copper-layer checks, and stable

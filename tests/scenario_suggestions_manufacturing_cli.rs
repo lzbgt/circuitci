@@ -295,6 +295,38 @@ fn suggest_scenarios_derives_rf_antenna_keepout_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_thermal_copper_area_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_thermal_copper_area/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_thermal_copper_area"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+
+    let thermal = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "thermal_copper_area_u1_switch_heat_spreader")
+        .expect("thermal copper suggestion");
+    assert_eq!(thermal["runnable"], true);
+    assert_eq!(
+        thermal["scenario"]["checks"][0],
+        "THERMAL_COPPER_AREA_VALID"
+    );
+    assert_eq!(
+        thermal["scenario"]["parameters"]["thermal_copper"][0]["name"],
+        "u1_switch_heat_spreader"
+    );
+    assert!(thermal.get("required_inputs").is_none());
+    assert!(
+        thermal["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed power-loss/source metadata")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_manufacturing_artifacts/project.yaml");

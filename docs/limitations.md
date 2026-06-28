@@ -292,6 +292,13 @@ without explicit imported mechanical evidence.
   replace RF simulation and VNA/S-parameter measurement. Passing this rule only
   means the imported layout evidence satisfies the reviewed static feed-path
   length and proximity limits.
+- `THERMAL_COPPER_AREA_VALID` compares reviewed component thermal-copper
+  minimum-area metadata against explicit imported copper area tied to the
+  reviewed component or reviewed nets/layers. It does not model copper
+  thickness, thermal vias, spreading resistance, convection, enclosure,
+  component package thermal resistance, derating, or measured temperature rise.
+  Passing this rule only means the imported 2D copper-area evidence satisfies
+  the reviewed static minimum.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

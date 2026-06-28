@@ -451,6 +451,11 @@ The command is conservative:
   placement, and matching-component antenna-net pad evidence, it emits a
   runnable `RF_ANTENNA_FEED_PATH_VALID` template. The suggestion does not infer
   matching topology or RF quality from designators, part values, or net names.
+- When `board.manufacturing.thermal_copper[]` contains reviewed component
+  power-loss/minimum-area metadata and imported copper feature, segment, or
+  region evidence is explicitly tied to the component or reviewed nets/layers,
+  it emits a runnable `THERMAL_COPPER_AREA_VALID` template. The suggestion does
+  not infer thermal copper from net names or solve component temperature rise.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped
