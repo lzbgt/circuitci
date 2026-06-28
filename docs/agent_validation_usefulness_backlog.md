@@ -83,7 +83,8 @@ Useful next slices:
   controlled-impedance target, stackup-layer, thermal-copper policy, and
   measured-temperature, package thermal, operating-environment, and
   thermal-limit evidence rows plus RF antenna keepout/feed-path constraint
-  rows.
+  rows. Reviewed RF measurement CSV rows are the next import gap now that
+  Board IR can validate explicit measured return-loss evidence.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.
@@ -113,7 +114,7 @@ filled-zone, stitching-via, controlled-impedance geometry with reviewed-target
 suggestions, controlled-impedance stackup material/copper-thickness evidence
 checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
 manufacturing-level stitching-via transition distance, reviewed RF antenna
-keepout and feed-path route/proximity screens, reviewed thermal copper-area,
+keepout, feed-path route/proximity, and measured return-loss screens, reviewed thermal copper-area,
 thermal via/stackup, via-plating/drill/plating-thickness/barrel cross-section
 evidence, package static temperature-rise, and measured-temperature screens
 with reviewed environment/limit metadata import, and manufacturing geometry
@@ -127,9 +128,10 @@ Useful next slices:
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,
-- RF antenna proof beyond the current explicit keepout-to-copper and
-  feed-path route/proximity screens, such as matching network topology,
-  measured S11, and enclosure/cable effects,
+- RF antenna proof beyond the current explicit keepout-to-copper, feed-path
+  route/proximity, and single-point measured return-loss screens, such as
+  matching network topology, S-parameter sweep interpolation, and
+  enclosure/cable effects,
 - thermal proof beyond the current reviewed 2D copper-area, via/stackup,
   via-plating/drill/plating-thickness/barrel cross-section, package static temperature-rise, and measured-temperature
   uncertainty-margin screens plus static derating-environment metadata screens,

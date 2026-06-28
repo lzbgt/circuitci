@@ -181,6 +181,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
+- `RF_ANTENNA_MEASURED_PERFORMANCE_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
 - `THERMAL_VIA_PLATING_VALID`
@@ -630,6 +631,15 @@ pad, placement, and component-pin evidence. Stable measured keys include
 include `max_feed_route_length_mm`. Matching-component distance findings also
 report `matching_component` and `matching_component_distance_mm`; stable limit
 keys include `max_matching_component_distance_mm`.
+
+`RF_ANTENNA_MEASURED_PERFORMANCE_VALID` reports are emitted by `manufacturing`
+scenarios that compare reviewed RF measurement rows against explicit
+return-loss and optional frequency-band limits. Stable measured keys include
+`measurement_name`, `measurement_source`, `antenna_net`, `frequency_mhz`,
+`return_loss_db`, `frequency_in_band`, and optional `measurement_method`.
+Return-loss findings report stable limit key `min_return_loss_db`. Frequency
+band findings report stable limit keys `frequency_min_mhz` and/or
+`frequency_max_mhz` when those limits are provided.
 
 `THERMAL_COPPER_AREA_VALID` reports are emitted by `manufacturing` scenarios
 that compare reviewed component thermal-copper area rules against explicit

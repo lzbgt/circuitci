@@ -972,6 +972,13 @@ board:
             max_feed_route_length_mm: 10.0
             max_matching_component_distance_mm: 2.0
             source: antenna_layout_guide_rev_a
+        measurements:
+          - name: chip_antenna_s11_2440
+            antenna_net: ANT
+            frequency_mhz: 2440.0
+            return_loss_db: 14.0
+            measurement_method: vna_s11
+            source: vna_sweep_rev_a
 ```
 
 `board.layout.constraints.rf_antenna.feed_paths[]` stores reviewed antenna
@@ -981,6 +988,13 @@ and reviewed limits for imported route length and placement proximity. The
 matching components must still have explicit component-pin and layout-pad
 evidence on the antenna net; this field does not infer RF topology from part
 values or reference designators.
+
+`board.layout.constraints.rf_antenna.measurements[]` stores reviewed RF
+measurement evidence such as VNA S11/return-loss points. Each row names the
+antenna net, measurement frequency in MHz, positive return-loss magnitude in
+dB, source, and optional method/notes. It is evidence only: validators compare
+named rows against explicit reviewed scenario limits and do not interpolate a
+sweep, solve impedance, or infer acceptable RF performance from net names.
 
 These values must come from explicit antenna-module/layout guidance or a
 reviewed board RF rule. They are not inferred from net names, component

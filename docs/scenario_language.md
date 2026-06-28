@@ -144,6 +144,7 @@ Canonical executable check IDs:
 - `RETURN_PATH_STITCHING_VIA_VALID`
 - `RF_ANTENNA_KEEPOUT_VALID`
 - `RF_ANTENNA_FEED_PATH_VALID`
+- `RF_ANTENNA_MEASURED_PERFORMANCE_VALID`
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
 - `THERMAL_VIA_PLATING_VALID`
@@ -1298,6 +1299,45 @@ RF antenna feed-path algorithm:
 This is a static layout-evidence gate for reviewed antenna-feed rules. It does
 not solve impedance, verify L/C values, prove pi/t topology, model
 discontinuities, or replace RF simulation, VNA/S-parameter measurement, or
+antenna tuning.
+
+RF antenna measured-performance validation uses
+`RF_ANTENNA_MEASURED_PERFORMANCE_VALID` when Board IR contains reviewed RF
+measurement rows under `board.layout.constraints.rf_antenna.measurements[]`.
+The scenario selects named measurements and supplies reviewed limits.
+
+```yaml
+scenarios:
+  - name: antenna_measured_performance
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_MEASURED_PERFORMANCE_VALID
+    parameters:
+      min_return_loss_db: 10.0
+      frequency_min_mhz: 2400.0
+      frequency_max_mhz: 2500.0
+      rf_measurements:
+        - name: chip_antenna_s11_2440
+```
+
+RF antenna measured-performance algorithm:
+
+1. Require `parameters.rf_measurements[]` with explicit measurement `name`
+   values and a finite positive `parameters.min_return_loss_db`.
+2. Optionally accept finite positive `frequency_min_mhz` and
+   `frequency_max_mhz`; if both are supplied, max must be at least min.
+3. Resolve each name from
+   `board.layout.constraints.rf_antenna.measurements[]`.
+4. Require a non-empty source, existing antenna net, finite positive
+   `frequency_mhz`, and finite positive `return_loss_db`.
+5. Fail when a measurement frequency is outside the reviewed band or when its
+   return-loss magnitude is below `min_return_loss_db`.
+6. Fail closed when any selected row, limit, net, source, or numeric evidence is
+   absent or malformed.
+
+This is a bounded measured-evidence screen. It does not interpolate S-parameter
+sweeps, solve feed impedance, validate matching-network topology, model
+enclosure/cable effects, or replace RF simulation, chamber testing, or final
 antenna tuning.
 
 Thermal copper area validation uses `THERMAL_COPPER_AREA_VALID` when Board IR

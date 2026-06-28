@@ -579,6 +579,8 @@ pub struct RfAntennaLayoutRules {
     pub keepouts: Vec<RfAntennaKeepoutRule>,
     #[serde(default)]
     pub feed_paths: Vec<RfAntennaFeedPathRule>,
+    #[serde(default)]
+    pub measurements: Vec<RfAntennaMeasurement>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -603,6 +605,19 @@ pub struct RfAntennaFeedPathRule {
     pub max_feed_route_length_mm: f64,
     pub max_matching_component_distance_mm: f64,
     pub source: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RfAntennaMeasurement {
+    pub name: String,
+    pub antenna_net: String,
+    pub frequency_mhz: f64,
+    pub return_loss_db: f64,
+    pub source: String,
+    #[serde(default)]
+    pub measurement_method: Option<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

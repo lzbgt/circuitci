@@ -292,6 +292,39 @@ fn suggest_scenarios_derives_rf_antenna_keepout_template() {
             .unwrap()
             .contains("imported route, pad, placement")
     );
+
+    let measurement = suggested
+        .iter()
+        .find(|suggestion| {
+            suggestion["id"] == "rf_antenna_measured_performance_chip_antenna_s11_2440"
+        })
+        .expect("RF antenna measured-performance suggestion");
+    assert_eq!(
+        measurement["kind"],
+        "manufacturing_rf_antenna_measured_performance_chip_antenna_s11_2440"
+    );
+    assert_eq!(measurement["runnable"], false);
+    assert_eq!(measurement["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        measurement["scenario"]["checks"][0],
+        "RF_ANTENNA_MEASURED_PERFORMANCE_VALID"
+    );
+    assert_eq!(
+        measurement["scenario"]["parameters"]["rf_measurements"][0]["name"],
+        "chip_antenna_s11_2440"
+    );
+    assert!(
+        measurement["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("parameters.min_return_loss_db")
+    );
+    assert!(
+        measurement["reason"]
+            .as_str()
+            .unwrap()
+            .contains("frequency, and return-loss evidence")
+    );
 }
 
 #[test]

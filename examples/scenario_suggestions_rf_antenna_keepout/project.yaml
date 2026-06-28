@@ -43,6 +43,13 @@ board:
             max_feed_route_length_mm: 10.0
             max_matching_component_distance_mm: 2.0
             source: antenna_layout_guide_rev_a
+        measurements:
+          - name: chip_antenna_s11_2440
+            antenna_net: ANT
+            frequency_mhz: 2440.0
+            return_loss_db: 14.0
+            measurement_method: vna_s11
+            source: vna_sweep_rev_a
     placements:
       ANT1: { x_mm: 0.0, y_mm: 0.0, side: top, rotation_deg: 0.0 }
       C1: { x_mm: 1.2, y_mm: 0.0, side: top, rotation_deg: 0.0 }

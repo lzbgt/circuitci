@@ -1,7 +1,7 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutPoint, NetRoute, RfAntennaFeedPathRule,
-    RfAntennaKeepoutRule, RouteSegment,
+    RfAntennaKeepoutRule, RfAntennaMeasurement, RouteSegment,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -21,6 +21,7 @@ const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARAN
 const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 const RF_ANTENNA_KEEPOUT_VALID: &str = "RF_ANTENNA_KEEPOUT_VALID";
 const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
+const RF_ANTENNA_MEASURED_PERFORMANCE_VALID: &str = "RF_ANTENNA_MEASURED_PERFORMANCE_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -79,6 +80,10 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
 
     suggestions.extend(rf_antenna_keepout_suggestions(bound, &project_name));
     suggestions.extend(rf_antenna_feed_path_suggestions(bound, &project_name));
+    suggestions.extend(rf_antenna_measured_performance_suggestions(
+        bound,
+        &project_name,
+    ));
     suggestions.extend(thermal::thermal_suggestions(bound, &project_name));
     if !layout.drills.is_empty() {
         push_if_not_declared(
@@ -1080,6 +1085,93 @@ fn rf_antenna_feed_path_check_declared(bound: &BoundBoard<'_>, feed_path_name: &
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(feed_path_name)
+                    })
+                })
+    })
+}
+
+fn rf_antenna_measured_performance_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for measurement in &bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .measurements
+    {
+        if !rf_antenna_measurement_has_evidence(bound, measurement)
+            || rf_antenna_measurement_check_declared(bound, &measurement.name)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "rf_antenna_measured_performance_{}",
+                sanitized_name(&measurement.name)
+            ),
+            false,
+            &format!(
+                "RF antenna measurement {} has reviewed source, antenna-net, frequency, and return-loss evidence.",
+                measurement.name
+            ),
+            &format!(
+                "{}_{}_rf_antenna_measured_performance",
+                project_name,
+                sanitized_name(&measurement.name)
+            ),
+            RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+            Some(BTreeMap::from([(
+                "rf_measurements".to_string(),
+                json!([{ "name": measurement.name }]),
+            )])),
+            vec![
+                "Review and set parameters.min_return_loss_db from the antenna module datasheet, RF design review, or product requirement.".to_string(),
+                "Optionally set parameters.frequency_min_mhz and parameters.frequency_max_mhz for the reviewed operating band.".to_string(),
+            ],
+        ));
+    }
+    suggestions
+}
+
+fn rf_antenna_measurement_has_evidence(
+    bound: &BoundBoard<'_>,
+    measurement: &RfAntennaMeasurement,
+) -> bool {
+    !measurement.name.trim().is_empty()
+        && !measurement.source.trim().is_empty()
+        && bound
+            .project
+            .board
+            .nets
+            .contains_key(&measurement.antenna_net)
+        && measurement.frequency_mhz.is_finite()
+        && measurement.frequency_mhz > 0.0
+        && measurement.return_loss_db.is_finite()
+        && measurement.return_loss_db > 0.0
+}
+
+fn rf_antenna_measurement_check_declared(bound: &BoundBoard<'_>, measurement_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == RF_ANTENNA_MEASURED_PERFORMANCE_VALID)
+            && scenario
+                .parameters
+                .get("rf_measurements")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|measurements| {
+                    measurements.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(measurement_name)
                     })
                 })
     })

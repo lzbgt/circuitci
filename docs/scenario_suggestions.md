@@ -451,6 +451,12 @@ The command is conservative:
   placement, and matching-component antenna-net pad evidence, it emits a
   runnable `RF_ANTENNA_FEED_PATH_VALID` template. The suggestion does not infer
   matching topology or RF quality from designators, part values, or net names.
+- When `board.layout.constraints.rf_antenna.measurements[]` contains reviewed
+  antenna-net, frequency, return-loss, and source evidence, it emits a
+  non-runnable `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` template requiring an
+  explicit reviewed `min_return_loss_db` and optional frequency band. The
+  suggestion does not infer acceptable return loss from the measured value,
+  antenna net name, or RF component designators.
 - When `board.manufacturing.thermal_copper[]` contains reviewed component
   power-loss/minimum-area metadata and imported copper feature, segment, or
   region evidence is explicitly tied to the component or reviewed nets/layers,

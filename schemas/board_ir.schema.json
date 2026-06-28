@@ -1506,6 +1506,38 @@
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "measurements": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "antenna_net",
+                          "frequency_mhz",
+                          "return_loss_db",
+                          "source"
+                        ],
+                        "properties": {
+                          "name": { "type": "string", "minLength": 1 },
+                          "antenna_net": { "type": "string", "minLength": 1 },
+                          "frequency_mhz": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "return_loss_db": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "source": { "type": "string", "minLength": 1 },
+                          "measurement_method": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "notes": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "additionalProperties": false

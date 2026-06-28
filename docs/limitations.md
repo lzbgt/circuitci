@@ -292,6 +292,13 @@ without explicit imported mechanical evidence.
   replace RF simulation and VNA/S-parameter measurement. Passing this rule only
   means the imported layout evidence satisfies the reviewed static feed-path
   length and proximity limits.
+- `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` compares reviewed RF measurement rows
+  against explicit return-loss and optional frequency-band limits. It does not
+  interpolate S-parameter sweeps, solve impedance, infer antenna tuning quality
+  from layout or net names, model enclosure/cable effects, or replace RF
+  simulation, chamber testing, or final antenna tuning. Passing this rule only
+  means the selected source-backed measurement points satisfy the reviewed
+  numeric limits.
 - `THERMAL_COPPER_AREA_VALID` compares reviewed component thermal-copper
   minimum-area metadata against explicit imported copper area tied to the
   reviewed component or reviewed nets/layers. It does not model copper

@@ -1,13 +1,16 @@
 use crate::board_ir::{
     ComponentPlacement, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPad,
-    LayoutPoint, NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, Scenario,
+    LayoutPoint, NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RfAntennaMeasurement,
+    RouteSegment, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
 use super::super::common::validation_input_missing;
-use super::super::{RF_ANTENNA_FEED_PATH_VALID, RF_ANTENNA_KEEPOUT_VALID};
+use super::super::{
+    RF_ANTENNA_FEED_PATH_VALID, RF_ANTENNA_KEEPOUT_VALID, RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+};
 use super::geometry::{
     copper_feature_to_polygon_clearance_mm, copper_segment_to_polygon_clearance_mm,
     point_inside_polygon, polygon_to_polygon_clearance_mm, validate_copper_feature_geometry,
@@ -48,8 +51,53 @@ pub(in crate::validation) fn validate_rf_antenna_feed_path(
     }
 }
 
+pub(in crate::validation) fn validate_rf_antenna_measured_performance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = named_rule_parameters(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "rf_measurements",
+    ) else {
+        return;
+    };
+    let Some(min_return_loss_db) = required_positive_numeric_parameter(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "min_return_loss_db",
+    ) else {
+        return;
+    };
+    let Some(frequency_band) = optional_frequency_band(scenario, findings) else {
+        return;
+    };
+    for name in names {
+        let Some(measurement) = rf_measurement(bound, scenario, findings, &name) else {
+            return;
+        };
+        validate_rf_measurement(
+            bound,
+            scenario,
+            findings,
+            measurement,
+            min_return_loss_db,
+            frequency_band,
+        );
+    }
+}
+
 fn keepout_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<String>> {
     named_rule_parameters(scenario, findings, RF_ANTENNA_KEEPOUT_VALID, "keepouts")
+}
+
+#[derive(Debug, Clone, Copy)]
+struct FrequencyBand {
+    min_mhz: Option<f64>,
+    max_mhz: Option<f64>,
 }
 
 fn named_rule_parameters(
@@ -188,6 +236,47 @@ fn feed_path_rule<'a>(
                 scenario,
                 format!(
                     "RF_ANTENNA_FEED_PATH_VALID feed path {name} is ambiguous in board.layout.constraints.rf_antenna.feed_paths."
+                ),
+            );
+            None
+        }
+    }
+}
+
+fn rf_measurement<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    name: &str,
+) -> Option<&'a RfAntennaMeasurement> {
+    let matches = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .measurements
+        .iter()
+        .filter(|measurement| measurement.name == name)
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [measurement] => Some(*measurement),
+        [] => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {name} is absent from board.layout.constraints.rf_antenna.measurements."
+                ),
+            );
+            None
+        }
+        _ => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {name} is ambiguous in board.layout.constraints.rf_antenna.measurements."
                 ),
             );
             None
@@ -383,6 +472,48 @@ fn validate_feed_path_rule(
     }
 }
 
+fn validate_rf_measurement(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    measurement: &RfAntennaMeasurement,
+    min_return_loss_db: f64,
+    frequency_band: FrequencyBand,
+) {
+    if let Err(message) = validate_rf_measurement_metadata(bound, measurement) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    if let Some(min_mhz) = frequency_band.min_mhz
+        && measurement.frequency_mhz < min_mhz - f64::EPSILON
+    {
+        findings.push(rf_measurement_frequency_finding(
+            scenario,
+            measurement,
+            frequency_band,
+        ));
+        return;
+    }
+    if let Some(max_mhz) = frequency_band.max_mhz
+        && measurement.frequency_mhz > max_mhz + f64::EPSILON
+    {
+        findings.push(rf_measurement_frequency_finding(
+            scenario,
+            measurement,
+            frequency_band,
+        ));
+        return;
+    }
+    if measurement.return_loss_db + f64::EPSILON < min_return_loss_db {
+        findings.push(rf_measurement_return_loss_finding(
+            scenario,
+            measurement,
+            min_return_loss_db,
+            frequency_band,
+        ));
+    }
+}
+
 fn validate_keepout_metadata(
     bound: &BoundBoard<'_>,
     rule: &RfAntennaKeepoutRule,
@@ -494,6 +625,140 @@ fn validate_feed_path_metadata(
         ));
     }
     Ok(())
+}
+
+fn validate_rf_measurement_metadata(
+    bound: &BoundBoard<'_>,
+    measurement: &RfAntennaMeasurement,
+) -> Result<(), String> {
+    if measurement.name.trim().is_empty() {
+        return Err(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement name must be non-empty.".to_string(),
+        );
+    }
+    if measurement.antenna_net.trim().is_empty()
+        || !bound
+            .project
+            .board
+            .nets
+            .contains_key(&measurement.antenna_net)
+    {
+        return Err(format!(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} antenna_net {} is absent from board.nets.",
+            measurement.name, measurement.antenna_net
+        ));
+    }
+    if !measurement.frequency_mhz.is_finite() || measurement.frequency_mhz <= 0.0 {
+        return Err(format!(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} frequency_mhz must be finite and positive.",
+            measurement.name
+        ));
+    }
+    if !measurement.return_loss_db.is_finite() || measurement.return_loss_db <= 0.0 {
+        return Err(format!(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} return_loss_db must be finite and positive.",
+            measurement.name
+        ));
+    }
+    if measurement.source.trim().is_empty() {
+        return Err(format!(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} source must be non-empty.",
+            measurement.name
+        ));
+    }
+    Ok(())
+}
+
+fn required_positive_numeric_parameter(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    parameter_name: &str,
+) -> Option<f64> {
+    let Some(value) = scenario.parameters.get(parameter_name) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} requires parameters.{parameter_name}."),
+        );
+        return None;
+    };
+    let Some(value) = value.as_f64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{parameter_name} must be numeric."),
+        );
+        return None;
+    };
+    if !value.is_finite() || value <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{parameter_name} must be finite and positive."),
+        );
+        return None;
+    }
+    Some(value)
+}
+
+fn optional_frequency_band(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<FrequencyBand> {
+    let min_mhz = optional_positive_numeric_parameter(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "frequency_min_mhz",
+    )?;
+    let max_mhz = optional_positive_numeric_parameter(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "frequency_max_mhz",
+    )?;
+    if let (Some(min_mhz), Some(max_mhz)) = (min_mhz, max_mhz)
+        && max_mhz < min_mhz
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID parameters.frequency_max_mhz must be greater than or equal to parameters.frequency_min_mhz.",
+        );
+        return None;
+    }
+    Some(FrequencyBand { min_mhz, max_mhz })
+}
+
+fn optional_positive_numeric_parameter(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    parameter_name: &str,
+) -> Option<Option<f64>> {
+    let Some(value) = scenario.parameters.get(parameter_name) else {
+        return Some(None);
+    };
+    let Some(value) = value.as_f64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{parameter_name} must be numeric when provided."),
+        );
+        return None;
+    };
+    if !value.is_finite() || value <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "{check_id} parameters.{parameter_name} must be finite and positive when provided."
+            ),
+        );
+        return None;
+    }
+    Some(Some(value))
 }
 
 fn validate_polygon(name: &str, polygon: &[LayoutPoint]) -> Result<(), String> {
@@ -893,6 +1158,103 @@ fn base_feed_path_finding(
         "Use RF simulation or measured S-parameters for final matching quality; this check only screens explicit feed-path layout evidence.".to_string(),
     ];
     finding
+}
+
+fn rf_measurement_frequency_finding(
+    scenario: &Scenario,
+    measurement: &RfAntennaMeasurement,
+    frequency_band: FrequencyBand,
+) -> Finding {
+    let mut finding = base_rf_measurement_finding(
+        scenario,
+        measurement,
+        format!(
+            "RF antenna measurement {} frequency {:.3} MHz is outside the reviewed frequency band.",
+            measurement.name, measurement.frequency_mhz
+        ),
+    );
+    finding
+        .measured
+        .insert("frequency_in_band".to_string(), json!(false));
+    insert_frequency_band_limits(&mut finding, frequency_band);
+    finding
+}
+
+fn rf_measurement_return_loss_finding(
+    scenario: &Scenario,
+    measurement: &RfAntennaMeasurement,
+    min_return_loss_db: f64,
+    frequency_band: FrequencyBand,
+) -> Finding {
+    let mut finding = base_rf_measurement_finding(
+        scenario,
+        measurement,
+        format!(
+            "RF antenna measurement {} return loss {:.3} dB is below the reviewed minimum {:.3} dB.",
+            measurement.name, measurement.return_loss_db, min_return_loss_db
+        ),
+    );
+    finding
+        .measured
+        .insert("frequency_in_band".to_string(), json!(true));
+    finding
+        .limit
+        .insert("min_return_loss_db".to_string(), json!(min_return_loss_db));
+    insert_frequency_band_limits(&mut finding, frequency_band);
+    finding
+}
+
+fn base_rf_measurement_finding(
+    scenario: &Scenario,
+    measurement: &RfAntennaMeasurement,
+    message: String,
+) -> Finding {
+    let mut finding = Finding::critical(
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        &scenario.name,
+        message,
+    );
+    finding
+        .measured
+        .insert("measurement_name".to_string(), json!(measurement.name));
+    finding
+        .measured
+        .insert("measurement_source".to_string(), json!(measurement.source));
+    finding
+        .measured
+        .insert("antenna_net".to_string(), json!(measurement.antenna_net));
+    finding.measured.insert(
+        "frequency_mhz".to_string(),
+        json!(measurement.frequency_mhz),
+    );
+    finding.measured.insert(
+        "return_loss_db".to_string(),
+        json!(measurement.return_loss_db),
+    );
+    if let Some(method) = measurement.measurement_method.as_deref() {
+        finding
+            .measured
+            .insert("measurement_method".to_string(), json!(method));
+    }
+    finding.suggested_fixes = vec![
+        "Re-run the RF measurement with the reviewed antenna fixture, calibration, and enclosure state.".to_string(),
+        "Tune the antenna matching network or feed layout, then import updated source-backed S11 evidence.".to_string(),
+        "Use RF simulation or chamber/VNA measurements for final antenna qualification; this check only screens explicit measured return-loss evidence.".to_string(),
+    ];
+    finding
+}
+
+fn insert_frequency_band_limits(finding: &mut Finding, frequency_band: FrequencyBand) {
+    if let Some(min_mhz) = frequency_band.min_mhz {
+        finding
+            .limit
+            .insert("frequency_min_mhz".to_string(), json!(min_mhz));
+    }
+    if let Some(max_mhz) = frequency_band.max_mhz {
+        finding
+            .limit
+            .insert("frequency_max_mhz".to_string(), json!(max_mhz));
+    }
 }
 
 fn point_json(point: &LayoutPoint) -> serde_json::Value {

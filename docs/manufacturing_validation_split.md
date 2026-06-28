@@ -32,12 +32,13 @@ evidence, and stable report construction. It intentionally does not model via
 inductance, stitching density, or electromagnetic return current.
 
 `src/validation/manufacturing/rf_antenna.rs` owns
-`RF_ANTENNA_KEEPOUT_VALID` and `RF_ANTENNA_FEED_PATH_VALID`, including
-explicit keepout/feed-path name parameter parsing, reviewed antenna layout
+`RF_ANTENNA_KEEPOUT_VALID`, `RF_ANTENNA_FEED_PATH_VALID`, and
+`RF_ANTENNA_MEASURED_PERFORMANCE_VALID`, including explicit keepout/feed-path
+/ measurement name parameter parsing, reviewed antenna layout and measurement
 metadata validation, same-layer copper comparison, antenna-net exclusion,
-feed-path route length/proximity checks, fail-closed missing evidence, and
-stable report construction. It intentionally does not model RF matching,
-radiation, or field behavior.
+feed-path route length/proximity checks, measured return-loss/frequency-band
+checks, fail-closed missing evidence, and stable report construction. It
+intentionally does not model RF matching, radiation, or field behavior.
 
 `src/validation/manufacturing/thermal_copper.rs` owns
 `THERMAL_COPPER_AREA_VALID`, `THERMAL_VIA_STACKUP_VALID`,
