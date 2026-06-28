@@ -12,12 +12,26 @@ Input CSV columns:
   `max_paste_area_ratio`, `min_solder_paste_spacing_mm`, and
   `max_stitch_via_distance_mm`. A few plain-label aliases such as
   `stencil thickness`, `hole to board edge clearance`, and
-  `stitch via distance` are accepted.
+  `stitch via distance` are accepted. Repeated `thermal_measurement` rows are
+  also supported for reviewed measured-temperature evidence.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
+  `thermal_measurement` rows use `C`/`celsius` for measured temperature.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
+
+`thermal_measurement` rows require extra columns:
+
+- `name`: stable measurement identifier.
+- `component`: Board IR component reference.
+- `ambient_temperature_C`: optional ambient measurement context.
+- `power_loss_w`: optional reviewed dissipation context.
+- `measurement_point`: optional probe/IR-camera point label.
+
+The importer appends these rows to `board.manufacturing.thermal_measurements[]`
+and preserves the raw columns in the manifest. It does not infer pass/fail
+limits from the measured temperature.
 
 Example:
 

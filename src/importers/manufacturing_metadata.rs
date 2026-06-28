@@ -46,6 +46,19 @@ struct AppliedField {
     field: ManufacturingField,
     numeric_value: Option<f64>,
     string_value: Option<String>,
+    thermal_measurement: Option<AppliedThermalMeasurement>,
+}
+
+#[derive(Debug, Clone)]
+struct AppliedThermalMeasurement {
+    name: String,
+    component: String,
+    source: String,
+    measured_temperature_c: f64,
+    ambient_temperature_c: Option<f64>,
+    power_loss_w: Option<f64>,
+    measurement_point: Option<String>,
+    notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -57,6 +70,7 @@ enum ManufacturingField {
     MaxPasteAreaRatio,
     MinSolderPasteSpacingMm,
     MaxStitchViaDistanceMm,
+    ThermalMeasurement,
     Source,
 }
 
@@ -70,6 +84,7 @@ impl ManufacturingField {
             Self::MaxPasteAreaRatio => "max_paste_area_ratio",
             Self::MinSolderPasteSpacingMm => "min_solder_paste_spacing_mm",
             Self::MaxStitchViaDistanceMm => "max_stitch_via_distance_mm",
+            Self::ThermalMeasurement => "thermal_measurements[]",
             Self::Source => "source",
         }
     }
@@ -91,6 +106,10 @@ impl ManufacturingField {
 
     fn expects_positive(self) -> bool {
         matches!(self, Self::StencilThicknessMm)
+    }
+
+    fn is_repeatable(self) -> bool {
+        matches!(self, Self::ThermalMeasurement)
     }
 }
 
@@ -207,7 +226,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.1.0".to_string(),
+        schema_version: "0.2.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -277,7 +296,7 @@ fn normalize_rows(
                 row.field
             );
         };
-        if !seen_supported.insert(field) {
+        if !field.is_repeatable() && !seen_supported.insert(field) {
             bail!(
                 "Manufacturing metadata CSV {} repeats supported field {}.",
                 options.metadata.display(),
@@ -317,6 +336,15 @@ fn applied_field(
             field,
             numeric_value: None,
             string_value: Some(value.to_string()),
+            thermal_measurement: None,
+        });
+    }
+    if field == ManufacturingField::ThermalMeasurement {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            thermal_measurement: Some(applied_thermal_measurement(row, path)?),
         });
     }
     let value = row.value.trim();
@@ -341,6 +369,50 @@ fn applied_field(
         field,
         numeric_value: Some(normalized),
         string_value: None,
+        thermal_measurement: None,
+    })
+}
+
+fn applied_thermal_measurement(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedThermalMeasurement> {
+    let name = required_raw_column(row, path, "name")?;
+    let component = required_raw_column(row, path, "component")?;
+    let measurement_source = optional_raw_column(row, "measurement_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(measurement_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} thermal_measurement requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    let measured_temperature_c =
+        parse_temperature_c(row.value.trim(), row.unit.as_deref(), path, row, "value")?;
+    let ambient_temperature_c = optional_raw_column(row, "ambient_temperature_C")
+        .as_deref()
+        .map(|value| parse_temperature_c(value, None, path, row, "ambient_temperature_C"))
+        .transpose()?;
+    let power_loss_w = optional_raw_column(row, "power_loss_w")
+        .as_deref()
+        .map(|value| parse_positive_watts(value, path, row, "power_loss_w"))
+        .transpose()?;
+    Ok(AppliedThermalMeasurement {
+        name,
+        component,
+        source,
+        measured_temperature_c,
+        ambient_temperature_c,
+        power_loss_w,
+        measurement_point: optional_raw_column(row, "measurement_point"),
+        notes: row.notes.clone(),
     })
 }
 
@@ -418,6 +490,68 @@ fn normalize_numeric_value(
     Ok(value)
 }
 
+fn parse_temperature_c(
+    raw: &str,
+    unit: Option<&str>,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    if raw.trim().is_empty() {
+        bail!(
+            "Manufacturing metadata CSV {} row {} has empty {column}.",
+            path.display(),
+            row.row_number
+        );
+    }
+    let value = raw.trim().parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid temperature {}.",
+            path.display(),
+            row.row_number,
+            raw
+        )
+    })?;
+    if !value.is_finite() {
+        bail!(
+            "Manufacturing metadata CSV {} row {} temperature {column} must be finite.",
+            path.display(),
+            row.row_number
+        );
+    }
+    let unit = unit.map(normalize_unit);
+    if !matches!(
+        unit.as_deref(),
+        None | Some("") | Some("c") | Some("degc") | Some("celsius") | Some("°c")
+    ) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} must use C/celsius for {column}.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
+fn parse_positive_watts(raw: &str, path: &Path, row: &MetadataCsvRow, column: &str) -> Result<f64> {
+    let value = raw.trim().parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid power {}.",
+            path.display(),
+            row.row_number,
+            raw
+        )
+    })?;
+    if !value.is_finite() || value <= 0.0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} must be finite and positive.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
 fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
     let min = fields
         .iter()
@@ -436,6 +570,16 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
 }
 
 fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
+    if let Some(measurement) = &field.thermal_measurement {
+        return serde_yaml_ng::to_value(thermal_measurement_mapping(measurement)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
     if let Some(value) = field.numeric_value {
         return serde_yaml_ng::to_value(value).with_context(|| {
             format!(
@@ -451,6 +595,45 @@ fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
             .context("source field must have a string value")?
             .clone(),
     ))
+}
+
+fn thermal_measurement_mapping(measurement: &AppliedThermalMeasurement) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(measurement.name.clone()));
+    mapping.insert(
+        "component".to_string(),
+        Value::String(measurement.component.clone()),
+    );
+    mapping.insert(
+        "source".to_string(),
+        Value::String(measurement.source.clone()),
+    );
+    mapping.insert(
+        "measured_temperature_C".to_string(),
+        serde_yaml_ng::to_value(measurement.measured_temperature_c).unwrap_or(Value::Null),
+    );
+    if let Some(value) = measurement.ambient_temperature_c {
+        mapping.insert(
+            "ambient_temperature_C".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+    if let Some(value) = measurement.power_loss_w {
+        mapping.insert(
+            "power_loss_w".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+    if let Some(value) = &measurement.measurement_point {
+        mapping.insert(
+            "measurement_point".to_string(),
+            Value::String(value.clone()),
+        );
+    }
+    if let Some(value) = &measurement.notes {
+        mapping.insert("notes".to_string(), Value::String(value.clone()));
+    }
+    mapping
 }
 
 fn row_manifest(
@@ -486,10 +669,15 @@ fn apply_metadata(
     let board = ensure_mapping_field_mut(root, "board")?;
     let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
     for field in fields {
-        manufacturing.insert(
-            Value::String(field.field.board_key().to_string()),
-            normalized_yaml_value(field)?,
-        );
+        if field.field == ManufacturingField::ThermalMeasurement {
+            let measurements = ensure_sequence_field_mut(manufacturing, "thermal_measurements")?;
+            measurements.push(normalized_yaml_value(field)?);
+        } else {
+            manufacturing.insert(
+                Value::String(field.field.board_key().to_string()),
+                normalized_yaml_value(field)?,
+            );
+        }
     }
     manufacturing.insert(
         Value::String("source".to_string()),
@@ -539,6 +727,9 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "maxstitchviadistance"
         | "maximumstitchviadistance"
         | "stitchviadistance" => Some(ManufacturingField::MaxStitchViaDistanceMm),
+        "thermalmeasurement" | "thermalmeasuredtemperature" | "measuredtemperature" => {
+            Some(ManufacturingField::ThermalMeasurement)
+        }
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
     }
@@ -688,6 +879,26 @@ fn optional_string(row: &[String], index: Option<usize>) -> Option<String> {
         .map(str::to_string)
 }
 
+fn optional_raw_column(row: &MetadataCsvRow, name: &str) -> Option<String> {
+    let normalized_name = normalize_name(name);
+    row.raw_fields
+        .iter()
+        .find(|(key, _)| normalize_name(key) == normalized_name)
+        .map(|(_, value)| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn required_raw_column(row: &MetadataCsvRow, path: &Path, name: &str) -> Result<String> {
+    optional_raw_column(row, name).with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} thermal_measurement requires column {name}.",
+            path.display(),
+            row.row_number
+        )
+    })
+}
+
 fn source_file_manifest(path: &Path) -> Result<SourceFileManifest> {
     Ok(SourceFileManifest {
         path: path.display().to_string(),
@@ -730,6 +941,21 @@ fn ensure_mapping_field_mut<'a>(mapping: &'a mut Mapping, key: &str) -> Result<&
         .expect("field was inserted when absent")
         .as_mapping_mut()
         .with_context(|| format!("Board IR field {key} must be an object."))
+}
+
+fn ensure_sequence_field_mut<'a>(
+    mapping: &'a mut Mapping,
+    key: &str,
+) -> Result<&'a mut Vec<Value>> {
+    let key_value = Value::String(key.to_string());
+    if !mapping.contains_key(&key_value) {
+        mapping.insert(key_value.clone(), Value::Sequence(Vec::new()));
+    }
+    mapping
+        .get_mut(&key_value)
+        .expect("field was inserted when absent")
+        .as_sequence_mut()
+        .with_context(|| format!("Board IR field {key} must be a list."))
 }
 
 fn absolutize_relative_libraries(project_yaml: &mut Value, project_dir: &Path) -> Result<()> {

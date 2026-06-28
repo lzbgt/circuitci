@@ -147,6 +147,7 @@ Canonical executable check IDs:
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
+- `THERMAL_MEASURED_TEMPERATURE_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1421,6 +1422,46 @@ This is a static reviewed-loss and package-Rja evidence screen. It does not
 solve board spreading resistance, transient thermal impedance, airflow,
 enclosure effects, heatsinking, copper-via effectiveness, derating curves, or
 measured temperature behavior.
+
+Measured thermal validation uses `THERMAL_MEASURED_TEMPERATURE_VALID` when
+Board IR contains reviewed `board.manufacturing.thermal_measurements[]`
+evidence.
+
+```yaml
+scenarios:
+  - name: thermal_measured_temperature
+    type: manufacturing
+    checks:
+      - THERMAL_MEASURED_TEMPERATURE_VALID
+    parameters:
+      max_measured_temperature_C: 85.0
+      max_temperature_rise_C: 35.0
+      thermal_measurements:
+        - name: u1_hotspot_steady_state
+```
+
+Measured thermal algorithm:
+
+1. Require `parameters.thermal_measurements[]` with explicit measurement
+   `name` values.
+2. Require finite `parameters.max_measured_temperature_C`. Optional
+   `parameters.max_temperature_rise_C` must be positive.
+3. Resolve each name from `board.manufacturing.thermal_measurements[]`.
+4. Require each reviewed measurement to name an existing component, non-empty
+   source, and finite `measured_temperature_C`.
+5. Fail when `measured_temperature_C` exceeds
+   `max_measured_temperature_C`.
+6. When `max_temperature_rise_C` is supplied, require the measurement to
+   declare finite `ambient_temperature_C`, then fail when
+   `measured_temperature_C - ambient_temperature_C` exceeds the reviewed rise
+   limit.
+7. Fail closed when measurement metadata or scenario limits are absent or
+   malformed.
+
+This is a static screen over explicit reviewed measurement evidence. It does
+not infer thermal limits, model measurement uncertainty, prove sensor
+placement, interpolate transient warm-up, solve airflow/enclosure behavior, or
+replace a thermal test plan.
 
 Controlled-impedance geometry validation uses
 `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` when Board IR includes imported

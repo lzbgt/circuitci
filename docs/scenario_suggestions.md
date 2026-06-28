@@ -467,6 +467,12 @@ The command is conservative:
   template requiring reviewed `ambient_temperature_C` and
   `max_temperature_rise_C` inputs. The suggestion does not infer ambient
   conditions or solve board/package heat flow.
+- When `board.manufacturing.thermal_measurements[]` contains reviewed
+  component measurement rows, it emits a non-runnable
+  `THERMAL_MEASURED_TEMPERATURE_VALID` template requiring reviewed
+  `max_measured_temperature_C` input. If ambient evidence is present it also
+  asks whether to add `max_temperature_rise_C`. The suggestion does not infer
+  acceptable temperature limits from the measurement itself.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

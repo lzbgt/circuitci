@@ -45,9 +45,9 @@ suggestions.
   metadata-gated templates, assembly/footprint evidence alignment, pin-1 marker
   templates, RF antenna keepout/feed-path templates from reviewed layout
   constraints and imported copper/route/pad/placement evidence, reviewed
-  thermal-copper area, via/stackup, and package-temperature templates from
-  board manufacturing metadata, model metadata, and imported
-  copper/route-via/stackup evidence, and
+  thermal-copper area, via/stackup, package-temperature, and
+  measured-temperature templates from board manufacturing metadata, model
+  metadata, and imported copper/route-via/stackup evidence, and
   manufacturing suggestion orchestration.
 - `src/scenario_suggestions/manufacturing/route_physics.rs` owns
   stackup-aware adjacent-plane return-path and reference-plane slot-crossing

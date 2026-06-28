@@ -1,0 +1,29 @@
+project:
+  version: "1"
+  name: scenario_suggestions_thermal_measured_temperature
+libraries:
+  - ../../libs/generic
+board:
+  nets:
+    VIN:
+      kind: power
+    LOAD:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: VIN
+        B: LOAD
+  manufacturing:
+    thermal_measurements:
+      - name: u1_hotspot_steady_state
+        component: U1
+        source: ir_camera_steady_state_rev_a
+        measured_temperature_C: 72.0
+        ambient_temperature_C: 45.0
+        power_loss_w: 1.2
+        measurement_point: package_top
+        notes: steady_state_after_20_min

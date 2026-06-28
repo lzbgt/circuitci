@@ -181,6 +181,8 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub thermal_copper: Vec<ThermalCopperRule>,
     #[serde(default)]
+    pub thermal_measurements: Vec<ThermalMeasurement>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 
@@ -228,6 +230,23 @@ pub struct ThermalCopperRule {
     pub nets: Vec<String>,
     #[serde(default)]
     pub layers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThermalMeasurement {
+    pub name: String,
+    pub component: String,
+    pub source: String,
+    #[serde(rename = "measured_temperature_C")]
+    pub measured_temperature_c: f64,
+    #[serde(default, rename = "ambient_temperature_C")]
+    pub ambient_temperature_c: Option<f64>,
+    #[serde(default)]
+    pub power_loss_w: Option<f64>,
+    #[serde(default)]
+    pub measurement_point: Option<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

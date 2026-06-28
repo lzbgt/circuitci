@@ -211,7 +211,9 @@ circuitci set-manufacturing-metadata out/imported_with_drills_and_vias.project.y
 ```
 
 Or import the same reviewed facts from a source CSV while preserving row-level
-evidence in a JSON manifest:
+evidence in a JSON manifest. Repeated `field=thermal_measurement` rows append
+reviewed measured-temperature evidence under
+`board.manufacturing.thermal_measurements[]`:
 
 ```bash
 circuitci import-manufacturing-metadata \

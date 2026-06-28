@@ -385,6 +385,45 @@ fn suggest_scenarios_derives_thermal_package_temperature_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_thermal_measured_temperature_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_thermal_measured_temperature/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_thermal_measured_temperature"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+
+    let measured_temperature = suggested
+        .iter()
+        .find(|suggestion| {
+            suggestion["id"] == "thermal_measured_temperature_u1_hotspot_steady_state"
+        })
+        .expect("thermal measured temperature suggestion");
+    assert_eq!(measured_temperature["runnable"], false);
+    assert_eq!(
+        measured_temperature["scenario"]["checks"][0],
+        "THERMAL_MEASURED_TEMPERATURE_VALID"
+    );
+    assert_eq!(
+        measured_temperature["scenario"]["parameters"]["thermal_measurements"][0]["name"],
+        "u1_hotspot_steady_state"
+    );
+    let required = measured_temperature["required_inputs"].as_array().unwrap();
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.max_measured_temperature_C")
+    }));
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.max_temperature_rise_C")
+    }));
+}
+
+#[test]
 fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_manufacturing_artifacts/project.yaml");

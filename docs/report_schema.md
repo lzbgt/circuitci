@@ -184,6 +184,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `THERMAL_COPPER_AREA_VALID`
 - `THERMAL_VIA_STACKUP_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
+- `THERMAL_MEASURED_TEMPERATURE_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -656,6 +657,15 @@ limits. Stable measured keys include `thermal_copper_name`,
 `estimated_junction_temperature_C`. Stable limit keys include
 `max_temperature_rise_C`, `allowed_junction_temperature_C`,
 `max_junction_temperature_C`, and `max_junction_temperature_margin_C`.
+
+`THERMAL_MEASURED_TEMPERATURE_VALID` reports are emitted by `manufacturing`
+scenarios that compare reviewed thermal measurement rows against reviewed
+temperature limits. Stable measured keys include `thermal_measurement_name`,
+`thermal_measurement_source`, `component`, `measured_temperature_C`, optional
+`ambient_temperature_C`, optional `measured_temperature_rise_C`, optional
+`power_loss_w`, optional `measurement_point`, and optional `measurement_notes`.
+Stable limit keys include `max_measured_temperature_C` and optional
+`max_temperature_rise_C`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

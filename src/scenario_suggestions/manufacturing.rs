@@ -2,7 +2,7 @@ use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_na
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPoint,
     NetRoute, RfAntennaFeedPathRule, RfAntennaKeepoutRule, RouteSegment, RouteVia,
-    StackupLayerKind, ThermalCopperRule,
+    StackupLayerKind, ThermalCopperRule, ThermalMeasurement,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -24,6 +24,7 @@ const RF_ANTENNA_FEED_PATH_VALID: &str = "RF_ANTENNA_FEED_PATH_VALID";
 const THERMAL_COPPER_AREA_VALID: &str = "THERMAL_COPPER_AREA_VALID";
 const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
 const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
+const THERMAL_MEASURED_TEMPERATURE_VALID: &str = "THERMAL_MEASURED_TEMPERATURE_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
@@ -85,6 +86,10 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     suggestions.extend(thermal_copper_area_suggestions(bound, &project_name));
     suggestions.extend(thermal_via_stackup_suggestions(bound, &project_name));
     suggestions.extend(thermal_package_temperature_suggestions(
+        bound,
+        &project_name,
+    ));
+    suggestions.extend(thermal_measured_temperature_suggestions(
         bound,
         &project_name,
     ));
@@ -1460,6 +1465,96 @@ fn thermal_package_temperature_check_declared(bound: &BoundBoard<'_>, rule_name:
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(rule_name)
+                    })
+                })
+    })
+}
+
+fn thermal_measured_temperature_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for measurement in &bound.project.board.manufacturing.thermal_measurements {
+        if !thermal_measurement_has_evidence(bound, measurement)
+            || thermal_measurement_check_declared(bound, &measurement.name)
+        {
+            continue;
+        }
+        let mut required_inputs = vec![
+            "Set parameters.max_measured_temperature_C from the reviewed component or board thermal requirement.".to_string(),
+        ];
+        if measurement.ambient_temperature_c.is_some() {
+            required_inputs.push(
+                "Optionally set parameters.max_temperature_rise_C to screen measured rise over ambient."
+                    .to_string(),
+            );
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "thermal_measured_temperature_{}",
+                sanitized_name(&measurement.name)
+            ),
+            false,
+            &format!(
+                "Thermal measurement {} has reviewed measured-temperature evidence for component {}; reviewed measured-temperature limits are still required.",
+                measurement.name, measurement.component
+            ),
+            &format!(
+                "{}_{}_thermal_measured_temperature",
+                project_name,
+                sanitized_name(&measurement.name)
+            ),
+            THERMAL_MEASURED_TEMPERATURE_VALID,
+            Some(BTreeMap::from([(
+                "thermal_measurements".to_string(),
+                json!([{ "name": measurement.name }]),
+            )])),
+            required_inputs,
+        ));
+    }
+    suggestions
+}
+
+fn thermal_measurement_has_evidence(
+    bound: &BoundBoard<'_>,
+    measurement: &ThermalMeasurement,
+) -> bool {
+    !measurement.name.trim().is_empty()
+        && !measurement.component.trim().is_empty()
+        && !measurement.source.trim().is_empty()
+        && measurement.measured_temperature_c.is_finite()
+        && bound
+            .project
+            .board
+            .components
+            .contains_key(&measurement.component)
+        && measurement
+            .ambient_temperature_c
+            .is_none_or(|value| value.is_finite())
+        && measurement
+            .power_loss_w
+            .is_none_or(|value| value.is_finite() && value > 0.0)
+}
+
+fn thermal_measurement_check_declared(bound: &BoundBoard<'_>, measurement_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_MEASURED_TEMPERATURE_VALID)
+            && scenario
+                .parameters
+                .get("thermal_measurements")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(measurement_name)
                     })
                 })
     })

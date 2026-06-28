@@ -377,6 +377,29 @@
                 "additionalProperties": false
               }
             },
+            "thermal_measurements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "component",
+                  "source",
+                  "measured_temperature_C"
+                ],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "component": { "type": "string", "minLength": 1 },
+                  "source": { "type": "string", "minLength": 1 },
+                  "measured_temperature_C": { "type": "number" },
+                  "ambient_temperature_C": { "type": "number" },
+                  "power_loss_w": { "type": "number", "exclusiveMinimum": 0 },
+                  "measurement_point": { "type": "string", "minLength": 1 },
+                  "notes": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              }
+            },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": true

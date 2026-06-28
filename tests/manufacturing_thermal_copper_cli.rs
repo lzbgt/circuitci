@@ -192,6 +192,79 @@ fn thermal_package_temperature_fails_closed_without_model_metadata() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn thermal_measured_temperature_passes_with_reviewed_measurement() {
+    let (_dir, project_path) =
+        write_thermal_measurement_project(72.0, Some(45.0), 85.0, Some(35.0));
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_measured_temperature_fails_absolute_limit() {
+    let (_dir, project_path) = write_thermal_measurement_project(92.0, Some(45.0), 85.0, None);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_MEASURED_TEMPERATURE_VALID")
+        .expect("thermal measured temperature failure");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(
+        failure["measured"]["thermal_measurement_name"],
+        "u1_hotspot_steady_state"
+    );
+    assert_eq!(
+        failure["measured"]["thermal_measurement_source"],
+        "ir_camera_steady_state_rev_a"
+    );
+    assert_eq!(failure["measured"]["measured_temperature_C"], 92.0);
+    assert_eq!(failure["limit"]["max_measured_temperature_C"], 85.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_measured_temperature_fails_rise_limit() {
+    let (_dir, project_path) =
+        write_thermal_measurement_project(82.0, Some(45.0), 90.0, Some(30.0));
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_MEASURED_TEMPERATURE_VALID")
+        .expect("thermal measured rise failure");
+    assert_eq!(failure["measured"]["ambient_temperature_C"], 45.0);
+    assert_eq!(failure["measured"]["measured_temperature_rise_C"], 37.0);
+    assert_eq!(failure["limit"]["max_temperature_rise_C"], 30.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_measured_temperature_fails_closed_without_ambient_for_rise() {
+    let (_dir, project_path) = write_thermal_measurement_project(72.0, None, 90.0, Some(30.0));
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("must declare ambient_temperature_C")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_thermal_project(
     copper_area_mm2: f64,
     copper_net: &str,
@@ -349,6 +422,67 @@ scenarios:
         - name: u1_package_loss
 "#,
             model_library = model_dir.display(),
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_thermal_measurement_project(
+    measured_temperature_c: f64,
+    ambient_temperature_c: Option<f64>,
+    max_measured_temperature_c: f64,
+    max_temperature_rise_c: Option<f64>,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let ambient = ambient_temperature_c
+        .map(|value| format!("        ambient_temperature_C: {value}\n"))
+        .unwrap_or_default();
+    let max_rise = max_temperature_rise_c
+        .map(|value| format!("      max_temperature_rise_C: {value}\n"))
+        .unwrap_or_default();
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  version: "1"
+  name: thermal_measurement_fixture
+libraries:
+  - {generic_library}
+board:
+  nets:
+    VIN: {{ kind: power }}
+    OUT: {{ kind: digital_or_analog }}
+    GND: {{ kind: ground }}
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: VIN
+        B: OUT
+  manufacturing:
+    thermal_measurements:
+      - name: u1_hotspot_steady_state
+        component: U1
+        source: ir_camera_steady_state_rev_a
+        measured_temperature_C: {measured_temperature_c}
+{ambient}        power_loss_w: 1.2
+        measurement_point: package_top
+        notes: steady_state_after_20_min
+scenarios:
+  - name: thermal_measured_temperature
+    type: manufacturing
+    checks:
+      - THERMAL_MEASURED_TEMPERATURE_VALID
+    parameters:
+      max_measured_temperature_C: {max_measured_temperature_c}
+{max_rise}      thermal_measurements:
+        - name: u1_hotspot_steady_state
+"#,
+            generic_library = repo.join("libs/generic").display(),
         ),
     )
     .unwrap();

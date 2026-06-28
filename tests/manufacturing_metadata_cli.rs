@@ -148,15 +148,16 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
     std::fs::write(
         &metadata,
-        "field,value,unit,source,notes\n\
-         stencil_thickness_mm,0.10,mm,JLC stencil order,foil thickness\n\
-         min_drill_edge_clearance_mm,0.50,mm,JLC fab order,hole edge clearance\n\
-         min_slot_edge_clearance_mm,0.50,mm,JLC fab order,slot edge clearance\n\
-         min_paste_area_ratio,70,%,JLC stencil order,minimum aperture area ratio\n\
-         max_paste_area_ratio,100,%,JLC stencil order,maximum aperture area ratio\n\
-         min_solder_paste_spacing_mm,0.15,mm,JLC stencil order,min paste spacing\n\
-         max_stitch_via_distance_mm,1.00,mm,Layout review,max stitching via distance\n\
-         unrelated_order_option,blue,,JLC order,kept as skipped evidence\n",
+        "field,value,unit,source,notes,name,component,ambient_temperature_C,power_loss_w,measurement_point\n\
+         stencil_thickness_mm,0.10,mm,JLC stencil order,foil thickness,,,,,\n\
+         min_drill_edge_clearance_mm,0.50,mm,JLC fab order,hole edge clearance,,,,,\n\
+         min_slot_edge_clearance_mm,0.50,mm,JLC fab order,slot edge clearance,,,,,\n\
+         min_paste_area_ratio,70,%,JLC stencil order,minimum aperture area ratio,,,,,\n\
+         max_paste_area_ratio,100,%,JLC stencil order,maximum aperture area ratio,,,,,\n\
+         min_solder_paste_spacing_mm,0.15,mm,JLC stencil order,min paste spacing,,,,,\n\
+         max_stitch_via_distance_mm,1.00,mm,Layout review,max stitching via distance,,,,,\n\
+         thermal_measurement,72.0,C,IR camera review,steady-state hotspot,u1_hotspot_steady_state,U1,45.0,1.2,package_top\n\
+         unrelated_order_option,blue,,JLC order,kept as skipped evidence,,,,,\n",
     )
     .unwrap();
 
@@ -181,7 +182,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
         String::from_utf8_lossy(&command_output.stderr)
     );
     let stdout = String::from_utf8_lossy(&command_output.stdout);
-    assert!(stdout.contains("7 applied fields"));
+    assert!(stdout.contains("8 applied fields"));
     assert!(stdout.contains("1 skipped rows"));
     assert!(stdout.contains("manifest"));
 
@@ -208,6 +209,17 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
         manufacturing[&Value::String("max_stitch_via_distance_mm".to_string())],
         serde_yaml_ng::to_value(1.0).unwrap()
     );
+    let thermal_measurements = manufacturing[&Value::String("thermal_measurements".to_string())]
+        .as_sequence()
+        .unwrap();
+    assert_eq!(thermal_measurements.len(), 1);
+    assert_eq!(
+        thermal_measurements[0]["name"],
+        Value::String("u1_hotspot_steady_state".to_string())
+    );
+    assert_eq!(thermal_measurements[0]["measured_temperature_C"], 72.0);
+    assert_eq!(thermal_measurements[0]["ambient_temperature_C"], 45.0);
+    assert_eq!(thermal_measurements[0]["power_loss_w"], 1.2);
     assert_eq!(
         manufacturing[&Value::String("source".to_string())],
         Value::String("jlc_order_metadata".to_string())
@@ -224,14 +236,19 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.1.0");
-    assert_eq!(manifest["sources"]["metadata"]["data_rows"], 8);
-    assert_eq!(manifest["import"]["applied_fields"], 7);
+    assert_eq!(manifest["schema_version"], "0.2.0");
+    assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
+    assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
     assert_eq!(manifest["rows"][3]["normalized_value"], 0.70);
-    assert_eq!(manifest["rows"][7]["status"], "skipped_unknown_field");
+    assert_eq!(manifest["rows"][7]["board_field"], "thermal_measurements[]");
     assert_eq!(
-        manifest["rows"][7]["raw_columns"]["notes"],
+        manifest["rows"][7]["normalized_value"]["measured_temperature_C"],
+        72.0
+    );
+    assert_eq!(manifest["rows"][8]["status"], "skipped_unknown_field");
+    assert_eq!(
+        manifest["rows"][8]["raw_columns"]["notes"],
         "kept as skipped evidence"
     );
 
