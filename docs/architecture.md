@@ -190,8 +190,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   shape, with layer mapping to corresponding copper layers for owner matching.
 - Excellon import records circular drill hits and `G85` routed slots, then adds
   pad/via owner metadata only when layout or copper evidence uniquely matches.
-- EasyEDA Pro `.eprj2` inspection documents the SQLite envelope and encoded
-  payload status; it does not fabricate pad/net geometry from encoded history.
+- EasyEDA Pro `.eprj2` inspection documents the SQLite envelope, table schema,
+  source hash, project-structure hash, per-history-payload hashes, and encoded
+  payload status in Markdown plus JSON manifest form; it does not fabricate
+  pad/net geometry from encoded history.
 
 Unsupported source constructs fail closed or are counted as ignored when they
 cannot be represented without losing the engineering meaning. The importer

@@ -6,6 +6,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     let dir = tempfile::tempdir_in("out").unwrap();
     let eprj2 = dir.path().join("fixture.eprj2");
     let output = dir.path().join("easyeda_report.md");
+    let manifest_output = output.with_extension("json");
     let structure = r#"{"boards":{"board1":{"uuid":"board1","title":"Board A"}},"schematics":{"sch1":{"uuid":"sch1","name":"Main Schematic"}},"sheets":{"sheet1":{"uuid":"sheet1","title":"Power"}},"pcbs":{"pcb1":{"uuid":"pcb1","title":"PCB A"}}}"#;
     let sql = format!(
         "CREATE TABLE projects (uuid varchar, name varchar, branch_uuid varchar, ticket integer);
@@ -54,6 +55,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     assert!(stdout.contains("1 sheets"));
     assert!(stdout.contains("1 PCBs"));
     assert!(stdout.contains("1 encoded history payloads"));
+    assert!(stdout.contains("manifest"));
 
     let report = std::fs::read_to_string(output).unwrap();
     assert!(report.contains("Demo Project"));
@@ -62,6 +64,50 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     assert!(report.contains("PCB A"));
     assert!(report.contains("encoded/non-JSON"));
     assert!(report.contains("pad, via, route, zone, and net geometry as unavailable"));
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/easyeda_pro_inspection.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    if let Err(error) = validator.validate(&manifest) {
+        panic!("EasyEDA Pro manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.1.0");
+    assert_eq!(manifest["source"]["sha256"].as_str().unwrap().len(), 64);
+    assert_eq!(manifest["sqlite"]["tables"].as_array().unwrap().len(), 4);
+    assert!(
+        manifest["sqlite"]["tables"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|table| table["name"] == "history_data"
+                && table["row_count"] == 2
+                && table["columns"].as_array().unwrap().len() == 2)
+    );
+    assert_eq!(manifest["easyeda_pro"]["latest_structure"]["ticket"], 42);
+    assert_eq!(
+        manifest["easyeda_pro"]["latest_structure"]["boards"][0]["title"],
+        "Board A"
+    );
+    assert_eq!(
+        manifest["easyeda_pro"]["history_payloads"]["encoded_or_non_json"],
+        1
+    );
+    let payloads = manifest["easyeda_pro"]["history_payloads"]["rows"]
+        .as_array()
+        .unwrap();
+    assert_eq!(payloads.len(), 2);
+    assert_eq!(payloads[0]["id"], 1);
+    assert_eq!(payloads[0]["looks_like_json"], false);
+    assert_eq!(payloads[0]["sha256"].as_str().unwrap().len(), 64);
+    assert_eq!(payloads[1]["looks_like_json"], true);
+    assert_eq!(
+        manifest["importability"]["status"],
+        "blocked_encoded_history_payloads"
+    );
 }
 
 #[test]

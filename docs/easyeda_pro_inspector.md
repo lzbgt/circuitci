@@ -1,7 +1,10 @@
 # EasyEDA Pro Inspector
 
 `circuitci inspect-easyeda-pro` reads an EasyEDA Pro `.eprj2` SQLite project
-file and writes a Markdown evidence report.
+file and writes a Markdown evidence report plus a schema-validated JSON
+inspection manifest. By default, the manifest is written beside the Markdown
+report using the same path with a `.json` extension; pass `--manifest` to choose
+an explicit path.
 
 The command currently extracts only the plaintext SQLite envelope:
 
@@ -17,6 +20,26 @@ Example:
 circuitci inspect-easyeda-pro source/project.eprj2 \
   --output out/easyeda_pro_inspection.md
 ```
+
+For automation:
+
+```bash
+circuitci inspect-easyeda-pro source/project.eprj2 \
+  --output out/easyeda_pro_inspection.md \
+  --manifest out/easyeda_pro_inspection_manifest.json
+```
+
+The JSON manifest conforms to
+`schemas/easyeda_pro_inspection.schema.json` and records:
+
+- the source `.eprj2` size and SHA-256,
+- SQLite table names, column metadata, and row counts,
+- project and branch rows,
+- the latest plaintext project-structure object with length and SHA-256,
+- `history_data` payload ids, byte lengths, SHA-256 values, and JSON-prefix
+  classification,
+- an importability status explaining whether geometry conversion is blocked by
+  encoded/non-JSON history payloads.
 
 The observed `urine_monitor` EasyEDA Pro release stores project structure
 metadata as plaintext JSON, but design-object history payloads are encoded or

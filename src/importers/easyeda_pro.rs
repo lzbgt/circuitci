@@ -1,5 +1,7 @@
 use anyhow::{Context, Result, bail};
+use serde::Serialize;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -10,6 +12,7 @@ const SQLITE_HEADER: &[u8] = b"SQLite format 3\0";
 pub struct EasyedaProInspectOptions {
     pub eprj2: PathBuf,
     pub output: PathBuf,
+    pub manifest: PathBuf,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -26,34 +29,131 @@ pub struct EasyedaProInspectSummary {
     pub pcbs: usize,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 struct ProjectRow {
     uuid: String,
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     branch_uuid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     ticket: Option<usize>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 struct BranchRow {
     uuid: String,
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     history_uuid: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 struct NamedObject {
     uuid: String,
     title: String,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 struct StructureSummary {
     ticket: usize,
     boards: Vec<NamedObject>,
     schematics: Vec<NamedObject>,
     sheets: Vec<NamedObject>,
     pcbs: Vec<NamedObject>,
+}
+
+#[derive(Debug, Serialize)]
+struct InspectionManifest {
+    schema_version: String,
+    source: SourceManifest,
+    sqlite: SqliteManifest,
+    easyeda_pro: EasyedaProManifest,
+    importability: ImportabilityManifest,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceManifest {
+    path: String,
+    size_bytes: u64,
+    sha256: String,
+}
+
+#[derive(Debug, Serialize)]
+struct SqliteManifest {
+    tables: Vec<TableManifest>,
+}
+
+#[derive(Debug, Serialize)]
+struct TableManifest {
+    name: String,
+    row_count: usize,
+    columns: Vec<ColumnManifest>,
+}
+
+#[derive(Debug, Serialize)]
+struct ColumnManifest {
+    cid: usize,
+    name: String,
+    #[serde(rename = "type")]
+    column_type: String,
+    not_null: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_value: Option<String>,
+    primary_key: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct EasyedaProManifest {
+    projects: Vec<ProjectRow>,
+    branches: Vec<BranchRow>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    latest_structure: Option<StructureManifest>,
+    history_payloads: PayloadManifest,
+}
+
+#[derive(Debug, Serialize)]
+struct StructureManifest {
+    ticket: usize,
+    sha256: String,
+    length_bytes: usize,
+    boards: Vec<NamedObject>,
+    schematics: Vec<NamedObject>,
+    sheets: Vec<NamedObject>,
+    pcbs: Vec<NamedObject>,
+}
+
+#[derive(Debug, Serialize)]
+struct PayloadManifest {
+    total: usize,
+    encoded_or_non_json: usize,
+    max_length_bytes: usize,
+    rows: Vec<PayloadRowManifest>,
+}
+
+#[derive(Debug, Serialize)]
+struct PayloadRowManifest {
+    id: usize,
+    length_bytes: usize,
+    sha256: String,
+    looks_like_json: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct ImportabilityManifest {
+    status: String,
+    notes: Vec<String>,
+}
+
+impl From<&StructureManifest> for StructureSummary {
+    fn from(structure: &StructureManifest) -> Self {
+        Self {
+            ticket: structure.ticket,
+            boards: structure.boards.clone(),
+            schematics: structure.schematics.clone(),
+            sheets: structure.sheets.clone(),
+            pcbs: structure.pcbs.clone(),
+        }
+    }
 }
 
 pub fn inspect_easyeda_pro_project(
@@ -69,7 +169,10 @@ pub fn inspect_easyeda_pro_project(
         "SELECT count(*) FROM project_structures;",
         "project_structures count",
     )?;
-    let latest_structure = latest_structure(&options.eprj2)?;
+    let latest_structure_manifest = latest_structure_manifest(&options.eprj2)?;
+    let latest_structure = latest_structure_manifest
+        .as_ref()
+        .map(StructureSummary::from);
     let history_payloads = scalar_usize(
         &options.eprj2,
         "SELECT count(*) FROM history_data;",
@@ -85,6 +188,7 @@ pub fn inspect_easyeda_pro_project(
         "SELECT coalesce(max(length(dataStr)), 0) FROM history_data;",
         "max history_data length",
     )?;
+    let payload_rows = history_payload_rows(&options.eprj2)?;
 
     let summary = EasyedaProInspectSummary {
         projects: projects.len(),
@@ -134,6 +238,49 @@ pub fn inspect_easyeda_pro_project(
         format!(
             "Failed to write EasyEDA Pro inspection report {}",
             options.output.display()
+        )
+    })?;
+    let manifest = InspectionManifest {
+        schema_version: "0.1.0".to_string(),
+        source: SourceManifest {
+            path: options.eprj2.display().to_string(),
+            size_bytes: fs::metadata(&options.eprj2)
+                .with_context(|| format!("Failed to stat {}", options.eprj2.display()))?
+                .len(),
+            sha256: file_sha256_hex(&options.eprj2)?,
+        },
+        sqlite: SqliteManifest {
+            tables: table_manifests(&options.eprj2)?,
+        },
+        easyeda_pro: EasyedaProManifest {
+            projects,
+            branches,
+            latest_structure: latest_structure_manifest,
+            history_payloads: PayloadManifest {
+                total: history_payloads,
+                encoded_or_non_json: encoded_history_payloads,
+                max_length_bytes: max_history_payload_len,
+                rows: payload_rows,
+            },
+        },
+        importability: importability_manifest(encoded_history_payloads),
+    };
+    if let Some(parent) = options.manifest.parent() {
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "Failed to create EasyEDA Pro manifest output directory {}",
+                parent.display()
+            )
+        })?;
+    }
+    fs::write(
+        &options.manifest,
+        serde_json::to_string_pretty(&manifest)?.as_bytes(),
+    )
+    .with_context(|| {
+        format!(
+            "Failed to write EasyEDA Pro inspection manifest {}",
+            options.manifest.display()
         )
     })?;
 
@@ -218,15 +365,15 @@ fn branch_rows(path: &Path) -> Result<Vec<BranchRow>> {
     .collect()
 }
 
-fn latest_structure(path: &Path) -> Result<Option<StructureSummary>> {
+fn latest_structure_manifest(path: &Path) -> Result<Option<StructureManifest>> {
     let rows = sqlite_rows(
         path,
-        "SELECT ticket, structure FROM project_structures ORDER BY ticket DESC, id DESC LIMIT 1;",
+        "SELECT ticket, length(structure), hex(structure), structure FROM project_structures ORDER BY ticket DESC, id DESC LIMIT 1;",
     )?;
     let Some(columns) = rows.into_iter().next() else {
         return Ok(None);
     };
-    if columns.len() != 2 {
+    if columns.len() != 4 {
         bail!(
             "EasyEDA Pro project_structures query returned {} columns.",
             columns.len()
@@ -235,10 +382,16 @@ fn latest_structure(path: &Path) -> Result<Option<StructureSummary>> {
     let ticket = columns[0]
         .parse::<usize>()
         .context("EasyEDA Pro latest project structure ticket is not an integer.")?;
-    let value: Value = serde_json::from_str(&columns[1])
+    let length_bytes = columns[1]
+        .parse::<usize>()
+        .context("EasyEDA Pro latest project structure length is not an integer.")?;
+    let structure_bytes = bytes_from_sqlite_hex(&columns[2], "latest project structure")?;
+    let value: Value = serde_json::from_str(&columns[3])
         .context("EasyEDA Pro latest project structure is not valid JSON.")?;
-    Ok(Some(StructureSummary {
+    Ok(Some(StructureManifest {
         ticket,
+        sha256: sha256_hex(&structure_bytes),
+        length_bytes,
         boards: named_objects(&value, "boards", "title"),
         schematics: named_objects(&value, "schematics", "name"),
         sheets: named_objects(&value, "sheets", "title"),
@@ -314,6 +467,136 @@ fn scalar_usize(path: &Path, sql: &str, label: &str) -> Result<usize> {
     value
         .parse::<usize>()
         .with_context(|| format!("EasyEDA Pro SQLite query returned non-integer {label}: {value}."))
+}
+
+fn table_manifests(path: &Path) -> Result<Vec<TableManifest>> {
+    let mut tables = Vec::new();
+    for row in sqlite_rows(
+        path,
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
+    )? {
+        let Some(name) = row.first() else {
+            continue;
+        };
+        let row_count = scalar_usize(
+            path,
+            &format!("SELECT count(*) FROM \"{}\";", sqlite_identifier(name)),
+            &format!("{name} row count"),
+        )?;
+        tables.push(TableManifest {
+            name: name.clone(),
+            row_count,
+            columns: column_manifests(path, name)?,
+        });
+    }
+    Ok(tables)
+}
+
+fn column_manifests(path: &Path, table: &str) -> Result<Vec<ColumnManifest>> {
+    sqlite_rows(
+        path,
+        &format!("PRAGMA table_info(\"{}\");", sqlite_identifier(table)),
+    )?
+    .into_iter()
+    .map(|columns| {
+        if columns.len() != 6 {
+            bail!(
+                "EasyEDA Pro PRAGMA table_info({table}) returned {} columns.",
+                columns.len()
+            );
+        }
+        Ok(ColumnManifest {
+            cid: columns[0].parse::<usize>().with_context(|| {
+                format!("EasyEDA Pro table {table} column cid is not an integer.")
+            })?,
+            name: columns[1].clone(),
+            column_type: columns[2].clone(),
+            not_null: columns[3] == "1",
+            default_value: non_empty(columns[4].clone()),
+            primary_key: columns[5] == "1",
+        })
+    })
+    .collect()
+}
+
+fn history_payload_rows(path: &Path) -> Result<Vec<PayloadRowManifest>> {
+    sqlite_rows(
+        path,
+        "SELECT id, length(dataStr), hex(dataStr), CASE WHEN trim(dataStr) LIKE '{%' OR trim(dataStr) LIKE '[%' THEN 1 ELSE 0 END FROM history_data ORDER BY id;",
+    )?
+    .into_iter()
+    .map(|columns| {
+        if columns.len() != 4 {
+            bail!(
+                "EasyEDA Pro history_data payload query returned {} columns.",
+                columns.len()
+            );
+        }
+        let id = columns[0]
+            .parse::<usize>()
+            .context("EasyEDA Pro history_data id is not an integer.")?;
+        let length_bytes = columns[1]
+            .parse::<usize>()
+            .context("EasyEDA Pro history_data payload length is not an integer.")?;
+        let bytes = bytes_from_sqlite_hex(&columns[2], "history_data payload")?;
+        Ok(PayloadRowManifest {
+            id,
+            length_bytes,
+            sha256: sha256_hex(&bytes),
+            looks_like_json: columns[3] == "1",
+        })
+    })
+    .collect()
+}
+
+fn importability_manifest(encoded_history_payloads: usize) -> ImportabilityManifest {
+    if encoded_history_payloads > 0 {
+        ImportabilityManifest {
+            status: "blocked_encoded_history_payloads".to_string(),
+            notes: vec![
+                "Project structure metadata is plaintext JSON.".to_string(),
+                "At least one design-object history payload is encoded or non-JSON.".to_string(),
+                "CircuitCI will not infer pad, route, zone, via, or net geometry from opaque payloads.".to_string(),
+            ],
+        }
+    } else {
+        ImportabilityManifest {
+            status: "plaintext_history_payloads_possible".to_string(),
+            notes: vec![
+                "History payload prefixes look like plaintext JSON.".to_string(),
+                "A future adapter can inspect payload object shapes before converting geometry."
+                    .to_string(),
+            ],
+        }
+    }
+}
+
+fn sqlite_identifier(identifier: &str) -> String {
+    identifier.replace('"', "\"\"")
+}
+
+fn file_sha256_hex(path: &Path) -> Result<String> {
+    let bytes = fs::read(path)
+        .with_context(|| format!("Failed to hash EasyEDA Pro project {}", path.display()))?;
+    Ok(sha256_hex(&bytes))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn bytes_from_sqlite_hex(hex: &str, label: &str) -> Result<Vec<u8>> {
+    if !hex.len().is_multiple_of(2) {
+        bail!("EasyEDA Pro SQLite hex payload for {label} has odd length.");
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|index| {
+            u8::from_str_radix(&hex[index..index + 2], 16)
+                .with_context(|| format!("EasyEDA Pro SQLite hex payload for {label} is invalid."))
+        })
+        .collect()
 }
 
 fn non_empty(value: String) -> Option<String> {

@@ -135,6 +135,8 @@ enum Command {
         eprj2: PathBuf,
         #[arg(long, short = 'o')]
         output: PathBuf,
+        #[arg(long)]
+        manifest: Option<PathBuf>,
     },
     ImportEasyedaFlyingProbe {
         json: PathBuf,
@@ -314,9 +316,11 @@ pub fn run() -> Result<()> {
             name,
             default_model,
         }) => run_import_jlc_assembly(bom, placement, output, name, default_model),
-        Some(Command::InspectEasyedaPro { eprj2, output }) => {
-            run_inspect_easyeda_pro(eprj2, output)
-        }
+        Some(Command::InspectEasyedaPro {
+            eprj2,
+            output,
+            manifest,
+        }) => run_inspect_easyeda_pro(eprj2, output, manifest),
         Some(Command::ImportEasyedaFlyingProbe {
             json,
             project,
@@ -787,15 +791,21 @@ fn run_import_jlc_assembly(
     Ok(())
 }
 
-fn run_inspect_easyeda_pro(eprj2: PathBuf, output: PathBuf) -> Result<()> {
+fn run_inspect_easyeda_pro(
+    eprj2: PathBuf,
+    output: PathBuf,
+    manifest: Option<PathBuf>,
+) -> Result<()> {
+    let manifest = manifest.unwrap_or_else(|| output.with_extension("json"));
     let summary = crate::importers::easyeda_pro::inspect_easyeda_pro_project(
         &crate::importers::easyeda_pro::EasyedaProInspectOptions {
             eprj2: eprj2.clone(),
             output: output.clone(),
+            manifest: manifest.clone(),
         },
     )?;
     println!(
-        "CircuitCI inspected EasyEDA Pro project: {} projects, {} branches, {} structures, latest ticket {}, {} boards, {} schematics, {} sheets, {} PCBs, {} encoded history payloads {} -> {}",
+        "CircuitCI inspected EasyEDA Pro project: {} projects, {} branches, {} structures, latest ticket {}, {} boards, {} schematics, {} sheets, {} PCBs, {} encoded history payloads {} -> {}, manifest {}",
         summary.projects,
         summary.branches,
         summary.project_structures,
@@ -809,7 +819,8 @@ fn run_inspect_easyeda_pro(eprj2: PathBuf, output: PathBuf) -> Result<()> {
         summary.pcbs,
         summary.encoded_history_payloads,
         eprj2.display(),
-        output.display()
+        output.display(),
+        manifest.display()
     );
     Ok(())
 }

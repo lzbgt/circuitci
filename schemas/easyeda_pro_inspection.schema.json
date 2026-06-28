@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/easyeda_pro_inspection.schema.json",
+  "title": "CircuitCI EasyEDA Pro Inspection Manifest",
+  "type": "object",
+  "required": ["schema_version", "source", "sqlite", "easyeda_pro", "importability"],
+  "properties": {
+    "schema_version": { "const": "0.1.0" },
+    "source": {
+      "type": "object",
+      "required": ["path", "size_bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "sqlite": {
+      "type": "object",
+      "required": ["tables"],
+      "properties": {
+        "tables": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sqlite_table" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "easyeda_pro": {
+      "type": "object",
+      "required": ["projects", "branches", "history_payloads"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/project" }
+        },
+        "branches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/branch" }
+        },
+        "latest_structure": { "$ref": "#/$defs/structure" },
+        "history_payloads": { "$ref": "#/$defs/payloads" }
+      },
+      "additionalProperties": false
+    },
+    "importability": {
+      "type": "object",
+      "required": ["status", "notes"],
+      "properties": {
+        "status": {
+          "enum": [
+            "blocked_encoded_history_payloads",
+            "plaintext_history_payloads_possible"
+          ]
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sqlite_table": {
+      "type": "object",
+      "required": ["name", "row_count", "columns"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "row_count": { "type": "integer", "minimum": 0 },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sqlite_column" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sqlite_column": {
+      "type": "object",
+      "required": ["cid", "name", "type", "not_null", "primary_key"],
+      "properties": {
+        "cid": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string" },
+        "not_null": { "type": "boolean" },
+        "default_value": { "type": "string" },
+        "primary_key": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "required": ["uuid", "name"],
+      "properties": {
+        "uuid": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "branch_uuid": { "type": "string", "minLength": 1 },
+        "ticket": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "branch": {
+      "type": "object",
+      "required": ["uuid", "name"],
+      "properties": {
+        "uuid": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "history_uuid": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "named_object": {
+      "type": "object",
+      "required": ["uuid", "title"],
+      "properties": {
+        "uuid": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "structure": {
+      "type": "object",
+      "required": [
+        "ticket",
+        "sha256",
+        "length_bytes",
+        "boards",
+        "schematics",
+        "sheets",
+        "pcbs"
+      ],
+      "properties": {
+        "ticket": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "length_bytes": { "type": "integer", "minimum": 0 },
+        "boards": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/named_object" }
+        },
+        "schematics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/named_object" }
+        },
+        "sheets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/named_object" }
+        },
+        "pcbs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/named_object" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "payloads": {
+      "type": "object",
+      "required": ["total", "encoded_or_non_json", "max_length_bytes", "rows"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "encoded_or_non_json": { "type": "integer", "minimum": 0 },
+        "max_length_bytes": { "type": "integer", "minimum": 0 },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/payload_row" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_row": {
+      "type": "object",
+      "required": ["id", "length_bytes", "sha256", "looks_like_json"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "length_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "looks_like_json": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
