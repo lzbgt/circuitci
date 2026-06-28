@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.4.0".to_string(),
+        schema_version: "0.5.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -224,6 +224,38 @@ fn apply_metadata(
             let stackup = ensure_mapping_field_mut(layout, "stackup")?;
             let layers = ensure_sequence_field_mut(stackup, "layers")?;
             upsert_named_sequence_value(layers, &layer.name, value, "layout.stackup.layers")?;
+        } else if field.field == ManufacturingField::RfAntennaKeepout {
+            let keepout = field
+                .rf_antenna_keepout
+                .as_ref()
+                .context("rf_antenna_keepout field must have keepout value")?;
+            let value = normalized_yaml_value(field)?;
+            let layout = ensure_mapping_field_mut(board, "layout")?;
+            let constraints = ensure_mapping_field_mut(layout, "constraints")?;
+            let rf_antenna = ensure_mapping_field_mut(constraints, "rf_antenna")?;
+            let keepouts = ensure_sequence_field_mut(rf_antenna, "keepouts")?;
+            upsert_named_sequence_value(
+                keepouts,
+                &keepout.name,
+                value,
+                "layout.constraints.rf_antenna.keepouts",
+            )?;
+        } else if field.field == ManufacturingField::RfAntennaFeedPath {
+            let feed_path = field
+                .rf_antenna_feed_path
+                .as_ref()
+                .context("rf_antenna_feed_path field must have feed path value")?;
+            let value = normalized_yaml_value(field)?;
+            let layout = ensure_mapping_field_mut(board, "layout")?;
+            let constraints = ensure_mapping_field_mut(layout, "constraints")?;
+            let rf_antenna = ensure_mapping_field_mut(constraints, "rf_antenna")?;
+            let feed_paths = ensure_sequence_field_mut(rf_antenna, "feed_paths")?;
+            upsert_named_sequence_value(
+                feed_paths,
+                &feed_path.name,
+                value,
+                "layout.constraints.rf_antenna.feed_paths",
+            )?;
         } else {
             let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
             manufacturing.insert(

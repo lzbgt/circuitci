@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.4.0" },
+    "schema_version": { "const": "0.5.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -94,6 +94,8 @@
             "thermal_copper[]",
             "thermal_measurements[]",
             "layout.stackup.layers[]",
+            "layout.constraints.rf_antenna.keepouts[]",
+            "layout.constraints.rf_antenna.feed_paths[]",
             "source"
           ]
         },
@@ -256,6 +258,72 @@
                   "exclusiveMinimum": 0
                 },
                 "material": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "layer",
+                "polygon",
+                "min_copper_clearance_mm",
+                "source"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "antenna_net": { "type": "string", "minLength": 1 },
+                "layer": { "type": "string", "minLength": 1 },
+                "polygon": {
+                  "type": "array",
+                  "minItems": 3,
+                  "items": {
+                    "type": "object",
+                    "required": ["x_mm", "y_mm"],
+                    "properties": {
+                      "x_mm": { "type": "number" },
+                      "y_mm": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "min_copper_clearance_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "antenna_net",
+                "feed_component",
+                "feed_pin",
+                "max_feed_route_length_mm",
+                "max_matching_component_distance_mm",
+                "source"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "antenna_net": { "type": "string", "minLength": 1 },
+                "feed_component": { "type": "string", "minLength": 1 },
+                "feed_pin": { "type": "string", "minLength": 1 },
+                "matching_components": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "max_feed_route_length_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "max_matching_component_distance_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
                 "source": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false

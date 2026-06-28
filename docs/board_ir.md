@@ -299,8 +299,15 @@ name. Repeated `field=stackup_layer` rows use `value` as the stackup layer
 `kind` (`signal`, `plane`, `dielectric`, or `other`), require `name`, and may
 include `reference_net`, `thickness_mm`, `copper_thickness_um`,
 `dielectric_constant`, and `material`; they create or replace
-`board.layout.stackup.layers[]` entries by layer name. Duplicate CSV targets
-fail closed to avoid ambiguous validation inputs.
+`board.layout.stackup.layers[]` entries by layer name. Repeated
+`field=rf_antenna_keepout` rows use `value` as `min_copper_clearance_mm` and
+require `name`, `layer`, and a reviewed `polygon` string of `x:y; x:y; ...`
+points in board millimeters. Repeated `field=rf_antenna_feed_path` rows use
+`value` as `max_feed_route_length_mm` and require `name`, `antenna_net`,
+`feed_component`, `feed_pin`, `matching_components`, and
+`max_matching_component_distance_mm`. RF rows create or replace entries under
+`board.layout.constraints.rf_antenna` by name. Duplicate CSV targets fail
+closed to avoid ambiguous validation inputs.
 
 ```bash
 circuitci import-manufacturing-metadata \
@@ -313,7 +320,7 @@ circuitci import-manufacturing-metadata \
 
 The importer still updates only explicit reviewed manufacturing/layout evidence;
 it does not infer schematic connectivity, component pin behavior, stackup
-properties, or global process defaults from order text.
+properties, RF antenna topology, or global process defaults from order text.
 
 Power semantics:
 

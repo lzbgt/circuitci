@@ -18,7 +18,9 @@ Input CSV columns:
   layout policy, and repeated
   `thermal_measurement` rows are supported for reviewed measured-temperature
   evidence. Repeated `stackup_layer` rows are supported for reviewed stackup
-  layer evidence.
+  layer evidence. Repeated `rf_antenna_keepout` and
+  `rf_antenna_feed_path` rows are supported for reviewed RF antenna layout
+  constraints.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
@@ -27,6 +29,8 @@ Input CSV columns:
   `thermal_copper` rows use `mm2`/square millimeters for minimum copper area.
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
   `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
+  `rf_antenna_keepout` and `rf_antenna_feed_path` rows use `mm` for the
+  distance value when a unit is supplied.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
 
@@ -117,6 +121,38 @@ repeated imports stay deterministic. Duplicate CSV layer names fail closed.
 These rows are reviewed stackup evidence only; the importer does not calculate
 impedance, infer copper weights, or infer layer roles from names.
 
+`rf_antenna_keepout` rows use `value` as `min_copper_clearance_mm` and require
+extra columns:
+
+- `name`: stable RF keepout identifier.
+- `layer`: Board IR copper layer name.
+- `polygon`: reviewed keepout polygon as `x:y; x:y; x:y` points in board
+  millimeters.
+
+Optional `rf_antenna_keepout` columns:
+
+- `antenna_net`: antenna/feed net whose own copper is excluded from intrusion
+  checks.
+
+`rf_antenna_feed_path` rows use `value` as `max_feed_route_length_mm` and
+require extra columns:
+
+- `name`: stable RF feed-path identifier.
+- `antenna_net`: Board IR antenna/feed net.
+- `feed_component`: component reference for the antenna feed start.
+- `feed_pin`: pin on `feed_component` connected to `antenna_net`.
+- `matching_components`: comma-, semicolon-, or pipe-separated matching-network
+  component references.
+- `max_matching_component_distance_mm`: reviewed non-negative placement
+  distance limit.
+
+RF rows create or replace entries under
+`board.layout.constraints.rf_antenna.keepouts[]` and
+`board.layout.constraints.rf_antenna.feed_paths[]` by `name`. Duplicate CSV
+names fail closed. These rows are reviewed RF layout evidence only; the
+importer does not infer antenna topology, RF roles, matching components, or
+keepout geometry from net names or designators.
+
 Example:
 
 ```bash
@@ -142,8 +178,8 @@ The JSON manifest conforms to
 - every CSV row with raw columns, normalized Board IR field/value when applied,
   row-level source/notes, and skip reason for unsupported rows.
 
-This importer updates only explicit reviewed `board.manufacturing` fields and
-`board.layout.stackup.layers[]` entries while preserving existing design,
-schematic, Gerber, drill, and assembly evidence. It does not infer schematic
-connectivity, component pin behavior, stackup properties, or global JLCPCB
-defaults.
+This importer updates only explicit reviewed `board.manufacturing` fields,
+`board.layout.stackup.layers[]` entries, and reviewed RF antenna layout
+constraints while preserving existing design, schematic, Gerber, drill, and
+assembly evidence. It does not infer schematic connectivity, component pin
+behavior, stackup properties, RF topology, or global JLCPCB defaults.

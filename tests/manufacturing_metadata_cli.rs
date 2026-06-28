@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.4.0");
+    assert_eq!(manifest["schema_version"], "0.5.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -533,6 +533,117 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
 }
 
 #[test]
+fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("without_rf_constraints.project.yaml");
+    let metadata = dir.path().join("rf_constraints.csv");
+    let output = dir.path().join("with_rf_constraints.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    let mut project_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string("examples/scenario_suggestions_rf_antenna_keepout/project.yaml")
+            .unwrap(),
+    )
+    .unwrap();
+    remove_rf_antenna_constraints(&mut project_yaml);
+    std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
+    std::fs::write(
+        &metadata,
+        "field,value,unit,source,notes,name,antenna_net,layer,polygon,feed_component,feed_pin,matching_components,max_matching_component_distance_mm\n\
+         rf_antenna_keepout,1.0,mm,antenna_layout_guide_rev_a,reviewed antenna keepout,chip_antenna_clearance,ANT,F.Cu,0:0;10:0;10:10;0:10,,,,\n\
+         rf_antenna_feed_path,10.0,mm,antenna_layout_guide_rev_a,reviewed feed path,chip_antenna_feed,ANT,,,ANT1,A,C1,2.0\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("2 applied fields"));
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let rf_antenna = &enriched["board"]["layout"]["constraints"]["rf_antenna"];
+    let keepouts = rf_antenna["keepouts"].as_sequence().unwrap();
+    assert_eq!(keepouts.len(), 1);
+    assert_eq!(keepouts[0]["name"], "chip_antenna_clearance");
+    assert_eq!(keepouts[0]["antenna_net"], "ANT");
+    assert_eq!(keepouts[0]["layer"], "F.Cu");
+    assert_eq!(keepouts[0]["min_copper_clearance_mm"], 1.0);
+    assert_eq!(keepouts[0]["polygon"].as_sequence().unwrap().len(), 4);
+    let feed_paths = rf_antenna["feed_paths"].as_sequence().unwrap();
+    assert_eq!(feed_paths.len(), 1);
+    assert_eq!(feed_paths[0]["name"], "chip_antenna_feed");
+    assert_eq!(feed_paths[0]["feed_component"], "ANT1");
+    assert_eq!(feed_paths[0]["feed_pin"], "A");
+    assert_eq!(feed_paths[0]["matching_components"][0], "C1");
+    assert_eq!(feed_paths[0]["max_feed_route_length_mm"], 10.0);
+    assert_eq!(feed_paths[0]["max_matching_component_distance_mm"], 2.0);
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.5.0");
+    assert_eq!(
+        manifest["rows"][0]["board_field"],
+        "layout.constraints.rf_antenna.keepouts[]"
+    );
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["polygon"]
+            .as_array()
+            .unwrap()
+            .len(),
+        4
+    );
+    assert_eq!(
+        manifest["rows"][1]["board_field"],
+        "layout.constraints.rf_antenna.feed_paths[]"
+    );
+    assert_eq!(
+        manifest["rows"][1]["normalized_value"]["max_matching_component_distance_mm"],
+        2.0
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    assert_runnable(&suggestions, "rf_antenna_keepout_chip_antenna_clearance");
+    assert_runnable(&suggestions, "rf_antenna_feed_path_chip_antenna_feed");
+}
+
+#[test]
 fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("without_thermal_policy.project.yaml");
@@ -612,7 +723,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.4.0");
+    assert_eq!(manifest["schema_version"], "0.5.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -678,6 +789,13 @@ fn remove_layout_stackup(project_yaml: &mut Value) {
         .as_mapping_mut()
         .unwrap();
     layout.remove(Value::String("stackup".to_string()));
+}
+
+fn remove_rf_antenna_constraints(project_yaml: &mut Value) {
+    let constraints = project_yaml["board"]["layout"]["constraints"]
+        .as_mapping_mut()
+        .unwrap();
+    constraints.remove(Value::String("rf_antenna".to_string()));
 }
 
 fn assert_runnable(suggestions: &serde_json::Value, id: &str) {

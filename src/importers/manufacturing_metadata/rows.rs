@@ -33,6 +33,8 @@ pub(super) struct AppliedField {
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) stackup_layer: Option<AppliedStackupLayer>,
+    pub(super) rf_antenna_keepout: Option<AppliedRfAntennaKeepout>,
+    pub(super) rf_antenna_feed_path: Option<AppliedRfAntennaFeedPath>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +103,34 @@ pub(super) struct AppliedStackupLayer {
     material: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AppliedLayoutPoint {
+    x_mm: f64,
+    y_mm: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaKeepout {
+    pub(super) name: String,
+    antenna_net: Option<String>,
+    layer: String,
+    polygon: Vec<AppliedLayoutPoint>,
+    min_copper_clearance_mm: f64,
+    source: String,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaFeedPath {
+    pub(super) name: String,
+    antenna_net: String,
+    feed_component: String,
+    feed_pin: String,
+    matching_components: Vec<String>,
+    max_feed_route_length_mm: f64,
+    max_matching_component_distance_mm: f64,
+    source: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum ManufacturingField {
     StencilThicknessMm,
@@ -115,6 +145,8 @@ pub(super) enum ManufacturingField {
     ThermalCopper,
     ThermalMeasurement,
     StackupLayer,
+    RfAntennaKeepout,
+    RfAntennaFeedPath,
     Source,
 }
 
@@ -133,6 +165,8 @@ impl ManufacturingField {
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::StackupLayer => "layout.stackup.layers[]",
+            Self::RfAntennaKeepout => "layout.constraints.rf_antenna.keepouts[]",
+            Self::RfAntennaFeedPath => "layout.constraints.rf_antenna.feed_paths[]",
             Self::Source => "source",
         }
     }
@@ -164,6 +198,8 @@ impl ManufacturingField {
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::StackupLayer
+                | Self::RfAntennaKeepout
+                | Self::RfAntennaFeedPath
         )
     }
 }
@@ -265,6 +301,8 @@ fn applied_field(
             thermal_copper: None,
             thermal_measurement: None,
             stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
         });
     }
     if field == ManufacturingField::ControlledImpedanceNet {
@@ -277,6 +315,8 @@ fn applied_field(
             thermal_copper: None,
             thermal_measurement: None,
             stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
         });
     }
     if field == ManufacturingField::ControlledImpedancePair {
@@ -289,6 +329,8 @@ fn applied_field(
             thermal_copper: None,
             thermal_measurement: None,
             stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
         });
     }
     if field == ManufacturingField::ThermalCopper {
@@ -301,6 +343,8 @@ fn applied_field(
             thermal_copper: Some(applied_thermal_copper(row, path)?),
             thermal_measurement: None,
             stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
         });
     }
     if field == ManufacturingField::ThermalMeasurement {
@@ -313,6 +357,8 @@ fn applied_field(
             thermal_copper: None,
             thermal_measurement: Some(applied_thermal_measurement(row, path)?),
             stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
         });
     }
     if field == ManufacturingField::StackupLayer {
@@ -325,6 +371,36 @@ fn applied_field(
             thermal_copper: None,
             thermal_measurement: None,
             stackup_layer: Some(applied_stackup_layer(row, path)?),
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: None,
+        });
+    }
+    if field == ManufacturingField::RfAntennaKeepout {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+            stackup_layer: None,
+            rf_antenna_keepout: Some(applied_rf_antenna_keepout(row, path)?),
+            rf_antenna_feed_path: None,
+        });
+    }
+    if field == ManufacturingField::RfAntennaFeedPath {
+        return Ok(AppliedField {
+            field,
+            numeric_value: None,
+            string_value: None,
+            controlled_impedance_net: None,
+            controlled_impedance_pair: None,
+            thermal_copper: None,
+            thermal_measurement: None,
+            stackup_layer: None,
+            rf_antenna_keepout: None,
+            rf_antenna_feed_path: Some(applied_rf_antenna_feed_path(row, path)?),
         });
     }
     let value = row.value.trim();
@@ -354,6 +430,8 @@ fn applied_field(
         thermal_copper: None,
         thermal_measurement: None,
         stackup_layer: None,
+        rf_antenna_keepout: None,
+        rf_antenna_feed_path: None,
     })
 }
 
@@ -655,6 +733,193 @@ fn parse_stackup_layer_kind(raw: &str, path: &Path, row: &MetadataCsvRow) -> Res
     }
 }
 
+fn applied_rf_antenna_keepout(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaKeepout> {
+    let keepout_source = optional_raw_column(row, "keepout_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(keepout_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} rf_antenna_keepout requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedRfAntennaKeepout {
+        name: required_raw_column_for(row, path, "name", "rf_antenna_keepout")?,
+        antenna_net: optional_raw_column(row, "antenna_net"),
+        layer: required_raw_column_for(row, path, "layer", "rf_antenna_keepout")?,
+        polygon: parse_polygon_points(
+            &required_raw_column_for(row, path, "polygon", "rf_antenna_keepout")?,
+            path,
+            row,
+            "polygon",
+        )?,
+        min_copper_clearance_mm: parse_nonnegative_mm(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        source,
+    })
+}
+
+fn applied_rf_antenna_feed_path(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaFeedPath> {
+    let feed_path_source = optional_raw_column(row, "feed_path_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(feed_path_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} rf_antenna_feed_path requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedRfAntennaFeedPath {
+        name: required_raw_column_for(row, path, "name", "rf_antenna_feed_path")?,
+        antenna_net: required_raw_column_for(row, path, "antenna_net", "rf_antenna_feed_path")?,
+        feed_component: required_raw_column_for(
+            row,
+            path,
+            "feed_component",
+            "rf_antenna_feed_path",
+        )?,
+        feed_pin: required_raw_column_for(row, path, "feed_pin", "rf_antenna_feed_path")?,
+        matching_components: parse_nonempty_list(&required_raw_column_for(
+            row,
+            path,
+            "matching_components",
+            "rf_antenna_feed_path",
+        )?)?,
+        max_feed_route_length_mm: parse_nonnegative_mm(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        max_matching_component_distance_mm: required_nonnegative_number(
+            row,
+            path,
+            "max_matching_component_distance_mm",
+            "rf_antenna_feed_path",
+        )?,
+        source,
+    })
+}
+
+fn parse_polygon_points(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<Vec<AppliedLayoutPoint>> {
+    let points: Vec<AppliedLayoutPoint> = raw
+        .split([';', '|'])
+        .map(str::trim)
+        .filter(|point| !point.is_empty())
+        .map(|point| parse_polygon_point(point, path, row, column))
+        .collect::<Result<Vec<_>>>()?;
+    if points.len() < 3 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} must contain at least three x:y points.",
+            path.display(),
+            row.row_number
+        );
+    }
+    if polygon_area_mm2(&points) <= f64::EPSILON {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} must have non-zero area.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(points)
+}
+
+fn parse_polygon_point(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<AppliedLayoutPoint> {
+    let mut parts = raw
+        .split([':', '/', ' '])
+        .map(str::trim)
+        .filter(|part| !part.is_empty());
+    let Some(x_raw) = parts.next() else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} point {raw} is missing x.",
+            path.display(),
+            row.row_number
+        );
+    };
+    let Some(y_raw) = parts.next() else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} point {raw} is missing y.",
+            path.display(),
+            row.row_number
+        );
+    };
+    if parts.next().is_some() {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} point {raw} must be x:y.",
+            path.display(),
+            row.row_number
+        );
+    }
+    let x_mm = x_raw.parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid {column} x coordinate {x_raw}.",
+            path.display(),
+            row.row_number
+        )
+    })?;
+    let y_mm = y_raw.parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} has invalid {column} y coordinate {y_raw}.",
+            path.display(),
+            row.row_number
+        )
+    })?;
+    if !x_mm.is_finite() || !y_mm.is_finite() {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {column} point {raw} must be finite.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(AppliedLayoutPoint { x_mm, y_mm })
+}
+
+fn polygon_area_mm2(points: &[AppliedLayoutPoint]) -> f64 {
+    points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .take(points.len())
+        .map(|(left, right)| left.x_mm * right.y_mm - right.x_mm * left.y_mm)
+        .sum::<f64>()
+        .abs()
+        / 2.0
+}
+
 fn normalize_numeric_value(
     field: ManufacturingField,
     value: f64,
@@ -862,6 +1127,28 @@ fn parse_positive_area_mm2(
     Ok(value)
 }
 
+fn parse_nonnegative_mm(
+    raw: &str,
+    unit: Option<&str>,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+) -> Result<f64> {
+    let value = parse_nonnegative_number(raw, path, row, column)?;
+    let unit = unit.map(normalize_unit);
+    if !matches!(
+        unit.as_deref(),
+        None | Some("") | Some("mm") | Some("millimeter") | Some("millimeters")
+    ) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} must use mm for {column}.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
 fn parse_positive_usize(
     raw: &str,
     path: &Path,
@@ -1027,6 +1314,30 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut rf_antenna_keepout_names = BTreeSet::new();
+    for keepout in fields
+        .iter()
+        .filter_map(|field| field.rf_antenna_keepout.as_ref())
+    {
+        if !rf_antenna_keepout_names.insert(keepout.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats rf_antenna_keepout row name {}.",
+                keepout.name
+            );
+        }
+    }
+    let mut rf_antenna_feed_path_names = BTreeSet::new();
+    for feed_path in fields
+        .iter()
+        .filter_map(|field| field.rf_antenna_feed_path.as_ref())
+    {
+        if !rf_antenna_feed_path_names.insert(feed_path.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats rf_antenna_feed_path row name {}.",
+                feed_path.name
+            );
+        }
+    }
     Ok(())
 }
 
@@ -1084,6 +1395,24 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 field.field.board_key()
             )
         });
+    }
+    if let Some(keepout) = &field.rf_antenna_keepout {
+        return serde_yaml_ng::to_value(rf_antenna_keepout_mapping(keepout)).with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
+    if let Some(feed_path) = &field.rf_antenna_feed_path {
+        return serde_yaml_ng::to_value(rf_antenna_feed_path_mapping(feed_path)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
     }
     if let Some(value) = field.numeric_value {
         return serde_yaml_ng::to_value(value).with_context(|| {
@@ -1314,6 +1643,80 @@ fn stackup_layer_mapping(layer: &AppliedStackupLayer) -> BTreeMap<String, Value>
     mapping
 }
 
+fn rf_antenna_keepout_mapping(keepout: &AppliedRfAntennaKeepout) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(keepout.name.clone()));
+    if let Some(value) = &keepout.antenna_net {
+        mapping.insert("antenna_net".to_string(), Value::String(value.clone()));
+    }
+    mapping.insert("layer".to_string(), Value::String(keepout.layer.clone()));
+    mapping.insert(
+        "polygon".to_string(),
+        Value::Sequence(
+            keepout
+                .polygon
+                .iter()
+                .map(layout_point_value)
+                .collect::<Vec<_>>(),
+        ),
+    );
+    mapping.insert(
+        "min_copper_clearance_mm".to_string(),
+        serde_yaml_ng::to_value(keepout.min_copper_clearance_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert("source".to_string(), Value::String(keepout.source.clone()));
+    mapping
+}
+
+fn rf_antenna_feed_path_mapping(feed_path: &AppliedRfAntennaFeedPath) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(feed_path.name.clone()));
+    mapping.insert(
+        "antenna_net".to_string(),
+        Value::String(feed_path.antenna_net.clone()),
+    );
+    mapping.insert(
+        "feed_component".to_string(),
+        Value::String(feed_path.feed_component.clone()),
+    );
+    mapping.insert(
+        "feed_pin".to_string(),
+        Value::String(feed_path.feed_pin.clone()),
+    );
+    insert_string_sequence(
+        &mut mapping,
+        "matching_components",
+        &feed_path.matching_components,
+    );
+    mapping.insert(
+        "max_feed_route_length_mm".to_string(),
+        serde_yaml_ng::to_value(feed_path.max_feed_route_length_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_matching_component_distance_mm".to_string(),
+        serde_yaml_ng::to_value(feed_path.max_matching_component_distance_mm)
+            .unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "source".to_string(),
+        Value::String(feed_path.source.clone()),
+    );
+    mapping
+}
+
+fn layout_point_value(point: &AppliedLayoutPoint) -> Value {
+    let mut mapping = BTreeMap::new();
+    mapping.insert(
+        "x_mm".to_string(),
+        serde_yaml_ng::to_value(point.x_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "y_mm".to_string(),
+        serde_yaml_ng::to_value(point.y_mm).unwrap_or(Value::Null),
+    );
+    serde_yaml_ng::to_value(mapping).unwrap_or(Value::Null)
+}
+
 fn row_manifest(
     row: &MetadataCsvRow,
     status: &str,
@@ -1376,6 +1779,12 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         }
         "stackuplayer" | "stackuplayermetadata" | "boardstackuplayer" => {
             Some(ManufacturingField::StackupLayer)
+        }
+        "rfantennakeepout" | "antennakeepout" | "rfkeepout" => {
+            Some(ManufacturingField::RfAntennaKeepout)
+        }
+        "rfantennafeedpath" | "antennafeedpath" | "rffeedpath" => {
+            Some(ManufacturingField::RfAntennaFeedPath)
         }
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
