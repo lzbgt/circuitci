@@ -74,6 +74,14 @@ const CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vtref", "v_swclk", "v_swdio", "v_nreset", "v_swo"];
 const CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V target reference with CMSIS-DAP SWD idle high lines and released reset";
+const ESP32_S3_WROOM_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_esp32_s3_wroom_boot_usb_observation/project.yaml";
+const ESP32_S3_WROOM_SCOPE_EXAMPLE_NAME: &str = "good_esp32_s3_wroom_boot_usb_observation";
+const ESP32_S3_WROOM_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_3v3", "v_en", "v_io0", "v_io46", "v_usb_dm", "v_usb_dp", "v_txd0",
+];
+const ESP32_S3_WROOM_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V ESP32-S3 module with EN high, GPIO0 high, GPIO46 low, USB D+ high, and D- low";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_txs0108e_level_shifter_observation/project.yaml";
 const TXS0108E_LEVEL_SCOPE_EXAMPLE_NAME: &str = "good_ti_txs0108e_level_shifter_observation";
@@ -408,6 +416,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES,
         expected_frequency: CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UPROBE"),
+    },
+    GuiProjectExample {
+        id: "esp32_s3_wroom_boot_usb_scope",
+        category: "MCU",
+        open_label: "Open ESP32-S3 Boot/USB Example",
+        run_label: "Open ESP32-S3 + Run Scopes",
+        workflow_title: "ESP32-S3 Boot/USB Workflow",
+        summary: "Source-backed ESP32-S3 module supply, EN, boot-strap, and USB line-state observation.",
+        project_path: ESP32_S3_WROOM_SCOPE_EXAMPLE_PROJECT,
+        project_name: ESP32_S3_WROOM_SCOPE_EXAMPLE_NAME,
+        expected_traces: ESP32_S3_WROOM_SCOPE_EXPECTED_TRACES,
+        expected_frequency: ESP32_S3_WROOM_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UMCU"),
     },
     GuiProjectExample {
         id: "txs0108e_level_scope",

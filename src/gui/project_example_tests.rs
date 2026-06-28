@@ -152,6 +152,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UPROBE"),
         },
         ExpectedProjectExample {
+            id: "esp32_s3_wroom_boot_usb_scope",
+            category: "MCU",
+            open_label: "Open ESP32-S3 Boot/USB Example",
+            run_label: "Open ESP32-S3 + Run Scopes",
+            summary: "Source-backed ESP32-S3 module supply, EN, boot-strap, and USB line-state observation.",
+            project_path: "examples/good_esp32_s3_wroom_boot_usb_observation/project.yaml",
+            project_name: "good_esp32_s3_wroom_boot_usb_observation",
+            expected_traces: &[
+                "v_3v3", "v_en", "v_io0", "v_io46", "v_usb_dm", "v_usb_dp", "v_txd0",
+            ],
+            expected_frequency: "3.3 V ESP32-S3 module with EN high, GPIO0 high, GPIO46 low, USB D+ high, and D- low",
+            observation_preset_component: Some("UMCU"),
+        },
+        ExpectedProjectExample {
             id: "txs0108e_level_scope",
             category: "Level Shifter",
             open_label: "Open TXS0108E Level-Shifter Example",

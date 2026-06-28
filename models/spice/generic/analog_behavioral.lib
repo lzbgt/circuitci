@@ -125,6 +125,29 @@ RNRST NNRST NRESET {1e12/(1+1e9*NRESET_ASSERT)}
 RSWO SWO GND 1G
 .ends CIRCUITCI_CMSIS_DAP_SWD_PROBE
 
+.subckt CIRCUITCI_ESP32_S3_WROOM_BOOT_USB VDD GND EN IO0 IO46 IO19 IO20 TXD0 RXD0 PARAMS: EN_STATE=1 IO0_STATE=1 IO46_STATE=0 USB_DM_STATE=0 USB_DP_STATE=1 TXD0_STATE=1
+* Reduced ESP32-S3-WROOM boot/USB observation behavior.
+* VDD, EN, GPIO0/GPIO46 boot straps, USB D-/D+ identification pins, and TXD0
+* idle state are represented as preliminary board-facing line states. RF,
+* firmware execution, ROM boot protocol, USB PHY eye/impedance behavior,
+* flash/PSRAM mux safety, current peaks, and thermal behavior are intentionally
+* not modeled.
+BEN NEN GND V={v(VDD,GND)*EN_STATE}
+REN NEN EN 1000
+BIO0 NIO0 GND V={v(VDD,GND)*IO0_STATE}
+RIO0 NIO0 IO0 10000
+BIO46 NIO46 GND V={v(VDD,GND)*IO46_STATE}
+RIO46 NIO46 IO46 10000
+BIO19 NIO19 GND V={v(VDD,GND)*USB_DM_STATE}
+RIO19 NIO19 IO19 1000
+BIO20 NIO20 GND V={v(VDD,GND)*USB_DP_STATE}
+RIO20 NIO20 IO20 1000
+BTXD0 NTXD0 GND V={2.64*TXD0_STATE}
+RTXD0 NTXD0 TXD0 82.5
+RRXD0 RXD0 GND 1G
+RVDD VDD GND 1G
+.ends CIRCUITCI_ESP32_S3_WROOM_BOOT_USB
+
 .subckt CIRCUITCI_TXS0108E_A_TO_B_LEVEL_SHIFTER VCCA VCCB GND OE A1 B1
 * Reduced TXS0108E level-shifter observation behavior.
 * This face models only enabled A1-to-B1 high/low translation for preliminary

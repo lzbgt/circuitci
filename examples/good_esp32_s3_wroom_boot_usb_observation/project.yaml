@@ -1,0 +1,240 @@
+project:
+  name: good_esp32_s3_wroom_boot_usb_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/espressif/modules
+
+board:
+  schematic:
+    component_symbols:
+      V3V3: Simulation_SPICE:VDC
+      UMCU: RF_Module:ESP32-S3-WROOM-1U
+    node_styles:
+      component:V3V3: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UMCU: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:V3V3: { x: 80.0, y: 192.0 }
+      component:UMCU: { x: 384.0, y: 224.0 }
+      net:rail_3v3: { x: 224.0, y: 144.0 }
+      net:en: { x: 224.0, y: 224.0 }
+      net:boot_io0: { x: 224.0, y: 288.0 }
+      net:boot_io46: { x: 224.0, y: 352.0 }
+      net:usb_dm: { x: 560.0, y: 208.0 }
+      net:usb_dp: { x: 560.0, y: 272.0 }
+      net:txd0: { x: 560.0, y: 336.0 }
+      net:rxd0: { x: 560.0, y: 400.0 }
+      net:gnd: { x: 272.0, y: 512.0 }
+    wire_routes:
+      V3V3.P->rail_3v3:
+        points:
+          - { x: 176.0, y: 160.0 }
+      V3V3.N->gnd:
+        points:
+          - { x: 112.0, y: 512.0 }
+      UMCU.3V3->rail_3v3:
+        points:
+          - { x: 304.0, y: 160.0 }
+      UMCU.GND->gnd:
+        points:
+          - { x: 384.0, y: 512.0 }
+      UMCU.EN->en:
+        points:
+          - { x: 304.0, y: 224.0 }
+      UMCU.IO0->boot_io0:
+        points:
+          - { x: 304.0, y: 288.0 }
+      UMCU.IO46->boot_io46:
+        points:
+          - { x: 304.0, y: 352.0 }
+      UMCU.IO19->usb_dm:
+        points:
+          - { x: 512.0, y: 208.0 }
+      UMCU.IO20->usb_dp:
+        points:
+          - { x: 512.0, y: 272.0 }
+      UMCU.TXD0->txd0:
+        points:
+          - { x: 512.0, y: 336.0 }
+      UMCU.RXD0->rxd0:
+        points:
+          - { x: 512.0, y: 400.0 }
+  components:
+    V3V3:
+      model: generic.analog.dc_voltage_source
+      part_number: MODULE_3V3_SOURCE
+      pins:
+        P: rail_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UMCU:
+      model: vendor.espressif.esp32_s3_wroom_1u_n16r8
+      part_number: ESP32-S3-WROOM-1U-N16R8
+      parameters:
+        observation_en_state: 1.0
+        observation_io0_state: 1.0
+        observation_io46_state: 0.0
+        observation_usb_dm_state: 0.0
+        observation_usb_dp_state: 1.0
+        observation_txd0_state: 1.0
+      power_domains:
+        3V3: rail_3v3
+      pins:
+        3V3: rail_3v3
+        GND: gnd
+        EN: en
+        IO0: boot_io0
+        IO46: boot_io46
+        IO19: usb_dm
+        IO20: usb_dp
+        TXD0: txd0
+        RXD0: rxd0
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    en:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    boot_io0:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    boot_io46:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    txd0:
+      kind: digital_or_analog
+      nominal_voltage: 2.64
+    rxd0:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: esp32_s3_wroom_boot_usb_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - V3V3
+          - UMCU
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 6b83a000497c994bbb06a0f283304a76699b946b24450ddf8efb0a516d06efad
+      node_bindings:
+        - { node: vdd3v3, net: rail_3v3 }
+        - { node: en, net: en }
+        - { node: io0, net: boot_io0 }
+        - { node: io46, net: boot_io46 }
+        - { node: usb_dm, net: usb_dm }
+        - { node: usb_dp, net: usb_dp }
+        - { node: txd0, net: txd0 }
+        - { node: rxd0, net: rxd0 }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd3v3, endpoint: { component: V3V3, pin: P } }
+        - { node: "0", endpoint: { component: V3V3, pin: N } }
+        - { node: vdd3v3, endpoint: { component: UMCU, pin: 3V3 } }
+        - { node: "0", endpoint: { component: UMCU, pin: GND } }
+        - { node: en, endpoint: { component: UMCU, pin: EN } }
+        - { node: io0, endpoint: { component: UMCU, pin: IO0 } }
+        - { node: io46, endpoint: { component: UMCU, pin: IO46 } }
+        - { node: usb_dm, endpoint: { component: UMCU, pin: IO19 } }
+        - { node: usb_dp, endpoint: { component: UMCU, pin: IO20 } }
+        - { node: txd0, endpoint: { component: UMCU, pin: TXD0 } }
+        - { node: rxd0, endpoint: { component: UMCU, pin: RXD0 } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.2
+      stimuli:
+        - name: spi_flash_boot_usb_idle
+          description: 3.3 V ESP32-S3-WROOM module observation with EN high, GPIO0 high, GPIO46 low, USB D- low, USB D+ high, and TXD0 idle high.
+      probes:
+        - name: v_3v3
+          expression: V(vdd3v3)
+        - name: v_en
+          expression: V(en)
+        - name: v_io0
+          expression: V(io0)
+        - name: v_io46
+          expression: V(io46)
+        - name: v_usb_dm
+          expression: V(usb_dm)
+        - name: v_usb_dp
+          expression: V(usb_dp)
+        - name: v_txd0
+          expression: V(txd0)
+      assertions:
+        - name: rail_above_min
+          probe: v_3v3
+          aggregation: min
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 3.0
+        - name: rail_below_max
+          probe: v_3v3
+          aggregation: max
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 3.6
+        - name: en_released_high
+          probe: v_en
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.475
+        - name: gpio0_spi_flash_boot_high
+          probe: v_io0
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.475
+        - name: gpio46_spi_flash_boot_low
+          probe: v_io46
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.825
+        - name: usb_dm_line_low
+          probe: v_usb_dm
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: below
+          threshold_v: 0.825
+        - name: usb_dp_line_high
+          probe: v_usb_dp
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.31
+        - name: txd0_idle_high
+          probe: v_txd0
+          aggregation: mean
+          start_us: 0.0
+          end_us: 100.0
+          relation: above
+          threshold_v: 2.3

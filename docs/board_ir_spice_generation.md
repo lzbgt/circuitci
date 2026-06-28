@@ -217,6 +217,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   VTREF-referenced SWCLK, SWDIO, nRESET, and SWO line-state observations. The
   model-state inputs are explicit Board IR component parameters, not inferred
   USB transport, SWD protocol transfer, or probe-vendor electrical behavior.
+- `examples/good_esp32_s3_wroom_boot_usb_observation` proves the Espressif
+  ESP32-S3-WROOM-1U-N16R8 module model can use a reduced generated-SPICE face
+  for 3.3 V supply, EN release, GPIO0/GPIO46 boot straps, USB D-/D+ line-state,
+  and TXD0 idle-state observations. The model-state inputs are explicit Board
+  IR component parameters, not inferred firmware, ROM boot protocol, USB PHY,
+  RF, or peak-current behavior.
 - `examples/good_ti_txs0108e_level_shifter_observation` proves the TI TXS0108E
   datasheet-backed level-shifter model can use a reduced generated-SPICE face
   for an enabled A1-to-B1 mixed-voltage observation with rail, OE, input, and

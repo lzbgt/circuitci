@@ -1,6 +1,36 @@
 component_id: vendor.espressif.esp32_s3_wroom_1u_n16r8
 version: 0.1.0
 category: mcu
+simulation:
+  spice:
+    model_name: CIRCUITCI_ESP32_S3_WROOM_BOOT_USB
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [3V3, GND, EN, IO0, IO46, IO19, IO20, TXD0, RXD0]
+    instance_parameters:
+      - spice_name: EN_STATE
+        component_parameter: observation_en_state
+        default_value: 1.0
+      - spice_name: IO0_STATE
+        component_parameter: observation_io0_state
+        default_value: 1.0
+      - spice_name: IO46_STATE
+        component_parameter: observation_io46_state
+        default_value: 0.0
+      - spice_name: USB_DM_STATE
+        component_parameter: observation_usb_dm_state
+        default_value: 0.0
+      - spice_name: USB_DP_STATE
+        component_parameter: observation_usb_dp_state
+        default_value: 1.0
+      - spice_name: TXD0_STATE
+        component_parameter: observation_txd0_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary 3.3 V supply, EN release, GPIO0/GPIO46 boot-strap, USB D-/D+ pin-identification, and TXD0 idle-state checks.
+      - Uses source-backed 3.0 V to 3.6 V module supply limits, EN/GPIO threshold metadata, default boot straps, and USB D-/D+ pin mapping while emitting explicit board-facing static line states.
+      - RF matching, antenna layout, firmware execution, ROM boot protocol, USB PHY impedance/eye margin, flash/PSRAM mux safety, peak current, thermal behavior, and final EMC/signaling sign-off are out of scope.
 ports:
   3V3:
     kind: electrical_power
