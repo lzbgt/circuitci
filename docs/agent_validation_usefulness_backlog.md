@@ -43,13 +43,16 @@ Implemented slice:
 - apply the patch to a copied `project.yaml`,
 - rerun validation,
 - report whether the original finding disappeared across failures, warnings,
-  and infos without new critical findings.
+  and infos without new critical findings,
+- report guarded no-op and ambiguous cases in `repair_report.json`/`.md` via
+  `messages[]`, `summary.blocked`, `summary.skipped`, and blocked proposals.
 
 Useful next slice:
 
-- add guarded no-op or ambiguity reporting for repair classes whose proposed
-  edit set is empty, so agents can distinguish "unsupported/ambiguous" from a
-  command or validation failure without scraping stderr.
+- add a dry-run proposal mode for `repair-yaml` that writes the original report
+  and repair proposals without writing a repaired copy or rerunning validation,
+  so agents can cheaply inspect candidate edits before spending a full repair
+  validation cycle.
 
 Do not start with arbitrary schematic or PCB editing. That remains too broad
 until several narrow YAML repair loops are proven end to end.

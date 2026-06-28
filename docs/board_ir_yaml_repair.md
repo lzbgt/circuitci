@@ -42,6 +42,15 @@ that justified the edit. The `summary` and `proof` blocks record original and
 repaired matching findings across failures, warnings, and infos, while still
 tracking whether the repair introduced new critical findings.
 
+When a repair class is requested but no safe edit can be applied, the command
+still writes `repair_report.json` and `repair_report.md` with `result: fail`.
+Agents should read `messages[]`, `summary.blocked`, and `summary.skipped`
+instead of parsing stderr. Ambiguous missing-net repairs are represented as
+`proposals[].status: blocked` with an empty `edits[]` list and a description of
+the conflicting inferred net kinds. If the requested finding is absent, the
+report has zero proposals and a message explaining that no matching finding was
+available to repair.
+
 This command is intentionally narrow. It does not choose nominal rail voltages,
 invent nets for undeclared model pins, repair ambiguous missing nets with
 conflicting inferred kinds, remove required declared pins, edit component

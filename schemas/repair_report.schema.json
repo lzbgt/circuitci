@@ -9,6 +9,7 @@
     "profile",
     "finding",
     "result",
+    "messages",
     "summary",
     "original_project",
     "repaired_project",
@@ -24,11 +25,17 @@
     "profile": { "type": "string", "minLength": 1 },
     "finding": { "type": "string", "minLength": 1 },
     "result": { "enum": ["pass", "fail"] },
+    "messages": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "summary": {
       "type": "object",
       "required": [
         "proposed",
         "applied",
+        "blocked",
+        "skipped",
         "original_matching_findings",
         "repaired_matching_findings",
         "original_matching_criticals",
@@ -38,6 +45,8 @@
       "properties": {
         "proposed": { "type": "integer", "minimum": 0 },
         "applied": { "type": "integer", "minimum": 0 },
+        "blocked": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
         "original_matching_findings": { "type": "integer", "minimum": 0 },
         "repaired_matching_findings": { "type": "integer", "minimum": 0 },
         "original_matching_criticals": { "type": "integer", "minimum": 0 },
@@ -105,7 +114,7 @@
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "finding_id": { "type": "string", "minLength": 1 },
-        "status": { "enum": ["proposed", "applied", "skipped"] },
+        "status": { "enum": ["proposed", "applied", "blocked", "skipped"] },
         "description": { "type": "string", "minLength": 1 },
         "yaml_path": { "type": "string", "minLength": 1 },
         "affected_pins": {

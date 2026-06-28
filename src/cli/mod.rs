@@ -349,11 +349,13 @@ fn run_repair_yaml(
         finding: finding.as_repair_kind(),
     })?;
     println!(
-        "CircuitCI YAML repair {}: {} (proposed={}, applied={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
+        "CircuitCI YAML repair {}: {} (proposed={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
         report.finding,
         report.result,
         report.summary.proposed,
         report.summary.applied,
+        report.summary.blocked,
+        report.summary.skipped,
         report.summary.original_matching_criticals,
         report.summary.repaired_matching_criticals,
         report.summary.new_criticals,

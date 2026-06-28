@@ -30,6 +30,7 @@ pub struct BoardYamlRepairReport {
     pub profile: String,
     pub finding: String,
     pub result: String,
+    pub messages: Vec<String>,
     pub summary: BoardYamlRepairSummary,
     pub original_project: String,
     pub repaired_project: String,
@@ -44,6 +45,8 @@ pub struct BoardYamlRepairReport {
 pub struct BoardYamlRepairSummary {
     pub proposed: usize,
     pub applied: usize,
+    pub blocked: usize,
+    pub skipped: usize,
     pub original_matching_findings: usize,
     pub repaired_matching_findings: usize,
     pub original_matching_criticals: usize,
@@ -187,6 +190,23 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
     let new_criticals = new_critical_findings(&original_report, &repaired_report);
     let original_finding_removed = !original_matching.is_empty() && repaired_matching.is_empty();
     let no_new_criticals = new_criticals.is_empty();
+    let blocked = proposals
+        .iter()
+        .filter(|proposal| proposal.status == "blocked")
+        .count();
+    let skipped = proposals
+        .iter()
+        .filter(|proposal| proposal.status == "skipped")
+        .count();
+    let messages = repair_messages(
+        finding_id,
+        &original_matching,
+        &repaired_matching,
+        proposals.len(),
+        blocked,
+        skipped,
+        &new_criticals,
+    );
     let result = if original_finding_removed && no_new_criticals && applied == proposals.len() {
         "pass"
     } else {
@@ -198,9 +218,12 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         profile: options.profile.clone(),
         finding: finding_id.to_string(),
         result: result.to_string(),
+        messages,
         summary: BoardYamlRepairSummary {
             proposed: proposals.len(),
             applied,
+            blocked,
+            skipped,
             original_matching_findings: original_matching.len(),
             repaired_matching_findings: repaired_matching.len(),
             original_matching_criticals: original_matching_criticals.len(),
@@ -329,43 +352,54 @@ fn net_not_found_proposals(
         }
     }
 
-    by_net
-        .into_iter()
-        .filter_map(|(net, draft)| {
-            let mut kinds = draft.inferred_kinds.into_iter();
-            let kind = kinds.next()?;
-            if kinds.next().is_some() {
-                return None;
-            }
-            Some((net, draft.affected_pins, kind))
-        })
-        .enumerate()
-        .map(|(index, (net, affected_pins, kind))| {
-            let yaml_path = format!("/board/nets/{net}");
-            Ok(BoardYamlRepairProposal {
-                id: format!("net_not_found_{}", index + 1),
+    let mut proposals = Vec::new();
+    for (net, draft) in by_net {
+        let yaml_path = format!("/board/nets/{net}");
+        let kinds: Vec<&'static str> = draft.inferred_kinds.into_iter().collect();
+        let Some(kind) = kinds.first() else {
+            continue;
+        };
+        if kinds.len() > 1 {
+            proposals.push(BoardYamlRepairProposal {
+                id: format!("net_not_found_{}", proposals.len() + 1),
                 finding_id: BoardYamlRepairFindingKind::NetNotFound
                     .finding_id()
                     .to_string(),
-                status: "proposed".to_string(),
+                status: "blocked".to_string(),
                 description: format!(
-                    "Add missing net {net} as {kind} because it is referenced by declared model pin(s) {}.",
-                    affected_pins.join(", ")
+                    "Not repairing missing net {net} because declared model pins infer conflicting net kinds: {}.",
+                    kinds.join(", ")
                 ),
-                yaml_path: yaml_path.clone(),
-                affected_pins,
-                edits: vec![BoardYamlRepairEdit {
-                    op: "add".to_string(),
-                    path: yaml_path,
-                    from: serde_json::Value::Null,
-                    to: serde_json::json!({ "kind": kind }),
-                    reason:
-                        "Missing nets referenced by declared model pins can be added with kind inferred from the model port kind."
-                            .to_string(),
-                }],
-            })
-        })
-        .collect()
+                yaml_path,
+                affected_pins: draft.affected_pins,
+                edits: Vec::new(),
+            });
+            continue;
+        }
+        proposals.push(BoardYamlRepairProposal {
+            id: format!("net_not_found_{}", proposals.len() + 1),
+            finding_id: BoardYamlRepairFindingKind::NetNotFound
+                .finding_id()
+                .to_string(),
+            status: "proposed".to_string(),
+            description: format!(
+                "Add missing net {net} as {kind} because it is referenced by declared model pin(s) {}.",
+                draft.affected_pins.join(", ")
+            ),
+            yaml_path: yaml_path.clone(),
+            affected_pins: draft.affected_pins,
+            edits: vec![BoardYamlRepairEdit {
+                op: "add".to_string(),
+                path: yaml_path,
+                from: serde_json::Value::Null,
+                to: serde_json::json!({ "kind": kind }),
+                reason:
+                    "Missing nets referenced by declared model pins can be added with kind inferred from the model port kind."
+                        .to_string(),
+            }],
+        });
+    }
+    Ok(proposals)
 }
 
 fn pin_not_declared_proposals(
@@ -431,6 +465,9 @@ fn apply_proposals(
 ) -> Result<usize> {
     let mut applied = 0;
     for proposal in proposals {
+        if proposal.status != "proposed" {
+            continue;
+        }
         if let Some(net_name) = proposal
             .yaml_path
             .strip_prefix("/board/nets/")
@@ -642,6 +679,50 @@ fn finding_evidence(finding: &Finding) -> BoardYamlFindingEvidence {
     }
 }
 
+fn repair_messages(
+    finding_id: &str,
+    original_matching: &[BoardYamlFindingEvidence],
+    repaired_matching: &[BoardYamlFindingEvidence],
+    proposed: usize,
+    blocked: usize,
+    skipped: usize,
+    new_criticals: &[BoardYamlFindingEvidence],
+) -> Vec<String> {
+    let mut messages = Vec::new();
+    if original_matching.is_empty() {
+        messages.push(format!(
+            "Original validation report did not contain {finding_id}; no matching finding was available to repair."
+        ));
+    }
+    if proposed == 0 {
+        messages.push(format!(
+            "No supported {finding_id} repair proposal was generated."
+        ));
+    }
+    if blocked > 0 {
+        messages.push(format!(
+            "{blocked} repair proposal(s) were blocked as ambiguous or unsafe."
+        ));
+    }
+    if skipped > 0 {
+        messages.push(format!(
+            "{skipped} repair proposal(s) were skipped because their YAML edit path was not applicable."
+        ));
+    }
+    if !original_matching.is_empty() && !repaired_matching.is_empty() {
+        messages.push(format!(
+            "Target finding {finding_id} remained after validating the repaired copy."
+        ));
+    }
+    if !new_criticals.is_empty() {
+        messages.push(format!(
+            "Repaired copy introduced {} new critical finding(s).",
+            new_criticals.len()
+        ));
+    }
+    messages
+}
+
 fn write_repair_reports(report: &BoardYamlRepairReport, output: &Path) -> Result<()> {
     std::fs::create_dir_all(output)?;
     std::fs::write(
@@ -659,17 +740,28 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     let mut text = String::new();
     text.push_str(&format!("# CircuitCI YAML Repair: {}\n\n", report.project));
     text.push_str(&format!(
-        "- Result: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
+        "- Result: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Blocked: {}\n- Skipped: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
         report.result,
         report.finding,
         report.summary.proposed,
         report.summary.applied,
+        report.summary.blocked,
+        report.summary.skipped,
         report.summary.original_matching_findings,
         report.summary.repaired_matching_findings,
         report.summary.original_matching_criticals,
         report.summary.repaired_matching_criticals,
         report.summary.new_criticals
     ));
+    text.push_str("## Messages\n\n");
+    if report.messages.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for message in &report.messages {
+            text.push_str(&format!("- {message}\n"));
+        }
+        text.push('\n');
+    }
     text.push_str("## Proposals\n\n");
     if report.proposals.is_empty() {
         text.push_str("None.\n\n");
