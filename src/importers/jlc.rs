@@ -47,6 +47,7 @@ struct PlacementEntry {
     x_mm: f64,
     y_mm: f64,
     layer: Option<String>,
+    rotation_raw: Option<String>,
     rotation_deg: Option<f64>,
     smd: Option<bool>,
     comment: Option<String>,
@@ -134,6 +135,18 @@ struct SourceYaml {
     placement_pins: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     placement_smd: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_layer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_side: Option<PlacementSideYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_side_confidence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_rotation_raw: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_rotation_deg: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placement_orientation_confidence: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -246,8 +259,12 @@ struct PlacementFieldManifest {
     layer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     side: Option<PlacementSideYaml>,
+    side_confidence: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raw_rotation: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     rotation_deg: Option<f64>,
+    orientation_confidence: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     smd: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -280,9 +297,17 @@ struct ComponentManifest {
     #[serde(skip_serializing_if = "Option::is_none")]
     y_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    layer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     side: Option<PlacementSideYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    side_confidence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raw_rotation: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     rotation_deg: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    orientation_confidence: Option<String>,
 }
 
 pub fn import_jlc_assembly(options: &JlcAssemblyImportOptions) -> Result<JlcAssemblyImportSummary> {
@@ -422,6 +447,14 @@ fn source_yaml(bom: Option<&BomEntry>, placement: Option<&PlacementEntry>) -> So
         placement_name: placement.and_then(|entry| entry.name.clone()),
         placement_pins: placement.and_then(|entry| entry.pins),
         placement_smd: placement.and_then(|entry| entry.smd),
+        placement_layer: placement.and_then(|entry| entry.layer.clone()),
+        placement_side: placement.and_then(|entry| placement_side(entry.layer.as_deref())),
+        placement_side_confidence: placement
+            .map(|entry| side_confidence(entry.layer.as_deref()).to_string()),
+        placement_rotation_raw: placement.and_then(|entry| entry.rotation_raw.clone()),
+        placement_rotation_deg: placement.and_then(|entry| entry.rotation_deg),
+        placement_orientation_confidence: placement
+            .map(|entry| orientation_confidence(entry.rotation_raw.as_deref()).to_string()),
     }
 }
 
@@ -441,7 +474,7 @@ fn write_manifest(
         })?;
     }
     let manifest = AssemblyManifest {
-        schema_version: "0.1.0".to_string(),
+        schema_version: "0.2.0".to_string(),
         sources: AssemblySourceManifest {
             bom: source_csv_manifest(&options.bom, &bom.headers, bom.data_rows)?,
             placement: source_csv_manifest(
@@ -529,7 +562,11 @@ fn placement_row_manifests(placements: &ParsedPlacements) -> Vec<PlacementRowMan
                 y_mm: entry.y_mm,
                 layer: entry.layer.clone(),
                 side: placement_side(entry.layer.as_deref()),
+                side_confidence: side_confidence(entry.layer.as_deref()).to_string(),
+                raw_rotation: entry.rotation_raw.clone(),
                 rotation_deg: entry.rotation_deg,
+                orientation_confidence: orientation_confidence(entry.rotation_raw.as_deref())
+                    .to_string(),
                 smd: entry.smd,
                 comment: entry.comment.clone(),
                 name: entry.name.clone(),
@@ -571,8 +608,14 @@ fn component_manifests(
                 supplier_part: bom.and_then(|entry| entry.supplier_part.clone()),
                 x_mm: placement.map(|entry| entry.x_mm),
                 y_mm: placement.map(|entry| entry.y_mm),
+                layer: placement.and_then(|entry| entry.layer.clone()),
                 side: placement.and_then(|entry| placement_side(entry.layer.as_deref())),
+                side_confidence: placement
+                    .map(|entry| side_confidence(entry.layer.as_deref()).to_string()),
+                raw_rotation: placement.and_then(|entry| entry.rotation_raw.clone()),
                 rotation_deg: placement.and_then(|entry| entry.rotation_deg),
+                orientation_confidence: placement
+                    .map(|entry| orientation_confidence(entry.rotation_raw.as_deref()).to_string()),
             }
         })
         .collect()
@@ -696,6 +739,7 @@ fn parse_placements(path: &Path) -> Result<ParsedPlacements> {
             x_mm: required_mm(row, x_column, path, row_number, "Mid X")?,
             y_mm: required_mm(row, y_column, path, row_number, "Mid Y")?,
             layer: optional_string(row, columns.optional("Layer")),
+            rotation_raw: optional_string(row, columns.optional("Rotation")),
             rotation_deg: optional_f64(row, columns.optional("Rotation"), path, row_number)?,
             smd: optional_bool(row, columns.optional("SMD"), path, row_number)?,
             comment: optional_string(row, columns.optional("Comment")),
@@ -943,6 +987,21 @@ fn placement_side(layer: Option<&str>) -> Option<PlacementSideYaml> {
         Some("t" | "top" | "f" | "front") => Some(PlacementSideYaml::Top),
         Some("b" | "bottom" | "back") => Some(PlacementSideYaml::Bottom),
         _ => None,
+    }
+}
+
+fn side_confidence(layer: Option<&str>) -> &'static str {
+    match layer {
+        Some(layer) if placement_side(Some(layer)).is_some() => "source_explicit",
+        Some(layer) if !layer.trim().is_empty() => "unrecognized_source_value",
+        _ => "missing_source_value",
+    }
+}
+
+fn orientation_confidence(rotation_raw: Option<&str>) -> &'static str {
+    match rotation_raw {
+        Some(value) if !value.trim().is_empty() => "source_explicit",
+        _ => "missing_source_value",
     }
 }
 

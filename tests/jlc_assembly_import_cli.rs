@@ -60,6 +60,30 @@ fn import_jlc_assembly_generates_schema_valid_board_ir() {
         10
     );
     assert_eq!(
+        imported["board"]["components"]["C1"]["source"]["placement_layer"],
+        "T"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["source"]["placement_side"],
+        "top"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["source"]["placement_side_confidence"],
+        "source_explicit"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["source"]["placement_rotation_raw"],
+        "90"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["source"]["placement_rotation_deg"],
+        90.0
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["source"]["placement_orientation_confidence"],
+        "source_explicit"
+    );
+    assert_eq!(
         imported["board"]["layout"]["placements"]["C1"]["side"],
         "top"
     );
@@ -88,7 +112,7 @@ fn import_jlc_assembly_generates_schema_valid_board_ir() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("JLC/EasyEDA assembly manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.1.0");
+    assert_eq!(manifest["schema_version"], "0.2.0");
     assert_eq!(
         manifest["sources"]["bom"]["sha256"].as_str().unwrap().len(),
         64
@@ -128,7 +152,20 @@ fn import_jlc_assembly_generates_schema_valid_board_ir() {
     assert_eq!(manifest["bom_rows"][0]["fields"]["supplier_part"], "C1713");
     assert_eq!(manifest["placement_rows"][0]["row_number"], 3);
     assert_eq!(manifest["placement_rows"][0]["designator"], "C1");
+    assert_eq!(manifest["placement_rows"][0]["fields"]["layer"], "T");
     assert_eq!(manifest["placement_rows"][0]["fields"]["side"], "top");
+    assert_eq!(
+        manifest["placement_rows"][0]["fields"]["side_confidence"],
+        "source_explicit"
+    );
+    assert_eq!(
+        manifest["placement_rows"][0]["fields"]["raw_rotation"],
+        "90"
+    );
+    assert_eq!(
+        manifest["placement_rows"][0]["fields"]["orientation_confidence"],
+        "source_explicit"
+    );
     let components = manifest["components"].as_array().unwrap();
     let u1 = components
         .iter()
@@ -138,7 +175,11 @@ fn import_jlc_assembly_generates_schema_valid_board_ir() {
     assert_eq!(u1["has_placement"], true);
     assert_eq!(u1["part_number"], "TPS63802DLAR");
     assert_eq!(u1["placement_row"], 5);
+    assert_eq!(u1["layer"], "T");
     assert_eq!(u1["side"], "top");
+    assert_eq!(u1["side_confidence"], "source_explicit");
+    assert_eq!(u1["raw_rotation"], "180");
+    assert_eq!(u1["orientation_confidence"], "source_explicit");
 }
 
 #[test]
@@ -173,4 +214,60 @@ fn import_jlc_assembly_rejects_quantity_designator_mismatch() {
     assert!(!output_status.status.success());
     let stderr = String::from_utf8_lossy(&output_status.stderr);
     assert!(stderr.contains("quantity 2 does not match 3 designators"));
+}
+
+#[test]
+fn import_jlc_assembly_marks_uncertain_side_and_rotation_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let bom = dir.path().join("bom.csv");
+    let placement = dir.path().join("placement.csv");
+    let output = dir.path().join("imported_uncertain.project.yaml");
+    let manifest_output = output.with_extension("json");
+    std::fs::write(
+        &bom,
+        "Designator,Quantity,Comment,Manufacturer Part\nJ1,1,USB,USB-C-CONN\n",
+    )
+    .unwrap();
+    std::fs::write(
+        &placement,
+        "Designator,Mid X,Mid Y,Layer,Rotation\nJ1,1mm,2mm,Inner,\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-jlc-assembly",
+            "--bom",
+            bom.to_str().unwrap(),
+            "--placement",
+            placement.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let fields = &manifest["placement_rows"][0]["fields"];
+    assert_eq!(fields["layer"], "Inner");
+    assert!(fields["side"].is_null());
+    assert_eq!(fields["side_confidence"], "unrecognized_source_value");
+    assert!(fields["raw_rotation"].is_null());
+    assert!(fields["rotation_deg"].is_null());
+    assert_eq!(fields["orientation_confidence"], "missing_source_value");
+    assert_eq!(
+        manifest["components"][0]["side_confidence"],
+        "unrecognized_source_value"
+    );
+    assert_eq!(
+        manifest["components"][0]["orientation_confidence"],
+        "missing_source_value"
+    );
 }

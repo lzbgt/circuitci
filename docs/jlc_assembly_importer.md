@@ -22,6 +22,8 @@ circuitci import-jlc-assembly \
 - BOM row, quoted designator group, quantity, value/comment, footprint,
   manufacturer part, manufacturer, supplier part, and supplier,
 - placement device, footprint, comment/name, pin count, SMD flag,
+- raw placement layer, normalized side, side confidence, raw rotation,
+  normalized rotation, and orientation confidence,
 - `board.layout.placements.<ref>.x_mm`, `y_mm`, `side`, and `rotation_deg`.
 
 The JSON manifest conforms to `schemas/jlc_assembly_import.schema.json` and
@@ -32,10 +34,12 @@ records:
 - accepted BOM rows with source row number, designator group, split
   designators, quantity, manufacturer, supplier, value, and footprint fields,
 - accepted placement rows with source row number, designator, coordinates,
-  layer, normalized side, rotation, SMD flag, comment/name, and pin count,
+  raw layer, normalized side, side confidence, raw rotation, normalized
+  rotation, orientation confidence, SMD flag, comment/name, and pin count,
 - one component join row per generated component showing whether BOM and/or
   placement evidence was present, the source row numbers, selected part number,
-  selected footprint, and placement coordinates.
+  selected footprint, placement coordinates, side confidence, and orientation
+  confidence.
 
 The importer validates required headers, quoted CSV fields, duplicate
 designators, quantity/designator-count mismatches, non-finite placement
@@ -44,7 +48,11 @@ coordinates, invalid rotations, and malformed boolean/integer fields.
 ## Limits
 
 This importer does not infer nets, electrical pins, power rails, routes, pads,
-or schematic intent. It intentionally emits low-confidence imported components
+final assembly polarity/orientation, or schematic intent. `side_confidence` and
+`orientation_confidence` only say whether the placement CSV supplied a
+recognized side token or rotation value. They are evidence quality markers, not
+proof that the footprint origin, package pin 1, and manufacturer assembly view
+all agree. The importer intentionally emits low-confidence imported components
 with empty pin maps and no scenarios. Use schematic import, PCB import, Gerber
 outline/copper import, drill import, or explicit Board IR mapping before
 treating the board as electrically validated.
