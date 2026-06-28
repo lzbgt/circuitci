@@ -15,7 +15,8 @@ The command currently extracts only the plaintext SQLite envelope:
 - per-object structure evidence for the latest board/schematic/sheet/PCB
   entries, including map key, uuid/title, canonical JSON length, SHA-256, field
   names, and UUID-like reference fields,
-- history payload counts and whether those payloads look like plaintext JSON.
+- history payload counts, SHA-256 values, JSON-prefix classification, and
+  plaintext JSON shape evidence when a payload can be parsed.
 
 Example:
 
@@ -41,8 +42,9 @@ The JSON manifest conforms to
 - the latest plaintext project-structure object with length and SHA-256,
 - latest-structure object rows with canonical JSON hashes and reference-field
   provenance,
-- `history_data` payload ids, byte lengths, SHA-256 values, and JSON-prefix
-  classification,
+- `history_data` payload ids, byte lengths, SHA-256 values, JSON-prefix
+  classification, parsed top-level JSON kind, object keys, item counts, and
+  parse errors for malformed JSON-prefix payloads,
 - an importability status explaining whether geometry conversion is blocked by
   encoded/non-JSON history payloads.
 
@@ -58,8 +60,8 @@ enrichment:
   evidence normally, but expect owner-associated fabricated artwork counts to
   remain zero until an unencoded layout export is available.
 - If a future EasyEDA Pro export exposes plaintext layout objects, add a
-  focused adapter for that exported shape rather than guessing from opaque
-  history blobs.
+  focused adapter for that documented shape rather than guessing from opaque
+  history blobs or from top-level JSON keys alone.
 
 The inspector requires the `sqlite3` command-line tool at runtime. It fails
 closed for non-SQLite files and for SQLite files missing the expected EasyEDA

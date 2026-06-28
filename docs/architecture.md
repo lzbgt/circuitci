@@ -193,9 +193,9 @@ Importers append evidence instead of guessing missing intent. Examples:
   pad/via owner metadata only when layout or copper evidence uniquely matches.
 - EasyEDA Pro `.eprj2` inspection documents the SQLite envelope, table schema,
   source hash, project-structure hash, per-object structure hashes/reference
-  fields, per-history-payload hashes, and encoded payload status in Markdown
-  plus JSON manifest form; it does not fabricate pad/net geometry from encoded
-  history.
+  fields, per-history-payload hashes, plaintext JSON shape evidence, and
+  encoded payload status in Markdown plus JSON manifest form; it does not
+  fabricate pad/net geometry from encoded history or from top-level JSON keys.
 
 Unsupported source constructs fail closed or are counted as ignored when they
 cannot be represented without losing the engineering meaning. The importer

@@ -17,7 +17,9 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
          INSERT INTO branches VALUES (1, 'branch1', 'main', 'history1');
          INSERT INTO project_structures VALUES (1, 42, '{}');
          INSERT INTO history_data VALUES (1, 'uQuXeaEWVPvQkrqXBaOCA==');
-         INSERT INTO history_data VALUES (2, '{{\"plain\":true}}');",
+         INSERT INTO history_data VALUES (2, '{{\"plain\":true}}');
+         INSERT INTO history_data VALUES (3, '[{{\"type\":\"wire\"}}]');
+         INSERT INTO history_data VALUES (4, '{{bad');",
         structure.replace('\'', "''")
     );
     let sqlite_output = Command::new("sqlite3")
@@ -65,6 +67,11 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     assert!(report.contains("PCB A"));
     assert!(report.contains("Object Evidence"));
     assert!(report.contains("pcb_uuid=pcb1"));
+    assert!(report.contains("History Payload Shapes"));
+    assert!(report.contains("JSON `object`"));
+    assert!(report.contains("keys `plain`"));
+    assert!(report.contains("JSON `array`"));
+    assert!(report.contains("JSON-prefix parse error"));
     assert!(report.contains("encoded/non-JSON"));
     assert!(report.contains("pad, via, route, zone, and net geometry as unavailable"));
 
@@ -78,7 +85,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     if let Err(error) = validator.validate(&manifest) {
         panic!("EasyEDA Pro manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.2.0");
+    assert_eq!(manifest["schema_version"], "0.3.0");
     assert_eq!(manifest["source"]["sha256"].as_str().unwrap().len(), 64);
     assert_eq!(manifest["sqlite"]["tables"].as_array().unwrap().len(), 4);
     assert!(
@@ -87,7 +94,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
             .unwrap()
             .iter()
             .any(|table| table["name"] == "history_data"
-                && table["row_count"] == 2
+                && table["row_count"] == 4
                 && table["columns"].as_array().unwrap().len() == 2)
     );
     assert_eq!(manifest["easyeda_pro"]["latest_structure"]["ticket"], 42);
@@ -122,11 +129,27 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     let payloads = manifest["easyeda_pro"]["history_payloads"]["rows"]
         .as_array()
         .unwrap();
-    assert_eq!(payloads.len(), 2);
+    assert_eq!(payloads.len(), 4);
     assert_eq!(payloads[0]["id"], 1);
     assert_eq!(payloads[0]["looks_like_json"], false);
     assert_eq!(payloads[0]["sha256"].as_str().unwrap().len(), 64);
     assert_eq!(payloads[1]["looks_like_json"], true);
+    assert_eq!(payloads[1]["json_shape"]["kind"], "object");
+    assert_eq!(payloads[1]["json_shape"]["top_level_item_count"], 1);
+    let keys = payloads[1]["json_shape"]["top_level_keys"]
+        .as_array()
+        .unwrap();
+    assert_eq!(keys.len(), 1);
+    assert_eq!(keys[0], "plain");
+    assert_eq!(payloads[2]["json_shape"]["kind"], "array");
+    assert_eq!(payloads[2]["json_shape"]["top_level_item_count"], 1);
+    assert!(payloads[3]["json_shape"].is_null());
+    assert!(
+        payloads[3]["json_parse_error"]
+            .as_str()
+            .unwrap()
+            .contains("key")
+    );
     assert_eq!(
         manifest["importability"]["status"],
         "blocked_encoded_history_payloads"

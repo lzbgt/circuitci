@@ -157,6 +157,19 @@ struct PayloadRowManifest {
     length_bytes: usize,
     sha256: String,
     looks_like_json: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    json_shape: Option<PayloadJsonShapeManifest>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    json_parse_error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PayloadJsonShapeManifest {
+    kind: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    top_level_keys: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_level_item_count: Option<usize>,
 }
 
 #[derive(Debug, Serialize)]
@@ -256,6 +269,7 @@ pub fn inspect_easyeda_pro_project(
             &projects,
             &branches,
             latest_structure.as_ref(),
+            &payload_rows,
             &summary,
             max_history_payload_len,
         ),
@@ -267,7 +281,7 @@ pub fn inspect_easyeda_pro_project(
         )
     })?;
     let manifest = InspectionManifest {
-        schema_version: "0.2.0".to_string(),
+        schema_version: "0.3.0".to_string(),
         source: SourceManifest {
             path: options.eprj2.display().to_string(),
             size_bytes: fs::metadata(&options.eprj2)
@@ -619,11 +633,11 @@ fn column_manifests(path: &Path, table: &str) -> Result<Vec<ColumnManifest>> {
 fn history_payload_rows(path: &Path) -> Result<Vec<PayloadRowManifest>> {
     sqlite_rows(
         path,
-        "SELECT id, length(dataStr), hex(dataStr), CASE WHEN trim(dataStr) LIKE '{%' OR trim(dataStr) LIKE '[%' THEN 1 ELSE 0 END FROM history_data ORDER BY id;",
+        "SELECT id, length(dataStr), hex(dataStr), CASE WHEN trim(dataStr) LIKE '{%' OR trim(dataStr) LIKE '[%' THEN 1 ELSE 0 END, dataStr FROM history_data ORDER BY id;",
     )?
     .into_iter()
     .map(|columns| {
-        if columns.len() != 4 {
+        if columns.len() != 5 {
             bail!(
                 "EasyEDA Pro history_data payload query returned {} columns.",
                 columns.len()
@@ -636,14 +650,47 @@ fn history_payload_rows(path: &Path) -> Result<Vec<PayloadRowManifest>> {
             .parse::<usize>()
             .context("EasyEDA Pro history_data payload length is not an integer.")?;
         let bytes = bytes_from_sqlite_hex(&columns[2], "history_data payload")?;
+        let looks_like_json = columns[3] == "1";
+        let (json_shape, json_parse_error) = if looks_like_json {
+            match payload_json_shape(&columns[4]) {
+                Ok(shape) => (Some(shape), None),
+                Err(error) => (None, Some(error)),
+            }
+        } else {
+            (None, None)
+        };
         Ok(PayloadRowManifest {
             id,
             length_bytes,
             sha256: sha256_hex(&bytes),
-            looks_like_json: columns[3] == "1",
+            looks_like_json,
+            json_shape,
+            json_parse_error,
         })
     })
     .collect()
+}
+
+fn payload_json_shape(payload: &str) -> std::result::Result<PayloadJsonShapeManifest, String> {
+    let value: Value = serde_json::from_str(payload.trim()).map_err(|error| error.to_string())?;
+    let (kind, mut top_level_keys, top_level_item_count) = match &value {
+        Value::Object(map) => (
+            "object",
+            map.keys().cloned().collect::<Vec<_>>(),
+            Some(map.len()),
+        ),
+        Value::Array(values) => ("array", Vec::new(), Some(values.len())),
+        Value::String(_) => ("string", Vec::new(), None),
+        Value::Number(_) => ("number", Vec::new(), None),
+        Value::Bool(_) => ("boolean", Vec::new(), None),
+        Value::Null => ("null", Vec::new(), None),
+    };
+    top_level_keys.sort();
+    Ok(PayloadJsonShapeManifest {
+        kind: kind.to_string(),
+        top_level_keys,
+        top_level_item_count,
+    })
 }
 
 fn importability_manifest(encoded_history_payloads: usize) -> ImportabilityManifest {
@@ -705,6 +752,7 @@ fn inspection_markdown(
     projects: &[ProjectRow],
     branches: &[BranchRow],
     latest_structure: Option<&StructureSummary>,
+    payload_rows: &[PayloadRowManifest],
     summary: &EasyedaProInspectSummary,
     max_history_payload_len: usize,
 ) -> String {
@@ -769,6 +817,8 @@ fn inspection_markdown(
         markdown.push_str("- No rows in `project_structures`.\n");
     }
 
+    append_payload_shape_evidence(&mut markdown, payload_rows);
+
     markdown.push_str("\n## Importability\n\n");
     if summary.encoded_history_payloads > 0 {
         markdown.push_str(
@@ -780,6 +830,37 @@ fn inspection_markdown(
         );
     }
     markdown
+}
+
+fn append_payload_shape_evidence(markdown: &mut String, rows: &[PayloadRowManifest]) {
+    markdown.push_str("\n## History Payload Shapes\n\n");
+    if rows.is_empty() {
+        markdown.push_str("- No rows in `history_data`.\n");
+        return;
+    }
+    for row in rows {
+        markdown.push_str(&format!(
+            "- `{}`: `{}` bytes; sha256 `{}`",
+            row.id, row.length_bytes, row.sha256
+        ));
+        if let Some(shape) = &row.json_shape {
+            markdown.push_str(&format!("; JSON `{}`", shape.kind));
+            if let Some(count) = shape.top_level_item_count {
+                markdown.push_str(&format!("; top-level items `{count}`"));
+            }
+            if !shape.top_level_keys.is_empty() {
+                markdown.push_str(&format!("; keys `{}`", shape.top_level_keys.join("`, `")));
+            }
+        } else if let Some(error) = &row.json_parse_error {
+            markdown.push_str(&format!(
+                "; JSON-prefix parse error `{}`",
+                error.replace('`', "'")
+            ));
+        } else {
+            markdown.push_str("; encoded/non-JSON prefix");
+        }
+        markdown.push('\n');
+    }
 }
 
 fn append_structure_object_evidence(markdown: &mut String, objects: &[StructureObjectManifest]) {

@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "source", "sqlite", "easyeda_pro", "importability"],
   "properties": {
-    "schema_version": { "const": "0.2.0" },
+    "schema_version": { "const": "0.3.0" },
     "source": {
       "type": "object",
       "required": ["path", "size_bytes", "sha256"],
@@ -225,7 +225,24 @@
         "id": { "type": "integer", "minimum": 0 },
         "length_bytes": { "type": "integer", "minimum": 0 },
         "sha256": { "$ref": "#/$defs/sha256" },
-        "looks_like_json": { "type": "boolean" }
+        "looks_like_json": { "type": "boolean" },
+        "json_shape": { "$ref": "#/$defs/payload_json_shape" },
+        "json_parse_error": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "payload_json_shape": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": ["object", "array", "string", "number", "boolean", "null"]
+        },
+        "top_level_keys": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "top_level_item_count": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     }
