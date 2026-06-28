@@ -192,6 +192,105 @@ fn thermal_via_plating_fails_closed_without_drill_evidence() {
 }
 
 #[test]
+fn thermal_derating_environment_passes_for_reviewed_context() {
+    let (_dir, project_path) =
+        write_thermal_derating_project(Some(55.0), Some(250.0), Some("vented_ip20"), true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_derating_environment_fails_high_ambient() {
+    let (_dir, project_path) =
+        write_thermal_derating_project(Some(75.0), Some(250.0), Some("vented_ip20"), true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "THERMAL_DERATING_ENVIRONMENT_VALID")
+        .expect("thermal derating ambient failure");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(
+        failure["measured"]["thermal_copper_name"],
+        "u1_heat_spreader"
+    );
+    assert_eq!(failure["measured"]["ambient_temperature_C"], 75.0);
+    assert_eq!(failure["limit"]["rated_ambient_temperature_C"], 60.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_derating_environment_fails_low_airflow_and_enclosure_mismatch() {
+    let (_dir, project_path) =
+        write_thermal_derating_project(Some(55.0), Some(120.0), Some("sealed_ip54"), true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    assert!(failures.iter().any(|failure| {
+        failure["id"] == "THERMAL_DERATING_ENVIRONMENT_VALID"
+            && failure["measured"]["airflow_lfm"] == 120.0
+            && failure["limit"]["min_airflow_lfm"] == 200.0
+    }));
+    assert!(failures.iter().any(|failure| {
+        failure["id"] == "THERMAL_DERATING_ENVIRONMENT_VALID"
+            && failure["measured"]["enclosure_profile"] == "sealed_ip54"
+            && failure["limit"]["required_enclosure_profile"] == "vented_ip20"
+    }));
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_derating_environment_fails_closed_without_required_airflow() {
+    let (_dir, project_path) =
+        write_thermal_derating_project(Some(55.0), None, Some("vented_ip20"), true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "VALIDATION_INPUT_MISSING")
+        .expect("missing airflow failure");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires parameters.airflow_lfm")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn thermal_derating_environment_fails_closed_without_derating_metadata() {
+    let (_dir, project_path) =
+        write_thermal_derating_project(Some(55.0), Some(250.0), Some("vented_ip20"), false);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "VALIDATION_INPUT_MISSING")
+        .expect("missing derating metadata failure");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("must declare rated_ambient_temperature_C")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn thermal_package_temperature_passes_with_reviewed_loss_and_model_metadata() {
     let (_dir, project_path) = write_thermal_package_project(1.0, 40.0, 125.0, true, 45.0, 60.0);
 
@@ -600,6 +699,74 @@ scenarios:
         - name: u1_package_loss
 "#,
             model_library = model_dir.display(),
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_thermal_derating_project(
+    ambient_temperature_c: Option<f64>,
+    airflow_lfm: Option<f64>,
+    enclosure_profile: Option<&str>,
+    include_derating_metadata: bool,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let derating_metadata = if include_derating_metadata {
+        r#"        rated_ambient_temperature_C: 60.0
+        min_airflow_lfm: 200.0
+        enclosure_profile: vented_ip20
+"#
+    } else {
+        ""
+    };
+    let ambient = ambient_temperature_c
+        .map(|value| format!("      ambient_temperature_C: {value}\n"))
+        .unwrap_or_default();
+    let airflow = airflow_lfm
+        .map(|value| format!("      airflow_lfm: {value}\n"))
+        .unwrap_or_default();
+    let enclosure = enclosure_profile
+        .map(|value| format!("      enclosure_profile: {value}\n"))
+        .unwrap_or_default();
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  version: "1"
+  name: thermal_derating_fixture
+libraries:
+  - {generic_library}
+board:
+  nets:
+    HOT: {{ kind: power }}
+    GND: {{ kind: ground }}
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: HOT
+        B: GND
+  manufacturing:
+    thermal_copper:
+      - name: u1_heat_spreader
+        component: U1
+        power_loss_w: 1.5
+        min_copper_area_mm2: 20.0
+{derating_metadata}        source: thermal_derating_note_rev_a
+scenarios:
+  - name: thermal_derating_environment
+    type: manufacturing
+    checks:
+      - THERMAL_DERATING_ENVIRONMENT_VALID
+    parameters:
+{ambient}{airflow}{enclosure}      thermal_copper:
+        - name: u1_heat_spreader
+"#,
+            generic_library = repo.join("libs/generic").display(),
         ),
     )
     .unwrap();

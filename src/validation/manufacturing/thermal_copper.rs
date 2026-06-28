@@ -8,8 +8,8 @@ use serde_json::json;
 
 use super::super::common::validation_input_missing;
 use super::super::{
-    THERMAL_COPPER_AREA_VALID, THERMAL_PACKAGE_TEMPERATURE_VALID, THERMAL_VIA_PLATING_VALID,
-    THERMAL_VIA_STACKUP_VALID,
+    THERMAL_COPPER_AREA_VALID, THERMAL_DERATING_ENVIRONMENT_VALID,
+    THERMAL_PACKAGE_TEMPERATURE_VALID, THERMAL_VIA_PLATING_VALID, THERMAL_VIA_STACKUP_VALID,
 };
 use super::geometry::{
     validate_copper_feature_geometry, validate_copper_region_geometry,
@@ -133,6 +133,33 @@ pub(in crate::validation) fn validate_thermal_package_temperature(
             max_temperature_rise_c,
             max_junction_temperature_margin_c,
         );
+    }
+}
+
+pub(in crate::validation) fn validate_thermal_derating_environment(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = named_thermal_rule_parameters(
+        scenario,
+        findings,
+        THERMAL_DERATING_ENVIRONMENT_VALID,
+        "thermal_copper",
+    ) else {
+        return;
+    };
+    for name in names {
+        let Some(rule) = thermal_rule(
+            bound,
+            scenario,
+            findings,
+            THERMAL_DERATING_ENVIRONMENT_VALID,
+            &name,
+        ) else {
+            return;
+        };
+        validate_derating_environment_rule(bound, scenario, findings, rule);
     }
 }
 
@@ -324,6 +351,83 @@ fn validate_thermal_rule(
             &evidence,
             total_area_mm2,
         ));
+    }
+}
+
+fn validate_derating_environment_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    rule: &ThermalCopperRule,
+) {
+    if let Err(message) = validate_rule_metadata(bound, rule) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    if !has_derating_metadata(rule) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "THERMAL_DERATING_ENVIRONMENT_VALID thermal copper rule {} must declare rated_ambient_temperature_C, min_airflow_lfm, or enclosure_profile.",
+                rule.name
+            ),
+        );
+        return;
+    }
+    if let Some(rated_ambient_temperature_c) = rule.rated_ambient_temperature_c {
+        let Some(ambient_temperature_c) = required_finite_number(
+            scenario,
+            findings,
+            THERMAL_DERATING_ENVIRONMENT_VALID,
+            "ambient_temperature_C",
+        ) else {
+            return;
+        };
+        if ambient_temperature_c > rated_ambient_temperature_c + f64::EPSILON {
+            findings.push(thermal_derating_ambient_finding(
+                scenario,
+                rule,
+                ambient_temperature_c,
+                rated_ambient_temperature_c,
+            ));
+        }
+    }
+    if let Some(min_airflow_lfm) = rule.min_airflow_lfm {
+        let Some(airflow_lfm) = required_nonnegative_number(
+            scenario,
+            findings,
+            THERMAL_DERATING_ENVIRONMENT_VALID,
+            "airflow_lfm",
+        ) else {
+            return;
+        };
+        if airflow_lfm + f64::EPSILON < min_airflow_lfm {
+            findings.push(thermal_derating_airflow_finding(
+                scenario,
+                rule,
+                airflow_lfm,
+                min_airflow_lfm,
+            ));
+        }
+    }
+    if let Some(expected_enclosure_profile) = rule.enclosure_profile.as_deref() {
+        let Some(enclosure_profile) = required_string_parameter(
+            scenario,
+            findings,
+            THERMAL_DERATING_ENVIRONMENT_VALID,
+            "enclosure_profile",
+        ) else {
+            return;
+        };
+        if enclosure_profile != expected_enclosure_profile {
+            findings.push(thermal_derating_enclosure_finding(
+                scenario,
+                rule,
+                &enclosure_profile,
+                expected_enclosure_profile,
+            ));
+        }
     }
 }
 
@@ -755,7 +859,39 @@ fn validate_rule_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> R
             ));
         }
     }
+    if let Some(rated_ambient_temperature_c) = rule.rated_ambient_temperature_c
+        && !rated_ambient_temperature_c.is_finite()
+    {
+        return Err(format!(
+            "THERMAL_COPPER_AREA_VALID thermal copper rule {} rated_ambient_temperature_C must be finite when supplied.",
+            rule.name
+        ));
+    }
+    if let Some(min_airflow_lfm) = rule.min_airflow_lfm
+        && (!min_airflow_lfm.is_finite() || min_airflow_lfm < 0.0)
+    {
+        return Err(format!(
+            "THERMAL_COPPER_AREA_VALID thermal copper rule {} min_airflow_lfm must be finite and non-negative when supplied.",
+            rule.name
+        ));
+    }
+    if rule
+        .enclosure_profile
+        .as_deref()
+        .is_some_and(|value| value.trim().is_empty())
+    {
+        return Err(format!(
+            "THERMAL_COPPER_AREA_VALID thermal copper rule {} enclosure_profile must be non-empty when supplied.",
+            rule.name
+        ));
+    }
     Ok(())
+}
+
+fn has_derating_metadata(rule: &ThermalCopperRule) -> bool {
+    rule.rated_ambient_temperature_c.is_some()
+        || rule.min_airflow_lfm.is_some()
+        || rule.enclosure_profile.is_some()
 }
 
 fn positive_number(value: Option<f64>) -> Option<f64> {
@@ -803,6 +939,53 @@ fn required_positive_number(
         return None;
     }
     Some(number)
+}
+
+fn required_nonnegative_number(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    key: &str,
+) -> Option<f64> {
+    let number = required_finite_number(scenario, findings, check_id, key)?;
+    if number < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be non-negative."),
+        );
+        return None;
+    }
+    Some(number)
+}
+
+fn required_string_parameter(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    key: &str,
+) -> Option<String> {
+    let Some(value) = scenario.parameters.get(key) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} requires parameters.{key}."),
+        );
+        return None;
+    };
+    let Some(text) = value
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{key} must be a non-empty string."),
+        );
+        return None;
+    };
+    Some(text.to_string())
 }
 
 fn optional_nonnegative_number(
@@ -1470,6 +1653,109 @@ fn thermal_junction_temperature_finding(
         "If the junction limit or margin changed, update the source-backed model thermal_package metadata or parameters.max_junction_temperature_margin_C.".to_string(),
     ];
     finding
+}
+
+fn thermal_derating_ambient_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    ambient_temperature_c: f64,
+    rated_ambient_temperature_c: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_DERATING_ENVIRONMENT_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} uses reviewed ambient rating {:.3} C, but scenario ambient is {:.3} C.",
+            rule.name, rated_ambient_temperature_c, ambient_temperature_c
+        ),
+    );
+    populate_thermal_derating_finding(&mut finding, rule);
+    finding.measured.insert(
+        "ambient_temperature_C".to_string(),
+        json!(ambient_temperature_c),
+    );
+    finding.limit.insert(
+        "rated_ambient_temperature_C".to_string(),
+        json!(rated_ambient_temperature_c),
+    );
+    finding.suggested_fixes = vec![
+        "Reduce the reviewed operating ambient, improve cooling, or update the thermal rule from a reviewed derating source that covers this ambient.".to_string(),
+        "Do not treat this check as a thermal solver; encode airflow, enclosure, copper, and measured evidence explicitly before sign-off.".to_string(),
+    ];
+    finding
+}
+
+fn thermal_derating_airflow_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    airflow_lfm: f64,
+    min_airflow_lfm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_DERATING_ENVIRONMENT_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} requires reviewed airflow {:.3} LFM, but scenario airflow is {:.3} LFM.",
+            rule.name, min_airflow_lfm, airflow_lfm
+        ),
+    );
+    populate_thermal_derating_finding(&mut finding, rule);
+    finding
+        .measured
+        .insert("airflow_lfm".to_string(), json!(airflow_lfm));
+    finding
+        .limit
+        .insert("min_airflow_lfm".to_string(), json!(min_airflow_lfm));
+    finding.suggested_fixes = vec![
+        "Increase reviewed airflow, reduce component loss, or update board thermal requirements from reviewed airflow/enclosure evidence.".to_string(),
+        "Use measured temperature or a qualified thermal model for final thermal sign-off when airflow assumptions are not guaranteed.".to_string(),
+    ];
+    finding
+}
+
+fn thermal_derating_enclosure_finding(
+    scenario: &Scenario,
+    rule: &ThermalCopperRule,
+    enclosure_profile: &str,
+    expected_enclosure_profile: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        THERMAL_DERATING_ENVIRONMENT_VALID,
+        &scenario.name,
+        format!(
+            "Thermal copper rule {} requires enclosure profile {}, but scenario profile is {}.",
+            rule.name, expected_enclosure_profile, enclosure_profile
+        ),
+    );
+    populate_thermal_derating_finding(&mut finding, rule);
+    finding
+        .measured
+        .insert("enclosure_profile".to_string(), json!(enclosure_profile));
+    finding.limit.insert(
+        "required_enclosure_profile".to_string(),
+        json!(expected_enclosure_profile),
+    );
+    finding.suggested_fixes = vec![
+        "Use an enclosure profile covered by the reviewed thermal rule or update the thermal rule from reviewed enclosure evidence.".to_string(),
+        "If enclosure effects dominate, add measured thermal evidence instead of relying on this metadata screen.".to_string(),
+    ];
+    finding
+}
+
+fn populate_thermal_derating_finding(finding: &mut Finding, rule: &ThermalCopperRule) {
+    finding.component = Some(rule.component.clone());
+    finding
+        .measured
+        .insert("thermal_copper_name".to_string(), json!(rule.name));
+    finding
+        .measured
+        .insert("thermal_copper_source".to_string(), json!(rule.source));
+    finding
+        .measured
+        .insert("component".to_string(), json!(rule.component));
+    finding
+        .measured
+        .insert("power_loss_w".to_string(), json!(rule.power_loss_w));
 }
 
 fn populate_package_thermal_finding(

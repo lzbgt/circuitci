@@ -149,6 +149,7 @@ Canonical executable check IDs:
 - `THERMAL_VIA_PLATING_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `THERMAL_MEASURED_TEMPERATURE_VALID`
+- `THERMAL_DERATING_ENVIRONMENT_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1466,6 +1467,49 @@ This is a static reviewed-loss and package-Rja evidence screen. It does not
 solve board spreading resistance, transient thermal impedance, airflow,
 enclosure effects, heatsinking, copper-via effectiveness, derating curves, or
 measured temperature behavior.
+
+Thermal derating environment validation uses
+`THERMAL_DERATING_ENVIRONMENT_VALID` when the reviewed
+`board.manufacturing.thermal_copper[]` rule declares explicit environment
+assumptions such as `rated_ambient_temperature_C`, `min_airflow_lfm`, or
+`enclosure_profile`.
+
+```yaml
+scenarios:
+  - name: thermal_derating_environment
+    type: manufacturing
+    checks:
+      - THERMAL_DERATING_ENVIRONMENT_VALID
+    parameters:
+      ambient_temperature_C: 55.0
+      airflow_lfm: 250.0
+      enclosure_profile: vented_ip20
+      thermal_copper:
+        - name: u1_heat_spreader
+```
+
+Thermal derating environment algorithm:
+
+1. Require `parameters.thermal_copper[]` with explicit rule `name` values.
+2. Resolve each name from `board.manufacturing.thermal_copper[]`.
+3. Require the reviewed rule to name an existing component, non-empty source,
+   positive `power_loss_w`, positive `min_copper_area_mm2`, and at least one of
+   `rated_ambient_temperature_C`, `min_airflow_lfm`, or `enclosure_profile`.
+4. When the rule declares `rated_ambient_temperature_C`, require finite
+   `parameters.ambient_temperature_C` and fail when the scenario ambient is
+   above that reviewed rating.
+5. When the rule declares `min_airflow_lfm`, require non-negative
+   `parameters.airflow_lfm` and fail when scenario airflow is below that
+   reviewed minimum.
+6. When the rule declares `enclosure_profile`, require non-empty
+   `parameters.enclosure_profile` and fail when it differs from the reviewed
+   profile string.
+7. Fail closed when reviewed derating metadata or scenario environment inputs
+   are absent or malformed.
+
+This is a static consistency screen over reviewed environment assumptions. It
+does not model convection, enclosure thermal impedance, airflow distribution,
+fans, heatsinks, component derating curves, or measured temperature behavior.
 
 Measured thermal validation uses `THERMAL_MEASURED_TEMPERATURE_VALID` when
 Board IR contains reviewed `board.manufacturing.thermal_measurements[]`

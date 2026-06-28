@@ -313,6 +313,12 @@ without explicit imported mechanical evidence.
   derating, or measured temperature rise. Passing this rule only means the
   imported drill plating and drill-diameter evidence meet the reviewed static
   minimums.
+- `THERMAL_DERATING_ENVIRONMENT_VALID` compares reviewed thermal-copper
+  environment assumptions against explicit scenario ambient, airflow, and
+  enclosure-profile inputs. It does not model airflow distribution, convection,
+  enclosure thermal impedance, fan curves, heatsinks, component derating curves,
+  or measured temperature behavior. Passing this rule only means the scenario
+  environment inputs do not contradict the reviewed static derating metadata.
 - `THERMAL_PACKAGE_TEMPERATURE_VALID` compares reviewed static power loss and
   source-backed component package Rja metadata against reviewed ambient and
   temperature-rise limits. It does not model transient thermal impedance, board

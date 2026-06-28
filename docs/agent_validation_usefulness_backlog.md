@@ -127,9 +127,10 @@ Useful next slices:
   measured S11, and enclosure/cable effects,
 - thermal proof beyond the current reviewed 2D copper-area, via/stackup,
   via-plating/drill, package static temperature-rise, and measured-temperature
-  uncertainty-margin screens, such as plating thickness, via barrel resistance,
-  transient thermal impedance,
-  airflow/enclosure effects, and derating evidence,
+  uncertainty-margin screens plus static derating-environment metadata screens,
+  such as plating thickness, via barrel resistance, transient thermal impedance,
+  airflow distribution, enclosure thermal impedance, and solver-backed derating
+  curves,
 - creepage and clearance proof beyond the current explicit same-layer planar
   conductor screen, such as reviewed slot, barrier, coating, stackup, material,
   altitude, and standards-class evidence,

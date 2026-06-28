@@ -62,8 +62,9 @@ pub(super) use solder_paste_bga::validate_solder_paste_bga_aperture;
 pub(super) use solder_paste_ic::validate_solder_paste_ic_pin_aperture;
 pub(super) use stitching_via::validate_return_path_stitching_via;
 pub(super) use thermal_copper::{
-    validate_thermal_copper_area, validate_thermal_package_temperature,
-    validate_thermal_via_plating, validate_thermal_via_stackup,
+    validate_thermal_copper_area, validate_thermal_derating_environment,
+    validate_thermal_package_temperature, validate_thermal_via_plating,
+    validate_thermal_via_stackup,
 };
 pub(super) use thermal_measurement::validate_thermal_measured_temperature;
 

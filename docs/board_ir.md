@@ -221,6 +221,14 @@ nets, and reviewed layers. The check matches imported route vias to
 evidence, then counts only drills whose `plating` is `plated`. It does not
 model plating thickness, via barrel resistance, or heat flow.
 
+`THERMAL_DERATING_ENVIRONMENT_VALID` consumes the same reviewed
+`board.manufacturing.thermal_copper[]` entries when they also declare explicit
+environment assumptions: `rated_ambient_temperature_C`, `min_airflow_lfm`,
+and/or `enclosure_profile`. Scenario parameters provide the actual reviewed
+operating environment. CircuitCI only checks direct contradictions between
+those explicit values; it does not infer airflow, enclosure behavior, or
+derating curves.
+
 `THERMAL_PACKAGE_TEMPERATURE_VALID` also consumes reviewed
 `board.manufacturing.thermal_copper[]` entries for component identity, source,
 and static `power_loss_w`, then combines that evidence with the resolved

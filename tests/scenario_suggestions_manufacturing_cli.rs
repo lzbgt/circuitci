@@ -461,6 +461,48 @@ fn suggest_scenarios_derives_thermal_measured_temperature_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_thermal_derating_environment_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_thermal_derating_environment/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_thermal_derating_environment"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+
+    let derating = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "thermal_derating_environment_u1_heat_spreader")
+        .expect("thermal derating environment suggestion");
+    assert_eq!(derating["runnable"], false);
+    assert_eq!(
+        derating["scenario"]["checks"][0],
+        "THERMAL_DERATING_ENVIRONMENT_VALID"
+    );
+    assert_eq!(
+        derating["scenario"]["parameters"]["thermal_copper"][0]["name"],
+        "u1_heat_spreader"
+    );
+    let required = derating["required_inputs"].as_array().unwrap();
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.ambient_temperature_C")
+    }));
+    assert!(
+        required
+            .iter()
+            .any(|item| { item.as_str().unwrap().contains("parameters.airflow_lfm") })
+    );
+    assert!(required.iter().any(|item| {
+        item.as_str()
+            .unwrap()
+            .contains("parameters.enclosure_profile")
+    }));
+}
+
+#[test]
 fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_manufacturing_artifacts/project.yaml");

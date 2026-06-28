@@ -186,6 +186,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `THERMAL_VIA_PLATING_VALID`
 - `THERMAL_PACKAGE_TEMPERATURE_VALID`
 - `THERMAL_MEASURED_TEMPERATURE_VALID`
+- `THERMAL_DERATING_ENVIRONMENT_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -668,6 +669,14 @@ limits. Stable measured keys include `thermal_copper_name`,
 `estimated_junction_temperature_C`. Stable limit keys include
 `max_temperature_rise_C`, `allowed_junction_temperature_C`,
 `max_junction_temperature_C`, and `max_junction_temperature_margin_C`.
+
+`THERMAL_DERATING_ENVIRONMENT_VALID` reports are emitted by `manufacturing`
+scenarios that compare reviewed thermal-copper environment assumptions against
+reviewed scenario operating environment inputs. Stable measured keys include
+`thermal_copper_name`, `thermal_copper_source`, `component`, `power_loss_w`,
+and one of `ambient_temperature_C`, `airflow_lfm`, or `enclosure_profile`.
+Stable limit keys include `rated_ambient_temperature_C`, `min_airflow_lfm`, or
+`required_enclosure_profile`.
 
 `THERMAL_MEASURED_TEMPERATURE_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed thermal measurement rows against reviewed

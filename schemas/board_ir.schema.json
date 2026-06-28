@@ -367,6 +367,9 @@
                   "min_plated_thermal_via_count": { "type": "integer", "minimum": 1 },
                   "min_thermal_via_drill_mm": { "type": "number", "exclusiveMinimum": 0 },
                   "min_copper_thickness_um": { "type": "number", "exclusiveMinimum": 0 },
+                  "rated_ambient_temperature_C": { "type": "number" },
+                  "min_airflow_lfm": { "type": "number", "minimum": 0 },
+                  "enclosure_profile": { "type": "string", "minLength": 1 },
                   "nets": {
                     "type": "array",
                     "items": { "type": "string", "minLength": 1 }

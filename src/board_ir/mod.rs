@@ -230,6 +230,12 @@ pub struct ThermalCopperRule {
     pub min_thermal_via_drill_mm: Option<f64>,
     #[serde(default)]
     pub min_copper_thickness_um: Option<f64>,
+    #[serde(default, rename = "rated_ambient_temperature_C")]
+    pub rated_ambient_temperature_c: Option<f64>,
+    #[serde(default)]
+    pub min_airflow_lfm: Option<f64>,
+    #[serde(default)]
+    pub enclosure_profile: Option<String>,
     #[serde(default)]
     pub nets: Vec<String>,
     #[serde(default)]

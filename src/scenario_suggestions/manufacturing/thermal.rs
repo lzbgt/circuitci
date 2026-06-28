@@ -13,6 +13,7 @@ const THERMAL_VIA_STACKUP_VALID: &str = "THERMAL_VIA_STACKUP_VALID";
 const THERMAL_VIA_PLATING_VALID: &str = "THERMAL_VIA_PLATING_VALID";
 const THERMAL_PACKAGE_TEMPERATURE_VALID: &str = "THERMAL_PACKAGE_TEMPERATURE_VALID";
 const THERMAL_MEASURED_TEMPERATURE_VALID: &str = "THERMAL_MEASURED_TEMPERATURE_VALID";
+const THERMAL_DERATING_ENVIRONMENT_VALID: &str = "THERMAL_DERATING_ENVIRONMENT_VALID";
 
 pub(super) fn thermal_suggestions(
     bound: &BoundBoard<'_>,
@@ -24,6 +25,10 @@ pub(super) fn thermal_suggestions(
     suggestions.extend(thermal_via_plating_suggestions(bound, project_name));
     suggestions.extend(thermal_package_temperature_suggestions(bound, project_name));
     suggestions.extend(thermal_measured_temperature_suggestions(
+        bound,
+        project_name,
+    ));
+    suggestions.extend(thermal_derating_environment_suggestions(
         bound,
         project_name,
     ));
@@ -615,6 +620,109 @@ fn thermal_measurement_check_declared(bound: &BoundBoard<'_>, measurement_name: 
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(measurement_name)
+                    })
+                })
+    })
+}
+
+fn thermal_derating_environment_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for rule in &bound.project.board.manufacturing.thermal_copper {
+        if !thermal_derating_rule_has_metadata(bound, rule)
+            || thermal_derating_environment_check_declared(bound, &rule.name)
+        {
+            continue;
+        }
+        let mut required_inputs = Vec::new();
+        if rule.rated_ambient_temperature_c.is_some() {
+            required_inputs.push(
+                "Set parameters.ambient_temperature_C from the reviewed operating environment."
+                    .to_string(),
+            );
+        }
+        if rule.min_airflow_lfm.is_some() {
+            required_inputs.push(
+                "Set parameters.airflow_lfm from reviewed airflow or fan characterization evidence."
+                    .to_string(),
+            );
+        }
+        if rule.enclosure_profile.is_some() {
+            required_inputs.push(
+                "Set parameters.enclosure_profile from reviewed enclosure or product configuration evidence."
+                    .to_string(),
+            );
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "thermal_derating_environment_{}",
+                sanitized_name(&rule.name)
+            ),
+            false,
+            &format!(
+                "Thermal copper rule {} has reviewed ambient/airflow/enclosure derating metadata; reviewed operating environment inputs are still required.",
+                rule.name
+            ),
+            &format!(
+                "{}_{}_thermal_derating_environment",
+                project_name,
+                sanitized_name(&rule.name)
+            ),
+            THERMAL_DERATING_ENVIRONMENT_VALID,
+            Some(BTreeMap::from([(
+                "thermal_copper".to_string(),
+                json!([{ "name": rule.name }]),
+            )])),
+            required_inputs,
+        ));
+    }
+    suggestions
+}
+
+fn thermal_derating_rule_has_metadata(bound: &BoundBoard<'_>, rule: &ThermalCopperRule) -> bool {
+    !rule.name.trim().is_empty()
+        && !rule.component.trim().is_empty()
+        && !rule.source.trim().is_empty()
+        && rule.power_loss_w.is_finite()
+        && rule.power_loss_w > 0.0
+        && rule.min_copper_area_mm2.is_finite()
+        && rule.min_copper_area_mm2 > 0.0
+        && bound.project.board.components.contains_key(&rule.component)
+        && rule
+            .rated_ambient_temperature_c
+            .is_none_or(|value| value.is_finite())
+        && rule
+            .min_airflow_lfm
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
+        && rule
+            .enclosure_profile
+            .as_deref()
+            .is_none_or(|value| !value.trim().is_empty())
+        && (rule.rated_ambient_temperature_c.is_some()
+            || rule.min_airflow_lfm.is_some()
+            || rule.enclosure_profile.is_some())
+}
+
+fn thermal_derating_environment_check_declared(bound: &BoundBoard<'_>, rule_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == THERMAL_DERATING_ENVIRONMENT_VALID)
+            && scenario
+                .parameters
+                .get("thermal_copper")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|items| {
+                    items.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(rule_name)
                     })
                 })
     })
