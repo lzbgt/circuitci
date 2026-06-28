@@ -25,7 +25,7 @@
     "project": { "type": "string", "minLength": 1 },
     "profile": { "type": "string", "minLength": 1 },
     "finding": { "type": "string", "minLength": 1 },
-    "mode": { "enum": ["apply", "dry_run"] },
+    "mode": { "enum": ["apply", "dry_run", "apply_report"] },
     "result": { "enum": ["pass", "fail", "dry_run"] },
     "messages": {
       "type": "array",

@@ -39,6 +39,18 @@ circuitci repair-yaml path/to/project.yaml \
   --dry-run
 ```
 
+Use `--apply-report` to consume a previous dry-run report, verify it still
+matches the current project and finding, then apply exactly those proposed edits
+to a copied project:
+
+```sh
+circuitci repair-yaml path/to/project.yaml \
+  --finding net-not-found \
+  --profile iot_basic_v0 \
+  --output out/repair_apply \
+  --apply-report out/repair_dry/repair_report.json
+```
+
 Apply-mode output contains:
 
 - `original/report.json` and `original/report.md`
@@ -49,6 +61,14 @@ Apply-mode output contains:
 Dry-run output contains `original/report.json`, `original/report.md`,
 `repair_report.json`, and `repair_report.md`; it does not write
 `repaired/project.yaml` or run repaired validation.
+
+Report-driven apply mode writes the same copied-project and validation artifacts
+as normal apply mode, but sets `mode: apply_report`. It requires the prior
+report to have `mode: dry_run` and `result: dry_run`, and verifies the project
+path, project name, profile, requested finding, original matching findings, and
+regenerated proposal list before applying. If any of those inputs drift, the
+command fails before writing a repaired copy so agents can regenerate a fresh
+dry-run report.
 
 `repair_report.json` follows `schemas/repair_report.schema.json`. Its
 `proposals[].edits[]` entries carry the YAML path, operation, previous value,

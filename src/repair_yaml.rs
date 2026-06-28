@@ -3,7 +3,7 @@ use crate::library::{PortKind, load_library};
 use crate::reports::{Finding, ValidationReport};
 use crate::suite::validate_and_write_project_report;
 use anyhow::{Context, Result, bail};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_yaml_ng::{Mapping, Value};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -22,9 +22,10 @@ pub struct BoardYamlRepairOptions {
     pub output: PathBuf,
     pub finding: BoardYamlRepairFindingKind,
     pub dry_run: bool,
+    pub apply_report: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BoardYamlRepairReport {
     pub schema_version: String,
     pub project: String,
@@ -43,7 +44,7 @@ pub struct BoardYamlRepairReport {
     pub reproduction: BoardYamlRepairReproduction,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BoardYamlRepairSummary {
     pub proposed: usize,
     pub applied: usize,
@@ -56,7 +57,7 @@ pub struct BoardYamlRepairSummary {
     pub new_criticals: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
 pub struct BoardYamlRepairProposal {
     pub id: String,
     pub finding_id: String,
@@ -67,7 +68,7 @@ pub struct BoardYamlRepairProposal {
     pub edits: Vec<BoardYamlRepairEdit>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
 pub struct BoardYamlRepairEdit {
     pub op: String,
     pub path: String,
@@ -76,7 +77,7 @@ pub struct BoardYamlRepairEdit {
     pub reason: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BoardYamlRepairProof {
     pub original_finding_removed: Option<bool>,
     pub no_new_criticals: Option<bool>,
@@ -85,7 +86,7 @@ pub struct BoardYamlRepairProof {
     pub new_critical_findings: Vec<BoardYamlFindingEvidence>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct BoardYamlFindingEvidence {
     pub id: String,
     pub severity: String,
@@ -93,7 +94,7 @@ pub struct BoardYamlFindingEvidence {
     pub message: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BoardYamlRepairReproduction {
     pub command: String,
 }
@@ -208,6 +209,21 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         return Ok(report);
     }
 
+    let mode = if let Some(report_path) = &options.apply_report {
+        let dry_run_report = load_apply_report(report_path)?;
+        validate_apply_report(
+            &dry_run_report,
+            &options,
+            &project,
+            &original_matching,
+            &proposals,
+        )?;
+        proposals = dry_run_report.proposals;
+        "apply_report"
+    } else {
+        "apply"
+    };
+
     let mut repaired_yaml = project_yaml;
     let applied = apply_proposals(&mut repaired_yaml, &mut proposals)?;
     absolutize_relative_libraries(
@@ -282,7 +298,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         project: project.project.name.clone(),
         profile: options.profile.clone(),
         finding: finding_id.to_string(),
-        mode: "apply".to_string(),
+        mode: mode.to_string(),
         result: result.to_string(),
         messages,
         summary: BoardYamlRepairSummary {
@@ -314,6 +330,91 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
     };
     write_repair_reports(&report, &options.output)?;
     Ok(report)
+}
+
+fn load_apply_report(report_path: &Path) -> Result<BoardYamlRepairReport> {
+    let report_text = std::fs::read_to_string(report_path)
+        .with_context(|| format!("Failed to read repair report {}.", report_path.display()))?;
+    serde_json::from_str(&report_text)
+        .with_context(|| format!("Failed to parse repair report {}.", report_path.display()))
+}
+
+fn validate_apply_report(
+    report: &BoardYamlRepairReport,
+    options: &BoardYamlRepairOptions,
+    project: &BoardProject,
+    original_matching: &[BoardYamlFindingEvidence],
+    current_proposals: &[BoardYamlRepairProposal],
+) -> Result<()> {
+    if report.mode != "dry_run" || report.result != "dry_run" {
+        bail!("--apply-report requires a dry-run repair_report.json.");
+    }
+    let finding_id = options.finding.finding_id();
+    if report.finding != finding_id {
+        bail!(
+            "Dry-run report finding {} does not match requested finding {finding_id}.",
+            report.finding
+        );
+    }
+    if report.profile != options.profile {
+        bail!(
+            "Dry-run report profile {} does not match requested profile {}.",
+            report.profile,
+            options.profile
+        );
+    }
+    if report.project != project.project.name {
+        bail!(
+            "Dry-run report project {} does not match current project {}.",
+            report.project,
+            project.project.name
+        );
+    }
+    let current_project = canonicalize_existing_path(&options.project)?;
+    let reported_project = canonicalize_existing_path(Path::new(&report.original_project))?;
+    if current_project != reported_project {
+        bail!(
+            "Dry-run report original project {} does not match requested project {}.",
+            report.original_project,
+            options.project.display()
+        );
+    }
+    let report_matching: BTreeSet<_> = report
+        .proof
+        .original_matching_findings
+        .iter()
+        .cloned()
+        .collect();
+    let current_matching: BTreeSet<_> = original_matching.iter().cloned().collect();
+    if report_matching != current_matching {
+        bail!(
+            "Dry-run report original matching findings no longer match current validation output."
+        );
+    }
+    if report.proposals.iter().any(|proposal| {
+        proposal.finding_id != finding_id
+            || (proposal.status != "proposed" && proposal.status != "blocked")
+    }) {
+        bail!("Dry-run report contains proposals that are not applicable for report-driven apply.");
+    }
+    if !report
+        .proposals
+        .iter()
+        .any(|proposal| proposal.status == "proposed")
+    {
+        bail!("Dry-run report contains no proposed edits to apply.");
+    }
+    if report.proposals != current_proposals {
+        bail!(
+            "Dry-run report proposals no longer match the current project; regenerate the dry-run report."
+        );
+    }
+    Ok(())
+}
+
+fn canonicalize_existing_path(path: &Path) -> Result<PathBuf> {
+    std::fs::canonicalize(path)
+        .with_context(|| format!("Failed to canonicalize path {}.", path.display()))
 }
 
 fn invalid_power_domain_proposals(
@@ -806,6 +907,9 @@ fn repair_reproduction_command(options: &BoardYamlRepairOptions) -> String {
     );
     if options.dry_run {
         command.push_str(" --dry-run");
+    }
+    if let Some(apply_report) = &options.apply_report {
+        command.push_str(&format!(" --apply-report {}", apply_report.display()));
     }
     command
 }

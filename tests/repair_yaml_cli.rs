@@ -196,6 +196,165 @@ board:
 }
 
 #[test]
+fn repair_yaml_apply_report_replays_previous_dry_run_edits() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: apply_report_power_net_kind
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+  nets:
+    vin:
+      kind: digital_or_analog
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+    let dry_output = temp.path().join("repair_dry");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--dry-run",
+            "--output",
+            dry_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let apply_output = temp.path().join("repair_apply");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--apply-report",
+            dry_output.join("repair_report.json").to_str().unwrap(),
+            "--output",
+            apply_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(apply_output.join("repair_report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "pass");
+    assert_eq!(repair_report["mode"], "apply_report");
+    assert_eq!(repair_report["finding"], "INVALID_POWER_DOMAIN");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["blocked"], 0);
+    assert_eq!(repair_report["summary"]["skipped"], 0);
+    assert_eq!(repair_report["proof"]["original_finding_removed"], true);
+    assert_eq!(repair_report["proof"]["no_new_criticals"], true);
+    assert_eq!(repair_report["proposals"][0]["status"], "applied");
+    assert!(
+        repair_report["reproduction"]["command"]
+            .as_str()
+            .unwrap()
+            .contains("--apply-report")
+    );
+
+    let repaired_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(apply_output.join("repaired/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(repaired_yaml["board"]["nets"]["vin"]["kind"], "power");
+}
+
+#[test]
+fn repair_yaml_apply_report_rejects_stale_project_findings() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    let bad_project = format!(
+        r#"
+project:
+  name: stale_apply_report_power_net_kind
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+  nets:
+    vin:
+      kind: digital_or_analog
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+"#,
+        repo.join("libs/generic").display()
+    );
+    std::fs::write(&project, &bad_project).unwrap();
+    let dry_output = temp.path().join("repair_dry");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--dry-run",
+            "--output",
+            dry_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    std::fs::write(
+        &project,
+        bad_project.replace("kind: digital_or_analog", "kind: power"),
+    )
+    .unwrap();
+    let apply_output = temp.path().join("repair_apply");
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--apply-report",
+            dry_output.join("repair_report.json").to_str().unwrap(),
+            "--output",
+            apply_output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("original matching findings no longer match"));
+    assert!(!apply_output.join("repair_report.json").exists());
+}
+
+#[test]
 fn repair_yaml_adds_missing_net_with_model_inferred_kind() {
     let temp = tempfile::tempdir().unwrap();
     let repo = std::env::current_dir().unwrap();

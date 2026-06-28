@@ -46,6 +46,8 @@ enum Command {
         finding: RepairYamlFinding,
         #[arg(long)]
         dry_run: bool,
+        #[arg(long)]
+        apply_report: Option<PathBuf>,
     },
     SuggestScenarios {
         project: PathBuf,
@@ -235,7 +237,8 @@ pub fn run() -> Result<()> {
             output,
             finding,
             dry_run,
-        }) => run_repair_yaml(project, profile, output, finding, dry_run),
+            apply_report,
+        }) => run_repair_yaml(project, profile, output, finding, dry_run, apply_report),
         Some(Command::SuggestScenarios {
             project,
             profile,
@@ -345,13 +348,18 @@ fn run_repair_yaml(
     output: PathBuf,
     finding: RepairYamlFinding,
     dry_run: bool,
+    apply_report: Option<PathBuf>,
 ) -> Result<()> {
+    if dry_run && apply_report.is_some() {
+        anyhow::bail!("--dry-run and --apply-report cannot be used together.");
+    }
     let report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
         project,
         profile,
         output: output.clone(),
         finding: finding.as_repair_kind(),
         dry_run,
+        apply_report,
     })?;
     println!(
         "CircuitCI YAML repair {}: {} mode={} (proposed={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",

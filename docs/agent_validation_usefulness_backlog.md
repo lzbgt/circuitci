@@ -47,13 +47,17 @@ Implemented slice:
 - report guarded no-op and ambiguous cases in `repair_report.json`/`.md` via
   `messages[]`, `summary.blocked`, `summary.skipped`, and blocked proposals,
 - support `repair-yaml --dry-run`, which writes the original validation report
-  and repair proposals without writing a repaired copy or rerunning validation.
+  and repair proposals without writing a repaired copy or rerunning validation,
+- support `repair-yaml --apply-report`, which consumes a previous dry-run
+  `repair_report.json`, verifies the project, profile, finding, original
+  matching findings, and regenerated proposal list still match, then applies
+  exactly those proposed edits to a copied project and reruns validation.
 
 Useful next slice:
 
-- add a report-driven apply mode that can consume a previous dry-run
-  `repair_report.json`, verify the input project and finding still match, then
-  apply exactly those approved edits to a copied project and rerun validation.
+- add selective proposal approval for report-driven apply, such as applying a
+  requested proposal id from a multi-proposal dry-run report while preserving the
+  same stale-report guards.
 
 Do not start with arbitrary schematic or PCB editing. That remains too broad
 until several narrow YAML repair loops are proven end to end.
