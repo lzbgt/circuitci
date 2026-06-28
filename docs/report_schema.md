@@ -177,6 +177,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
+- `RETURN_PATH_STITCHING_VIA_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -575,6 +576,17 @@ coverage intervals. Stable measured keys include `net`, `reference_net`,
 the first crossing, `first_slot_route_segment_index`,
 `first_slot_route_layer`, `first_slot_reference_layer`, `first_slot_start_mm`,
 and `first_slot_end_mm`. Stable limit keys include `max_slot_crossings`.
+
+`RETURN_PATH_STITCHING_VIA_VALID` reports are emitted by `manufacturing`
+scenarios that compare imported `board.layout.routes.<net>.vias[]` evidence
+against a declared reference-net route via set. Stable measured keys include
+`net`, `reference_net`, `signal_via_count`, `reference_via_count`,
+`signal_via_index`, `signal_via_x_mm`, `signal_via_y_mm`,
+`signal_via_layers`, and, when a matching reference via exists outside the
+limit, `nearest_reference_via_index`, `nearest_reference_via_distance_mm`,
+`nearest_reference_via_x_mm`, `nearest_reference_via_y_mm`, and
+`nearest_reference_via_layers`. Stable limit keys include
+`max_stitch_via_distance_mm` and `matching_layer_policy`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`

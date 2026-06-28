@@ -255,17 +255,23 @@ without explicit imported mechanical evidence.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from
-  layer names, model return-current distribution, account for vias, stitching,
-  split-plane slots, copper roughness, dielectric fields, or EMI/SI behavior.
+  layer names, model return-current distribution, account for via transitions,
+  copper roughness, dielectric fields, or EMI/SI behavior.
   Passing this rule only means sampled imported route points stay over declared
   adjacent reference-plane zone evidence within the reviewed length limit.
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID` computes route-centerline coverage
   intervals from explicit adjacent reference-plane zone polygons and counts
   internal gaps between covered intervals. It does not model return-current
-  density, fringing fields, stitching-via effectiveness, via transitions,
-  plane impedance, or EMI/SI risk. Passing this rule only means the imported
+  density, fringing fields, stitching-via effectiveness, plane impedance, or
+  EMI/SI risk. Passing this rule only means the imported
   route centerline did not cross more declared reference-plane zone gaps than
   the scenario allowed.
+- `RETURN_PATH_STITCHING_VIA_VALID` compares explicit signal route vias against
+  explicit reference-net route vias with matching layer spans and a reviewed
+  maximum distance. It does not prove via inductance, plane cavity behavior,
+  stitching density, connector launch quality, or solver-backed return-current
+  continuity. Passing this rule only means each imported signal transition via
+  has a nearby declared reference-net via within the reviewed distance limit.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

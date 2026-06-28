@@ -140,6 +140,7 @@ Canonical executable check IDs:
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
+- `RETURN_PATH_STITCHING_VIA_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1342,6 +1343,43 @@ Reference-plane slot-crossing algorithm:
 7. Count each internal uncovered gap between two covered intervals as one
    slot crossing.
 8. Fail when the count exceeds `max_slot_crossings`.
+
+Return-path stitching-via validation uses
+`RETURN_PATH_STITCHING_VIA_VALID` when Board IR includes explicit stackup
+layers and route-via layer spans for a signal net and its declared reference
+net. It checks layer-transition return-path topology by requiring each signal
+route via to have a nearby reference-net via with a matching explicit layer
+span. It does not infer stitching vias from net names, copper pours, or absent
+via evidence, and it is not a field-solver return-current model.
+
+```yaml
+scenarios:
+  - name: return_path_stitching_vias
+    type: manufacturing
+    checks:
+      - RETURN_PATH_STITCHING_VIA_VALID
+    parameters:
+      routes:
+        - net: USB_D+
+          reference_net: GND
+          max_stitch_via_distance_mm: 1.0
+```
+
+Return-path stitching-via algorithm:
+
+1. Require non-empty `parameters.routes[]` with `net`, `reference_net`, and
+   `max_stitch_via_distance_mm`.
+2. Require both nets to exist under `board.nets`.
+3. Require explicit `board.layout.stackup.layers` evidence.
+4. Resolve `board.layout.routes.<net>.vias[]` and
+   `board.layout.routes.<reference_net>.vias[]`.
+5. For every signal route via, require finite coordinates, positive size/drill
+   evidence, and at least two explicit `layers[]` entries present in the
+   stackup. Reference-net vias use the same evidence requirements.
+6. For each signal via, find the nearest reference-net via whose `layers[]`
+   contain every signal-via layer.
+7. Fail when no matching reference via exists or the nearest matching reference
+   via is farther than `max_stitch_via_distance_mm`.
 
 Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`

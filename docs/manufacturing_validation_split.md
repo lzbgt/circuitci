@@ -19,6 +19,12 @@ coverage, route centerline coverage-interval extraction, fail-closed missing
 stackup/zone evidence, and stable report construction. It intentionally does
 not model electromagnetic return current.
 
+`src/validation/manufacturing/stitching_via.rs` owns
+`RETURN_PATH_STITCHING_VIA_VALID`, including explicit route-via layer-span
+parameter parsing, reference-net via matching, fail-closed missing stackup/via
+evidence, and stable report construction. It intentionally does not model via
+inductance, stitching density, or electromagnetic return current.
+
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,
 pad/via/copper owner consistency, required copper-layer checks, and stable
