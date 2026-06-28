@@ -74,8 +74,9 @@ Useful next slices:
 - BOM and pick-and-place normalization beyond the current source/row/component
   assembly manifest,
 - vendor reference-design adapters,
-- package/footprint semantics for pin 1, body/courtyard, connector entry, and
-  paste/mask exceptions,
+- package/footprint semantics beyond the current KiCad pin-1,
+  body/courtyard-bounds, and connector-entry evidence, especially paste/mask
+  exceptions,
 - board/order metadata extraction workflows for fabrication constraints.
 
 Done means imported evidence is represented in Board IR with provenance and
