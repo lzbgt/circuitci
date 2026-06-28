@@ -30,6 +30,7 @@ pub(super) struct AppliedField {
     pub(super) rf_antenna_matching_network: Option<AppliedRfAntennaMatchingNetwork>,
     pub(super) rf_antenna_measurement: Option<AppliedRfAntennaMeasurement>,
     pub(super) rf_antenna_performance_limit: Option<AppliedRfAntennaPerformanceLimit>,
+    pub(super) rf_antenna_measurement_condition: Option<AppliedRfAntennaMeasurementCondition>,
 }
 
 impl AppliedField {
@@ -51,6 +52,7 @@ impl AppliedField {
             rf_antenna_matching_network: None,
             rf_antenna_measurement: None,
             rf_antenna_performance_limit: None,
+            rf_antenna_measurement_condition: None,
         }
     }
 }
@@ -204,6 +206,7 @@ pub(super) struct AppliedRfAntennaMeasurement {
     return_loss_db: f64,
     source: String,
     measurement_method: Option<String>,
+    measurement_condition: Option<String>,
     notes: Option<String>,
 }
 
@@ -217,6 +220,17 @@ pub(super) struct AppliedRfAntennaPerformanceLimit {
     frequency_max_mhz: Option<f64>,
     min_measurement_count: Option<usize>,
     max_frequency_step_mhz: Option<f64>,
+    required_measurement_condition: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaMeasurementCondition {
+    pub(super) name: String,
+    source: String,
+    fixture: Option<String>,
+    cable_setup: Option<String>,
+    enclosure_profile: Option<String>,
     notes: Option<String>,
 }
 
@@ -242,6 +256,7 @@ pub(super) enum ManufacturingField {
     RfAntennaMatchingNetwork,
     RfAntennaMeasurement,
     RfAntennaPerformanceLimit,
+    RfAntennaMeasurementCondition,
     Source,
 }
 
@@ -268,6 +283,9 @@ impl ManufacturingField {
             Self::RfAntennaMatchingNetwork => "layout.constraints.rf_antenna.matching_networks[]",
             Self::RfAntennaMeasurement => "layout.constraints.rf_antenna.measurements[]",
             Self::RfAntennaPerformanceLimit => "layout.constraints.rf_antenna.performance_limits[]",
+            Self::RfAntennaMeasurementCondition => {
+                "layout.constraints.rf_antenna.measurement_conditions[]"
+            }
             Self::Source => "source",
         }
     }
@@ -307,6 +325,7 @@ impl ManufacturingField {
                 | Self::RfAntennaMatchingNetwork
                 | Self::RfAntennaMeasurement
                 | Self::RfAntennaPerformanceLimit
+                | Self::RfAntennaMeasurementCondition
         )
     }
 }
@@ -456,6 +475,11 @@ fn applied_field(
             Some(applied_rf_antenna_performance_limit(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::RfAntennaMeasurementCondition {
+        applied.rf_antenna_measurement_condition =
+            Some(applied_rf_antenna_measurement_condition(row, path)?);
+        return Ok(applied);
+    }
     let value = row.value.trim();
     if value.is_empty() {
         bail!(
@@ -555,6 +579,13 @@ fn applied_rf_antenna_performance_limit(
     path: &Path,
 ) -> Result<AppliedRfAntennaPerformanceLimit> {
     families::applied_rf_antenna_performance_limit(row, path)
+}
+
+fn applied_rf_antenna_measurement_condition(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaMeasurementCondition> {
+    families::applied_rf_antenna_measurement_condition(row, path)
 }
 
 fn normalize_numeric_value(
@@ -1070,6 +1101,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut rf_antenna_measurement_condition_names = BTreeSet::new();
+    for condition in fields
+        .iter()
+        .filter_map(|field| field.rf_antenna_measurement_condition.as_ref())
+    {
+        if !rf_antenna_measurement_condition_names.insert(condition.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats rf_antenna_measurement_condition row name {}.",
+                condition.name
+            );
+        }
+    }
     Ok(())
 }
 
@@ -1178,6 +1221,11 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "rfperformancelimit"
         | "rfantennareturnlosslimit"
         | "antennareturnlosslimit" => Some(ManufacturingField::RfAntennaPerformanceLimit),
+        "rfantennameasurementcondition"
+        | "antennameasurementcondition"
+        | "rfmeasurementcondition"
+        | "rfantennatestcondition"
+        | "antennatestcondition" => Some(ManufacturingField::RfAntennaMeasurementCondition),
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
     }

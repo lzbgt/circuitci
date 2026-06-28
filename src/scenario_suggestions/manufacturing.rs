@@ -2,7 +2,7 @@ use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_na
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutPoint, NetRoute, RfAntennaFeedPathRule,
     RfAntennaKeepoutRule, RfAntennaMatchingElement, RfAntennaMatchingNetworkRule,
-    RfAntennaMeasurement, RfAntennaPerformanceLimit, RouteSegment,
+    RfAntennaMeasurement, RfAntennaMeasurementCondition, RfAntennaPerformanceLimit, RouteSegment,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -1347,6 +1347,9 @@ fn rf_antenna_measured_performance_suggestions(
                 if let Some(max_mhz) = limit.frequency_max_mhz {
                     parameters.insert("frequency_max_mhz".to_string(), json!(max_mhz));
                 }
+                if let Some(condition) = limit.required_measurement_condition.as_deref() {
+                    parameters.insert("measurement_condition".to_string(), json!(condition));
+                }
                 suggestions.push(manufacturing_suggestion(
                     &format!(
                         "rf_antenna_measured_performance_{}_{}",
@@ -1480,6 +1483,9 @@ fn rf_antenna_measured_performance_sweep_suggestions(
             if let Some(max_step_mhz) = limit.max_frequency_step_mhz {
                 parameters.insert("max_frequency_step_mhz".to_string(), json!(max_step_mhz));
             }
+            if let Some(condition) = limit.required_measurement_condition.as_deref() {
+                parameters.insert("measurement_condition".to_string(), json!(condition));
+            }
             Some(manufacturing_suggestion(
                 &format!(
                     "rf_antenna_measured_performance_sweep_{}",
@@ -1518,6 +1524,30 @@ fn rf_antenna_measurement_has_evidence(
         && measurement.frequency_mhz > 0.0
         && measurement.return_loss_db.is_finite()
         && measurement.return_loss_db > 0.0
+        && rf_antenna_measurement_condition_has_evidence(bound, measurement)
+}
+
+fn rf_antenna_measurement_condition_has_evidence(
+    bound: &BoundBoard<'_>,
+    measurement: &RfAntennaMeasurement,
+) -> bool {
+    let Some(condition_name) = measurement.measurement_condition.as_deref() else {
+        return true;
+    };
+    !condition_name.trim().is_empty()
+        && bound
+            .project
+            .board
+            .layout
+            .constraints
+            .rf_antenna
+            .measurement_conditions
+            .iter()
+            .any(|condition| {
+                condition.name == condition_name
+                    && !condition.source.trim().is_empty()
+                    && rf_antenna_measurement_condition_has_reviewed_detail(condition)
+            })
 }
 
 fn rf_antenna_performance_limit_has_sweep_policy(limit: &RfAntennaPerformanceLimit) -> bool {
@@ -1538,6 +1568,42 @@ fn rf_antenna_performance_limit_has_evidence(
         && frequency_band_order_valid(limit.frequency_min_mhz, limit.frequency_max_mhz)
         && limit.min_measurement_count.is_none_or(|count| count > 0)
         && optional_positive_frequency(limit.max_frequency_step_mhz)
+        && limit
+            .required_measurement_condition
+            .as_deref()
+            .is_none_or(|condition_name| {
+                !condition_name.trim().is_empty()
+                    && bound
+                        .project
+                        .board
+                        .layout
+                        .constraints
+                        .rf_antenna
+                        .measurement_conditions
+                        .iter()
+                        .any(|condition| {
+                            condition.name == condition_name
+                                && !condition.source.trim().is_empty()
+                                && rf_antenna_measurement_condition_has_reviewed_detail(condition)
+                        })
+            })
+}
+
+fn rf_antenna_measurement_condition_has_reviewed_detail(
+    condition: &RfAntennaMeasurementCondition,
+) -> bool {
+    condition
+        .fixture
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        || condition
+            .cable_setup
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        || condition
+            .enclosure_profile
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
 }
 
 fn rf_antenna_performance_limit_matches(
@@ -1547,6 +1613,10 @@ fn rf_antenna_performance_limit_matches(
 ) -> bool {
     rf_antenna_performance_limit_has_evidence(bound, limit)
         && limit.antenna_net == measurement.antenna_net
+        && limit
+            .required_measurement_condition
+            .as_deref()
+            .is_none_or(|condition| measurement.measurement_condition.as_deref() == Some(condition))
         && limit
             .frequency_min_mhz
             .is_none_or(|min_mhz| measurement.frequency_mhz >= min_mhz - f64::EPSILON)

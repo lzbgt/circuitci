@@ -232,7 +232,7 @@ fabrication/order metadata without hand-authored YAML. Repeated
 `field=rf_antenna_matching_network`, `field=rf_antenna_measurement`, and
 `field=rf_antenna_performance_limit` rows create or replace reviewed RF
 antenna layout/topology/measurement/limit constraints, including optional
-sampled sweep-coverage policy on performance limits, under
+sampled sweep-coverage policy and measurement-condition evidence, under
 `board.layout.constraints.rf_antenna`:
 
 ```bash

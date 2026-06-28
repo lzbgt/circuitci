@@ -646,6 +646,8 @@ return-loss, optional frequency-band, and optional sampled sweep-coverage
 limits. Stable single-point measured keys include
 `measurement_name`, `measurement_source`, `antenna_net`, `frequency_mhz`,
 `return_loss_db`, `frequency_in_band`, and optional `measurement_method`.
+Condition findings report stable measured key `measurement_condition` and
+stable limit key `measurement_condition`.
 Sweep-coverage findings report stable measured keys `measurement_names`,
 `measurement_frequencies_mhz`, `unique_in_band_measurement_count`,
 `max_frequency_gap_mhz`, `frequency_gap_start_mhz`, and

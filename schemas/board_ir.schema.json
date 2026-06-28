@@ -1578,6 +1578,10 @@
                             "type": "string",
                             "minLength": 1
                           },
+                          "measurement_condition": {
+                            "type": "string",
+                            "minLength": 1
+                          },
                           "notes": { "type": "string", "minLength": 1 }
                         },
                         "additionalProperties": false
@@ -1616,6 +1620,29 @@
                           "max_frequency_step_mhz": {
                             "type": "number",
                             "exclusiveMinimum": 0
+                          },
+                          "required_measurement_condition": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "notes": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "measurement_conditions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["name", "source"],
+                        "properties": {
+                          "name": { "type": "string", "minLength": 1 },
+                          "source": { "type": "string", "minLength": 1 },
+                          "fixture": { "type": "string", "minLength": 1 },
+                          "cable_setup": { "type": "string", "minLength": 1 },
+                          "enclosure_profile": {
+                            "type": "string",
+                            "minLength": 1
                           },
                           "notes": { "type": "string", "minLength": 1 }
                         },

@@ -2,9 +2,9 @@ use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
     AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
-    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage,
+    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -131,6 +131,15 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 )
             },
         );
+    }
+    if let Some(condition) = &field.rf_antenna_measurement_condition {
+        return serde_yaml_ng::to_value(rf_antenna_measurement_condition_mapping(condition))
+            .with_context(|| {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            });
     }
     if let Some(value) = field.numeric_value {
         return serde_yaml_ng::to_value(value).with_context(|| {
@@ -568,6 +577,12 @@ fn rf_antenna_measurement_mapping(
             Value::String(value.clone()),
         );
     }
+    if let Some(value) = &measurement.measurement_condition {
+        mapping.insert(
+            "measurement_condition".to_string(),
+            Value::String(value.clone()),
+        );
+    }
     if let Some(value) = &measurement.notes {
         mapping.insert("notes".to_string(), Value::String(value.clone()));
     }
@@ -612,7 +627,40 @@ fn rf_antenna_performance_limit_mapping(
             serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
         );
     }
+    if let Some(value) = &limit.required_measurement_condition {
+        mapping.insert(
+            "required_measurement_condition".to_string(),
+            Value::String(value.clone()),
+        );
+    }
     if let Some(value) = &limit.notes {
+        mapping.insert("notes".to_string(), Value::String(value.clone()));
+    }
+    mapping
+}
+
+fn rf_antenna_measurement_condition_mapping(
+    condition: &AppliedRfAntennaMeasurementCondition,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(condition.name.clone()));
+    mapping.insert(
+        "source".to_string(),
+        Value::String(condition.source.clone()),
+    );
+    if let Some(value) = &condition.fixture {
+        mapping.insert("fixture".to_string(), Value::String(value.clone()));
+    }
+    if let Some(value) = &condition.cable_setup {
+        mapping.insert("cable_setup".to_string(), Value::String(value.clone()));
+    }
+    if let Some(value) = &condition.enclosure_profile {
+        mapping.insert(
+            "enclosure_profile".to_string(),
+            Value::String(value.clone()),
+        );
+    }
+    if let Some(value) = &condition.notes {
         mapping.insert("notes".to_string(), Value::String(value.clone()));
     }
     mapping

@@ -284,6 +284,59 @@ fn rf_antenna_measured_performance_fails_when_sweep_gap_is_too_large() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn rf_antenna_measured_performance_passes_with_reviewed_measurement_condition() {
+    let (_dir, project_path) =
+        write_rf_condition_project("enclosed_usb_fixture", "enclosed_usb_fixture", true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_measured_performance_fails_when_condition_mismatches() {
+    let (_dir, project_path) =
+        write_rf_condition_project("open_bench_fixture", "enclosed_usb_fixture", true);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "RF_ANTENNA_MEASURED_PERFORMANCE_VALID");
+    assert_eq!(
+        failure["measured"]["measurement_name"],
+        "chip_antenna_s11_2440"
+    );
+    assert_eq!(
+        failure["measured"]["measurement_condition"],
+        "open_bench_fixture"
+    );
+    assert_eq!(
+        failure["limit"]["measurement_condition"],
+        "enclosed_usb_fixture"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_measured_performance_fails_without_condition_detail() {
+    let (_dir, project_path) =
+        write_rf_condition_project("enclosed_usb_fixture", "enclosed_usb_fixture", false);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("must include at least one of fixture, cable_setup, or enclosure_profile")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_rf_keepout_project(
     non_antenna_x_mm: f64,
     include_non_antenna_copper: bool,
@@ -469,6 +522,72 @@ board:
       max_frequency_step_mhz: 50.0
       rf_measurements:
 {parameters}"#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_rf_condition_project(
+    measurement_condition: &str,
+    scenario_condition: &str,
+    include_condition_details: bool,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let enclosed_details = if include_condition_details {
+        "            fixture: usb_enclosure_fixture\n            cable_setup: 100mm_u_fl_to_sma\n            enclosure_profile: product_enclosure_closed\n"
+    } else {
+        ""
+    };
+    let open_details = if include_condition_details {
+        "            fixture: open_bench\n            cable_setup: 100mm_u_fl_to_sma\n            enclosure_profile: no_enclosure\n"
+    } else {
+        ""
+    };
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: rf_antenna_condition_fixture
+  version: 1
+libraries: []
+board:
+  components: {{}}
+  nets:
+    ANT:
+      kind: digital_or_analog
+  layout:
+    constraints:
+      rf_antenna:
+        measurement_conditions:
+          - name: enclosed_usb_fixture
+            source: rf_lab_plan_rev_a
+{enclosed_details}
+          - name: open_bench_fixture
+            source: rf_lab_plan_rev_a
+{open_details}
+        measurements:
+          - name: chip_antenna_s11_2440
+            antenna_net: ANT
+            frequency_mhz: 2440.0
+            return_loss_db: 14.0
+            measurement_method: vna_s11
+            measurement_condition: {measurement_condition}
+            source: vna_sweep_rev_c
+scenarios:
+  - name: rf_antenna_measured_performance_condition
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_MEASURED_PERFORMANCE_VALID
+    parameters:
+      min_return_loss_db: 10.0
+      frequency_min_mhz: 2400.0
+      frequency_max_mhz: 2500.0
+      measurement_condition: {scenario_condition}
+      rf_measurements:
+        - name: chip_antenna_s11_2440
+"#
         ),
     )
     .unwrap();

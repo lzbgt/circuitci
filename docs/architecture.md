@@ -186,8 +186,8 @@ Importers append evidence instead of guessing missing intent. Examples:
   files.
 - Reviewed manufacturing metadata CSV import can create or replace reviewed
   `board.manufacturing` fields plus reviewed `board.layout.stackup.layers[]`
-  entries, RF antenna layout/topology/measurement/limit constraints with
-  optional sampled sweep-coverage policy, package
+  entries, RF antenna layout/topology/measurement/limit/condition constraints
+  with optional sampled sweep-coverage policy, package
   thermal metadata, and reviewed operating environment and thermal-limit
   metadata, preserves raw
   row evidence and skipped unrelated order rows in a JSON manifest, and does

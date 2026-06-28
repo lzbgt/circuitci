@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.12.0" },
+    "schema_version": { "const": "0.13.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -102,6 +102,7 @@
             "layout.constraints.rf_antenna.matching_networks[]",
             "layout.constraints.rf_antenna.measurements[]",
             "layout.constraints.rf_antenna.performance_limits[]",
+            "layout.constraints.rf_antenna.measurement_conditions[]",
             "source"
           ]
         },
@@ -419,6 +420,10 @@
                   "type": "number",
                   "exclusiveMinimum": 0
                 },
+                "required_measurement_condition": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "notes": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
@@ -489,6 +494,23 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "measurement_condition": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "notes": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["name", "source"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "fixture": { "type": "string", "minLength": 1 },
+                "cable_setup": { "type": "string", "minLength": 1 },
+                "enclosure_profile": { "type": "string", "minLength": 1 },
                 "notes": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false

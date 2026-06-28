@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.12.0");
+    assert_eq!(manifest["schema_version"], "0.13.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -830,7 +830,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.12.0");
+    assert_eq!(manifest["schema_version"], "0.13.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.keepouts[]"
@@ -938,6 +938,124 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
 }
 
 #[test]
+fn import_manufacturing_metadata_applies_rf_measurement_conditions() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("without_rf_conditions.project.yaml");
+    let metadata = dir.path().join("rf_conditions.csv");
+    let output = dir.path().join("with_rf_conditions.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    std::fs::write(
+        &input,
+        r#"project:
+  name: rf_condition_import_fixture
+  version: "1"
+libraries: []
+board:
+  components: {}
+  nets:
+    ANT:
+      kind: digital_or_analog
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &metadata,
+        "field,value,unit,source,notes,name,antenna_net,frequency_mhz,measurement_method,measurement_condition,required_measurement_condition,frequency_min_mhz,frequency_max_mhz,fixture,cable_setup,enclosure_profile\n\
+         rf_antenna_measurement_condition,,,rf_lab_plan_rev_a,reviewed enclosed measurement condition,enclosed_usb_fixture,,,,,,,,usb_enclosure_fixture,100mm_u_fl_to_sma,product_enclosure_closed\n\
+         rf_antenna_measurement,14.0,dB,vna_sweep_rev_c,reviewed enclosed S11 point,chip_antenna_s11_2440,ANT,2440.0,vna_s11,enclosed_usb_fixture,,,,,,\n\
+         rf_antenna_performance_limit,10.0,dB,antenna_module_datasheet_rev_c,reviewed enclosed S11 limit,chip_antenna_2g4_enclosed_limit,ANT,,,,enclosed_usb_fixture,2400.0,2500.0,,,\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("3 applied fields"));
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let rf_antenna = &enriched["board"]["layout"]["constraints"]["rf_antenna"];
+    let conditions = rf_antenna["measurement_conditions"].as_sequence().unwrap();
+    assert_eq!(conditions.len(), 1);
+    assert_eq!(conditions[0]["name"], "enclosed_usb_fixture");
+    assert_eq!(conditions[0]["fixture"], "usb_enclosure_fixture");
+    assert_eq!(conditions[0]["cable_setup"], "100mm_u_fl_to_sma");
+    assert_eq!(
+        conditions[0]["enclosure_profile"],
+        "product_enclosure_closed"
+    );
+    let measurements = rf_antenna["measurements"].as_sequence().unwrap();
+    assert_eq!(
+        measurements[0]["measurement_condition"],
+        "enclosed_usb_fixture"
+    );
+    let limits = rf_antenna["performance_limits"].as_sequence().unwrap();
+    assert_eq!(
+        limits[0]["required_measurement_condition"],
+        "enclosed_usb_fixture"
+    );
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(
+        manifest["rows"][0]["board_field"],
+        "layout.constraints.rf_antenna.measurement_conditions[]"
+    );
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["fixture"],
+        "usb_enclosure_fixture"
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    let measured = assert_runnable(
+        &suggestions,
+        "rf_antenna_measured_performance_chip_antenna_s11_2440_chip_antenna_2g4_enclosed_limit",
+    );
+    assert_eq!(
+        measured["scenario"]["parameters"]["measurement_condition"],
+        "enclosed_usb_fixture"
+    );
+}
+
+#[test]
 fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("without_thermal_policy.project.yaml");
@@ -1017,7 +1135,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.12.0");
+    assert_eq!(manifest["schema_version"], "0.13.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -1185,7 +1303,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.12.0");
+    assert_eq!(manifest["schema_version"], "0.13.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
@@ -1325,7 +1443,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.12.0");
+    assert_eq!(manifest["schema_version"], "0.13.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_environments[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["ambient_temperature_C"],
@@ -1574,7 +1692,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.12.0");
+    assert_eq!(manifest["schema_version"], "0.13.0");
     assert_eq!(manifest["rows"][3]["board_field"], "thermal_limits[]");
     assert_eq!(
         manifest["rows"][3]["normalized_value"]["max_measured_temperature_C"],

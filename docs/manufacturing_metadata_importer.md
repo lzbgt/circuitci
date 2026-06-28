@@ -235,6 +235,8 @@ require extra columns:
 Optional `rf_antenna_measurement` columns:
 
 - `measurement_method`: reviewed measurement method such as `vna_s11`.
+- `measurement_condition`: reviewed condition name from
+  `board.layout.constraints.rf_antenna.measurement_conditions[]`.
 
 `rf_antenna_performance_limit` rows use `value` as positive
 `min_return_loss_db` and require extra columns:
@@ -252,20 +254,30 @@ Optional `rf_antenna_performance_limit` columns:
 - `max_frequency_step_mhz`: positive maximum allowed frequency gap between
   adjacent selected sweep points, including reviewed frequency-band edges when
   present.
+- `required_measurement_condition`: reviewed condition name that selected
+  measurements must explicitly reference.
 - `limit_source`: reviewed limit source when the ordinary `source` column is
   not used.
+
+`rf_antenna_measurement_condition` rows create reviewed RF measurement
+condition metadata. They require `name` and `source` or `condition_source`.
+Optional columns are `fixture`, `cable_setup`, `enclosure_profile`, and
+`notes`. Validation and suggestions treat a condition as usable evidence only
+when at least one of `fixture`, `cable_setup`, or `enclosure_profile` is
+present.
 
 RF rows create or replace entries under
 `board.layout.constraints.rf_antenna.keepouts[]`,
 `board.layout.constraints.rf_antenna.feed_paths[]`, and
 `board.layout.constraints.rf_antenna.matching_networks[]`, and
 `board.layout.constraints.rf_antenna.measurements[]`, and
-`board.layout.constraints.rf_antenna.performance_limits[]` by `name`.
+`board.layout.constraints.rf_antenna.performance_limits[]`, and
+`board.layout.constraints.rf_antenna.measurement_conditions[]` by `name`.
 Duplicate CSV names fail closed. These rows are reviewed RF
 layout/topology/measurement/limit evidence only; the importer does not infer
 antenna topology, RF roles, matching components, keepout geometry, acceptable
-return loss, or S-parameter sweep behavior from net names, component values,
-or designators.
+return loss, measurement conditions, or S-parameter sweep behavior from net
+names, component values, or designators.
 
 Example:
 

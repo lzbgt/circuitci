@@ -83,7 +83,8 @@ Useful next slices:
   controlled-impedance target, stackup-layer, thermal-copper policy, and
   measured-temperature, package thermal, operating-environment, and
   thermal-limit evidence rows plus RF antenna keepout/feed-path,
-  matching-network, measurement, and performance-limit constraint rows.
+  matching-network, measurement, performance-limit, and measurement-condition
+  constraint rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.
@@ -114,7 +115,7 @@ suggestions, controlled-impedance stackup material/copper-thickness evidence
 checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
 manufacturing-level stitching-via transition distance, reviewed RF antenna
 keepout, feed-path route/proximity, matching-network topology, measured
-return-loss, and sampled S-parameter sweep-coverage screens, reviewed thermal copper-area, thermal via/stackup,
+return-loss, sampled S-parameter sweep-coverage, and measurement-condition screens, reviewed thermal copper-area, thermal via/stackup,
 via-plating/drill/plating-thickness/barrel cross-section evidence, package
 static temperature-rise, and measured-temperature screens with reviewed
 environment/limit metadata import plus RF performance-limit metadata import,
@@ -131,8 +132,9 @@ Useful next slices:
   impedance, and solver-backed return-current behavior,
 - RF antenna proof beyond the current explicit keepout-to-copper, feed-path
   route/proximity, matching-network topology, single-point measured
-  return-loss, and sampled sweep-coverage screens, such as S-parameter sweep
-  interpolation and enclosure/cable effects,
+  return-loss, sampled sweep-coverage, and reviewed measurement-condition
+  screens, such as S-parameter sweep interpolation and modeled enclosure/cable
+  effects,
 - thermal proof beyond the current reviewed 2D copper-area, via/stackup,
   via-plating/drill/plating-thickness/barrel cross-section, package static temperature-rise, and measured-temperature
   uncertainty-margin screens plus static derating-environment metadata screens,

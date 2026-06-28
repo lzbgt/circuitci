@@ -1,8 +1,9 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
     AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
-    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement, AppliedRfAntennaPerformanceLimit,
-    AppliedStackupLayer, AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
     optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
@@ -607,6 +608,7 @@ pub(super) fn applied_rf_antenna_measurement(
         return_loss_db: parse_positive_db(row.value.trim(), row.unit.as_deref(), path, row)?,
         source,
         measurement_method: optional_raw_column(row, "measurement_method"),
+        measurement_condition: optional_raw_column(row, "measurement_condition"),
         notes: row.notes.clone(),
     })
 }
@@ -668,6 +670,36 @@ pub(super) fn applied_rf_antenna_performance_limit(
             .as_deref()
             .map(|value| parse_positive_number(value, path, row, "max_frequency_step_mhz"))
             .transpose()?,
+        required_measurement_condition: optional_raw_column(row, "required_measurement_condition"),
+        notes: row.notes.clone(),
+    })
+}
+
+pub(super) fn applied_rf_antenna_measurement_condition(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaMeasurementCondition> {
+    let condition_source = optional_raw_column(row, "condition_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(condition_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} rf_antenna_measurement_condition requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedRfAntennaMeasurementCondition {
+        name: required_raw_column_for(row, path, "name", "rf_antenna_measurement_condition")?,
+        source,
+        fixture: optional_raw_column(row, "fixture"),
+        cable_setup: optional_raw_column(row, "cable_setup"),
+        enclosure_profile: optional_raw_column(row, "enclosure_profile"),
         notes: row.notes.clone(),
     })
 }

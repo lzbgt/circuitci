@@ -44,9 +44,10 @@ intentionally does not model RF matching, radiation, or field behavior.
 `RF_ANTENNA_MEASURED_PERFORMANCE_VALID`, including explicit measurement name
 parameter parsing, reviewed RF measurement metadata validation, measured
 return-loss/frequency-band checks, sampled sweep point-count/frequency-step
-checks, fail-closed missing evidence, and stable report construction. It
-intentionally does not interpolate S-parameters, model enclosure/cable effects,
-or replace RF qualification measurements.
+checks, reviewed measurement-condition reference checks, fail-closed missing
+evidence, and stable report construction. It intentionally does not
+interpolate S-parameters, model enclosure/cable/fixture effects, or replace RF
+qualification measurements.
 
 `src/validation/manufacturing/thermal_copper.rs` owns
 `THERMAL_COPPER_AREA_VALID`, `THERMAL_VIA_STACKUP_VALID`,

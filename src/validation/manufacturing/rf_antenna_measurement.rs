@@ -1,4 +1,4 @@
-use crate::board_ir::{RfAntennaMeasurement, Scenario};
+use crate::board_ir::{RfAntennaMeasurement, RfAntennaMeasurementCondition, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -47,6 +47,24 @@ pub(in crate::validation) fn validate_rf_antenna_measured_performance(
     ) else {
         return;
     };
+    let Some(required_measurement_condition) = optional_string_parameter(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "measurement_condition",
+    ) else {
+        return;
+    };
+    if let Some(condition_name) = required_measurement_condition.as_deref() {
+        let Some(condition) = rf_measurement_condition(bound, scenario, findings, condition_name)
+        else {
+            return;
+        };
+        if let Err(message) = validate_rf_measurement_condition_metadata(condition) {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    }
     let mut measurements = Vec::new();
     for name in names {
         let Some(measurement) = rf_measurement(bound, scenario, findings, &name) else {
@@ -68,6 +86,12 @@ pub(in crate::validation) fn validate_rf_antenna_measured_performance(
             measurement,
             min_return_loss_db,
             frequency_band,
+        );
+        validate_measurement_condition_match(
+            scenario,
+            findings,
+            measurement,
+            required_measurement_condition.as_deref(),
         );
     }
     validate_rf_measurement_sweep(
@@ -188,6 +212,47 @@ fn rf_measurement<'a>(
     }
 }
 
+fn rf_measurement_condition<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    name: &str,
+) -> Option<&'a RfAntennaMeasurementCondition> {
+    let matches = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .measurement_conditions
+        .iter()
+        .filter(|condition| condition.name == name)
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [condition] => Some(*condition),
+        [] => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement condition {name} is absent from board.layout.constraints.rf_antenna.measurement_conditions."
+                ),
+            );
+            None
+        }
+        _ => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement condition {name} is ambiguous in board.layout.constraints.rf_antenna.measurement_conditions."
+                ),
+            );
+            None
+        }
+    }
+}
+
 fn validate_rf_measurement(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -244,6 +309,24 @@ fn validate_rf_measurement_sweep_metadata(
         );
     }
     Ok(())
+}
+
+fn validate_measurement_condition_match(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    measurement: &RfAntennaMeasurement,
+    required_measurement_condition: Option<&str>,
+) {
+    let Some(required_condition) = required_measurement_condition else {
+        return;
+    };
+    if measurement.measurement_condition.as_deref() != Some(required_condition) {
+        findings.push(rf_measurement_condition_finding(
+            scenario,
+            measurement,
+            required_condition,
+        ));
+    }
 }
 
 fn validate_rf_measurement_sweep(
@@ -381,7 +464,79 @@ fn validate_rf_measurement_metadata(
             measurement.name
         ));
     }
+    if let Some(condition_name) = measurement.measurement_condition.as_deref() {
+        if condition_name.trim().is_empty() {
+            return Err(format!(
+                "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} measurement_condition must be non-empty when provided.",
+                measurement.name
+            ));
+        }
+        let matches = bound
+            .project
+            .board
+            .layout
+            .constraints
+            .rf_antenna
+            .measurement_conditions
+            .iter()
+            .filter(|condition| condition.name == condition_name)
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [condition] => validate_rf_measurement_condition_metadata(condition)?,
+            [] => {
+                return Err(format!(
+                    "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} measurement_condition {} is absent from board.layout.constraints.rf_antenna.measurement_conditions.",
+                    measurement.name, condition_name
+                ));
+            }
+            _ => {
+                return Err(format!(
+                    "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement {} measurement_condition {} is ambiguous in board.layout.constraints.rf_antenna.measurement_conditions.",
+                    measurement.name, condition_name
+                ));
+            }
+        }
+    }
     Ok(())
+}
+
+fn validate_rf_measurement_condition_metadata(
+    condition: &RfAntennaMeasurementCondition,
+) -> Result<(), String> {
+    if condition.name.trim().is_empty() {
+        return Err(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement condition name must be non-empty."
+                .to_string(),
+        );
+    }
+    if condition.source.trim().is_empty() {
+        return Err(format!(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement condition {} source must be non-empty.",
+            condition.name
+        ));
+    }
+    if !rf_measurement_condition_has_reviewed_detail(condition) {
+        return Err(format!(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID measurement condition {} must include at least one of fixture, cable_setup, or enclosure_profile.",
+            condition.name
+        ));
+    }
+    Ok(())
+}
+
+fn rf_measurement_condition_has_reviewed_detail(condition: &RfAntennaMeasurementCondition) -> bool {
+    condition
+        .fixture
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        || condition
+            .cable_setup
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        || condition
+            .enclosure_profile
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
 }
 
 fn required_positive_numeric_parameter(
@@ -512,6 +667,32 @@ fn optional_positive_usize_parameter(
     Some(Some(value))
 }
 
+fn optional_string_parameter(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    parameter_name: &str,
+) -> Option<Option<String>> {
+    let Some(value) = scenario.parameters.get(parameter_name) else {
+        return Some(None);
+    };
+    let Some(value) = value
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "{check_id} parameters.{parameter_name} must be a non-empty string when provided."
+            ),
+        );
+        return None;
+    };
+    Some(Some(value.to_string()))
+}
+
 fn rf_measurement_frequency_finding(
     scenario: &Scenario,
     measurement: &RfAntennaMeasurement,
@@ -611,6 +792,30 @@ fn rf_measurement_sweep_gap_finding(
         .limit
         .insert("max_frequency_step_mhz".to_string(), json!(max_step_mhz));
     insert_frequency_band_limits(&mut finding, frequency_band);
+    finding
+}
+
+fn rf_measurement_condition_finding(
+    scenario: &Scenario,
+    measurement: &RfAntennaMeasurement,
+    required_condition: &str,
+) -> Finding {
+    let mut finding = base_rf_measurement_finding(
+        scenario,
+        measurement,
+        format!(
+            "RF antenna measurement {} condition does not match the reviewed measurement condition {}.",
+            measurement.name, required_condition
+        ),
+    );
+    finding.measured.insert(
+        "measurement_condition".to_string(),
+        json!(measurement.measurement_condition.as_deref()),
+    );
+    finding.limit.insert(
+        "measurement_condition".to_string(),
+        json!(required_condition),
+    );
     finding
 }
 

@@ -585,6 +585,8 @@ pub struct RfAntennaLayoutRules {
     pub measurements: Vec<RfAntennaMeasurement>,
     #[serde(default)]
     pub performance_limits: Vec<RfAntennaPerformanceLimit>,
+    #[serde(default)]
+    pub measurement_conditions: Vec<RfAntennaMeasurementCondition>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -621,6 +623,8 @@ pub struct RfAntennaMeasurement {
     #[serde(default)]
     pub measurement_method: Option<String>,
     #[serde(default)]
+    pub measurement_condition: Option<String>,
+    #[serde(default)]
     pub notes: Option<String>,
 }
 
@@ -638,6 +642,22 @@ pub struct RfAntennaPerformanceLimit {
     pub min_measurement_count: Option<usize>,
     #[serde(default)]
     pub max_frequency_step_mhz: Option<f64>,
+    #[serde(default)]
+    pub required_measurement_condition: Option<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RfAntennaMeasurementCondition {
+    pub name: String,
+    pub source: String,
+    #[serde(default)]
+    pub fixture: Option<String>,
+    #[serde(default)]
+    pub cable_setup: Option<String>,
+    #[serde(default)]
+    pub enclosure_profile: Option<String>,
     #[serde(default)]
     pub notes: Option<String>,
 }

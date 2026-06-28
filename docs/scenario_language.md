@@ -1366,6 +1366,7 @@ scenarios:
       frequency_max_mhz: 2500.0
       min_measurement_count: 3
       max_frequency_step_mhz: 50.0
+      measurement_condition: enclosed_usb_fixture
       rf_measurements:
         - name: chip_antenna_s11_2400
         - name: chip_antenna_s11_2450
@@ -1390,14 +1391,19 @@ RF antenna measured-performance algorithm:
    count, and the largest sampled frequency gap must not exceed the reviewed
    step. Reviewed frequency-band edges are included in the gap check when
    present.
-7. Fail closed when any selected row, limit, net, source, or numeric evidence is
+7. Optionally accept non-empty `measurement_condition`; when supplied, resolve
+   it from `board.layout.constraints.rf_antenna.measurement_conditions[]` and
+   require the condition row to include source plus at least one explicit
+   fixture, cable setup, or enclosure profile. Fail when any selected
+   measurement row does not explicitly reference the same condition.
+8. Fail closed when any selected row, limit, net, source, condition, or numeric evidence is
    absent or malformed. Reviewed performance-limit metadata is suggestion input
    only; validators still use explicit scenario parameters.
 
 This is a bounded measured-evidence screen. It does not interpolate S-parameter
 sweeps between sampled points, solve feed impedance, validate matching-network topology, model
-enclosure/cable effects, or replace RF simulation, chamber testing, or final
-antenna tuning.
+enclosure/cable/fixture effects, or replace RF simulation, chamber testing, or
+final antenna tuning.
 
 Thermal copper area validation uses `THERMAL_COPPER_AREA_VALID` when Board IR
 contains reviewed thermal copper rules under

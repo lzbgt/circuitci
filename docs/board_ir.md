@@ -1028,19 +1028,30 @@ part values, or net names.
 `board.layout.constraints.rf_antenna.measurements[]` stores reviewed RF
 measurement evidence such as VNA S11/return-loss points. Each row names the
 antenna net, measurement frequency in MHz, positive return-loss magnitude in
-dB, source, and optional method/notes. It is evidence only: validators compare
-named rows against explicit reviewed scenario limits and do not interpolate a
-sweep, solve impedance, or infer acceptable RF performance from net names.
+dB, source, optional method, optional reviewed measurement condition, and
+optional notes. Measurement conditions reference
+`board.layout.constraints.rf_antenna.measurement_conditions[]`. It is evidence
+only: validators compare named rows against explicit reviewed scenario limits
+and do not interpolate a sweep, solve impedance, or infer acceptable RF
+performance from net names.
 
 `board.layout.constraints.rf_antenna.performance_limits[]` stores reviewed RF
 performance policy for measured-return-loss checks. Each row names the antenna
 net, minimum acceptable return-loss magnitude in dB, source, optional frequency
 band in MHz, optional sweep coverage policy (`min_measurement_count` and
-`max_frequency_step_mhz`), and optional notes. Scenario suggestions can pair
-reviewed measurement points with a matching same-net limit whose optional
-frequency band contains the measurement frequencies. Validators still consume
-explicit scenario parameters and do not infer acceptable RF performance from
-measurements.
+`max_frequency_step_mhz`), optional required measurement condition, and
+optional notes. Scenario suggestions can pair reviewed measurement points with
+a matching same-net limit whose optional frequency band contains the
+measurement frequencies and whose optional condition matches the measurement.
+Validators still consume explicit scenario parameters and do not infer
+acceptable RF performance from measurements.
+
+`board.layout.constraints.rf_antenna.measurement_conditions[]` stores reviewed
+RF test-condition metadata such as fixture, cable setup, enclosure profile,
+and source. A condition used by validation must include source plus at least
+one of fixture, cable setup, or enclosure profile. It is evidence only:
+validators can require selected measurement rows to explicitly reference a
+named condition but do not model enclosure, cable, or fixture effects.
 
 These values must come from explicit antenna-module/layout guidance or a
 reviewed board RF rule. They are not inferred from net names, component
