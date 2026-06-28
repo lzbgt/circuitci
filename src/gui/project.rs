@@ -44,6 +44,13 @@ const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
 const AP2112K_LDO_SCOPE_EXPECTED_TRACES: &[&str] = &["v_usb", "v_en", "v_rail3v3", "i_load"];
 const AP2112K_LDO_SCOPE_EXPECTED_FREQUENCY: &str = "5 V enabled input, 3.3 V regulated load rail";
+const TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps22918_load_switch_observation/project.yaml";
+const TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_NAME: &str = "good_tps22918_load_switch_observation";
+const TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_usb", "v_on", "v_switched5v", "i_load"];
+const TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_FREQUENCY: &str =
+    "5 V enabled load switch into a 1 kOhm load";
 const TLV803_RESET_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tlv803ea29_reset_observation/project.yaml";
 const TLV803_RESET_SCOPE_EXAMPLE_NAME: &str = "good_tlv803ea29_reset_observation";
@@ -146,6 +153,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: AP2112K_LDO_SCOPE_EXPECTED_TRACES,
         expected_frequency: AP2112K_LDO_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UREG"),
+    },
+    GuiProjectExample {
+        id: "tps22918_load_switch_scope",
+        category: "Load Switch",
+        open_label: "Open TPS22918 Load Switch Example",
+        run_label: "Open TPS22918 + Run Scopes",
+        workflow_title: "TPS22918 Load Switch Workflow",
+        summary: "Enabled 5 V load switch path with switched-rail and load-current checks.",
+        project_path: TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS22918_LOAD_SWITCH_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS22918_LOAD_SWITCH_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("USW"),
     },
     GuiProjectExample {
         id: "tlv803_reset_scope",

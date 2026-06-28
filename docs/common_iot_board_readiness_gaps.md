@@ -27,7 +27,8 @@ sign-off.
 Initial datasheet-backed packs now exist for selected parts used by common IoT
 bring-up paths, including WCH CH340C and Silicon Labs CP2102N board-level
 USB-UART metadata, TI TXS0108E interface-protection metadata, and TI TPS22918
-load-switch metadata plus Microchip MCP73831 charger metadata. TI TPS2115A and
+load-switch metadata plus a reduced generated-SPICE observation face for
+enabled load-path checks. Microchip MCP73831 charger metadata, TI TPS2115A, and
 TI TPS2121 now cover datasheet-backed power-mux source-selection,
 reverse-blocking, rail-range, and output-current packs, while TI TLV803EA29
 covers a first datasheet-backed reset supervisor

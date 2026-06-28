@@ -676,6 +676,13 @@ pin metadata remain source-backed, while its generated-SPICE face points at a
 reduced nominal-threshold open-drain behavioral subcircuit. That model can
 exercise reset pull-up wiring and assertions, but not reset-delay, hysteresis,
 glitch-immunity, propagation-delay, or leakage sign-off.
+`vendor.ti.tps22918` follows the same pattern for active-high load-switch
+observation: its datasheet voltage, ON threshold, current, pinout, and static
+power-switch metadata remain source-backed, while its generated-SPICE face uses
+a reduced smooth VIN-to-VOUT conductance near the typical on-resistance. That
+model can exercise enabled-load wiring and preliminary voltage/current
+observations, but not CT slew-rate shaping, QOD discharge, reverse current,
+current limiting, inrush, leakage, or thermal sign-off.
 
 `IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
 scenario `paths`. On a `power_tree` scenario, it scans same-net digital

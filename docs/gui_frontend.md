@@ -495,9 +495,10 @@ form:
   traces or observations, and expected frequency or operating point before
   `Open` or `Run + Scopes`. The current entries cover the checked-in NE555
   astable-style fixture, RC low-pass sine fixture, comparator threshold
-  fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TLV803
-  reset-supervisor fixture, loop-stability Bode fixture, DC divider-bias
-  fixture, divider-noise fixture, and RC Monte Carlo yield fixture; all
+  fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TPS22918
+  load-switch fixture, TLV803 reset-supervisor fixture, loop-stability Bode
+  fixture, DC divider-bias fixture, divider-noise fixture, and RC Monte Carlo
+  yield fixture; all
   direct-open projects include display-only routed schematic waypoints. Opening
   one lands directly in Sketch with a deferred Fit All, so the first view is the
   readable connected network. When a scope-ready fixture
@@ -505,9 +506,10 @@ form:
   a workflow status with direct `Run + Scopes` / `Open Scope Activity` actions,
   and the Sketch side dock mirrors those compact workflow actions above Run
   Readiness. Examples that contain a known SPICE-ready function block, such as
-  the comparator threshold, op-amp buffer, AP2112K LDO, and TLV803 reset
-  fixtures, also show `Create Checks` to append a generated run setup with
-  model-aware probes and observation checks for the placed component.
+  the comparator threshold, op-amp buffer, AP2112K LDO, TPS22918 load-switch,
+  and TLV803 reset fixtures, also show `Create Checks` to append a generated
+  run setup with model-aware probes and observation checks for the placed
+  component.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native

@@ -588,7 +588,7 @@ fn scope_examples_load_routed_schematic_edges() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 10);
+    assert_eq!(examples.len(), 11);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.category, "Timer");
@@ -752,6 +752,36 @@ fn gui_project_example_registry_lists_ap2112k_ldo_scope_fixture() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_tps22918_load_switch_scope_fixture() {
+    let example = gui_project_example_by_id("tps22918_load_switch_scope");
+
+    assert_eq!(example.category, "Load Switch");
+    assert_eq!(example.open_label, "Open TPS22918 Load Switch Example");
+    assert_eq!(example.run_label, "Open TPS22918 + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Enabled 5 V load switch path with switched-rail and load-current checks."
+    );
+    assert_eq!(
+        example.project_path,
+        "examples/good_tps22918_load_switch_observation/project.yaml"
+    );
+    assert_eq!(
+        example.project_name,
+        "good_tps22918_load_switch_observation"
+    );
+    assert_eq!(
+        example.expected_traces,
+        &["v_usb", "v_on", "v_switched5v", "i_load"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "5 V enabled load switch into a 1 kOhm load"
+    );
+    assert_eq!(example.observation_preset_component, Some("USW"));
+}
+
+#[test]
 fn gui_project_example_registry_lists_tlv803_reset_scope_fixture() {
     let example = gui_project_example_by_id("tlv803_reset_scope");
 
@@ -884,6 +914,11 @@ fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
     assert_eq!(app.selected_project_example().id, "opamp_buffer_scope");
     app.selected_project_example_id = "ap2112k_ldo_scope".to_string();
     assert_eq!(app.selected_project_example().id, "ap2112k_ldo_scope");
+    app.selected_project_example_id = "tps22918_load_switch_scope".to_string();
+    assert_eq!(
+        app.selected_project_example().id,
+        "tps22918_load_switch_scope"
+    );
     app.selected_project_example_id = "tlv803_reset_scope".to_string();
     assert_eq!(app.selected_project_example().id, "tlv803_reset_scope");
     app.selected_project_example_id = "loop_stability_bode_scope".to_string();
@@ -1000,6 +1035,44 @@ fn ap2112k_scope_example_workflow_creates_model_aware_observation_checks() {
             .assertions
             .iter()
             .any(|assertion| assertion.name == "v_ureg_vout_max_voltage")
+    );
+}
+
+#[test]
+fn tps22918_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(
+        gui_project_example_by_id("tps22918_load_switch_scope"),
+        None,
+    );
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("USW".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "usw_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "usw_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_usw_vout"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usw_vout_enabled_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_usw_vout_enabled_max_voltage")
     );
 }
 

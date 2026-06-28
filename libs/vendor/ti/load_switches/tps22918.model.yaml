@@ -35,6 +35,17 @@ power_switch:
   control_pin: ON
   enabled_state: high
   max_output_current_A: 2.0
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS22918_LOAD_SWITCH
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, VOUT, GND, ON]
+    valid_operating_notes:
+      - Uses TPS22918 datasheet pinout, active-high ON threshold, and typical 52 mOhm on-resistance as a smooth enabled high-side conductance.
+      - Suitable for generated-SPICE enable wiring, switched-rail voltage, branch-current probe, and preliminary load-path observation workflows.
+      - Omits CT slew-rate shaping, quick-output-discharge behavior, reverse-current blocking, current limiting, thermal behavior, leakage variation, and final transient/inrush sign-off.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS22918
@@ -110,7 +121,10 @@ model_quality:
     - power_tree_validation
     - load_switch_static_screening
     - preliminary_power_domain_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - inrush_or_soft_start_signoff
     - load_switch_transient_or_reverse_current_signoff
+    - quick_output_discharge_signoff
+    - reverse_current_blocking_signoff
     - thermal_signoff

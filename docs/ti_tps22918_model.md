@@ -20,9 +20,9 @@ power-path validation:
 - Maximum continuous switch current: `2.0 A`.
 - Pins represented: `VIN`, `VOUT`, `GND`, `ON`, `CT`, and `QOD`.
 
-`CT` and `QOD` are represented as passive pins because the current static
-validator only needs them for connectivity/import preservation. Their analog
-effects are intentionally not modeled by `POWER_TREE_VALID`.
+`CT` and `QOD` are represented as passive pins because static validation only
+needs them for connectivity/import preservation. Their analog effects are not
+modeled by `POWER_TREE_VALID`.
 
 ## Validation Use
 
@@ -35,6 +35,19 @@ effects are intentionally not modeled by `POWER_TREE_VALID`.
 - `VIN` and `VOUT` rails are still checked against modeled operating voltage
   ranges.
 
-This model is not a SPICE model and is not valid for inrush, CT-controlled
-rise time, quick-output-discharge timing, reverse current, thermal sign-off, or
-final load-switch transient behavior.
+The model also declares `simulation.spice` metadata for generated Board IR
+SPICE. The generated-SPICE face points at the reduced-fidelity
+`CIRCUITCI_TPS22918_LOAD_SWITCH` subcircuit in
+`models/spice/generic/analog_behavioral.lib` with pin order:
+
+`VIN, VOUT, GND, ON`
+
+That subcircuit models an active-high smooth conductance near the datasheet
+typical `52 mOhm` on-resistance so users can observe enabled-load wiring,
+switched-rail voltage, and load current. It intentionally omits CT slew-rate
+shaping, QOD discharge, reverse-current behavior, current limiting, leakage
+variation, thermal behavior, inrush accuracy, and final transient sign-off.
+
+`examples/good_tps22918_load_switch_observation` proves the TPS22918 generated
+SPICE workflow with voltage/current probes and executable checks. The GUI
+Examples picker registers the same fixture as `TPS22918 Load Switch`.

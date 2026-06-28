@@ -190,12 +190,13 @@ Current analog support:
   metadata paths.
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
-  and enabled 3.3 V regulator rails through explicit `simulation.spice`
-  subcircuits. These models are low-confidence workflow/topology aids, not
-  vendor sign-off evidence. The GUI Examples picker includes direct-open
-  observation fixtures for NE555, RC low-pass, comparator threshold, op-amp
-  buffer, AP2112K LDO rail, TLV803 reset-supervisor, loop-stability Bode, DC
-  divider-bias, divider-noise, and RC Monte Carlo yield workflows.
+  enabled 3.3 V regulator rails, and enabled load-switch paths through
+  explicit `simulation.spice` subcircuits. These models are low-confidence
+  workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
+  includes direct-open observation fixtures for NE555, RC low-pass, comparator
+  threshold, op-amp buffer, AP2112K LDO rail, TPS22918 load switch, TLV803
+  reset-supervisor, loop-stability Bode, DC divider-bias, divider-noise, and RC
+  Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -205,6 +206,12 @@ Current analog support:
   external pull-up. Datasheet delay and threshold metadata remain available for
   static reset timing suggestions, while the transient face stays explicitly
   reduced-fidelity.
+- The TI TPS22918 load-switch pack now has a datasheet-backed generated SPICE
+  observation face for active-high enabled load-path behavior. Datasheet
+  voltage/current/ON-threshold metadata remains available for static
+  power-tree checks, while the transient face stays explicitly reduced-fidelity
+  and omits CT, QOD, reverse-current, current-limit, inrush, and thermal
+  sign-off behavior.
 - GUI generated run-setup creation and generated component inclusion infer
   required `simulation.spice.model_path` files from active component-library
   metadata, resolve them the same way validation does, and write SHA-256-pinned
@@ -216,8 +223,8 @@ Current analog support:
 - For a selected placed SPICE-ready component, the GUI can create a generated
   observation preset that includes the board context, binds ground, voltage
   probes the component's non-ground pin nets, infers required model files, and
-  adds model-aware default checks for regulator output voltage limits or
-  pulse-driven reset-supervisor, op-amp follower, and comparator output
+  adds model-aware default checks for regulator/load-switch output voltage
+  limits or pulse-driven reset-supervisor, op-amp follower, and comparator output
   behavior when the needed metadata and surrounding stimulus/reference topology
   are present.
 - Critical findings for missing backends, missing decks, missing model files,

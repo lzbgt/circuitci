@@ -188,6 +188,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
 - `examples/comparator_threshold_scope` proves the generic comparator
   macro-model in a direct-open GUI example with routed schematic metadata,
   named scope probes, and executable threshold/output-state waveform checks.
+- `examples/good_tps22918_load_switch_observation` proves the TI TPS22918
+  datasheet-backed load-switch model can use a reduced generic generated-SPICE
+  face in a direct-open GUI example with routed schematic metadata, switched
+  rail voltage probes, branch-current probes, and executable load-path checks.
 - `examples/loop_stability_bode_scope` proves file-backed AC/Bode loop-gain
   observation in a direct-open GUI example with routed schematic metadata,
   Bode artifact export, and executable phase/gain margin checks.

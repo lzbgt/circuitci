@@ -264,6 +264,32 @@ fn observation_default_assertions(
             }
         }
     }
+    if let Some(power_switch) = &model.power_switch
+        && let Some(output_probe) =
+            probe_for_component_pin(probes, component, &power_switch.output_pin)
+        && let Some(output_net) = component.pins.get(&power_switch.output_pin)
+        && let Some(nominal_v) = nominal_voltage_for_net(project, output_net)
+        && nominal_v > 0.0
+    {
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_enabled_min_voltage", output_probe.probe_name),
+            &output_probe.probe_name,
+            "min",
+            "above",
+            nominal_v * 0.98,
+            (0.0, stop_time_us),
+        ));
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_enabled_max_voltage", output_probe.probe_name),
+            &output_probe.probe_name,
+            "max",
+            "below",
+            nominal_v * 1.02,
+            (0.0, stop_time_us),
+        ));
+    }
     if let Some(function) = &model.analog_function {
         match function.kind {
             crate::library::AnalogFunctionKind::OpAmp => {
@@ -761,6 +787,38 @@ board:
 "
     }
 
+    fn tps22918_project_yaml() -> &'static str {
+        "project:
+  name: tps22918_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+  - libs/vendor/ti/load_switches
+board:
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      pins: { P: usb_5v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    VON:
+      model: generic.analog.dc_voltage_source
+      pins: { P: switch_on, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    USW:
+      model: vendor.ti.tps22918
+      pins: { VIN: usb_5v, VOUT: switched_5v, GND: gnd, ON: switch_on }
+    RLOAD:
+      model: generic.analog.resistor
+      pins: { A: switched_5v, B: gnd }
+      spice: { primitive: resistor, value_ohm: 1000.0 }
+  nets:
+    usb_5v: { kind: power, nominal_voltage: 5.0, powered: true }
+    switched_5v: { kind: power, nominal_voltage: 5.0, powered: true }
+    switch_on: { kind: digital_or_analog }
+    gnd: { kind: ground }
+"
+    }
+
     fn opamp_buffer_project_yaml() -> &'static str {
         "project:
   name: opamp_observation_preset_test
@@ -943,6 +1001,61 @@ board:
                     crate::board_ir::AnalogRelation::Above,
                     Some(21.0),
                     Some(2.9699999999999998)
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn observation_preset_adds_load_switch_output_voltage_checks() {
+        let result =
+            create_component_observation_preset(tps22918_project_yaml(), Path::new("."), "USW")
+                .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "usw_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["v_usw_vin", "v_usw_vout", "v_usw_on"]
+        );
+        assert_eq!(
+            analog
+                .assertions
+                .iter()
+                .map(|assertion| {
+                    (
+                        assertion.name.as_str(),
+                        assertion.probe.as_str(),
+                        assertion.aggregation.clone(),
+                        assertion.relation.clone(),
+                        assertion.threshold_v,
+                    )
+                })
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "v_usw_vout_enabled_min_voltage",
+                    "v_usw_vout",
+                    crate::board_ir::AnalogAggregation::Min,
+                    crate::board_ir::AnalogRelation::Above,
+                    Some(4.9)
+                ),
+                (
+                    "v_usw_vout_enabled_max_voltage",
+                    "v_usw_vout",
+                    crate::board_ir::AnalogAggregation::Max,
+                    crate::board_ir::AnalogRelation::Below,
+                    Some(5.1)
                 )
             ]
         );

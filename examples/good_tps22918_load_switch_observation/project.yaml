@@ -1,32 +1,32 @@
 project:
-  name: good_ap2112k_3v3_ldo_observation
+  name: good_tps22918_load_switch_observation
   version: 0.1.0
 
 libraries:
   - ../../libs/generic/analog
-  - ../../libs/vendor/diodes/regulators
+  - ../../libs/vendor/ti/load_switches
 
 board:
   schematic:
     component_symbols:
       VUSB: Simulation_SPICE:VDC
-      VEN: Simulation_SPICE:VDC
-      UREG: Regulator_Linear:AP2112K-3.3
+      VON: Simulation_SPICE:VDC
+      USW: Power_Management:TPS22918
       RLOAD: Device:R
     node_styles:
       component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
-      component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
-      component:UREG: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:VON: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:USW: { rotation_deg: 0, mirrored: false, pin_side: auto }
       component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
       component:VUSB: { x: 64.0, y: 176.0 }
-      component:VEN: { x: 64.0, y: 320.0 }
-      component:UREG: { x: 304.0, y: 208.0 }
-      component:RLOAD: { x: 544.0, y: 320.0 }
+      component:VON: { x: 64.0, y: 320.0 }
+      component:USW: { x: 320.0, y: 224.0 }
+      component:RLOAD: { x: 560.0, y: 320.0 }
       net:usb_5v: { x: 176.0, y: 176.0 }
-      net:regulator_en: { x: 176.0, y: 272.0 }
-      net:rail_3v3: { x: 448.0, y: 176.0 }
-      net:gnd: { x: 320.0, y: 496.0 }
+      net:switch_on: { x: 176.0, y: 320.0 }
+      net:switched_5v: { x: 464.0, y: 176.0 }
+      net:gnd: { x: 320.0, y: 512.0 }
     wire_routes:
       VUSB.P->usb_5v:
         points:
@@ -34,30 +34,30 @@ board:
       VUSB.N->gnd:
         points:
           - { x: 112.0, y: 512.0 }
-      VEN.P->regulator_en:
+      VON.P->switch_on:
         points:
           - { x: 160.0, y: 336.0 }
-      VEN.N->gnd:
+      VON.N->gnd:
         points:
           - { x: 112.0, y: 512.0 }
-      UREG.VIN->usb_5v:
+      USW.VIN->usb_5v:
         points:
           - { x: 240.0, y: 192.0 }
-      UREG.EN->regulator_en:
+      USW.ON->switch_on:
         points:
-          - { x: 240.0, y: 288.0 }
-      UREG.VOUT->rail_3v3:
+          - { x: 240.0, y: 336.0 }
+      USW.VOUT->switched_5v:
         points:
-          - { x: 464.0, y: 192.0 }
-      UREG.GND->gnd:
+          - { x: 480.0, y: 192.0 }
+      USW.GND->gnd:
         points:
           - { x: 320.0, y: 512.0 }
-      RLOAD.A->rail_3v3:
+      RLOAD.A->switched_5v:
         points:
-          - { x: 592.0, y: 192.0 }
+          - { x: 608.0, y: 192.0 }
       RLOAD.B->gnd:
         points:
-          - { x: 592.0, y: 512.0 }
+          - { x: 608.0, y: 512.0 }
   components:
     VUSB:
       model: generic.analog.dc_voltage_source
@@ -67,49 +67,49 @@ board:
       spice:
         primitive: dc_voltage_source
         dc_v: 5.0
-    VEN:
+    VON:
       model: generic.analog.dc_voltage_source
       pins:
-        P: regulator_en
+        P: switch_on
         N: gnd
       spice:
         primitive: dc_voltage_source
         dc_v: 5.0
-    UREG:
-      model: vendor.diodes.ap2112k_3v3
-      part_number: AP2112K-3.3TRG1
+    USW:
+      model: vendor.ti.tps22918
+      part_number: TPS22918DBVR
       power_domains:
         VIN: usb_5v
-        VOUT: rail_3v3
+        VOUT: switched_5v
       pins:
         VIN: usb_5v
-        EN: regulator_en
+        VOUT: switched_5v
         GND: gnd
-        VOUT: rail_3v3
+        ON: switch_on
     RLOAD:
       model: generic.analog.resistor
       pins:
-        A: rail_3v3
+        A: switched_5v
         B: gnd
       spice:
         primitive: resistor
-        value_ohm: 3300.0
+        value_ohm: 1000.0
   nets:
     usb_5v:
       kind: power
       nominal_voltage: 5.0
       powered: true
-    regulator_en:
+    switched_5v:
       kind: power
-    rail_3v3:
-      kind: power
-      nominal_voltage: 3.3
+      nominal_voltage: 5.0
       powered: true
+    switch_on:
+      kind: power
     gnd:
       kind: ground
 
 scenarios:
-  - name: ap2112k_enabled_load_observation
+  - name: tps22918_enabled_load_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -120,71 +120,71 @@ scenarios:
         ground_net: gnd
         components:
           - VUSB
-          - VEN
-          - UREG
+          - VON
+          - USW
           - RLOAD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 6a50db6b635585be9b98e70f362ba71d0a34ed654e5a5d4b7af52aade9ffb64d
       node_bindings:
         - { node: vusb, net: usb_5v }
-        - { node: en, net: regulator_en }
-        - { node: rail3v3, net: rail_3v3 }
+        - { node: on, net: switch_on }
+        - { node: switched5v, net: switched_5v }
         - { node: "0", net: gnd }
       pin_bindings:
         - { node: vusb, endpoint: { component: VUSB, pin: P } }
         - { node: "0", endpoint: { component: VUSB, pin: N } }
-        - { node: en, endpoint: { component: VEN, pin: P } }
-        - { node: "0", endpoint: { component: VEN, pin: N } }
-        - { node: vusb, endpoint: { component: UREG, pin: VIN } }
-        - { node: en, endpoint: { component: UREG, pin: EN } }
-        - { node: "0", endpoint: { component: UREG, pin: GND } }
-        - { node: rail3v3, endpoint: { component: UREG, pin: VOUT } }
-        - { node: rail3v3, endpoint: { component: RLOAD, pin: A } }
+        - { node: on, endpoint: { component: VON, pin: P } }
+        - { node: "0", endpoint: { component: VON, pin: N } }
+        - { node: vusb, endpoint: { component: USW, pin: VIN } }
+        - { node: switched5v, endpoint: { component: USW, pin: VOUT } }
+        - { node: "0", endpoint: { component: USW, pin: GND } }
+        - { node: on, endpoint: { component: USW, pin: ON } }
+        - { node: switched5v, endpoint: { component: RLOAD, pin: A } }
         - { node: "0", endpoint: { component: RLOAD, pin: B } }
       analysis:
         type: tran
         stop_time_us: 50.0
         max_step_us: 0.2
       stimuli:
-        - name: enabled_usb_input
-          description: 5 V sources drive VIN and EN; AP2112K behavioral output feeds a 3.3 kOhm load.
+        - name: enabled_load_switch
+          description: 5 V input and ON sources enable TPS22918 behavioral load switch into a 1 kOhm load.
       probes:
         - name: v_usb
           expression: V(vusb)
-        - name: v_en
-          expression: V(en)
-        - name: v_rail3v3
-          expression: V(rail3v3)
+        - name: v_on
+          expression: V(on)
+        - name: v_switched5v
+          expression: V(switched5v)
         - name: i_load
           expression: I(VCCI_RLOAD)
           quantity: current
       assertions:
-        - name: rail_above_min
-          probe: v_rail3v3
+        - name: switched_rail_above_4p9v
+          probe: v_switched5v
           aggregation: min
           start_us: 5.0
           end_us: 50.0
           relation: above
-          threshold_v: 3.25
-        - name: rail_below_max
-          probe: v_rail3v3
+          threshold_v: 4.9
+        - name: switched_rail_below_5p1v
+          probe: v_switched5v
           aggregation: max
           start_us: 5.0
           end_us: 50.0
           relation: below
-          threshold_v: 3.35
-        - name: load_current_not_over_1p1ma
+          threshold_v: 5.1
+        - name: load_current_not_over_5p2ma
           probe: i_load
           aggregation: mean
           start_us: 5.0
           end_us: 50.0
           relation: below
-          threshold_a: 0.0011
-        - name: load_current_not_under_0p9ma
+          threshold_a: 0.0052
+        - name: load_current_not_under_4p8ma
           probe: i_load
           aggregation: mean
           start_us: 5.0
           end_us: 50.0
           relation: above
-          threshold_a: 0.0009
+          threshold_a: 0.0048
