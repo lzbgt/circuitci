@@ -749,13 +749,16 @@ is incomplete. Do not make profiles auto-add scenarios; use
 `src/repair_yaml.rs` owns copied-project Board IR YAML repair workflows. It
 validates the original project, proposes bounded YAML edits, writes a repaired
 copy with absolute `libraries:` paths, reruns validation, and emits
-`repair_report.json` proof. Supported repair classes are intentionally narrow:
-`INVALID_POWER_DOMAIN` changes an existing non-power net to `power` when a model
-power pin proves that role, `NET_NOT_FOUND` adds a missing net only when
-declared model pins infer a single unambiguous net kind, and
-`PIN_NOT_DECLARED` removes only copied-project pin bindings that the resolved
-model does not declare. Repair proof matching covers failures, warnings, and
-infos, while `no_new_criticals` remains the safety gate.
+`repair_report.json` proof. Dry-run mode stops after original validation and
+proposal generation, leaves repaired paths and proof booleans null, and keeps
+candidate edits in `status: proposed` for cheap agent inspection. Supported
+repair classes are intentionally narrow: `INVALID_POWER_DOMAIN` changes an
+existing non-power net to `power` when a model power pin proves that role,
+`NET_NOT_FOUND` adds a missing net only when declared model pins infer a single
+unambiguous net kind, and `PIN_NOT_DECLARED` removes only copied-project pin
+bindings that the resolved model does not declare. Repair proof matching covers
+failures, warnings, and infos, while `no_new_criticals` remains the apply-mode
+safety gate.
 
 Resistor-programmed charger current inference is centralized in
 `src/charger_programming.rs`. It requires exactly one positive resistor between

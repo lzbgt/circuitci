@@ -45,14 +45,15 @@ Implemented slice:
 - report whether the original finding disappeared across failures, warnings,
   and infos without new critical findings,
 - report guarded no-op and ambiguous cases in `repair_report.json`/`.md` via
-  `messages[]`, `summary.blocked`, `summary.skipped`, and blocked proposals.
+  `messages[]`, `summary.blocked`, `summary.skipped`, and blocked proposals,
+- support `repair-yaml --dry-run`, which writes the original validation report
+  and repair proposals without writing a repaired copy or rerunning validation.
 
 Useful next slice:
 
-- add a dry-run proposal mode for `repair-yaml` that writes the original report
-  and repair proposals without writing a repaired copy or rerunning validation,
-  so agents can cheaply inspect candidate edits before spending a full repair
-  validation cycle.
+- add a report-driven apply mode that can consume a previous dry-run
+  `repair_report.json`, verify the input project and finding still match, then
+  apply exactly those approved edits to a copied project and rerun validation.
 
 Do not start with arbitrary schematic or PCB editing. That remains too broad
 until several narrow YAML repair loops are proven end to end.

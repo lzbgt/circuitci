@@ -44,6 +44,8 @@ enum Command {
         output: PathBuf,
         #[arg(long, value_enum, default_value_t = RepairYamlFinding::InvalidPowerDomain)]
         finding: RepairYamlFinding,
+        #[arg(long)]
+        dry_run: bool,
     },
     SuggestScenarios {
         project: PathBuf,
@@ -232,7 +234,8 @@ pub fn run() -> Result<()> {
             profile,
             output,
             finding,
-        }) => run_repair_yaml(project, profile, output, finding),
+            dry_run,
+        }) => run_repair_yaml(project, profile, output, finding, dry_run),
         Some(Command::SuggestScenarios {
             project,
             profile,
@@ -341,17 +344,20 @@ fn run_repair_yaml(
     profile: String,
     output: PathBuf,
     finding: RepairYamlFinding,
+    dry_run: bool,
 ) -> Result<()> {
     let report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
         project,
         profile,
         output: output.clone(),
         finding: finding.as_repair_kind(),
+        dry_run,
     })?;
     println!(
-        "CircuitCI YAML repair {}: {} (proposed={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
+        "CircuitCI YAML repair {}: {} mode={} (proposed={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
         report.finding,
         report.result,
+        report.mode,
         report.summary.proposed,
         report.summary.applied,
         report.summary.blocked,

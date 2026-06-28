@@ -21,6 +21,7 @@ pub struct BoardYamlRepairOptions {
     pub profile: String,
     pub output: PathBuf,
     pub finding: BoardYamlRepairFindingKind,
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,13 +30,14 @@ pub struct BoardYamlRepairReport {
     pub project: String,
     pub profile: String,
     pub finding: String,
+    pub mode: String,
     pub result: String,
     pub messages: Vec<String>,
     pub summary: BoardYamlRepairSummary,
     pub original_project: String,
-    pub repaired_project: String,
+    pub repaired_project: Option<String>,
     pub original_report: String,
-    pub repaired_report: String,
+    pub repaired_report: Option<String>,
     pub proposals: Vec<BoardYamlRepairProposal>,
     pub proof: BoardYamlRepairProof,
     pub reproduction: BoardYamlRepairReproduction,
@@ -76,8 +78,8 @@ pub struct BoardYamlRepairEdit {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BoardYamlRepairProof {
-    pub original_finding_removed: bool,
-    pub no_new_criticals: bool,
+    pub original_finding_removed: Option<bool>,
+    pub no_new_criticals: Option<bool>,
     pub original_matching_findings: Vec<BoardYamlFindingEvidence>,
     pub repaired_matching_findings: Vec<BoardYamlFindingEvidence>,
     pub new_critical_findings: Vec<BoardYamlFindingEvidence>,
@@ -142,6 +144,69 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             pin_not_declared_proposals(&project, &library)?
         }
     };
+    let finding_id = options.finding.finding_id();
+    let original_matching = matching_findings(&original_report, finding_id);
+    let original_matching_criticals = matching_critical_findings(&original_report, finding_id);
+
+    if options.dry_run {
+        let blocked = proposals
+            .iter()
+            .filter(|proposal| proposal.status == "blocked")
+            .count();
+        let skipped = proposals
+            .iter()
+            .filter(|proposal| proposal.status == "skipped")
+            .count();
+        let messages = repair_messages(
+            finding_id,
+            RepairMessageContext {
+                original_matching: &original_matching,
+                repaired_matching: &[],
+                proposed: proposals.len(),
+                blocked,
+                skipped,
+                new_criticals: &[],
+                dry_run: true,
+            },
+        );
+        let report = BoardYamlRepairReport {
+            schema_version: "0.2.0".to_string(),
+            project: project.project.name.clone(),
+            profile: options.profile.clone(),
+            finding: finding_id.to_string(),
+            mode: "dry_run".to_string(),
+            result: "dry_run".to_string(),
+            messages,
+            summary: BoardYamlRepairSummary {
+                proposed: proposals.len(),
+                applied: 0,
+                blocked,
+                skipped,
+                original_matching_findings: original_matching.len(),
+                repaired_matching_findings: 0,
+                original_matching_criticals: original_matching_criticals.len(),
+                repaired_matching_criticals: 0,
+                new_criticals: 0,
+            },
+            original_project: options.project.display().to_string(),
+            repaired_project: None,
+            original_report: original_output.join("report.json").display().to_string(),
+            repaired_report: None,
+            proposals,
+            proof: BoardYamlRepairProof {
+                original_finding_removed: None,
+                no_new_criticals: None,
+                original_matching_findings: original_matching,
+                repaired_matching_findings: Vec::new(),
+                new_critical_findings: Vec::new(),
+            },
+            reproduction: BoardYamlRepairReproduction {
+                command: repair_reproduction_command(&options),
+            },
+        };
+        write_repair_reports(&report, &options.output)?;
+        return Ok(report);
+    }
 
     let mut repaired_yaml = project_yaml;
     let applied = apply_proposals(&mut repaired_yaml, &mut proposals)?;
@@ -182,10 +247,7 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         repaired_command,
     )?;
 
-    let finding_id = options.finding.finding_id();
-    let original_matching = matching_findings(&original_report, finding_id);
     let repaired_matching = matching_findings(&repaired_report, finding_id);
-    let original_matching_criticals = matching_critical_findings(&original_report, finding_id);
     let repaired_matching_criticals = matching_critical_findings(&repaired_report, finding_id);
     let new_criticals = new_critical_findings(&original_report, &repaired_report);
     let original_finding_removed = !original_matching.is_empty() && repaired_matching.is_empty();
@@ -200,12 +262,15 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         .count();
     let messages = repair_messages(
         finding_id,
-        &original_matching,
-        &repaired_matching,
-        proposals.len(),
-        blocked,
-        skipped,
-        &new_criticals,
+        RepairMessageContext {
+            original_matching: &original_matching,
+            repaired_matching: &repaired_matching,
+            proposed: proposals.len(),
+            blocked,
+            skipped,
+            new_criticals: &new_criticals,
+            dry_run: false,
+        },
     );
     let result = if original_finding_removed && no_new_criticals && applied == proposals.len() {
         "pass"
@@ -213,10 +278,11 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         "fail"
     };
     let report = BoardYamlRepairReport {
-        schema_version: "0.1.0".to_string(),
+        schema_version: "0.2.0".to_string(),
         project: project.project.name.clone(),
         profile: options.profile.clone(),
         finding: finding_id.to_string(),
+        mode: "apply".to_string(),
         result: result.to_string(),
         messages,
         summary: BoardYamlRepairSummary {
@@ -231,25 +297,19 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             new_criticals: new_criticals.len(),
         },
         original_project: options.project.display().to_string(),
-        repaired_project: repaired_project.display().to_string(),
+        repaired_project: Some(repaired_project.display().to_string()),
         original_report: original_output.join("report.json").display().to_string(),
-        repaired_report: repaired_output.join("report.json").display().to_string(),
+        repaired_report: Some(repaired_output.join("report.json").display().to_string()),
         proposals,
         proof: BoardYamlRepairProof {
-            original_finding_removed,
-            no_new_criticals,
+            original_finding_removed: Some(original_finding_removed),
+            no_new_criticals: Some(no_new_criticals),
             original_matching_findings: original_matching,
             repaired_matching_findings: repaired_matching,
             new_critical_findings: new_criticals,
         },
         reproduction: BoardYamlRepairReproduction {
-            command: format!(
-                "circuitci repair-yaml {} --profile {} --output {} --finding {}",
-                options.project.display(),
-                options.profile,
-                options.output.display(),
-                options.finding.as_cli_value()
-            ),
+            command: repair_reproduction_command(&options),
         },
     };
     write_repair_reports(&report, &options.output)?;
@@ -679,48 +739,75 @@ fn finding_evidence(finding: &Finding) -> BoardYamlFindingEvidence {
     }
 }
 
-fn repair_messages(
-    finding_id: &str,
-    original_matching: &[BoardYamlFindingEvidence],
-    repaired_matching: &[BoardYamlFindingEvidence],
+struct RepairMessageContext<'a> {
+    original_matching: &'a [BoardYamlFindingEvidence],
+    repaired_matching: &'a [BoardYamlFindingEvidence],
     proposed: usize,
     blocked: usize,
     skipped: usize,
-    new_criticals: &[BoardYamlFindingEvidence],
-) -> Vec<String> {
+    new_criticals: &'a [BoardYamlFindingEvidence],
+    dry_run: bool,
+}
+
+fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Vec<String> {
     let mut messages = Vec::new();
-    if original_matching.is_empty() {
+    if context.dry_run {
+        messages.push(
+            "Dry run skipped repaired project writing and repaired validation; proposal statuses were not applied."
+                .to_string(),
+        );
+    }
+    if context.original_matching.is_empty() {
         messages.push(format!(
             "Original validation report did not contain {finding_id}; no matching finding was available to repair."
         ));
     }
-    if proposed == 0 {
+    if context.proposed == 0 {
         messages.push(format!(
             "No supported {finding_id} repair proposal was generated."
         ));
     }
-    if blocked > 0 {
+    if context.blocked > 0 {
         messages.push(format!(
-            "{blocked} repair proposal(s) were blocked as ambiguous or unsafe."
+            "{} repair proposal(s) were blocked as ambiguous or unsafe.",
+            context.blocked
         ));
     }
-    if skipped > 0 {
+    if context.skipped > 0 {
         messages.push(format!(
-            "{skipped} repair proposal(s) were skipped because their YAML edit path was not applicable."
+            "{} repair proposal(s) were skipped because their YAML edit path was not applicable.",
+            context.skipped
         ));
     }
-    if !original_matching.is_empty() && !repaired_matching.is_empty() {
+    if !context.dry_run
+        && !context.original_matching.is_empty()
+        && !context.repaired_matching.is_empty()
+    {
         messages.push(format!(
             "Target finding {finding_id} remained after validating the repaired copy."
         ));
     }
-    if !new_criticals.is_empty() {
+    if !context.new_criticals.is_empty() {
         messages.push(format!(
             "Repaired copy introduced {} new critical finding(s).",
-            new_criticals.len()
+            context.new_criticals.len()
         ));
     }
     messages
+}
+
+fn repair_reproduction_command(options: &BoardYamlRepairOptions) -> String {
+    let mut command = format!(
+        "circuitci repair-yaml {} --profile {} --output {} --finding {}",
+        options.project.display(),
+        options.profile,
+        options.output.display(),
+        options.finding.as_cli_value()
+    );
+    if options.dry_run {
+        command.push_str(" --dry-run");
+    }
+    command
 }
 
 fn write_repair_reports(report: &BoardYamlRepairReport, output: &Path) -> Result<()> {
@@ -740,8 +827,9 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     let mut text = String::new();
     text.push_str(&format!("# CircuitCI YAML Repair: {}\n\n", report.project));
     text.push_str(&format!(
-        "- Result: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Blocked: {}\n- Skipped: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
+        "- Result: `{}`\n- Mode: `{}`\n- Finding: `{}`\n- Proposed: {}\n- Applied: {}\n- Blocked: {}\n- Skipped: {}\n- Original matching findings: {}\n- Repaired matching findings: {}\n- Original matching criticals: {}\n- Repaired matching criticals: {}\n- New criticals: {}\n\n",
         report.result,
+        report.mode,
         report.finding,
         report.summary.proposed,
         report.summary.applied,
@@ -783,14 +871,22 @@ fn markdown_repair_report(report: &BoardYamlRepairReport) -> String {
     text.push_str("## Proof\n\n");
     text.push_str(&format!(
         "- Original finding removed: `{}`\n- No new criticals: `{}`\n- Original report: `{}`\n- Repaired report: `{}`\n\n",
-        report.proof.original_finding_removed,
-        report.proof.no_new_criticals,
+        optional_bool_markdown(report.proof.original_finding_removed),
+        optional_bool_markdown(report.proof.no_new_criticals),
         report.original_report,
-        report.repaired_report
+        report.repaired_report.as_deref().unwrap_or("not generated")
     ));
     text.push_str("## Reproduction\n\n");
     text.push_str(&format!("```bash\n{}\n```\n", report.reproduction.command));
     text
+}
+
+fn optional_bool_markdown(value: Option<bool>) -> &'static str {
+    match value {
+        Some(true) => "true",
+        Some(false) => "false",
+        None => "not evaluated",
+    }
 }
 
 impl BoardYamlRepairFindingKind {

@@ -1,10 +1,11 @@
 # Board IR YAML Repair Loop
 
-`circuitci repair-yaml` is the first concrete agent repair command. It does not
-edit the input project in place. It validates the original project, generates a
-machine-readable patch proposal for one supported Board IR YAML finding class,
-writes a repaired project copy, validates that copy, and reports whether the
-target finding disappeared without introducing new critical findings.
+`circuitci repair-yaml` is the first concrete agent repair command. It never
+edits the input project in place. In normal apply mode it validates the original
+project, generates a machine-readable patch proposal for one supported Board IR
+YAML finding class, writes a repaired project copy, validates that copy, and
+reports whether the target finding disappeared without introducing new critical
+findings.
 
 Supported repair classes:
 
@@ -28,19 +29,37 @@ circuitci repair-yaml path/to/project.yaml \
   --output out/repair
 ```
 
-The output directory contains:
+Use `--dry-run` to stop after original validation and proposal generation:
+
+```sh
+circuitci repair-yaml path/to/project.yaml \
+  --finding net-not-found \
+  --profile iot_basic_v0 \
+  --output out/repair \
+  --dry-run
+```
+
+Apply-mode output contains:
 
 - `original/report.json` and `original/report.md`
 - `repaired/project.yaml`
 - `repaired/report.json` and `repaired/report.md`
 - `repair_report.json` and `repair_report.md`
 
+Dry-run output contains `original/report.json`, `original/report.md`,
+`repair_report.json`, and `repair_report.md`; it does not write
+`repaired/project.yaml` or run repaired validation.
+
 `repair_report.json` follows `schemas/repair_report.schema.json`. Its
 `proposals[].edits[]` entries carry the YAML path, operation, previous value,
 new value, and reason. `proposals[].affected_pins[]` records the component pins
 that justified the edit. The `summary` and `proof` blocks record original and
 repaired matching findings across failures, warnings, and infos, while still
-tracking whether the repair introduced new critical findings.
+tracking whether the repair introduced new critical findings. `mode: dry_run`
+reports `result: dry_run`, leaves applicable proposals in `status: proposed`,
+sets `repaired_project` and `repaired_report` to `null`, and leaves proof
+booleans such as `original_finding_removed` as `null` because no repaired copy
+was validated.
 
 When a repair class is requested but no safe edit can be applied, the command
 still writes `repair_report.json` and `repair_report.md` with `result: fail`.

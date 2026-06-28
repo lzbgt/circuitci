@@ -56,6 +56,7 @@ board:
             .unwrap();
     assert_repair_report_schema_valid(&repair_report);
     assert_eq!(repair_report["result"], "pass");
+    assert_eq!(repair_report["mode"], "apply");
     assert_eq!(repair_report["finding"], "INVALID_POWER_DOMAIN");
     assert_eq!(repair_report["summary"]["proposed"], 1);
     assert_eq!(repair_report["summary"]["applied"], 1);
@@ -101,6 +102,97 @@ board:
     )
     .unwrap();
     assert_eq!(repaired_yaml["board"]["nets"]["vin"]["kind"], "power");
+}
+
+#[test]
+fn repair_yaml_dry_run_reports_proposals_without_writing_repaired_copy() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: dry_run_power_net_kind
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin
+        N: gnd
+  nets:
+    vin:
+      kind: digital_or_analog
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+    let output = temp.path().join("repair");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--dry-run",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("repair_report.json")).unwrap())
+            .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "dry_run");
+    assert_eq!(repair_report["mode"], "dry_run");
+    assert_eq!(repair_report["finding"], "INVALID_POWER_DOMAIN");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 0);
+    assert_eq!(repair_report["summary"]["blocked"], 0);
+    assert_eq!(repair_report["summary"]["skipped"], 0);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 0);
+    assert_eq!(repair_report["summary"]["original_matching_criticals"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_criticals"], 0);
+    assert_eq!(repair_report["summary"]["new_criticals"], 0);
+    assert!(repair_report["repaired_project"].is_null());
+    assert!(repair_report["repaired_report"].is_null());
+    assert!(repair_report["proof"]["original_finding_removed"].is_null());
+    assert!(repair_report["proof"]["no_new_criticals"].is_null());
+    assert_eq!(repair_report["proposals"][0]["status"], "proposed");
+    assert_eq!(
+        repair_report["proposals"][0]["edits"][0]["path"],
+        "/board/nets/vin/kind"
+    );
+    assert!(
+        repair_report["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|message| message.as_str().unwrap().contains("Dry run skipped"))
+    );
+    assert!(
+        repair_report["reproduction"]["command"]
+            .as_str()
+            .unwrap()
+            .contains("--dry-run")
+    );
+    assert!(output.join("original/report.json").exists());
+    assert!(!output.join("repaired/project.yaml").exists());
+    assert!(!output.join("repaired/report.json").exists());
 }
 
 #[test]
