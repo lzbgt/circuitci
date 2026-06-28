@@ -820,6 +820,48 @@ pub(super) fn add_mcu_observation_assertions(
             "output_high",
             "output_low",
         ),
+        (
+            "NRST",
+            "observation_nrst_state",
+            1.0,
+            "released_high",
+            "held_low",
+        ),
+        (
+            "BOOT0",
+            "observation_boot0_state",
+            0.0,
+            "rom_boot_high",
+            "app_boot_low",
+        ),
+        (
+            "PA9",
+            "observation_pa9_state",
+            1.0,
+            "usart1_tx_idle_high",
+            "usart1_tx_low",
+        ),
+        (
+            "PA10",
+            "observation_pa10_state",
+            1.0,
+            "usart1_rx_idle_high",
+            "usart1_rx_low",
+        ),
+        (
+            "PA13",
+            "observation_pa13_state",
+            1.0,
+            "swdio_idle_high",
+            "swdio_low",
+        ),
+        (
+            "PA14",
+            "observation_pa14_state",
+            0.0,
+            "swclk_high",
+            "swclk_idle_low",
+        ),
     ] {
         let state = component_parameter_f64(component, parameter).unwrap_or(default_state);
         let suffix = if state >= 0.5 {

@@ -1,0 +1,187 @@
+project:
+  name: good_stm32l431_boot_uart_swd_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/st
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      VNRST: Simulation_SPICE:VDC
+      VBOOT0: Simulation_SPICE:VDC
+      VPA10: Simulation_SPICE:VDC
+      VPA14: Simulation_SPICE:VDC
+      UMCU: MCU:STM32L431VCT6
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VNRST: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VBOOT0: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VPA10: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VPA14: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UMCU: { rotation_deg: 0, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 112.0 }
+      component:VNRST: { x: 80.0, y: 224.0 }
+      component:VBOOT0: { x: 80.0, y: 336.0 }
+      component:VPA10: { x: 80.0, y: 448.0 }
+      component:VPA14: { x: 80.0, y: 560.0 }
+      component:UMCU: { x: 424.0, y: 336.0 }
+      net:vdd_3v3: { x: 240.0, y: 112.0 }
+      net:nrst: { x: 240.0, y: 224.0 }
+      net:boot0: { x: 240.0, y: 336.0 }
+      net:pa9_usart1_tx: { x: 616.0, y: 224.0 }
+      net:pa10_usart1_rx: { x: 240.0, y: 448.0 }
+      net:pa13_swdio: { x: 616.0, y: 400.0 }
+      net:pa14_swclk: { x: 240.0, y: 560.0 }
+      net:gnd: { x: 336.0, y: 704.0 }
+    wire_routes:
+      VDD.P->vdd_3v3: { points: [{ x: 176.0, y: 112.0 }] }
+      VDD.N->gnd: { points: [{ x: 112.0, y: 704.0 }] }
+      VNRST.P->nrst: { points: [{ x: 176.0, y: 224.0 }] }
+      VNRST.N->gnd: { points: [{ x: 144.0, y: 704.0 }] }
+      VBOOT0.P->boot0: { points: [{ x: 176.0, y: 336.0 }] }
+      VBOOT0.N->gnd: { points: [{ x: 176.0, y: 704.0 }] }
+      VPA10.P->pa10_usart1_rx: { points: [{ x: 176.0, y: 448.0 }] }
+      VPA10.N->gnd: { points: [{ x: 208.0, y: 704.0 }] }
+      VPA14.P->pa14_swclk: { points: [{ x: 176.0, y: 560.0 }] }
+      VPA14.N->gnd: { points: [{ x: 240.0, y: 704.0 }] }
+      UMCU.VDD->vdd_3v3: { points: [{ x: 344.0, y: 112.0 }] }
+      UMCU.VSS->gnd: { points: [{ x: 424.0, y: 704.0 }] }
+      UMCU.NRST->nrst: { points: [{ x: 344.0, y: 224.0 }] }
+      UMCU.BOOT0->boot0: { points: [{ x: 344.0, y: 336.0 }] }
+      UMCU.PA9->pa9_usart1_tx: { points: [{ x: 552.0, y: 224.0 }] }
+      UMCU.PA10->pa10_usart1_rx: { points: [{ x: 344.0, y: 448.0 }] }
+      UMCU.PA13->pa13_swdio: { points: [{ x: 552.0, y: 400.0 }] }
+      UMCU.PA14->pa14_swclk: { points: [{ x: 344.0, y: 560.0 }] }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: STM32L431_3V3_SOURCE
+      pins: { P: vdd_3v3, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VNRST:
+      model: generic.analog.dc_voltage_source
+      part_number: NRST_RELEASED_HIGH_SOURCE
+      pins: { P: nrst, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VBOOT0:
+      model: generic.analog.dc_voltage_source
+      part_number: BOOT0_APPLICATION_LOW_SOURCE
+      pins: { P: boot0, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 0.0 }
+    VPA10:
+      model: generic.analog.dc_voltage_source
+      part_number: USART1_RX_IDLE_HIGH_SOURCE
+      pins: { P: pa10_usart1_rx, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+    VPA14:
+      model: generic.analog.dc_voltage_source
+      part_number: SWCLK_IDLE_LOW_SOURCE
+      pins: { P: pa14_swclk, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 0.0 }
+    UMCU:
+      model: vendor.st.stm32l431vct6
+      part_number: STM32L431VCT6
+      parameters:
+        observation_nrst_state: 1.0
+        observation_boot0_state: 0.0
+        observation_pa9_state: 1.0
+        observation_pa10_state: 1.0
+        observation_pa13_state: 1.0
+        observation_pa14_state: 0.0
+      power_domains:
+        VDD: vdd_3v3
+      pins:
+        VDD: vdd_3v3
+        VSS: gnd
+        NRST: nrst
+        BOOT0: boot0
+        PA9: pa9_usart1_tx
+        PA10: pa10_usart1_rx
+        PA13: pa13_swdio
+        PA14: pa14_swclk
+  nets:
+    vdd_3v3: { kind: power, nominal_voltage: 3.3, powered: true, supply_current_limit_A: 0.2 }
+    nrst: { kind: power, nominal_voltage: 3.3, powered: true }
+    boot0: { kind: power, nominal_voltage: 0.0, powered: true }
+    pa9_usart1_tx: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    pa10_usart1_rx: { kind: power, nominal_voltage: 3.3, powered: true }
+    pa13_swdio: { kind: digital_or_analog, nominal_voltage: 3.3 }
+    pa14_swclk: { kind: power, nominal_voltage: 0.0, powered: true }
+    gnd: { kind: ground }
+
+scenarios:
+  - name: stm32l431_boot_uart_swd_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VNRST
+          - VBOOT0
+          - VPA10
+          - VPA14
+          - UMCU
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: 393d92c2eb98a4ede8105bb719b6008734478f9109a8ba7ba81d4e5ec33e5835
+      node_bindings:
+        - { node: vdd, net: vdd_3v3 }
+        - { node: nrst, net: nrst }
+        - { node: boot0, net: boot0 }
+        - { node: pa9, net: pa9_usart1_tx }
+        - { node: pa10, net: pa10_usart1_rx }
+        - { node: pa13, net: pa13_swdio }
+        - { node: pa14, net: pa14_swclk }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: nrst, endpoint: { component: VNRST, pin: P } }
+        - { node: "0", endpoint: { component: VNRST, pin: N } }
+        - { node: boot0, endpoint: { component: VBOOT0, pin: P } }
+        - { node: "0", endpoint: { component: VBOOT0, pin: N } }
+        - { node: pa10, endpoint: { component: VPA10, pin: P } }
+        - { node: "0", endpoint: { component: VPA10, pin: N } }
+        - { node: pa14, endpoint: { component: VPA14, pin: P } }
+        - { node: "0", endpoint: { component: VPA14, pin: N } }
+        - { node: vdd, endpoint: { component: UMCU, pin: VDD } }
+        - { node: "0", endpoint: { component: UMCU, pin: VSS } }
+        - { node: nrst, endpoint: { component: UMCU, pin: NRST } }
+        - { node: boot0, endpoint: { component: UMCU, pin: BOOT0 } }
+        - { node: pa9, endpoint: { component: UMCU, pin: PA9 } }
+        - { node: pa10, endpoint: { component: UMCU, pin: PA10 } }
+        - { node: pa13, endpoint: { component: UMCU, pin: PA13 } }
+        - { node: pa14, endpoint: { component: UMCU, pin: PA14 } }
+      analysis:
+        type: tran
+        stop_time_us: 100.0
+        max_step_us: 0.2
+      stimuli:
+        - name: application_boot_debug_idle
+          description: 3.3 V STM32L431 with NRST released, BOOT0 low, USART1 idle high, and SWD idle lines.
+      probes:
+        - { name: v_vdd, expression: V(vdd) }
+        - { name: v_nrst, expression: V(nrst) }
+        - { name: v_boot0, expression: V(boot0) }
+        - { name: v_pa9_usart1_tx, expression: V(pa9) }
+        - { name: v_pa10_usart1_rx, expression: V(pa10) }
+        - { name: v_pa13_swdio, expression: V(pa13) }
+        - { name: v_pa14_swclk, expression: V(pa14) }
+      assertions:
+        - { name: vdd_above_min, probe: v_vdd, aggregation: min, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 1.71 }
+        - { name: vdd_below_max, probe: v_vdd, aggregation: max, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 3.6 }
+        - { name: nrst_released_high, probe: v_nrst, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: boot0_app_boot_low, probe: v_boot0, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }
+        - { name: pa9_usart1_tx_idle_high, probe: v_pa9_usart1_tx, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: pa10_usart1_rx_idle_high, probe: v_pa10_usart1_rx, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.0 }
+        - { name: pa13_swdio_idle_high, probe: v_pa13_swdio, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: above, threshold_v: 2.3 }
+        - { name: pa14_swclk_idle_low, probe: v_pa14_swclk, aggregation: mean, start_us: 0.0, end_us: 100.0, relation: below, threshold_v: 0.8 }

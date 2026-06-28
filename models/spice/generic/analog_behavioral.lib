@@ -429,6 +429,24 @@ RENCZ ENC_Z GND 1G
 RENABLE ENABLE_IN GND 1G
 .ends CIRCUITCI_AT32M416_MOTOR_CONTROL_MCU
 
+.subckt CIRCUITCI_STM32L431_BOOT_UART_SWD_MCU VDD VSS NRST BOOT0 PA9 PA10 PA13 PA14 PARAMS: PA9_STATE=1 PA13_STATE=1
+* Reduced STM32L431 boot/UART/SWD observation behavior.
+* VDD, reset/BOOT0 inputs, USART1 PA9/PA10, and SWD PA13/PA14 are represented
+* for preliminary board-boundary checks. Firmware execution, oscillators, ROM
+* bootloader protocol timing, SWD transactions, flash side effects, complete
+* package pin mapping, layout/SI, EMC, and thermal behavior are intentionally
+* not modeled.
+BPA9 NPA9 VSS V={3.3*PA9_STATE}
+RPA9 NPA9 PA9 50
+BPA13 NPA13 VSS V={3.3*PA13_STATE}
+RPA13 NPA13 PA13 50
+RVDD VDD VSS 1G
+RNRST NRST VSS 1G
+RBOOT BOOT0 VSS 1G
+RPA10 PA10 VSS 1G
+RPA14 PA14 VSS 1G
+.ends CIRCUITCI_STM32L431_BOOT_UART_SWD_MCU
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

@@ -153,8 +153,16 @@ fn um_stm32l4_rom_download_entry_passes() {
     let report = run_validation("examples/um_stm32l4_rom_download_entry/project.yaml");
     assert_eq!(report["result"], "pass");
     assert_eq!(report["summary"]["critical"], 0);
+    assert_eq!(report["failures"].as_array().unwrap().len(), 0);
     assert!(
         report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "PROFILE_COVERAGE_PARTIAL")
+    );
+    assert!(
+        !report["limitations"]
             .as_array()
             .unwrap()
             .iter()

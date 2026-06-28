@@ -1,10 +1,33 @@
 component_id: vendor.um.um_stm32l4_resident
 version: 0.1.0
 category: mcu
+simulation:
+  spice:
+    model_name: CIRCUITCI_STM32L431_BOOT_UART_SWD_MCU
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VSS, NRST, BOOT0, PA9, PA10, PA13, PA14]
+    instance_parameters:
+      - spice_name: PA9_STATE
+        component_parameter: observation_pa9_state
+        default_value: 1.0
+      - spice_name: PA13_STATE
+        component_parameter: observation_pa13_state
+        default_value: 1.0
+    valid_operating_notes:
+      - Reduced rail and board-facing line-state observation for preliminary UM STM32L4 boot/UART/SWD checks.
+      - The STM32L431 VDD/VSS, NRST, BOOT0, USART1 PA9/PA10, and SWD PA13/PA14 pins are represented.
+      - Static PA9 and PA13 states are explicit Board IR component parameters.
+      - Resident bootloader protocol metadata remains behavioral; firmware execution, oscillator accuracy, reset timing, UART/SWD protocol timing, flash programming side effects, package-pin exhaustive mapping, layout/SI, EMC, and thermal behavior are outside this model.
 ports:
   VDD:
     kind: electrical_power
     required: true
+    electrical:
+      operating_voltage_min_V: 1.71
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.12
   VSS:
     kind: electrical_ground
     required: true
@@ -35,6 +58,42 @@ ports:
       vih_min_V: 2.0
       vil_max_V: 0.8
       injection_current_limit_A: 0.0001
+  PA13:
+    kind: digital_electrical_io
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  PA14:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+datasheet:
+  manufacturer: STMicroelectronics
+  part_number: UM_STM32L4_RESIDENT
+  package: board_project_model
+  documents:
+    - title: STM32L431xx Datasheet
+      path: docs/research/datasheets/st/stm32l431xx_datasheet.pdf
+      source_url: https://www.st.com/resource/en/datasheet/stm32l431rb.pdf
+      sha256: 71963de3cb899f8fc731e05a46c8bcb62c8ce893fe99f3877b0027ae9dfc5c6f
+      retrieved: "2026-06-28"
+    - title: AN2606 STM32 microcontroller system memory boot mode
+      path: docs/research/datasheets/st/an2606_stm32_system_memory_boot_mode.pdf
+      source_url: https://www.st.com/resource/en/application_note/cd00167594-stm32-microcontroller-system-memory-boot-mode-stmicroelectronics.pdf
+      sha256: 25b466e39ecc61671dcb988d8ca538462d6452d85f68140cb981ed728f57e654
+      retrieved: "2026-06-28"
+    - title: AN4555 Getting started with STM32L4 hardware development
+      path: docs/research/datasheets/st/an4555_stm32l4_hardware_getting_started.pdf
+      source_url: https://www.st.com/resource/en/application_note/an4555-getting-started-with-stm32l4-series-and-stm32l4-series-hardware-development-stmicroelectronics.pdf
+      sha256: a7c410da6c6a378a3823340fcc44930f62f0efa0f0654ddc6bd7755367458e7e
+      retrieved: "2026-06-28"
 behavior:
   reset:
     pin: NRST
@@ -128,7 +187,7 @@ rules:
   - UART_BOOTLOADER_SYNC
   - RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
 model_quality:
-  source: estimated
+  source: datasheet
   confidence: medium
   intended_use:
     - power_sequence

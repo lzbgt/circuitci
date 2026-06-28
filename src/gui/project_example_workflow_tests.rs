@@ -387,6 +387,73 @@ fn cmsis_dap_swd_scope_example_workflow_creates_model_aware_observation_checks()
 }
 
 #[test]
+fn stm32l431_boot_uart_swd_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(
+        gui_project_example_by_id("stm32l431_boot_uart_swd_scope"),
+        None,
+    );
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.status
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UMCU".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "umcu_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "umcu_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_umcu_vdd"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_umcu_pa9"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_vdd_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_nrst_released_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_boot0_app_boot_low")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_pa9_usart1_tx_idle_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_pa13_swdio_idle_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_umcu_pa14_swclk_idle_low")
+    );
+}
+
+#[test]
 fn esp32_s3_wroom_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

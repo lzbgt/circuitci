@@ -195,6 +195,7 @@ Current analog support:
   observations, FT232R-style USB-UART 3V3OUT/VCCIO and output-state
   observations, CH347-style USB-JTAG debug bridge line-state observations,
   CMSIS-DAP-style SWD probe line-state observations,
+  STM32L431-style VDD, NRST, BOOT0, USART1, and SWD line-state observations,
   ESP32-WROOM-32E-style module supply, EN, GPIO0/GPIO2 boot-strap, and TXD0
   idle-state observations, ESP32-S3-WROOM-style module supply, EN, boot-strap,
   and USB D-/D+ line-state observations, LicheeRV-Nano-W-style 5 V module,
@@ -234,7 +235,7 @@ Current analog support:
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
   threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
   FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
-  ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB,
+  STM32L431 boot/UART/SWD, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB,
   LicheeRV-Nano-W module, AT32F435 motion core, AT32M416 motor control,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
   ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
@@ -287,6 +288,13 @@ Current analog support:
   waveforms, ADC conversion/current reconstruction, FOC loops, dead-time,
   package assignment, gate-drive physics, layout, thermal behavior, and EMC
   behavior explicitly out of scope.
+- The ST STM32L431 and UM STM32L4 resident MCU packs now have saved ST source
+  provenance and a source-backed generated SPICE observation face for
+  preliminary VDD, NRST, BOOT0, USART1 PA9/PA10, and SWD PA13/PA14
+  board-boundary line-state checks. The direct-open GUI fixture keeps firmware
+  execution, oscillator accuracy, reset timing, UART/SWD protocol timing, flash
+  programming effects, exhaustive package mapping, layout, thermal behavior,
+  and EMC behavior explicitly out of scope.
 - The Silicon Labs CP2102N vendor component pack now has a datasheet-backed
   generated SPICE observation face for VREGIN-to-VDD regulator and UART
   output-state checks. Its VREGIN/VDD/VIO ranges, regulator output-current

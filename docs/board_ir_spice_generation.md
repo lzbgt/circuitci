@@ -217,6 +217,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   VTREF-referenced SWCLK, SWDIO, nRESET, and SWO line-state observations. The
   model-state inputs are explicit Board IR component parameters, not inferred
   USB transport, SWD protocol transfer, or probe-vendor electrical behavior.
+- `examples/good_stm32l431_boot_uart_swd_observation` proves the ST
+  STM32L431 MCU model can use a reduced generated-SPICE face for preliminary
+  VDD, NRST, BOOT0, USART1 PA9/PA10, and SWD PA13/PA14 line-state
+  observations. The model-state inputs are explicit Board IR component
+  parameters, not inferred firmware execution, boot ROM timing, SWD
+  transactions, flash programming effects, package mapping, layout, thermal, or
+  EMC behavior.
 - `examples/good_esp32_s3_wroom_boot_usb_observation` proves the Espressif
   ESP32-S3-WROOM-1U-N16R8 module model can use a reduced generated-SPICE face
   for 3.3 V supply, EN release, GPIO0/GPIO46 boot straps, USB D-/D+ line-state,

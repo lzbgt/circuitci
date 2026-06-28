@@ -839,6 +839,18 @@ motion-enable, and fault-IRQ observations, but not Linux boot power transients,
 internal SoC rails, firmware behavior, USB/MIPI/high-speed interfaces,
 RF/Wi-Fi behavior, thermal behavior, exact header-numbering sign-off, or final
 signal-integrity sign-off.
+`vendor.st.stm32l431vct6` and `vendor.um.um_stm32l4_resident` follow the same
+pattern for STM32L431 board-boundary observation: saved ST source documents
+back their VDD range, reset/BOOT0 boot metadata, USART1 PA9/PA10 role, and
+SWD PA13/PA14 role, while their generated-SPICE face uses reduced
+high-impedance input pins and static PA9/PA13 output drivers. Their
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_pa9_state` and `observation_pa13_state` into explicit
+SPICE output-state parameters. That model can exercise VDD, NRST, BOOT0,
+USART1 TX/RX, and SWDIO/SWCLK line-state observations, but not firmware
+execution, oscillator accuracy, reset timing, UART protocol timing, SWD
+transactions, flash programming side effects, exhaustive package-pin mapping,
+layout, thermal behavior, EMC, or final signal-integrity sign-off.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

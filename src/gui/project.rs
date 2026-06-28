@@ -74,6 +74,20 @@ const CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vtref", "v_swclk", "v_swdio", "v_nreset", "v_swo"];
 const CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V target reference with CMSIS-DAP SWD idle high lines and released reset";
+const STM32L431_BOOT_UART_SWD_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_stm32l431_boot_uart_swd_observation/project.yaml";
+const STM32L431_BOOT_UART_SWD_SCOPE_EXAMPLE_NAME: &str = "good_stm32l431_boot_uart_swd_observation";
+const STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd",
+    "v_nrst",
+    "v_boot0",
+    "v_pa9_usart1_tx",
+    "v_pa10_usart1_rx",
+    "v_pa13_swdio",
+    "v_pa14_swclk",
+];
+const STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V STM32L431 with NRST released, BOOT0 low, USART1 idle high, and SWD idle lines";
 const ESP32_S3_WROOM_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_esp32_s3_wroom_boot_usb_observation/project.yaml";
 const ESP32_S3_WROOM_SCOPE_EXAMPLE_NAME: &str = "good_esp32_s3_wroom_boot_usb_observation";
@@ -481,6 +495,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: CMSIS_DAP_SWD_SCOPE_EXPECTED_TRACES,
         expected_frequency: CMSIS_DAP_SWD_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UPROBE"),
+    },
+    GuiProjectExample {
+        id: "stm32l431_boot_uart_swd_scope",
+        category: "MCU",
+        open_label: "Open STM32L431 Boot/UART/SWD Example",
+        run_label: "Open STM32L431 + Run Scopes",
+        workflow_title: "STM32L431 Boot/UART/SWD Workflow",
+        summary: "Source-backed STM32L431 rail, reset, BOOT0, USART1, and SWD line-state observation.",
+        project_path: STM32L431_BOOT_UART_SWD_SCOPE_EXAMPLE_PROJECT,
+        project_name: STM32L431_BOOT_UART_SWD_SCOPE_EXAMPLE_NAME,
+        expected_traces: STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_TRACES,
+        expected_frequency: STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UMCU"),
     },
     GuiProjectExample {
         id: "esp32_s3_wroom_boot_usb_scope",
