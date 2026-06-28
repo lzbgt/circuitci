@@ -1,9 +1,9 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMeasurement, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage,
+    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedStackupLayer, AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -93,6 +93,16 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(feed_path) = &field.rf_antenna_feed_path {
         return serde_yaml_ng::to_value(rf_antenna_feed_path_mapping(feed_path)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
+    if let Some(network) = &field.rf_antenna_matching_network {
+        return serde_yaml_ng::to_value(rf_antenna_matching_network_mapping(network)).with_context(
             || {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -463,6 +473,61 @@ fn rf_antenna_feed_path_mapping(feed_path: &AppliedRfAntennaFeedPath) -> BTreeMa
         Value::String(feed_path.source.clone()),
     );
     mapping
+}
+
+fn rf_antenna_matching_network_mapping(
+    network: &AppliedRfAntennaMatchingNetwork,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(network.name.clone()));
+    mapping.insert(
+        "antenna_net".to_string(),
+        Value::String(network.antenna_net.clone()),
+    );
+    mapping.insert(
+        "topology".to_string(),
+        Value::String(network.topology.clone()),
+    );
+    if let Some(reference_net) = &network.reference_net {
+        mapping.insert(
+            "reference_net".to_string(),
+            Value::String(reference_net.clone()),
+        );
+    }
+    mapping.insert("source".to_string(), Value::String(network.source.clone()));
+    mapping.insert(
+        "elements".to_string(),
+        Value::Sequence(
+            network
+                .elements
+                .iter()
+                .map(rf_antenna_matching_element_value)
+                .collect::<Vec<_>>(),
+        ),
+    );
+    mapping
+}
+
+fn rf_antenna_matching_element_value(element: &AppliedRfAntennaMatchingElement) -> Value {
+    let mut mapping = BTreeMap::new();
+    mapping.insert(
+        "component".to_string(),
+        Value::String(element.component.clone()),
+    );
+    mapping.insert("role".to_string(), Value::String(element.role.clone()));
+    if let Some(value) = &element.input_net {
+        mapping.insert("input_net".to_string(), Value::String(value.clone()));
+    }
+    if let Some(value) = &element.output_net {
+        mapping.insert("output_net".to_string(), Value::String(value.clone()));
+    }
+    if let Some(value) = &element.signal_net {
+        mapping.insert("signal_net".to_string(), Value::String(value.clone()));
+    }
+    if let Some(value) = &element.reference_net {
+        mapping.insert("reference_net".to_string(), Value::String(value.clone()));
+    }
+    serde_yaml_ng::to_value(mapping).unwrap_or(Value::Null)
 }
 
 fn rf_antenna_measurement_mapping(

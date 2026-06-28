@@ -27,6 +27,7 @@ pub(super) struct AppliedField {
     pub(super) stackup_layer: Option<AppliedStackupLayer>,
     pub(super) rf_antenna_keepout: Option<AppliedRfAntennaKeepout>,
     pub(super) rf_antenna_feed_path: Option<AppliedRfAntennaFeedPath>,
+    pub(super) rf_antenna_matching_network: Option<AppliedRfAntennaMatchingNetwork>,
     pub(super) rf_antenna_measurement: Option<AppliedRfAntennaMeasurement>,
 }
 
@@ -46,6 +47,7 @@ impl AppliedField {
             stackup_layer: None,
             rf_antenna_keepout: None,
             rf_antenna_feed_path: None,
+            rf_antenna_matching_network: None,
             rf_antenna_measurement: None,
         }
     }
@@ -173,6 +175,26 @@ pub(super) struct AppliedRfAntennaFeedPath {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaMatchingNetwork {
+    pub(super) name: String,
+    antenna_net: String,
+    topology: String,
+    source: String,
+    reference_net: Option<String>,
+    elements: Vec<AppliedRfAntennaMatchingElement>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaMatchingElement {
+    component: String,
+    role: String,
+    input_net: Option<String>,
+    output_net: Option<String>,
+    signal_net: Option<String>,
+    reference_net: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AppliedRfAntennaMeasurement {
     pub(super) name: String,
     antenna_net: String,
@@ -202,6 +224,7 @@ pub(super) enum ManufacturingField {
     StackupLayer,
     RfAntennaKeepout,
     RfAntennaFeedPath,
+    RfAntennaMatchingNetwork,
     RfAntennaMeasurement,
     Source,
 }
@@ -226,6 +249,7 @@ impl ManufacturingField {
             Self::StackupLayer => "layout.stackup.layers[]",
             Self::RfAntennaKeepout => "layout.constraints.rf_antenna.keepouts[]",
             Self::RfAntennaFeedPath => "layout.constraints.rf_antenna.feed_paths[]",
+            Self::RfAntennaMatchingNetwork => "layout.constraints.rf_antenna.matching_networks[]",
             Self::RfAntennaMeasurement => "layout.constraints.rf_antenna.measurements[]",
             Self::Source => "source",
         }
@@ -263,6 +287,7 @@ impl ManufacturingField {
                 | Self::StackupLayer
                 | Self::RfAntennaKeepout
                 | Self::RfAntennaFeedPath
+                | Self::RfAntennaMatchingNetwork
                 | Self::RfAntennaMeasurement
         )
     }
@@ -400,6 +425,10 @@ fn applied_field(
         applied.rf_antenna_feed_path = Some(applied_rf_antenna_feed_path(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::RfAntennaMatchingNetwork {
+        applied.rf_antenna_matching_network = Some(applied_rf_antenna_matching_network(row, path)?);
+        return Ok(applied);
+    }
     if field == ManufacturingField::RfAntennaMeasurement {
         applied.rf_antenna_measurement = Some(applied_rf_antenna_measurement(row, path)?);
         return Ok(applied);
@@ -482,6 +511,13 @@ fn applied_rf_antenna_feed_path(
     path: &Path,
 ) -> Result<AppliedRfAntennaFeedPath> {
     families::applied_rf_antenna_feed_path(row, path)
+}
+
+fn applied_rf_antenna_matching_network(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaMatchingNetwork> {
+    families::applied_rf_antenna_matching_network(row, path)
 }
 
 fn applied_rf_antenna_measurement(
@@ -968,6 +1004,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut rf_antenna_matching_network_names = BTreeSet::new();
+    for network in fields
+        .iter()
+        .filter_map(|field| field.rf_antenna_matching_network.as_ref())
+    {
+        if !rf_antenna_matching_network_names.insert(network.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats rf_antenna_matching_network row name {}.",
+                network.name
+            );
+        }
+    }
     let mut rf_antenna_measurement_names = BTreeSet::new();
     for measurement in fields
         .iter()
@@ -1073,6 +1121,11 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         "rfantennafeedpath" | "antennafeedpath" | "rffeedpath" => {
             Some(ManufacturingField::RfAntennaFeedPath)
         }
+        "rfantennamatchingnetwork"
+        | "antennamatchingnetwork"
+        | "rfmatchingnetwork"
+        | "rfantennamatchingtopology"
+        | "antennamatchingtopology" => Some(ManufacturingField::RfAntennaMatchingNetwork),
         "rfantennameasurement"
         | "antennas11"
         | "antennareturnloss"

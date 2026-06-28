@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.9.0".to_string(),
+        schema_version: "0.10.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -295,6 +295,22 @@ fn apply_metadata(
                 &feed_path.name,
                 value,
                 "layout.constraints.rf_antenna.feed_paths",
+            )?;
+        } else if field.field == ManufacturingField::RfAntennaMatchingNetwork {
+            let network = field
+                .rf_antenna_matching_network
+                .as_ref()
+                .context("rf_antenna_matching_network field must have matching network value")?;
+            let value = normalized_yaml_value(field)?;
+            let layout = ensure_mapping_field_mut(board, "layout")?;
+            let constraints = ensure_mapping_field_mut(layout, "constraints")?;
+            let rf_antenna = ensure_mapping_field_mut(constraints, "rf_antenna")?;
+            let matching_networks = ensure_sequence_field_mut(rf_antenna, "matching_networks")?;
+            upsert_named_sequence_value(
+                matching_networks,
+                &network.name,
+                value,
+                "layout.constraints.rf_antenna.matching_networks",
             )?;
         } else if field.field == ManufacturingField::RfAntennaMeasurement {
             let measurement = field

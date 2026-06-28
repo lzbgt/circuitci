@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.9.0" },
+    "schema_version": { "const": "0.10.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -99,6 +99,7 @@
             "layout.stackup.layers[]",
             "layout.constraints.rf_antenna.keepouts[]",
             "layout.constraints.rf_antenna.feed_paths[]",
+            "layout.constraints.rf_antenna.matching_networks[]",
             "layout.constraints.rf_antenna.measurements[]",
             "source"
           ]
@@ -382,6 +383,47 @@
                   "minimum": 0
                 },
                 "source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "antenna_net",
+                "topology",
+                "source",
+                "elements"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "antenna_net": { "type": "string", "minLength": 1 },
+                "topology": {
+                  "type": "string",
+                  "enum": ["series", "l", "pi", "t", "custom"]
+                },
+                "reference_net": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "elements": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["component", "role"],
+                    "properties": {
+                      "component": { "type": "string", "minLength": 1 },
+                      "role": {
+                        "type": "string",
+                        "enum": ["series", "shunt"]
+                      },
+                      "input_net": { "type": "string", "minLength": 1 },
+                      "output_net": { "type": "string", "minLength": 1 },
+                      "signal_net": { "type": "string", "minLength": 1 },
+                      "reference_net": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  }
+                }
               },
               "additionalProperties": false
             },

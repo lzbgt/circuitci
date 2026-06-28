@@ -228,10 +228,10 @@ Repeated
 `field=stackup_layer` rows create or replace reviewed
 `board.layout.stackup.layers[]` entries so stackup evidence can travel with
 fabrication/order metadata without hand-authored YAML. Repeated
-`field=rf_antenna_keepout`, `field=rf_antenna_feed_path`, and
-`field=rf_antenna_measurement` rows create or replace reviewed RF antenna
-layout/measurement constraints under
-`board.layout.constraints.rf_antenna`:
+`field=rf_antenna_keepout`, `field=rf_antenna_feed_path`,
+`field=rf_antenna_matching_network`, and `field=rf_antenna_measurement` rows
+create or replace reviewed RF antenna layout/topology/measurement constraints
+under `board.layout.constraints.rf_antenna`:
 
 ```bash
 circuitci import-manufacturing-metadata \

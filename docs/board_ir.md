@@ -355,11 +355,14 @@ points in board millimeters. Repeated `field=rf_antenna_feed_path` rows use
 `value` as `max_feed_route_length_mm` and require `name`, `antenna_net`,
 `feed_component`, `feed_pin`, `matching_components`, and
 `max_matching_component_distance_mm`. Repeated
-`field=rf_antenna_measurement` rows use `value` as positive `return_loss_db`
-in `dB`, require `name`, `antenna_net`, and `frequency_mhz`, and may include
-`measurement_method`. RF rows create or replace entries under
-`board.layout.constraints.rf_antenna` by name. Duplicate CSV targets fail
-closed to avoid ambiguous validation inputs.
+`field=rf_antenna_matching_network` rows use `value` as reviewed topology
+(`series`, `l`, `pi`, `t`, or `custom`), require `name`, `antenna_net`, and
+reviewed `elements` such as `series:L1:RFOUT:ANT;shunt:C1:ANT`, and may
+include `reference_net`. Repeated `field=rf_antenna_measurement` rows use
+`value` as positive `return_loss_db` in `dB`, require `name`, `antenna_net`,
+and `frequency_mhz`, and may include `measurement_method`. RF rows create or
+replace entries under `board.layout.constraints.rf_antenna` by name. Duplicate
+CSV targets fail closed to avoid ambiguous validation inputs.
 
 ```bash
 circuitci import-manufacturing-metadata \

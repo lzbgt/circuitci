@@ -1,7 +1,8 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
-    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMeasurement,
-    AppliedStackupLayer, AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
     optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
@@ -537,6 +538,44 @@ pub(super) fn applied_rf_antenna_feed_path(
     })
 }
 
+pub(super) fn applied_rf_antenna_matching_network(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaMatchingNetwork> {
+    let matching_source = optional_raw_column(row, "matching_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(matching_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} rf_antenna_matching_network requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedRfAntennaMatchingNetwork {
+        name: required_raw_column_for(row, path, "name", "rf_antenna_matching_network")?,
+        antenna_net: required_raw_column_for(
+            row,
+            path,
+            "antenna_net",
+            "rf_antenna_matching_network",
+        )?,
+        topology: parse_rf_matching_topology(row.value.trim(), path, row)?,
+        source,
+        reference_net: optional_raw_column(row, "reference_net"),
+        elements: parse_rf_matching_elements(
+            &required_raw_column_for(row, path, "elements", "rf_antenna_matching_network")?,
+            path,
+            row,
+        )?,
+    })
+}
+
 pub(super) fn applied_rf_antenna_measurement(
     row: &MetadataCsvRow,
     path: &Path,
@@ -570,6 +609,85 @@ pub(super) fn applied_rf_antenna_measurement(
         measurement_method: optional_raw_column(row, "measurement_method"),
         notes: row.notes.clone(),
     })
+}
+
+fn parse_rf_matching_topology(raw: &str, path: &Path, row: &MetadataCsvRow) -> Result<String> {
+    match normalize_name(raw).as_str() {
+        "series" => Ok("series".to_string()),
+        "l" | "lnetwork" | "lmatch" => Ok("l".to_string()),
+        "pi" | "pinetwork" | "pimatch" => Ok("pi".to_string()),
+        "t" | "tnetwork" | "tmatch" => Ok("t".to_string()),
+        "custom" => Ok("custom".to_string()),
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} rf_antenna_matching_network value must be series, l, pi, t, or custom topology.",
+            path.display(),
+            row.row_number
+        ),
+    }
+}
+
+fn parse_rf_matching_elements(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+) -> Result<Vec<AppliedRfAntennaMatchingElement>> {
+    let elements = raw
+        .split([';', '|'])
+        .map(str::trim)
+        .filter(|element| !element.is_empty())
+        .map(|element| parse_rf_matching_element(element, path, row))
+        .collect::<Result<Vec<_>>>()?;
+    if elements.is_empty() {
+        bail!(
+            "Manufacturing metadata CSV {} row {} rf_antenna_matching_network elements must contain at least one element.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(elements)
+}
+
+fn parse_rf_matching_element(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+) -> Result<AppliedRfAntennaMatchingElement> {
+    let parts = raw
+        .split([':', '>'])
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    match parts.as_slice() {
+        ["series", component, input_net, output_net] => Ok(AppliedRfAntennaMatchingElement {
+            component: (*component).to_string(),
+            role: "series".to_string(),
+            input_net: Some((*input_net).to_string()),
+            output_net: Some((*output_net).to_string()),
+            signal_net: None,
+            reference_net: None,
+        }),
+        ["shunt", component, signal_net] => Ok(AppliedRfAntennaMatchingElement {
+            component: (*component).to_string(),
+            role: "shunt".to_string(),
+            input_net: None,
+            output_net: None,
+            signal_net: Some((*signal_net).to_string()),
+            reference_net: None,
+        }),
+        ["shunt", component, signal_net, reference_net] => Ok(AppliedRfAntennaMatchingElement {
+            component: (*component).to_string(),
+            role: "shunt".to_string(),
+            input_net: None,
+            output_net: None,
+            signal_net: Some((*signal_net).to_string()),
+            reference_net: Some((*reference_net).to_string()),
+        }),
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} rf_antenna_matching_network element {raw} must be series:COMPONENT:INPUT_NET:OUTPUT_NET or shunt:COMPONENT:SIGNAL_NET[:REFERENCE_NET].",
+            path.display(),
+            row.row_number
+        ),
+    }
 }
 
 fn parse_positive_db(

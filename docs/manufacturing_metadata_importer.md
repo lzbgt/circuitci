@@ -21,9 +21,10 @@ Input CSV columns:
   operating environment evidence. Repeated `thermal_limit` rows are supported
   for reviewed measured/package temperature limits. Repeated `stackup_layer`
   rows are supported for reviewed stackup layer evidence. Repeated
-  `rf_antenna_keepout`, `rf_antenna_feed_path`, and
-  `rf_antenna_measurement` rows are supported for reviewed RF antenna layout
-  and measured return-loss evidence.
+  `rf_antenna_keepout`, `rf_antenna_feed_path`,
+  `rf_antenna_matching_network`, and `rf_antenna_measurement` rows are
+  supported for reviewed RF antenna layout/topology and measured return-loss
+  evidence.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
@@ -38,6 +39,8 @@ Input CSV columns:
   `stackup_layer` rows use `value` as the layer kind and ignore `unit`.
   `rf_antenna_keepout` and `rf_antenna_feed_path` rows use `mm` for the
   distance value when a unit is supplied.
+  `rf_antenna_matching_network` rows use `value` as the reviewed topology and
+  ignore `unit`.
   `rf_antenna_measurement` rows use `dB`/`decibel` for the measured
   return-loss magnitude.
 - `source`: optional row-level provenance kept in the manifest.
@@ -204,6 +207,23 @@ require extra columns:
 - `max_matching_component_distance_mm`: reviewed non-negative placement
   distance limit.
 
+`rf_antenna_matching_network` rows use `value` as reviewed topology
+(`series`, `l`, `pi`, `t`, or `custom`) and require extra columns:
+
+- `name`: stable RF matching-network identifier.
+- `antenna_net`: Board IR antenna/feed net.
+- `elements`: semicolon- or pipe-separated reviewed topology elements. Series
+  elements use `series:COMPONENT:INPUT_NET:OUTPUT_NET`; shunt elements use
+  `shunt:COMPONENT:SIGNAL_NET` or
+  `shunt:COMPONENT:SIGNAL_NET:REFERENCE_NET`.
+
+Optional `rf_antenna_matching_network` columns:
+
+- `reference_net`: default reference net for shunt elements without an
+  element-local reference net.
+- `matching_source`: reviewed RF topology source when the ordinary `source`
+  column is not used.
+
 `rf_antenna_measurement` rows use `value` as positive `return_loss_db` and
 require extra columns:
 
@@ -218,11 +238,12 @@ Optional `rf_antenna_measurement` columns:
 RF rows create or replace entries under
 `board.layout.constraints.rf_antenna.keepouts[]`,
 `board.layout.constraints.rf_antenna.feed_paths[]`, and
+`board.layout.constraints.rf_antenna.matching_networks[]`, and
 `board.layout.constraints.rf_antenna.measurements[]` by `name`. Duplicate CSV
-names fail closed. These rows are reviewed RF layout/measurement evidence only;
-the importer does not infer antenna topology, RF roles, matching components,
-keepout geometry, acceptable return loss, or S-parameter sweep behavior from
-net names or designators.
+names fail closed. These rows are reviewed RF layout/topology/measurement
+evidence only; the importer does not infer antenna topology, RF roles,
+matching components, keepout geometry, acceptable return loss, or S-parameter
+sweep behavior from net names, component values, or designators.
 
 Example:
 
