@@ -39,6 +39,44 @@ fn suggest_scenarios_derives_adjacent_plane_return_path_template() {
     );
 }
 
+#[test]
+fn suggest_scenarios_derives_reference_plane_slot_crossing_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_reference_plane_slot_crossing/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_reference_plane_slot_crossing"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 1);
+
+    let slot_crossing = &suggested[0];
+    assert_eq!(slot_crossing["id"], "reference_plane_slot_crossing_sig");
+    assert_eq!(
+        slot_crossing["kind"],
+        "manufacturing_reference_plane_slot_crossing_sig"
+    );
+    assert_eq!(slot_crossing["runnable"], true);
+    assert_eq!(slot_crossing["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        slot_crossing["scenario"]["checks"][0],
+        "REFERENCE_PLANE_SLOT_CROSSING_VALID"
+    );
+    let route = &slot_crossing["scenario"]["parameters"]["routes"][0];
+    assert_eq!(route["net"], "SIG");
+    assert_eq!(route["reference_net"], "GND");
+    assert_eq!(route["reference_layer"], "In1.Cu");
+    assert_eq!(route["max_slot_crossings"], 0);
+    assert!(slot_crossing.get("required_inputs").is_none());
+    assert!(
+        slot_crossing["reason"]
+            .as_str()
+            .unwrap()
+            .contains("1 internal reference-plane gap")
+    );
+}
+
 fn run_suggest_scenarios(project: &str) -> Value {
     let dir = tempfile::tempdir().unwrap();
     let output = dir.path().join("suggestions.yaml");

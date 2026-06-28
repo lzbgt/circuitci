@@ -407,6 +407,14 @@ The command is conservative:
   `max_unreferenced_length_mm: 0.0`. This is a strict coverage screen from
   imported evidence; it does not infer reference planes from names or invent an
   allowed unreferenced length.
+- When a routed digital/analog net has finite `board.layout.routes` segments,
+  explicit `board.layout.stackup.layers` evidence, exactly one adjacent
+  declared ground plane, and explicit `board.layout.zones.<reference_net>`
+  islands that cover the route centerline on both sides of an internal gap, it
+  emits a runnable `REFERENCE_PLANE_SLOT_CROSSING_VALID` template with
+  `max_slot_crossings: 0`. The suggestion is only generated when the imported
+  plane-zone evidence exposes at least one internal split-plane gap; it does
+  not infer slots from net names or from absent copper evidence.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped
