@@ -17,6 +17,7 @@ use super::geometry::{
     point_inside_polygon, polygon_to_polygon_clearance_mm, validate_copper_feature_geometry,
     validate_copper_region_geometry, validate_copper_segment_geometry,
 };
+use std::collections::BTreeSet;
 
 pub(in crate::validation) fn validate_rf_antenna_keepout(
     bound: &BoundBoard<'_>,
@@ -97,10 +98,36 @@ pub(in crate::validation) fn validate_rf_antenna_measured_performance(
     let Some(frequency_band) = optional_frequency_band(scenario, findings) else {
         return;
     };
+    let Some(min_measurement_count) = optional_positive_usize_parameter(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "min_measurement_count",
+    ) else {
+        return;
+    };
+    let Some(max_frequency_step_mhz) = optional_positive_numeric_parameter(
+        scenario,
+        findings,
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        "max_frequency_step_mhz",
+    ) else {
+        return;
+    };
+    let mut measurements = Vec::new();
     for name in names {
         let Some(measurement) = rf_measurement(bound, scenario, findings, &name) else {
             return;
         };
+        measurements.push(measurement);
+    }
+    if (min_measurement_count.is_some() || max_frequency_step_mhz.is_some())
+        && let Err(message) = validate_rf_measurement_sweep_metadata(&measurements)
+    {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    for measurement in &measurements {
         validate_rf_measurement(
             bound,
             scenario,
@@ -110,6 +137,14 @@ pub(in crate::validation) fn validate_rf_antenna_measured_performance(
             frequency_band,
         );
     }
+    validate_rf_measurement_sweep(
+        scenario,
+        findings,
+        &measurements,
+        frequency_band,
+        min_measurement_count,
+        max_frequency_step_mhz,
+    );
 }
 
 fn keepout_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<String>> {
@@ -599,6 +634,118 @@ fn validate_rf_measurement(
     }
 }
 
+fn validate_rf_measurement_sweep_metadata(
+    measurements: &[&RfAntennaMeasurement],
+) -> Result<(), String> {
+    let antenna_nets = measurements
+        .iter()
+        .map(|measurement| measurement.antenna_net.as_str())
+        .collect::<BTreeSet<_>>();
+    if antenna_nets.len() > 1 {
+        return Err(
+            "RF_ANTENNA_MEASURED_PERFORMANCE_VALID sweep coverage parameters require all selected rf_measurements to use the same antenna_net."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn validate_rf_measurement_sweep(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    measurements: &[&RfAntennaMeasurement],
+    frequency_band: FrequencyBand,
+    min_measurement_count: Option<usize>,
+    max_frequency_step_mhz: Option<f64>,
+) {
+    if min_measurement_count.is_none() && max_frequency_step_mhz.is_none() {
+        return;
+    }
+    let in_band = rf_measurement_frequencies_in_band(measurements, frequency_band);
+    if let Some(min_count) = min_measurement_count
+        && in_band.len() < min_count
+    {
+        findings.push(rf_measurement_sweep_count_finding(
+            scenario,
+            measurements,
+            frequency_band,
+            in_band.len(),
+            min_count,
+        ));
+    }
+    if let Some(max_step_mhz) = max_frequency_step_mhz
+        && let Some((measured_gap_mhz, gap_start_mhz, gap_end_mhz)) =
+            max_rf_measurement_frequency_gap(&in_band, frequency_band)
+        && measured_gap_mhz > max_step_mhz + f64::EPSILON
+    {
+        findings.push(rf_measurement_sweep_gap_finding(
+            scenario,
+            measurements,
+            frequency_band,
+            measured_gap_mhz,
+            gap_start_mhz,
+            gap_end_mhz,
+            max_step_mhz,
+        ));
+    }
+}
+
+fn rf_measurement_frequencies_in_band(
+    measurements: &[&RfAntennaMeasurement],
+    frequency_band: FrequencyBand,
+) -> Vec<f64> {
+    let mut frequencies = measurements
+        .iter()
+        .map(|measurement| measurement.frequency_mhz)
+        .filter(|frequency_mhz| {
+            frequency_band
+                .min_mhz
+                .is_none_or(|min_mhz| *frequency_mhz >= min_mhz - f64::EPSILON)
+                && frequency_band
+                    .max_mhz
+                    .is_none_or(|max_mhz| *frequency_mhz <= max_mhz + f64::EPSILON)
+        })
+        .collect::<Vec<_>>();
+    frequencies.sort_by(f64::total_cmp);
+    frequencies.dedup_by(|left, right| (*left - *right).abs() <= f64::EPSILON);
+    frequencies
+}
+
+fn max_rf_measurement_frequency_gap(
+    in_band_frequencies: &[f64],
+    frequency_band: FrequencyBand,
+) -> Option<(f64, f64, f64)> {
+    if in_band_frequencies.is_empty() {
+        return match (frequency_band.min_mhz, frequency_band.max_mhz) {
+            (Some(min_mhz), Some(max_mhz)) => Some((max_mhz - min_mhz, min_mhz, max_mhz)),
+            _ => None,
+        };
+    }
+    let mut largest_gap = None::<(f64, f64, f64)>;
+    let mut update_gap = |start_mhz: f64, end_mhz: f64| {
+        let gap_mhz = end_mhz - start_mhz;
+        if gap_mhz.is_finite()
+            && gap_mhz >= 0.0
+            && largest_gap.is_none_or(|(largest_mhz, _, _)| gap_mhz > largest_mhz)
+        {
+            largest_gap = Some((gap_mhz, start_mhz, end_mhz));
+        }
+    };
+    if let Some(min_mhz) = frequency_band.min_mhz {
+        update_gap(min_mhz, in_band_frequencies[0]);
+    }
+    for window in in_band_frequencies.windows(2) {
+        update_gap(window[0], window[1]);
+    }
+    if let Some(max_mhz) = frequency_band.max_mhz {
+        update_gap(
+            *in_band_frequencies.last().expect("checked non-empty"),
+            max_mhz,
+        );
+    }
+    largest_gap
+}
+
 fn validate_keepout_metadata(
     bound: &BoundBoard<'_>,
     rule: &RfAntennaKeepoutRule,
@@ -968,6 +1115,42 @@ fn optional_positive_numeric_parameter(
             format!(
                 "{check_id} parameters.{parameter_name} must be finite and positive when provided."
             ),
+        );
+        return None;
+    }
+    Some(Some(value))
+}
+
+fn optional_positive_usize_parameter(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+    parameter_name: &str,
+) -> Option<Option<usize>> {
+    let Some(value) = scenario.parameters.get(parameter_name) else {
+        return Some(None);
+    };
+    let Some(value) = value.as_u64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{parameter_name} must be an integer when provided."),
+        );
+        return None;
+    };
+    let Ok(value) = usize::try_from(value) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{parameter_name} is too large for this platform."),
+        );
+        return None;
+    };
+    if value == 0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{check_id} parameters.{parameter_name} must be positive when provided."),
         );
         return None;
     }
@@ -1596,6 +1779,105 @@ fn rf_measurement_return_loss_finding(
         .limit
         .insert("min_return_loss_db".to_string(), json!(min_return_loss_db));
     insert_frequency_band_limits(&mut finding, frequency_band);
+    finding
+}
+
+fn rf_measurement_sweep_count_finding(
+    scenario: &Scenario,
+    measurements: &[&RfAntennaMeasurement],
+    frequency_band: FrequencyBand,
+    measured_count: usize,
+    min_count: usize,
+) -> Finding {
+    let mut finding = base_rf_measurement_sweep_finding(
+        scenario,
+        measurements,
+        format!(
+            "RF antenna measured-performance sweep has {measured_count} unique in-band point(s), below the reviewed minimum {min_count}."
+        ),
+    );
+    finding.measured.insert(
+        "unique_in_band_measurement_count".to_string(),
+        json!(measured_count),
+    );
+    finding
+        .limit
+        .insert("min_measurement_count".to_string(), json!(min_count));
+    insert_frequency_band_limits(&mut finding, frequency_band);
+    finding
+}
+
+fn rf_measurement_sweep_gap_finding(
+    scenario: &Scenario,
+    measurements: &[&RfAntennaMeasurement],
+    frequency_band: FrequencyBand,
+    measured_gap_mhz: f64,
+    gap_start_mhz: f64,
+    gap_end_mhz: f64,
+    max_step_mhz: f64,
+) -> Finding {
+    let mut finding = base_rf_measurement_sweep_finding(
+        scenario,
+        measurements,
+        format!(
+            "RF antenna measured-performance sweep has a {:.3} MHz frequency gap, above the reviewed {:.3} MHz maximum step.",
+            measured_gap_mhz, max_step_mhz
+        ),
+    );
+    finding
+        .measured
+        .insert("max_frequency_gap_mhz".to_string(), json!(measured_gap_mhz));
+    finding
+        .measured
+        .insert("frequency_gap_start_mhz".to_string(), json!(gap_start_mhz));
+    finding
+        .measured
+        .insert("frequency_gap_end_mhz".to_string(), json!(gap_end_mhz));
+    finding
+        .limit
+        .insert("max_frequency_step_mhz".to_string(), json!(max_step_mhz));
+    insert_frequency_band_limits(&mut finding, frequency_band);
+    finding
+}
+
+fn base_rf_measurement_sweep_finding(
+    scenario: &Scenario,
+    measurements: &[&RfAntennaMeasurement],
+    message: String,
+) -> Finding {
+    let mut finding = Finding::critical(
+        RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+        &scenario.name,
+        message,
+    );
+    finding.measured.insert(
+        "measurement_names".to_string(),
+        json!(
+            measurements
+                .iter()
+                .map(|measurement| measurement.name.as_str())
+                .collect::<Vec<_>>()
+        ),
+    );
+    finding.measured.insert(
+        "measurement_frequencies_mhz".to_string(),
+        json!(
+            measurements
+                .iter()
+                .map(|measurement| measurement.frequency_mhz)
+                .collect::<Vec<_>>()
+        ),
+    );
+    if let Some(first) = measurements.first() {
+        finding
+            .measured
+            .insert("antenna_net".to_string(), json!(first.antenna_net));
+    }
+    finding.suggested_fixes = vec![
+        "Import additional reviewed VNA sweep points inside the operating band or relax the reviewed sweep coverage policy.".to_string(),
+        "Re-run the RF measurement with the reviewed antenna fixture, calibration, and enclosure state.".to_string(),
+        "Use RF simulation or chamber/VNA measurements for final antenna qualification; this check only screens explicit measured S-parameter evidence.".to_string(),
+    ];
     finding
 }
 

@@ -39,7 +39,8 @@ inductance, stitching density, or electromagnetic return current.
 layout and measurement metadata validation, same-layer copper comparison,
 antenna-net exclusion, feed-path route length/proximity checks, reviewed
 matching topology role-count checks, measured return-loss/frequency-band
-checks, fail-closed missing evidence, and stable report construction. It
+checks, sampled sweep point-count/frequency-step checks, fail-closed missing
+evidence, and stable report construction. It
 intentionally does not model RF matching, radiation, or field behavior.
 
 `src/validation/manufacturing/thermal_copper.rs` owns

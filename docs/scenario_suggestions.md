@@ -463,10 +463,13 @@ The command is conservative:
   when a reviewed
   `board.layout.constraints.rf_antenna.performance_limits[]` row has the same
   antenna net and an optional frequency band containing the measurement
-  frequency; otherwise it remains non-runnable and requires an explicit
-  reviewed `min_return_loss_db` and optional frequency band. The suggestion
-  does not infer acceptable return loss from the measured value, antenna net
-  name, or RF component designators.
+  frequency. When a reviewed performance limit also declares
+  `min_measurement_count` or `max_frequency_step_mhz`, matching same-net
+  measurements are grouped into one runnable sweep-coverage template. Otherwise
+  it remains non-runnable and requires an explicit reviewed
+  `min_return_loss_db` and optional frequency band. The suggestion does not
+  infer acceptable return loss from the measured value, antenna net name, or RF
+  component designators.
 - When `board.manufacturing.thermal_copper[]` contains reviewed component
   power-loss/minimum-area metadata and imported copper feature, segment, or
   region evidence is explicitly tied to the component or reviewed nets/layers,

@@ -249,6 +249,41 @@ fn rf_antenna_measured_performance_fails_closed_without_measurement_evidence() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn rf_antenna_measured_performance_passes_with_bounded_sweep_points() {
+    let (_dir, project_path) =
+        write_rf_sweep_project(&[(2400.0, 12.0), (2450.0, 13.0), (2500.0, 11.5)]);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn rf_antenna_measured_performance_fails_when_sweep_gap_is_too_large() {
+    let (_dir, project_path) =
+        write_rf_sweep_project(&[(2400.0, 12.0), (2475.0, 13.0), (2500.0, 11.5)]);
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "RF_ANTENNA_MEASURED_PERFORMANCE_VALID");
+    assert_eq!(
+        failure["measured"]["measurement_names"],
+        serde_json::json!([
+            "chip_antenna_s11_2400",
+            "chip_antenna_s11_2475",
+            "chip_antenna_s11_2500"
+        ])
+    );
+    assert_eq!(failure["measured"]["max_frequency_gap_mhz"], 75.0);
+    assert_eq!(failure["measured"]["frequency_gap_start_mhz"], 2400.0);
+    assert_eq!(failure["measured"]["frequency_gap_end_mhz"], 2475.0);
+    assert_eq!(failure["limit"]["max_frequency_step_mhz"], 50.0);
+    assert_report_schema_valid(&report);
+}
+
 fn write_rf_keepout_project(
     non_antenna_x_mm: f64,
     include_non_antenna_copper: bool,
@@ -373,6 +408,67 @@ board:
       rf_measurements:
         - name: chip_antenna_s11_2440
 "#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
+
+fn write_rf_sweep_project(points: &[(f64, f64)]) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let measurements = points
+        .iter()
+        .map(|(frequency_mhz, return_loss_db)| {
+            format!(
+                r#"          - name: chip_antenna_s11_{frequency_mhz:.0}
+            antenna_net: ANT
+            frequency_mhz: {frequency_mhz}
+            return_loss_db: {return_loss_db}
+            measurement_method: vna_s11
+            source: vna_sweep_rev_b
+"#
+            )
+        })
+        .collect::<String>();
+    let parameters = points
+        .iter()
+        .map(|(frequency_mhz, _)| {
+            format!(
+                r#"        - name: chip_antenna_s11_{frequency_mhz:.0}
+"#
+            )
+        })
+        .collect::<String>();
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: rf_antenna_sweep_fixture
+  version: 1
+libraries: []
+board:
+  components: {{}}
+  nets:
+    ANT:
+      kind: digital_or_analog
+  layout:
+    constraints:
+      rf_antenna:
+        measurements:
+{measurements}scenarios:
+  - name: rf_antenna_measured_performance_sweep
+    type: manufacturing
+    checks:
+      - RF_ANTENNA_MEASURED_PERFORMANCE_VALID
+    parameters:
+      min_return_loss_db: 10.0
+      frequency_min_mhz: 2400.0
+      frequency_max_mhz: 2500.0
+      min_measurement_count: 3
+      max_frequency_step_mhz: 50.0
+      rf_measurements:
+{parameters}"#
         ),
     )
     .unwrap();

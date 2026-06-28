@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.11.0" },
+    "schema_version": { "const": "0.12.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -408,6 +408,14 @@
                   "exclusiveMinimum": 0
                 },
                 "frequency_max_mhz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "min_measurement_count": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_frequency_step_mhz": {
                   "type": "number",
                   "exclusiveMinimum": 0
                 },

@@ -600,6 +600,18 @@ fn rf_antenna_performance_limit_mapping(
             serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
         );
     }
+    if let Some(value) = limit.min_measurement_count {
+        mapping.insert(
+            "min_measurement_count".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+    if let Some(value) = limit.max_frequency_step_mhz {
+        mapping.insert(
+            "max_frequency_step_mhz".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
     if let Some(value) = &limit.notes {
         mapping.insert("notes".to_string(), Value::String(value.clone()));
     }

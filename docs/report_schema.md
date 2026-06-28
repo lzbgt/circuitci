@@ -642,12 +642,19 @@ limit keys include `required_topology`.
 
 `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed RF measurement rows against explicit
-return-loss and optional frequency-band limits. Stable measured keys include
+return-loss, optional frequency-band, and optional sampled sweep-coverage
+limits. Stable single-point measured keys include
 `measurement_name`, `measurement_source`, `antenna_net`, `frequency_mhz`,
 `return_loss_db`, `frequency_in_band`, and optional `measurement_method`.
+Sweep-coverage findings report stable measured keys `measurement_names`,
+`measurement_frequencies_mhz`, `unique_in_band_measurement_count`,
+`max_frequency_gap_mhz`, `frequency_gap_start_mhz`, and
+`frequency_gap_end_mhz` as applicable.
 Return-loss findings report stable limit key `min_return_loss_db`. Frequency
 band findings report stable limit keys `frequency_min_mhz` and/or
-`frequency_max_mhz` when those limits are provided.
+`frequency_max_mhz` when those limits are provided. Sweep-coverage findings
+report stable limit keys `min_measurement_count` and
+`max_frequency_step_mhz`.
 
 `THERMAL_COPPER_AREA_VALID` reports are emitted by `manufacturing` scenarios
 that compare reviewed component thermal-copper area rules against explicit

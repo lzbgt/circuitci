@@ -215,6 +215,8 @@ pub(super) struct AppliedRfAntennaPerformanceLimit {
     source: String,
     frequency_min_mhz: Option<f64>,
     frequency_max_mhz: Option<f64>,
+    min_measurement_count: Option<usize>,
+    max_frequency_step_mhz: Option<f64>,
     notes: Option<String>,
 }
 

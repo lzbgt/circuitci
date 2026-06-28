@@ -246,6 +246,12 @@ Optional `rf_antenna_performance_limit` columns:
 
 - `frequency_min_mhz`: positive lower edge of the reviewed operating band.
 - `frequency_max_mhz`: positive upper edge of the reviewed operating band.
+- `min_measurement_count`: positive minimum number of unique in-band
+  measurement frequencies required when treating the selected rows as a
+  reviewed S-parameter sweep.
+- `max_frequency_step_mhz`: positive maximum allowed frequency gap between
+  adjacent selected sweep points, including reviewed frequency-band edges when
+  present.
 - `limit_source`: reviewed limit source when the ordinary `source` column is
   not used.
 

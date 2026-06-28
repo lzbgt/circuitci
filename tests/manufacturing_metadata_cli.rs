@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.11.0");
+    assert_eq!(manifest["schema_version"], "0.12.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -568,6 +568,8 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
             "frequency_max_mhz",
             "frequency_mhz",
             "measurement_method",
+            "min_measurement_count",
+            "max_frequency_step_mhz",
         ],
         [
             "rf_antenna_keepout",
@@ -579,6 +581,8 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
             "ANT",
             "F.Cu",
             "0:0;10:0;10:10;0:10",
+            "",
+            "",
             "",
             "",
             "",
@@ -610,6 +614,8 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
             "",
             "",
             "",
+            "",
+            "",
         ],
         [
             "rf_antenna_matching_network",
@@ -631,14 +637,16 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
             "",
             "",
             "",
+            "",
+            "",
         ],
         [
             "rf_antenna_measurement",
-            "14.0",
+            "12.0",
             "dB",
             "vna_sweep_rev_a",
-            "reviewed S11 point",
-            "chip_antenna_s11_2440",
+            "reviewed S11 sweep point",
+            "chip_antenna_s11_2400",
             "ANT",
             "",
             "",
@@ -650,8 +658,56 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
             "",
             "",
             "",
-            "2440.0",
+            "2400.0",
             "vna_s11",
+            "",
+            "",
+        ],
+        [
+            "rf_antenna_measurement",
+            "14.0",
+            "dB",
+            "vna_sweep_rev_a",
+            "reviewed S11 sweep point",
+            "chip_antenna_s11_2450",
+            "ANT",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "2450.0",
+            "vna_s11",
+            "",
+            "",
+        ],
+        [
+            "rf_antenna_measurement",
+            "11.5",
+            "dB",
+            "vna_sweep_rev_a",
+            "reviewed S11 sweep point",
+            "chip_antenna_s11_2500",
+            "ANT",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "2500.0",
+            "vna_s11",
+            "",
+            "",
         ],
         [
             "rf_antenna_performance_limit",
@@ -673,6 +729,8 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
             "2500.0",
             "",
             "",
+            "3",
+            "50.0",
         ],
     ];
     std::fs::write(
@@ -703,7 +761,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
         "{}",
         String::from_utf8_lossy(&command_output.stderr)
     );
-    assert!(String::from_utf8_lossy(&command_output.stdout).contains("5 applied fields"));
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("7 applied fields"));
 
     let schema: serde_json::Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -744,13 +802,14 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     assert_eq!(elements[1]["role"], "shunt");
     assert_eq!(elements[1]["signal_net"], "RFOUT");
     let measurements = rf_antenna["measurements"].as_sequence().unwrap();
-    assert_eq!(measurements.len(), 1);
-    assert_eq!(measurements[0]["name"], "chip_antenna_s11_2440");
+    assert_eq!(measurements.len(), 3);
+    assert_eq!(measurements[0]["name"], "chip_antenna_s11_2400");
     assert_eq!(measurements[0]["antenna_net"], "ANT");
-    assert_eq!(measurements[0]["frequency_mhz"], 2440.0);
-    assert_eq!(measurements[0]["return_loss_db"], 14.0);
+    assert_eq!(measurements[0]["frequency_mhz"], 2400.0);
+    assert_eq!(measurements[0]["return_loss_db"], 12.0);
     assert_eq!(measurements[0]["measurement_method"], "vna_s11");
-    assert_eq!(measurements[0]["notes"], "reviewed S11 point");
+    assert_eq!(measurements[0]["notes"], "reviewed S11 sweep point");
+    assert_eq!(measurements[2]["name"], "chip_antenna_s11_2500");
     let performance_limits = rf_antenna["performance_limits"].as_sequence().unwrap();
     assert_eq!(performance_limits.len(), 1);
     assert_eq!(performance_limits[0]["name"], "chip_antenna_2g4_limit");
@@ -758,6 +817,8 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     assert_eq!(performance_limits[0]["min_return_loss_db"], 10.0);
     assert_eq!(performance_limits[0]["frequency_min_mhz"], 2400.0);
     assert_eq!(performance_limits[0]["frequency_max_mhz"], 2500.0);
+    assert_eq!(performance_limits[0]["min_measurement_count"], 3);
+    assert_eq!(performance_limits[0]["max_frequency_step_mhz"], 50.0);
 
     let manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
@@ -769,7 +830,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.11.0");
+    assert_eq!(manifest["schema_version"], "0.12.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.keepouts[]"
@@ -807,15 +868,23 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     );
     assert_eq!(
         manifest["rows"][3]["normalized_value"]["return_loss_db"],
-        14.0
+        12.0
     );
     assert_eq!(
-        manifest["rows"][4]["board_field"],
+        manifest["rows"][6]["board_field"],
         "layout.constraints.rf_antenna.performance_limits[]"
     );
     assert_eq!(
-        manifest["rows"][4]["normalized_value"]["min_return_loss_db"],
+        manifest["rows"][6]["normalized_value"]["min_return_loss_db"],
         10.0
+    );
+    assert_eq!(
+        manifest["rows"][6]["normalized_value"]["min_measurement_count"],
+        3
+    );
+    assert_eq!(
+        manifest["rows"][6]["normalized_value"]["max_frequency_step_mhz"],
+        50.0
     );
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
@@ -837,7 +906,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     );
     let measured = assert_runnable(
         &suggestions,
-        "rf_antenna_measured_performance_chip_antenna_s11_2440_chip_antenna_2g4_limit",
+        "rf_antenna_measured_performance_sweep_chip_antenna_2g4_limit",
     );
     assert_eq!(
         measured["scenario"]["parameters"]["min_return_loss_db"],
@@ -850,6 +919,21 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     assert_eq!(
         measured["scenario"]["parameters"]["frequency_max_mhz"],
         2500.0
+    );
+    assert_eq!(
+        measured["scenario"]["parameters"]["min_measurement_count"],
+        3
+    );
+    assert_eq!(
+        measured["scenario"]["parameters"]["max_frequency_step_mhz"],
+        50.0
+    );
+    assert_eq!(
+        measured["scenario"]["parameters"]["rf_measurements"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
     );
 }
 
@@ -933,7 +1017,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.11.0");
+    assert_eq!(manifest["schema_version"], "0.12.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -1101,7 +1185,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.11.0");
+    assert_eq!(manifest["schema_version"], "0.12.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
@@ -1241,7 +1325,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.11.0");
+    assert_eq!(manifest["schema_version"], "0.12.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_environments[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["ambient_temperature_C"],
@@ -1490,7 +1574,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.11.0");
+    assert_eq!(manifest["schema_version"], "0.12.0");
     assert_eq!(manifest["rows"][3]["board_field"], "thermal_limits[]");
     assert_eq!(
         manifest["rows"][3]["normalized_value"]["max_measured_temperature_C"],

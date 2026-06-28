@@ -1035,10 +1035,12 @@ sweep, solve impedance, or infer acceptable RF performance from net names.
 `board.layout.constraints.rf_antenna.performance_limits[]` stores reviewed RF
 performance policy for measured-return-loss checks. Each row names the antenna
 net, minimum acceptable return-loss magnitude in dB, source, optional frequency
-band in MHz, and optional notes. Scenario suggestions can pair a reviewed
-measurement point with a matching same-net limit whose optional frequency band
-contains the measurement frequency. Validators still consume explicit scenario
-parameters and do not infer acceptable RF performance from measurements.
+band in MHz, optional sweep coverage policy (`min_measurement_count` and
+`max_frequency_step_mhz`), and optional notes. Scenario suggestions can pair
+reviewed measurement points with a matching same-net limit whose optional
+frequency band contains the measurement frequencies. Validators still consume
+explicit scenario parameters and do not infer acceptable RF performance from
+measurements.
 
 These values must come from explicit antenna-module/layout guidance or a
 reviewed board RF rule. They are not inferred from net names, component

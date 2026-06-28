@@ -1364,8 +1364,12 @@ scenarios:
       min_return_loss_db: 10.0
       frequency_min_mhz: 2400.0
       frequency_max_mhz: 2500.0
+      min_measurement_count: 3
+      max_frequency_step_mhz: 50.0
       rf_measurements:
-        - name: chip_antenna_s11_2440
+        - name: chip_antenna_s11_2400
+        - name: chip_antenna_s11_2450
+        - name: chip_antenna_s11_2500
 ```
 
 RF antenna measured-performance algorithm:
@@ -1380,12 +1384,18 @@ RF antenna measured-performance algorithm:
    `frequency_mhz`, and finite positive `return_loss_db`.
 5. Fail when a measurement frequency is outside the reviewed band or when its
    return-loss magnitude is below `min_return_loss_db`.
-6. Fail closed when any selected row, limit, net, source, or numeric evidence is
+6. Optionally accept positive `min_measurement_count` and
+   `max_frequency_step_mhz`; when supplied, all selected rows must share the
+   same antenna net, the selected unique in-band frequency count must meet the
+   count, and the largest sampled frequency gap must not exceed the reviewed
+   step. Reviewed frequency-band edges are included in the gap check when
+   present.
+7. Fail closed when any selected row, limit, net, source, or numeric evidence is
    absent or malformed. Reviewed performance-limit metadata is suggestion input
    only; validators still use explicit scenario parameters.
 
 This is a bounded measured-evidence screen. It does not interpolate S-parameter
-sweeps, solve feed impedance, validate matching-network topology, model
+sweeps between sampled points, solve feed impedance, validate matching-network topology, model
 enclosure/cable effects, or replace RF simulation, chamber testing, or final
 antenna tuning.
 

@@ -635,6 +635,10 @@ pub struct RfAntennaPerformanceLimit {
     #[serde(default)]
     pub frequency_max_mhz: Option<f64>,
     #[serde(default)]
+    pub min_measurement_count: Option<usize>,
+    #[serde(default)]
+    pub max_frequency_step_mhz: Option<f64>,
+    #[serde(default)]
     pub notes: Option<String>,
 }
 

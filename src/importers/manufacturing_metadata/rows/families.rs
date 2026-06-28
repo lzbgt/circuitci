@@ -647,6 +647,10 @@ pub(super) fn applied_rf_antenna_performance_limit(
             row.row_number
         );
     }
+    let min_measurement_count = optional_raw_column(row, "min_measurement_count")
+        .as_deref()
+        .map(|value| parse_positive_usize(value, path, row, "min_measurement_count"))
+        .transpose()?;
     Ok(AppliedRfAntennaPerformanceLimit {
         name: required_raw_column_for(row, path, "name", "rf_antenna_performance_limit")?,
         antenna_net: required_raw_column_for(
@@ -659,6 +663,11 @@ pub(super) fn applied_rf_antenna_performance_limit(
         source,
         frequency_min_mhz,
         frequency_max_mhz,
+        min_measurement_count,
+        max_frequency_step_mhz: optional_raw_column(row, "max_frequency_step_mhz")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "max_frequency_step_mhz"))
+            .transpose()?,
         notes: row.notes.clone(),
     })
 }

@@ -1609,6 +1609,14 @@
                             "type": "number",
                             "exclusiveMinimum": 0
                           },
+                          "min_measurement_count": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "max_frequency_step_mhz": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
                           "notes": { "type": "string", "minLength": 1 }
                         },
                         "additionalProperties": false

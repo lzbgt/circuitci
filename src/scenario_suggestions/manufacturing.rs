@@ -1299,6 +1299,10 @@ fn rf_antenna_measured_performance_suggestions(
     project_name: &str,
 ) -> Vec<ScenarioSuggestion> {
     let mut suggestions = Vec::new();
+    suggestions.extend(rf_antenna_measured_performance_sweep_suggestions(
+        bound,
+        project_name,
+    ));
     for measurement in &bound
         .project
         .board
@@ -1320,7 +1324,10 @@ fn rf_antenna_measured_performance_suggestions(
             .rf_antenna
             .performance_limits
             .iter()
-            .filter(|limit| rf_antenna_performance_limit_matches(bound, measurement, limit))
+            .filter(|limit| {
+                !rf_antenna_performance_limit_has_sweep_policy(limit)
+                    && rf_antenna_performance_limit_matches(bound, measurement, limit)
+            })
             .collect::<Vec<_>>();
         if !matching_limits.is_empty() {
             for limit in matching_limits {
@@ -1364,6 +1371,21 @@ fn rf_antenna_measured_performance_suggestions(
             }
             continue;
         }
+        let matched_by_sweep_limit = bound
+            .project
+            .board
+            .layout
+            .constraints
+            .rf_antenna
+            .performance_limits
+            .iter()
+            .any(|limit| {
+                rf_antenna_performance_limit_has_sweep_policy(limit)
+                    && rf_antenna_performance_limit_matches(bound, measurement, limit)
+            });
+        if matched_by_sweep_limit {
+            continue;
+        }
         suggestions.push(manufacturing_suggestion(
             &format!(
                 "rf_antenna_measured_performance_{}",
@@ -1393,6 +1415,94 @@ fn rf_antenna_measured_performance_suggestions(
     suggestions
 }
 
+fn rf_antenna_measured_performance_sweep_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let measurements = &bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .measurements;
+    bound
+        .project
+        .board
+        .layout
+        .constraints
+        .rf_antenna
+        .performance_limits
+        .iter()
+        .filter(|limit| rf_antenna_performance_limit_has_sweep_policy(limit))
+        .filter(|limit| rf_antenna_performance_limit_has_evidence(bound, limit))
+        .filter_map(|limit| {
+            let mut matching_measurements = measurements
+                .iter()
+                .filter(|measurement| {
+                    rf_antenna_measurement_has_evidence(bound, measurement)
+                        && rf_antenna_performance_limit_matches(bound, measurement, limit)
+                })
+                .collect::<Vec<_>>();
+            matching_measurements
+                .sort_by(|left, right| left.frequency_mhz.total_cmp(&right.frequency_mhz));
+            if matching_measurements.is_empty()
+                || matching_measurements
+                    .iter()
+                    .any(|measurement| rf_antenna_measurement_check_declared(bound, &measurement.name))
+            {
+                return None;
+            }
+            let mut parameters = BTreeMap::from([
+                (
+                    "rf_measurements".to_string(),
+                    json!(
+                        matching_measurements
+                            .iter()
+                            .map(|measurement| json!({ "name": measurement.name }))
+                            .collect::<Vec<_>>()
+                    ),
+                ),
+                (
+                    "min_return_loss_db".to_string(),
+                    json!(limit.min_return_loss_db),
+                ),
+            ]);
+            if let Some(min_mhz) = limit.frequency_min_mhz {
+                parameters.insert("frequency_min_mhz".to_string(), json!(min_mhz));
+            }
+            if let Some(max_mhz) = limit.frequency_max_mhz {
+                parameters.insert("frequency_max_mhz".to_string(), json!(max_mhz));
+            }
+            if let Some(min_count) = limit.min_measurement_count {
+                parameters.insert("min_measurement_count".to_string(), json!(min_count));
+            }
+            if let Some(max_step_mhz) = limit.max_frequency_step_mhz {
+                parameters.insert("max_frequency_step_mhz".to_string(), json!(max_step_mhz));
+            }
+            Some(manufacturing_suggestion(
+                &format!(
+                    "rf_antenna_measured_performance_sweep_{}",
+                    sanitized_name(&limit.name)
+                ),
+                true,
+                &format!(
+                    "RF antenna measurements for {} have reviewed return-loss sweep evidence matched to reviewed RF performance limit {}.",
+                    limit.antenna_net, limit.name
+                ),
+                &format!(
+                    "{}_{}_rf_antenna_measured_performance_sweep",
+                    project_name,
+                    sanitized_name(&limit.name)
+                ),
+                RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+                Some(parameters),
+                Vec::new(),
+            ))
+        })
+        .collect()
+}
+
 fn rf_antenna_measurement_has_evidence(
     bound: &BoundBoard<'_>,
     measurement: &RfAntennaMeasurement,
@@ -1410,20 +1520,33 @@ fn rf_antenna_measurement_has_evidence(
         && measurement.return_loss_db > 0.0
 }
 
-fn rf_antenna_performance_limit_matches(
+fn rf_antenna_performance_limit_has_sweep_policy(limit: &RfAntennaPerformanceLimit) -> bool {
+    limit.min_measurement_count.is_some() || limit.max_frequency_step_mhz.is_some()
+}
+
+fn rf_antenna_performance_limit_has_evidence(
     bound: &BoundBoard<'_>,
-    measurement: &RfAntennaMeasurement,
     limit: &RfAntennaPerformanceLimit,
 ) -> bool {
     !limit.name.trim().is_empty()
         && !limit.source.trim().is_empty()
-        && limit.antenna_net == measurement.antenna_net
         && bound.project.board.nets.contains_key(&limit.antenna_net)
         && limit.min_return_loss_db.is_finite()
         && limit.min_return_loss_db > 0.0
         && optional_positive_frequency(limit.frequency_min_mhz)
         && optional_positive_frequency(limit.frequency_max_mhz)
         && frequency_band_order_valid(limit.frequency_min_mhz, limit.frequency_max_mhz)
+        && limit.min_measurement_count.is_none_or(|count| count > 0)
+        && optional_positive_frequency(limit.max_frequency_step_mhz)
+}
+
+fn rf_antenna_performance_limit_matches(
+    bound: &BoundBoard<'_>,
+    measurement: &RfAntennaMeasurement,
+    limit: &RfAntennaPerformanceLimit,
+) -> bool {
+    rf_antenna_performance_limit_has_evidence(bound, limit)
+        && limit.antenna_net == measurement.antenna_net
         && limit
             .frequency_min_mhz
             .is_none_or(|min_mhz| measurement.frequency_mhz >= min_mhz - f64::EPSILON)
