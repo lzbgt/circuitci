@@ -43,14 +43,7 @@
               },
               "parameters": {
                 "type": "object",
-                "additionalProperties": {
-                  "anyOf": [
-                    { "type": "string" },
-                    { "type": "number" },
-                    { "type": "boolean" },
-                    { "type": "null" }
-                  ]
-                }
+                "additionalProperties": { "$ref": "#/$defs/json_value" }
               },
               "target": {
                 "type": "object",
@@ -528,6 +521,22 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "json_value": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/json_value" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/json_value" }
+        }
+      ]
+    },
     "endpoint": {
       "type": "object",
       "required": ["component", "pin"],

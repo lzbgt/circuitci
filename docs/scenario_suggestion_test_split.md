@@ -2,10 +2,12 @@
 
 ## Purpose
 
-Scenario suggestion coverage now lives in `tests/scenario_suggestions_cli.rs`
-instead of `tests/backdrive_cli.rs`. The split keeps behavioral validation tests
-focused while giving automatic agent-facing validation suggestions their own
-integration-test home.
+Scenario suggestion coverage primarily lives in `tests/scenario_suggestions_cli.rs`
+instead of `tests/backdrive_cli.rs`. Manufacturing-heavy suggestion coverage
+that would push the primary file toward the source line-count guard lives in
+`tests/scenario_suggestions_manufacturing_cli.rs`. The split keeps behavioral
+validation tests focused while giving automatic agent-facing validation
+suggestions their own integration-test home.
 
 ## Contract
 

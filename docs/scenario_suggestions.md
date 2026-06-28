@@ -399,6 +399,14 @@ The command is conservative:
   emits runnable target-scoped `SOLDER_PASTE_BGA_APERTURE_VALID` with the
   inferred `pin_pitch_mm`. The BGA grid suggestion suppresses the IC row
   suggestion for the same target component.
+- When a routed digital/analog net has finite `board.layout.routes` segments,
+  explicit `board.layout.stackup.layers` evidence, exactly one adjacent
+  declared ground plane, and sampled `board.layout.zones.<reference_net>`
+  coverage for every route segment start/mid/end sample, it emits a runnable
+  `ADJACENT_PLANE_RETURN_PATH_VALID` template with
+  `max_unreferenced_length_mm: 0.0`. This is a strict coverage screen from
+  imported evidence; it does not infer reference planes from names or invent an
+  allowed unreferenced length.
 - When a component has `source.format: jlc_assembly` plus comparable imported
   KiCad PCB footprint-property evidence or source-explicit placement
   side/rotation evidence, it emits a runnable target-scoped

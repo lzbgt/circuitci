@@ -40,6 +40,11 @@ suggestions.
 - `src/scenario_suggestions/interface_protection/usb/route_evidence.rs` owns
   measured USB route, pad-contact, return-path, filled-zone, and ground-contact
   evidence helpers used by USB suggestion templates.
+- `src/scenario_suggestions/manufacturing.rs` owns fabrication and assembly
+  suggestion templates, including process-preset suggestions, manufacturing
+  metadata-gated templates, assembly/footprint evidence alignment, pin-1 marker
+  templates, and stackup-aware adjacent-plane return-path discovery from
+  explicit route/stackup/zone evidence.
 - `src/scenario_suggestions/types.rs` owns the serializable suggestion report
   DTOs that must stay aligned with
   `schemas/scenario_suggestion_report.schema.json`.

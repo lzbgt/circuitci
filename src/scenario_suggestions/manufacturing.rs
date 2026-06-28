@@ -1,5 +1,8 @@
 use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
-use crate::board_ir::{LayoutCopper, LayoutCopperFeature};
+use crate::board_ir::{
+    CopperZone, LayoutCopper, LayoutCopperFeature, LayoutPoint, NetKind, RouteSegment,
+    StackupLayer, StackupLayerKind,
+};
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -21,6 +24,7 @@ const SOLDER_PASTE_APERTURE_AREA_RATIO_VALID: &str = "SOLDER_PASTE_APERTURE_AREA
 const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
+const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID: &str = "ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID";
 const PIN_1_ORIENTATION_VALID: &str = "PIN_1_ORIENTATION_VALID";
 const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
@@ -470,9 +474,221 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         bound,
         &project_name,
     ));
+    suggestions.extend(adjacent_plane_return_path_suggestions(bound, &project_name));
     suggestions.extend(pin_1_orientation_suggestions(bound, &project_name));
 
     suggestions
+}
+
+fn adjacent_plane_return_path_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for (net_name, net) in &bound.project.board.nets {
+        if net.kind != NetKind::DigitalOrAnalog
+            || adjacent_plane_check_declared_for_net(bound, net_name)
+        {
+            continue;
+        }
+        let Some(evidence) = adjacent_plane_return_path_evidence(bound, net_name) else {
+            continue;
+        };
+        suggestions.push(manufacturing_suggestion(
+            &format!("adjacent_plane_return_path_{}", sanitized_name(net_name)),
+            true,
+            &format!(
+                "Route {net_name} has imported route segments, explicit stackup evidence, and sampled adjacent {} plane-zone coverage on {}.",
+                evidence.reference_net, evidence.reference_layer
+            ),
+            &format!(
+                "{}_{}_adjacent_plane_return_path",
+                project_name,
+                sanitized_name(net_name)
+            ),
+            ADJACENT_PLANE_RETURN_PATH_VALID,
+            Some(BTreeMap::from([(
+                "routes".to_string(),
+                json!([{
+                    "net": net_name,
+                    "reference_net": evidence.reference_net,
+                    "reference_layer": evidence.reference_layer,
+                    "max_unreferenced_length_mm": 0.0
+                }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+#[derive(Debug)]
+struct AdjacentPlaneEvidence {
+    reference_net: String,
+    reference_layer: String,
+}
+
+fn adjacent_plane_return_path_evidence(
+    bound: &BoundBoard<'_>,
+    net_name: &str,
+) -> Option<AdjacentPlaneEvidence> {
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if route.segments.is_empty() || bound.project.board.layout.stackup.layers.is_empty() {
+        return None;
+    }
+    let mut reference_net = None::<String>;
+    let mut reference_layer = None::<String>;
+    for segment in &route.segments {
+        if !usable_route_segment(segment) {
+            return None;
+        }
+        let layer = adjacent_reference_plane(bound, &segment.layer)?;
+        let net = layer.reference_net.as_ref()?;
+        let zones = bound.project.board.layout.zones.get(net)?;
+        if !segment_has_plane_coverage(segment, &layer.name, zones) {
+            return None;
+        }
+        if reference_net
+            .as_deref()
+            .is_some_and(|current| current != net)
+        {
+            return None;
+        }
+        if reference_layer
+            .as_deref()
+            .is_some_and(|current| current != layer.name)
+        {
+            return None;
+        }
+        reference_net = Some(net.clone());
+        reference_layer = Some(layer.name.clone());
+    }
+    Some(AdjacentPlaneEvidence {
+        reference_net: reference_net?,
+        reference_layer: reference_layer?,
+    })
+}
+
+fn adjacent_reference_plane<'a>(
+    bound: &'a BoundBoard<'_>,
+    route_layer: &str,
+) -> Option<&'a StackupLayer> {
+    let layers = &bound.project.board.layout.stackup.layers;
+    let route_index = layers.iter().position(|layer| layer.name == route_layer)?;
+    let mut candidates = Vec::new();
+    for direction in [-1, 1] {
+        if let Some(layer) = nearest_conductive_layer(layers, route_index, direction)
+            && layer.kind == StackupLayerKind::Plane
+            && layer.reference_net.as_ref().is_some_and(|net| {
+                bound
+                    .project
+                    .board
+                    .nets
+                    .get(net)
+                    .is_some_and(|spec| spec.kind == NetKind::Ground)
+            })
+        {
+            candidates.push(layer);
+        }
+    }
+    (candidates.len() == 1).then(|| candidates[0])
+}
+
+fn nearest_conductive_layer(
+    layers: &[StackupLayer],
+    route_index: usize,
+    direction: isize,
+) -> Option<&StackupLayer> {
+    let mut index = route_index as isize + direction;
+    while index >= 0 && (index as usize) < layers.len() {
+        let layer = &layers[index as usize];
+        if layer.kind != StackupLayerKind::Dielectric {
+            return Some(layer);
+        }
+        index += direction;
+    }
+    None
+}
+
+fn usable_route_segment(segment: &RouteSegment) -> bool {
+    segment.start.x_mm.is_finite()
+        && segment.start.y_mm.is_finite()
+        && segment.end.x_mm.is_finite()
+        && segment.end.y_mm.is_finite()
+        && segment.width_mm.is_finite()
+        && segment.width_mm > 0.0
+        && !segment.layer.trim().is_empty()
+        && segment_length_mm(segment) > f64::EPSILON
+}
+
+fn segment_has_plane_coverage(
+    segment: &RouteSegment,
+    reference_layer: &str,
+    zones: &[CopperZone],
+) -> bool {
+    let polygons = zones
+        .iter()
+        .filter(|zone| zone.layer == reference_layer)
+        .flat_map(zone_polygons)
+        .filter(|polygon| usable_polygon(polygon))
+        .collect::<Vec<_>>();
+    if polygons.is_empty() {
+        return false;
+    }
+    let samples = [
+        (segment.start.x_mm, segment.start.y_mm),
+        (
+            (segment.start.x_mm + segment.end.x_mm) / 2.0,
+            (segment.start.y_mm + segment.end.y_mm) / 2.0,
+        ),
+        (segment.end.x_mm, segment.end.y_mm),
+    ];
+    samples.iter().all(|sample| {
+        polygons
+            .iter()
+            .any(|polygon| point_in_polygon(sample.0, sample.1, polygon))
+    })
+}
+
+fn zone_polygons(zone: &CopperZone) -> Box<dyn Iterator<Item = &Vec<LayoutPoint>> + '_> {
+    if zone.filled_polygons.is_empty() {
+        Box::new(std::iter::once(&zone.polygon))
+    } else {
+        Box::new(zone.filled_polygons.iter())
+    }
+}
+
+fn usable_polygon(polygon: &[LayoutPoint]) -> bool {
+    polygon.len() >= 3
+        && polygon
+            .iter()
+            .all(|point| point.x_mm.is_finite() && point.y_mm.is_finite())
+}
+
+fn point_in_polygon(x: f64, y: f64, polygon: &[LayoutPoint]) -> bool {
+    let mut inside = false;
+    let mut previous = polygon.len() - 1;
+    for current in 0..polygon.len() {
+        let current_point = &polygon[current];
+        let previous_point = &polygon[previous];
+        let intersects = ((current_point.y_mm > y) != (previous_point.y_mm > y))
+            && (x
+                < (previous_point.x_mm - current_point.x_mm) * (y - current_point.y_mm)
+                    / (previous_point.y_mm - current_point.y_mm)
+                    + current_point.x_mm);
+        if intersects {
+            inside = !inside;
+        }
+        previous = current;
+    }
+    inside
+        || polygon
+            .iter()
+            .any(|point| (point.x_mm - x).abs() <= 1.0e-9 && (point.y_mm - y).abs() <= 1.0e-9)
+}
+
+fn segment_length_mm(segment: &RouteSegment) -> f64 {
+    (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
 }
 
 fn assembly_footprint_alignment_suggestions(
@@ -689,6 +905,29 @@ fn manufacturing_check_declared_for_target(
                 .target
                 .as_ref()
                 .is_none_or(|target| target.component == target_component)
+    })
+}
+
+fn adjacent_plane_check_declared_for_net(bound: &BoundBoard<'_>, net_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == ADJACENT_PLANE_RETURN_PATH_VALID)
+            && scenario
+                .parameters
+                .get("routes")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|routes| {
+                    routes.iter().any(|route| {
+                        route.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("net".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(net_name)
+                    })
+                })
     })
 }
 
