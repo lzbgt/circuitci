@@ -252,6 +252,13 @@ without explicit imported mechanical evidence.
   solder-mask loading, copper thickness, etch compensation, or fabricator
   coupon results. Passing this rule only means the imported geometry matches
   the declared target dimensions within tolerance.
+- `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
+  declared plane `reference_net`, route segments, and sampled zone polygons to
+  screen for adjacent-plane coverage. It does not infer reference planes from
+  layer names, model return-current distribution, account for vias, stitching,
+  split-plane slots, copper roughness, dielectric fields, or EMI/SI behavior.
+  Passing this rule only means sampled imported route points stay over declared
+  adjacent reference-plane zone evidence within the reviewed length limit.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,

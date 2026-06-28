@@ -11,6 +11,12 @@ parameter parsing, imported route width/gap evidence selection, fail-closed
 missing route/gap evidence, and stable report construction. It intentionally
 does not solve impedance.
 
+`src/validation/manufacturing/adjacent_plane.rs` owns
+`ADJACENT_PLANE_RETURN_PATH_VALID`, including explicit stackup/plane parameter
+parsing, adjacent reference-plane selection, sampled route-to-zone coverage,
+fail-closed missing stackup/zone evidence, and stable report construction. It
+intentionally does not model electromagnetic return current.
+
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,
 pad/via/copper owner consistency, required copper-layer checks, and stable

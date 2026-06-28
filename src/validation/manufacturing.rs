@@ -1,3 +1,4 @@
+mod adjacent_plane;
 mod annular_ring;
 mod artwork_measurements;
 mod assembly_alignment;
@@ -34,6 +35,7 @@ use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::common::validation_input_missing;
 
+pub(super) use adjacent_plane::validate_adjacent_plane_return_path;
 pub(super) use annular_ring::validate_drill_annular_ring;
 pub(super) use assembly_alignment::validate_assembly_footprint_alignment;
 pub(super) use controlled_impedance::validate_controlled_impedance_geometry;

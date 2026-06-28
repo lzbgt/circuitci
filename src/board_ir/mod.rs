@@ -234,6 +234,8 @@ pub struct ControlLineSequenceRuntimeEvidence {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct BoardLayout {
     #[serde(default)]
+    pub stackup: BoardStackup,
+    #[serde(default)]
     pub placements: BTreeMap<String, ComponentPlacement>,
     #[serde(default)]
     pub footprints: BTreeMap<String, LayoutFootprint>,
@@ -257,6 +259,32 @@ pub struct BoardLayout {
     pub zones: BTreeMap<String, Vec<CopperZone>>,
     #[serde(default)]
     pub constraints: LayoutConstraints,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct BoardStackup {
+    #[serde(default)]
+    pub layers: Vec<StackupLayer>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StackupLayer {
+    pub name: String,
+    pub kind: StackupLayerKind,
+    #[serde(default)]
+    pub reference_net: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StackupLayerKind {
+    Signal,
+    Plane,
+    Dielectric,
+    #[default]
+    Other,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

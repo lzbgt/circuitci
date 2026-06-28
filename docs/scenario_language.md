@@ -138,6 +138,7 @@ Canonical executable check IDs:
 - `COPPER_SPACING_VALID`
 - `CONDUCTOR_CREEPAGE_CLEARANCE_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
+- `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
@@ -1261,6 +1262,45 @@ This is a geometry-to-reviewed-target check. It does not solve characteristic
 or differential impedance, model stackup materials, prove copper thickness or
 etch compensation, account for solder mask, or replace a field solver,
 fabricator coupon, or SI review.
+
+Adjacent-plane return-path validation uses
+`ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit
+`board.layout.stackup.layers`, route segments, and reference-plane zone
+polygons. It does not infer reference nets from layer names or calculate
+return current; it only screens sampled route evidence against declared plane
+coverage and reviewed limits.
+
+```yaml
+scenarios:
+  - name: adjacent_plane_return_path
+    type: manufacturing
+    checks:
+      - ADJACENT_PLANE_RETURN_PATH_VALID
+    parameters:
+      routes:
+        - net: USB_D+
+          reference_net: GND
+          max_unreferenced_length_mm: 2.0
+          reference_layer: In1.Cu
+```
+
+Adjacent-plane return-path algorithm:
+
+1. Require non-empty `parameters.routes[]` with `net`, `reference_net`, and
+   finite non-negative `max_unreferenced_length_mm`.
+2. Require both nets to exist under `board.nets`.
+3. Require finite non-zero `board.layout.routes.<net>.segments[]` evidence.
+4. Resolve the reference plane from explicit `reference_layer` or from the
+   nearest conductive stackup layer above/below the route layer, skipping
+   dielectric layers. The resolved layer must be `kind: plane` and declare the
+   requested `reference_net`.
+5. Require `board.layout.zones.<reference_net>[]` polygons on the resolved
+   plane layer.
+6. Sample each route segment at start, midpoint, and end. A segment is counted
+   as unreferenced unless all samples fall inside reference-plane zone
+   polygons on the resolved layer.
+7. Fail when total unreferenced length exceeds
+   `max_unreferenced_length_mm`.
 
 Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`

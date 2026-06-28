@@ -429,6 +429,29 @@
         "layout": {
           "type": "object",
           "properties": {
+            "stackup": {
+              "type": "object",
+              "properties": {
+                "layers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "kind"],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "kind": {
+                        "type": "string",
+                        "enum": ["signal", "plane", "dielectric", "other"]
+                      },
+                      "reference_net": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
             "placements": {
               "type": "object",
               "additionalProperties": {

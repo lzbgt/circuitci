@@ -257,6 +257,30 @@ fabrication copper geometry: a Gerber copper layer does not prove component
 ownership, pad names, island connectivity, schematic intent, or electrical
 connectivity by itself.
 
+Board IR can carry reviewed or imported stackup evidence under
+`board.layout.stackup.layers`. Layer `name` values must match route, zone, and
+copper layer names. `kind: plane` may declare a `reference_net` when a plane is
+explicitly assigned to a net. This is layer-order and reference-plane evidence
+only; it does not define dielectric constants, copper thickness, or field-solver
+properties.
+
+```yaml
+board:
+  layout:
+    stackup:
+      layers:
+        - name: F.Cu
+          kind: signal
+          source: reviewed_stackup
+        - name: prepreg_1
+          kind: dielectric
+          source: reviewed_stackup
+        - name: In1.Cu
+          kind: plane
+          reference_net: GND
+          source: reviewed_stackup
+```
+
 `import-excellon-drill` can append fabrication drill-hit evidence under
 `board.layout.drills`. This is drill evidence only: an NC drill file does not
 prove pad copper, annular rings, nets, component ownership, or electrical

@@ -175,6 +175,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_VBUS_ROUTE_VALID`
 - `USB_RETURN_PATH_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
+- `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -554,6 +555,16 @@ Differential-pair findings use stable measured keys `first_net`, `second_net`,
 `measured_gap_mm`, `gap_error_mm`, `width_violation`, and `gap_violation`.
 Stable limit keys include `expected_width_mm`, `expected_gap_mm`,
 `max_width_error_mm`, and `max_gap_error_mm` when applicable.
+
+`ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
+scenarios that compare imported `board.layout.routes` evidence against
+explicit `board.layout.stackup.layers` and `board.layout.zones` reference-plane
+coverage evidence. Stable measured keys include `net`, `reference_net`,
+`total_route_length_mm`, `unreferenced_route_length_mm`,
+`unreferenced_segment_count`, `reference_layers`, and, for the first uncovered
+segment, `first_unreferenced_route_segment_index`,
+`first_unreferenced_route_layer`, and `first_unreferenced_reference_layer`.
+Stable limit keys include `max_unreferenced_length_mm`.
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`
