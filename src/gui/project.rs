@@ -39,6 +39,12 @@ const OPAMP_BUFFER_SCOPE_EXAMPLE_PROJECT: &str = "examples/good_ideal_opamp_buff
 const OPAMP_BUFFER_SCOPE_EXAMPLE_NAME: &str = "good_ideal_opamp_buffer";
 const OPAMP_BUFFER_SCOPE_EXPECTED_TRACES: &[&str] = &["v(input)", "v(output)", "v(vcc)"];
 const OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY: &str = "80 us input pulse through unity feedback";
+const CH340C_USB_UART_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_wch_ch340c_usb_uart_observation/project.yaml";
+const CH340C_USB_UART_SCOPE_EXAMPLE_NAME: &str = "good_wch_ch340c_usb_uart_observation";
+const CH340C_USB_UART_SCOPE_EXPECTED_TRACES: &[&str] = &["v_vcc", "v_txd", "v_dtr_n", "v_rts_n"];
+const CH340C_USB_UART_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V CH340C observation with TXD high, DTR# low, and RTS# high";
 const AP2112K_LDO_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ap2112k_3v3_ldo_observation/project.yaml";
 const AP2112K_LDO_SCOPE_EXAMPLE_NAME: &str = "good_ap2112k_3v3_ldo_observation";
@@ -194,6 +200,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: OPAMP_BUFFER_SCOPE_EXPECTED_TRACES,
         expected_frequency: OPAMP_BUFFER_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("XU1"),
+    },
+    GuiProjectExample {
+        id: "ch340c_usb_uart_scope",
+        category: "USB-UART",
+        open_label: "Open CH340C USB-UART Example",
+        run_label: "Open CH340C + Run Scopes",
+        workflow_title: "CH340C USB-UART Workflow",
+        summary: "Source-backed CH340C bridge output-state observation for boot/control lines.",
+        project_path: CH340C_USB_UART_SCOPE_EXAMPLE_PROJECT,
+        project_name: CH340C_USB_UART_SCOPE_EXAMPLE_NAME,
+        expected_traces: CH340C_USB_UART_SCOPE_EXPECTED_TRACES,
+        expected_frequency: CH340C_USB_UART_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UUSB"),
     },
     GuiProjectExample {
         id: "ap2112k_ldo_scope",

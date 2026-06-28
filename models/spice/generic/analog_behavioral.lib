@@ -22,6 +22,21 @@ BOUT VOUT GND V={3.3/(1+exp(-20*(v(EN,GND)-1)))}
 ROUT VOUT GND 1G
 .ends CIRCUITCI_IDEAL_LDO_3V3
 
+.subckt CIRCUITCI_CH340C_USB_UART VCC GND TXD RXD DTR_N RTS_N PARAMS: TXD_STATE=1 DTR_N_STATE=1 RTS_N_STATE=1
+* Reduced CH340C USB-UART bridge observation behavior.
+* TXD, DTR_N, and RTS_N are preliminary voltage drivers with the source
+* impedance inferred from the 3.3 V-mode VOH condition. RXD is represented as a
+* high-impedance input. USB protocol, enumeration, oscillator, suspend, and
+* transistor-level modem-line behavior are intentionally not modeled.
+BTXD NTXD GND V={v(VCC,GND)*TXD_STATE}
+RTXD NTXD TXD 300
+BDTR NDTR GND V={v(VCC,GND)*DTR_N_STATE}
+RDTR NDTR DTR_N 300
+BRTS NRTS GND V={v(VCC,GND)*RTS_N_STATE}
+RRTS NRTS RTS_N 300
+RRXD RXD GND 1G
+.ends CIRCUITCI_CH340C_USB_UART
+
 .subckt CIRCUITCI_TPS54331_5V_BUCK VIN EN GND VSENSE PARAMS: VOUT_V=5
 * Reduced TPS54331 5 V buck-regulator observation behavior.
 * The output is an ideal preliminary rail source gated by VIN input range and

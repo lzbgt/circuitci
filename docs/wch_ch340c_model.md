@@ -31,6 +31,11 @@ IoT validation:
 - `DTR_N` and `RTS_N` are modeled as active-low MODEM outputs.
 - CH340C has an integrated clock generator, so the model does not require an
   external crystal for board validation.
+- The generated-SPICE face uses `CIRCUITCI_CH340C_USB_UART` with pin order
+  `[VCC, GND, TXD, RXD, DTR_N, RTS_N]`. `TXD_STATE`, `DTR_N_STATE`, and
+  `RTS_N_STATE` are fed from Board IR component parameters
+  `observation_txd_state`, `observation_dtr_n_state`, and
+  `observation_rts_n_state`, defaulting high when omitted.
 
 ## Validation Use
 
@@ -39,7 +44,12 @@ range. `UART_BOOTLOADER_SYNC` and control-line scenarios can continue to use
 the CH340C as a USB-UART bridge without embedding WCH-specific logic in the
 engine.
 
-The model is not valid for USB PHY sign-off, transistor-level modem-line
-behavior, or final I/O injection-current sign-off. Use `GPIO_BACKDRIVE` or
-`analog_transient` scenarios when CH340C and the target MCU can be powered from
-separate rails.
+`examples/good_wch_ch340c_usb_uart_observation/project.yaml` is a direct-open
+GUI fixture that exercises the reduced generated-SPICE face with a 3.3 V rail,
+idle-high TXD, asserted-low DTR#, and idle-high RTS#.
+
+The model is not valid for USB PHY sign-off, USB enumeration, baud-rate timing,
+oscillator accuracy, transistor-level modem-line behavior, auto-download
+transistor networks, or final I/O injection-current sign-off. Use
+`GPIO_BACKDRIVE` or explicit `analog_transient` scenarios when CH340C and the
+target MCU can be powered from separate rails.

@@ -192,6 +192,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   subcircuit, model-file, and SHA-pinned artifact path used by vendor models.
   The same fixture is registered as a direct-open GUI scope example with routed
   schematic metadata for op-amp buffer observation.
+- `examples/good_wch_ch340c_usb_uart_observation` proves the WCH CH340C
+  datasheet-backed USB-UART bridge model can use a reduced generated-SPICE face
+  for VCC, TXD, DTR#, and RTS# output-state observations. The model-state
+  inputs are explicit Board IR component parameters, not inferred USB protocol
+  behavior.
 - `examples/good_tps54331_5v_buck_observation` proves the TI TPS54331
   datasheet-backed buck-regulator model can use a reduced generated-SPICE face
   in a direct-open GUI example with routed schematic metadata, VIN/EN/VSENSE

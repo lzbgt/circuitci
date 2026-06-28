@@ -499,10 +499,10 @@ form:
   traces or observations, and expected frequency or operating point before
   `Open` or `Run + Scopes`. The current entries cover the checked-in NE555
   astable-style fixture, RC low-pass sine fixture, comparator threshold
-  fixture, op-amp buffer fixture, AP2112K LDO rail fixture, TPS54331 buck rail
-  fixture, TPS62162 buck rail fixture, TPS63802 buck-boost rail fixture,
-  TPS61023 boost rail fixture, TPS2121 power-mux fixture, TPS22918 load-switch
-  fixture, MCP73831 charger fixture, BQ24075
+  fixture, op-amp buffer fixture, CH340C USB-UART bridge fixture, AP2112K LDO
+  rail fixture, TPS54331 buck rail fixture, TPS62162 buck rail fixture,
+  TPS63802 buck-boost rail fixture, TPS61023 boost rail fixture, TPS2121
+  power-mux fixture, TPS22918 load-switch fixture, MCP73831 charger fixture, BQ24075
   power-path charger fixture, BQ25798 NVDC charger fixture, TLV803
   reset-supervisor fixture, loop-stability Bode fixture, DC divider-bias
   fixture, divider-noise fixture, and RC Monte Carlo yield fixture; all
@@ -513,7 +513,7 @@ form:
   a workflow status with direct `Run + Scopes` / `Open Scope Activity` actions,
   and the Sketch side dock mirrors those compact workflow actions above Run
   Readiness. Examples that contain a known SPICE-ready function block, such as
-  the comparator threshold, op-amp buffer, AP2112K LDO, TPS54331 buck,
+  the comparator threshold, op-amp buffer, CH340C USB-UART, AP2112K LDO, TPS54331 buck,
   TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux,
   TPS22918 load-switch, MCP73831 charger, BQ24075 power-path charger, and
   TLV803 reset fixtures, also show `Create Checks` to append a generated run

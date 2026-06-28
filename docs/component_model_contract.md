@@ -691,6 +691,18 @@ exercise VIN/EN/VOS or VIN/EN/VOUT wiring and preliminary output/load-current
 observation, but not SW/L1/L2 switching, feedback-loop dynamics, ripple, current
 limit, PG/MODE behavior, thermal behavior, layout, EMI, or loop-stability
 sign-off.
+`vendor.wch.ch340c` follows the same pattern for USB-UART output-state
+observation: its WCH source-pinned supply range, 3.3 V-mode logic thresholds,
+VOH/source-impedance metadata, active-low modem-output notes, and integrated
+clock note remain source-backed, while its generated-SPICE face uses reduced
+voltage-driver outputs for TXD, DTR#, and RTS#. Its
+`simulation.spice.instance_parameters` map optional Board IR component
+parameters `observation_txd_state`, `observation_dtr_n_state`, and
+`observation_rts_n_state` into explicit SPICE output-state parameters. That
+model can exercise rail and host-control-line output-state observations, but
+not USB PHY behavior, enumeration, baud-rate timing, oscillator accuracy,
+transistor-level auto-download circuits, or final I/O injection-current
+sign-off.
 `vendor.ti.tps2121` follows the same pattern for selected-source power-mux
 observation: its TI source-pinned input range, output-current class,
 reverse-blocking metadata, string `selected_input` static contract, and

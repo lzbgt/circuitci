@@ -90,6 +90,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("XU1"),
         },
         ExpectedProjectExample {
+            id: "ch340c_usb_uart_scope",
+            category: "USB-UART",
+            open_label: "Open CH340C USB-UART Example",
+            run_label: "Open CH340C + Run Scopes",
+            summary: "Source-backed CH340C bridge output-state observation for boot/control lines.",
+            project_path: "examples/good_wch_ch340c_usb_uart_observation/project.yaml",
+            project_name: "good_wch_ch340c_usb_uart_observation",
+            expected_traces: &["v_vcc", "v_txd", "v_dtr_n", "v_rts_n"],
+            expected_frequency: "3.3 V CH340C observation with TXD high, DTR# low, and RTS# high",
+            observation_preset_component: Some("UUSB"),
+        },
+        ExpectedProjectExample {
             id: "ap2112k_ldo_scope",
             category: "Regulator",
             open_label: "Open AP2112K LDO Example",

@@ -352,6 +352,16 @@ fn observation_default_assertions(
             (0.0, stop_time_us),
         ));
     }
+    if model.category == "comms" {
+        add_comms_output_observation_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            stop_time_us,
+            &mut assertions,
+        );
+    }
     if let Some(function) = &model.analog_function {
         match function.kind {
             crate::library::AnalogFunctionKind::OpAmp => {
@@ -379,6 +389,46 @@ fn observation_default_assertions(
         }
     }
     assertions
+}
+
+fn add_comms_output_observation_assertions(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    for (pin, port) in &model.ports {
+        if port.kind != crate::library::PortKind::DigitalElectricalOutput {
+            continue;
+        }
+        let Some(output_probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let Some(high_threshold) = port.electrical.drive_high_voltage_v else {
+            continue;
+        };
+        let state = component_parameter_f64(
+            component,
+            &format!("observation_{}_state", pin.to_ascii_lowercase()),
+        )
+        .unwrap_or(1.0);
+        let (suffix, relation, threshold) = if state >= 0.5 {
+            ("output_high", "above", high_threshold)
+        } else {
+            ("output_low", "below", 0.5)
+        };
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}", output_probe.probe_name, suffix),
+            &output_probe.probe_name,
+            "mean",
+            relation,
+            threshold,
+            (0.0, stop_time_us),
+        ));
+    }
 }
 
 fn add_op_amp_observation_assertions(
@@ -665,6 +715,16 @@ fn nominal_voltage_for_net(project: &crate::board_ir::BoardProject, net_id: &str
 fn pulse_high_sample_time(pulse: &crate::board_ir::SpicePulseSpec, stop_time_us: f64) -> f64 {
     let high_time = pulse.delay_us + pulse.rise_us + pulse.width_us * 0.5;
     high_time.clamp(0.0, stop_time_us)
+}
+
+fn component_parameter_f64(
+    component: &crate::board_ir::ComponentSpec,
+    parameter: &str,
+) -> Option<f64> {
+    component
+        .parameters
+        .get(parameter)
+        .and_then(serde_yaml_ng::Value::as_f64)
 }
 
 fn default_voltage_assertion(

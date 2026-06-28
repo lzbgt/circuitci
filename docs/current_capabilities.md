@@ -190,8 +190,9 @@ Current analog support:
   metadata paths.
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
-  enabled 3.3 V regulator rails, TPS54331-style 5 V buck-regulator rail
-  observations, TPS62162-style 3.3 V buck-regulator rail observations,
+  enabled 3.3 V regulator rails, CH340C-style USB-UART output-state
+  observations, TPS54331-style 5 V buck-regulator rail observations,
+  TPS62162-style 3.3 V buck-regulator rail observations,
   TPS63802-style 3.3 V buck-boost rail observations, TPS61023-style 5 V
   boost-regulator rail observations, TPS2121-style selected-source power-mux
   observations, enabled load-switch paths, MCP73831-style PROG-programmed
@@ -200,11 +201,11 @@ Current analog support:
   subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
-  threshold, op-amp buffer, AP2112K LDO rail, TPS54331 buck rail, TPS62162
-  buck rail, TPS63802 buck-boost rail, TPS61023 boost rail, TPS2121 power mux,
-  TPS22918 load switch, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
-  power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,
-  divider-noise, and RC Monte Carlo yield workflows.
+  threshold, op-amp buffer, CH340C USB-UART bridge, AP2112K LDO rail, TPS54331
+  buck rail, TPS62162 buck rail, TPS63802 buck-boost rail, TPS61023 boost rail,
+  TPS2121 power mux, TPS22918 load switch, MCP73831 charger, BQ24075 power
+  path, BQ25798 NVDC power path, TLV803 reset-supervisor, loop-stability Bode,
+  DC divider-bias, divider-noise, and RC Monte Carlo yield workflows.
 - The AP2112K-3.3 vendor component pack now has a datasheet-backed generated
   SPICE observation face: it keeps Diodes Incorporated voltage/dropout/current
   metadata and pin order while using the reduced-fidelity generic enabled
@@ -292,9 +293,9 @@ Current analog support:
   observation preset that includes the board context, binds ground, voltage
   probes the component's non-ground pin nets, infers required model files, and
   adds model-aware default checks for regulator/load-switch/power-mux output
-  voltage limits or pulse-driven reset-supervisor, op-amp follower, and
-  comparator output behavior when the needed metadata and surrounding
-  stimulus/reference topology are present.
+  voltage limits, comms output voltage states, or pulse-driven reset-supervisor,
+  op-amp follower, and comparator output behavior when the needed metadata and
+  surrounding stimulus/reference topology are present.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.
