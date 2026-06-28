@@ -459,10 +459,14 @@ The command is conservative:
   topology count mismatch remains a runnable validation finding.
 - When `board.layout.constraints.rf_antenna.measurements[]` contains reviewed
   antenna-net, frequency, return-loss, and source evidence, it emits a
-  non-runnable `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` template requiring an
-  explicit reviewed `min_return_loss_db` and optional frequency band. The
-  suggestion does not infer acceptable return loss from the measured value,
-  antenna net name, or RF component designators.
+  `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` template. The template is runnable
+  when a reviewed
+  `board.layout.constraints.rf_antenna.performance_limits[]` row has the same
+  antenna net and an optional frequency band containing the measurement
+  frequency; otherwise it remains non-runnable and requires an explicit
+  reviewed `min_return_loss_db` and optional frequency band. The suggestion
+  does not infer acceptable return loss from the measured value, antenna net
+  name, or RF component designators.
 - When `board.manufacturing.thermal_copper[]` contains reviewed component
   power-loss/minimum-area metadata and imported copper feature, segment, or
   region evidence is explicitly tied to the component or reviewed nets/layers,

@@ -1,8 +1,8 @@
 use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
     AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
-    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement, AppliedRfAntennaPerformanceLimit,
+    AppliedStackupLayer, AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
     optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
@@ -607,6 +607,58 @@ pub(super) fn applied_rf_antenna_measurement(
         return_loss_db: parse_positive_db(row.value.trim(), row.unit.as_deref(), path, row)?,
         source,
         measurement_method: optional_raw_column(row, "measurement_method"),
+        notes: row.notes.clone(),
+    })
+}
+
+pub(super) fn applied_rf_antenna_performance_limit(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaPerformanceLimit> {
+    let limit_source = optional_raw_column(row, "limit_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(limit_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} rf_antenna_performance_limit requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    let frequency_min_mhz = optional_raw_column(row, "frequency_min_mhz")
+        .as_deref()
+        .map(|value| parse_positive_number(value, path, row, "frequency_min_mhz"))
+        .transpose()?;
+    let frequency_max_mhz = optional_raw_column(row, "frequency_max_mhz")
+        .as_deref()
+        .map(|value| parse_positive_number(value, path, row, "frequency_max_mhz"))
+        .transpose()?;
+    if let (Some(min_mhz), Some(max_mhz)) = (frequency_min_mhz, frequency_max_mhz)
+        && max_mhz + f64::EPSILON < min_mhz
+    {
+        bail!(
+            "Manufacturing metadata CSV {} row {} rf_antenna_performance_limit frequency_max_mhz must be greater than or equal to frequency_min_mhz.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(AppliedRfAntennaPerformanceLimit {
+        name: required_raw_column_for(row, path, "name", "rf_antenna_performance_limit")?,
+        antenna_net: required_raw_column_for(
+            row,
+            path,
+            "antenna_net",
+            "rf_antenna_performance_limit",
+        )?,
+        min_return_loss_db: parse_positive_db(row.value.trim(), row.unit.as_deref(), path, row)?,
+        source,
+        frequency_min_mhz,
+        frequency_max_mhz,
         notes: row.notes.clone(),
     })
 }

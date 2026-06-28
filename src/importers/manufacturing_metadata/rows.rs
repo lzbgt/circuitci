@@ -29,6 +29,7 @@ pub(super) struct AppliedField {
     pub(super) rf_antenna_feed_path: Option<AppliedRfAntennaFeedPath>,
     pub(super) rf_antenna_matching_network: Option<AppliedRfAntennaMatchingNetwork>,
     pub(super) rf_antenna_measurement: Option<AppliedRfAntennaMeasurement>,
+    pub(super) rf_antenna_performance_limit: Option<AppliedRfAntennaPerformanceLimit>,
 }
 
 impl AppliedField {
@@ -49,6 +50,7 @@ impl AppliedField {
             rf_antenna_feed_path: None,
             rf_antenna_matching_network: None,
             rf_antenna_measurement: None,
+            rf_antenna_performance_limit: None,
         }
     }
 }
@@ -205,6 +207,17 @@ pub(super) struct AppliedRfAntennaMeasurement {
     notes: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AppliedRfAntennaPerformanceLimit {
+    pub(super) name: String,
+    antenna_net: String,
+    min_return_loss_db: f64,
+    source: String,
+    frequency_min_mhz: Option<f64>,
+    frequency_max_mhz: Option<f64>,
+    notes: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum ManufacturingField {
     StencilThicknessMm,
@@ -226,6 +239,7 @@ pub(super) enum ManufacturingField {
     RfAntennaFeedPath,
     RfAntennaMatchingNetwork,
     RfAntennaMeasurement,
+    RfAntennaPerformanceLimit,
     Source,
 }
 
@@ -251,6 +265,7 @@ impl ManufacturingField {
             Self::RfAntennaFeedPath => "layout.constraints.rf_antenna.feed_paths[]",
             Self::RfAntennaMatchingNetwork => "layout.constraints.rf_antenna.matching_networks[]",
             Self::RfAntennaMeasurement => "layout.constraints.rf_antenna.measurements[]",
+            Self::RfAntennaPerformanceLimit => "layout.constraints.rf_antenna.performance_limits[]",
             Self::Source => "source",
         }
     }
@@ -289,6 +304,7 @@ impl ManufacturingField {
                 | Self::RfAntennaFeedPath
                 | Self::RfAntennaMatchingNetwork
                 | Self::RfAntennaMeasurement
+                | Self::RfAntennaPerformanceLimit
         )
     }
 }
@@ -433,6 +449,11 @@ fn applied_field(
         applied.rf_antenna_measurement = Some(applied_rf_antenna_measurement(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::RfAntennaPerformanceLimit {
+        applied.rf_antenna_performance_limit =
+            Some(applied_rf_antenna_performance_limit(row, path)?);
+        return Ok(applied);
+    }
     let value = row.value.trim();
     if value.is_empty() {
         bail!(
@@ -525,6 +546,13 @@ fn applied_rf_antenna_measurement(
     path: &Path,
 ) -> Result<AppliedRfAntennaMeasurement> {
     families::applied_rf_antenna_measurement(row, path)
+}
+
+fn applied_rf_antenna_performance_limit(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedRfAntennaPerformanceLimit> {
+    families::applied_rf_antenna_performance_limit(row, path)
 }
 
 fn normalize_numeric_value(
@@ -1028,6 +1056,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut rf_antenna_performance_limit_names = BTreeSet::new();
+    for limit in fields
+        .iter()
+        .filter_map(|field| field.rf_antenna_performance_limit.as_ref())
+    {
+        if !rf_antenna_performance_limit_names.insert(limit.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats rf_antenna_performance_limit row name {}.",
+                limit.name
+            );
+        }
+    }
     Ok(())
 }
 
@@ -1131,6 +1171,11 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "antennareturnloss"
         | "rfmeasurement"
         | "rfantennareturnloss" => Some(ManufacturingField::RfAntennaMeasurement),
+        "rfantennaperformancelimit"
+        | "antennaperformancelimit"
+        | "rfperformancelimit"
+        | "rfantennareturnlosslimit"
+        | "antennareturnlosslimit" => Some(ManufacturingField::RfAntennaPerformanceLimit),
         "source" | "evidencesource" => Some(ManufacturingField::Source),
         _ => None,
     }

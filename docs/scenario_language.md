@@ -1350,7 +1350,9 @@ or replace RF simulation and S-parameter measurement.
 RF antenna measured-performance validation uses
 `RF_ANTENNA_MEASURED_PERFORMANCE_VALID` when Board IR contains reviewed RF
 measurement rows under `board.layout.constraints.rf_antenna.measurements[]`.
-The scenario selects named measurements and supplies reviewed limits.
+The scenario selects named measurements and supplies reviewed limits. Scenario
+suggestions can prefill those limits from matching reviewed rows under
+`board.layout.constraints.rf_antenna.performance_limits[]`.
 
 ```yaml
 scenarios:
@@ -1379,7 +1381,8 @@ RF antenna measured-performance algorithm:
 5. Fail when a measurement frequency is outside the reviewed band or when its
    return-loss magnitude is below `min_return_loss_db`.
 6. Fail closed when any selected row, limit, net, source, or numeric evidence is
-   absent or malformed.
+   absent or malformed. Reviewed performance-limit metadata is suggestion input
+   only; validators still use explicit scenario parameters.
 
 This is a bounded measured-evidence screen. It does not interpolate S-parameter
 sweeps, solve feed impedance, validate matching-network topology, model

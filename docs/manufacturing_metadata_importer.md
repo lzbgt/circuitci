@@ -22,9 +22,10 @@ Input CSV columns:
   for reviewed measured/package temperature limits. Repeated `stackup_layer`
   rows are supported for reviewed stackup layer evidence. Repeated
   `rf_antenna_keepout`, `rf_antenna_feed_path`,
-  `rf_antenna_matching_network`, and `rf_antenna_measurement` rows are
-  supported for reviewed RF antenna layout/topology and measured return-loss
-  evidence.
+  `rf_antenna_matching_network`, `rf_antenna_measurement`, and
+  `rf_antenna_performance_limit` rows are supported for reviewed RF antenna
+  layout/topology, measured return-loss evidence, and reviewed RF performance
+  limits.
 - `value`: required for supported fields.
 - `unit`: optional. Length fields must be `mm` when a unit is supplied. Ratio
   fields may be unitless fractions or `%`, which is normalized to a fraction.
@@ -41,8 +42,8 @@ Input CSV columns:
   distance value when a unit is supplied.
   `rf_antenna_matching_network` rows use `value` as the reviewed topology and
   ignore `unit`.
-  `rf_antenna_measurement` rows use `dB`/`decibel` for the measured
-  return-loss magnitude.
+  `rf_antenna_measurement` and `rf_antenna_performance_limit` rows use
+  `dB`/`decibel` for measured or required return-loss magnitude.
 - `source`: optional row-level provenance kept in the manifest.
 - `notes`: optional row-level provenance kept in the manifest.
 
@@ -235,15 +236,30 @@ Optional `rf_antenna_measurement` columns:
 
 - `measurement_method`: reviewed measurement method such as `vna_s11`.
 
+`rf_antenna_performance_limit` rows use `value` as positive
+`min_return_loss_db` and require extra columns:
+
+- `name`: stable RF performance-limit identifier.
+- `antenna_net`: Board IR antenna/feed net.
+
+Optional `rf_antenna_performance_limit` columns:
+
+- `frequency_min_mhz`: positive lower edge of the reviewed operating band.
+- `frequency_max_mhz`: positive upper edge of the reviewed operating band.
+- `limit_source`: reviewed limit source when the ordinary `source` column is
+  not used.
+
 RF rows create or replace entries under
 `board.layout.constraints.rf_antenna.keepouts[]`,
 `board.layout.constraints.rf_antenna.feed_paths[]`, and
 `board.layout.constraints.rf_antenna.matching_networks[]`, and
-`board.layout.constraints.rf_antenna.measurements[]` by `name`. Duplicate CSV
-names fail closed. These rows are reviewed RF layout/topology/measurement
-evidence only; the importer does not infer antenna topology, RF roles,
-matching components, keepout geometry, acceptable return loss, or S-parameter
-sweep behavior from net names, component values, or designators.
+`board.layout.constraints.rf_antenna.measurements[]`, and
+`board.layout.constraints.rf_antenna.performance_limits[]` by `name`.
+Duplicate CSV names fail closed. These rows are reviewed RF
+layout/topology/measurement/limit evidence only; the importer does not infer
+antenna topology, RF roles, matching components, keepout geometry, acceptable
+return loss, or S-parameter sweep behavior from net names, component values,
+or designators.
 
 Example:
 

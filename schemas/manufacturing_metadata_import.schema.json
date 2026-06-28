@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.10.0" },
+    "schema_version": { "const": "0.11.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -101,6 +101,7 @@
             "layout.constraints.rf_antenna.feed_paths[]",
             "layout.constraints.rf_antenna.matching_networks[]",
             "layout.constraints.rf_antenna.measurements[]",
+            "layout.constraints.rf_antenna.performance_limits[]",
             "source"
           ]
         },
@@ -383,6 +384,34 @@
                   "minimum": 0
                 },
                 "source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "antenna_net",
+                "min_return_loss_db",
+                "source"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "antenna_net": { "type": "string", "minLength": 1 },
+                "min_return_loss_db": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "source": { "type": "string", "minLength": 1 },
+                "frequency_min_mhz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "frequency_max_mhz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "notes": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
             },

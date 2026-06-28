@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.10.0".to_string(),
+        schema_version: "0.11.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -327,6 +327,22 @@ fn apply_metadata(
                 &measurement.name,
                 value,
                 "layout.constraints.rf_antenna.measurements",
+            )?;
+        } else if field.field == ManufacturingField::RfAntennaPerformanceLimit {
+            let limit = field
+                .rf_antenna_performance_limit
+                .as_ref()
+                .context("rf_antenna_performance_limit field must have limit value")?;
+            let value = normalized_yaml_value(field)?;
+            let layout = ensure_mapping_field_mut(board, "layout")?;
+            let constraints = ensure_mapping_field_mut(layout, "constraints")?;
+            let rf_antenna = ensure_mapping_field_mut(constraints, "rf_antenna")?;
+            let performance_limits = ensure_sequence_field_mut(rf_antenna, "performance_limits")?;
+            upsert_named_sequence_value(
+                performance_limits,
+                &limit.name,
+                value,
+                "layout.constraints.rf_antenna.performance_limits",
             )?;
         } else {
             let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;

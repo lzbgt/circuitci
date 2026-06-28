@@ -2,8 +2,9 @@ use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
     AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
-    AppliedStackupLayer, AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
-    AppliedThermalMeasurement, AppliedThermalPackage,
+    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -113,6 +114,16 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(measurement) = &field.rf_antenna_measurement {
         return serde_yaml_ng::to_value(rf_antenna_measurement_mapping(measurement)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
+    if let Some(limit) = &field.rf_antenna_performance_limit {
+        return serde_yaml_ng::to_value(rf_antenna_performance_limit_mapping(limit)).with_context(
             || {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -558,6 +569,38 @@ fn rf_antenna_measurement_mapping(
         );
     }
     if let Some(value) = &measurement.notes {
+        mapping.insert("notes".to_string(), Value::String(value.clone()));
+    }
+    mapping
+}
+
+fn rf_antenna_performance_limit_mapping(
+    limit: &AppliedRfAntennaPerformanceLimit,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(limit.name.clone()));
+    mapping.insert(
+        "antenna_net".to_string(),
+        Value::String(limit.antenna_net.clone()),
+    );
+    mapping.insert(
+        "min_return_loss_db".to_string(),
+        serde_yaml_ng::to_value(limit.min_return_loss_db).unwrap_or(Value::Null),
+    );
+    mapping.insert("source".to_string(), Value::String(limit.source.clone()));
+    if let Some(value) = limit.frequency_min_mhz {
+        mapping.insert(
+            "frequency_min_mhz".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+    if let Some(value) = limit.frequency_max_mhz {
+        mapping.insert(
+            "frequency_max_mhz".to_string(),
+            serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
+        );
+    }
+    if let Some(value) = &limit.notes {
         mapping.insert("notes".to_string(), Value::String(value.clone()));
     }
     mapping

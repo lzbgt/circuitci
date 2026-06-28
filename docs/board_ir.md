@@ -360,9 +360,12 @@ points in board millimeters. Repeated `field=rf_antenna_feed_path` rows use
 reviewed `elements` such as `series:L1:RFOUT:ANT;shunt:C1:ANT`, and may
 include `reference_net`. Repeated `field=rf_antenna_measurement` rows use
 `value` as positive `return_loss_db` in `dB`, require `name`, `antenna_net`,
-and `frequency_mhz`, and may include `measurement_method`. RF rows create or
-replace entries under `board.layout.constraints.rf_antenna` by name. Duplicate
-CSV targets fail closed to avoid ambiguous validation inputs.
+and `frequency_mhz`, and may include `measurement_method`. Repeated
+`field=rf_antenna_performance_limit` rows use `value` as positive
+`min_return_loss_db` in `dB`, require `name` and `antenna_net`, and may include
+`frequency_min_mhz` and `frequency_max_mhz`. RF rows create or replace entries
+under `board.layout.constraints.rf_antenna` by name. Duplicate CSV targets fail
+closed to avoid ambiguous validation inputs.
 
 ```bash
 circuitci import-manufacturing-metadata \
@@ -1028,6 +1031,14 @@ antenna net, measurement frequency in MHz, positive return-loss magnitude in
 dB, source, and optional method/notes. It is evidence only: validators compare
 named rows against explicit reviewed scenario limits and do not interpolate a
 sweep, solve impedance, or infer acceptable RF performance from net names.
+
+`board.layout.constraints.rf_antenna.performance_limits[]` stores reviewed RF
+performance policy for measured-return-loss checks. Each row names the antenna
+net, minimum acceptable return-loss magnitude in dB, source, optional frequency
+band in MHz, and optional notes. Scenario suggestions can pair a reviewed
+measurement point with a matching same-net limit whose optional frequency band
+contains the measurement frequency. Validators still consume explicit scenario
+parameters and do not infer acceptable RF performance from measurements.
 
 These values must come from explicit antenna-module/layout guidance or a
 reviewed board RF rule. They are not inferred from net names, component

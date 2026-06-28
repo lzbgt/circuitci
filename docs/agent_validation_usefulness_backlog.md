@@ -83,7 +83,7 @@ Useful next slices:
   controlled-impedance target, stackup-layer, thermal-copper policy, and
   measured-temperature, package thermal, operating-environment, and
   thermal-limit evidence rows plus RF antenna keepout/feed-path,
-  matching-network, and measurement constraint rows.
+  matching-network, measurement, and performance-limit constraint rows.
 
 Done means imported evidence is represented in Board IR with provenance and
 ambiguous constructs fail closed.
@@ -117,8 +117,9 @@ keepout, feed-path route/proximity, matching-network topology, and measured
 return-loss screens, reviewed thermal copper-area, thermal via/stackup,
 via-plating/drill/plating-thickness/barrel cross-section evidence, package
 static temperature-rise, and measured-temperature screens with reviewed
-environment/limit metadata import, and manufacturing geometry screens when
-explicit policy exists. It is not a field solver.
+environment/limit metadata import plus RF performance-limit metadata import,
+and manufacturing geometry screens when explicit policy exists. It is not a
+field solver.
 
 Useful next slices:
 

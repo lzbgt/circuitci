@@ -2,7 +2,7 @@ use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_na
 use crate::board_ir::{
     LayoutCopper, LayoutCopperFeature, LayoutPoint, NetRoute, RfAntennaFeedPathRule,
     RfAntennaKeepoutRule, RfAntennaMatchingElement, RfAntennaMatchingNetworkRule,
-    RfAntennaMeasurement, RouteSegment,
+    RfAntennaMeasurement, RfAntennaPerformanceLimit, RouteSegment,
 };
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -1312,6 +1312,58 @@ fn rf_antenna_measured_performance_suggestions(
         {
             continue;
         }
+        let matching_limits = bound
+            .project
+            .board
+            .layout
+            .constraints
+            .rf_antenna
+            .performance_limits
+            .iter()
+            .filter(|limit| rf_antenna_performance_limit_matches(bound, measurement, limit))
+            .collect::<Vec<_>>();
+        if !matching_limits.is_empty() {
+            for limit in matching_limits {
+                let mut parameters = BTreeMap::from([
+                    (
+                        "rf_measurements".to_string(),
+                        json!([{ "name": measurement.name }]),
+                    ),
+                    (
+                        "min_return_loss_db".to_string(),
+                        json!(limit.min_return_loss_db),
+                    ),
+                ]);
+                if let Some(min_mhz) = limit.frequency_min_mhz {
+                    parameters.insert("frequency_min_mhz".to_string(), json!(min_mhz));
+                }
+                if let Some(max_mhz) = limit.frequency_max_mhz {
+                    parameters.insert("frequency_max_mhz".to_string(), json!(max_mhz));
+                }
+                suggestions.push(manufacturing_suggestion(
+                    &format!(
+                        "rf_antenna_measured_performance_{}_{}",
+                        sanitized_name(&measurement.name),
+                        sanitized_name(&limit.name)
+                    ),
+                    true,
+                    &format!(
+                        "RF antenna measurement {} has reviewed return-loss evidence matched to reviewed RF performance limit {}.",
+                        measurement.name, limit.name
+                    ),
+                    &format!(
+                        "{}_{}_{}_rf_antenna_measured_performance",
+                        project_name,
+                        sanitized_name(&measurement.name),
+                        sanitized_name(&limit.name)
+                    ),
+                    RF_ANTENNA_MEASURED_PERFORMANCE_VALID,
+                    Some(parameters),
+                    Vec::new(),
+                ));
+            }
+            continue;
+        }
         suggestions.push(manufacturing_suggestion(
             &format!(
                 "rf_antenna_measured_performance_{}",
@@ -1356,6 +1408,39 @@ fn rf_antenna_measurement_has_evidence(
         && measurement.frequency_mhz > 0.0
         && measurement.return_loss_db.is_finite()
         && measurement.return_loss_db > 0.0
+}
+
+fn rf_antenna_performance_limit_matches(
+    bound: &BoundBoard<'_>,
+    measurement: &RfAntennaMeasurement,
+    limit: &RfAntennaPerformanceLimit,
+) -> bool {
+    !limit.name.trim().is_empty()
+        && !limit.source.trim().is_empty()
+        && limit.antenna_net == measurement.antenna_net
+        && bound.project.board.nets.contains_key(&limit.antenna_net)
+        && limit.min_return_loss_db.is_finite()
+        && limit.min_return_loss_db > 0.0
+        && optional_positive_frequency(limit.frequency_min_mhz)
+        && optional_positive_frequency(limit.frequency_max_mhz)
+        && frequency_band_order_valid(limit.frequency_min_mhz, limit.frequency_max_mhz)
+        && limit
+            .frequency_min_mhz
+            .is_none_or(|min_mhz| measurement.frequency_mhz >= min_mhz - f64::EPSILON)
+        && limit
+            .frequency_max_mhz
+            .is_none_or(|max_mhz| measurement.frequency_mhz <= max_mhz + f64::EPSILON)
+}
+
+fn optional_positive_frequency(value: Option<f64>) -> bool {
+    value.is_none_or(|frequency_mhz| frequency_mhz.is_finite() && frequency_mhz > 0.0)
+}
+
+fn frequency_band_order_valid(min_mhz: Option<f64>, max_mhz: Option<f64>) -> bool {
+    match (min_mhz, max_mhz) {
+        (Some(min_mhz), Some(max_mhz)) => max_mhz + f64::EPSILON >= min_mhz,
+        _ => true,
+    }
 }
 
 fn rf_antenna_measurement_check_declared(bound: &BoundBoard<'_>, measurement_name: &str) -> bool {
