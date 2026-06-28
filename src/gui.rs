@@ -40,6 +40,7 @@ mod shell;
 mod simulation;
 mod simulation_editors;
 mod simulation_forms;
+mod simulation_probe_assertions;
 mod simulation_sweeps;
 mod sketch;
 mod sketch_actions;

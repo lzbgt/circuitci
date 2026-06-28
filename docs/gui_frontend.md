@@ -342,7 +342,9 @@ orientation under `board.schematic.node_styles`.
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
 `src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
-editors. `src/gui/analog_run_setup.rs` owns generated transient, AC/Bode,
+editors. `src/gui/simulation_probe_assertions.rs` owns the selected-probe check
+table and canvas-triggered assertion add/clear/quick-threshold actions.
+`src/gui/analog_run_setup.rs` owns generated transient, AC/Bode,
 DC operating-point, and noise
 run-setup YAML creation, including model-file inference and generated SPICE
 node/pin bindings. `src/gui/simulation_sweeps.rs`
