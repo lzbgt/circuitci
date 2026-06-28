@@ -50,6 +50,17 @@ power_switch:
   reverse_current_blocking_mode: when_disabled
   max_inrush_current_A: 11.0
   soft_start_time_us: 6300.0
+simulation:
+  spice:
+    model_name: CIRCUITCI_TPS24751_CSD17501Q5A_HOT_SWAP
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VIN, VOUT, GND, EN]
+    valid_operating_notes:
+      - Reduced behavioral observation model for preliminary enabled VIN-to-VOUT generated-SPICE rail checks only.
+      - Uses source-backed 2.5 V to 18 V operating range, active-high EN threshold, 12 A current class, 11 A current-limit design point, 9.7 mOhm effective path resistance, and disabled-state reverse-blocking metadata while emitting a smooth enabled high-side conductance.
+      - TIMER/PROG/SET current-limit and fault-timer behavior, FLTb/PGb outputs, external MOSFET gate-drive dynamics, disabled-state reverse-current dynamics, thermal shutdown, and final hot-swap/protection sign-off are out of scope.
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS24751 + CSD17501Q5A
@@ -135,8 +146,10 @@ model_quality:
     - pmu_wheel_rail_selected_switch_budget
     - pmu_wheel_rail_off_state_reverse_isolation_screening
     - pmu_wheel_rail_first_pass_inrush_screening
+    - preliminary_generated_spice_observation
   not_valid_for:
     - final_layout_thermal_signoff
     - measured_short_circuit_waveform_signoff
     - repeated_inrush_or_fault_retry_thermal_signoff
+    - final_hot_swap_fault_timing_or_reverse_current_signoff
     - safety_certification

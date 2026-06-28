@@ -1,5 +1,5 @@
 project:
-  name: good_tps25948_efuse_observation
+  name: good_tps24751_hot_swap_observation
   version: 0.1.0
 
 libraries:
@@ -11,20 +11,20 @@ board:
     component_symbols:
       VBUS: Simulation_SPICE:VDC
       VEN: Simulation_SPICE:VDC
-      UEFUSE: Power_Management:TPS25948
+      UHOTSWAP: Power_Management:TPS24751_CSD17501Q5A
       RLOAD: Device:R
     node_styles:
       component:VBUS: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:VEN: { rotation_deg: 90, mirrored: false, pin_side: auto }
-      component:UEFUSE: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:UHOTSWAP: { rotation_deg: 0, mirrored: false, pin_side: auto }
       component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
       component:VBUS: { x: 64.0, y: 176.0 }
       component:VEN: { x: 64.0, y: 336.0 }
-      component:UEFUSE: { x: 336.0, y: 224.0 }
+      component:UHOTSWAP: { x: 336.0, y: 224.0 }
       component:RLOAD: { x: 624.0, y: 336.0 }
       net:input_12v: { x: 176.0, y: 176.0 }
-      net:efuse_enable: { x: 176.0, y: 336.0 }
+      net:hotswap_enable: { x: 176.0, y: 336.0 }
       net:protected_12v: { x: 512.0, y: 176.0 }
       net:gnd: { x: 336.0, y: 544.0 }
     wire_routes:
@@ -34,22 +34,22 @@ board:
       VBUS.N->gnd:
         points:
           - { x: 112.0, y: 544.0 }
-      VEN.P->efuse_enable:
+      VEN.P->hotswap_enable:
         points:
           - { x: 144.0, y: 336.0 }
       VEN.N->gnd:
         points:
           - { x: 112.0, y: 544.0 }
-      UEFUSE.VIN->input_12v:
+      UHOTSWAP.VIN->input_12v:
         points:
           - { x: 256.0, y: 176.0 }
-      UEFUSE.EN->efuse_enable:
+      UHOTSWAP.EN->hotswap_enable:
         points:
           - { x: 256.0, y: 336.0 }
-      UEFUSE.VOUT->protected_12v:
+      UHOTSWAP.VOUT->protected_12v:
         points:
           - { x: 512.0, y: 176.0 }
-      UEFUSE.GND->gnd:
+      UHOTSWAP.GND->gnd:
         points:
           - { x: 336.0, y: 544.0 }
       RLOAD.A->protected_12v:
@@ -72,14 +72,14 @@ board:
       model: generic.analog.dc_voltage_source
       part_number: EN_2V_SOURCE
       pins:
-        P: efuse_enable
+        P: hotswap_enable
         N: gnd
       spice:
         primitive: dc_voltage_source
         dc_v: 2.0
-    UEFUSE:
-      model: vendor.ti.tps25948_8a_rcb_dvdt
-      part_number: TPS259480AYWP
+    UHOTSWAP:
+      model: vendor.ti.tps24751_csd17501q5a_12a_reverse_blocking
+      part_number: TPS24751RUV_CSD17501Q5A
       power_domains:
         VIN: input_12v
         VOUT: protected_12v
@@ -87,7 +87,7 @@ board:
         VIN: input_12v
         VOUT: protected_12v
         GND: gnd
-        EN: efuse_enable
+        EN: hotswap_enable
     RLOAD:
       model: generic.analog.resistor
       part_number: 120R_1pct
@@ -107,7 +107,7 @@ board:
       kind: power
       nominal_voltage: 12.0
       powered: true
-    efuse_enable:
+    hotswap_enable:
       kind: power
       nominal_voltage: 2.0
       powered: true
@@ -115,7 +115,7 @@ board:
       kind: ground
 
 scenarios:
-  - name: tps25948_enabled_efuse_observation
+  - name: tps24751_enabled_hot_swap_observation
     type: analog_transient
     checks:
       - SPICE_TRANSIENT_ANALYSIS
@@ -127,14 +127,14 @@ scenarios:
         components:
           - VBUS
           - VEN
-          - UEFUSE
+          - UHOTSWAP
           - RLOAD
       model_files:
         - path: ../../models/spice/generic/analog_behavioral.lib
           sha256: 52acc1c06323a97b40299638c0ef22ebb4267818c185d0c3a0a5d7508076c858
       node_bindings:
         - { node: vin12, net: input_12v }
-        - { node: en, net: efuse_enable }
+        - { node: en, net: hotswap_enable }
         - { node: protected12v, net: protected_12v }
         - { node: "0", net: gnd }
       pin_bindings:
@@ -142,10 +142,10 @@ scenarios:
         - { node: "0", endpoint: { component: VBUS, pin: N } }
         - { node: en, endpoint: { component: VEN, pin: P } }
         - { node: "0", endpoint: { component: VEN, pin: N } }
-        - { node: vin12, endpoint: { component: UEFUSE, pin: VIN } }
-        - { node: protected12v, endpoint: { component: UEFUSE, pin: VOUT } }
-        - { node: "0", endpoint: { component: UEFUSE, pin: GND } }
-        - { node: en, endpoint: { component: UEFUSE, pin: EN } }
+        - { node: vin12, endpoint: { component: UHOTSWAP, pin: VIN } }
+        - { node: protected12v, endpoint: { component: UHOTSWAP, pin: VOUT } }
+        - { node: "0", endpoint: { component: UHOTSWAP, pin: GND } }
+        - { node: en, endpoint: { component: UHOTSWAP, pin: EN } }
         - { node: protected12v, endpoint: { component: RLOAD, pin: A } }
         - { node: "0", endpoint: { component: RLOAD, pin: B } }
       analysis:
@@ -153,8 +153,8 @@ scenarios:
         stop_time_us: 80.0
         max_step_us: 0.2
       stimuli:
-        - name: enabled_12v_efuse
-          description: 12 V input and 2 V EN source enable TPS25948 behavioral eFuse into a 120 ohm load.
+        - name: enabled_12v_hot_swap
+          description: 12 V input and 2 V EN source enable TPS24751/CSD17501Q5A behavioral hot-swap path into a 120 ohm load.
       probes:
         - name: v_input
           expression: V(vin12)

@@ -183,6 +183,13 @@ const TPS25948_EFUSE_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_input", "v_enable", "v_protected12v", "i_load"];
 const TPS25948_EFUSE_SCOPE_EXPECTED_FREQUENCY: &str =
     "12 V enabled eFuse/load-switch path into a 120 ohm load";
+const TPS24751_HOT_SWAP_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_tps24751_hot_swap_observation/project.yaml";
+const TPS24751_HOT_SWAP_SCOPE_EXAMPLE_NAME: &str = "good_tps24751_hot_swap_observation";
+const TPS24751_HOT_SWAP_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_input", "v_enable", "v_protected12v", "i_load"];
+const TPS24751_HOT_SWAP_SCOPE_EXPECTED_FREQUENCY: &str =
+    "12 V enabled hot-swap/reverse-blocking path into a 120 ohm load";
 const TPS2121_POWER_MUX_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_tps2121_power_mux_observation/project.yaml";
 const TPS2121_POWER_MUX_SCOPE_EXAMPLE_NAME: &str = "good_tps2121_power_mux_observation";
@@ -546,6 +553,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: TPS25948_EFUSE_SCOPE_EXPECTED_TRACES,
         expected_frequency: TPS25948_EFUSE_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UEFUSE"),
+    },
+    GuiProjectExample {
+        id: "tps24751_hot_swap_scope",
+        category: "eFuse",
+        open_label: "Open TPS24751 Hot-Swap Example",
+        run_label: "Open TPS24751 + Run Scopes",
+        workflow_title: "TPS24751 Hot-Swap Workflow",
+        summary: "Enabled 12 V hot-swap/reverse-blocking path with protected-rail and load-current checks.",
+        project_path: TPS24751_HOT_SWAP_SCOPE_EXAMPLE_PROJECT,
+        project_name: TPS24751_HOT_SWAP_SCOPE_EXAMPLE_NAME,
+        expected_traces: TPS24751_HOT_SWAP_SCOPE_EXPECTED_TRACES,
+        expected_frequency: TPS24751_HOT_SWAP_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UHOTSWAP"),
     },
     GuiProjectExample {
         id: "tps2121_power_mux_scope",

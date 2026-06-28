@@ -767,6 +767,16 @@ can exercise enabled protected-rail wiring and preliminary voltage/current
 observations, but not dVdt slew, ILM/ITIMER current-limit and fault timing,
 FLT/SPLYGD outputs, OVLO, RCBCTRL, reverse-current dynamics, thermal shutdown,
 inrush, or final eFuse/protection sign-off.
+`vendor.ti.tps24751_csd17501q5a_12a_reverse_blocking` follows the same pattern
+for hot-swap/reverse-blocking observation: its TI source-backed voltage range,
+EN threshold, 12 A current class, 11 A current-limit design point, 9.7 mOhm
+effective path resistance, disabled-state reverse-current-blocking metadata,
+and static power-switch limits remain source-backed, while its generated-SPICE
+face uses a reduced smooth VIN-to-VOUT conductance. That model can exercise
+enabled protected-rail wiring and preliminary voltage/current observations, but
+not TIMER/PROG/SET current-limit and fault-timer behavior, FLTb/PGb outputs,
+external MOSFET gate-drive dynamics, disabled-state reverse-current dynamics,
+thermal shutdown, inrush accuracy, or final hot-swap/protection sign-off.
 `vendor.microchip.mcp73831_4v2` follows the same pattern for Li-Ion charger
 observation: its datasheet pinout, input range, battery regulation target, PROG
 resistor charge-current equation, and static charger metadata remain

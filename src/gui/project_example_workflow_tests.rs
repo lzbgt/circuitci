@@ -888,6 +888,46 @@ fn tps25948_scope_example_workflow_creates_model_aware_observation_checks() {
 }
 
 #[test]
+fn tps24751_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tps24751_hot_swap_scope"), None);
+
+    assert!(app.create_scope_example_observation_preset());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UHOTSWAP".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "uhotswap_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "uhotswap_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_uhotswap_vout")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| { assertion.name == "v_uhotswap_vout_enabled_min_voltage" })
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| { assertion.name == "v_uhotswap_vout_enabled_max_voltage" })
+    );
+}
+
+#[test]
 fn mcp73831_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 

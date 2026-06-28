@@ -337,6 +337,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UEFUSE"),
         },
         ExpectedProjectExample {
+            id: "tps24751_hot_swap_scope",
+            category: "eFuse",
+            open_label: "Open TPS24751 Hot-Swap Example",
+            run_label: "Open TPS24751 + Run Scopes",
+            summary: "Enabled 12 V hot-swap/reverse-blocking path with protected-rail and load-current checks.",
+            project_path: "examples/good_tps24751_hot_swap_observation/project.yaml",
+            project_name: "good_tps24751_hot_swap_observation",
+            expected_traces: &["v_input", "v_enable", "v_protected12v", "i_load"],
+            expected_frequency: "12 V enabled hot-swap/reverse-blocking path into a 120 ohm load",
+            observation_preset_component: Some("UHOTSWAP"),
+        },
+        ExpectedProjectExample {
             id: "tps2121_power_mux_scope",
             category: "Power Mux",
             open_label: "Open TPS2121 Power Mux Example",
