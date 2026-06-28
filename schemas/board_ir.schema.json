@@ -1091,6 +1091,31 @@
                       },
                       "additionalProperties": false
                     },
+                    "fabrication": {
+                      "type": "object",
+                      "required": ["source"],
+                      "properties": {
+                        "solder_mask_margin_mm": { "type": "number" },
+                        "solder_paste_margin_mm": { "type": "number" },
+                        "solder_paste_margin_ratio": { "type": "number" },
+                        "clearance_mm": { "type": "number", "minimum": 0 },
+                        "zone_connect": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "thermal_bridge_width_mm": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "thermal_gap_mm": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "source": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": false
+                    },
                     "rotation_deg": { "type": "number" },
                     "drill_mm": {
                       "type": "number",

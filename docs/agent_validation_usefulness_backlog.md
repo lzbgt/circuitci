@@ -75,8 +75,8 @@ Useful next slices:
   assembly manifest,
 - vendor reference-design adapters,
 - package/footprint semantics beyond the current KiCad pin-1,
-  body/courtyard-bounds, and connector-entry evidence, especially paste/mask
-  exceptions,
+  body/courtyard-bounds, connector-entry, and raw pad-level mask/paste
+  fabrication override evidence,
 - board/order metadata extraction workflows for fabrication constraints.
 
 Done means imported evidence is represented in Board IR with provenance and

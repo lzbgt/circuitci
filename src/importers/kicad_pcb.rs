@@ -83,6 +83,7 @@ struct PcbPad {
     kind: Option<String>,
     shape: Option<String>,
     size: PcbPadSize,
+    fabrication: Option<PcbPadFabrication>,
     rotation_deg: Option<f64>,
     drill_mm: Option<f64>,
 }
@@ -133,6 +134,17 @@ struct PcbPadSize {
     y_mm: f64,
 }
 
+#[derive(Debug, Clone, Copy, Serialize)]
+struct PcbPadFabrication {
+    solder_mask_margin_mm: Option<f64>,
+    solder_paste_margin_mm: Option<f64>,
+    solder_paste_margin_ratio: Option<f64>,
+    clearance_mm: Option<f64>,
+    zone_connect: Option<u8>,
+    thermal_bridge_width_mm: Option<f64>,
+    thermal_gap_mm: Option<f64>,
+}
+
 #[derive(Debug, Serialize)]
 struct RouteYaml<'a> {
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -153,9 +165,30 @@ struct PadYaml<'a> {
     shape: Option<&'a str>,
     size: PcbPadSize,
     #[serde(skip_serializing_if = "Option::is_none")]
+    fabrication: Option<PadFabricationYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     rotation_deg: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     drill_mm: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+struct PadFabricationYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    solder_mask_margin_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    solder_paste_margin_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    solder_paste_margin_ratio: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    clearance_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    zone_connect: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thermal_bridge_width_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thermal_gap_mm: Option<f64>,
+    source: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -391,6 +424,11 @@ fn parse_pads(
             let drill_mm = pad_drill_mm(pad).with_context(|| {
                 format!("KiCad PCB footprint {reference} pad {pad_name} has invalid drill size.")
             })?;
+            let fabrication = pad_fabrication(pad).with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} pad {pad_name} has invalid fabrication overrides."
+                )
+            })?;
             let component_pads = pads.entry(reference.clone()).or_default();
             if component_pads.contains_key(&pad_name) {
                 bail!("KiCad PCB footprint {reference} contains duplicate pad {pad_name}.");
@@ -404,6 +442,7 @@ fn parse_pads(
                     kind,
                     shape,
                     size,
+                    fabrication,
                     rotation_deg,
                     drill_mm,
                 },
@@ -1101,6 +1140,67 @@ fn pad_drill_mm(pad: &[Sexp]) -> Result<Option<f64>> {
     Ok(Some(value))
 }
 
+fn pad_fabrication(pad: &[Sexp]) -> Result<Option<PcbPadFabrication>> {
+    let fabrication = PcbPadFabrication {
+        solder_mask_margin_mm: optional_child_number(pad, "solder_mask_margin")?,
+        solder_paste_margin_mm: optional_child_number(pad, "solder_paste_margin")?,
+        solder_paste_margin_ratio: optional_child_number(pad, "solder_paste_margin_ratio")?,
+        clearance_mm: optional_nonnegative_child_number(pad, "clearance")?,
+        zone_connect: optional_child_u8(pad, "zone_connect")?,
+        thermal_bridge_width_mm: optional_positive_child_number(pad, "thermal_bridge_width")?,
+        thermal_gap_mm: optional_positive_child_number(pad, "thermal_gap")?,
+    };
+    Ok((fabrication.solder_mask_margin_mm.is_some()
+        || fabrication.solder_paste_margin_mm.is_some()
+        || fabrication.solder_paste_margin_ratio.is_some()
+        || fabrication.clearance_mm.is_some()
+        || fabrication.zone_connect.is_some()
+        || fabrication.thermal_bridge_width_mm.is_some()
+        || fabrication.thermal_gap_mm.is_some())
+    .then_some(fabrication))
+}
+
+fn optional_child_number(item: &[Sexp], field: &str) -> Result<Option<f64>> {
+    let Some(child) = child_list(item, field) else {
+        return Ok(None);
+    };
+    let value = numeric_at(child, 1).with_context(|| format!("invalid {field} value"))?;
+    if !value.is_finite() {
+        bail!("{field} value must be finite");
+    }
+    Ok(Some(value))
+}
+
+fn optional_nonnegative_child_number(item: &[Sexp], field: &str) -> Result<Option<f64>> {
+    let Some(value) = optional_child_number(item, field)? else {
+        return Ok(None);
+    };
+    if value < 0.0 {
+        bail!("{field} value must be non-negative");
+    }
+    Ok(Some(value))
+}
+
+fn optional_positive_child_number(item: &[Sexp], field: &str) -> Result<Option<f64>> {
+    let Some(value) = optional_child_number(item, field)? else {
+        return Ok(None);
+    };
+    if value <= 0.0 {
+        bail!("{field} value must be positive");
+    }
+    Ok(Some(value))
+}
+
+fn optional_child_u8(item: &[Sexp], field: &str) -> Result<Option<u8>> {
+    let Some(value) = optional_child_number(item, field)? else {
+        return Ok(None);
+    };
+    if value.fract().abs() > f64::EPSILON || value < 0.0 || value > u8::MAX as f64 {
+        bail!("{field} value must be an unsigned integer");
+    }
+    Ok(Some(value as u8))
+}
+
 fn positive_child_number(item: &[Sexp], field: &str, path: &Path) -> Result<f64> {
     let child = child_list(item, field).with_context(|| {
         format!(
@@ -1387,6 +1487,16 @@ fn pad_yaml_value(pad: &PcbPad, board_net_name: &str) -> Result<Value> {
         kind: pad.kind.as_deref(),
         shape: pad.shape.as_deref(),
         size: pad.size,
+        fabrication: pad.fabrication.map(|fabrication| PadFabricationYaml {
+            solder_mask_margin_mm: fabrication.solder_mask_margin_mm,
+            solder_paste_margin_mm: fabrication.solder_paste_margin_mm,
+            solder_paste_margin_ratio: fabrication.solder_paste_margin_ratio,
+            clearance_mm: fabrication.clearance_mm,
+            zone_connect: fabrication.zone_connect,
+            thermal_bridge_width_mm: fabrication.thermal_bridge_width_mm,
+            thermal_gap_mm: fabrication.thermal_gap_mm,
+            source: "kicad_pad_property".to_string(),
+        }),
         rotation_deg: pad.rotation_deg,
         drill_mm: pad.drill_mm,
     })

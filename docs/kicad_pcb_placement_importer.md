@@ -108,6 +108,17 @@ evidence includes:
 - scalar pad drill diameter in millimeters when present,
 - pad layer list when present.
 
+When a connected KiCad pad declares local fabrication overrides, the importer
+preserves them under `board.layout.pads.<ref>.<pad>.fabrication` with source
+`kicad_pad_property`. Supported raw pad properties are
+`solder_mask_margin`, `solder_paste_margin`,
+`solder_paste_margin_ratio`, `clearance`, `zone_connect`,
+`thermal_bridge_width`, and `thermal_gap`. Mask and paste margins can be
+negative when KiCad uses them to shrink openings. Local clearance must be
+non-negative, thermal dimensions must be positive, and `zone_connect` must be
+an unsigned integer. These fields are evidence for manufacturing review; the
+importer does not derive solder-mask or paste artwork from them.
+
 The importer also reads KiCad `gr_line`, `gr_rect`, `gr_poly`, `gr_circle`, `gr_arc`, `net`,
 `segment`, `via`, and `zone` entries. Board-edge graphics on `Edge.Cuts` are
 written under `board.layout.outline.segments`; `gr_rect`, `gr_poly`, `gr_circle`, and `gr_arc`

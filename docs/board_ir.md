@@ -559,6 +559,15 @@ board:
           kind: smd
           shape: rect
           size: { x_mm: 0.3, y_mm: 0.3 }
+          fabrication:
+            solder_mask_margin_mm: 0.04
+            solder_paste_margin_mm: -0.02
+            solder_paste_margin_ratio: -0.1
+            clearance_mm: 0.15
+            zone_connect: 2
+            thermal_bridge_width_mm: 0.25
+            thermal_gap_mm: 0.2
+            source: kicad_pad_property
           layers: [F.Cu, F.Paste, F.Mask]
       UESD:
         D1+:
@@ -577,9 +586,14 @@ bottom-side SMD pads on `B.Cu`; through-hole/drilled pads are emitted on both
 `F.Cu` and `B.Cu`. EasyEDA/JLC pad evidence may carry a provenance-only
 `source` block with the source row, raw pin name, optional pin number, optional
 net type, and optional positive `HOLE_LEN` value. Those source fields are not
-used to infer rail semantics or slot geometry. Unconnected pads are skipped.
-This is static pad evidence only: it does not model solder mask expansion,
-thermal relief, plated-hole barrel geometry, or copper-island connectivity.
+used to infer rail semantics or slot geometry. KiCad pads may also carry a
+`fabrication` block for raw pad-local `solder_mask_margin`,
+`solder_paste_margin`, `solder_paste_margin_ratio`, `clearance`,
+`zone_connect`, `thermal_bridge_width`, and `thermal_gap` properties. Negative
+paste and mask margins are preserved as authored; CircuitCI does not derive
+mask or paste artwork from those overrides. Unconnected pads are skipped. This
+is static pad evidence only: it does not model solder mask expansion, thermal
+relief geometry, plated-hole barrel geometry, or copper-island connectivity.
 
 ## Layout Route Evidence
 

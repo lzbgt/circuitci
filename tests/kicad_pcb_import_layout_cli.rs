@@ -943,7 +943,14 @@ scenarios: []
     (at 10 20 90)
     (property "Reference" "U1" (at 0 0 0) (layer "F.SilkS"))
     (fp_rect (start -1 -2) (end 1 2) (stroke (width 0.1) (type solid)) (fill none) (layer "F.Fab"))
-    (pad "1" smd rect (at 0.5 0.25) (size 0.3 0.3) (layers "F.Cu") (net 1 "NET_1"))
+    (pad "1" smd rect (at 0.5 0.25) (size 0.3 0.3) (layers "F.Cu" "F.Paste" "F.Mask") (net 1 "NET_1")
+      (solder_mask_margin 0.04)
+      (solder_paste_margin -0.02)
+      (solder_paste_margin_ratio -0.1)
+      (clearance 0.15)
+      (zone_connect 2)
+      (thermal_bridge_width 0.25)
+      (thermal_gap 0.2))
   )
 )
 "#,
@@ -974,6 +981,15 @@ scenarios: []
     assert_eq!(semantics["body_bounds"]["min"]["y_mm"], 19.0);
     assert_eq!(semantics["body_bounds"]["max"]["x_mm"], 12.0);
     assert_eq!(semantics["body_bounds"]["max"]["y_mm"], 21.0);
+    let pad_fabrication = &imported["board"]["layout"]["pads"]["U1"]["1"]["fabrication"];
+    assert_eq!(pad_fabrication["source"], "kicad_pad_property");
+    assert_eq!(pad_fabrication["solder_mask_margin_mm"], 0.04);
+    assert_eq!(pad_fabrication["solder_paste_margin_mm"], -0.02);
+    assert_eq!(pad_fabrication["solder_paste_margin_ratio"], -0.1);
+    assert_eq!(pad_fabrication["clearance_mm"], 0.15);
+    assert_eq!(pad_fabrication["zone_connect"], 2);
+    assert_eq!(pad_fabrication["thermal_bridge_width_mm"], 0.25);
+    assert_eq!(pad_fabrication["thermal_gap_mm"], 0.2);
 }
 
 fn import_kicad_pcb(board_path: &str, project_path: &str, output_path: &Path) {

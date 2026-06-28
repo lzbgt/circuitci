@@ -189,6 +189,69 @@ fn import_kicad_pcb_rejects_invalid_entry_clearance_properties() {
 }
 
 #[test]
+fn import_kicad_pcb_rejects_invalid_pad_fabrication_overrides() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let source_pcb = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let source_pad = "(pad \"D+\" smd rect (at 0 0.2) (size 0.3 0.3) (layers \"F.Cu\" \"F.Paste\" \"F.Mask\") (net 1 \"USB_DP\"))";
+    let malformed_cases = [
+        (
+            "negative_local_clearance.kicad_pcb",
+            source_pcb.replace(
+                source_pad,
+                "(pad \"D+\" smd rect (at 0 0.2) (size 0.3 0.3) (layers \"F.Cu\" \"F.Paste\" \"F.Mask\") (net 1 \"USB_DP\") (clearance -0.01))",
+            ),
+            "clearance value must be non-negative",
+        ),
+        (
+            "fractional_zone_connect.kicad_pcb",
+            source_pcb.replace(
+                source_pad,
+                "(pad \"D+\" smd rect (at 0 0.2) (size 0.3 0.3) (layers \"F.Cu\" \"F.Paste\" \"F.Mask\") (net 1 \"USB_DP\") (zone_connect 1.5))",
+            ),
+            "zone_connect value must be an unsigned integer",
+        ),
+        (
+            "zero_thermal_gap.kicad_pcb",
+            source_pcb.replace(
+                source_pad,
+                "(pad \"D+\" smd rect (at 0 0.2) (size 0.3 0.3) (layers \"F.Cu\" \"F.Paste\" \"F.Mask\") (net 1 \"USB_DP\") (thermal_gap 0))",
+            ),
+            "thermal_gap value must be positive",
+        ),
+    ];
+
+    for (file_name, pcb_contents, expected_error) in malformed_cases {
+        let pcb_path = dir.path().join(file_name);
+        let output_path = dir.path().join(format!("{file_name}.project.yaml"));
+        std::fs::write(&pcb_path, pcb_contents).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "import-kicad-pcb",
+                pcb_path.to_str().unwrap(),
+                "--project",
+                "examples/import_kicad_usb_connector_protection_suggestions/project.yaml",
+                "--output",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "malformed KiCad PCB pad fabrication fixture {file_name} unexpectedly imported"
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains(expected_error),
+            "expected error containing {expected_error:?}, got:\n{stderr}"
+        );
+    }
+}
+
+#[test]
 fn import_kicad_pcb_rejects_degenerate_rectangular_board_outlines() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

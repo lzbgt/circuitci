@@ -512,6 +512,8 @@ pub struct LayoutPad {
     #[serde(default)]
     pub size: Option<LayoutPadSize>,
     #[serde(default)]
+    pub fabrication: Option<LayoutPadFabrication>,
+    #[serde(default)]
     pub rotation_deg: Option<f64>,
     #[serde(default)]
     pub drill_mm: Option<f64>,
@@ -530,6 +532,26 @@ pub struct LayoutPadSource {
     pub net_type: Option<String>,
     #[serde(default)]
     pub hole_len_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutPadFabrication {
+    #[serde(default)]
+    pub solder_mask_margin_mm: Option<f64>,
+    #[serde(default)]
+    pub solder_paste_margin_mm: Option<f64>,
+    #[serde(default)]
+    pub solder_paste_margin_ratio: Option<f64>,
+    #[serde(default)]
+    pub clearance_mm: Option<f64>,
+    #[serde(default)]
+    pub zone_connect: Option<u8>,
+    #[serde(default)]
+    pub thermal_bridge_width_mm: Option<f64>,
+    #[serde(default)]
+    pub thermal_gap_mm: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
