@@ -554,6 +554,11 @@ against the reviewed limits. Optional `min_rerun_count` and
 `max_rerun_impedance_delta_ohm` fields require deterministic rerun samples
 under `reruns[]`. Repeated `field=controlled_impedance_solver_rerun` metadata
 rows populate `controlled_impedance.solver_run_logs[].reruns[]` for a named
+`solver_run_log`. Optional `min_convergence_sample_count`,
+`max_convergence_impedance_delta_ohm`, and `required_stopping_criteria` fields
+require reviewed convergence samples under `convergence_samples[]`. Repeated
+`field=controlled_impedance_solver_convergence_sample` metadata rows populate
+`controlled_impedance.solver_run_logs[].convergence_samples[]` for a named
 `solver_run_log`.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver

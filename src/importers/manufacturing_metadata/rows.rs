@@ -47,6 +47,8 @@ pub(super) struct AppliedField {
         Option<AppliedControlledImpedanceSolverExecutionEnvironment>,
     pub(super) controlled_impedance_solver_run_log: Option<AppliedControlledImpedanceSolverRunLog>,
     pub(super) controlled_impedance_solver_rerun: Option<AppliedControlledImpedanceSolverRerun>,
+    pub(super) controlled_impedance_solver_convergence_sample:
+        Option<AppliedControlledImpedanceSolverConvergenceSample>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -83,6 +85,7 @@ impl AppliedField {
             controlled_impedance_solver_execution_environment: None,
             controlled_impedance_solver_run_log: None,
             controlled_impedance_solver_rerun: None,
+            controlled_impedance_solver_convergence_sample: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -380,6 +383,9 @@ pub(super) struct AppliedControlledImpedanceSolverRunLog {
     max_iterations: usize,
     min_rerun_count: Option<usize>,
     max_rerun_impedance_delta_ohm: Option<f64>,
+    min_convergence_sample_count: Option<usize>,
+    max_convergence_impedance_delta_ohm: Option<f64>,
+    required_stopping_criteria: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -394,6 +400,19 @@ pub(super) struct AppliedControlledImpedanceSolverRerun {
     solved_impedance_ohm: f64,
     residual_error: f64,
     iterations: usize,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverConvergenceSample {
+    pub(super) solver_run_log_name: String,
+    pub(super) name: String,
+    source: String,
+    artifact_uri: String,
+    artifact_sha256: String,
+    iteration: usize,
+    solved_impedance_ohm: f64,
+    residual_error: f64,
+    stopping_criteria: String,
 }
 
 #[derive(Debug, Clone)]
@@ -577,6 +596,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceSolverExecutionEnvironment,
     ControlledImpedanceSolverRunLog,
     ControlledImpedanceSolverRerun,
+    ControlledImpedanceSolverConvergenceSample,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -638,6 +658,9 @@ impl ManufacturingField {
             Self::ControlledImpedanceSolverRerun => {
                 "controlled_impedance.solver_run_logs[].reruns[]"
             }
+            Self::ControlledImpedanceSolverConvergenceSample => {
+                "controlled_impedance.solver_run_logs[].convergence_samples[]"
+            }
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::ThermalPackage => "thermal_packages[]",
@@ -694,6 +717,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceSolverExecutionEnvironment
                 | Self::ControlledImpedanceSolverRunLog
                 | Self::ControlledImpedanceSolverRerun
+                | Self::ControlledImpedanceSolverConvergenceSample
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -886,6 +910,12 @@ fn applied_field(
             Some(applied_controlled_impedance_solver_rerun(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverConvergenceSample {
+        applied.controlled_impedance_solver_convergence_sample = Some(
+            applied_controlled_impedance_solver_convergence_sample(row, path)?,
+        );
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -1068,6 +1098,13 @@ fn applied_controlled_impedance_solver_rerun(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverRerun> {
     solver_run_log::applied_controlled_impedance_solver_rerun(row, path)
+}
+
+fn applied_controlled_impedance_solver_convergence_sample(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverConvergenceSample> {
+    solver_run_log::applied_controlled_impedance_solver_convergence_sample(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1707,6 +1744,21 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
                 "Manufacturing metadata CSV repeats controlled_impedance_solver_rerun row {} for run log {}.",
                 rerun.name,
                 rerun.solver_run_log_name
+            );
+        }
+    }
+    let mut controlled_impedance_solver_convergence_samples = BTreeSet::new();
+    for sample in fields.iter().filter_map(|field| {
+        field
+            .controlled_impedance_solver_convergence_sample
+            .as_ref()
+    }) {
+        let key = (sample.solver_run_log_name.clone(), sample.name.clone());
+        if !controlled_impedance_solver_convergence_samples.insert(key.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_convergence_sample row {} for run log {}.",
+                sample.name,
+                sample.solver_run_log_name
             );
         }
     }

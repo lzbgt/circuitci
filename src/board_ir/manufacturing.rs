@@ -270,6 +270,14 @@ pub struct ControlledImpedanceSolverRunLog {
     pub max_rerun_impedance_delta_ohm: Option<f64>,
     #[serde(default)]
     pub reruns: Vec<ControlledImpedanceSolverRerun>,
+    #[serde(default)]
+    pub min_convergence_sample_count: Option<usize>,
+    #[serde(default)]
+    pub max_convergence_impedance_delta_ohm: Option<f64>,
+    #[serde(default)]
+    pub required_stopping_criteria: Option<String>,
+    #[serde(default)]
+    pub convergence_samples: Vec<ControlledImpedanceSolverConvergenceSample>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -283,6 +291,18 @@ pub struct ControlledImpedanceSolverRerun {
     pub solved_impedance_ohm: f64,
     pub residual_error: f64,
     pub iterations: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverConvergenceSample {
+    pub name: String,
+    pub source: String,
+    pub artifact_uri: String,
+    pub artifact_sha256: String,
+    pub iteration: usize,
+    pub solved_impedance_ohm: f64,
+    pub residual_error: f64,
+    pub stopping_criteria: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

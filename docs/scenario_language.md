@@ -2020,7 +2020,10 @@ Controlled-impedance solver-result algorithm:
    to stay within reviewed limits. If the reviewed run-log row declares
    deterministic rerun policy, require enough reviewed rerun samples with
    matching random seed and solved impedance, residual error, and iteration
-   count inside the declared limits.
+   count inside the declared limits. If the reviewed run-log row declares
+   convergence-window policy, require enough reviewed convergence samples with
+   matching stopping criteria and solved impedance, residual error, and
+   iteration count inside the declared limits.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.

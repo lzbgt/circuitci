@@ -234,6 +234,107 @@ fn controlled_impedance_solver_result_fails_for_rerun_impedance_window() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_solver_result_passes_with_convergence_window_evidence() {
+    let (_dir, project_path) = write_solver_environment_project(
+        r#"      solver_run_logs:
+        - name: reviewed_2d_field_solver_run_log_rf
+          source: si_solver_run_review_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          run_id: rf_solver_run_2026_06_a
+          artifact_uri: artifacts/solver/rf_solver_run_2026_06_a.log
+          artifact_sha256: aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999
+          random_seed: seed_2026_06_rf
+          numeric_tolerance_policy: si_solver_tolerance_rev_a
+          max_residual_error: 0.000001
+          max_iterations: 120
+          min_convergence_sample_count: 2
+          max_convergence_impedance_delta_ohm: 0.04
+          required_stopping_criteria: residual_and_delta
+          convergence_samples:
+          - name: rf_solver_converged_92
+            source: si_solver_convergence_review_rev_a
+            artifact_uri: artifacts/solver/rf_solver_converged_92.json
+            artifact_sha256: 77776666555544443333222211110000ffffeeeeddddccccbbbbaaaa99998888
+            iteration: 92
+            solved_impedance_ohm: 50.81
+            residual_error: 0.0000004
+            stopping_criteria: residual_and_delta
+          - name: rf_solver_converged_96
+            source: si_solver_convergence_review_rev_a
+            artifact_uri: artifacts/solver/rf_solver_converged_96.json
+            artifact_sha256: 6666555544443333222211110000ffffeeeeddddccccbbbbaaaa999988887777
+            iteration: 96
+            solved_impedance_ohm: 50.80
+            residual_error: 0.0000003
+            stopping_criteria: residual_and_delta
+      solver_results:
+"#,
+        r#"          solver_run_log: reviewed_2d_field_solver_run_log_rf
+          solver_run_id: rf_solver_run_2026_06_a
+          solver_random_seed: seed_2026_06_rf
+          solver_numeric_tolerance_policy: si_solver_tolerance_rev_a
+          solver_residual_error: 0.0000004
+          solver_iterations: 84
+"#,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_for_convergence_stopping_criteria_mismatch() {
+    let (_dir, project_path) = write_solver_environment_project(
+        r#"      solver_run_logs:
+        - name: reviewed_2d_field_solver_run_log_rf
+          source: si_solver_run_review_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          run_id: rf_solver_run_2026_06_a
+          artifact_uri: artifacts/solver/rf_solver_run_2026_06_a.log
+          artifact_sha256: aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999
+          random_seed: seed_2026_06_rf
+          numeric_tolerance_policy: si_solver_tolerance_rev_a
+          max_residual_error: 0.000001
+          max_iterations: 120
+          min_convergence_sample_count: 1
+          max_convergence_impedance_delta_ohm: 0.04
+          required_stopping_criteria: residual_and_delta
+          convergence_samples:
+          - name: rf_solver_converged_92
+            source: si_solver_convergence_review_rev_a
+            artifact_uri: artifacts/solver/rf_solver_converged_92.json
+            artifact_sha256: 77776666555544443333222211110000ffffeeeeddddccccbbbbaaaa99998888
+            iteration: 92
+            solved_impedance_ohm: 50.81
+            residual_error: 0.0000004
+            stopping_criteria: max_iterations
+      solver_results:
+"#,
+        r#"          solver_run_log: reviewed_2d_field_solver_run_log_rf
+          solver_run_id: rf_solver_run_2026_06_a
+          solver_random_seed: seed_2026_06_rf
+          solver_numeric_tolerance_policy: si_solver_tolerance_rev_a
+          solver_residual_error: 0.0000004
+          solver_iterations: 84
+"#,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("stopping criteria")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_solver_environment_project(
     solver_metadata: &str,
     result_environment: &str,

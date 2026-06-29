@@ -4,12 +4,12 @@ use super::controlled_impedance::{
 };
 use super::manufacturing_suggestion;
 use crate::board_ir::{
-    ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverExecutionEnvironment,
-    ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialLibrary,
-    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverRerun,
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType,
-    ControlledImpedanceSolverRunLog, ControlledImpedanceSolverRuntimeAllowlist, NetRoute,
-    StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverConvergenceSample, ControlledImpedanceSolverEntitlement,
+    ControlledImpedanceSolverExecutionEnvironment, ControlledImpedanceSolverMaterialAcceptance,
+    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverMaterialProcess,
+    ControlledImpedanceSolverRerun, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRunLog,
+    ControlledImpedanceSolverRuntimeAllowlist, NetRoute, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -646,6 +646,7 @@ fn controlled_impedance_solver_run_log_has_evidence(
             .solver_iterations
             .is_some_and(|value| value <= matches[0].max_iterations)
         && controlled_impedance_solver_run_log_reruns_have_evidence(matches[0], result)
+        && controlled_impedance_solver_convergence_samples_have_evidence(matches[0], result)
 }
 
 fn controlled_impedance_solver_run_log_metadata_is_complete(
@@ -724,6 +725,7 @@ fn controlled_impedance_solver_run_log_has_valid_metadata(
             .max_rerun_impedance_delta_ohm
             .is_none_or(|value| value.is_finite() && value >= 0.0)
         && (run_log.min_rerun_count.is_some() == run_log.max_rerun_impedance_delta_ohm.is_some())
+        && controlled_impedance_solver_convergence_policy_has_valid_shape(run_log)
 }
 
 fn controlled_impedance_solver_run_log_reruns_have_evidence(
@@ -779,6 +781,98 @@ fn has_unique_named_reruns(reruns: &[ControlledImpedanceSolverRerun]) -> bool {
         let name = rerun.name.trim();
         let run_id = rerun.run_id.trim();
         !name.is_empty() && !run_id.is_empty() && names.insert(name) && run_ids.insert(run_id)
+    })
+}
+
+fn controlled_impedance_solver_convergence_policy_has_valid_shape(
+    run_log: &ControlledImpedanceSolverRunLog,
+) -> bool {
+    let declared = [
+        run_log.min_convergence_sample_count.is_some(),
+        run_log.max_convergence_impedance_delta_ohm.is_some(),
+        run_log
+            .required_stopping_criteria
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty()),
+    ];
+    declared.iter().all(|declared| !declared)
+        || (declared.iter().all(|declared| *declared)
+            && run_log.min_convergence_sample_count.unwrap_or(1) > 0
+            && run_log
+                .max_convergence_impedance_delta_ohm
+                .is_none_or(|value| value.is_finite() && value >= 0.0))
+}
+
+fn controlled_impedance_solver_convergence_samples_have_evidence(
+    run_log: &ControlledImpedanceSolverRunLog,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let policy_requested = run_log.min_convergence_sample_count.is_some()
+        || run_log.max_convergence_impedance_delta_ohm.is_some()
+        || run_log
+            .required_stopping_criteria
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty());
+    if !policy_requested {
+        return true;
+    }
+    let (Some(min_count), Some(max_impedance_delta), Some(stopping_criteria)) = (
+        run_log.min_convergence_sample_count,
+        run_log.max_convergence_impedance_delta_ohm,
+        run_log
+            .required_stopping_criteria
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty()),
+    ) else {
+        return false;
+    };
+    if run_log.convergence_samples.len() < min_count
+        || !has_unique_named_convergence_samples(&run_log.convergence_samples)
+    {
+        return false;
+    }
+    let mut min_impedance = f64::INFINITY;
+    let mut max_impedance = f64::NEG_INFINITY;
+    for sample in &run_log.convergence_samples {
+        if !controlled_impedance_solver_convergence_sample_has_valid_metadata(sample)
+            || sample.stopping_criteria.trim() != stopping_criteria
+            || sample.iteration > run_log.max_iterations
+            || sample.residual_error > run_log.max_residual_error
+            || (sample.solved_impedance_ohm - result.solved_impedance_ohm).abs()
+                > max_impedance_delta
+        {
+            return false;
+        }
+        min_impedance = min_impedance.min(sample.solved_impedance_ohm);
+        max_impedance = max_impedance.max(sample.solved_impedance_ohm);
+    }
+    max_impedance - min_impedance <= max_impedance_delta
+}
+
+fn controlled_impedance_solver_convergence_sample_has_valid_metadata(
+    sample: &ControlledImpedanceSolverConvergenceSample,
+) -> bool {
+    !sample.name.trim().is_empty()
+        && !sample.source.trim().is_empty()
+        && !sample.artifact_uri.trim().is_empty()
+        && is_sha256_hex(sample.artifact_sha256.trim())
+        && sample.iteration > 0
+        && sample.solved_impedance_ohm.is_finite()
+        && sample.solved_impedance_ohm > 0.0
+        && sample.residual_error.is_finite()
+        && sample.residual_error >= 0.0
+        && !sample.stopping_criteria.trim().is_empty()
+}
+
+fn has_unique_named_convergence_samples(
+    samples: &[ControlledImpedanceSolverConvergenceSample],
+) -> bool {
+    let mut names = BTreeSet::new();
+    let mut iterations = BTreeSet::new();
+    samples.iter().all(|sample| {
+        let name = sample.name.trim();
+        !name.is_empty() && names.insert(name) && iterations.insert(sample.iteration)
     })
 }
 

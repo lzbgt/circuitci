@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.38.0".to_string(),
+        schema_version: "0.39.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -174,6 +174,7 @@ fn apply_metadata(
             || field.field == ManufacturingField::ControlledImpedanceSolverSample
             || field.field == ManufacturingField::ControlledImpedanceSolverMaterialCorner
             || field.field == ManufacturingField::ControlledImpedanceSolverRerun
+            || field.field == ManufacturingField::ControlledImpedanceSolverConvergenceSample
         {
             continue;
         }
@@ -647,6 +648,27 @@ fn apply_metadata(
         )?;
         wrote_manufacturing = true;
     }
+    for field in fields.iter().filter(|field| {
+        field.field == ManufacturingField::ControlledImpedanceSolverConvergenceSample
+    }) {
+        let sample = field
+            .controlled_impedance_solver_convergence_sample
+            .as_ref()
+            .context(
+                "controlled_impedance_solver_convergence_sample field must have sample value",
+            )?;
+        let value = normalized_yaml_value(field)?;
+        let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+        let controlled_impedance = ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+        let run_logs = ensure_sequence_field_mut(controlled_impedance, "solver_run_logs")?;
+        upsert_controlled_impedance_solver_convergence_sample_value(
+            run_logs,
+            &sample.solver_run_log_name,
+            &sample.name,
+            value,
+        )?;
+        wrote_manufacturing = true;
+    }
     if wrote_manufacturing {
         let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
         manufacturing.insert(
@@ -893,6 +915,42 @@ fn upsert_controlled_impedance_solver_rerun_value(
         rerun_name,
         value,
         "controlled_impedance.solver_run_logs[].reruns",
+    )
+}
+
+fn upsert_controlled_impedance_solver_convergence_sample_value(
+    run_logs: &mut [Value],
+    run_log_name: &str,
+    sample_name: &str,
+    value: Value,
+) -> Result<()> {
+    let mut matched_run_log_index = None;
+    for (index, run_log) in run_logs.iter().enumerate() {
+        if yaml_mapping_name(run_log) == Some(run_log_name) {
+            if matched_run_log_index.is_some() {
+                bail!(
+                    "Board IR field controlled_impedance.solver_run_logs has duplicate existing name {run_log_name}; refusing to update ambiguous solver convergence sample."
+                );
+            }
+            matched_run_log_index = Some(index);
+        }
+    }
+    let Some(index) = matched_run_log_index else {
+        bail!(
+            "Board IR field controlled_impedance.solver_run_logs has no run log named {run_log_name}; refusing to attach solver convergence sample {sample_name}."
+        );
+    };
+    let mapping = run_logs[index].as_mapping_mut().with_context(|| {
+        format!(
+            "Board IR field controlled_impedance.solver_run_logs item {run_log_name} must be an object."
+        )
+    })?;
+    let samples = ensure_sequence_field_mut(mapping, "convergence_samples")?;
+    upsert_named_sequence_value(
+        samples,
+        sample_name,
+        value,
+        "controlled_impedance.solver_run_logs[].convergence_samples",
     )
 }
 

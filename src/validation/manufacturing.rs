@@ -7,6 +7,7 @@ mod controlled_impedance_coupon;
 mod controlled_impedance_mask;
 mod controlled_impedance_solver;
 mod controlled_impedance_solver_metadata;
+mod controlled_impedance_solver_run_log;
 mod controlled_impedance_stackup;
 mod drill_slot;
 mod geometry;

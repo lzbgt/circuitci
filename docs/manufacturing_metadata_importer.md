@@ -190,6 +190,11 @@ If that reviewed run-log row declares `min_rerun_count` and
 `max_rerun_impedance_delta_ohm`, validation also requires matching
 deterministic rerun samples whose seed, solved impedance, residual error, and
 iteration count remain inside the reviewed run-log limits.
+If that reviewed run-log row declares `min_convergence_sample_count`,
+`max_convergence_impedance_delta_ohm`, and `required_stopping_criteria`,
+validation also requires matching convergence samples whose stopping criteria,
+solved impedance, residual error, and iteration remain inside the reviewed
+run-log limits.
 When any input-deck column is present, validation requires complete input-deck
 provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
@@ -201,7 +206,8 @@ CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
 verify signatures, parse solver output schemas, parse tool configuration locks
-or runtime allowlist/entitlement/environment/run-log/rerun artifacts, parse
+or runtime allowlist/entitlement/environment/run-log/rerun/convergence
+artifacts, parse
 input decks, replay solver runs, or infer stackup parameters.
 Repeated `field=controlled_impedance_solver_runtime_allowlist` rows require
 `name`, `source`, `solver`, `solver_config_lock_revision`, `runtime_profile`,
@@ -220,11 +226,19 @@ Repeated `field=controlled_impedance_solver_run_log` rows require `name`,
 `artifact_sha256`, `random_seed`, `numeric_tolerance_policy`,
 `max_residual_error`, and `max_iterations`. Optional `min_rerun_count` and
 `max_rerun_impedance_delta_ohm` columns declare a deterministic rerun policy.
+Optional `min_convergence_sample_count`,
+`max_convergence_impedance_delta_ohm`, and `required_stopping_criteria`
+columns declare a convergence-window policy.
 Repeated `field=controlled_impedance_solver_rerun` rows require
 `solver_run_log`, `name`, `source`, `run_id`, `artifact_uri`,
 `artifact_sha256`, `random_seed`, `solved_impedance_ohm`, `residual_error`,
 and `iterations`; rows attach under the named imported or pre-existing solver
 run log.
+Repeated `field=controlled_impedance_solver_convergence_sample` rows require
+`solver_run_log`, `name`, `source`, `artifact_uri`, `artifact_sha256`,
+`iteration`, `solved_impedance_ohm`, `residual_error`, and
+`stopping_criteria`; rows attach under the named imported or pre-existing
+solver run log.
 Declaring material-library columns requires a matching reviewed
 `controlled_impedance_solver_material_library` artifact-content row before
 validation can accept the solver result. If reviewed

@@ -198,6 +198,9 @@ board:
           max_iterations: 120
           min_rerun_count: 2
           max_rerun_impedance_delta_ohm: 0.05
+          min_convergence_sample_count: 2
+          max_convergence_impedance_delta_ohm: 0.04
+          required_stopping_criteria: residual_and_delta
           reruns:
             - name: rf_solver_rerun_a
               source: si_solver_rerun_review_rev_a
@@ -217,6 +220,23 @@ board:
               solved_impedance_ohm: 50.79
               residual_error: 0.0000004
               iterations: 83
+          convergence_samples:
+            - name: rf_solver_converged_92
+              source: si_solver_convergence_review_rev_a
+              artifact_uri: artifacts/solver/rf_solver_converged_92.json
+              artifact_sha256: 77776666555544443333222211110000ffffeeeeddddccccbbbbaaaa99998888
+              iteration: 92
+              solved_impedance_ohm: 50.81
+              residual_error: 0.0000004
+              stopping_criteria: residual_and_delta
+            - name: rf_solver_converged_96
+              source: si_solver_convergence_review_rev_a
+              artifact_uri: artifacts/solver/rf_solver_converged_96.json
+              artifact_sha256: 6666555544443333222211110000ffffeeeeddddccccbbbbaaaa999988887777
+              iteration: 96
+              solved_impedance_ohm: 50.80
+              residual_error: 0.0000003
+              stopping_criteria: residual_and_delta
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

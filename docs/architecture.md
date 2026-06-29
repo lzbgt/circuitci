@@ -214,7 +214,7 @@ Importers append evidence instead of guessing missing intent. Examples:
   row-family parsing lives in
   `src/importers/manufacturing_metadata/rows/families.rs`, with the
   controlled-impedance solver runtime allowlist, entitlement, execution
-  environment, run-log, and deterministic-rerun parsers split
+  environment, run-log, deterministic-rerun, and convergence-sample parsers split
   into `src/importers/manufacturing_metadata/rows/solver_runtime.rs` and
   `src/importers/manufacturing_metadata/rows/solver_entitlement.rs`, and
   `src/importers/manufacturing_metadata/rows/solver_environment.rs` and
@@ -267,6 +267,11 @@ edge/spacing, solder-mask openings/dams, solder-paste openings/size/area ratio,
 IC/BGA stencil aperture rows, and paste spacing. Shared geometry lives in
 `validation::manufacturing::geometry`; larger rule families are split into
 focused modules so source files stay below the 2000-line guard.
+Controlled-impedance solver-result validation keeps solver provenance,
+stackup/material metadata, and run-log/rerun/convergence evidence in focused
+helpers such as
+`src/validation/manufacturing/controlled_impedance_solver_metadata.rs` and
+`src/validation/manufacturing/controlled_impedance_solver_run_log.rs`.
 
 Motor-drive rules are static design-budget screens. `motor_drive` scenarios
 require explicit supply-voltage, current, connector, shunt, gate-timing,

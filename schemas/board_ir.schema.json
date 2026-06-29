@@ -787,6 +787,18 @@
                         "type": "number",
                         "minimum": 0
                       },
+                      "min_convergence_sample_count": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "max_convergence_impedance_delta_ohm": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "required_stopping_criteria": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "reruns": {
                         "type": "array",
                         "items": {
@@ -829,6 +841,51 @@
                             "iterations": {
                               "type": "integer",
                               "minimum": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "convergence_samples": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "source",
+                            "artifact_uri",
+                            "artifact_sha256",
+                            "iteration",
+                            "solved_impedance_ohm",
+                            "residual_error",
+                            "stopping_criteria"
+                          ],
+                          "properties": {
+                            "name": { "type": "string", "minLength": 1 },
+                            "source": { "type": "string", "minLength": 1 },
+                            "artifact_uri": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "artifact_sha256": {
+                              "type": "string",
+                              "pattern": "^[A-Fa-f0-9]{64}$"
+                            },
+                            "iteration": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "solved_impedance_ohm": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "residual_error": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "stopping_criteria": {
+                              "type": "string",
+                              "minLength": 1
                             }
                           },
                           "additionalProperties": false

@@ -1,7 +1,7 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverEntitlement,
+    AppliedControlledImpedanceSolverConvergenceSample, AppliedControlledImpedanceSolverEntitlement,
     AppliedControlledImpedanceSolverExecutionEnvironment,
     AppliedControlledImpedanceSolverMaterialAcceptance,
     AppliedControlledImpedanceSolverMaterialCorner,
@@ -184,6 +184,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                     field.field.board_key()
                 )
             });
+    }
+    if let Some(sample) = &field.controlled_impedance_solver_convergence_sample {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_convergence_sample_mapping(
+            sample,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
     }
     if let Some(rule) = &field.thermal_copper {
         return serde_yaml_ng::to_value(thermal_copper_mapping(rule)).with_context(|| {
@@ -1135,6 +1146,21 @@ fn controlled_impedance_solver_run_log_mapping(
         "max_rerun_impedance_delta_ohm",
         run_log.max_rerun_impedance_delta_ohm,
     );
+    insert_optional_number(
+        &mut mapping,
+        "min_convergence_sample_count",
+        run_log.min_convergence_sample_count,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_convergence_impedance_delta_ohm",
+        run_log.max_convergence_impedance_delta_ohm,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "required_stopping_criteria",
+        &run_log.required_stopping_criteria,
+    );
     mapping
 }
 
@@ -1168,6 +1194,39 @@ fn controlled_impedance_solver_rerun_mapping(
     mapping.insert(
         "iterations".to_string(),
         serde_yaml_ng::to_value(rerun.iterations).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_convergence_sample_mapping(
+    sample: &AppliedControlledImpedanceSolverConvergenceSample,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(sample.name.clone()));
+    mapping.insert("source".to_string(), Value::String(sample.source.clone()));
+    mapping.insert(
+        "artifact_uri".to_string(),
+        Value::String(sample.artifact_uri.clone()),
+    );
+    mapping.insert(
+        "artifact_sha256".to_string(),
+        Value::String(sample.artifact_sha256.clone()),
+    );
+    mapping.insert(
+        "iteration".to_string(),
+        serde_yaml_ng::to_value(sample.iteration).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "solved_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(sample.solved_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "residual_error".to_string(),
+        serde_yaml_ng::to_value(sample.residual_error).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "stopping_criteria".to_string(),
+        Value::String(sample.stopping_criteria.clone()),
     );
     mapping
 }

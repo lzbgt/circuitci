@@ -15,10 +15,10 @@ use super::controlled_impedance_solver_metadata::{
     solver_input_deck_matches_result, solver_input_deck_metadata_is_valid,
     solver_input_deck_mismatches, solver_input_deck_policy_requested,
     solver_material_library_artifact_metadata_is_valid, solver_output_schema_metadata_is_valid,
-    solver_qualification_metadata_is_valid, solver_run_log_metadata_is_valid,
-    solver_runtime_allowlist_metadata_is_valid, solver_stackup_signoff_metadata_is_valid,
-    stackup_layers_match,
+    solver_qualification_metadata_is_valid, solver_runtime_allowlist_metadata_is_valid,
+    solver_stackup_signoff_metadata_is_valid, stackup_layers_match,
 };
+use super::controlled_impedance_solver_run_log::solver_run_log_metadata_is_valid;
 
 const IMPEDANCE_MATCH_EPSILON_OHM: f64 = 1.0e-9;
 

@@ -126,6 +126,15 @@ pub(super) fn normalize_field(field: &str) -> Option<ManufacturingField> {
         | "solverrerun"
         | "solverdeterministicrerun"
         | "solverreproducibilityrerun" => Some(ManufacturingField::ControlledImpedanceSolverRerun),
+        "controlledimpedancesolverconvergencesample"
+        | "impedancesolverconvergencesample"
+        | "controlledimpedancefieldsolverconvergencesample"
+        | "fieldsolverconvergencesample"
+        | "solverconvergencesample"
+        | "solverconvergencewindow"
+        | "solverstoppingcriteria" => {
+            Some(ManufacturingField::ControlledImpedanceSolverConvergenceSample)
+        }
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)
         }
