@@ -217,11 +217,25 @@ pub(super) fn solver_material_library_artifact_metadata_is_valid(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material library {} for result {} must declare non-empty source/artifact metadata, a 64-character SHA-256 digest, and non-empty corners/layers/materials.",
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material library {} for result {} must declare non-empty source/artifact metadata, a 64-character SHA-256 digest, and non-empty corners/layers/materials/content_fields.",
                 library.name, result.name
             ),
         );
         return false;
+    }
+    let library_fields = trimmed_set(&library.content_fields);
+    for required_field in required_material_library_content_fields() {
+        if !library_fields.contains(required_field) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material library {} for result {} does not declare required artifact content field {}.",
+                    library.name, result.name, required_field
+                ),
+            );
+            return false;
+        }
     }
     let library_corners = trimmed_set(&library.corners);
     for required_corner in &result.required_solver_corners {
@@ -752,6 +766,17 @@ fn solver_material_library_has_valid_metadata(
         && !trimmed_set(&library.corners).is_empty()
         && !trimmed_set(&library.dielectric_layers).is_empty()
         && !trimmed_set(&library.materials).is_empty()
+        && !trimmed_set(&library.content_fields).is_empty()
+}
+
+fn required_material_library_content_fields() -> [&'static str; 5] {
+    [
+        "corner",
+        "dielectric_layer",
+        "material",
+        "dielectric_constant",
+        "nominal_dielectric_constant",
+    ]
 }
 
 fn solver_material_acceptance_metadata_is_valid(

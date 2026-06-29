@@ -204,12 +204,15 @@ the material library artifact.
 material-library artifact content and require `name`, `source`,
 `material_library`, `material_library_revision`, `artifact_uri`, a
 64-character `artifact_sha256`, plus non-empty `corners`, `dielectric_layers`,
-and `materials` lists. Rows create or replace
+`materials`, and `content_fields` lists. `content_fields` must include
+`corner`, `dielectric_layer`, `material`, `dielectric_constant`, and
+`nominal_dielectric_constant`, matching the reviewed artifact fields used by
+material-corner validation. Rows create or replace
 `controlled_impedance.solver_material_libraries[]` entries by `name`;
 duplicate row names fail closed. Validation matches these rows to solver
 results by library, revision, artifact URI, and artifact SHA-256, then checks
-that required solver corners and material-corner rows are backed by declared
-artifact content.
+that required solver corners, material-corner rows, and consumed artifact
+fields are backed by declared artifact content.
 
 `controlled_impedance_solver_material_acceptance` rows declare reviewed
 fabricator material-acceptance evidence and require `name`, `source`,

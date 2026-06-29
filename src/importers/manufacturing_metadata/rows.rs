@@ -244,6 +244,7 @@ pub(super) struct AppliedControlledImpedanceSolverMaterialLibrary {
     corners: Vec<String>,
     dielectric_layers: Vec<String>,
     materials: Vec<String>,
+    content_fields: Vec<String>,
 }
 
 #[derive(Debug, Clone)]

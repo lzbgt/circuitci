@@ -756,6 +756,10 @@ fn controlled_impedance_solver_material_library_mapping(
         "materials".to_string(),
         serde_yaml_ng::to_value(&library.materials).unwrap_or(Value::Null),
     );
+    mapping.insert(
+        "content_fields".to_string(),
+        serde_yaml_ng::to_value(&library.content_fields).unwrap_or(Value::Null),
+    );
     mapping
 }
 

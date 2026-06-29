@@ -439,8 +439,9 @@ name and revision. When these fields are declared, validation also requires
 exactly one reviewed `controlled_impedance.solver_material_libraries[]` row
 whose library name, revision, artifact URI, and artifact SHA-256 match the
 solver result. That row declares reviewed artifact content coverage with
-`corners`, `dielectric_layers`, and `materials`; required solver corners and
-material-corner evidence must be backed by that declared artifact content.
+`corners`, `dielectric_layers`, `materials`, and `content_fields`; required
+solver corners, material-corner evidence, and consumed corner/material/Dk
+fields must be backed by that declared artifact content.
 When reviewed
 `controlled_impedance.solver_material_acceptances[]` rows are present,
 validation also requires exactly one matching fabricator material-acceptance
@@ -481,7 +482,10 @@ library to match the solver result material-library metadata, and compares
 Repeated `field=controlled_impedance_solver_material_library` rows populate
 `controlled_impedance.solver_material_libraries[]` and require `name`,
 `source`, `material_library`, `material_library_revision`, `artifact_uri`,
-`artifact_sha256`, `corners`, `dielectric_layers`, and `materials`. These rows
+`artifact_sha256`, `corners`, `dielectric_layers`, `materials`, and
+`content_fields`. The `content_fields` list must include the material-corner
+fields CircuitCI consumes: `corner`, `dielectric_layer`, `material`,
+`dielectric_constant`, and `nominal_dielectric_constant`. These rows
 are reviewed manifests of solver material-library artifact content; CircuitCI
 uses them to compare metadata, not to fetch or parse the artifact.
 Repeated `field=controlled_impedance_solver_material_acceptance` rows populate

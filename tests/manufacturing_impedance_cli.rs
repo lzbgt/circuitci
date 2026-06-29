@@ -810,6 +810,38 @@ fn controlled_impedance_solver_result_fails_for_material_library_artifact_conten
 }
 
 #[test]
+fn controlled_impedance_solver_result_fails_for_material_library_field_gap() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          input_etch_compensation_um: 8.0\n",
+        "          input_etch_compensation_um: 8.0\n          solver_material_library: reviewed_stackup_materials\n          solver_material_library_revision: rev_a\n          solver_material_library_artifact_uri: artifacts/solver/material_library_rev_a.json\n          solver_material_library_artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd\n          input_material_library: reviewed_stackup_materials\n          input_material_library_revision: rev_a\n",
+    );
+    project = project.replace(
+        "          content_fields: [corner, dielectric_layer, material, dielectric_constant, nominal_dielectric_constant]\n",
+        "          content_fields: [corner, dielectric_layer, material, nominal_dielectric_constant]\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("does not declare required artifact content field dielectric_constant")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_for_material_acceptance_gap() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
@@ -1504,6 +1536,7 @@ board:
           corners: [nominal, high_dk]
           dielectric_layers: [prepreg_1]
           materials: [FR-4 prepreg]
+          content_fields: [corner, dielectric_layer, material, dielectric_constant, nominal_dielectric_constant]
       solver_material_acceptances:
         - name: reviewed_stackup_materials_rev_a_acceptance
           source: fabricator_material_acceptance_rev_a

@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.30.0" },
+    "schema_version": { "const": "0.31.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -281,7 +281,8 @@
                 "artifact_sha256",
                 "corners",
                 "dielectric_layers",
-                "materials"
+                "materials",
+                "content_fields"
               ],
               "properties": {
                 "name": { "type": "string", "minLength": 1 },
@@ -307,6 +308,11 @@
                   "minItems": 1
                 },
                 "materials": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                },
+                "content_fields": {
                   "type": "array",
                   "items": { "type": "string", "minLength": 1 },
                   "minItems": 1

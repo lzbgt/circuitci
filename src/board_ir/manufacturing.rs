@@ -158,6 +158,8 @@ pub struct ControlledImpedanceSolverMaterialLibrary {
     pub dielectric_layers: Vec<String>,
     #[serde(default)]
     pub materials: Vec<String>,
+    #[serde(default)]
+    pub content_fields: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

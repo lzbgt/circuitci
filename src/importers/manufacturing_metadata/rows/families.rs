@@ -755,6 +755,12 @@ pub(super) fn applied_controlled_impedance_solver_material_library(
             "materials",
             "controlled_impedance_solver_material_library",
         )?,
+        content_fields: required_list_column(
+            row,
+            path,
+            "content_fields",
+            "controlled_impedance_solver_material_library",
+        )?,
     })
 }
 

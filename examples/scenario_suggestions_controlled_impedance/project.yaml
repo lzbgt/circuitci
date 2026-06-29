@@ -111,6 +111,7 @@ board:
           corners: [nominal, high_dk]
           dielectric_layers: [prepreg_1]
           materials: [FR-4 prepreg]
+          content_fields: [corner, dielectric_layer, material, dielectric_constant, nominal_dielectric_constant]
       solver_material_acceptances:
         - name: reviewed_stackup_materials_rev_a_acceptance
           source: fabricator_material_acceptance_rev_a

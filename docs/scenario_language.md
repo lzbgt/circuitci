@@ -2029,8 +2029,9 @@ Controlled-impedance solver-result algorithm:
 12. When reviewed solver material-library metadata is present, require exactly
     one reviewed `solver_material_libraries[]` row matching the solver result
     library name, revision, artifact URI, and artifact SHA-256. Require that
-    row's declared corners, dielectric layers, and materials to cover required
-    solver corners and declared material-corner evidence.
+    row's declared corners, dielectric layers, materials, and artifact content
+    fields to cover required solver corners and declared material-corner
+    evidence.
 13. When reviewed solver material-acceptance metadata is present, require
     exactly one reviewed `solver_material_acceptances[]` row matching the
     solver material library/revision and fabricator stackup revision. Require

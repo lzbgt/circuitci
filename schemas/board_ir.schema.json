@@ -445,7 +445,8 @@
                       "artifact_sha256",
                       "corners",
                       "dielectric_layers",
-                      "materials"
+                      "materials",
+                      "content_fields"
                     ],
                     "properties": {
                       "name": { "type": "string", "minLength": 1 },
@@ -473,6 +474,12 @@
                         "uniqueItems": true
                       },
                       "materials": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "content_fields": {
                         "type": "array",
                         "items": { "type": "string", "minLength": 1 },
                         "minItems": 1,

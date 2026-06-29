@@ -232,7 +232,7 @@ metadata, and material-library metadata for consistency screening. Repeated
 dielectric material/corner evidence under named solver results, tying required
 solver corners back to explicit stackup material metadata. Repeated
 `field=controlled_impedance_solver_material_library` rows record reviewed
-material-library artifact content, and repeated
+material-library artifact content and required field coverage, and repeated
 `field=controlled_impedance_solver_material_acceptance` rows record reviewed
 fabricator acceptance of solver material library/revision and stackup revision
 coverage. Repeated `field=controlled_impedance_solver_material_process` rows

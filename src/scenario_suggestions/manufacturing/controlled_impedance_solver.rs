@@ -469,6 +469,14 @@ fn controlled_impedance_solver_material_library_artifact_has_evidence(
         .collect::<Vec<_>>();
     matches.len() == 1
         && controlled_impedance_solver_material_library_manifest_has_content(matches[0])
+        && required_material_library_content_fields()
+            .iter()
+            .all(|field| {
+                matches[0]
+                    .content_fields
+                    .iter()
+                    .any(|value| value.trim() == *field)
+            })
         && result.required_solver_corners.iter().all(|corner| {
             let corner = corner.trim();
             !corner.is_empty()
@@ -533,6 +541,20 @@ fn controlled_impedance_solver_material_library_manifest_has_content(
             .materials
             .iter()
             .any(|value| !value.trim().is_empty())
+        && library
+            .content_fields
+            .iter()
+            .any(|value| !value.trim().is_empty())
+}
+
+fn required_material_library_content_fields() -> [&'static str; 5] {
+    [
+        "corner",
+        "dielectric_layer",
+        "material",
+        "dielectric_constant",
+        "nominal_dielectric_constant",
+    ]
 }
 
 fn controlled_impedance_solver_material_acceptance_has_evidence(
