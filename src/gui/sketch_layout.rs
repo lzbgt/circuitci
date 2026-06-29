@@ -17,6 +17,11 @@ const MAX_SKETCH_GRID_STEP: f32 = 96.0;
 const MAX_SKETCH_ITEMS_PER_SIDE: usize = 512;
 const MAX_SKETCH_EDGES: usize = 512;
 const MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT: usize = 64;
+const HIGH_PIN_LABEL_LANE_THRESHOLD: usize = 6;
+const HIGH_PIN_LABEL_SIDE_OFFSET: f32 = 18.0;
+const HIGH_PIN_LABEL_MIN_Y_STEP: f32 = 18.0;
+const HIGH_PIN_LABEL_TOP_PAD: f32 = 20.0;
+const HIGH_PIN_LABEL_BOTTOM_PAD: f32 = 14.0;
 const SCHEMATIC_SIGNAL_Y_FRACTION: f32 = 0.38;
 const SCHEMATIC_GROUND_Y_FRACTION: f32 = 0.78;
 const SCHEMATIC_COLUMN_STEP: f32 = 170.0;
@@ -1432,8 +1437,13 @@ fn component_pin_anchors(
             .unwrap_or_else(|| {
                 kicad_default_symbol_pin_anchors(symbol, glyph_rect, component.style)
             });
-        let anchors =
-            component_pin_anchors_from_kicad(component, &kicad_anchors, net_kinds, visible_count);
+        let anchors = component_pin_anchors_from_kicad(
+            component,
+            &kicad_anchors,
+            net_kinds,
+            visible_count,
+            rect,
+        );
         if !anchors.is_empty() {
             return anchors;
         }
@@ -1449,8 +1459,9 @@ fn component_pin_anchors_from_kicad(
     kicad_anchors: &[KiCadSymbolPinAnchor],
     net_kinds: &std::collections::BTreeMap<&str, &str>,
     visible_count: usize,
+    rect: egui::Rect,
 ) -> Vec<SketchPinAnchor> {
-    component
+    let mut anchors = component
         .pins
         .iter()
         .take(visible_count)
@@ -1470,7 +1481,88 @@ fn component_pin_anchors_from_kicad(
                 label_align: anchor.label_align,
             })
         })
-        .collect()
+        .collect::<Vec<_>>();
+    spread_high_pin_label_lanes(&mut anchors, rect);
+    anchors
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PinLabelLane {
+    Left,
+    Right,
+}
+
+fn spread_high_pin_label_lanes(anchors: &mut [SketchPinAnchor], rect: egui::Rect) {
+    if anchors.len() < HIGH_PIN_LABEL_LANE_THRESHOLD {
+        return;
+    }
+    spread_high_pin_label_lane(anchors, rect, PinLabelLane::Left);
+    spread_high_pin_label_lane(anchors, rect, PinLabelLane::Right);
+}
+
+fn spread_high_pin_label_lane(
+    anchors: &mut [SketchPinAnchor],
+    rect: egui::Rect,
+    lane: PinLabelLane,
+) {
+    let mut lane_indices = anchors
+        .iter()
+        .enumerate()
+        .filter_map(|(index, anchor)| (pin_label_lane(anchor) == Some(lane)).then_some(index))
+        .collect::<Vec<_>>();
+    if lane_indices.is_empty() {
+        return;
+    }
+    lane_indices.sort_by(|left, right| {
+        anchors[*left]
+            .pos
+            .y
+            .total_cmp(&anchors[*right].pos.y)
+            .then_with(|| anchors[*left].pin.cmp(&anchors[*right].pin))
+    });
+
+    let top = rect.top() + HIGH_PIN_LABEL_TOP_PAD;
+    let bottom = rect.bottom() - HIGH_PIN_LABEL_BOTTOM_PAD;
+    let available = (bottom - top).max(0.0);
+    let step = if lane_indices.len() <= 1 {
+        0.0
+    } else {
+        HIGH_PIN_LABEL_MIN_Y_STEP.min(available / (lane_indices.len() - 1) as f32)
+    };
+    let span = step * lane_indices.len().saturating_sub(1) as f32;
+    let average_y = lane_indices
+        .iter()
+        .map(|index| anchors[*index].pos.y)
+        .sum::<f32>()
+        / lane_indices.len() as f32;
+    let start = (average_y - span * 0.5)
+        .max(top)
+        .min((bottom - span).max(top));
+
+    for (offset, index) in lane_indices.into_iter().enumerate() {
+        let anchor = &mut anchors[index];
+        anchor.label_pos.y = start + offset as f32 * step;
+        match lane {
+            PinLabelLane::Left => {
+                anchor.label_pos.x = anchor.pos.x - HIGH_PIN_LABEL_SIDE_OFFSET;
+                anchor.label_align = egui::Align2::RIGHT_CENTER;
+            }
+            PinLabelLane::Right => {
+                anchor.label_pos.x = anchor.pos.x + HIGH_PIN_LABEL_SIDE_OFFSET;
+                anchor.label_align = egui::Align2::LEFT_CENTER;
+            }
+        }
+    }
+}
+
+fn pin_label_lane(anchor: &SketchPinAnchor) -> Option<PinLabelLane> {
+    if anchor.label_align == egui::Align2::RIGHT_CENTER || anchor.label_pos.x < anchor.pos.x {
+        Some(PinLabelLane::Left)
+    } else if anchor.label_align == egui::Align2::LEFT_CENTER || anchor.label_pos.x > anchor.pos.x {
+        Some(PinLabelLane::Right)
+    } else {
+        None
+    }
 }
 
 fn two_terminal_component_pin_anchors(

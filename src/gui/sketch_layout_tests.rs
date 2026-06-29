@@ -618,7 +618,13 @@ fn component_pin_anchors_use_matching_kicad_pin_geometry() {
         .into_iter()
         .collect::<std::collections::BTreeMap<_, _>>();
 
-    let anchors = component_pin_anchors_from_kicad(&test_component(), &kicad, &net_kinds, 2);
+    let anchors = component_pin_anchors_from_kicad(
+        &test_component(),
+        &kicad,
+        &net_kinds,
+        2,
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(100.0, 80.0)),
+    );
 
     assert_eq!(anchors.len(), 2);
     assert_eq!(anchors[0].pin, "1");
@@ -638,7 +644,65 @@ fn component_pin_anchors_ignore_unmatched_kicad_pins() {
     }];
     let net_kinds = std::collections::BTreeMap::new();
 
-    let anchors = component_pin_anchors_from_kicad(&test_component(), &kicad, &net_kinds, 2);
+    let anchors = component_pin_anchors_from_kicad(
+        &test_component(),
+        &kicad,
+        &net_kinds,
+        2,
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(100.0, 80.0)),
+    );
 
     assert!(anchors.is_empty());
+}
+
+#[test]
+fn high_pin_kicad_labels_are_spread_into_readable_side_lanes() {
+    let mut component = test_component();
+    component.pins = (1..=8)
+        .map(|index| SketchPin {
+            pin: index.to_string(),
+            net: format!("net_{index}"),
+        })
+        .collect();
+    let kicad = (1..=8)
+        .map(|index| KiCadSymbolPinAnchor {
+            pin: index.to_string(),
+            pos: egui::pos2(180.0, 94.0 + (index % 2) as f32 * 2.0),
+            label_pos: egui::pos2(186.0, 94.0 + (index % 2) as f32 * 2.0),
+            label_align: egui::Align2::LEFT_CENTER,
+        })
+        .collect::<Vec<_>>();
+    let net_kinds = component
+        .pins
+        .iter()
+        .map(|pin| (pin.net.as_str(), "digital"))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(220.0, 220.0));
+
+    let anchors = component_pin_anchors_from_kicad(&component, &kicad, &net_kinds, 8, rect);
+    let mut label_rows = anchors
+        .iter()
+        .map(|anchor| anchor.label_pos.y)
+        .collect::<Vec<_>>();
+    label_rows.sort_by(|left, right| left.total_cmp(right));
+    let min_gap = label_rows
+        .windows(2)
+        .map(|pair| pair[1] - pair[0])
+        .fold(f32::INFINITY, f32::min);
+
+    assert_eq!(anchors.len(), 8);
+    assert!(anchors.iter().all(|anchor| anchor.pos.x == 180.0));
+    assert!(
+        anchors
+            .iter()
+            .all(|anchor| anchor.label_align == egui::Align2::LEFT_CENTER)
+    );
+    assert!(
+        anchors
+            .iter()
+            .all(|anchor| anchor.label_pos.x - anchor.pos.x >= 18.0)
+    );
+    assert!(label_rows[0] >= rect.top() + 20.0);
+    assert!(*label_rows.last().unwrap() <= rect.bottom() - 14.0);
+    assert!(min_gap >= 17.5);
 }

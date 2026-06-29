@@ -69,7 +69,10 @@ into `src/gui/project_example_workflow_tests.rs`. For developer visual QA,
 set `CIRCUITCI_GUI_OPEN_PROJECT=/path/to/project.yaml` before running
 `cargo run --features gui --bin circuitci-gui`; the app opens the project
 directly in the Sketch stage and immediately requests Fit All, avoiding manual
-click automation in screenshot checks.
+click automation in screenshot checks. Imported high-pin KiCad symbols keep
+their pin connection coordinates, but Sketch spreads side labels into readable
+lanes before Fit All bounds are computed so dense symbol blocks do not collapse
+into a KiCad-like text cluster.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
 bar, project overlay, status panel, permanent Sketch central canvas,
 secondary overlay windows, Project landing view, Reports view, and
