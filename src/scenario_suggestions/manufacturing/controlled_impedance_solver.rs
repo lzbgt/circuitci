@@ -645,6 +645,7 @@ fn controlled_impedance_solver_run_log_has_evidence(
         && result
             .solver_iterations
             .is_some_and(|value| value <= matches[0].max_iterations)
+        && controlled_impedance_solver_precision_policy_has_evidence(matches[0], result)
         && controlled_impedance_solver_run_log_reruns_have_evidence(matches[0], result)
         && controlled_impedance_solver_convergence_samples_have_evidence(matches[0], result)
 }
@@ -756,6 +757,49 @@ fn controlled_impedance_solver_run_log_reruns_have_evidence(
                 && rerun.residual_error <= run_log.max_residual_error
                 && rerun.iterations <= run_log.max_iterations
         })
+}
+
+fn controlled_impedance_solver_precision_policy_has_evidence(
+    run_log: &ControlledImpedanceSolverRunLog,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let policy_requested = run_log.precision_policy_source.is_some()
+        || run_log.precision_policy_artifact_uri.is_some()
+        || run_log.precision_policy_artifact_sha256.is_some()
+        || run_log.floating_point_precision.is_some()
+        || run_log.min_significant_digits.is_some()
+        || run_log.max_roundoff_error_ohm.is_some();
+    if !policy_requested {
+        return true;
+    }
+    let Some(max_roundoff) = run_log.max_roundoff_error_ohm else {
+        return false;
+    };
+    run_log
+        .precision_policy_source
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && run_log
+            .precision_policy_artifact_uri
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && run_log
+            .precision_policy_artifact_sha256
+            .as_deref()
+            .is_some_and(|digest| is_sha256_hex(digest.trim()))
+        && run_log
+            .floating_point_precision
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && run_log
+            .min_significant_digits
+            .is_some_and(|digits| digits > 0)
+        && max_roundoff.is_finite()
+        && max_roundoff >= 0.0
+        && max_roundoff <= result.max_impedance_error_ohm
+        && run_log
+            .max_convergence_impedance_delta_ohm
+            .is_none_or(|max_delta| max_roundoff <= max_delta)
 }
 
 fn controlled_impedance_solver_rerun_has_valid_metadata(

@@ -265,6 +265,18 @@ pub struct ControlledImpedanceSolverRunLog {
     pub max_residual_error: f64,
     pub max_iterations: usize,
     #[serde(default)]
+    pub precision_policy_source: Option<String>,
+    #[serde(default)]
+    pub precision_policy_artifact_uri: Option<String>,
+    #[serde(default)]
+    pub precision_policy_artifact_sha256: Option<String>,
+    #[serde(default)]
+    pub floating_point_precision: Option<String>,
+    #[serde(default)]
+    pub min_significant_digits: Option<usize>,
+    #[serde(default)]
+    pub max_roundoff_error_ohm: Option<f64>,
+    #[serde(default)]
     pub min_rerun_count: Option<usize>,
     #[serde(default)]
     pub max_rerun_impedance_delta_ohm: Option<f64>,

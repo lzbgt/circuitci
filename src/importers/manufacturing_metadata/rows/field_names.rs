@@ -121,7 +121,10 @@ pub(super) fn normalize_field(field: &str) -> Option<ManufacturingField> {
         | "solverreproducibilityrun"
         | "solverresidualtrend"
         | "solvermonotonicresidual"
-        | "solvermonotonicconvergence" => Some(ManufacturingField::ControlledImpedanceSolverRunLog),
+        | "solvermonotonicconvergence"
+        | "solverprecisionpolicy"
+        | "solvernumericalprecision"
+        | "solverroundoffpolicy" => Some(ManufacturingField::ControlledImpedanceSolverRunLog),
         "controlledimpedancesolverrerun"
         | "impedancesolverrerun"
         | "controlledimpedancefieldsolverrerun"

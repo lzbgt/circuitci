@@ -143,9 +143,9 @@ Useful next slices:
   run-log/random-seed/numerical tolerance evidence, and deterministic rerun
   evidence with reviewed impedance/residual/iteration windows, plus reviewed
   convergence-window, stopping-criteria, and residual-trend monotonicity
-  evidence,
+  evidence, plus reviewed numerical precision policy evidence,
 - controlled-impedance solver proof beyond convergence-window samples, such as
-  reviewed numerical precision policy evidence,
+  reviewed solver tolerance-policy artifact field coverage,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

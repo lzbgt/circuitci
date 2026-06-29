@@ -550,7 +550,12 @@ Repeated `field=controlled_impedance_solver_run_log` rows populate
 `max_residual_error`, and `max_iterations`. Validation matches these rows to
 solver results by name, solver, solver version, run id, random seed, and
 numeric tolerance policy, then checks explicit residual and iteration evidence
-against the reviewed limits. Optional `min_rerun_count` and
+against the reviewed limits. Optional precision policy fields
+`precision_policy_source`, `precision_policy_artifact_uri`,
+`precision_policy_artifact_sha256`, `floating_point_precision`,
+`min_significant_digits`, and `max_roundoff_error_ohm` record reviewed
+numerical precision policy evidence and constrain roundoff against solver
+result/convergence error budgets. Optional `min_rerun_count` and
 `max_rerun_impedance_delta_ohm` fields require deterministic rerun samples
 under `reruns[]`. Repeated `field=controlled_impedance_solver_rerun` metadata
 rows populate `controlled_impedance.solver_run_logs[].reruns[]` for a named

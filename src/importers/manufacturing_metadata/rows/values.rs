@@ -1140,6 +1140,36 @@ fn controlled_impedance_solver_run_log_mapping(
         "max_iterations".to_string(),
         serde_yaml_ng::to_value(run_log.max_iterations).unwrap_or(Value::Null),
     );
+    insert_optional_string(
+        &mut mapping,
+        "precision_policy_source",
+        &run_log.precision_policy_source,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "precision_policy_artifact_uri",
+        &run_log.precision_policy_artifact_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "precision_policy_artifact_sha256",
+        &run_log.precision_policy_artifact_sha256,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "floating_point_precision",
+        &run_log.floating_point_precision,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_significant_digits",
+        run_log.min_significant_digits,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_roundoff_error_ohm",
+        run_log.max_roundoff_error_ohm,
+    );
     insert_optional_number(&mut mapping, "min_rerun_count", run_log.min_rerun_count);
     insert_optional_number(
         &mut mapping,

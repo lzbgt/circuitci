@@ -190,6 +190,10 @@ If that reviewed run-log row declares `min_rerun_count` and
 `max_rerun_impedance_delta_ohm`, validation also requires matching
 deterministic rerun samples whose seed, solved impedance, residual error, and
 iteration count remain inside the reviewed run-log limits.
+If that reviewed run-log row declares any numerical precision policy column,
+validation requires complete precision policy provenance and checks the
+reviewed max roundoff error against the solver result impedance-error budget
+and any tighter convergence impedance window.
 If that reviewed run-log row declares `min_convergence_sample_count`,
 `max_convergence_impedance_delta_ohm`, and `required_stopping_criteria`,
 validation also requires matching convergence samples whose stopping criteria,
@@ -226,7 +230,11 @@ Repeated `field=controlled_impedance_solver_execution_environment` rows require
 Repeated `field=controlled_impedance_solver_run_log` rows require `name`,
 `source`, `solver`, `solver_version`, `run_id`, `artifact_uri`,
 `artifact_sha256`, `random_seed`, `numeric_tolerance_policy`,
-`max_residual_error`, and `max_iterations`. Optional `min_rerun_count` and
+`max_residual_error`, and `max_iterations`. Optional
+`precision_policy_source`, `precision_policy_artifact_uri`,
+`precision_policy_artifact_sha256`, `floating_point_precision`,
+`min_significant_digits`, and `max_roundoff_error_ohm` columns declare
+reviewed numerical precision policy evidence. Optional `min_rerun_count` and
 `max_rerun_impedance_delta_ohm` columns declare a deterministic rerun policy.
 Optional `min_convergence_sample_count`,
 `max_convergence_impedance_delta_ohm`, and `required_stopping_criteria`

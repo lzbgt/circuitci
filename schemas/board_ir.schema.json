@@ -782,6 +782,30 @@
                         "minimum": 0
                       },
                       "max_iterations": { "type": "integer", "minimum": 1 },
+                      "precision_policy_source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "precision_policy_artifact_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "precision_policy_artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "floating_point_precision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "min_significant_digits": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "max_roundoff_error_ohm": {
+                        "type": "number",
+                        "minimum": 0
+                      },
                       "min_rerun_count": { "type": "integer", "minimum": 1 },
                       "max_rerun_impedance_delta_ohm": {
                         "type": "number",

@@ -36,6 +36,12 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "numeric_tolerance_policy",
             "max_residual_error",
             "max_iterations",
+            "precision_policy_source",
+            "precision_policy_artifact_uri",
+            "precision_policy_artifact_sha256",
+            "floating_point_precision",
+            "min_significant_digits",
+            "max_roundoff_error_ohm",
             "min_convergence_sample_count",
             "max_convergence_impedance_delta_ohm",
             "required_stopping_criteria",
@@ -60,6 +66,12 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "si_solver_tolerance_rev_a",
             "0.000001",
             "120",
+            "si_solver_precision_review_rev_a",
+            "artifacts/solver/precision_policy_rev_a.json",
+            "22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111",
+            "ieee754_binary64",
+            "12",
+            "0.005",
             "2",
             "0.04",
             "residual_and_delta",
@@ -88,6 +100,12 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "",
             "",
             "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "reviewed_2d_field_solver_run_log_rf",
             "92",
             "50.81",
@@ -104,6 +122,12 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "",
             "artifacts/solver/rf_solver_converged_96.json",
             "6666555544443333222211110000ffffeeeeddddccccbbbbaaaa999988887777",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -155,6 +179,13 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
         serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
     let run_log = &enriched["board"]["manufacturing"]["controlled_impedance"]["solver_run_logs"][0];
     assert_eq!(run_log["name"], "reviewed_2d_field_solver_run_log_rf");
+    assert_eq!(
+        run_log["precision_policy_source"],
+        "si_solver_precision_review_rev_a"
+    );
+    assert_eq!(run_log["floating_point_precision"], "ieee754_binary64");
+    assert_eq!(run_log["min_significant_digits"], 12);
+    assert_eq!(run_log["max_roundoff_error_ohm"], 0.005);
     assert_eq!(run_log["min_convergence_sample_count"], 2);
     assert_eq!(run_log["max_convergence_impedance_delta_ohm"], 0.04);
     assert_eq!(run_log["required_stopping_criteria"], "residual_and_delta");
@@ -174,7 +205,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
 
     let manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
-    assert_eq!(manifest["schema_version"], "0.40.0");
+    assert_eq!(manifest["schema_version"], "0.41.0");
     assert_eq!(
         manifest["rows"][2]["board_field"],
         "controlled_impedance.solver_run_logs[].convergence_samples[]"

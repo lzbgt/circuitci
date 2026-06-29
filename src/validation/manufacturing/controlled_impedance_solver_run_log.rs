@@ -88,6 +88,9 @@ pub(super) fn solver_run_log_metadata_is_valid(
         );
         return false;
     }
+    if !solver_run_log_precision_policy_is_valid(scenario, findings, result, run_log) {
+        return false;
+    }
     if !solver_run_log_reruns_are_valid(scenario, findings, result, run_log) {
         return false;
     }
@@ -278,6 +281,78 @@ fn solver_run_log_reruns_are_valid(
         }
     }
     true
+}
+
+fn solver_run_log_precision_policy_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+    run_log: &ControlledImpedanceSolverRunLog,
+) -> bool {
+    let policy_requested = run_log.precision_policy_source.is_some()
+        || run_log.precision_policy_artifact_uri.is_some()
+        || run_log.precision_policy_artifact_sha256.is_some()
+        || run_log.floating_point_precision.is_some()
+        || run_log.min_significant_digits.is_some()
+        || run_log.max_roundoff_error_ohm.is_some();
+    if !policy_requested {
+        return true;
+    }
+    if !solver_precision_policy_has_complete_metadata(run_log) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} numerical precision policy evidence must declare source, artifact URI, SHA-256, floating-point precision, min significant digits, and max roundoff error.",
+                run_log.name
+            ),
+        );
+        return false;
+    }
+    let max_roundoff = run_log.max_roundoff_error_ohm.unwrap_or(f64::INFINITY);
+    if max_roundoff > result.max_impedance_error_ohm {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} numerical precision max roundoff error {} exceeds result {} impedance error budget {}.",
+                run_log.name, max_roundoff, result.name, result.max_impedance_error_ohm
+            ),
+        );
+        return false;
+    }
+    if let Some(max_convergence_delta) = run_log.max_convergence_impedance_delta_ohm
+        && max_roundoff > max_convergence_delta
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} numerical precision max roundoff error {} exceeds convergence impedance delta {}.",
+                run_log.name, max_roundoff, max_convergence_delta
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn solver_precision_policy_has_complete_metadata(
+    run_log: &ControlledImpedanceSolverRunLog,
+) -> bool {
+    non_empty_option(run_log.precision_policy_source.as_deref()).is_some()
+        && non_empty_option(run_log.precision_policy_artifact_uri.as_deref()).is_some()
+        && run_log
+            .precision_policy_artifact_sha256
+            .as_deref()
+            .is_some_and(|digest| is_sha256_hex(digest.trim()))
+        && non_empty_option(run_log.floating_point_precision.as_deref()).is_some()
+        && run_log
+            .min_significant_digits
+            .is_some_and(|digits| digits > 0)
+        && run_log
+            .max_roundoff_error_ohm
+            .is_some_and(|value| value.is_finite() && value >= 0.0)
 }
 
 fn solver_rerun_has_valid_metadata(rerun: &ControlledImpedanceSolverRerun) -> bool {

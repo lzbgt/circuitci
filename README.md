@@ -261,7 +261,9 @@ reviewed solver convergence samples imported with repeated
 `field=controlled_impedance_solver_convergence_sample` rows, including
 stopping criteria, residual, iteration, artifact URI, and artifact digest
 evidence. A run-log row can also opt into monotonic residual trend evidence
-with `require_monotonic_residual_decrease`.
+with `require_monotonic_residual_decrease`, and can carry reviewed numerical
+precision policy provenance such as floating-point format, significant digits,
+roundoff budget, artifact URI, and artifact digest.
 Repeated
 `field=controlled_impedance_solver_qualification` rows create or replace
 reviewed solver tool/version qualification evidence. Repeated

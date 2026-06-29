@@ -287,14 +287,14 @@ without explicit imported mechanical evidence.
   configuration-lock provenance, reviewed solver runtime option allowlists,
   reviewed solver license/feature entitlement evidence, reviewed solver
   execution environment lock evidence, solver run-log, deterministic-rerun,
-  and convergence-window and residual-trend reproducibility evidence, copper-roughness consistency,
+  and convergence-window, residual-trend, and numerical-precision reproducibility evidence, copper-roughness consistency,
   etch-compensation consistency, material-library artifact-content fields,
   fabricator material-acceptance, material lot/process drift, and material-corner consistency, fabricator stackup
   signoff, solver tool/version qualification, and sweep/corner sample
   evidence. It does
   not fetch solver artifacts, verify signatures, parse solver output schemas,
   parse tool configuration locks, runtime allowlists, solver entitlement, environment,
-  run-log/rerun/convergence/residual-trend artifacts, or input decks, parse material libraries,
+  run-log/rerun/convergence/residual-trend/precision-policy artifacts, or input decks, parse material libraries,
   fabricator acceptance artifacts, or material
   drift reports beyond reviewed artifact field/manufacturing metadata, run a field solver, infer
   stackup parameters,

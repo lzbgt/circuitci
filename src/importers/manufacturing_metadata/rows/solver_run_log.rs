@@ -82,6 +82,37 @@ pub(super) fn applied_controlled_impedance_solver_run_log(
             "max_iterations",
             "controlled_impedance_solver_run_log",
         )?,
+        precision_policy_source: optional_raw_column(row, "precision_policy_source"),
+        precision_policy_artifact_uri: optional_raw_column(row, "precision_policy_artifact_uri"),
+        precision_policy_artifact_sha256: optional_sha256_column(
+            row,
+            path,
+            "precision_policy_artifact_sha256",
+            "controlled_impedance_solver_run_log",
+        )?,
+        floating_point_precision: optional_raw_column(row, "floating_point_precision"),
+        min_significant_digits: optional_raw_column(row, "min_significant_digits")
+            .map(|value| {
+                parse_positive_usize(
+                    &value,
+                    path,
+                    row,
+                    "min_significant_digits",
+                    "controlled_impedance_solver_run_log",
+                )
+            })
+            .transpose()?,
+        max_roundoff_error_ohm: optional_raw_column(row, "max_roundoff_error_ohm")
+            .map(|value| {
+                parse_nonnegative_number(
+                    &value,
+                    path,
+                    row,
+                    "max_roundoff_error_ohm",
+                    "controlled_impedance_solver_run_log",
+                )
+            })
+            .transpose()?,
         min_rerun_count: optional_raw_column(row, "min_rerun_count")
             .map(|value| {
                 parse_positive_usize(
@@ -300,6 +331,26 @@ fn required_sha256_column(
         );
     }
     Ok(digest)
+}
+
+fn optional_sha256_column(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<Option<String>> {
+    optional_raw_column(row, column)
+        .map(|digest| {
+            if !is_sha256_hex(digest.trim()) {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} {record} {column} must be a 64-character SHA-256 hex digest.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+            Ok(digest)
+        })
+        .transpose()
 }
 
 fn required_nonnegative_number(

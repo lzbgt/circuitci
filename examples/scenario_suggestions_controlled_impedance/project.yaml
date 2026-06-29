@@ -196,6 +196,12 @@ board:
           numeric_tolerance_policy: si_solver_tolerance_rev_a
           max_residual_error: 0.000001
           max_iterations: 120
+          precision_policy_source: si_solver_precision_review_rev_a
+          precision_policy_artifact_uri: artifacts/solver/precision_policy_rev_a.json
+          precision_policy_artifact_sha256: 22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111
+          floating_point_precision: ieee754_binary64
+          min_significant_digits: 12
+          max_roundoff_error_ohm: 0.005
           min_rerun_count: 2
           max_rerun_impedance_delta_ohm: 0.05
           min_convergence_sample_count: 2

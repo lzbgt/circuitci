@@ -2025,7 +2025,11 @@ Controlled-impedance solver-result algorithm:
    matching stopping criteria and solved impedance, residual error, and
    iteration count inside the declared limits. If the run-log row requires
    monotonic residual decrease, require convergence sample residual error to be
-   non-increasing when sorted by iteration.
+   non-increasing when sorted by iteration. If the run-log row declares
+   numerical precision policy evidence, require complete reviewed
+   floating-point format, significant-digit, artifact, and roundoff metadata,
+   and require the roundoff budget to fit within result/convergence error
+   budgets.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
