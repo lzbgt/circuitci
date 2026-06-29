@@ -133,8 +133,9 @@ Useful next slices:
   artifact-provenance, input-deck consistency, plus sweep/corner sample
   copper-roughness/etch-compensation consistency, reviewed solver
   tool/version qualification, signed-artifact metadata, stackup-material
-  corner correlation screens, and solver-to-fabricator stackup revision signoff
-  evidence, such as solver material-library artifact content checks,
+  corner correlation screens, solver-to-fabricator stackup revision signoff
+  evidence, and solver material-library artifact content checks, such as
+  solver setup-to-fabricator material acceptance evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

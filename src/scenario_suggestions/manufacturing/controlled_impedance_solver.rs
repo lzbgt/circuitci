@@ -4,8 +4,8 @@ use super::controlled_impedance::{
 };
 use super::manufacturing_suggestion;
 use crate::board_ir::{
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, NetRoute, StackupLayer,
-    StackupLayerKind,
+    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, NetRoute, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -84,6 +84,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && non_negative_finite(result.max_route_width_delta_mm)
         && result.frequency_mhz.is_none_or(positive_finite)
         && controlled_impedance_solver_input_deck_has_evidence(result)
+        && controlled_impedance_solver_material_library_artifact_has_evidence(bound, result)
         && controlled_impedance_solver_stackup_signoff_has_evidence(result)
         && controlled_impedance_solver_qualification_has_evidence(bound, result)
         && controlled_impedance_solver_sweep_has_evidence(result)
@@ -442,6 +443,93 @@ fn controlled_impedance_solver_material_library_policy_requested(
         || result.solver_material_library_artifact_sha256.is_some()
         || result.input_material_library.is_some()
         || result.input_material_library_revision.is_some()
+}
+
+fn controlled_impedance_solver_material_library_artifact_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_material_library_policy_requested(result) {
+        return true;
+    }
+    if !controlled_impedance_solver_material_library_has_evidence(result) {
+        return false;
+    }
+    let matches = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_material_libraries
+        .iter()
+        .filter(|library| {
+            controlled_impedance_solver_material_library_matches_result(library, result)
+        })
+        .collect::<Vec<_>>();
+    matches.len() == 1
+        && controlled_impedance_solver_material_library_manifest_has_content(matches[0])
+        && result.required_solver_corners.iter().all(|corner| {
+            let corner = corner.trim();
+            !corner.is_empty()
+                && matches[0]
+                    .corners
+                    .iter()
+                    .any(|library_corner| library_corner.trim() == corner)
+        })
+        && result.material_corners.iter().all(|corner| {
+            matches[0]
+                .corners
+                .iter()
+                .any(|value| value.trim() == corner.corner.trim())
+                && matches[0]
+                    .dielectric_layers
+                    .iter()
+                    .any(|value| value.trim() == corner.dielectric_layer.trim())
+                && matches[0]
+                    .materials
+                    .iter()
+                    .any(|value| value.trim() == corner.material.trim())
+        })
+}
+
+fn controlled_impedance_solver_material_library_matches_result(
+    library: &ControlledImpedanceSolverMaterialLibrary,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_material_library
+        .as_deref()
+        .is_some_and(|value| value.trim() == library.material_library.trim())
+        && result
+            .solver_material_library_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == library.material_library_revision.trim())
+        && result
+            .solver_material_library_artifact_uri
+            .as_deref()
+            .is_some_and(|value| value.trim() == library.artifact_uri.trim())
+        && result
+            .solver_material_library_artifact_sha256
+            .as_deref()
+            .is_some_and(|value| value.trim() == library.artifact_sha256.trim())
+}
+
+fn controlled_impedance_solver_material_library_manifest_has_content(
+    library: &ControlledImpedanceSolverMaterialLibrary,
+) -> bool {
+    !library.name.trim().is_empty()
+        && !library.source.trim().is_empty()
+        && !library.artifact_uri.trim().is_empty()
+        && is_sha256_hex(library.artifact_sha256.trim())
+        && library.corners.iter().any(|value| !value.trim().is_empty())
+        && library
+            .dielectric_layers
+            .iter()
+            .any(|value| !value.trim().is_empty())
+        && library
+            .materials
+            .iter()
+            .any(|value| !value.trim().is_empty())
 }
 
 fn controlled_impedance_solver_sweep_has_evidence(

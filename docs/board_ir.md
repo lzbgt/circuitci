@@ -435,7 +435,12 @@ Optional reviewed solver material-library columns are
 `solver_material_library_artifact_sha256`, `input_material_library`, and
 `input_material_library_revision`; declaring any one requires complete
 material-library artifact provenance and matching result/input-deck library
-name and revision.
+name and revision. When these fields are declared, validation also requires
+exactly one reviewed `controlled_impedance.solver_material_libraries[]` row
+whose library name, revision, artifact URI, and artifact SHA-256 match the
+solver result. That row declares reviewed artifact content coverage with
+`corners`, `dielectric_layers`, and `materials`; required solver corners and
+material-corner evidence must be backed by that declared artifact content.
 Optional reviewed fabricator stackup signoff columns are
 `stackup_signoff_source`, `fabricator_stackup_revision`,
 `stackup_signoff_artifact_uri`, and `stackup_signoff_artifact_sha256`;
@@ -460,6 +465,12 @@ evidence for the solver result dielectric layer, requires the corner material
 library to match the solver result material-library metadata, and compares
 `material` plus `nominal_dielectric_constant` against reviewed
 `board.layout.stackup.layers[]` evidence when those stackup fields are present.
+Repeated `field=controlled_impedance_solver_material_library` rows populate
+`controlled_impedance.solver_material_libraries[]` and require `name`,
+`source`, `material_library`, `material_library_revision`, `artifact_uri`,
+`artifact_sha256`, `corners`, `dielectric_layers`, and `materials`. These rows
+are reviewed manifests of solver material-library artifact content; CircuitCI
+uses them to compare metadata, not to fetch or parse the artifact.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver

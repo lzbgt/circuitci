@@ -432,6 +432,56 @@
                     "additionalProperties": false
                   }
                 },
+                "solver_material_libraries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "material_library",
+                      "material_library_revision",
+                      "artifact_uri",
+                      "artifact_sha256",
+                      "corners",
+                      "dielectric_layers",
+                      "materials"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "material_library": { "type": "string", "minLength": 1 },
+                      "material_library_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "artifact_uri": { "type": "string", "minLength": 1 },
+                      "artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "corners": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "dielectric_layers": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "materials": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "solver_results": {
                   "type": "array",
                   "items": {

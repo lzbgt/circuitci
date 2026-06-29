@@ -1,7 +1,7 @@
 use crate::board_ir::{
-    ControlledImpedanceSolverMaterialCorner, ControlledImpedanceSolverQualification,
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, Scenario, StackupLayer,
-    StackupLayerKind,
+    ControlledImpedanceSolverMaterialCorner, ControlledImpedanceSolverMaterialLibrary,
+    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, Scenario, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -160,6 +160,99 @@ pub(super) fn solver_artifact_signature_metadata_is_valid(
             ),
         );
         return false;
+    }
+    true
+}
+
+pub(super) fn solver_material_library_artifact_metadata_is_valid(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_material_library_policy_requested(result) {
+        return true;
+    }
+    if !solver_material_library_metadata_is_complete(result) {
+        return true;
+    }
+    let libraries = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_material_libraries;
+    let matches = libraries
+        .iter()
+        .filter(|library| solver_material_library_matches_result(library, result))
+        .collect::<Vec<_>>();
+    if matches.len() != 1 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires exactly one reviewed solver material-library artifact content row for library {} revision {} artifact {}; found {}.",
+                result.name,
+                result
+                    .solver_material_library
+                    .as_deref()
+                    .unwrap_or_default(),
+                result
+                    .solver_material_library_revision
+                    .as_deref()
+                    .unwrap_or_default(),
+                result
+                    .solver_material_library_artifact_sha256
+                    .as_deref()
+                    .unwrap_or_default(),
+                matches.len()
+            ),
+        );
+        return false;
+    }
+    let library = matches[0];
+    if !solver_material_library_has_valid_metadata(library) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material library {} for result {} must declare non-empty source/artifact metadata, a 64-character SHA-256 digest, and non-empty corners/layers/materials.",
+                library.name, result.name
+            ),
+        );
+        return false;
+    }
+    let library_corners = trimmed_set(&library.corners);
+    for required_corner in &result.required_solver_corners {
+        if !library_corners.contains(required_corner.trim()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material library {} for result {} does not declare required corner {}.",
+                    library.name, result.name, required_corner
+                ),
+            );
+            return false;
+        }
+    }
+    let library_layers = trimmed_set(&library.dielectric_layers);
+    let library_materials = trimmed_set(&library.materials);
+    for corner in &result.material_corners {
+        if !library_corners.contains(corner.corner.trim())
+            || !library_layers.contains(corner.dielectric_layer.trim())
+            || !library_materials.contains(corner.material.trim())
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material corner {} for result {} is not backed by reviewed material-library artifact content {}.",
+                    corner.name, result.name, library.name
+                ),
+            );
+            return false;
+        }
     }
     true
 }
@@ -616,6 +709,50 @@ fn solver_qualification_has_valid_metadata(
         && !qualification.solver_version.trim().is_empty()
         && !qualification.qualification_artifact_uri.trim().is_empty()
         && is_sha256_hex(qualification.qualification_artifact_sha256.trim())
+}
+
+fn solver_material_library_matches_result(
+    library: &ControlledImpedanceSolverMaterialLibrary,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_material_library
+        .as_deref()
+        .is_some_and(|value| value.trim() == library.material_library.trim())
+        && result
+            .solver_material_library_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == library.material_library_revision.trim())
+        && result
+            .solver_material_library_artifact_uri
+            .as_deref()
+            .is_some_and(|value| value.trim() == library.artifact_uri.trim())
+        && result
+            .solver_material_library_artifact_sha256
+            .as_deref()
+            .is_some_and(|value| value.trim() == library.artifact_sha256.trim())
+}
+
+fn solver_material_library_has_valid_metadata(
+    library: &ControlledImpedanceSolverMaterialLibrary,
+) -> bool {
+    !library.name.trim().is_empty()
+        && !library.source.trim().is_empty()
+        && !library.material_library.trim().is_empty()
+        && !library.material_library_revision.trim().is_empty()
+        && !library.artifact_uri.trim().is_empty()
+        && is_sha256_hex(library.artifact_sha256.trim())
+        && !trimmed_set(&library.corners).is_empty()
+        && !trimmed_set(&library.dielectric_layers).is_empty()
+        && !trimmed_set(&library.materials).is_empty()
+}
+
+fn trimmed_set(values: &[String]) -> BTreeSet<&str> {
+    values
+        .iter()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .collect()
 }
 
 fn solver_artifact_signature_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {

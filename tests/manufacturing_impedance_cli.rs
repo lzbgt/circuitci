@@ -778,6 +778,38 @@ fn controlled_impedance_solver_result_passes_with_material_library_evidence() {
 }
 
 #[test]
+fn controlled_impedance_solver_result_fails_for_material_library_artifact_content_gap() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          input_etch_compensation_um: 8.0\n",
+        "          input_etch_compensation_um: 8.0\n          solver_material_library: reviewed_stackup_materials\n          solver_material_library_revision: rev_a\n          solver_material_library_artifact_uri: artifacts/solver/material_library_rev_a.json\n          solver_material_library_artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd\n          input_material_library: reviewed_stackup_materials\n          input_material_library_revision: rev_a\n",
+    );
+    project = project.replace(
+        "          corners: [nominal, high_dk]\n",
+        "          corners: [nominal]\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("does not declare required corner high_dk")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_for_material_library_mismatch() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
@@ -881,6 +913,10 @@ fn controlled_impedance_solver_result_fails_closed_for_material_corner_stackup_m
     project = project.replace(
         "              solved_impedance_ohm: 49.5\n        - name: dp_dm_solver_result\n",
         "              solved_impedance_ohm: 49.5\n          material_corners:\n            - name: rf_solver_nominal_material\n              source: solver_material_library_rev_a\n              corner: nominal\n              dielectric_layer: prepreg_1\n              material: PTFE laminate\n              dielectric_constant: 4.1\n              nominal_dielectric_constant: 4.1\n              material_library: reviewed_stackup_materials\n              material_library_revision: rev_a\n            - name: rf_solver_high_dk_material\n              source: solver_material_library_rev_a\n              corner: high_dk\n              dielectric_layer: prepreg_1\n              material: FR-4 prepreg\n              dielectric_constant: 4.4\n              nominal_dielectric_constant: 4.1\n              material_library: reviewed_stackup_materials\n              material_library_revision: rev_a\n        - name: dp_dm_solver_result\n",
+    );
+    project = project.replace(
+        "          materials: [FR-4 prepreg]\n",
+        "          materials: [FR-4 prepreg, PTFE laminate]\n",
     );
     std::fs::write(&project_path, project).unwrap();
 
@@ -1390,6 +1426,16 @@ board:
             - name: dp_dm_coupon_s3
               source: fab_coupon_report_rev_b
               measured_impedance_ohm: 91.4
+      solver_material_libraries:
+        - name: reviewed_stackup_materials_rev_a
+          source: solver_material_library_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          artifact_uri: artifacts/solver/material_library_rev_a.json
+          artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd
+          corners: [nominal, high_dk]
+          dielectric_layers: [prepreg_1]
+          materials: [FR-4 prepreg]
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

@@ -1,7 +1,8 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverMaterialCorner, AppliedControlledImpedanceSolverQualification,
+    AppliedControlledImpedanceSolverMaterialCorner,
+    AppliedControlledImpedanceSolverMaterialLibrary, AppliedControlledImpedanceSolverQualification,
     AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
     AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
@@ -683,6 +684,78 @@ pub(super) fn applied_controlled_impedance_solver_qualification(
     })
 }
 
+pub(super) fn applied_controlled_impedance_solver_material_library(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialLibrary> {
+    let library_source = optional_raw_column(row, "library_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(library_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_material_library requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverMaterialLibrary {
+        name: required_raw_column_for(
+            row,
+            path,
+            "name",
+            "controlled_impedance_solver_material_library",
+        )?,
+        source,
+        material_library: required_raw_column_for(
+            row,
+            path,
+            "material_library",
+            "controlled_impedance_solver_material_library",
+        )?,
+        material_library_revision: required_raw_column_for(
+            row,
+            path,
+            "material_library_revision",
+            "controlled_impedance_solver_material_library",
+        )?,
+        artifact_uri: required_raw_column_for(
+            row,
+            path,
+            "artifact_uri",
+            "controlled_impedance_solver_material_library",
+        )?,
+        artifact_sha256: required_sha256_column(
+            row,
+            path,
+            "artifact_sha256",
+            "controlled_impedance_solver_material_library",
+        )?,
+        corners: required_list_column(
+            row,
+            path,
+            "corners",
+            "controlled_impedance_solver_material_library",
+        )?,
+        dielectric_layers: required_list_column(
+            row,
+            path,
+            "dielectric_layers",
+            "controlled_impedance_solver_material_library",
+        )?,
+        materials: required_list_column(
+            row,
+            path,
+            "materials",
+            "controlled_impedance_solver_material_library",
+        )?,
+    })
+}
+
 fn required_coupon_type(row: &MetadataCsvRow, path: &Path) -> Result<String> {
     let raw = required_raw_column_for(row, path, "coupon_type", "controlled_impedance_coupon")?;
     match normalize_name(&raw).as_str() {
@@ -781,6 +854,39 @@ fn optional_solver_material_library_artifact_sha256(
             row.row_number
         )
     }
+}
+
+fn required_sha256_column(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<String> {
+    let digest = required_raw_column_for(row, path, column, record)?;
+    if !is_sha256_hex(digest.trim()) {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(digest)
+}
+
+fn required_list_column(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<Vec<String>> {
+    let raw = required_raw_column_for(row, path, column, record)?;
+    parse_nonempty_list(&raw).with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must contain at least one value.",
+            path.display(),
+            row.row_number
+        )
+    })
 }
 
 fn optional_stackup_signoff_artifact_sha256(

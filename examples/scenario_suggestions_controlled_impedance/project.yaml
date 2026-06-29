@@ -101,6 +101,16 @@ board:
           solver_version: "2026.06"
           qualification_artifact_uri: artifacts/solver/reviewed_2d_field_solver_2026_06_qualification.pdf
           qualification_artifact_sha256: 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff
+      solver_material_libraries:
+        - name: reviewed_stackup_materials_rev_a
+          source: solver_material_library_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          artifact_uri: artifacts/solver/material_library_rev_a.json
+          artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd
+          corners: [nominal, high_dk]
+          dielectric_layers: [prepreg_1]
+          materials: [FR-4 prepreg]
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

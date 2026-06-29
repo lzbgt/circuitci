@@ -167,8 +167,10 @@ result/input-deck etch compensation model and positive compensation values;
 CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
-verify signatures, parse solver input decks, parse material libraries, or infer
-stackup parameters. Declaring any stackup signoff column requires complete
+verify signatures, parse solver input decks, or infer stackup parameters.
+Declaring material-library columns requires a matching reviewed
+`controlled_impedance_solver_material_library` artifact-content row before
+validation can accept the solver result. Declaring any stackup signoff column requires complete
 signoff source/revision/artifact provenance, a 64-character signoff artifact
 SHA-256 digest, and a fabricator stackup revision matching the solver result
 `stackup_revision`.
@@ -188,6 +190,17 @@ pre-existing solver result; duplicate `solver_result_name`/corner-name pairs
 fail closed. Validation uses these rows to prove that declared solver corners
 map back to reviewed stackup material evidence; it does not parse or execute
 the material library artifact.
+
+`controlled_impedance_solver_material_library` rows declare reviewed solver
+material-library artifact content and require `name`, `source`,
+`material_library`, `material_library_revision`, `artifact_uri`, a
+64-character `artifact_sha256`, plus non-empty `corners`, `dielectric_layers`,
+and `materials` lists. Rows create or replace
+`controlled_impedance.solver_material_libraries[]` entries by `name`;
+duplicate row names fail closed. Validation matches these rows to solver
+results by library, revision, artifact URI, and artifact SHA-256, then checks
+that required solver corners and material-corner rows are backed by declared
+artifact content.
 
 `controlled_impedance_solver_qualification` rows declare reviewed solver
 tool/version qualification evidence and require `name`, `source`, `solver`,

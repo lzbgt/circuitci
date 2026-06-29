@@ -655,10 +655,14 @@ keys also include `solver_material_library`,
 `solver_material_library_revision`, `solver_material_library_artifact_uri`,
 `solver_material_library_artifact_sha256`, `input_material_library`, and
 `input_material_library_revision`.
-If reviewed solver material-corner evidence is declared but incomplete,
-ambiguous, or inconsistent with `required_solver_corners`, solver material
-library metadata, or reviewed stackup layer material/Dk evidence, the check
-fails closed as `VALIDATION_INPUT_MISSING`.
+If reviewed solver material-library artifact content evidence is missing,
+ambiguous, incomplete, stale, or does not cover required corners and declared
+material-corner layers/materials, the check fails closed as
+`VALIDATION_INPUT_MISSING`. If reviewed solver material-corner evidence is
+declared but incomplete, ambiguous, or inconsistent with
+`required_solver_corners`, solver material library metadata, or reviewed
+stackup layer material/Dk evidence, the check fails closed as
+`VALIDATION_INPUT_MISSING`.
 If reviewed fabricator stackup signoff evidence is declared but incomplete or
 its `fabricator_stackup_revision` does not match the solver result
 `stackup_revision`, the check fails closed as `VALIDATION_INPUT_MISSING`

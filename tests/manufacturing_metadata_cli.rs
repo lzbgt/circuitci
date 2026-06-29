@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.27.0");
+    assert_eq!(manifest["schema_version"], "0.28.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -905,7 +905,7 @@ fn import_manufacturing_metadata_applies_coupon_trace_correlation_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.27.0");
+    assert_eq!(manifest["schema_version"], "0.28.0");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["process_lot"],
         "lot_2026_06_b"
@@ -938,10 +938,14 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     let input = dir.path().join("without_solver_result.project.yaml");
     let metadata = dir.path().join("solver_result.csv");
     let output = dir.path().join("with_solver_result.project.yaml");
+    let library_output = dir
+        .path()
+        .join("with_solver_result_and_material_library.project.yaml");
     let qualified_output = dir
         .path()
         .join("with_solver_result_and_qualification.project.yaml");
     let manifest_output = output.with_extension("manufacturing.json");
+    let library_manifest_output = library_output.with_extension("manufacturing.json");
     let suggestions_output = dir.path().join("suggestions.yaml");
     let project_yaml: Value = serde_yaml_ng::from_str(
         &std::fs::read_to_string("examples/scenario_suggestions_controlled_impedance/project.yaml")
@@ -1077,7 +1081,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.27.0");
+    assert_eq!(manifest["schema_version"], "0.28.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[]"
@@ -1125,6 +1129,57 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
 
     std::fs::write(
         &metadata,
+        "field,value,source,name,material_library,material_library_revision,artifact_uri,artifact_sha256,corners,dielectric_layers,materials\n\
+         controlled_impedance_solver_material_library,reviewed,solver material library,reviewed_stackup_materials_rev_b,reviewed_stackup_materials,rev_b,artifacts/solver/material_library_rev_b.json,abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd,nominal;high_dk,prepreg_1,FR-4 prepreg\n",
+    )
+    .unwrap();
+    let library_import = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            output.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            library_output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        library_import.status.success(),
+        "{}",
+        String::from_utf8_lossy(&library_import.stderr)
+    );
+    common::assert_yaml_file_valid(&library_output, &validator);
+    let enriched_with_library: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&library_output).unwrap()).unwrap();
+    let library = enriched_with_library["board"]["manufacturing"]["controlled_impedance"]
+        ["solver_material_libraries"]
+        .as_sequence()
+        .unwrap()
+        .iter()
+        .find(|library| library["name"] == "reviewed_stackup_materials_rev_b")
+        .unwrap();
+    assert_eq!(library["name"], "reviewed_stackup_materials_rev_b");
+    assert_eq!(library["material_library"], "reviewed_stackup_materials");
+    assert_eq!(library["material_library_revision"], "rev_b");
+    assert_eq!(library["corners"][1], "high_dk");
+    let library_manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(library_manifest_output).unwrap()).unwrap();
+    if let Err(error) = manifest_validator.validate(&library_manifest) {
+        panic!("Material-library metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(
+        library_manifest["rows"][0]["board_field"],
+        "controlled_impedance.solver_material_libraries[]"
+    );
+    assert_eq!(
+        library_manifest["rows"][0]["normalized_value"]["artifact_sha256"],
+        "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+    );
+
+    std::fs::write(
+        &metadata,
         "field,value,unit,source,notes,name,solver,solver_version,qualification_artifact_uri,qualification_artifact_sha256\n\
          controlled_impedance_solver_qualification,qualified,,si tool qualification,reviewed tool/version qualification,reviewed_2d_field_solver_2026_07,reviewed_2d_field_solver,2026.07,artifacts/solver/reviewed_2d_field_solver_2026_07_qualification.pdf,11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\n",
     )
@@ -1133,7 +1188,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
         .args([
             "import-manufacturing-metadata",
             "--project",
-            output.to_str().unwrap(),
+            library_output.to_str().unwrap(),
             "--metadata",
             metadata.to_str().unwrap(),
             "--output",
@@ -1236,7 +1291,7 @@ fn import_manufacturing_metadata_applies_solver_material_corner_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.27.0");
+    assert_eq!(manifest["schema_version"], "0.28.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[].material_corners[]"
@@ -1325,7 +1380,7 @@ fn import_manufacturing_metadata_applies_solver_qualification_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.27.0");
+    assert_eq!(manifest["schema_version"], "0.28.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_qualifications[]"

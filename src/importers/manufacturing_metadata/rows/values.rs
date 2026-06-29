@@ -1,7 +1,8 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverMaterialCorner, AppliedControlledImpedanceSolverQualification,
+    AppliedControlledImpedanceSolverMaterialCorner,
+    AppliedControlledImpedanceSolverMaterialLibrary, AppliedControlledImpedanceSolverQualification,
     AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
     AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
@@ -86,6 +87,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     if let Some(qualification) = &field.controlled_impedance_solver_qualification {
         return serde_yaml_ng::to_value(controlled_impedance_solver_qualification_mapping(
             qualification,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
+    if let Some(library) = &field.controlled_impedance_solver_material_library {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_material_library_mapping(
+            library,
         ))
         .with_context(|| {
             format!(
@@ -682,6 +694,43 @@ fn controlled_impedance_solver_qualification_mapping(
     mapping.insert(
         "qualification_artifact_sha256".to_string(),
         Value::String(qualification.qualification_artifact_sha256.clone()),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_material_library_mapping(
+    library: &AppliedControlledImpedanceSolverMaterialLibrary,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(library.name.clone()));
+    mapping.insert("source".to_string(), Value::String(library.source.clone()));
+    mapping.insert(
+        "material_library".to_string(),
+        Value::String(library.material_library.clone()),
+    );
+    mapping.insert(
+        "material_library_revision".to_string(),
+        Value::String(library.material_library_revision.clone()),
+    );
+    mapping.insert(
+        "artifact_uri".to_string(),
+        Value::String(library.artifact_uri.clone()),
+    );
+    mapping.insert(
+        "artifact_sha256".to_string(),
+        Value::String(library.artifact_sha256.clone()),
+    );
+    mapping.insert(
+        "corners".to_string(),
+        serde_yaml_ng::to_value(&library.corners).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "dielectric_layers".to_string(),
+        serde_yaml_ng::to_value(&library.dielectric_layers).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "materials".to_string(),
+        serde_yaml_ng::to_value(&library.materials).unwrap_or(Value::Null),
     );
     mapping
 }

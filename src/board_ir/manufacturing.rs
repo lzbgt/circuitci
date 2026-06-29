@@ -43,6 +43,8 @@ pub struct ControlledImpedanceTargets {
     #[serde(default)]
     pub solver_qualifications: Vec<ControlledImpedanceSolverQualification>,
     #[serde(default)]
+    pub solver_material_libraries: Vec<ControlledImpedanceSolverMaterialLibrary>,
+    #[serde(default)]
     pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
@@ -136,6 +138,22 @@ pub struct ControlledImpedanceSolverQualification {
     pub solver_version: String,
     pub qualification_artifact_uri: String,
     pub qualification_artifact_sha256: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverMaterialLibrary {
+    pub name: String,
+    pub source: String,
+    pub material_library: String,
+    pub material_library_revision: String,
+    pub artifact_uri: String,
+    pub artifact_sha256: String,
+    #[serde(default)]
+    pub corners: Vec<String>,
+    #[serde(default)]
+    pub dielectric_layers: Vec<String>,
+    #[serde(default)]
+    pub materials: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
