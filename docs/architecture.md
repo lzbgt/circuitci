@@ -229,6 +229,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   `tests/manufacturing_metadata_cli.rs`; thermal metadata import regressions
   live in `tests/manufacturing_metadata_thermal_cli.rs`; RF antenna metadata
   import regressions live in `tests/manufacturing_metadata_rf_cli.rs`.
+  Controlled-impedance validation regressions share the project fixture builder
+  in `tests/common/impedance.rs`; geometry, stackup, solder-mask, and coupon
+  coverage stays in `tests/manufacturing_impedance_cli.rs`, while solver-result
+  evidence coverage lives in `tests/manufacturing_impedance_solver_cli.rs`.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
   or flying-probe evidence uniquely proves net/island/owner metadata.

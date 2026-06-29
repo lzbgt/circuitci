@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+pub mod impedance;
+
 use serde_json::Value;
 use std::process::Command;
 

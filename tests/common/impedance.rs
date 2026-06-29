@@ -1,0 +1,295 @@
+pub fn write_impedance_project(parameters: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    write_impedance_project_with_check(parameters, "CONTROLLED_IMPEDANCE_GEOMETRY_VALID")
+}
+
+pub fn write_impedance_project_with_check(
+    parameters: &str,
+    check: &str,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    std::fs::write(
+        &project_path,
+        format!(
+            r#"project:
+  name: controlled_impedance_fixture
+  version: 1
+libraries: []
+board:
+  components: {{}}
+  nets:
+    RF:
+      kind: digital_or_analog
+    DP:
+      kind: digital_or_analog
+    DM:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  manufacturing:
+    controlled_impedance:
+      nets:
+        - net: RF
+          source: fab_stackup_table_rev_a
+          target_impedance_ohm: 50
+          expected_width_mm: 0.20
+          max_width_error_mm: 0.03
+      differential_pairs:
+        - first_net: DP
+          second_net: DM
+          source: fab_stackup_table_rev_a
+          target_differential_impedance_ohm: 90
+          expected_width_mm: 0.15
+          expected_gap_mm: 0.20
+          max_width_error_mm: 0.02
+          max_gap_error_mm: 0.03
+      coupons:
+        - name: rf_coupon
+          source: fab_coupon_report_rev_b
+          coupon_type: single_ended
+          net: RF
+          target_impedance_ohm: 50.0
+          measured_impedance_ohm: 51.2
+          max_impedance_error_ohm: 3.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.20
+          max_trace_width_delta_mm: 0.03
+          min_batch_sample_count: 3
+          max_batch_mean_impedance_error_ohm: 1.5
+          max_batch_sample_impedance_error_ohm: 2.0
+          max_batch_stddev_ohm: 0.5
+          samples:
+            - name: rf_coupon_s1
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 50.8
+            - name: rf_coupon_s2
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 51.0
+            - name: rf_coupon_s3
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 51.2
+        - name: dp_dm_coupon
+          source: fab_coupon_report_rev_b
+          coupon_type: differential
+          first_net: DP
+          second_net: DM
+          target_impedance_ohm: 90.0
+          measured_impedance_ohm: 96.0
+          max_impedance_error_ohm: 5.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.15
+          max_trace_width_delta_mm: 0.02
+          coupon_trace_gap_mm: 0.20
+          max_trace_gap_delta_mm: 0.03
+          min_batch_sample_count: 3
+          max_batch_mean_impedance_error_ohm: 1.5
+          max_batch_sample_impedance_error_ohm: 2.0
+          max_batch_stddev_ohm: 0.5
+          samples:
+            - name: dp_dm_coupon_s1
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 90.6
+            - name: dp_dm_coupon_s2
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 91.0
+            - name: dp_dm_coupon_s3
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 91.4
+      solver_material_libraries:
+        - name: reviewed_stackup_materials_rev_a
+          source: solver_material_library_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          artifact_uri: artifacts/solver/material_library_rev_a.json
+          artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd
+          corners: [nominal, high_dk]
+          dielectric_layers: [prepreg_1]
+          materials: [FR-4 prepreg]
+          content_fields: [corner, dielectric_layer, material, dielectric_constant, nominal_dielectric_constant]
+      solver_material_acceptances:
+        - name: reviewed_stackup_materials_rev_a_acceptance
+          source: fabricator_material_acceptance_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          fabricator_stackup_revision: stackup_rev_a
+          acceptance_artifact_uri: artifacts/fabricator/material_acceptance_rev_a.pdf
+          acceptance_artifact_sha256: 3333444455556666777788889999aaaabbbbccccddddeeeeffff000011112222
+          accepted_by: fabricator_si_review
+          accepted_corners: [nominal, high_dk]
+          accepted_dielectric_layers: [prepreg_1]
+          accepted_materials: [FR-4 prepreg]
+      solver_material_processes:
+        - name: reviewed_stackup_materials_rev_a_lot_a
+          source: fabricator_material_lot_report_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          fabricator_stackup_revision: stackup_rev_a
+          dielectric_layer: prepreg_1
+          material: FR-4 prepreg
+          process_lot: lot_2026_06_a
+          material_lot: fr4_prepeg_lot_7
+          process_revision: lamination_rev_c
+          drift_artifact_uri: artifacts/fabricator/material_lot_drift_rev_a.pdf
+          drift_artifact_sha256: 444455556666777788889999aaaabbbbccccddddeeeeffff0000111122223333
+          accepted_dielectric_constant: 4.1
+          measured_dielectric_constant: 4.12
+          max_dielectric_constant_delta: 0.05
+          accepted_thickness_mm: 0.18
+          measured_thickness_mm: 0.181
+          max_thickness_delta_mm: 0.005
+      solver_results:
+        - name: rf_solver_result
+          source: solver_report_rev_c
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          solver_artifact_uri: artifacts/solver/rf_solver_result.json
+          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          solver_input_deck_uri: artifacts/solver/rf_solver_input_deck.json
+          solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+          result_type: single_ended
+          net: RF
+          target_impedance_ohm: 50.0
+          solved_impedance_ohm: 50.8
+          max_impedance_error_ohm: 2.0
+          stackup_revision: stackup_rev_a
+          route_layer: F.Cu
+          reference_layer: In1.GND
+          dielectric_layer: prepreg_1
+          solved_width_mm: 0.20
+          max_route_width_delta_mm: 0.03
+          input_stackup_revision: stackup_rev_a
+          input_route_layer: F.Cu
+          input_reference_layer: In1.GND
+          input_dielectric_layer: prepreg_1
+          input_width_mm: 0.20
+          frequency_mhz: 2400.0
+          input_frequency_mhz: 2400.0
+          copper_roughness_model: huray
+          copper_roughness_um: 1.5
+          input_copper_roughness_model: huray
+          input_copper_roughness_um: 1.5
+          etch_compensation_model: fabricator_finished_width_bias
+          etch_compensation_um: 8.0
+          input_etch_compensation_model: fabricator_finished_width_bias
+          input_etch_compensation_um: 8.0
+          min_solver_sample_count: 4
+          max_solver_frequency_step_mhz: 500.0
+          required_solver_corners: [nominal, high_dk]
+          samples:
+            - name: rf_solver_nominal_2400
+              source: solver_report_rev_c
+              corner: nominal
+              frequency_mhz: 2400.0
+              solved_impedance_ohm: 50.8
+            - name: rf_solver_nominal_2900
+              source: solver_report_rev_c
+              corner: nominal
+              frequency_mhz: 2900.0
+              solved_impedance_ohm: 50.9
+            - name: rf_solver_high_dk_2400
+              source: solver_report_rev_c
+              corner: high_dk
+              frequency_mhz: 2400.0
+              solved_impedance_ohm: 49.4
+            - name: rf_solver_high_dk_2900
+              source: solver_report_rev_c
+              corner: high_dk
+              frequency_mhz: 2900.0
+              solved_impedance_ohm: 49.5
+        - name: dp_dm_solver_result
+          source: solver_report_rev_c
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          solver_artifact_uri: artifacts/solver/dp_dm_solver_result.json
+          solver_artifact_sha256: abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
+          result_type: differential
+          first_net: DP
+          second_net: DM
+          target_impedance_ohm: 90.0
+          solved_impedance_ohm: 91.0
+          max_impedance_error_ohm: 3.0
+          stackup_revision: stackup_rev_a
+          route_layer: F.Cu
+          reference_layer: In1.GND
+          dielectric_layer: prepreg_1
+          solved_width_mm: 0.15
+          max_route_width_delta_mm: 0.02
+          solved_gap_mm: 0.20
+          max_route_gap_delta_mm: 0.03
+          frequency_mhz: 2400.0
+  layout:
+    stackup:
+      layers:
+        - name: F.Cu
+          kind: signal
+          copper_thickness_um: 35.0
+          source: fab_stackup_table_rev_a
+        - name: prepreg_1
+          kind: dielectric
+          thickness_mm: 0.18
+          dielectric_constant: 4.1
+          material: FR-4 prepreg
+          source: fab_stackup_table_rev_a
+        - name: In1.GND
+          kind: plane
+          reference_net: GND
+          copper_thickness_um: 17.5
+          source: fab_stackup_table_rev_a
+        - name: core_1
+          kind: dielectric
+          thickness_mm: 0.60
+          dielectric_constant: 4.2
+          material: FR-4 core
+          source: fab_stackup_table_rev_a
+        - name: B.Cu
+          kind: signal
+          copper_thickness_um: 35.0
+          source: fab_stackup_table_rev_a
+    routes:
+      RF:
+        segments:
+          - start: {{ x_mm: 0.0, y_mm: 2.0 }}
+            end: {{ x_mm: 10.0, y_mm: 2.0 }}
+            width_mm: 0.18
+            layer: F.Cu
+      DP:
+        segments:
+          - start: {{ x_mm: 0.0, y_mm: 0.0 }}
+            end: {{ x_mm: 10.0, y_mm: 0.0 }}
+            width_mm: 0.15
+            layer: F.Cu
+      DM:
+        segments:
+          - start: {{ x_mm: 0.0, y_mm: 0.35 }}
+            end: {{ x_mm: 10.0, y_mm: 0.35 }}
+            width_mm: 0.15
+            layer: F.Cu
+    solder_mask:
+      features:
+        - at: {{ x_mm: 20.0, y_mm: 20.0 }}
+          layer: F.Mask
+          polarity: dark
+          net: RF
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: {{ x_mm: 1.0, y_mm: 1.0 }}
+scenarios:
+  - name: controlled_impedance_geometry
+    type: manufacturing
+    checks:
+      - {check}
+    parameters:
+{parameters}"#
+        ),
+    )
+    .unwrap();
+    (dir, project_path)
+}
