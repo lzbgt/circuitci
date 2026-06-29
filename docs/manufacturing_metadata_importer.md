@@ -123,6 +123,10 @@ Rows attach under the named imported or pre-existing coupon; duplicate
   setup.
 - `max_impedance_error_ohm`: reviewed non-negative solver-result tolerance.
 - `solver`: reviewed solver/tool name.
+- `solver_artifact_uri`: reviewed URI or repository-relative path for the
+  solver output package/report used as evidence.
+- `solver_artifact_sha256`: 64-character SHA-256 digest for the solver output
+  artifact referenced by `solver_artifact_uri`.
 - `stackup_revision`, `route_layer`, `reference_layer`, and
   `dielectric_layer`: reviewed solver setup and stackup references.
 - `solved_width_mm` and `max_route_width_delta_mm`: reviewed modeled trace
@@ -134,8 +138,9 @@ Rows attach under the named imported or pre-existing coupon; duplicate
 
 Optional `controlled_impedance_solver_result` columns are `solver_version`,
 `frequency_mhz`, and `solver_source` when the ordinary `source` column is not
-used. These rows are reviewed solver-result evidence only; the importer does
-not run a field solver or infer stackup parameters.
+used. These rows are reviewed solver-result evidence only; the importer
+preserves artifact provenance but does not run a field solver, fetch artifacts,
+or infer stackup parameters.
 
 Coupon rows are reviewed measurement evidence only; the importer does not
 decide whether a coupon statistically represents the routed board. Validation

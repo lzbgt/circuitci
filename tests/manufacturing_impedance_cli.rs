@@ -654,8 +654,44 @@ fn controlled_impedance_solver_result_fails_for_out_of_tolerance_solver_result()
     assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID");
     assert_eq!(failure["measured"]["result"], "rf_solver_result");
     assert_eq!(failure["measured"]["solver"], "reviewed_2d_field_solver");
+    assert_eq!(
+        failure["measured"]["solver_artifact_uri"],
+        "artifacts/solver/rf_solver_result.json"
+    );
+    assert_eq!(
+        failure["measured"]["solver_artifact_sha256"],
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    );
     assert_eq!(failure["measured"]["solved_impedance_ohm"], 56.0);
     assert_eq!(failure["limit"]["max_impedance_error_ohm"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_without_artifact_digest() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("solver_artifact_sha256")
+    );
     assert_report_schema_valid(&report);
 }
 
@@ -795,6 +831,8 @@ board:
           source: solver_report_rev_c
           solver: reviewed_2d_field_solver
           solver_version: "2026.06"
+          solver_artifact_uri: artifacts/solver/rf_solver_result.json
+          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
           result_type: single_ended
           net: RF
           target_impedance_ohm: 50.0
@@ -811,6 +849,8 @@ board:
           source: solver_report_rev_c
           solver: reviewed_2d_field_solver
           solver_version: "2026.06"
+          solver_artifact_uri: artifacts/solver/dp_dm_solver_result.json
+          solver_artifact_sha256: abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
           result_type: differential
           first_net: DP
           second_net: DM

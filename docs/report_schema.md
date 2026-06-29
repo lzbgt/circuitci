@@ -631,7 +631,8 @@ Stable measured keys include `coupon_name`, `coupon_type`, `source`, `net`,
 `manufacturing` scenarios that compare reviewed solver-result evidence against
 matching board controlled-impedance targets plus imported route and stackup
 evidence. Stable measured keys include `result`, `source`, `solver`,
-`solver_version`, `stackup_revision`, `route_layer`, `solved_impedance_ohm`,
+`solver_version`, `solver_artifact_uri`, `solver_artifact_sha256`,
+`stackup_revision`, `route_layer`, `solved_impedance_ohm`,
 `impedance_error_ohm`, `max_route_width_delta_mm`, and, for differential
 results, `max_route_gap_delta_mm`. Stable limit keys include
 `max_impedance_error_ohm`, `max_route_width_delta_mm`, and

@@ -35,9 +35,10 @@ not infer coupon applicability, process capability, or solve impedance.
 
 `src/validation/manufacturing/controlled_impedance_solver.rs` owns
 `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID`, including named solver-result
-parameter parsing, reviewed solver-result metadata checks, board-target
-mapping, stackup layer checks, route geometry matching, and stable report
-construction. It intentionally does not run or approximate a field solver.
+parameter parsing, reviewed solver-result metadata and artifact-provenance
+checks, board-target mapping, stackup layer checks, route geometry matching,
+and stable report construction. It intentionally does not fetch solver
+artifacts or run/approximate a field solver.
 
 `src/validation/manufacturing/adjacent_plane.rs` owns
 `ADJACENT_PLANE_RETURN_PATH_VALID` and

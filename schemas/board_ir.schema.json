@@ -427,6 +427,11 @@
                       "source": { "type": "string", "minLength": 1 },
                       "solver": { "type": "string", "minLength": 1 },
                       "solver_version": { "type": "string", "minLength": 1 },
+                      "solver_artifact_uri": { "type": "string", "minLength": 1 },
+                      "solver_artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
                       "result_type": {
                         "type": "string",
                         "enum": ["single_ended", "differential"]

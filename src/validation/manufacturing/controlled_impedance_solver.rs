@@ -187,7 +187,40 @@ fn solver_result_has_valid_metadata(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} must declare non-empty name, source, solver, stackup_revision, route_layer, reference_layer, and dielectric_layer.",
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} must declare non-empty name, source, solver, solver_artifact_uri, stackup_revision, route_layer, reference_layer, and dielectric_layer.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    let Some(_) = non_empty_option(result.solver_artifact_uri.as_deref()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} must declare non-empty solver_artifact_uri.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    let Some(artifact_sha256) = non_empty_option(result.solver_artifact_sha256.as_deref()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} must declare solver_artifact_sha256 as a 64-character SHA-256 hex digest.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    if !is_sha256_hex(artifact_sha256) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} must declare solver_artifact_sha256 as a 64-character SHA-256 hex digest.",
                 result.name
             ),
         );
@@ -690,6 +723,14 @@ fn solver_result_finding(
     finding
         .measured
         .insert("solver".to_string(), json!(result.solver));
+    finding.measured.insert(
+        "solver_artifact_uri".to_string(),
+        json!(result.solver_artifact_uri.as_deref().unwrap_or_default()),
+    );
+    finding.measured.insert(
+        "solver_artifact_sha256".to_string(),
+        json!(result.solver_artifact_sha256.as_deref().unwrap_or_default()),
+    );
     if let Some(version) = &result.solver_version {
         finding
             .measured
@@ -764,4 +805,8 @@ fn positive_option(value: Option<f64>) -> bool {
 
 fn non_negative_option(value: Option<f64>) -> bool {
     value.is_some_and(non_negative)
+}
+
+fn is_sha256_hex(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }

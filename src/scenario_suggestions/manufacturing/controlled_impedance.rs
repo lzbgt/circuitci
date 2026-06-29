@@ -515,7 +515,7 @@ fn controlled_impedance_solver_result_suggestions(
             ),
             true,
             &format!(
-                "Controlled-impedance solver result {} has reviewed source evidence from {}, matching board target metadata, explicit stackup layers, and imported route geometry.",
+                "Controlled-impedance solver result {} has reviewed source evidence from {}, a source-backed solver artifact digest, matching board target metadata, explicit stackup layers, and imported route geometry.",
                 result.name, result.source
             ),
             &format!(
@@ -920,6 +920,14 @@ fn controlled_impedance_solver_result_has_evidence(
     !result.name.trim().is_empty()
         && !result.source.trim().is_empty()
         && !result.solver.trim().is_empty()
+        && result
+            .solver_artifact_uri
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_artifact_sha256
+            .as_deref()
+            .is_some_and(|value| is_sha256_hex(value.trim()))
         && !result.stackup_revision.trim().is_empty()
         && !result.route_layer.trim().is_empty()
         && !result.reference_layer.trim().is_empty()
@@ -1300,6 +1308,10 @@ fn usable_route_segment(segment: &RouteSegment) -> bool {
 
 fn segment_length_mm(segment: &RouteSegment) -> f64 {
     (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+}
+
+fn is_sha256_hex(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn manufacturing_route_check_declared_for_net(

@@ -99,6 +99,8 @@ board:
           source: solver_report_rev_c
           solver: reviewed_2d_field_solver
           solver_version: "2026.06"
+          solver_artifact_uri: artifacts/solver/rf_solver_result.json
+          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
           result_type: single_ended
           net: RF
           target_impedance_ohm: 50.0
@@ -115,6 +117,8 @@ board:
           source: solver_report_rev_c
           solver: reviewed_2d_field_solver
           solver_version: "2026.06"
+          solver_artifact_uri: artifacts/solver/dp_dm_solver_result.json
+          solver_artifact_sha256: abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
           result_type: differential
           first_net: DP
           second_net: DM

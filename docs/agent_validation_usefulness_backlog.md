@@ -130,7 +130,7 @@ Useful next slices:
   stackup material/copper-thickness, solder-mask loading artwork, coupon
   measurement/board-target mapping, coupon batch-statistics,
   coupon-to-routed-trace process-correlation, and source-backed solver-result
-  evidence screens, such as richer solver sweep/corner evidence,
+  artifact-provenance screens, such as richer solver sweep/corner evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

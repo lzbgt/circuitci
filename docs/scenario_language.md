@@ -1996,9 +1996,10 @@ Controlled-impedance solver-result algorithm:
 1. Require `parameters.solver_results[]` with explicit result `name` values.
 2. Resolve each name from
    `board.manufacturing.controlled_impedance.solver_results[]`.
-3. Require reviewed source, solver name, stackup revision, route layer,
-   reference layer, dielectric layer, target impedance, solved impedance,
-   impedance tolerance, solved width, and route-width delta limit.
+3. Require reviewed source, solver name, solver artifact URI, solver artifact
+   SHA-256 digest, stackup revision, route layer, reference layer, dielectric
+   layer, target impedance, solved impedance, impedance tolerance, solved
+   width, and route-width delta limit.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2013,9 +2014,10 @@ Controlled-impedance solver-result algorithm:
    the reviewed limits. Fail closed when solver metadata, target mapping,
    stackup evidence, or route evidence is missing or contradictory.
 
-This is a source-backed solver-result consistency screen only. It does not run
-a field solver, infer dielectric/copper parameters, interpolate impedance, or
-replace SI/fabricator review.
+This is a source-backed solver-result consistency screen only. It preserves
+artifact URI/digest evidence but does not fetch artifacts, run a field solver,
+infer dielectric/copper parameters, interpolate impedance, or replace
+SI/fabricator review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

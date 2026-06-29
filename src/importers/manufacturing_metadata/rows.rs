@@ -129,6 +129,8 @@ pub(super) struct AppliedControlledImpedanceSolverResult {
     source: String,
     solver: String,
     solver_version: Option<String>,
+    solver_artifact_uri: String,
+    solver_artifact_sha256: String,
     result_type: String,
     net: Option<String>,
     first_net: Option<String>,

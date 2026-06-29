@@ -370,6 +370,13 @@ pub(super) fn applied_controlled_impedance_solver_result(
         source,
         solver: required_raw_column_for(row, path, "solver", "controlled_impedance_solver_result")?,
         solver_version: optional_raw_column(row, "solver_version"),
+        solver_artifact_uri: required_raw_column_for(
+            row,
+            path,
+            "solver_artifact_uri",
+            "controlled_impedance_solver_result",
+        )?,
+        solver_artifact_sha256: required_solver_artifact_sha256(row, path)?,
         result_type,
         net,
         first_net,
@@ -470,6 +477,28 @@ fn required_solver_result_type(row: &MetadataCsvRow, path: &Path) -> Result<Stri
             row.row_number
         ),
     }
+}
+
+fn required_solver_artifact_sha256(row: &MetadataCsvRow, path: &Path) -> Result<String> {
+    let digest = required_raw_column_for(
+        row,
+        path,
+        "solver_artifact_sha256",
+        "controlled_impedance_solver_result",
+    )?;
+    if is_sha256_hex(&digest) {
+        Ok(digest.to_ascii_lowercase())
+    } else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_artifact_sha256 must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        )
+    }
+}
+
+fn is_sha256_hex(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 pub(super) fn applied_thermal_copper(

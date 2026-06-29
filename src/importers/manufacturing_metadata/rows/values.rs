@@ -357,6 +357,14 @@ fn controlled_impedance_solver_result_mapping(
     mapping.insert("solver".to_string(), Value::String(result.solver.clone()));
     insert_optional_string(&mut mapping, "solver_version", &result.solver_version);
     mapping.insert(
+        "solver_artifact_uri".to_string(),
+        Value::String(result.solver_artifact_uri.clone()),
+    );
+    mapping.insert(
+        "solver_artifact_sha256".to_string(),
+        Value::String(result.solver_artifact_sha256.clone()),
+    );
+    mapping.insert(
         "result_type".to_string(),
         Value::String(result.result_type.clone()),
     );
