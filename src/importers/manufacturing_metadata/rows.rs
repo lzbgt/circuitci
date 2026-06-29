@@ -23,6 +23,8 @@ pub(super) struct AppliedField {
     pub(super) controlled_impedance_coupon_sample: Option<AppliedControlledImpedanceCouponSample>,
     pub(super) controlled_impedance_solver_result: Option<AppliedControlledImpedanceSolverResult>,
     pub(super) controlled_impedance_solver_sample: Option<AppliedControlledImpedanceSolverSample>,
+    pub(super) controlled_impedance_solver_material_corner:
+        Option<AppliedControlledImpedanceSolverMaterialCorner>,
     pub(super) controlled_impedance_solver_qualification:
         Option<AppliedControlledImpedanceSolverQualification>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
@@ -51,6 +53,7 @@ impl AppliedField {
             controlled_impedance_coupon_sample: None,
             controlled_impedance_solver_result: None,
             controlled_impedance_solver_sample: None,
+            controlled_impedance_solver_material_corner: None,
             controlled_impedance_solver_qualification: None,
             thermal_copper: None,
             thermal_measurement: None,
@@ -191,6 +194,20 @@ pub(super) struct AppliedControlledImpedanceSolverSample {
     corner: String,
     frequency_mhz: f64,
     solved_impedance_ohm: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverMaterialCorner {
+    pub(super) solver_result_name: String,
+    pub(super) name: String,
+    source: String,
+    corner: String,
+    dielectric_layer: String,
+    material: String,
+    dielectric_constant: f64,
+    nominal_dielectric_constant: f64,
+    material_library: String,
+    material_library_revision: String,
 }
 
 #[derive(Debug, Clone)]
@@ -374,6 +391,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceCouponSample,
     ControlledImpedanceSolverResult,
     ControlledImpedanceSolverSample,
+    ControlledImpedanceSolverMaterialCorner,
     ControlledImpedanceSolverQualification,
     ThermalCopper,
     ThermalMeasurement,
@@ -407,6 +425,9 @@ impl ManufacturingField {
             Self::ControlledImpedanceSolverResult => "controlled_impedance.solver_results[]",
             Self::ControlledImpedanceSolverSample => {
                 "controlled_impedance.solver_results[].samples[]"
+            }
+            Self::ControlledImpedanceSolverMaterialCorner => {
+                "controlled_impedance.solver_results[].material_corners[]"
             }
             Self::ControlledImpedanceSolverQualification => {
                 "controlled_impedance.solver_qualifications[]"
@@ -457,6 +478,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceCouponSample
                 | Self::ControlledImpedanceSolverResult
                 | Self::ControlledImpedanceSolverSample
+                | Self::ControlledImpedanceSolverMaterialCorner
                 | Self::ControlledImpedanceSolverQualification
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
@@ -593,6 +615,12 @@ fn applied_field(
             Some(applied_controlled_impedance_solver_sample(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverMaterialCorner {
+        applied.controlled_impedance_solver_material_corner = Some(
+            applied_controlled_impedance_solver_material_corner(row, path)?,
+        );
+        return Ok(applied);
+    }
     if field == ManufacturingField::ControlledImpedanceSolverQualification {
         applied.controlled_impedance_solver_qualification = Some(
             applied_controlled_impedance_solver_qualification(row, path)?,
@@ -711,6 +739,13 @@ fn applied_controlled_impedance_solver_sample(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverSample> {
     families::applied_controlled_impedance_solver_sample(row, path)
+}
+
+fn applied_controlled_impedance_solver_material_corner(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialCorner> {
+    families::applied_controlled_impedance_solver_material_corner(row, path)
 }
 
 fn applied_controlled_impedance_solver_qualification(
@@ -1235,6 +1270,19 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_solver_material_corners = BTreeSet::new();
+    for corner in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_solver_material_corner.as_ref())
+    {
+        let key = format!("{}/{}", corner.solver_result_name, corner.name);
+        if !controlled_impedance_solver_material_corners.insert(key.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_material_corner row {}.",
+                key
+            );
+        }
+    }
     let mut controlled_impedance_solver_qualifications = BTreeSet::new();
     for qualification in fields
         .iter()
@@ -1464,6 +1512,13 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "impedancesolversample"
         | "controlledimpedancefieldsolversample"
         | "fieldsolverimpedancesample" => Some(ManufacturingField::ControlledImpedanceSolverSample),
+        "controlledimpedancesolvermaterialcorner"
+        | "impedancesolvermaterialcorner"
+        | "controlledimpedancefieldsolvermaterialcorner"
+        | "fieldsolvermaterialcorner"
+        | "solvermaterialcorner" => {
+            Some(ManufacturingField::ControlledImpedanceSolverMaterialCorner)
+        }
         "controlledimpedancesolverqualification"
         | "impedancesolverqualification"
         | "controlledimpedancefieldsolverqualification"

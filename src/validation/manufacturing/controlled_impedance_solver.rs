@@ -1,7 +1,7 @@
 use crate::board_ir::{
-    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, NetRoute, RouteSegment, Scenario, StackupLayer,
-    StackupLayerKind,
+    ControlledImpedanceSolverMaterialCorner, ControlledImpedanceSolverQualification,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, NetRoute, RouteSegment,
+    Scenario, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -478,7 +478,196 @@ fn stackup_layers_match(
         );
         return false;
     }
+    if !solver_material_corner_metadata_is_valid(scenario, findings, result, dielectric_layer) {
+        return false;
+    }
     true
+}
+
+fn solver_material_corner_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+    stackup_dielectric_layer: &StackupLayer,
+) -> bool {
+    if result.material_corners.is_empty() {
+        return true;
+    }
+    if !solver_material_library_policy_requested(result)
+        || !solver_material_library_metadata_is_complete(result)
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material_corners require complete solver material-library evidence.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    if result.required_solver_corners.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material_corners require non-empty required_solver_corners.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    let mut names = BTreeSet::new();
+    let mut corner_keys = BTreeSet::new();
+    for corner in &result.material_corners {
+        if !solver_material_corner_has_valid_metadata(corner) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material corner {} must declare non-empty name/source/corner/layer/material/library metadata and positive dielectric constants.",
+                    result.name, corner.name
+                ),
+            );
+            return false;
+        }
+        if !names.insert(corner.name.trim().to_string()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} repeats material corner name {}.",
+                    result.name, corner.name
+                ),
+            );
+            return false;
+        }
+        let key = (
+            corner.corner.trim().to_string(),
+            corner.dielectric_layer.trim().to_string(),
+        );
+        if !corner_keys.insert(key) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} repeats material-corner evidence for corner {} layer {}.",
+                    result.name, corner.corner, corner.dielectric_layer
+                ),
+            );
+            return false;
+        }
+    }
+    let required_corners: BTreeSet<&str> = result
+        .required_solver_corners
+        .iter()
+        .map(|corner| corner.trim())
+        .collect();
+    for corner in &result.material_corners {
+        if !required_corners.contains(corner.corner.trim()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material corner {} is not listed in required_solver_corners.",
+                    result.name, corner.corner
+                ),
+            );
+            return false;
+        }
+        if corner.dielectric_layer.trim() != result.dielectric_layer.trim() {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material corner {} references dielectric_layer {} but solver result uses {}.",
+                    result.name, corner.name, corner.dielectric_layer, result.dielectric_layer
+                ),
+            );
+            return false;
+        }
+        if solver_material_library_policy_requested(result)
+            && (result.solver_material_library.as_deref().map(str::trim)
+                != Some(corner.material_library.trim())
+                || result
+                    .solver_material_library_revision
+                    .as_deref()
+                    .map(str::trim)
+                    != Some(corner.material_library_revision.trim()))
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material corner {} must match the solver material library and revision.",
+                    result.name, corner.name
+                ),
+            );
+            return false;
+        }
+        if let Some(material) = stackup_dielectric_layer.material.as_deref()
+            && material.trim() != corner.material.trim()
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material corner {} material {} does not match stackup layer {} material {}.",
+                    result.name,
+                    corner.name,
+                    corner.material,
+                    stackup_dielectric_layer.name,
+                    material
+                ),
+            );
+            return false;
+        }
+        if let Some(stackup_dk) = stackup_dielectric_layer.dielectric_constant
+            && (stackup_dk - corner.nominal_dielectric_constant).abs() > f64::EPSILON
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} material corner {} nominal_dielectric_constant must match reviewed stackup layer {} dielectric_constant.",
+                    result.name, corner.name, stackup_dielectric_layer.name
+                ),
+            );
+            return false;
+        }
+    }
+    for required_corner in required_corners {
+        if !result
+            .material_corners
+            .iter()
+            .any(|corner| corner.corner.trim() == required_corner)
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires material-corner evidence for solver corner {}.",
+                    result.name, required_corner
+                ),
+            );
+            return false;
+        }
+    }
+    true
+}
+
+fn solver_material_corner_has_valid_metadata(
+    corner: &ControlledImpedanceSolverMaterialCorner,
+) -> bool {
+    !corner.name.trim().is_empty()
+        && !corner.source.trim().is_empty()
+        && !corner.corner.trim().is_empty()
+        && !corner.dielectric_layer.trim().is_empty()
+        && !corner.material.trim().is_empty()
+        && positive(corner.dielectric_constant)
+        && positive(corner.nominal_dielectric_constant)
+        && !corner.material_library.trim().is_empty()
+        && !corner.material_library_revision.trim().is_empty()
 }
 
 fn missing_layer(

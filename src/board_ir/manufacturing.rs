@@ -231,6 +231,8 @@ pub struct ControlledImpedanceSolverResult {
     pub required_solver_corners: Vec<String>,
     #[serde(default)]
     pub samples: Vec<ControlledImpedanceSolverSample>,
+    #[serde(default)]
+    pub material_corners: Vec<ControlledImpedanceSolverMaterialCorner>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -240,6 +242,19 @@ pub struct ControlledImpedanceSolverSample {
     pub corner: String,
     pub frequency_mhz: f64,
     pub solved_impedance_ohm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverMaterialCorner {
+    pub name: String,
+    pub source: String,
+    pub corner: String,
+    pub dielectric_layer: String,
+    pub material: String,
+    pub dielectric_constant: f64,
+    pub nominal_dielectric_constant: f64,
+    pub material_library: String,
+    pub material_library_revision: String,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

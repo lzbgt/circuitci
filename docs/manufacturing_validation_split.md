@@ -38,11 +38,11 @@ not infer coupon applicability, process capability, or solve impedance.
 parameter parsing, reviewed solver-result metadata and artifact-provenance
 checks, optional signed-artifact metadata checks, optional reviewed input-deck
 setup plus copper-roughness and etch-compensation consistency checks, optional
-solver material-library consistency checks, optional reviewed solver
-tool/version qualification checks, optional reviewed solver sample/corner sweep
-checks, board-target mapping, stackup layer checks, route geometry matching,
-and stable report construction. It intentionally does not fetch solver
-artifacts, verify signatures, parse input decks, parse material libraries,
+solver material-library and material-corner consistency checks, optional
+reviewed solver tool/version qualification checks, optional reviewed solver
+sample/corner sweep checks, board-target mapping, stackup layer checks, route
+geometry matching, and stable report construction. It intentionally does not
+fetch solver artifacts, verify signatures, parse input decks, parse material libraries,
 compute roughness-adjusted impedance, infer finished trace geometry, or
 run/approximate a field solver.
 

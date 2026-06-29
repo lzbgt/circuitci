@@ -2022,13 +2022,19 @@ Controlled-impedance solver-result algorithm:
 10. When reviewed solver qualification metadata is present, require each solver
     result to declare `solver_version` and match exactly one reviewed
     `solver_qualifications[]` row for the same solver and version.
-11. Fail when solved impedance, route width, differential route gap, sampled
+11. When reviewed solver material-corner evidence is present, require each
+    required solver corner to map to the solver result dielectric layer, match
+    the reviewed solver material-library name/revision, and agree with reviewed
+    stackup layer material plus nominal dielectric constant when those stackup
+    fields are present.
+12. Fail when solved impedance, route width, differential route gap, sampled
     solver impedance, required corner coverage, sample count, frequency-step
     coverage, or reviewed input-deck setup plus copper-roughness and
-    etch-compensation/material-library consistency exceeds the reviewed limits.
+    etch-compensation/material-library/material-corner consistency exceeds the reviewed limits.
     Fail closed when solver metadata, target mapping, stackup evidence, route
     evidence, declared signed-artifact evidence, declared input-deck evidence,
-    or declared sweep evidence is missing or contradictory.
+    declared sweep evidence, or declared material-corner evidence is missing or
+    contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, optional signature URI/digest/signer, input-deck

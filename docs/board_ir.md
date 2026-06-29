@@ -443,6 +443,17 @@ Optional reviewed sweep/corner policy columns are
 `solved_impedance_ohm`, require `solver_result_name`, `name`, `source`,
 `corner`, and `frequency_mhz`, and attach to an existing or same-import solver
 result by `solver_result_name`.
+Repeated `field=controlled_impedance_solver_material_corner` rows use `value`
+as the corner `dielectric_constant`, require `solver_result_name`, `name`,
+`source`, `corner`, `dielectric_layer`, `material`,
+`nominal_dielectric_constant`, `material_library`, and
+`material_library_revision`, and attach reviewed stackup-material corner
+evidence to an existing or same-import solver result. When declared, validation
+requires every `required_solver_corners` entry to have matching material-corner
+evidence for the solver result dielectric layer, requires the corner material
+library to match the solver result material-library metadata, and compares
+`material` plus `nominal_dielectric_constant` against reviewed
+`board.layout.stackup.layers[]` evidence when those stackup fields are present.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver

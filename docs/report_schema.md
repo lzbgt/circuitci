@@ -655,6 +655,10 @@ keys also include `solver_material_library`,
 `solver_material_library_revision`, `solver_material_library_artifact_uri`,
 `solver_material_library_artifact_sha256`, `input_material_library`, and
 `input_material_library_revision`.
+If reviewed solver material-corner evidence is declared but incomplete,
+ambiguous, or inconsistent with `required_solver_corners`, solver material
+library metadata, or reviewed stackup layer material/Dk evidence, the check
+fails closed as `VALIDATION_INPUT_MISSING`.
 Stable limit keys include `max_impedance_error_ohm`,
 `max_route_width_delta_mm`, `max_route_gap_delta_mm`,
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`,

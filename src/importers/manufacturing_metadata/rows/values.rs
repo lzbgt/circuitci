@@ -1,10 +1,10 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverQualification, AppliedControlledImpedanceSolverResult,
-    AppliedControlledImpedanceSolverSample, AppliedField, AppliedLayoutPoint,
-    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
-    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedControlledImpedanceSolverMaterialCorner, AppliedControlledImpedanceSolverQualification,
+    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
+    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
+    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
     AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
     AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage,
@@ -71,6 +71,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                     field.field.board_key()
                 )
             });
+    }
+    if let Some(corner) = &field.controlled_impedance_solver_material_corner {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_material_corner_mapping(
+            corner,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
     }
     if let Some(qualification) = &field.controlled_impedance_solver_qualification {
         return serde_yaml_ng::to_value(controlled_impedance_solver_qualification_mapping(
@@ -586,6 +597,40 @@ fn controlled_impedance_solver_sample_mapping(
     mapping.insert(
         "solved_impedance_ohm".to_string(),
         serde_yaml_ng::to_value(sample.solved_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_material_corner_mapping(
+    corner: &AppliedControlledImpedanceSolverMaterialCorner,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(corner.name.clone()));
+    mapping.insert("source".to_string(), Value::String(corner.source.clone()));
+    mapping.insert("corner".to_string(), Value::String(corner.corner.clone()));
+    mapping.insert(
+        "dielectric_layer".to_string(),
+        Value::String(corner.dielectric_layer.clone()),
+    );
+    mapping.insert(
+        "material".to_string(),
+        Value::String(corner.material.clone()),
+    );
+    mapping.insert(
+        "dielectric_constant".to_string(),
+        serde_yaml_ng::to_value(corner.dielectric_constant).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "nominal_dielectric_constant".to_string(),
+        serde_yaml_ng::to_value(corner.nominal_dielectric_constant).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "material_library".to_string(),
+        Value::String(corner.material_library.clone()),
+    );
+    mapping.insert(
+        "material_library_revision".to_string(),
+        Value::String(corner.material_library_revision.clone()),
     );
     mapping
 }

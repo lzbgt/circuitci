@@ -174,6 +174,16 @@ stackup parameters.
 pre-existing solver result; duplicate `solver_result_name`/sample-name pairs
 fail closed.
 
+`controlled_impedance_solver_material_corner` rows use `value` as reviewed
+corner `dielectric_constant` and require `solver_result_name`, `name`,
+`source`, `corner`, `dielectric_layer`, `material`,
+`nominal_dielectric_constant`, `material_library`, and
+`material_library_revision`. Rows attach under the named imported or
+pre-existing solver result; duplicate `solver_result_name`/corner-name pairs
+fail closed. Validation uses these rows to prove that declared solver corners
+map back to reviewed stackup material evidence; it does not parse or execute
+the material library artifact.
+
 `controlled_impedance_solver_qualification` rows declare reviewed solver
 tool/version qualification evidence and require `name`, `source`, `solver`,
 `solver_version`, `qualification_artifact_uri`, and a 64-character

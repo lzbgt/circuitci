@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.25.0".to_string(),
+        schema_version: "0.26.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -172,6 +172,7 @@ fn apply_metadata(
     for field in fields {
         if field.field == ManufacturingField::ControlledImpedanceCouponSample
             || field.field == ManufacturingField::ControlledImpedanceSolverSample
+            || field.field == ManufacturingField::ControlledImpedanceSolverMaterialCorner
         {
             continue;
         }
@@ -468,6 +469,26 @@ fn apply_metadata(
         )?;
         wrote_manufacturing = true;
     }
+    for field in fields
+        .iter()
+        .filter(|field| field.field == ManufacturingField::ControlledImpedanceSolverMaterialCorner)
+    {
+        let corner = field
+            .controlled_impedance_solver_material_corner
+            .as_ref()
+            .context("controlled_impedance_solver_material_corner field must have corner value")?;
+        let value = normalized_yaml_value(field)?;
+        let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+        let controlled_impedance = ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+        let results = ensure_sequence_field_mut(controlled_impedance, "solver_results")?;
+        upsert_controlled_impedance_solver_material_corner_value(
+            results,
+            &corner.solver_result_name,
+            &corner.name,
+            value,
+        )?;
+        wrote_manufacturing = true;
+    }
     if wrote_manufacturing {
         let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
         manufacturing.insert(
@@ -642,6 +663,42 @@ fn upsert_controlled_impedance_solver_sample_value(
         sample_name,
         value,
         "controlled_impedance.solver_results[].samples",
+    )
+}
+
+fn upsert_controlled_impedance_solver_material_corner_value(
+    results: &mut [Value],
+    result_name: &str,
+    corner_name: &str,
+    value: Value,
+) -> Result<()> {
+    let mut matched_result_index = None;
+    for (index, result) in results.iter().enumerate() {
+        if yaml_mapping_name(result) == Some(result_name) {
+            if matched_result_index.is_some() {
+                bail!(
+                    "Board IR field controlled_impedance.solver_results has duplicate existing name {result_name}; refusing to update ambiguous solver material corner."
+                );
+            }
+            matched_result_index = Some(index);
+        }
+    }
+    let Some(index) = matched_result_index else {
+        bail!(
+            "Board IR field controlled_impedance.solver_results has no result named {result_name}; refusing to attach solver material corner {corner_name}."
+        );
+    };
+    let mapping = results[index].as_mapping_mut().with_context(|| {
+        format!(
+            "Board IR field controlled_impedance.solver_results item {result_name} must be an object."
+        )
+    })?;
+    let material_corners = ensure_sequence_field_mut(mapping, "material_corners")?;
+    upsert_named_sequence_value(
+        material_corners,
+        corner_name,
+        value,
+        "controlled_impedance.solver_results[].material_corners",
     )
 }
 

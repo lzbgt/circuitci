@@ -169,6 +169,25 @@ board:
               corner: high_dk
               frequency_mhz: 2900.0
               solved_impedance_ohm: 49.5
+          material_corners:
+            - name: rf_solver_nominal_material
+              source: solver_material_library_rev_a
+              corner: nominal
+              dielectric_layer: prepreg_1
+              material: FR-4 prepreg
+              dielectric_constant: 4.1
+              nominal_dielectric_constant: 4.1
+              material_library: reviewed_stackup_materials
+              material_library_revision: rev_a
+            - name: rf_solver_high_dk_material
+              source: solver_material_library_rev_a
+              corner: high_dk
+              dielectric_layer: prepreg_1
+              material: FR-4 prepreg
+              dielectric_constant: 4.4
+              nominal_dielectric_constant: 4.1
+              material_library: reviewed_stackup_materials
+              material_library_revision: rev_a
         - name: dp_dm_solver_result
           source: solver_report_rev_c
           solver: reviewed_2d_field_solver

@@ -132,8 +132,9 @@ Useful next slices:
   coupon-to-routed-trace process-correlation, and source-backed solver-result
   artifact-provenance, input-deck consistency, plus sweep/corner sample
   copper-roughness/etch-compensation consistency, and reviewed solver
-  tool/version qualification plus signed-artifact metadata screens, such as
-  reviewed solver stackup-material corner correlation evidence,
+  tool/version qualification, signed-artifact metadata, and stackup-material
+  corner correlation screens, such as solver material-library artifact content
+  checks or solver-to-fabricator stackup revision signoff evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

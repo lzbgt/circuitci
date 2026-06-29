@@ -1,14 +1,14 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverQualification, AppliedControlledImpedanceSolverResult,
-    AppliedControlledImpedanceSolverSample, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
-    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
-    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
-    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
-    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedControlledImpedanceSolverMaterialCorner, AppliedControlledImpedanceSolverQualification,
+    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample,
+    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
+    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
+    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -553,6 +553,79 @@ pub(super) fn applied_controlled_impedance_solver_sample(
             path,
             row,
             "value",
+        )?,
+    })
+}
+
+pub(super) fn applied_controlled_impedance_solver_material_corner(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialCorner> {
+    let corner_source = optional_raw_column(row, "corner_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(corner_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_material_corner requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverMaterialCorner {
+        solver_result_name: required_raw_column_for(
+            row,
+            path,
+            "solver_result_name",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        name: required_raw_column_for(
+            row,
+            path,
+            "name",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        source,
+        corner: required_raw_column_for(
+            row,
+            path,
+            "corner",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        dielectric_layer: required_raw_column_for(
+            row,
+            path,
+            "dielectric_layer",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        material: required_raw_column_for(
+            row,
+            path,
+            "material",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        dielectric_constant: parse_positive_number(row.value.trim(), path, row, "value")?,
+        nominal_dielectric_constant: required_positive_number(
+            row,
+            path,
+            "nominal_dielectric_constant",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        material_library: required_raw_column_for(
+            row,
+            path,
+            "material_library",
+            "controlled_impedance_solver_material_corner",
+        )?,
+        material_library_revision: required_raw_column_for(
+            row,
+            path,
+            "material_library_revision",
+            "controlled_impedance_solver_material_corner",
         )?,
     })
 }

@@ -8,7 +8,7 @@ use crate::board_ir::{
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
 use serde_json::json;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
 const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
@@ -1381,6 +1381,12 @@ fn solver_stackup_has_evidence(
     result: &ControlledImpedanceSolverResult,
 ) -> bool {
     let layers = &bound.project.board.layout.stackup.layers;
+    let Some(dielectric_layer) = layers
+        .iter()
+        .find(|layer| layer.name == result.dielectric_layer)
+    else {
+        return false;
+    };
     layers
         .iter()
         .find(|layer| layer.name == result.route_layer)
@@ -1389,10 +1395,80 @@ fn solver_stackup_has_evidence(
             .iter()
             .find(|layer| layer.name == result.reference_layer)
             .is_some_and(|layer| layer.kind == StackupLayerKind::Plane)
-        && layers
+        && dielectric_layer.kind == StackupLayerKind::Dielectric
+        && controlled_impedance_solver_material_corners_have_evidence(result, dielectric_layer)
+}
+
+fn controlled_impedance_solver_material_corners_have_evidence(
+    result: &ControlledImpedanceSolverResult,
+    dielectric_layer: &StackupLayer,
+) -> bool {
+    if result.material_corners.is_empty() {
+        return true;
+    }
+    if !controlled_impedance_solver_material_library_policy_requested(result)
+        || !controlled_impedance_solver_material_library_has_evidence(result)
+    {
+        return false;
+    }
+    if result.required_solver_corners.is_empty() {
+        return false;
+    }
+    let mut names = BTreeSet::new();
+    let mut corner_keys = BTreeSet::new();
+    let required_corners: BTreeSet<&str> = result
+        .required_solver_corners
+        .iter()
+        .map(|corner| corner.trim())
+        .collect();
+    for corner in &result.material_corners {
+        if corner.name.trim().is_empty()
+            || corner.source.trim().is_empty()
+            || corner.corner.trim().is_empty()
+            || corner.dielectric_layer.trim().is_empty()
+            || corner.material.trim().is_empty()
+            || !positive_finite(corner.dielectric_constant)
+            || !positive_finite(corner.nominal_dielectric_constant)
+            || corner.material_library.trim().is_empty()
+            || corner.material_library_revision.trim().is_empty()
+            || !names.insert(corner.name.trim().to_string())
+            || !corner_keys.insert((
+                corner.corner.trim().to_string(),
+                corner.dielectric_layer.trim().to_string(),
+            ))
+            || !required_corners.contains(corner.corner.trim())
+            || corner.dielectric_layer.trim() != result.dielectric_layer.trim()
+        {
+            return false;
+        }
+        if controlled_impedance_solver_material_library_policy_requested(result)
+            && (result.solver_material_library.as_deref().map(str::trim)
+                != Some(corner.material_library.trim())
+                || result
+                    .solver_material_library_revision
+                    .as_deref()
+                    .map(str::trim)
+                    != Some(corner.material_library_revision.trim()))
+        {
+            return false;
+        }
+        if let Some(material) = dielectric_layer.material.as_deref()
+            && material.trim() != corner.material.trim()
+        {
+            return false;
+        }
+        if let Some(stackup_dk) = dielectric_layer.dielectric_constant
+            && (stackup_dk - corner.nominal_dielectric_constant).abs() > f64::EPSILON
+        {
+            return false;
+        }
+    }
+    required_corners.iter().all(|required_corner| {
+        result
+            .material_corners
             .iter()
-            .find(|layer| layer.name == result.dielectric_layer)
-            .is_some_and(|layer| layer.kind == StackupLayerKind::Dielectric)
+            .any(|corner| corner.corner.trim() == *required_corner)
+    })
 }
 
 fn route_has_layer_segments(route: &NetRoute, layer: &str) -> bool {
