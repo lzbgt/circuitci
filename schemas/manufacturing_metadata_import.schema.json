@@ -131,7 +131,10 @@
                   "type": "number",
                   "exclusiveMinimum": 0
                 },
-                "max_width_error_mm": { "type": "number", "minimum": 0 }
+                "max_width_error_mm": { "type": "number", "minimum": 0 },
+                "solder_mask_state": { "enum": ["covered", "opened"] },
+                "solder_mask_layer": { "type": "string", "minLength": 1 },
+                "solder_mask_source": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
             },
@@ -164,7 +167,10 @@
                   "exclusiveMinimum": 0
                 },
                 "max_width_error_mm": { "type": "number", "minimum": 0 },
-                "max_gap_error_mm": { "type": "number", "minimum": 0 }
+                "max_gap_error_mm": { "type": "number", "minimum": 0 },
+                "solder_mask_state": { "enum": ["covered", "opened"] },
+                "solder_mask_layer": { "type": "string", "minLength": 1 },
+                "solder_mask_source": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
             },

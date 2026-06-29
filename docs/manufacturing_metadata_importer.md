@@ -53,6 +53,13 @@ require extra columns:
 - `net`: Board IR net name.
 - `expected_width_mm`: reviewed route width target.
 - `max_width_error_mm`: reviewed non-negative width tolerance.
+- Optional `solder_mask_state`: reviewed `covered` or `opened` route loading
+  target. Aliases `masked`, `maskcovered`, `open`, and `exposed` are
+  normalized.
+- Optional `solder_mask_layer`: imported Board IR solder-mask layer name such
+  as `F.Mask`.
+- Optional `solder_mask_source`: reviewed source for the solder-mask loading
+  target. When omitted, scenario suggestions can fall back to the row `source`.
 
 `controlled_impedance_pair` rows use `value` as
 `target_differential_impedance_ohm` and require extra columns:
@@ -64,6 +71,12 @@ require extra columns:
 - `expected_gap_mm`: reviewed pair gap target.
 - `max_width_error_mm`: reviewed non-negative width tolerance.
 - `max_gap_error_mm`: reviewed non-negative gap tolerance.
+- Optional `solder_mask_state`: reviewed `covered` or `opened` route loading
+  target for both pair members.
+- Optional `solder_mask_layer`: imported Board IR solder-mask layer name such
+  as `F.Mask`.
+- Optional `solder_mask_source`: reviewed source for the solder-mask loading
+  target. When omitted, scenario suggestions can fall back to the row `source`.
 
 The importer replaces existing controlled-impedance net targets by `net`, and
 existing differential-pair targets by unordered net pair, so repeated imports

@@ -1,7 +1,8 @@
 use super::manufacturing_suggestion;
 use crate::board_ir::{
     ControlledImpedanceDifferentialPairTarget, ControlledImpedanceNetTarget, CopperZone,
-    LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia, StackupLayer, StackupLayerKind,
+    LayoutCopper, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia, StackupLayer,
+    StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -11,6 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 const CONTROLLED_IMPEDANCE_GEOMETRY_VALID: &str = "CONTROLLED_IMPEDANCE_GEOMETRY_VALID";
 const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
     "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID";
+const CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID: &str =
+    "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -25,6 +28,10 @@ pub(super) fn route_physics_suggestions(
         project_name,
     ));
     suggestions.extend(controlled_impedance_stackup_evidence_suggestions(
+        bound,
+        project_name,
+    ));
+    suggestions.extend(controlled_impedance_solder_mask_loading_suggestions(
         bound,
         project_name,
     ));
@@ -388,6 +395,100 @@ fn controlled_impedance_stackup_evidence_suggestions(
     suggestions
 }
 
+fn controlled_impedance_solder_mask_loading_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    let targets = &bound.project.board.manufacturing.controlled_impedance;
+    for target in &targets.nets {
+        if manufacturing_route_check_declared_for_net(
+            bound,
+            CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID,
+            &target.net,
+        ) {
+            continue;
+        }
+        let Some(evidence) = controlled_impedance_net_mask_evidence(bound, target) else {
+            continue;
+        };
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_solder_mask_{}",
+                sanitized_name(&target.net)
+            ),
+            true,
+            &format!(
+                "Net {} has reviewed controlled-impedance solder-mask loading policy from {} and imported route plus solder-mask opening evidence.",
+                target.net, evidence.source
+            ),
+            &format!(
+                "{}_{}_controlled_impedance_solder_mask",
+                project_name,
+                sanitized_name(&target.net)
+            ),
+            CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID,
+            Some(BTreeMap::from([(
+                "routes".to_string(),
+                json!([mask_route_parameter(&target.net, &evidence)]),
+            )])),
+            Vec::new(),
+        ));
+    }
+
+    for target in &targets.differential_pairs {
+        if manufacturing_route_check_declared_for_net(
+            bound,
+            CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID,
+            &target.first_net,
+        ) || manufacturing_route_check_declared_for_net(
+            bound,
+            CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID,
+            &target.second_net,
+        ) {
+            continue;
+        }
+        let Some(first_evidence) =
+            controlled_impedance_pair_mask_evidence(bound, target, &target.first_net)
+        else {
+            continue;
+        };
+        let Some(second_evidence) =
+            controlled_impedance_pair_mask_evidence(bound, target, &target.second_net)
+        else {
+            continue;
+        };
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_solder_mask_{}_{}",
+                sanitized_name(&target.first_net),
+                sanitized_name(&target.second_net)
+            ),
+            true,
+            &format!(
+                "Differential pair {}/{} has reviewed controlled-impedance solder-mask loading policy from {} and imported route plus solder-mask opening evidence.",
+                target.first_net, target.second_net, first_evidence.source
+            ),
+            &format!(
+                "{}_{}_{}_controlled_impedance_solder_mask",
+                project_name,
+                sanitized_name(&target.first_net),
+                sanitized_name(&target.second_net)
+            ),
+            CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID,
+            Some(BTreeMap::from([(
+                "routes".to_string(),
+                json!([
+                    mask_route_parameter(&target.first_net, &first_evidence),
+                    mask_route_parameter(&target.second_net, &second_evidence)
+                ]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -413,6 +514,14 @@ struct ControlledImpedanceStackupEvidence {
     route_layer: String,
     reference_layer: String,
     dielectric_layer: String,
+}
+
+#[derive(Debug)]
+struct ControlledImpedanceMaskEvidence {
+    route_layer: String,
+    solder_mask_layer: String,
+    expected_solder_mask_state: String,
+    source: String,
 }
 
 fn controlled_impedance_net_target_has_evidence(
@@ -532,6 +641,113 @@ fn stackup_route_parameter(
         "route_layer": evidence.route_layer,
         "reference_layer": evidence.reference_layer,
         "dielectric_layer": evidence.dielectric_layer
+    })
+}
+
+fn controlled_impedance_net_mask_evidence(
+    bound: &BoundBoard<'_>,
+    target: &ControlledImpedanceNetTarget,
+) -> Option<ControlledImpedanceMaskEvidence> {
+    if !controlled_impedance_net_target_has_evidence(bound, target) {
+        return None;
+    }
+    controlled_impedance_mask_evidence_for_net(
+        bound,
+        &target.net,
+        target.solder_mask_state.as_deref(),
+        target.solder_mask_layer.as_deref(),
+        target
+            .solder_mask_source
+            .as_deref()
+            .or(Some(target.source.as_str())),
+    )
+}
+
+fn controlled_impedance_pair_mask_evidence(
+    bound: &BoundBoard<'_>,
+    target: &ControlledImpedanceDifferentialPairTarget,
+    net: &str,
+) -> Option<ControlledImpedanceMaskEvidence> {
+    if !controlled_impedance_pair_target_has_evidence(bound, target) {
+        return None;
+    }
+    controlled_impedance_mask_evidence_for_net(
+        bound,
+        net,
+        target.solder_mask_state.as_deref(),
+        target.solder_mask_layer.as_deref(),
+        target
+            .solder_mask_source
+            .as_deref()
+            .or(Some(target.source.as_str())),
+    )
+}
+
+fn controlled_impedance_mask_evidence_for_net(
+    bound: &BoundBoard<'_>,
+    net_name: &str,
+    solder_mask_state: Option<&str>,
+    solder_mask_layer: Option<&str>,
+    source: Option<&str>,
+) -> Option<ControlledImpedanceMaskEvidence> {
+    let expected_solder_mask_state = match solder_mask_state? {
+        "covered" => "covered",
+        "opened" => "opened",
+        _ => return None,
+    };
+    let solder_mask_layer = solder_mask_layer
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+    let source = source.map(str::trim).filter(|value| !value.is_empty())?;
+    if !solder_mask_layer_has_opening_evidence(
+        &bound.project.board.layout.solder_mask,
+        solder_mask_layer,
+    ) {
+        return None;
+    }
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if !route_has_valid_segments(route) {
+        return None;
+    }
+    let mut route_layer = None::<&str>;
+    for segment in &route.segments {
+        if route_layer.is_some_and(|current| current != segment.layer) {
+            return None;
+        }
+        route_layer = Some(&segment.layer);
+    }
+    Some(ControlledImpedanceMaskEvidence {
+        route_layer: route_layer?.to_string(),
+        solder_mask_layer: solder_mask_layer.to_string(),
+        expected_solder_mask_state: expected_solder_mask_state.to_string(),
+        source: source.to_string(),
+    })
+}
+
+fn solder_mask_layer_has_opening_evidence(mask: &LayoutCopper, layer: &str) -> bool {
+    mask.features
+        .iter()
+        .any(|feature| feature.layer == layer && feature.polarity == "dark")
+        || mask
+            .segments
+            .iter()
+            .any(|segment| segment.layer == layer && segment.polarity == "dark")
+        || mask
+            .regions
+            .iter()
+            .any(|region| region.layer == layer && region.polarity == "dark")
+}
+
+fn mask_route_parameter(
+    net_name: &str,
+    evidence: &ControlledImpedanceMaskEvidence,
+) -> serde_json::Value {
+    json!({
+        "net": net_name,
+        "route_layer": evidence.route_layer,
+        "solder_mask_layer": evidence.solder_mask_layer,
+        "expected_solder_mask_state": evidence.expected_solder_mask_state,
+        "source": evidence.source
     })
 }
 

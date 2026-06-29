@@ -21,6 +21,9 @@ board:
           target_impedance_ohm: 50
           expected_width_mm: 0.20
           max_width_error_mm: 0.03
+          solder_mask_state: covered
+          solder_mask_layer: F.Mask
+          solder_mask_source: fab_solder_mask_review_rev_a
       differential_pairs:
         - first_net: DP
           second_net: DM
@@ -30,6 +33,9 @@ board:
           expected_gap_mm: 0.20
           max_width_error_mm: 0.02
           max_gap_error_mm: 0.03
+          solder_mask_state: covered
+          solder_mask_layer: F.Mask
+          solder_mask_source: fab_solder_mask_review_rev_a
   layout:
     stackup:
       layers:
@@ -67,4 +73,15 @@ board:
             end: { x_mm: 10.0, y_mm: 0.35 }
             width_mm: 0.15
             layer: F.Cu
+    solder_mask:
+      features:
+        - at: { x_mm: 20.0, y_mm: 20.0 }
+          layer: F.Mask
+          polarity: dark
+          net: RF
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 1.0 }
 scenarios: []

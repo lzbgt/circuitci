@@ -207,6 +207,12 @@ pub struct ControlledImpedanceNetTarget {
     pub target_impedance_ohm: f64,
     pub expected_width_mm: f64,
     pub max_width_error_mm: f64,
+    #[serde(default)]
+    pub solder_mask_state: Option<String>,
+    #[serde(default)]
+    pub solder_mask_layer: Option<String>,
+    #[serde(default)]
+    pub solder_mask_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -219,6 +225,12 @@ pub struct ControlledImpedanceDifferentialPairTarget {
     pub expected_gap_mm: f64,
     pub max_width_error_mm: f64,
     pub max_gap_error_mm: f64,
+    #[serde(default)]
+    pub solder_mask_state: Option<String>,
+    #[serde(default)]
+    pub solder_mask_layer: Option<String>,
+    #[serde(default)]
+    pub solder_mask_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

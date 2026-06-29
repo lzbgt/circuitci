@@ -311,6 +311,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "copper_thickness_um",
             "dielectric_constant",
             "material",
+            "solder_mask_state",
+            "solder_mask_layer",
+            "solder_mask_source",
         ],
         [
             "controlled_impedance_net",
@@ -331,6 +334,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "",
             "",
             "",
+            "covered",
+            "F.Mask",
+            "fab solder mask review",
         ],
         [
             "controlled_impedance_pair",
@@ -351,6 +357,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "",
             "",
             "",
+            "covered",
+            "F.Mask",
+            "fab solder mask review",
         ],
         [
             "stackup_layer",
@@ -369,6 +378,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "",
             "",
             "35.0",
+            "",
+            "",
+            "",
             "",
             "",
         ],
@@ -391,6 +403,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "",
             "4.1",
             "FR-4 prepreg",
+            "",
+            "",
+            "",
         ],
         [
             "stackup_layer",
@@ -409,6 +424,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "GND",
             "",
             "17.5",
+            "",
+            "",
+            "",
             "",
             "",
         ],
@@ -459,6 +477,18 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     );
     assert_eq!(controlled_impedance["nets"][0]["expected_width_mm"], 0.20);
     assert_eq!(
+        controlled_impedance["nets"][0]["solder_mask_state"],
+        "covered"
+    );
+    assert_eq!(
+        controlled_impedance["nets"][0]["solder_mask_layer"],
+        "F.Mask"
+    );
+    assert_eq!(
+        controlled_impedance["nets"][0]["solder_mask_source"],
+        "fab solder mask review"
+    );
+    assert_eq!(
         controlled_impedance["differential_pairs"][0]["first_net"],
         "DP"
     );
@@ -469,6 +499,14 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     assert_eq!(
         controlled_impedance["differential_pairs"][0]["target_differential_impedance_ohm"],
         90.0
+    );
+    assert_eq!(
+        controlled_impedance["differential_pairs"][0]["solder_mask_state"],
+        "covered"
+    );
+    assert_eq!(
+        controlled_impedance["differential_pairs"][0]["solder_mask_layer"],
+        "F.Mask"
     );
     let stackup_layers = enriched["board"]["layout"]["stackup"]["layers"]
         .as_sequence()
@@ -506,6 +544,10 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
         90.0
     );
     assert_eq!(
+        manifest["rows"][1]["normalized_value"]["solder_mask_state"],
+        "covered"
+    );
+    assert_eq!(
         manifest["rows"][2]["board_field"],
         "layout.stackup.layers[]"
     );
@@ -530,6 +572,8 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     assert_runnable(&suggestions, "controlled_impedance_dp_dm");
     assert_runnable(&suggestions, "controlled_impedance_stackup_rf");
     assert_runnable(&suggestions, "controlled_impedance_stackup_dp_dm");
+    assert_runnable(&suggestions, "controlled_impedance_solder_mask_rf");
+    assert_runnable(&suggestions, "controlled_impedance_solder_mask_dp_dm");
 }
 
 #[test]

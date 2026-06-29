@@ -439,6 +439,12 @@ The command is conservative:
   `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` templates. The suggestion does
   not solve impedance; it only proves the stackup metadata needed for a later
   solver, coupon, or SI review is present and topologically consistent.
+- When reviewed controlled-impedance targets also declare
+  `solder_mask_state`, `solder_mask_layer`, and source metadata, and imported
+  route plus solder-mask opening evidence exists, it emits runnable
+  `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID` templates. The suggestion
+  does not estimate solder-mask loading; it only proves imported mask artwork
+  matches the reviewed covered/opened target state.
 - When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
   polygon/source/clearance metadata and same-layer imported copper evidence
   exists outside any declared antenna-net exclusion, it emits a runnable

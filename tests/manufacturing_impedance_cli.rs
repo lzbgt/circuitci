@@ -220,6 +220,137 @@ fn controlled_impedance_stackup_evidence_fails_closed_without_copper_thickness()
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_solder_mask_loading_passes_for_covered_route() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      routes:
+        - net: RF
+          route_layer: F.Cu
+          solder_mask_layer: F.Mask
+          expected_solder_mask_state: covered
+          source: fab_stackup_table_rev_a
+"#,
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID",
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solder_mask_loading_passes_for_opened_route() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      routes:
+        - net: RF
+          route_layer: F.Cu
+          solder_mask_layer: F.Mask
+          expected_solder_mask_state: opened
+          source: fab_stackup_table_rev_a
+"#,
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "at: { x_mm: 20.0, y_mm: 20.0 }",
+        "at: { x_mm: 5.0, y_mm: 2.0 }",
+    );
+    project = project.replace(
+        "size: { x_mm: 1.0, y_mm: 1.0 }",
+        "size: { x_mm: 11.0, y_mm: 1.0 }",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solder_mask_loading_fails_for_opening_on_covered_route() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      routes:
+        - net: RF
+          route_layer: F.Cu
+          solder_mask_layer: F.Mask
+          expected_solder_mask_state: covered
+          source: fab_stackup_table_rev_a
+"#,
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "at: { x_mm: 20.0, y_mm: 20.0 }",
+        "at: { x_mm: 5.0, y_mm: 2.0 }",
+    );
+    project = project.replace(
+        "size: { x_mm: 1.0, y_mm: 1.0 }",
+        "size: { x_mm: 11.0, y_mm: 1.0 }",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(
+        failure["id"],
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID"
+    );
+    assert_eq!(failure["measured"]["net"], "RF");
+    assert_eq!(failure["measured"]["route_layer"], "F.Cu");
+    assert_eq!(failure["measured"]["solder_mask_layer"], "F.Mask");
+    assert_eq!(
+        failure["measured"]["target_source"],
+        "fab_stackup_table_rev_a"
+    );
+    assert_eq!(failure["measured"]["measured_solder_mask_state"], "opened");
+    assert_eq!(failure["limit"]["expected_solder_mask_state"], "covered");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solder_mask_loading_fails_closed_without_mask_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      routes:
+        - net: RF
+          route_layer: F.Cu
+          solder_mask_layer: F.Mask
+          expected_solder_mask_state: covered
+          source: fab_stackup_table_rev_a
+"#,
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    let mask_block = r#"    solder_mask:
+      features:
+        - at: { x_mm: 20.0, y_mm: 20.0 }
+          layer: F.Mask
+          polarity: dark
+          net: RF
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 1.0 }
+"#;
+    project = project.replace(mask_block, "");
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires imported dark solder-mask opening evidence")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_impedance_project(parameters: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     write_impedance_project_with_check(parameters, "CONTROLLED_IMPEDANCE_GEOMETRY_VALID")
 }
@@ -295,6 +426,17 @@ board:
             end: {{ x_mm: 10.0, y_mm: 0.35 }}
             width_mm: 0.15
             layer: F.Cu
+    solder_mask:
+      features:
+        - at: {{ x_mm: 20.0, y_mm: 20.0 }}
+          layer: F.Mask
+          polarity: dark
+          net: RF
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: {{ x_mm: 1.0, y_mm: 1.0 }}
 scenarios:
   - name: controlled_impedance_geometry
     type: manufacturing

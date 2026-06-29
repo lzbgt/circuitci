@@ -257,6 +257,11 @@ without explicit imported mechanical evidence.
   dielectric-constant, dielectric-thickness, copper-thickness, source, and
   layer-order evidence. It does not solve impedance, account for solder mask,
   model roughness or plating tolerance, or replace field-solver/coupon signoff.
+- `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID` compares sampled imported
+  route points against imported dark solder-mask opening artwork and reviewed
+  `covered`/`opened` loading targets. It does not calculate the impedance
+  effect of solder mask material, model registration tolerance, infer mask
+  intent from copper names, or replace field-solver/coupon signoff.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

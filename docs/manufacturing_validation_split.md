@@ -17,6 +17,13 @@ route/reference/dielectric layer parameter parsing, stackup material and
 copper-thickness evidence checks, dielectric-between-layer topology validation,
 and stable report construction. It intentionally does not solve impedance.
 
+`src/validation/manufacturing/controlled_impedance_mask.rs` owns
+`CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`, including explicit route and
+solder-mask layer parameter parsing, imported solder-mask opening evidence
+checks, sampled covered/opened route-state comparison, fail-closed missing
+mask evidence, and stable report construction. It intentionally does not solve
+impedance or model solder-mask material loading.
+
 `src/validation/manufacturing/adjacent_plane.rs` owns
 `ADJACENT_PLANE_RETURN_PATH_VALID` and
 `REFERENCE_PLANE_SLOT_CROSSING_VALID`, including explicit stackup/plane

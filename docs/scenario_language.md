@@ -139,6 +139,7 @@ Canonical executable check IDs:
 - `CONDUCTOR_CREEPAGE_CLEARANCE_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
+- `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -1769,7 +1770,7 @@ Controlled-impedance geometry algorithm:
 
 This is a geometry-to-reviewed-target check. It does not solve characteristic
 or differential impedance, model stackup materials, prove copper thickness or
-etch compensation, account for solder mask, or replace a field solver,
+etch compensation, account for solder mask loading, or replace a field solver,
 fabricator coupon, or SI review.
 
 Controlled-impedance stackup evidence validation uses
@@ -1812,6 +1813,46 @@ Controlled-impedance stackup evidence algorithm:
 This is a stackup-evidence screen only. It does not model solder-mask loading,
 roughness, copper plating tolerances, etch compensation, field distribution, or
 fabricator coupon data.
+
+Controlled-impedance solder-mask loading validation uses
+`CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID` when Board IR includes
+imported route evidence, imported Gerber solder-mask opening evidence, and
+reviewed route-level solder-mask state targets. It proves only whether sampled
+controlled-impedance routes are covered by mask or opened in the imported mask
+artwork.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_solder_mask_loading
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID
+    parameters:
+      routes:
+        - net: RF
+          route_layer: F.Cu
+          solder_mask_layer: F.Mask
+          expected_solder_mask_state: covered
+          source: fab_solder_mask_review_rev_a
+```
+
+Controlled-impedance solder-mask loading algorithm:
+
+1. Require `parameters.routes[]` with explicit `net`, `route_layer`,
+   `solder_mask_layer`, `expected_solder_mask_state`, and `source`.
+2. Require each net to exist under `board.nets` and have finite imported route
+   segment evidence on `route_layer`.
+3. Require imported dark solder-mask opening evidence on `solder_mask_layer`.
+4. Sample each route segment at start, midpoint, and end, then compare whether
+   those points are inside an imported mask opening against
+   `expected_solder_mask_state` (`covered` or `opened`).
+5. Fail closed when route evidence, solder-mask evidence, target state, or
+   source provenance is absent or malformed.
+
+This is a solder-mask artwork evidence screen only. It does not solve
+impedance, model dielectric loading from solder mask material, account for
+registration tolerance, prove coupon results, or replace field-solver/SI
+signoff.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

@@ -135,6 +135,9 @@ board:
           target_impedance_ohm: 50
           expected_width_mm: 0.20
           max_width_error_mm: 0.03
+          solder_mask_state: covered
+          solder_mask_layer: F.Mask
+          solder_mask_source: fab_solder_mask_review_rev_a
       differential_pairs:
         - first_net: DP
           second_net: DM
@@ -144,6 +147,9 @@ board:
           expected_gap_mm: 0.20
           max_width_error_mm: 0.02
           max_gap_error_mm: 0.03
+          solder_mask_state: covered
+          solder_mask_layer: F.Mask
+          solder_mask_source: fab_solder_mask_review_rev_a
     thermal_copper:
       - name: u1_heat_spreader
         component: U1
@@ -216,6 +222,12 @@ these targets into runnable suggestions when imported route width evidence
 exists, and differential pairs also need explicit parallel same-layer route-gap
 evidence. It does not calculate impedance from stackup fields or infer targets
 from net names.
+
+Those controlled-impedance targets may also declare optional
+`solder_mask_state` (`covered` or `opened`), `solder_mask_layer`, and
+`solder_mask_source` fields. Scenario suggestions use them only when imported
+route evidence and imported solder-mask opening evidence exist, producing a
+bounded solder-mask artwork-state check rather than an impedance calculation.
 
 `THERMAL_COPPER_AREA_VALID` suggestions consume
 `board.manufacturing.thermal_copper[]` as reviewed thermal layout policy. Each
@@ -325,7 +337,10 @@ may also include `name`, `component`, `ambient_temperature_C`,
 `field=controlled_impedance_net` rows use `value` as `target_impedance_ohm`,
 while repeated `field=controlled_impedance_pair` rows use `value` as
 `target_differential_impedance_ohm`; both forms require reviewed width/error
-columns and replace existing targets by net or net pair. Repeated
+columns and replace existing targets by net or net pair. Optional
+`solder_mask_state`, `solder_mask_layer`, and `solder_mask_source` columns are
+preserved as reviewed controlled-impedance solder-mask loading metadata.
+Repeated
 `field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
 include reviewed policy columns such as `name`, `component`, `power_loss_w`,
 `nets`, `layers`, `min_thermal_via_count`, `min_plated_thermal_via_count`,

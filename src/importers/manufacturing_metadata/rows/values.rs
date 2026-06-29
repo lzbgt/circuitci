@@ -176,6 +176,13 @@ fn controlled_impedance_net_mapping(
         "max_width_error_mm".to_string(),
         serde_yaml_ng::to_value(target.max_width_error_mm).unwrap_or(Value::Null),
     );
+    insert_optional_string(&mut mapping, "solder_mask_state", &target.solder_mask_state);
+    insert_optional_string(&mut mapping, "solder_mask_layer", &target.solder_mask_layer);
+    insert_optional_string(
+        &mut mapping,
+        "solder_mask_source",
+        &target.solder_mask_source,
+    );
     mapping
 }
 
@@ -211,6 +218,13 @@ fn controlled_impedance_pair_mapping(
     mapping.insert(
         "max_gap_error_mm".to_string(),
         serde_yaml_ng::to_value(target.max_gap_error_mm).unwrap_or(Value::Null),
+    );
+    insert_optional_string(&mut mapping, "solder_mask_state", &target.solder_mask_state);
+    insert_optional_string(&mut mapping, "solder_mask_layer", &target.solder_mask_layer);
+    insert_optional_string(
+        &mut mapping,
+        "solder_mask_source",
+        &target.solder_mask_source,
     );
     mapping
 }
@@ -664,6 +678,16 @@ fn rf_antenna_measurement_condition_mapping(
         mapping.insert("notes".to_string(), Value::String(value.clone()));
     }
     mapping
+}
+
+fn insert_optional_string(
+    mapping: &mut BTreeMap<String, Value>,
+    key: &str,
+    value: &Option<String>,
+) {
+    if let Some(value) = value {
+        mapping.insert(key.to_string(), Value::String(value.clone()));
+    }
 }
 
 fn layout_point_value(point: &AppliedLayoutPoint) -> Value {

@@ -64,6 +64,9 @@ pub(super) struct AppliedControlledImpedanceNet {
     target_impedance_ohm: f64,
     expected_width_mm: f64,
     max_width_error_mm: f64,
+    solder_mask_state: Option<String>,
+    solder_mask_layer: Option<String>,
+    solder_mask_source: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +79,9 @@ pub(super) struct AppliedControlledImpedancePair {
     expected_gap_mm: f64,
     max_width_error_mm: f64,
     max_gap_error_mm: f64,
+    solder_mask_state: Option<String>,
+    solder_mask_layer: Option<String>,
+    solder_mask_source: Option<String>,
 }
 
 #[derive(Debug, Clone)]

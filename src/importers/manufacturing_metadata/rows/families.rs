@@ -55,6 +55,9 @@ pub(super) fn applied_controlled_impedance_net(
             "max_width_error_mm",
             "controlled_impedance_net",
         )?,
+        solder_mask_state: optional_solder_mask_state(row, path, "controlled_impedance_net")?,
+        solder_mask_layer: optional_raw_column(row, "solder_mask_layer"),
+        solder_mask_source: optional_raw_column(row, "solder_mask_source"),
     })
 }
 
@@ -121,7 +124,34 @@ pub(super) fn applied_controlled_impedance_pair(
             "max_gap_error_mm",
             "controlled_impedance_pair",
         )?,
+        solder_mask_state: optional_solder_mask_state(row, path, "controlled_impedance_pair")?,
+        solder_mask_layer: optional_raw_column(row, "solder_mask_layer"),
+        solder_mask_source: optional_raw_column(row, "solder_mask_source"),
     })
+}
+
+fn optional_solder_mask_state(
+    row: &MetadataCsvRow,
+    path: &Path,
+    field_name: &str,
+) -> Result<Option<String>> {
+    let Some(state) = optional_raw_column(row, "solder_mask_state") else {
+        return Ok(None);
+    };
+    match normalize_name(&state).as_str() {
+        "covered" | "masked" | "soldermaskcovered" | "maskcovered" => {
+            Ok(Some("covered".to_string()))
+        }
+        "opened" | "open" | "exposed" | "soldermaskopened" | "maskopened" => {
+            Ok(Some("opened".to_string()))
+        }
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} {} solder_mask_state must be covered or opened.",
+            path.display(),
+            row.row_number,
+            field_name
+        ),
+    }
 }
 
 pub(super) fn applied_thermal_copper(

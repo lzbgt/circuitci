@@ -10,7 +10,7 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         "scenario_suggestions_controlled_impedance"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 4);
+    assert_eq!(suggested.len(), 6);
 
     let single_ended = &suggested[0];
     assert_eq!(single_ended["id"], "controlled_impedance_rf");
@@ -115,6 +115,57 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         assert_eq!(route["route_layer"], "F.Cu");
         assert_eq!(route["reference_layer"], "In1.GND");
         assert_eq!(route["dielectric_layer"], "prepreg_1");
+    }
+
+    let single_mask = &suggested[4];
+    assert_eq!(single_mask["id"], "controlled_impedance_solder_mask_rf");
+    assert_eq!(
+        single_mask["kind"],
+        "manufacturing_controlled_impedance_solder_mask_rf"
+    );
+    assert_eq!(single_mask["runnable"], true);
+    assert_eq!(
+        single_mask["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID"
+    );
+    let mask_route = &single_mask["scenario"]["parameters"]["routes"][0];
+    assert_eq!(mask_route["net"], "RF");
+    assert_eq!(mask_route["route_layer"], "F.Cu");
+    assert_eq!(mask_route["solder_mask_layer"], "F.Mask");
+    assert_eq!(mask_route["expected_solder_mask_state"], "covered");
+    assert_eq!(mask_route["source"], "fab_solder_mask_review_rev_a");
+    assert!(
+        single_mask["reason"]
+            .as_str()
+            .unwrap()
+            .contains("solder-mask loading policy")
+    );
+
+    let differential_mask = &suggested[5];
+    assert_eq!(
+        differential_mask["id"],
+        "controlled_impedance_solder_mask_dp_dm"
+    );
+    assert_eq!(
+        differential_mask["kind"],
+        "manufacturing_controlled_impedance_solder_mask_dp_dm"
+    );
+    assert_eq!(differential_mask["runnable"], true);
+    assert_eq!(
+        differential_mask["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID"
+    );
+    let mask_routes = differential_mask["scenario"]["parameters"]["routes"]
+        .as_array()
+        .unwrap();
+    assert_eq!(mask_routes.len(), 2);
+    assert_eq!(mask_routes[0]["net"], "DP");
+    assert_eq!(mask_routes[1]["net"], "DM");
+    for route in mask_routes {
+        assert_eq!(route["route_layer"], "F.Cu");
+        assert_eq!(route["solder_mask_layer"], "F.Mask");
+        assert_eq!(route["expected_solder_mask_state"], "covered");
+        assert_eq!(route["source"], "fab_solder_mask_review_rev_a");
     }
 }
 

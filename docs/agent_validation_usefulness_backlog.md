@@ -112,10 +112,11 @@ make suggestions runnable without inventing behavior.
 CircuitCI now has executable USB connector, route, VBUS, same-layer return-path,
 filled-zone, stitching-via, controlled-impedance geometry with reviewed-target
 suggestions, controlled-impedance stackup material/copper-thickness evidence
-checks, adjacent-plane return-path coverage, reference-plane slot-crossing,
-manufacturing-level stitching-via transition distance, reviewed RF antenna
-keepout, feed-path route/proximity, matching-network topology, measured
-return-loss, sampled S-parameter sweep-coverage, and measurement-condition screens, reviewed thermal copper-area, thermal via/stackup,
+checks, solder-mask loading artwork state, adjacent-plane return-path coverage,
+reference-plane slot-crossing, manufacturing-level stitching-via transition
+distance, reviewed RF antenna keepout, feed-path route/proximity,
+matching-network topology, measured return-loss, sampled S-parameter
+sweep-coverage, and measurement-condition screens, reviewed thermal copper-area, thermal via/stackup,
 via-plating/drill/plating-thickness/barrel cross-section evidence, package
 static temperature-rise, and measured-temperature screens with reviewed
 environment/limit metadata import plus RF performance-limit metadata import,
@@ -124,9 +125,10 @@ field solver.
 
 Useful next slices:
 
-- controlled impedance proof beyond the current explicit route width/gap and
-  stackup material/copper-thickness evidence screens, such as solder-mask
-  loading, field-solver integration, and fabricator coupon data,
+- controlled impedance proof beyond the current explicit route width/gap,
+  stackup material/copper-thickness, and solder-mask loading artwork evidence
+  screens, such as fabricator coupon data, impedance tolerance windows, and
+  field-solver integration,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

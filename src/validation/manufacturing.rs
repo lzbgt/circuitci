@@ -3,6 +3,7 @@ mod annular_ring;
 mod artwork_measurements;
 mod assembly_alignment;
 mod controlled_impedance;
+mod controlled_impedance_mask;
 mod controlled_impedance_stackup;
 mod drill_slot;
 mod geometry;
@@ -48,6 +49,7 @@ pub(super) use adjacent_plane::{
 pub(super) use annular_ring::validate_drill_annular_ring;
 pub(super) use assembly_alignment::validate_assembly_footprint_alignment;
 pub(super) use controlled_impedance::validate_controlled_impedance_geometry;
+pub(super) use controlled_impedance_mask::validate_controlled_impedance_solder_mask_loading;
 pub(super) use controlled_impedance_stackup::validate_controlled_impedance_stackup_evidence;
 pub(super) use drill_slot::{
     validate_castellated_hole, validate_drill_diameter, validate_drill_to_board_edge_clearance,

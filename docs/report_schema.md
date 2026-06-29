@@ -176,6 +176,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_RETURN_PATH_VALID`
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
+- `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -580,6 +581,14 @@ keys `net`, `route_layer`, `reference_layer`, `dielectric_layer`,
 `route_layer_source`, `reference_layer_source`, `dielectric_layer_source`, and
 `reference_net`. Stable limit keys include
 `dielectric_layer_must_be_between_route_and_reference`.
+
+`CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID` reports are emitted by
+`manufacturing` scenarios that compare imported route evidence and imported
+Gerber solder-mask opening evidence against reviewed solder-mask loading
+targets. Stable measured keys include `net`, `route_layer`,
+`solder_mask_layer`, `target_source`, `route_segment_index`, `sample_index`,
+`sample_x_mm`, `sample_y_mm`, and `measured_solder_mask_state`. Stable limit
+keys include `expected_solder_mask_state`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against
