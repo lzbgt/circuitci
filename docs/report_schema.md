@@ -650,6 +650,9 @@ measured keys also include `input_etch_compensation_model` and
 `input_etch_compensation_um`. If signed-artifact metadata is declared but
 incomplete, the check fails closed as `VALIDATION_INPUT_MISSING`; signature
 metadata is provenance input and is not repeated in pass/fail measured maps.
+If solver output-schema metadata is declared but incomplete or malformed, the
+check fails closed as `VALIDATION_INPUT_MISSING`; schema metadata is provenance
+input and is not repeated in pass/fail measured maps.
 With reviewed material-library evidence, stable input-deck mismatch measured
 keys also include `solver_material_library`,
 `solver_material_library_revision`, `solver_material_library_artifact_uri`,

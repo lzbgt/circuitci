@@ -384,6 +384,10 @@ pub(super) fn applied_controlled_impedance_solver_result(
         solver_artifact_signature_uri: optional_raw_column(row, "solver_artifact_signature_uri"),
         solver_artifact_signature_sha256: optional_solver_artifact_signature_sha256(row, path)?,
         solver_artifact_signer: optional_raw_column(row, "solver_artifact_signer"),
+        solver_output_schema: optional_raw_column(row, "solver_output_schema"),
+        solver_output_schema_version: optional_raw_column(row, "solver_output_schema_version"),
+        solver_output_schema_uri: optional_raw_column(row, "solver_output_schema_uri"),
+        solver_output_schema_sha256: optional_solver_output_schema_sha256(row, path)?,
         solver_input_deck_uri: optional_raw_column(row, "solver_input_deck_uri"),
         solver_input_deck_sha256: optional_solver_input_deck_sha256(row, path)?,
         result_type,
@@ -1046,6 +1050,24 @@ fn optional_solver_artifact_signature_sha256(
     } else {
         bail!(
             "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_artifact_signature_sha256 must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        )
+    }
+}
+
+fn optional_solver_output_schema_sha256(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<Option<String>> {
+    let Some(digest) = optional_raw_column(row, "solver_output_schema_sha256") else {
+        return Ok(None);
+    };
+    if is_sha256_hex(&digest) {
+        Ok(Some(digest.to_ascii_lowercase()))
+    } else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_output_schema_sha256 must be a 64-character SHA-256 hex digest.",
             path.display(),
             row.row_number
         )

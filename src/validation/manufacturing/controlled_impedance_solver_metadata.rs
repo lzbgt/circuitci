@@ -165,6 +165,33 @@ pub(super) fn solver_artifact_signature_metadata_is_valid(
     true
 }
 
+pub(super) fn solver_output_schema_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_output_schema_policy_requested(result) {
+        return true;
+    }
+    let schema = non_empty_option(result.solver_output_schema.as_deref());
+    let version = non_empty_option(result.solver_output_schema_version.as_deref());
+    let uri = non_empty_option(result.solver_output_schema_uri.as_deref());
+    let sha256 = non_empty_option(result.solver_output_schema_sha256.as_deref());
+    if schema.is_none() || version.is_none() || uri.is_none() || !sha256.is_some_and(is_sha256_hex)
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} output-schema evidence must declare non-empty solver_output_schema, solver_output_schema_version, solver_output_schema_uri, and a 64-character solver_output_schema_sha256 digest.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    true
+}
+
 pub(super) fn solver_material_library_artifact_metadata_is_valid(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -1153,6 +1180,13 @@ fn solver_artifact_signature_policy_requested(result: &ControlledImpedanceSolver
     result.solver_artifact_signature_uri.is_some()
         || result.solver_artifact_signature_sha256.is_some()
         || result.solver_artifact_signer.is_some()
+}
+
+fn solver_output_schema_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.solver_output_schema.is_some()
+        || result.solver_output_schema_version.is_some()
+        || result.solver_output_schema_uri.is_some()
+        || result.solver_output_schema_sha256.is_some()
 }
 
 fn solver_stackup_signoff_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {

@@ -420,8 +420,12 @@ consistency columns are `solver_artifact_signature_uri`,
 `input_route_layer`, `input_reference_layer`, `input_dielectric_layer`,
 `input_width_mm`, `input_gap_mm`, and `input_frequency_mhz`; when signature
 columns are present, validation requires a complete signature URI/digest/signer
-triple, and when input-deck columns are present, validation compares them
-against the solver result setup. Optional reviewed copper roughness columns are
+triple. Optional reviewed solver output-schema columns are
+`solver_output_schema`, `solver_output_schema_version`,
+`solver_output_schema_uri`, and `solver_output_schema_sha256`; declaring any
+one requires the complete schema name/version/artifact URI/SHA-256 tuple.
+When input-deck columns are present, validation compares them against the
+solver result setup. Optional reviewed copper roughness columns are
 `copper_roughness_model`, `copper_roughness_um`,
 `input_copper_roughness_model`, and `input_copper_roughness_um`; declaring
 any one requires the complete result/input-deck roughness pair to match.

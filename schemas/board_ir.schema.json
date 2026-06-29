@@ -666,6 +666,22 @@
                         "type": "string",
                         "minLength": 1
                       },
+                      "solver_output_schema": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_output_schema_version": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_output_schema_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_output_schema_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
                       "solver_input_deck_uri": { "type": "string", "minLength": 1 },
                       "solver_input_deck_sha256": {
                         "type": "string",

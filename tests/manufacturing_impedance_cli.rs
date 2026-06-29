@@ -682,6 +682,54 @@ fn controlled_impedance_solver_result_fails_closed_for_partial_signed_artifact_e
 }
 
 #[test]
+fn controlled_impedance_solver_result_passes_with_output_schema_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_output_schema: circuitci_controlled_impedance_solver_result\n          solver_output_schema_version: \"1.0\"\n          solver_output_schema_uri: artifacts/solver/controlled_impedance_solver_result_schema_v1.json\n          solver_output_schema_sha256: 55556666777788889999aaaabbbbccccddddeeeeffff00001111222233334444\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_partial_output_schema_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_output_schema: circuitci_controlled_impedance_solver_result\n          solver_output_schema_uri: artifacts/solver/controlled_impedance_solver_result_schema_v1.json\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("solver_output_schema_version")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_passes_with_stackup_signoff_evidence() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:

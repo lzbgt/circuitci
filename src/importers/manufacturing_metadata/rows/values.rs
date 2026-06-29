@@ -449,6 +449,26 @@ fn controlled_impedance_solver_result_mapping(
     );
     insert_optional_string(
         &mut mapping,
+        "solver_output_schema",
+        &result.solver_output_schema,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_output_schema_version",
+        &result.solver_output_schema_version,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_output_schema_uri",
+        &result.solver_output_schema_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_output_schema_sha256",
+        &result.solver_output_schema_sha256,
+    );
+    insert_optional_string(
+        &mut mapping,
         "solver_input_deck_uri",
         &result.solver_input_deck_uri,
     );

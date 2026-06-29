@@ -74,6 +74,7 @@ fn controlled_impedance_solver_result_has_evidence(
             .as_deref()
             .is_some_and(|value| is_sha256_hex(value.trim()))
         && controlled_impedance_solver_artifact_signature_has_evidence(result)
+        && controlled_impedance_solver_output_schema_has_evidence(result)
         && !result.stackup_revision.trim().is_empty()
         && !result.route_layer.trim().is_empty()
         && !result.reference_layer.trim().is_empty()
@@ -263,6 +264,39 @@ fn controlled_impedance_solver_artifact_signature_has_evidence(
             .solver_artifact_signer
             .as_deref()
             .is_some_and(|value| !value.trim().is_empty())
+}
+
+fn controlled_impedance_solver_output_schema_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_output_schema.is_some()
+        || result.solver_output_schema_version.is_some()
+        || result.solver_output_schema_uri.is_some()
+        || result.solver_output_schema_sha256.is_some()
+}
+
+fn controlled_impedance_solver_output_schema_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_output_schema_policy_requested(result) {
+        return true;
+    }
+    result
+        .solver_output_schema
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_output_schema_version
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_output_schema_uri
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_output_schema_sha256
+            .as_deref()
+            .is_some_and(|value| is_sha256_hex(value.trim()))
 }
 
 fn controlled_impedance_solver_input_deck_has_evidence(

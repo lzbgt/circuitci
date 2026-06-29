@@ -2001,6 +2001,8 @@ Controlled-impedance solver-result algorithm:
    layer, target impedance, solved impedance, impedance tolerance, solved
    width, and route-width delta limit. When signed-artifact metadata is
    declared, require a signature URI, signature SHA-256 digest, and signer.
+   When output-schema metadata is declared, require schema name/version plus
+   schema artifact URI/SHA-256 provenance.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
