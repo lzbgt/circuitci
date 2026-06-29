@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.35.0" },
+    "schema_version": { "const": "0.36.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -102,6 +102,7 @@
             "controlled_impedance.solver_material_processes[]",
             "controlled_impedance.solver_runtime_allowlists[]",
             "controlled_impedance.solver_entitlements[]",
+            "controlled_impedance.solver_execution_environments[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -146,6 +147,44 @@
                 "solder_mask_state": { "enum": ["covered", "opened"] },
                 "solder_mask_layer": { "type": "string", "minLength": 1 },
                 "solder_mask_source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "solver",
+                "solver_version",
+                "environment_id",
+                "environment_revision",
+                "artifact_uri",
+                "artifact_sha256",
+                "reproducibility_fingerprint",
+                "locked_components"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "solver": { "type": "string", "minLength": 1 },
+                "solver_version": { "type": "string", "minLength": 1 },
+                "environment_id": { "type": "string", "minLength": 1 },
+                "environment_revision": { "type": "string", "minLength": 1 },
+                "artifact_uri": { "type": "string", "minLength": 1 },
+                "artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "reproducibility_fingerprint": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "locked_components": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                }
               },
               "additionalProperties": false
             },
@@ -619,6 +658,19 @@
                   "minLength": 1
                 },
                 "solver_entitlement_features": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                },
+                "solver_execution_environment": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_environment_fingerprint": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_environment_components": {
                   "type": "array",
                   "items": { "type": "string", "minLength": 1 },
                   "minItems": 1

@@ -2,6 +2,7 @@ use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
     AppliedControlledImpedanceSolverEntitlement,
+    AppliedControlledImpedanceSolverExecutionEnvironment,
     AppliedControlledImpedanceSolverMaterialAcceptance,
     AppliedControlledImpedanceSolverMaterialCorner,
     AppliedControlledImpedanceSolverMaterialLibrary,
@@ -146,6 +147,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     if let Some(entitlement) = &field.controlled_impedance_solver_entitlement {
         return serde_yaml_ng::to_value(controlled_impedance_solver_entitlement_mapping(
             entitlement,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
+    if let Some(environment) = &field.controlled_impedance_solver_execution_environment {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_execution_environment_mapping(
+            environment,
         ))
         .with_context(|| {
             format!(
@@ -536,6 +548,22 @@ fn controlled_impedance_solver_result_mapping(
         mapping.insert(
             "solver_entitlement_features".to_string(),
             serde_yaml_ng::to_value(&result.solver_entitlement_features).unwrap_or(Value::Null),
+        );
+    }
+    insert_optional_string(
+        &mut mapping,
+        "solver_execution_environment",
+        &result.solver_execution_environment,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_environment_fingerprint",
+        &result.solver_environment_fingerprint,
+    );
+    if !result.solver_environment_components.is_empty() {
+        mapping.insert(
+            "solver_environment_components".to_string(),
+            serde_yaml_ng::to_value(&result.solver_environment_components).unwrap_or(Value::Null),
         );
     }
     insert_optional_string(
@@ -975,6 +1003,50 @@ fn controlled_impedance_solver_entitlement_mapping(
     mapping.insert(
         "licensed_features".to_string(),
         serde_yaml_ng::to_value(&entitlement.licensed_features).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_execution_environment_mapping(
+    environment: &AppliedControlledImpedanceSolverExecutionEnvironment,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(environment.name.clone()));
+    mapping.insert(
+        "source".to_string(),
+        Value::String(environment.source.clone()),
+    );
+    mapping.insert(
+        "solver".to_string(),
+        Value::String(environment.solver.clone()),
+    );
+    mapping.insert(
+        "solver_version".to_string(),
+        Value::String(environment.solver_version.clone()),
+    );
+    mapping.insert(
+        "environment_id".to_string(),
+        Value::String(environment.environment_id.clone()),
+    );
+    mapping.insert(
+        "environment_revision".to_string(),
+        Value::String(environment.environment_revision.clone()),
+    );
+    mapping.insert(
+        "artifact_uri".to_string(),
+        Value::String(environment.artifact_uri.clone()),
+    );
+    mapping.insert(
+        "artifact_sha256".to_string(),
+        Value::String(environment.artifact_sha256.clone()),
+    );
+    mapping.insert(
+        "reproducibility_fingerprint".to_string(),
+        Value::String(environment.reproducibility_fingerprint.clone()),
+    );
+    mapping.insert(
+        "locked_components".to_string(),
+        serde_yaml_ng::to_value(&environment.locked_components).unwrap_or(Value::Null),
     );
     mapping
 }

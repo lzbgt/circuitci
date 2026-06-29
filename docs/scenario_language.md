@@ -2011,6 +2011,9 @@ Controlled-impedance solver-result algorithm:
    metadata is declared, require a reviewed entitlement row matching the
    solver and solver version, and require it to cover every declared licensed
    feature.
+   When solver execution-environment metadata is declared, require a reviewed
+   environment row matching the solver, solver version, and reproducibility
+   fingerprint, and require it to cover every declared locked component.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2065,18 +2068,19 @@ Controlled-impedance solver-result algorithm:
     evidence, declared signed-artifact evidence, declared input-deck evidence,
     declared output-schema evidence, declared configuration-lock evidence,
     declared runtime allowlist evidence, declared solver entitlement evidence,
-    declared stackup-signoff evidence, declared sweep evidence, or declared
-    material-corner evidence is missing or contradictory.
+    declared solver execution-environment evidence, declared stackup-signoff
+    evidence, declared sweep evidence, or declared material-corner evidence is
+    missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, optional signature URI/digest/signer, optional
 configuration-lock URI/digest/tool/revision evidence, optional runtime
 allowlist/profile/options evidence, optional license/feature entitlement
-evidence, input-deck
+evidence, optional execution environment lock/fingerprint evidence, input-deck
 URI/digest, optional fabricator stackup signoff artifact URI/digest, and
 reviewed sample/corner evidence but does not fetch artifacts, verify
 signatures, parse tool configuration locks, runtime allowlists, solver
-entitlement artifacts, or input decks, run a field solver, infer
+entitlement/environment artifacts, or input decks, run a field solver, infer
 dielectric/copper parameters, parse material libraries, calculate
 roughness-adjusted impedance, infer finished trace geometry from etch
 compensation, interpolate impedance, or replace SI/fabricator review.

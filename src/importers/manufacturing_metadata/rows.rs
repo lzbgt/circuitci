@@ -8,6 +8,7 @@ use std::path::Path;
 mod csv;
 mod families;
 mod solver_entitlement;
+mod solver_environment;
 mod solver_runtime;
 mod values;
 
@@ -39,6 +40,8 @@ pub(super) struct AppliedField {
         Option<AppliedControlledImpedanceSolverRuntimeAllowlist>,
     pub(super) controlled_impedance_solver_entitlement:
         Option<AppliedControlledImpedanceSolverEntitlement>,
+    pub(super) controlled_impedance_solver_execution_environment:
+        Option<AppliedControlledImpedanceSolverExecutionEnvironment>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -72,6 +75,7 @@ impl AppliedField {
             controlled_impedance_solver_material_process: None,
             controlled_impedance_solver_runtime_allowlist: None,
             controlled_impedance_solver_entitlement: None,
+            controlled_impedance_solver_execution_environment: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -172,6 +176,9 @@ pub(super) struct AppliedControlledImpedanceSolverResult {
     solver_runtime_options: Vec<String>,
     solver_entitlement: Option<String>,
     solver_entitlement_features: Vec<String>,
+    solver_execution_environment: Option<String>,
+    solver_environment_fingerprint: Option<String>,
+    solver_environment_components: Vec<String>,
     solver_input_deck_uri: Option<String>,
     solver_input_deck_sha256: Option<String>,
     result_type: String,
@@ -329,6 +336,20 @@ pub(super) struct AppliedControlledImpedanceSolverEntitlement {
     artifact_uri: String,
     artifact_sha256: String,
     licensed_features: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverExecutionEnvironment {
+    pub(super) name: String,
+    source: String,
+    solver: String,
+    solver_version: String,
+    environment_id: String,
+    environment_revision: String,
+    artifact_uri: String,
+    artifact_sha256: String,
+    reproducibility_fingerprint: String,
+    locked_components: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -509,6 +530,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceSolverMaterialProcess,
     ControlledImpedanceSolverRuntimeAllowlist,
     ControlledImpedanceSolverEntitlement,
+    ControlledImpedanceSolverExecutionEnvironment,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -563,6 +585,9 @@ impl ManufacturingField {
             Self::ControlledImpedanceSolverEntitlement => {
                 "controlled_impedance.solver_entitlements[]"
             }
+            Self::ControlledImpedanceSolverExecutionEnvironment => {
+                "controlled_impedance.solver_execution_environments[]"
+            }
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::ThermalPackage => "thermal_packages[]",
@@ -616,6 +641,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceSolverMaterialProcess
                 | Self::ControlledImpedanceSolverRuntimeAllowlist
                 | Self::ControlledImpedanceSolverEntitlement
+                | Self::ControlledImpedanceSolverExecutionEnvironment
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -792,6 +818,12 @@ fn applied_field(
             Some(applied_controlled_impedance_solver_entitlement(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverExecutionEnvironment {
+        applied.controlled_impedance_solver_execution_environment = Some(
+            applied_controlled_impedance_solver_execution_environment(row, path)?,
+        );
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -953,6 +985,13 @@ fn applied_controlled_impedance_solver_entitlement(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverEntitlement> {
     solver_entitlement::applied_controlled_impedance_solver_entitlement(row, path)
+}
+
+fn applied_controlled_impedance_solver_execution_environment(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverExecutionEnvironment> {
+    solver_environment::applied_controlled_impedance_solver_execution_environment(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1556,6 +1595,19 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_solver_execution_environments = BTreeSet::new();
+    for environment in fields.iter().filter_map(|field| {
+        field
+            .controlled_impedance_solver_execution_environment
+            .as_ref()
+    }) {
+        if !controlled_impedance_solver_execution_environments.insert(environment.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_execution_environment row name {}.",
+                environment.name
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -1825,6 +1877,16 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "solverlicensedfeatures"
         | "solverfeatureentitlement" => {
             Some(ManufacturingField::ControlledImpedanceSolverEntitlement)
+        }
+        "controlledimpedancesolverexecutionenvironment"
+        | "impedancesolverexecutionenvironment"
+        | "controlledimpedancefieldsolverexecutionenvironment"
+        | "fieldsolverexecutionenvironment"
+        | "solverexecutionenvironment"
+        | "solverenvironment"
+        | "solverenvironmentlock"
+        | "solverreproducibility" => {
+            Some(ManufacturingField::ControlledImpedanceSolverExecutionEnvironment)
         }
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)

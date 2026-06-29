@@ -403,6 +403,12 @@ pub(super) fn applied_controlled_impedance_solver_result(
             .map(|value| parse_nonempty_list(&value))
             .transpose()?
             .unwrap_or_default(),
+        solver_execution_environment: optional_raw_column(row, "solver_execution_environment"),
+        solver_environment_fingerprint: optional_raw_column(row, "solver_environment_fingerprint"),
+        solver_environment_components: optional_raw_column(row, "solver_environment_components")
+            .map(|value| parse_nonempty_list(&value))
+            .transpose()?
+            .unwrap_or_default(),
         solver_input_deck_uri: optional_raw_column(row, "solver_input_deck_uri"),
         solver_input_deck_sha256: optional_solver_input_deck_sha256(row, path)?,
         result_type,

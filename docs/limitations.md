@@ -285,13 +285,15 @@ without explicit imported mechanical evidence.
   signed-artifact URI/digest/signer metadata, reviewed solver input-deck
   setup, solver output-schema provenance, reviewed solver tool
   configuration-lock provenance, reviewed solver runtime option allowlists,
-  reviewed solver license/feature entitlement evidence, copper-roughness consistency,
+  reviewed solver license/feature entitlement evidence, reviewed solver
+  execution environment lock evidence, copper-roughness consistency,
   etch-compensation consistency, material-library artifact-content fields,
   fabricator material-acceptance, material lot/process drift, and material-corner consistency, fabricator stackup
   signoff, solver tool/version qualification, and sweep/corner sample
   evidence. It does
   not fetch solver artifacts, verify signatures, parse solver output schemas,
-  parse tool configuration locks, runtime allowlists, solver entitlement artifacts, or input decks, parse material libraries,
+  parse tool configuration locks, runtime allowlists, solver entitlement or
+  environment artifacts, or input decks, parse material libraries,
   fabricator acceptance artifacts, or material
   drift reports beyond reviewed artifact field/manufacturing metadata, run a field solver, infer
   stackup parameters,

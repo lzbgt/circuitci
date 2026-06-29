@@ -4,10 +4,11 @@ use super::controlled_impedance::{
 };
 use super::manufacturing_suggestion;
 use crate::board_ir::{
-    ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverMaterialAcceptance,
-    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverMaterialProcess,
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType,
-    ControlledImpedanceSolverRuntimeAllowlist, NetRoute, StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverExecutionEnvironment,
+    ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialLibrary,
+    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRuntimeAllowlist, NetRoute,
+    StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -79,6 +80,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && controlled_impedance_solver_config_lock_has_evidence(result)
         && controlled_impedance_solver_runtime_allowlist_has_evidence(bound, result)
         && controlled_impedance_solver_entitlement_has_evidence(bound, result)
+        && controlled_impedance_solver_execution_environment_has_evidence(bound, result)
         && !result.stackup_revision.trim().is_empty()
         && !result.route_layer.trim().is_empty()
         && !result.reference_layer.trim().is_empty()
@@ -505,6 +507,102 @@ fn controlled_impedance_solver_entitlement_has_valid_metadata(
         && !entitlement.artifact_uri.trim().is_empty()
         && is_sha256_hex(entitlement.artifact_sha256.trim())
         && has_unique_non_empty_values(&entitlement.licensed_features)
+}
+
+fn controlled_impedance_solver_execution_environment_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_execution_environment.is_some()
+        || result.solver_environment_fingerprint.is_some()
+        || !result.solver_environment_components.is_empty()
+}
+
+fn controlled_impedance_solver_execution_environment_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_execution_environment_policy_requested(result) {
+        return true;
+    }
+    if !controlled_impedance_solver_execution_environment_metadata_is_complete(result) {
+        return false;
+    }
+    let matches = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_execution_environments
+        .iter()
+        .filter(|environment| {
+            controlled_impedance_solver_execution_environment_matches_result(environment, result)
+        })
+        .collect::<Vec<_>>();
+    matches.len() == 1
+        && controlled_impedance_solver_execution_environment_has_valid_metadata(matches[0])
+        && result
+            .solver_environment_components
+            .iter()
+            .all(|component| {
+                matches[0]
+                    .locked_components
+                    .iter()
+                    .any(|locked| locked.trim() == component.trim())
+            })
+}
+
+fn controlled_impedance_solver_execution_environment_metadata_is_complete(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_execution_environment
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_version
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_environment_fingerprint
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && has_unique_non_empty_values(&result.solver_environment_components)
+}
+
+fn controlled_impedance_solver_execution_environment_matches_result(
+    environment: &ControlledImpedanceSolverExecutionEnvironment,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_execution_environment
+        .as_deref()
+        .is_some_and(|name| name.trim() == environment.name.trim())
+        && environment.solver.trim() == result.solver.trim()
+        && result
+            .solver_version
+            .as_deref()
+            .is_some_and(|version| version.trim() == environment.solver_version.trim())
+        && result
+            .solver_environment_fingerprint
+            .as_deref()
+            .is_some_and(|fingerprint| {
+                fingerprint.trim() == environment.reproducibility_fingerprint.trim()
+            })
+}
+
+fn controlled_impedance_solver_execution_environment_has_valid_metadata(
+    environment: &ControlledImpedanceSolverExecutionEnvironment,
+) -> bool {
+    !environment.name.trim().is_empty()
+        && !environment.source.trim().is_empty()
+        && !environment.solver.trim().is_empty()
+        && !environment.solver_version.trim().is_empty()
+        && !environment.environment_id.trim().is_empty()
+        && !environment.environment_revision.trim().is_empty()
+        && !environment.artifact_uri.trim().is_empty()
+        && is_sha256_hex(environment.artifact_sha256.trim())
+        && !environment.reproducibility_fingerprint.trim().is_empty()
+        && has_unique_non_empty_values(&environment.locked_components)
 }
 
 fn has_unique_non_empty_values(values: &[String]) -> bool {

@@ -702,6 +702,48 @@
                     "additionalProperties": false
                   }
                 },
+                "solver_execution_environments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "solver",
+                      "solver_version",
+                      "environment_id",
+                      "environment_revision",
+                      "artifact_uri",
+                      "artifact_sha256",
+                      "reproducibility_fingerprint",
+                      "locked_components"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "solver": { "type": "string", "minLength": 1 },
+                      "solver_version": { "type": "string", "minLength": 1 },
+                      "environment_id": { "type": "string", "minLength": 1 },
+                      "environment_revision": { "type": "string", "minLength": 1 },
+                      "artifact_uri": { "type": "string", "minLength": 1 },
+                      "artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "reproducibility_fingerprint": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "locked_components": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "solver_results": {
                   "type": "array",
                   "items": {
@@ -794,6 +836,20 @@
                         "minLength": 1
                       },
                       "solver_entitlement_features": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "solver_execution_environment": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_environment_fingerprint": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_environment_components": {
                         "type": "array",
                         "items": { "type": "string", "minLength": 1 },
                         "minItems": 1,

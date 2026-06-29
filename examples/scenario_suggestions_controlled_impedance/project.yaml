@@ -170,6 +170,20 @@ board:
             - 2d_field_solver
             - lossy_copper_roughness
             - fabricator_etch_bias
+      solver_execution_environments:
+        - name: reviewed_2d_field_solver_env_lock
+          source: si_environment_review_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          environment_id: si_solver_env_a
+          environment_revision: env_rev_2026_06
+          artifact_uri: artifacts/solver/execution_environment_rev_2026_06.json
+          artifact_sha256: 9999aaaabbbbccccddddeeeeffff000011112222333344445555666677778888
+          reproducibility_fingerprint: env_fp_2026_06_a
+          locked_components:
+            - solver_binary
+            - material_library
+            - config_lock
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c
@@ -199,6 +213,12 @@ board:
           solver_entitlement_features:
             - 2d_field_solver
             - lossy_copper_roughness
+          solver_execution_environment: reviewed_2d_field_solver_env_lock
+          solver_environment_fingerprint: env_fp_2026_06_a
+          solver_environment_components:
+            - solver_binary
+            - material_library
+            - config_lock
           solver_input_deck_uri: artifacts/solver/rf_solver_input_deck.json
           solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
           result_type: single_ended

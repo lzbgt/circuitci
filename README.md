@@ -228,8 +228,9 @@ sweep/corner samples under named solver results. Solver-result rows can also
 carry reviewed signed-artifact URI/digest/signer metadata, input-deck
 URI/digest, output-schema URI/digest, reviewed solver configuration-lock
 URI/digest/tool/revision metadata, reviewed runtime allowlist/profile/options
-metadata, reviewed license/feature entitlement metadata, setup metadata,
-copper-roughness metadata, etch-compensation metadata, and material-library
+metadata, reviewed license/feature entitlement metadata, reviewed execution
+environment lock/fingerprint metadata, setup metadata, copper-roughness
+metadata, etch-compensation metadata, and material-library
 metadata for consistency screening. Repeated
 `field=controlled_impedance_solver_material_corner` rows attach reviewed
 dielectric material/corner evidence under named solver results, tying required
@@ -246,6 +247,9 @@ reviewed runtime option allowlists for a solver and configuration-lock
 revision.
 Repeated `field=controlled_impedance_solver_entitlement` rows record reviewed
 solver license/feature entitlement evidence for a solver and tool version.
+Repeated `field=controlled_impedance_solver_execution_environment` rows record
+reviewed solver execution environment lock evidence, including artifact
+provenance, a reproducibility fingerprint, and locked component names.
 Repeated
 `field=controlled_impedance_solver_qualification` rows create or replace
 reviewed solver tool/version qualification evidence. Repeated

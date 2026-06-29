@@ -154,7 +154,9 @@ Optional `controlled_impedance_solver_result` columns are `solver_version`,
 `stackup_signoff_artifact_sha256`,
 `min_solver_sample_count`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
-`solver_entitlement`, `solver_entitlement_features`, and
+`solver_entitlement`, `solver_entitlement_features`,
+`solver_execution_environment`, `solver_environment_fingerprint`,
+`solver_environment_components`, and
 `solver_source` when the ordinary `source` column is not used. When any
 solver-artifact signature column is present, validation requires a non-empty
 signature URI, 64-character signature SHA-256 digest, and signer name. When any
@@ -171,6 +173,11 @@ configuration-lock revision. When any solver entitlement column is present, vali
 non-empty `solver_entitlement`, `solver_version`, and
 `solver_entitlement_features`, plus a matching reviewed
 `controlled_impedance_solver_entitlement` row for the solver and version.
+When any solver execution-environment column is present, validation requires
+non-empty `solver_execution_environment`, `solver_version`,
+`solver_environment_fingerprint`, and `solver_environment_components`, plus a
+matching reviewed `controlled_impedance_solver_execution_environment` row for
+the solver, version, and fingerprint.
 When any input-deck column is present, validation requires complete input-deck
 provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
@@ -182,7 +189,7 @@ CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
 verify signatures, parse solver output schemas, parse tool configuration locks
-or runtime allowlist/entitlement artifacts, parse input decks, or infer
+or runtime allowlist/entitlement/environment artifacts, parse input decks, or infer
 stackup parameters.
 Repeated `field=controlled_impedance_solver_runtime_allowlist` rows require
 `name`, `source`, `solver`, `solver_config_lock_revision`, `runtime_profile`,
@@ -192,6 +199,10 @@ Repeated `field=controlled_impedance_solver_entitlement` rows require `name`,
 `source`, `solver`, `solver_version`, `entitlement_id`,
 `entitlement_revision`, `artifact_uri`, `artifact_sha256`, and
 `licensed_features`.
+Repeated `field=controlled_impedance_solver_execution_environment` rows require
+`name`, `source`, `solver`, `solver_version`, `environment_id`,
+`environment_revision`, `artifact_uri`, `artifact_sha256`,
+`reproducibility_fingerprint`, and `locked_components`.
 Declaring material-library columns requires a matching reviewed
 `controlled_impedance_solver_material_library` artifact-content row before
 validation can accept the solver result. If reviewed

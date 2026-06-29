@@ -535,6 +535,14 @@ Repeated `field=controlled_impedance_solver_entitlement` rows populate
 `licensed_features`. Validation matches these rows to solver results by name,
 solver, and solver version, then checks that each declared entitlement feature
 is explicitly licensed.
+Repeated `field=controlled_impedance_solver_execution_environment` rows
+populate `controlled_impedance.solver_execution_environments[]` and require
+`name`, `source`, `solver`, `solver_version`, `environment_id`,
+`environment_revision`, `artifact_uri`, a 64-character `artifact_sha256`,
+`reproducibility_fingerprint`, and non-empty `locked_components`. Validation
+matches these rows to solver results by name, solver, solver version, and
+fingerprint, then checks that each declared result environment component is
+explicitly locked by the reviewed environment row.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver
