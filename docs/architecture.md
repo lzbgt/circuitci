@@ -381,8 +381,10 @@ limits and USB return-path budgets.
   `src/scenario_suggestions/manufacturing/rf_antenna.rs`, separate from the
   fabrication/stencil orchestration in `manufacturing.rs`.
 - manufacturing controlled-impedance suggestions live in
-  `src/scenario_suggestions/manufacturing/controlled_impedance.rs`, separate
-  from adjacent-plane/slot/stitching route-physics suggestions in
+  `src/scenario_suggestions/manufacturing/controlled_impedance.rs`, with
+  solver-result suggestion evidence gates split into
+  `src/scenario_suggestions/manufacturing/controlled_impedance_solver.rs`,
+  separate from adjacent-plane/slot/stitching route-physics suggestions in
   `manufacturing/route_physics.rs` and thermal suggestions in
   `manufacturing/thermal.rs`.
 - reset-release timing suggestions become runnable only from explicit

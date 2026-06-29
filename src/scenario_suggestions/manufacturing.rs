@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 mod controlled_impedance;
+mod controlled_impedance_solver;
 mod rf_antenna;
 mod route_physics;
 mod thermal;
