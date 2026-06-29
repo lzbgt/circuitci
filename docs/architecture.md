@@ -201,7 +201,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   `src/importers/manufacturing_metadata/rows/families.rs`; Board IR YAML value
   construction lives in `src/importers/manufacturing_metadata/rows/values.rs`;
   supported-field normalization, duplicate checks, and manifest row evidence
-  live in `src/importers/manufacturing_metadata/rows.rs`.
+  live in `src/importers/manufacturing_metadata/rows.rs`. CLI regression
+  coverage for generic, controlled-impedance, and thermal metadata import lives
+  in `tests/manufacturing_metadata_cli.rs`; RF antenna metadata import
+  regressions live in `tests/manufacturing_metadata_rf_cli.rs`.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
   or flying-probe evidence uniquely proves net/island/owner metadata.
