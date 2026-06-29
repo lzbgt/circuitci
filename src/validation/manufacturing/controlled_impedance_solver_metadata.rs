@@ -1,9 +1,9 @@
 use crate::board_ir::{
-    ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialCorner,
-    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverMaterialProcess,
-    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRuntimeAllowlist, Scenario,
-    StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverMaterialAcceptance,
+    ControlledImpedanceSolverMaterialCorner, ControlledImpedanceSolverMaterialLibrary,
+    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverQualification,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType,
+    ControlledImpedanceSolverRuntimeAllowlist, Scenario, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -298,6 +298,79 @@ pub(super) fn solver_runtime_allowlist_metadata_is_valid(
                 format!(
                     "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} solver runtime option {} is not in reviewed allowlist {}.",
                     result.name, option, allowlist.name
+                ),
+            );
+            return false;
+        }
+    }
+    true
+}
+
+pub(super) fn solver_entitlement_metadata_is_valid(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let entitlements = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_entitlements;
+    if !solver_entitlement_policy_requested(result) {
+        return true;
+    }
+    if !solver_entitlement_metadata_is_complete(result) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} entitlement evidence must declare non-empty solver_entitlement, solver_version, and solver_entitlement_features.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    let matches = entitlements
+        .iter()
+        .filter(|entitlement| solver_entitlement_matches_result(entitlement, result))
+        .collect::<Vec<_>>();
+    if matches.len() != 1 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires exactly one reviewed solver entitlement for solver {} version {}; found {}.",
+                result.name,
+                result.solver,
+                result.solver_version.as_deref().unwrap_or_default(),
+                matches.len()
+            ),
+        );
+        return false;
+    }
+    let entitlement = matches[0];
+    if !solver_entitlement_has_valid_metadata(entitlement) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID solver entitlement {} for result {} must declare non-empty source/solver/version/entitlement/artifact metadata, a 64-character SHA-256 digest, and unique licensed_features.",
+                entitlement.name, result.name
+            ),
+        );
+        return false;
+    }
+    let licensed_features = trimmed_set(&entitlement.licensed_features);
+    for feature in &result.solver_entitlement_features {
+        if !licensed_features.contains(feature.trim()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} solver entitlement feature {} is not licensed by reviewed entitlement {}.",
+                    result.name, feature, entitlement.name
                 ),
             );
             return false;
@@ -1357,6 +1430,48 @@ fn solver_runtime_allowlist_has_valid_metadata(
         && !allowlist.artifact_uri.trim().is_empty()
         && is_sha256_hex(allowlist.artifact_sha256.trim())
         && has_unique_non_empty_values(&allowlist.allowed_options)
+}
+
+fn solver_entitlement_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.solver_entitlement.is_some() || !result.solver_entitlement_features.is_empty()
+}
+
+fn solver_entitlement_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
+    if !solver_entitlement_policy_requested(result) {
+        return true;
+    }
+    non_empty_option(result.solver_entitlement.as_deref()).is_some()
+        && non_empty_option(result.solver_version.as_deref()).is_some()
+        && has_unique_non_empty_values(&result.solver_entitlement_features)
+}
+
+fn solver_entitlement_matches_result(
+    entitlement: &ControlledImpedanceSolverEntitlement,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_entitlement
+        .as_deref()
+        .is_some_and(|name| name.trim() == entitlement.name.trim())
+        && entitlement.solver.trim() == result.solver.trim()
+        && result
+            .solver_version
+            .as_deref()
+            .is_some_and(|version| version.trim() == entitlement.solver_version.trim())
+}
+
+fn solver_entitlement_has_valid_metadata(
+    entitlement: &ControlledImpedanceSolverEntitlement,
+) -> bool {
+    !entitlement.name.trim().is_empty()
+        && !entitlement.source.trim().is_empty()
+        && !entitlement.solver.trim().is_empty()
+        && !entitlement.solver_version.trim().is_empty()
+        && !entitlement.entitlement_id.trim().is_empty()
+        && !entitlement.entitlement_revision.trim().is_empty()
+        && !entitlement.artifact_uri.trim().is_empty()
+        && is_sha256_hex(entitlement.artifact_sha256.trim())
+        && has_unique_non_empty_values(&entitlement.licensed_features)
 }
 
 fn has_unique_non_empty_values(values: &[String]) -> bool {

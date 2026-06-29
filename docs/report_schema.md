@@ -661,6 +661,10 @@ If solver runtime allowlist metadata is declared but missing, incomplete,
 stale, or does not cover every declared runtime option, the check fails closed
 as `VALIDATION_INPUT_MISSING`; runtime allowlist metadata is provenance input
 and is not repeated in pass/fail measured maps.
+If solver entitlement metadata is declared but missing, incomplete, stale, or
+does not cover every declared licensed feature, the check fails closed as
+`VALIDATION_INPUT_MISSING`; entitlement metadata is provenance input and is
+not repeated in pass/fail measured maps.
 With reviewed material-library evidence, stable input-deck mismatch measured
 keys also include `solver_material_library`,
 `solver_material_library_revision`, `solver_material_library_artifact_uri`,

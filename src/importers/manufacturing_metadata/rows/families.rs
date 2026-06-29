@@ -398,6 +398,11 @@ pub(super) fn applied_controlled_impedance_solver_result(
             .map(|value| parse_nonempty_list(&value))
             .transpose()?
             .unwrap_or_default(),
+        solver_entitlement: optional_raw_column(row, "solver_entitlement"),
+        solver_entitlement_features: optional_raw_column(row, "solver_entitlement_features")
+            .map(|value| parse_nonempty_list(&value))
+            .transpose()?
+            .unwrap_or_default(),
         solver_input_deck_uri: optional_raw_column(row, "solver_input_deck_uri"),
         solver_input_deck_sha256: optional_solver_input_deck_sha256(row, path)?,
         result_type,

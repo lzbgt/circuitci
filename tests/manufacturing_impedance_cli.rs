@@ -862,6 +862,62 @@ fn controlled_impedance_solver_result_fails_for_runtime_option_not_allowlisted()
 }
 
 #[test]
+fn controlled_impedance_solver_result_passes_with_entitlement_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "      solver_results:\n",
+        "      solver_entitlements:\n        - name: reviewed_2d_field_solver_si_entitlement\n          source: si_license_review_rev_a\n          solver: reviewed_2d_field_solver\n          solver_version: \"2026.06\"\n          entitlement_id: si_solver_floating_pool_a\n          entitlement_revision: entitlement_rev_2026_06\n          artifact_uri: artifacts/solver/license_entitlement_rev_2026_06.json\n          artifact_sha256: 88889999aaaabbbbccccddddeeeeffff00001111222233334444555566667777\n          licensed_features: [2d_field_solver, lossy_copper_roughness]\n      solver_results:\n",
+    );
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_entitlement: reviewed_2d_field_solver_si_entitlement\n          solver_entitlement_features: [2d_field_solver, lossy_copper_roughness]\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_for_unlicensed_entitlement_feature() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "      solver_results:\n",
+        "      solver_entitlements:\n        - name: reviewed_2d_field_solver_si_entitlement\n          source: si_license_review_rev_a\n          solver: reviewed_2d_field_solver\n          solver_version: \"2026.06\"\n          entitlement_id: si_solver_floating_pool_a\n          entitlement_revision: entitlement_rev_2026_06\n          artifact_uri: artifacts/solver/license_entitlement_rev_2026_06.json\n          artifact_sha256: 88889999aaaabbbbccccddddeeeeffff00001111222233334444555566667777\n          licensed_features: [2d_field_solver]\n      solver_results:\n",
+    );
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_entitlement: reviewed_2d_field_solver_si_entitlement\n          solver_entitlement_features: [2d_field_solver, unlicensed_3d_solver]\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("unlicensed_3d_solver")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_passes_with_stackup_signoff_evidence() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:

@@ -2007,7 +2007,10 @@ Controlled-impedance solver-result algorithm:
    tool name, and revision, and require the tool name to match the solver
    result solver. When solver runtime allowlist metadata is declared, require
    a reviewed allowlist row matching the solver, configuration-lock revision,
-   runtime profile, and every declared runtime option.
+   runtime profile, and every declared runtime option. When solver entitlement
+   metadata is declared, require a reviewed entitlement row matching the
+   solver and solver version, and require it to cover every declared licensed
+   feature.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2061,17 +2064,19 @@ Controlled-impedance solver-result algorithm:
     Fail closed when solver metadata, target mapping, stackup evidence, route
     evidence, declared signed-artifact evidence, declared input-deck evidence,
     declared output-schema evidence, declared configuration-lock evidence,
-    declared runtime allowlist evidence,
+    declared runtime allowlist evidence, declared solver entitlement evidence,
     declared stackup-signoff evidence, declared sweep evidence, or declared
     material-corner evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, optional signature URI/digest/signer, optional
 configuration-lock URI/digest/tool/revision evidence, optional runtime
-allowlist/profile/options evidence, input-deck
+allowlist/profile/options evidence, optional license/feature entitlement
+evidence, input-deck
 URI/digest, optional fabricator stackup signoff artifact URI/digest, and
 reviewed sample/corner evidence but does not fetch artifacts, verify
-signatures, parse tool configuration locks, runtime allowlists, or input decks, run a field solver, infer
+signatures, parse tool configuration locks, runtime allowlists, solver
+entitlement artifacts, or input decks, run a field solver, infer
 dielectric/copper parameters, parse material libraries, calculate
 roughness-adjusted impedance, infer finished trace geometry from etch
 compensation, interpolate impedance, or replace SI/fabricator review.

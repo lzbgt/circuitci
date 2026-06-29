@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.34.0".to_string(),
+        schema_version: "0.35.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -317,6 +317,26 @@ fn apply_metadata(
                 &allowlist.name,
                 value,
                 "controlled_impedance.solver_runtime_allowlists",
+            )?;
+            wrote_manufacturing = true;
+        } else if field.field == ManufacturingField::ControlledImpedanceSolverEntitlement {
+            let entitlement = field
+                .controlled_impedance_solver_entitlement
+                .as_ref()
+                .context(
+                    "controlled_impedance_solver_entitlement field must have entitlement value",
+                )?;
+            let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+            let controlled_impedance =
+                ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+            let entitlements =
+                ensure_sequence_field_mut(controlled_impedance, "solver_entitlements")?;
+            upsert_named_sequence_value(
+                entitlements,
+                &entitlement.name,
+                value,
+                "controlled_impedance.solver_entitlements",
             )?;
             wrote_manufacturing = true;
         } else if field.field == ManufacturingField::ControlledImpedanceSolverQualification {

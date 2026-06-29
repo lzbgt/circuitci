@@ -4,10 +4,10 @@ use super::controlled_impedance::{
 };
 use super::manufacturing_suggestion;
 use crate::board_ir::{
-    ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialLibrary,
-    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRuntimeAllowlist, NetRoute,
-    StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverMaterialAcceptance,
+    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverMaterialProcess,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType,
+    ControlledImpedanceSolverRuntimeAllowlist, NetRoute, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -78,6 +78,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && controlled_impedance_solver_output_schema_has_evidence(result)
         && controlled_impedance_solver_config_lock_has_evidence(result)
         && controlled_impedance_solver_runtime_allowlist_has_evidence(bound, result)
+        && controlled_impedance_solver_entitlement_has_evidence(bound, result)
         && !result.stackup_revision.trim().is_empty()
         && !result.route_layer.trim().is_empty()
         && !result.reference_layer.trim().is_empty()
@@ -424,6 +425,86 @@ fn controlled_impedance_solver_runtime_allowlist_has_valid_metadata(
         && !allowlist.artifact_uri.trim().is_empty()
         && is_sha256_hex(allowlist.artifact_sha256.trim())
         && has_unique_non_empty_values(&allowlist.allowed_options)
+}
+
+fn controlled_impedance_solver_entitlement_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_entitlement.is_some() || !result.solver_entitlement_features.is_empty()
+}
+
+fn controlled_impedance_solver_entitlement_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_entitlement_policy_requested(result) {
+        return true;
+    }
+    if !controlled_impedance_solver_entitlement_metadata_is_complete(result) {
+        return false;
+    }
+    let matches = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_entitlements
+        .iter()
+        .filter(|entitlement| {
+            controlled_impedance_solver_entitlement_matches_result(entitlement, result)
+        })
+        .collect::<Vec<_>>();
+    matches.len() == 1
+        && controlled_impedance_solver_entitlement_has_valid_metadata(matches[0])
+        && result.solver_entitlement_features.iter().all(|feature| {
+            matches[0]
+                .licensed_features
+                .iter()
+                .any(|licensed| licensed.trim() == feature.trim())
+        })
+}
+
+fn controlled_impedance_solver_entitlement_metadata_is_complete(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_entitlement
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_version
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && has_unique_non_empty_values(&result.solver_entitlement_features)
+}
+
+fn controlled_impedance_solver_entitlement_matches_result(
+    entitlement: &ControlledImpedanceSolverEntitlement,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_entitlement
+        .as_deref()
+        .is_some_and(|name| name.trim() == entitlement.name.trim())
+        && entitlement.solver.trim() == result.solver.trim()
+        && result
+            .solver_version
+            .as_deref()
+            .is_some_and(|version| version.trim() == entitlement.solver_version.trim())
+}
+
+fn controlled_impedance_solver_entitlement_has_valid_metadata(
+    entitlement: &ControlledImpedanceSolverEntitlement,
+) -> bool {
+    !entitlement.name.trim().is_empty()
+        && !entitlement.source.trim().is_empty()
+        && !entitlement.solver.trim().is_empty()
+        && !entitlement.solver_version.trim().is_empty()
+        && !entitlement.entitlement_id.trim().is_empty()
+        && !entitlement.entitlement_revision.trim().is_empty()
+        && !entitlement.artifact_uri.trim().is_empty()
+        && is_sha256_hex(entitlement.artifact_sha256.trim())
+        && has_unique_non_empty_values(&entitlement.licensed_features)
 }
 
 fn has_unique_non_empty_values(values: &[String]) -> bool {

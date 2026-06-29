@@ -157,6 +157,19 @@ board:
             - finite_thickness_copper
             - huray_roughness
             - fabricator_etch_bias
+      solver_entitlements:
+        - name: reviewed_2d_field_solver_si_entitlement
+          source: si_license_review_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          entitlement_id: si_solver_floating_pool_a
+          entitlement_revision: entitlement_rev_2026_06
+          artifact_uri: artifacts/solver/license_entitlement_rev_2026_06.json
+          artifact_sha256: 88889999aaaabbbbccccddddeeeeffff00001111222233334444555566667777
+          licensed_features:
+            - 2d_field_solver
+            - lossy_copper_roughness
+            - fabricator_etch_bias
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c
@@ -182,6 +195,10 @@ board:
             - finite_thickness_copper
             - huray_roughness
             - fabricator_etch_bias
+          solver_entitlement: reviewed_2d_field_solver_si_entitlement
+          solver_entitlement_features:
+            - 2d_field_solver
+            - lossy_copper_roughness
           solver_input_deck_uri: artifacts/solver/rf_solver_input_deck.json
           solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
           result_type: single_ended

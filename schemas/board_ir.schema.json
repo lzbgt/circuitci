@@ -665,6 +665,43 @@
                     "additionalProperties": false
                   }
                 },
+                "solver_entitlements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "solver",
+                      "solver_version",
+                      "entitlement_id",
+                      "entitlement_revision",
+                      "artifact_uri",
+                      "artifact_sha256",
+                      "licensed_features"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "solver": { "type": "string", "minLength": 1 },
+                      "solver_version": { "type": "string", "minLength": 1 },
+                      "entitlement_id": { "type": "string", "minLength": 1 },
+                      "entitlement_revision": { "type": "string", "minLength": 1 },
+                      "artifact_uri": { "type": "string", "minLength": 1 },
+                      "artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "licensed_features": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "solver_results": {
                   "type": "array",
                   "items": {
@@ -747,6 +784,16 @@
                         "minLength": 1
                       },
                       "solver_runtime_options": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "solver_entitlement": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_entitlement_features": {
                         "type": "array",
                         "items": { "type": "string", "minLength": 1 },
                         "minItems": 1,

@@ -138,8 +138,8 @@ Useful next slices:
   and solver setup-to-fabricator material acceptance plus material lot/process
   drift evidence, plus reviewed solver artifact output-schema provenance,
   reviewed solver tool configuration lock evidence, and reviewed solver runtime
-  options allowlist evidence, such as solver license/feature entitlement
-  evidence,
+  options allowlist evidence plus solver license/feature entitlement evidence,
+  such as solver execution environment reproducibility evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

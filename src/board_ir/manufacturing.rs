@@ -51,6 +51,8 @@ pub struct ControlledImpedanceTargets {
     #[serde(default)]
     pub solver_runtime_allowlists: Vec<ControlledImpedanceSolverRuntimeAllowlist>,
     #[serde(default)]
+    pub solver_entitlements: Vec<ControlledImpedanceSolverEntitlement>,
+    #[serde(default)]
     pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
@@ -219,6 +221,19 @@ pub struct ControlledImpedanceSolverRuntimeAllowlist {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverEntitlement {
+    pub name: String,
+    pub source: String,
+    pub solver: String,
+    pub solver_version: String,
+    pub entitlement_id: String,
+    pub entitlement_revision: String,
+    pub artifact_uri: String,
+    pub artifact_sha256: String,
+    pub licensed_features: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ControlledImpedanceSolverResult {
     pub name: String,
     pub source: String,
@@ -257,6 +272,10 @@ pub struct ControlledImpedanceSolverResult {
     pub solver_runtime_profile: Option<String>,
     #[serde(default)]
     pub solver_runtime_options: Vec<String>,
+    #[serde(default)]
+    pub solver_entitlement: Option<String>,
+    #[serde(default)]
+    pub solver_entitlement_features: Vec<String>,
     #[serde(default)]
     pub solver_input_deck_uri: Option<String>,
     #[serde(default)]

@@ -521,6 +521,20 @@ Repeated `field=controlled_impedance_solver_material_process` rows populate
 `max_thickness_delta_mm`. These rows are reviewed lot/process drift metadata
 only; CircuitCI compares explicit values and does not fetch or parse the drift
 artifact.
+Repeated `field=controlled_impedance_solver_runtime_allowlist` rows populate
+`controlled_impedance.solver_runtime_allowlists[]` and require `name`,
+`source`, `solver`, `solver_config_lock_revision`, `runtime_profile`,
+`allowlist_revision`, `artifact_uri`, a 64-character `artifact_sha256`, and
+non-empty `allowed_options`. Validation matches these rows to solver results
+by name, solver, configuration-lock revision, and runtime profile, then checks
+that each declared runtime option is explicitly allowlisted.
+Repeated `field=controlled_impedance_solver_entitlement` rows populate
+`controlled_impedance.solver_entitlements[]` and require `name`, `source`,
+`solver`, `solver_version`, `entitlement_id`, `entitlement_revision`,
+`artifact_uri`, a 64-character `artifact_sha256`, and non-empty
+`licensed_features`. Validation matches these rows to solver results by name,
+solver, and solver version, then checks that each declared entitlement feature
+is explicitly licensed.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver
