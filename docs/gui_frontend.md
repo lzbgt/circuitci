@@ -65,7 +65,11 @@ dependencies unless `--features gui` is explicitly enabled.
 `src/gui.rs` owns application state, the `eframe` update loop, and shared
 validation/report command helpers, with focused core GUI regressions split into
 `src/gui/gui_core_tests.rs` and direct-open example workflow regressions split
-into `src/gui/project_example_workflow_tests.rs`.
+into `src/gui/project_example_workflow_tests.rs`. For developer visual QA,
+set `CIRCUITCI_GUI_OPEN_PROJECT=/path/to/project.yaml` before running
+`cargo run --features gui --bin circuitci-gui`; the app opens the project
+directly in the Sketch stage and immediately requests Fit All, avoiding manual
+click automation in screenshot checks.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
 bar, project overlay, status panel, permanent Sketch central canvas,
 secondary overlay windows, Project landing view, Reports view, and
@@ -107,7 +111,11 @@ ports, bounded barycentric ordering inside each rank to reduce sibling branch
 crossings, power and ground rails, and orthogonal routes. Power nets stay near
 the top rail, ground nets near the bottom rail, source components stay on the
 left, series signal-path components/nets advance left-to-right by rank, and
-shunts land vertically between signal and rail. The Sketch `Auto Layout` action
+shunts land vertically between signal and rail. Imported high-pin block and IC
+fallback symbols scale their rectangle height from the visible pin count, while
+simple KiCad device symbols stay compact, so imported pin labels and anchors do
+not collapse into a KiCad-like unreadable cluster before a user saves explicit
+schematic coordinates. The Sketch `Auto Layout` action
 persists that same classical placement into `board.schematic.node_positions`
 and writes standard two-terminal orientation metadata, including vertical
 shunts to ground and horizontal signal-path parts. It also derives display-only

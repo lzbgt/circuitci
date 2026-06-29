@@ -118,7 +118,23 @@ pub fn run() -> eframe::Result<()> {
     eframe::run_native(
         "CircuitCI",
         options,
-        Box::new(|_cc| Ok(Box::new(CircuitCiApp::default()))),
+        Box::new(|_cc| {
+            let mut app = CircuitCiApp::default();
+            if let Ok(path) = std::env::var("CIRCUITCI_GUI_OPEN_PROJECT") {
+                let path = path.trim();
+                if !path.is_empty() {
+                    app.project_path = path.to_string();
+                    if app.load_project_summary_unchecked() {
+                        app.stage = Stage::Sketch;
+                        app.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
+                        app.push_diagnostic(
+                            "Loaded project from CIRCUITCI_GUI_OPEN_PROJECT for visual QA.",
+                        );
+                    }
+                }
+            }
+            Ok(Box::new(app))
+        }),
     )
 }
 

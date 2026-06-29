@@ -19,8 +19,8 @@ const MAX_SKETCH_EDGES: usize = 512;
 const MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT: usize = 64;
 const SCHEMATIC_SIGNAL_Y_FRACTION: f32 = 0.38;
 const SCHEMATIC_GROUND_Y_FRACTION: f32 = 0.78;
-const SCHEMATIC_COLUMN_STEP: f32 = 150.0;
-const SCHEMATIC_LAYER_STEP: f32 = 118.0;
+const SCHEMATIC_COLUMN_STEP: f32 = 170.0;
+const SCHEMATIC_LAYER_STEP: f32 = 156.0;
 
 #[derive(Debug, Default)]
 struct SchematicDefaultLayout {
@@ -73,6 +73,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         let size = component_node_size(
             symbol,
             component.kicad_symbol_id.is_some(),
+            component.pins.len(),
             fallback_component_size,
         );
         let default = default_layout
@@ -675,6 +676,7 @@ fn schematic_default_layout(
         let size = component_node_size(
             symbol,
             component.kicad_symbol_id.is_some(),
+            component.pins.len(),
             fallback_component_size,
         );
         let position = if is_source_component(component, symbol) {
@@ -698,7 +700,7 @@ fn schematic_default_layout(
             let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(
                 x,
-                (signal_y + ground_y) * 0.5 - size.y * 0.5 + row as f32 * 18.0,
+                (signal_y + ground_y) * 0.5 - size.y * 0.5 + row as f32 * (size.y + 20.0),
             )
         } else if is_power_shunt_component(component, &net_kinds) {
             let rank = component_signal_rank(component, &flow, &net_kinds)
@@ -711,7 +713,7 @@ fn schematic_default_layout(
             let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(
                 x,
-                (top_rail_y + signal_y) * 0.5 - size.y * 0.5 - row as f32 * 18.0,
+                (top_rail_y + signal_y) * 0.5 - size.y * 0.5 - row as f32 * (size.y + 20.0),
             )
         } else if symbol.is_kicad_device_symbol() {
             let rank = flow
@@ -753,6 +755,7 @@ fn schematic_default_layout(
             let size = component_node_size(
                 component_symbol_kind(component),
                 component.kicad_symbol_id.is_some(),
+                component.pins.len(),
                 fallback_component_size,
             );
             Some((id.as_str(), *min + size * 0.5))
@@ -1545,12 +1548,21 @@ fn generic_component_pin_anchors(
 fn component_node_size(
     symbol: SketchSymbolKind,
     has_explicit_kicad_symbol: bool,
+    pin_count: usize,
     fallback: egui::Vec2,
 ) -> egui::Vec2 {
     if symbol.is_kicad_device_symbol() {
         egui::vec2(104.0, 72.0)
     } else if has_explicit_kicad_symbol {
-        egui::vec2(fallback.x.min(180.0), fallback.y.max(96.0))
+        let readable_height = 48.0 + pin_count.max(2) as f32 * 18.0;
+        egui::vec2(
+            fallback.x.clamp(150.0, 220.0),
+            fallback.y.max(readable_height.min(360.0)),
+        )
+    } else if pin_count > 4 {
+        let readable_height =
+            48.0 + pin_count.min(MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT) as f32 * 18.0;
+        egui::vec2(fallback.x, fallback.y.max(readable_height.min(360.0)))
     } else {
         fallback
     }

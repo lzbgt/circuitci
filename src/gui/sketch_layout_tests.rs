@@ -341,6 +341,89 @@ fn default_layout_reduces_parallel_branch_crossings_with_barycentric_order() {
 }
 
 #[test]
+fn default_layout_keeps_same_rank_shunts_readable() {
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(720.0, 420.0)),
+        &crossing_reduction_snapshot(),
+    );
+    let rtop = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("RTOP".to_string()))
+        .unwrap();
+    let rbot = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("RBOT".to_string()))
+        .unwrap();
+
+    assert!(!rtop.rect.intersects(rbot.rect));
+}
+
+#[test]
+fn default_layout_scales_imported_blocks_for_pin_label_spacing() {
+    let mut component = test_component();
+    component.id = "U99".to_string();
+    component.model = "generic.schematic.imported_component".to_string();
+    component.kicad_symbol_id = Some("Driver:DRV8245P".to_string());
+    component.pins = (1..=12)
+        .map(|index| SketchPin {
+            pin: index.to_string(),
+            net: format!("net_{index}"),
+        })
+        .collect();
+    let nets = component
+        .pins
+        .iter()
+        .map(|pin| SketchNet {
+            id: pin.net.clone(),
+            kind: "digital_or_analog".to_string(),
+            nominal_voltage: None,
+            powered: None,
+            connections: vec![format!("{}.{}", component.id, pin.pin)],
+            position: None,
+        })
+        .collect::<Vec<_>>();
+    let snapshot = ProjectSnapshot {
+        name: "imported_block".to_string(),
+        components: 1,
+        nets: nets.len(),
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail: vec![component],
+        nets_detail: nets,
+        probes: Vec::new(),
+        wire_routes: Default::default(),
+        net_labels: Default::default(),
+        component_labels: Default::default(),
+    };
+
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(960.0, 640.0)),
+        &snapshot,
+    );
+    let node = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("U99".to_string()))
+        .unwrap();
+    let mut anchor_rows = graph
+        .pin_anchors
+        .iter()
+        .filter(|anchor| anchor.component_id == "U99")
+        .map(|anchor| anchor.label_pos.y)
+        .collect::<Vec<_>>();
+    anchor_rows.sort_by(|a, b| a.total_cmp(b));
+    let min_gap = anchor_rows
+        .windows(2)
+        .map(|pair| pair[1] - pair[0])
+        .fold(f32::INFINITY, f32::min);
+
+    assert!(node.rect.height() >= 240.0);
+    assert!(min_gap >= 14.0);
+}
+
+#[test]
 fn classical_auto_layout_persists_positions_and_vertical_shunts() {
     let plan = classical_sketch_auto_layout(
         &layout_test_snapshot(),
