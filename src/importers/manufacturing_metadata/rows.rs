@@ -29,6 +29,8 @@ pub(super) struct AppliedField {
         Option<AppliedControlledImpedanceSolverQualification>,
     pub(super) controlled_impedance_solver_material_library:
         Option<AppliedControlledImpedanceSolverMaterialLibrary>,
+    pub(super) controlled_impedance_solver_material_acceptance:
+        Option<AppliedControlledImpedanceSolverMaterialAcceptance>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -58,6 +60,7 @@ impl AppliedField {
             controlled_impedance_solver_material_corner: None,
             controlled_impedance_solver_qualification: None,
             controlled_impedance_solver_material_library: None,
+            controlled_impedance_solver_material_acceptance: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -241,6 +244,21 @@ pub(super) struct AppliedControlledImpedanceSolverMaterialLibrary {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverMaterialAcceptance {
+    pub(super) name: String,
+    source: String,
+    material_library: String,
+    material_library_revision: String,
+    fabricator_stackup_revision: String,
+    acceptance_artifact_uri: String,
+    acceptance_artifact_sha256: String,
+    accepted_by: Option<String>,
+    accepted_corners: Vec<String>,
+    accepted_dielectric_layers: Vec<String>,
+    accepted_materials: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AppliedThermalCopper {
     pub(super) name: String,
     component: String,
@@ -414,6 +432,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceSolverMaterialCorner,
     ControlledImpedanceSolverQualification,
     ControlledImpedanceSolverMaterialLibrary,
+    ControlledImpedanceSolverMaterialAcceptance,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -455,6 +474,9 @@ impl ManufacturingField {
             }
             Self::ControlledImpedanceSolverMaterialLibrary => {
                 "controlled_impedance.solver_material_libraries[]"
+            }
+            Self::ControlledImpedanceSolverMaterialAcceptance => {
+                "controlled_impedance.solver_material_acceptances[]"
             }
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
@@ -505,6 +527,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceSolverMaterialCorner
                 | Self::ControlledImpedanceSolverQualification
                 | Self::ControlledImpedanceSolverMaterialLibrary
+                | Self::ControlledImpedanceSolverMaterialAcceptance
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -658,6 +681,12 @@ fn applied_field(
         );
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverMaterialAcceptance {
+        applied.controlled_impedance_solver_material_acceptance = Some(
+            applied_controlled_impedance_solver_material_acceptance(row, path)?,
+        );
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -791,6 +820,13 @@ fn applied_controlled_impedance_solver_material_library(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverMaterialLibrary> {
     families::applied_controlled_impedance_solver_material_library(row, path)
+}
+
+fn applied_controlled_impedance_solver_material_acceptance(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialAcceptance> {
+    families::applied_controlled_impedance_solver_material_acceptance(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1345,6 +1381,19 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_solver_material_acceptances = BTreeSet::new();
+    for acceptance in fields.iter().filter_map(|field| {
+        field
+            .controlled_impedance_solver_material_acceptance
+            .as_ref()
+    }) {
+        if !controlled_impedance_solver_material_acceptances.insert(acceptance.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_material_acceptance row name {}.",
+                acceptance.name
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -1580,6 +1629,13 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "fieldsolvermateriallibrary"
         | "solvermateriallibrary" => {
             Some(ManufacturingField::ControlledImpedanceSolverMaterialLibrary)
+        }
+        "controlledimpedancesolvermaterialacceptance"
+        | "impedancesolvermaterialacceptance"
+        | "controlledimpedancefieldsolvermaterialacceptance"
+        | "fieldsolvermaterialacceptance"
+        | "solvermaterialacceptance" => {
+            Some(ManufacturingField::ControlledImpedanceSolverMaterialAcceptance)
         }
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)

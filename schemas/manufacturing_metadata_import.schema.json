@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.28.0" },
+    "schema_version": { "const": "0.29.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -98,6 +98,7 @@
             "controlled_impedance.solver_results[].material_corners[]",
             "controlled_impedance.solver_qualifications[]",
             "controlled_impedance.solver_material_libraries[]",
+            "controlled_impedance.solver_material_acceptances[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -305,6 +306,59 @@
                   "minItems": 1
                 },
                 "materials": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "material_library",
+                "material_library_revision",
+                "fabricator_stackup_revision",
+                "acceptance_artifact_uri",
+                "acceptance_artifact_sha256",
+                "accepted_corners",
+                "accepted_dielectric_layers",
+                "accepted_materials"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "material_library": { "type": "string", "minLength": 1 },
+                "material_library_revision": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fabricator_stackup_revision": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "acceptance_artifact_uri": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "acceptance_artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "accepted_by": { "type": "string", "minLength": 1 },
+                "accepted_corners": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                },
+                "accepted_dielectric_layers": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                },
+                "accepted_materials": {
                   "type": "array",
                   "items": { "type": "string", "minLength": 1 },
                   "minItems": 1

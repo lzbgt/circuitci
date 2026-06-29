@@ -134,8 +134,9 @@ Useful next slices:
   copper-roughness/etch-compensation consistency, reviewed solver
   tool/version qualification, signed-artifact metadata, stackup-material
   corner correlation screens, solver-to-fabricator stackup revision signoff
-  evidence, and solver material-library artifact content checks, such as
-  solver setup-to-fabricator material acceptance evidence,
+  evidence, solver material-library artifact content checks, and solver
+  setup-to-fabricator material acceptance evidence, such as reviewed
+  solver-to-fabricator material lot/process drift evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

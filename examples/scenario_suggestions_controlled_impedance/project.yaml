@@ -111,6 +111,18 @@ board:
           corners: [nominal, high_dk]
           dielectric_layers: [prepreg_1]
           materials: [FR-4 prepreg]
+      solver_material_acceptances:
+        - name: reviewed_stackup_materials_rev_a_acceptance
+          source: fabricator_material_acceptance_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          fabricator_stackup_revision: stackup_rev_a
+          acceptance_artifact_uri: artifacts/fabricator/material_acceptance_rev_a.pdf
+          acceptance_artifact_sha256: 3333444455556666777788889999aaaabbbbccccddddeeeeffff000011112222
+          accepted_by: fabricator_si_review
+          accepted_corners: [nominal, high_dk]
+          accepted_dielectric_layers: [prepreg_1]
+          accepted_materials: [FR-4 prepreg]
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

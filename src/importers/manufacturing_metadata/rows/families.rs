@@ -1,6 +1,7 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
+    AppliedControlledImpedanceSolverMaterialAcceptance,
     AppliedControlledImpedanceSolverMaterialCorner,
     AppliedControlledImpedanceSolverMaterialLibrary, AppliedControlledImpedanceSolverQualification,
     AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample,
@@ -752,6 +753,85 @@ pub(super) fn applied_controlled_impedance_solver_material_library(
             path,
             "materials",
             "controlled_impedance_solver_material_library",
+        )?,
+    })
+}
+
+pub(super) fn applied_controlled_impedance_solver_material_acceptance(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialAcceptance> {
+    let acceptance_source = optional_raw_column(row, "acceptance_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(acceptance_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_material_acceptance requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverMaterialAcceptance {
+        name: required_raw_column_for(
+            row,
+            path,
+            "name",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        source,
+        material_library: required_raw_column_for(
+            row,
+            path,
+            "material_library",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        material_library_revision: required_raw_column_for(
+            row,
+            path,
+            "material_library_revision",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        fabricator_stackup_revision: required_raw_column_for(
+            row,
+            path,
+            "fabricator_stackup_revision",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        acceptance_artifact_uri: required_raw_column_for(
+            row,
+            path,
+            "acceptance_artifact_uri",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        acceptance_artifact_sha256: required_sha256_column(
+            row,
+            path,
+            "acceptance_artifact_sha256",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        accepted_by: optional_raw_column(row, "accepted_by"),
+        accepted_corners: required_list_column(
+            row,
+            path,
+            "accepted_corners",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        accepted_dielectric_layers: required_list_column(
+            row,
+            path,
+            "accepted_dielectric_layers",
+            "controlled_impedance_solver_material_acceptance",
+        )?,
+        accepted_materials: required_list_column(
+            row,
+            path,
+            "accepted_materials",
+            "controlled_impedance_solver_material_acceptance",
         )?,
     })
 }

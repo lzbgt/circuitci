@@ -1,6 +1,7 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
+    AppliedControlledImpedanceSolverMaterialAcceptance,
     AppliedControlledImpedanceSolverMaterialCorner,
     AppliedControlledImpedanceSolverMaterialLibrary, AppliedControlledImpedanceSolverQualification,
     AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
@@ -98,6 +99,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     if let Some(library) = &field.controlled_impedance_solver_material_library {
         return serde_yaml_ng::to_value(controlled_impedance_solver_material_library_mapping(
             library,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
+    if let Some(acceptance) = &field.controlled_impedance_solver_material_acceptance {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_material_acceptance_mapping(
+            acceptance,
         ))
         .with_context(|| {
             format!(
@@ -731,6 +743,51 @@ fn controlled_impedance_solver_material_library_mapping(
     mapping.insert(
         "materials".to_string(),
         serde_yaml_ng::to_value(&library.materials).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_material_acceptance_mapping(
+    acceptance: &AppliedControlledImpedanceSolverMaterialAcceptance,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(acceptance.name.clone()));
+    mapping.insert(
+        "source".to_string(),
+        Value::String(acceptance.source.clone()),
+    );
+    mapping.insert(
+        "material_library".to_string(),
+        Value::String(acceptance.material_library.clone()),
+    );
+    mapping.insert(
+        "material_library_revision".to_string(),
+        Value::String(acceptance.material_library_revision.clone()),
+    );
+    mapping.insert(
+        "fabricator_stackup_revision".to_string(),
+        Value::String(acceptance.fabricator_stackup_revision.clone()),
+    );
+    mapping.insert(
+        "acceptance_artifact_uri".to_string(),
+        Value::String(acceptance.acceptance_artifact_uri.clone()),
+    );
+    mapping.insert(
+        "acceptance_artifact_sha256".to_string(),
+        Value::String(acceptance.acceptance_artifact_sha256.clone()),
+    );
+    insert_optional_string(&mut mapping, "accepted_by", &acceptance.accepted_by);
+    mapping.insert(
+        "accepted_corners".to_string(),
+        serde_yaml_ng::to_value(&acceptance.accepted_corners).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "accepted_dielectric_layers".to_string(),
+        serde_yaml_ng::to_value(&acceptance.accepted_dielectric_layers).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "accepted_materials".to_string(),
+        serde_yaml_ng::to_value(&acceptance.accepted_materials).unwrap_or(Value::Null),
     );
     mapping
 }

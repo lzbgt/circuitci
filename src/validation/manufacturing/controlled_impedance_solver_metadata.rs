@@ -1,7 +1,8 @@
 use crate::board_ir::{
-    ControlledImpedanceSolverMaterialCorner, ControlledImpedanceSolverMaterialLibrary,
-    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, Scenario, StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialCorner,
+    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverQualification,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, Scenario, StackupLayer,
+    StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -253,6 +254,9 @@ pub(super) fn solver_material_library_artifact_metadata_is_valid(
             );
             return false;
         }
+    }
+    if !solver_material_acceptance_metadata_is_valid(bound, scenario, findings, result) {
+        return false;
     }
     true
 }
@@ -745,6 +749,162 @@ fn solver_material_library_has_valid_metadata(
         && !trimmed_set(&library.corners).is_empty()
         && !trimmed_set(&library.dielectric_layers).is_empty()
         && !trimmed_set(&library.materials).is_empty()
+}
+
+fn solver_material_acceptance_metadata_is_valid(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let acceptances = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_material_acceptances;
+    if acceptances.is_empty() {
+        return true;
+    }
+    let fabricator_revision = result
+        .fabricator_stackup_revision
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(result.stackup_revision.trim());
+    let matches = acceptances
+        .iter()
+        .filter(|acceptance| {
+            solver_material_acceptance_matches_result(acceptance, result, fabricator_revision)
+        })
+        .collect::<Vec<_>>();
+    if matches.len() != 1 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires exactly one reviewed solver material acceptance row for library {} revision {} fabricator stackup revision {fabricator_revision}; found {}.",
+                result.name,
+                result
+                    .solver_material_library
+                    .as_deref()
+                    .unwrap_or_default(),
+                result
+                    .solver_material_library_revision
+                    .as_deref()
+                    .unwrap_or_default(),
+                matches.len()
+            ),
+        );
+        return false;
+    }
+    let acceptance = matches[0];
+    if !solver_material_acceptance_has_valid_metadata(acceptance) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material acceptance {} for result {} must declare non-empty source/library/revision/fabricator/artifact metadata, a 64-character SHA-256 digest, and non-empty accepted corners/layers/materials.",
+                acceptance.name, result.name
+            ),
+        );
+        return false;
+    }
+    let accepted_corners = trimmed_set(&acceptance.accepted_corners);
+    for required_corner in &result.required_solver_corners {
+        if !accepted_corners.contains(required_corner.trim()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material acceptance {} for result {} does not accept required corner {}.",
+                    acceptance.name, result.name, required_corner
+                ),
+            );
+            return false;
+        }
+    }
+    let accepted_layers = trimmed_set(&acceptance.accepted_dielectric_layers);
+    let accepted_materials = trimmed_set(&acceptance.accepted_materials);
+    if !accepted_layers.contains(result.dielectric_layer.trim()) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material acceptance {} for result {} does not accept dielectric layer {}.",
+                acceptance.name, result.name, result.dielectric_layer
+            ),
+        );
+        return false;
+    }
+    for corner in &result.material_corners {
+        if !accepted_corners.contains(corner.corner.trim())
+            || !accepted_layers.contains(corner.dielectric_layer.trim())
+            || !accepted_materials.contains(corner.material.trim())
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material corner {} for result {} is not covered by reviewed material acceptance {}.",
+                    corner.name, result.name, acceptance.name
+                ),
+            );
+            return false;
+        }
+    }
+    if let Some(dielectric_layer) = named_stackup_layer(
+        &bound.project.board.layout.stackup.layers,
+        &result.dielectric_layer,
+    ) && let Some(material) = dielectric_layer.material.as_deref()
+        && !accepted_materials.contains(material.trim())
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material acceptance {} for result {} does not accept stackup material {}.",
+                acceptance.name, result.name, material
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn solver_material_acceptance_matches_result(
+    acceptance: &ControlledImpedanceSolverMaterialAcceptance,
+    result: &ControlledImpedanceSolverResult,
+    fabricator_revision: &str,
+) -> bool {
+    result
+        .solver_material_library
+        .as_deref()
+        .is_some_and(|value| value.trim() == acceptance.material_library.trim())
+        && result
+            .solver_material_library_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == acceptance.material_library_revision.trim())
+        && acceptance.fabricator_stackup_revision.trim() == fabricator_revision
+}
+
+fn solver_material_acceptance_has_valid_metadata(
+    acceptance: &ControlledImpedanceSolverMaterialAcceptance,
+) -> bool {
+    !acceptance.name.trim().is_empty()
+        && !acceptance.source.trim().is_empty()
+        && !acceptance.material_library.trim().is_empty()
+        && !acceptance.material_library_revision.trim().is_empty()
+        && !acceptance.fabricator_stackup_revision.trim().is_empty()
+        && !acceptance.acceptance_artifact_uri.trim().is_empty()
+        && is_sha256_hex(acceptance.acceptance_artifact_sha256.trim())
+        && acceptance
+            .accepted_by
+            .as_deref()
+            .is_none_or(|value| !value.trim().is_empty())
+        && !trimmed_set(&acceptance.accepted_corners).is_empty()
+        && !trimmed_set(&acceptance.accepted_dielectric_layers).is_empty()
+        && !trimmed_set(&acceptance.accepted_materials).is_empty()
 }
 
 fn trimmed_set(values: &[String]) -> BTreeSet<&str> {

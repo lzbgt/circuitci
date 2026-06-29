@@ -170,7 +170,11 @@ preserves artifact provenance but does not run a field solver, fetch artifacts,
 verify signatures, parse solver input decks, or infer stackup parameters.
 Declaring material-library columns requires a matching reviewed
 `controlled_impedance_solver_material_library` artifact-content row before
-validation can accept the solver result. Declaring any stackup signoff column requires complete
+validation can accept the solver result. If reviewed
+`controlled_impedance_solver_material_acceptance` rows are present, validation
+also requires a matching fabricator acceptance row for the solver result
+material library/revision and fabricator stackup revision. Declaring any
+stackup signoff column requires complete
 signoff source/revision/artifact provenance, a 64-character signoff artifact
 SHA-256 digest, and a fabricator stackup revision matching the solver result
 `stackup_revision`.
@@ -201,6 +205,19 @@ duplicate row names fail closed. Validation matches these rows to solver
 results by library, revision, artifact URI, and artifact SHA-256, then checks
 that required solver corners and material-corner rows are backed by declared
 artifact content.
+
+`controlled_impedance_solver_material_acceptance` rows declare reviewed
+fabricator material-acceptance evidence and require `name`, `source`,
+`material_library`, `material_library_revision`,
+`fabricator_stackup_revision`, `acceptance_artifact_uri`, a 64-character
+`acceptance_artifact_sha256`, plus non-empty `accepted_corners`,
+`accepted_dielectric_layers`, and `accepted_materials` lists. Optional
+`accepted_by` records the reviewer or approval channel. Rows create or replace
+`controlled_impedance.solver_material_acceptances[]` entries by `name`;
+duplicate row names fail closed. Validation matches these rows to solver
+results by material library, material-library revision, and fabricator stackup
+revision, then checks that required solver corners and material-corner
+layers/materials are accepted.
 
 `controlled_impedance_solver_qualification` rows declare reviewed solver
 tool/version qualification evidence and require `name`, `source`, `solver`,

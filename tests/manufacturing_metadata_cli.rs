@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.28.0");
+    assert_eq!(manifest["schema_version"], "0.29.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -905,7 +905,7 @@ fn import_manufacturing_metadata_applies_coupon_trace_correlation_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.28.0");
+    assert_eq!(manifest["schema_version"], "0.29.0");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["process_lot"],
         "lot_2026_06_b"
@@ -1081,7 +1081,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.28.0");
+    assert_eq!(manifest["schema_version"], "0.29.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[]"
@@ -1129,8 +1129,9 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
 
     std::fs::write(
         &metadata,
-        "field,value,source,name,material_library,material_library_revision,artifact_uri,artifact_sha256,corners,dielectric_layers,materials\n\
-         controlled_impedance_solver_material_library,reviewed,solver material library,reviewed_stackup_materials_rev_b,reviewed_stackup_materials,rev_b,artifacts/solver/material_library_rev_b.json,abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd,nominal;high_dk,prepreg_1,FR-4 prepreg\n",
+        "field,value,source,name,material_library,material_library_revision,artifact_uri,artifact_sha256,corners,dielectric_layers,materials,fabricator_stackup_revision,acceptance_artifact_uri,acceptance_artifact_sha256,accepted_by,accepted_corners,accepted_dielectric_layers,accepted_materials\n\
+         controlled_impedance_solver_material_library,reviewed,solver material library,reviewed_stackup_materials_rev_b,reviewed_stackup_materials,rev_b,artifacts/solver/material_library_rev_b.json,abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd,nominal;high_dk,prepreg_1,FR-4 prepreg,,,,,,,\n\
+         controlled_impedance_solver_material_acceptance,reviewed,fabricator material acceptance,reviewed_stackup_materials_rev_b_acceptance,reviewed_stackup_materials,rev_b,,,,,,stackup_rev_b,artifacts/fabricator/material_acceptance_rev_b.pdf,22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111,fabricator_si_review,nominal;high_dk,prepreg_1,FR-4 prepreg\n",
     )
     .unwrap();
     let library_import = Command::new(env!("CARGO_BIN_EXE_circuitci"))
@@ -1164,6 +1165,18 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     assert_eq!(library["material_library"], "reviewed_stackup_materials");
     assert_eq!(library["material_library_revision"], "rev_b");
     assert_eq!(library["corners"][1], "high_dk");
+    let acceptance = enriched_with_library["board"]["manufacturing"]["controlled_impedance"]
+        ["solver_material_acceptances"]
+        .as_sequence()
+        .unwrap()
+        .iter()
+        .find(|acceptance| acceptance["name"] == "reviewed_stackup_materials_rev_b_acceptance")
+        .unwrap();
+    assert_eq!(
+        acceptance["acceptance_artifact_uri"],
+        "artifacts/fabricator/material_acceptance_rev_b.pdf"
+    );
+    assert_eq!(acceptance["accepted_corners"][1], "high_dk");
     let library_manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(library_manifest_output).unwrap()).unwrap();
     if let Err(error) = manifest_validator.validate(&library_manifest) {
@@ -1176,6 +1189,14 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     assert_eq!(
         library_manifest["rows"][0]["normalized_value"]["artifact_sha256"],
         "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+    );
+    assert_eq!(
+        library_manifest["rows"][1]["board_field"],
+        "controlled_impedance.solver_material_acceptances[]"
+    );
+    assert_eq!(
+        library_manifest["rows"][1]["normalized_value"]["acceptance_artifact_sha256"],
+        "22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111"
     );
 
     std::fs::write(
@@ -1291,7 +1312,7 @@ fn import_manufacturing_metadata_applies_solver_material_corner_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.28.0");
+    assert_eq!(manifest["schema_version"], "0.29.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[].material_corners[]"
@@ -1380,7 +1401,7 @@ fn import_manufacturing_metadata_applies_solver_qualification_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.28.0");
+    assert_eq!(manifest["schema_version"], "0.29.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_qualifications[]"

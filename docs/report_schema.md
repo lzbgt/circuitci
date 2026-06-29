@@ -658,7 +658,10 @@ keys also include `solver_material_library`,
 If reviewed solver material-library artifact content evidence is missing,
 ambiguous, incomplete, stale, or does not cover required corners and declared
 material-corner layers/materials, the check fails closed as
-`VALIDATION_INPUT_MISSING`. If reviewed solver material-corner evidence is
+`VALIDATION_INPUT_MISSING`. If reviewed solver material-acceptance evidence is
+present but missing, ambiguous, incomplete, stale, or does not accept required
+corners, dielectric layers, or materials for the solver result, the check fails
+closed as `VALIDATION_INPUT_MISSING`. If reviewed solver material-corner evidence is
 declared but incomplete, ambiguous, or inconsistent with
 `required_solver_corners`, solver material library metadata, or reviewed
 stackup layer material/Dk evidence, the check fails closed as
