@@ -387,6 +387,21 @@ fn controlled_impedance_solver_result_mapping(
     );
     insert_optional_string(
         &mut mapping,
+        "solver_artifact_signature_uri",
+        &result.solver_artifact_signature_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_artifact_signature_sha256",
+        &result.solver_artifact_signature_sha256,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_artifact_signer",
+        &result.solver_artifact_signer,
+    );
+    insert_optional_string(
+        &mut mapping,
         "solver_input_deck_uri",
         &result.solver_input_deck_uri,
     );

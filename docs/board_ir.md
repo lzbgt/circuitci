@@ -413,12 +413,15 @@ preserve either single-ended `net` or differential `first_net`/`second_net`
 association. Differential rows also require reviewed `solved_gap_mm` and
 `max_route_gap_delta_mm`. These rows are reviewed solver-result evidence only;
 CircuitCI preserves the artifact URI and digest but does not run a field
-solver or fetch the artifact. Optional reviewed input-deck consistency
-columns are `solver_input_deck_uri`, `solver_input_deck_sha256`,
-`input_stackup_revision`, `input_route_layer`, `input_reference_layer`,
-`input_dielectric_layer`, `input_width_mm`, `input_gap_mm`, and
-`input_frequency_mhz`; when present, validation compares them against the
-solver result setup. Optional reviewed copper roughness columns are
+solver or fetch the artifact. Optional reviewed provenance and input-deck
+consistency columns are `solver_artifact_signature_uri`,
+`solver_artifact_signature_sha256`, `solver_artifact_signer`,
+`solver_input_deck_uri`, `solver_input_deck_sha256`, `input_stackup_revision`,
+`input_route_layer`, `input_reference_layer`, `input_dielectric_layer`,
+`input_width_mm`, `input_gap_mm`, and `input_frequency_mhz`; when signature
+columns are present, validation requires a complete signature URI/digest/signer
+triple, and when input-deck columns are present, validation compares them
+against the solver result setup. Optional reviewed copper roughness columns are
 `copper_roughness_model`, `copper_roughness_um`,
 `input_copper_roughness_model`, and `input_copper_roughness_um`; declaring
 any one requires the complete result/input-deck roughness pair to match.

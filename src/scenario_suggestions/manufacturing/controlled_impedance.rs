@@ -928,6 +928,7 @@ fn controlled_impedance_solver_result_has_evidence(
             .solver_artifact_sha256
             .as_deref()
             .is_some_and(|value| is_sha256_hex(value.trim()))
+        && controlled_impedance_solver_artifact_signature_has_evidence(result)
         && !result.stackup_revision.trim().is_empty()
         && !result.route_layer.trim().is_empty()
         && !result.reference_layer.trim().is_empty()
@@ -1081,6 +1082,34 @@ fn controlled_impedance_solver_input_deck_policy_requested(
         || result.etch_compensation_um.is_some()
         || result.input_etch_compensation_model.is_some()
         || result.input_etch_compensation_um.is_some()
+}
+
+fn controlled_impedance_solver_artifact_signature_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_artifact_signature_uri.is_some()
+        || result.solver_artifact_signature_sha256.is_some()
+        || result.solver_artifact_signer.is_some()
+}
+
+fn controlled_impedance_solver_artifact_signature_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_artifact_signature_policy_requested(result) {
+        return true;
+    }
+    result
+        .solver_artifact_signature_uri
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_artifact_signature_sha256
+            .as_deref()
+            .is_some_and(|value| is_sha256_hex(value.trim()))
+        && result
+            .solver_artifact_signer
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
 }
 
 fn controlled_impedance_solver_input_deck_has_evidence(

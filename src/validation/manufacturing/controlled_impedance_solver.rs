@@ -260,6 +260,9 @@ fn solver_result_has_valid_metadata(
         );
         return false;
     }
+    if !solver_artifact_signature_metadata_is_valid(scenario, findings, result) {
+        return false;
+    }
     if !positive(result.target_impedance_ohm)
         || !positive(result.solved_impedance_ohm)
         || !non_negative(result.max_impedance_error_ohm)
@@ -733,6 +736,60 @@ fn solver_sweep_policy_requested(result: &ControlledImpedanceSolverResult) -> bo
     result.min_solver_sample_count.is_some()
         || result.max_solver_frequency_step_mhz.is_some()
         || !result.required_solver_corners.is_empty()
+}
+
+fn solver_artifact_signature_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.solver_artifact_signature_uri.is_some()
+        || result.solver_artifact_signature_sha256.is_some()
+        || result.solver_artifact_signer.is_some()
+}
+
+fn solver_artifact_signature_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_artifact_signature_policy_requested(result) {
+        return true;
+    }
+    let Some(_) = non_empty_option(result.solver_artifact_signature_uri.as_deref()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} signed-artifact evidence requires non-empty solver_artifact_signature_uri.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    let Some(signature_sha256) =
+        non_empty_option(result.solver_artifact_signature_sha256.as_deref())
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} signed-artifact evidence requires solver_artifact_signature_sha256 as a 64-character SHA-256 hex digest.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    if !is_sha256_hex(signature_sha256)
+        || non_empty_option(result.solver_artifact_signer.as_deref()).is_none()
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} signed-artifact evidence must declare non-empty solver_artifact_signer and a 64-character solver_artifact_signature_sha256 digest.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    true
 }
 
 fn solver_input_deck_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {

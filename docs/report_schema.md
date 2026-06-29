@@ -647,7 +647,10 @@ stable measured keys also include `solver_input_deck_uri`,
 also include `input_copper_roughness_model` and
 `input_copper_roughness_um`; with reviewed etch compensation evidence, stable
 measured keys also include `input_etch_compensation_model` and
-`input_etch_compensation_um`. Stable limit keys include `max_impedance_error_ohm`,
+`input_etch_compensation_um`. If signed-artifact metadata is declared but
+incomplete, the check fails closed as `VALIDATION_INPUT_MISSING`; signature
+metadata is provenance input and is not repeated in pass/fail measured maps.
+Stable limit keys include `max_impedance_error_ohm`,
 `max_route_width_delta_mm`, `max_route_gap_delta_mm`,
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`,
 `required_solver_corners`, `stackup_revision`, `route_layer`,

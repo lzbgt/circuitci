@@ -1999,7 +1999,8 @@ Controlled-impedance solver-result algorithm:
 3. Require reviewed source, solver name, solver artifact URI, solver artifact
    SHA-256 digest, stackup revision, route layer, reference layer, dielectric
    layer, target impedance, solved impedance, impedance tolerance, solved
-   width, and route-width delta limit.
+   width, and route-width delta limit. When signed-artifact metadata is
+   declared, require a signature URI, signature SHA-256 digest, and signer.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2026,15 +2027,16 @@ Controlled-impedance solver-result algorithm:
     coverage, or reviewed input-deck setup plus copper-roughness and
     etch-compensation consistency exceeds the reviewed limits. Fail closed when
     solver metadata, target mapping, stackup evidence, route evidence, declared
-    input-deck evidence, or declared sweep evidence is missing or
-    contradictory.
+    signed-artifact evidence, declared input-deck evidence, or declared sweep
+    evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
-artifact URI/digest, input-deck URI/digest, and reviewed sample/corner
-evidence but does not fetch artifacts, parse input decks, run a field solver,
-infer dielectric/copper parameters, calculate roughness-adjusted impedance,
-infer finished trace geometry from etch compensation, interpolate impedance,
-or replace SI/fabricator review.
+artifact URI/digest, optional signature URI/digest/signer, input-deck
+URI/digest, and reviewed sample/corner evidence but does not fetch artifacts,
+verify signatures, parse input decks, run a field solver, infer
+dielectric/copper parameters, calculate roughness-adjusted impedance, infer
+finished trace geometry from etch compensation, interpolate impedance, or
+replace SI/fabricator review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

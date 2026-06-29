@@ -137,16 +137,20 @@ Rows attach under the named imported or pre-existing coupon; duplicate
   `max_route_gap_delta_mm` are required and `net` must be blank.
 
 Optional `controlled_impedance_solver_result` columns are `solver_version`,
-`frequency_mhz`, `solver_input_deck_uri`, `solver_input_deck_sha256`,
-`input_stackup_revision`, `input_route_layer`, `input_reference_layer`,
-`input_dielectric_layer`, `input_width_mm`, `input_gap_mm`,
-`input_frequency_mhz`, `copper_roughness_model`, `copper_roughness_um`,
+`frequency_mhz`, `solver_artifact_signature_uri`,
+`solver_artifact_signature_sha256`, `solver_artifact_signer`,
+`solver_input_deck_uri`, `solver_input_deck_sha256`, `input_stackup_revision`,
+`input_route_layer`, `input_reference_layer`, `input_dielectric_layer`,
+`input_width_mm`, `input_gap_mm`, `input_frequency_mhz`,
+`copper_roughness_model`, `copper_roughness_um`,
 `input_copper_roughness_model`, `input_copper_roughness_um`,
 `etch_compensation_model`, `etch_compensation_um`,
 `input_etch_compensation_model`, `input_etch_compensation_um`,
 `min_solver_sample_count`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
 `solver_source` when the ordinary `source` column is not used. When any
+solver-artifact signature column is present, validation requires a non-empty
+signature URI, 64-character signature SHA-256 digest, and signer name. When any
 input-deck column is present, validation requires complete input-deck
 provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
@@ -157,7 +161,7 @@ result/input-deck etch compensation model and positive compensation values;
 CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
-parse solver input decks, or infer stackup parameters.
+verify signatures, parse solver input decks, or infer stackup parameters.
 
 `controlled_impedance_solver_sample` rows use `value` as sampled
 `solved_impedance_ohm` and require `solver_result_name`, `name`, `source`,

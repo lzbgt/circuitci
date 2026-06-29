@@ -310,6 +310,12 @@ pub struct ControlledImpedanceSolverResult {
     #[serde(default)]
     pub solver_artifact_sha256: Option<String>,
     #[serde(default)]
+    pub solver_artifact_signature_uri: Option<String>,
+    #[serde(default)]
+    pub solver_artifact_signature_sha256: Option<String>,
+    #[serde(default)]
+    pub solver_artifact_signer: Option<String>,
+    #[serde(default)]
     pub solver_input_deck_uri: Option<String>,
     #[serde(default)]
     pub solver_input_deck_sha256: Option<String>,

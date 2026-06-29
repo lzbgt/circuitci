@@ -108,6 +108,9 @@ board:
           solver_version: "2026.06"
           solver_artifact_uri: artifacts/solver/rf_solver_result.json
           solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          solver_artifact_signature_uri: artifacts/solver/rf_solver_result.sig
+          solver_artifact_signature_sha256: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+          solver_artifact_signer: si_review_key_2026
           solver_input_deck_uri: artifacts/solver/rf_solver_input_deck.json
           solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
           result_type: single_ended

@@ -461,6 +461,18 @@
                         "type": "string",
                         "pattern": "^[A-Fa-f0-9]{64}$"
                       },
+                      "solver_artifact_signature_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_artifact_signature_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "solver_artifact_signer": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "solver_input_deck_uri": { "type": "string", "minLength": 1 },
                       "solver_input_deck_sha256": {
                         "type": "string",

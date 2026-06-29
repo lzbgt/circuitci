@@ -634,6 +634,54 @@ fn controlled_impedance_solver_result_passes_for_reviewed_solver_and_route_match
 }
 
 #[test]
+fn controlled_impedance_solver_result_passes_with_signed_artifact_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_artifact_signature_uri: artifacts/solver/rf_solver_result.sig\n          solver_artifact_signature_sha256: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\n          solver_artifact_signer: si_review_key_2026\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_partial_signed_artifact_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_artifact_signature_uri: artifacts/solver/rf_solver_result.sig\n          solver_artifact_signer: si_review_key_2026\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("solver_artifact_signature_sha256")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_passes_with_reviewed_solver_qualification() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
