@@ -457,6 +457,11 @@ The command is conservative:
   `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID` templates. The suggestion does not
   infer coupon-to-board correlation or process capability; it only surfaces
   complete batch-statistics evidence tied to a valid board target.
+- When coupon entries also contain reviewed lot/panel/stackup and trace
+  layer/width/gap correlation metadata, and imported route evidence exists, it
+  emits runnable `CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID`
+  templates. The suggestion does not solve impedance or infer process
+  capability; it only surfaces explicit coupon-to-route correlation evidence.
 - When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
   polygon/source/clearance metadata and same-layer imported copper evidence
   exists outside any declared antenna-net exclusion, it emits a runnable

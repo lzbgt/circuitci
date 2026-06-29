@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.15.0");
+    assert_eq!(manifest["schema_version"], "0.16.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -842,6 +842,97 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
 }
 
 #[test]
+fn import_manufacturing_metadata_applies_coupon_trace_correlation_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("without_coupon_trace.project.yaml");
+    let metadata = dir.path().join("coupon_trace.csv");
+    let output = dir.path().join("with_coupon_trace.project.yaml");
+    let manifest_output = output.with_extension("manufacturing.json");
+    let suggestions_output = dir.path().join("suggestions.yaml");
+    let project_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string("examples/scenario_suggestions_controlled_impedance/project.yaml")
+            .unwrap(),
+    )
+    .unwrap();
+    std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
+    std::fs::write(
+        &metadata,
+        "field,value,unit,source,notes,name,coupon_type,net,target_impedance_ohm,max_impedance_error_ohm,process_lot,panel_id,stackup_revision,coupon_trace_layer,coupon_trace_width_mm,max_trace_width_delta_mm\n\
+         controlled_impedance_coupon,51.2,ohm,fab coupon report,reviewed trace correlation,rf_coupon,single_ended,RF,50.0,3.0,lot_2026_06_b,panel_9,stackup_rev_b,F.Cu,0.20,0.03\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            input.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        command_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&command_output.stderr)
+    );
+
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    common::assert_yaml_file_valid(&output, &validator);
+    let enriched: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let coupon = &enriched["board"]["manufacturing"]["controlled_impedance"]["coupons"][0];
+    assert_eq!(coupon["name"], "rf_coupon");
+    assert_eq!(coupon["process_lot"], "lot_2026_06_b");
+    assert_eq!(coupon["panel_id"], "panel_9");
+    assert_eq!(coupon["stackup_revision"], "stackup_rev_b");
+    assert_eq!(coupon["coupon_trace_layer"], "F.Cu");
+    assert_eq!(coupon["coupon_trace_width_mm"], 0.20);
+    assert_eq!(coupon["max_trace_width_delta_mm"], 0.03);
+
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
+    let manifest_schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../schemas/manufacturing_metadata_import.schema.json"
+    ))
+    .unwrap();
+    let manifest_validator = jsonschema::validator_for(&manifest_schema).unwrap();
+    if let Err(error) = manifest_validator.validate(&manifest) {
+        panic!("Manufacturing metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(manifest["schema_version"], "0.16.0");
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["process_lot"],
+        "lot_2026_06_b"
+    );
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["coupon_trace_width_mm"],
+        0.20
+    );
+
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            output.to_str().unwrap(),
+            "--output",
+            suggestions_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions = read_suggestion_report(&suggestions_output);
+    assert_runnable(
+        &suggestions,
+        "controlled_impedance_coupon_trace_correlation_rf_coupon",
+    );
+}
+
+#[test]
 fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("without_thermal_policy.project.yaml");
@@ -921,7 +1012,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.15.0");
+    assert_eq!(manifest["schema_version"], "0.16.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -1089,7 +1180,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.15.0");
+    assert_eq!(manifest["schema_version"], "0.16.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
@@ -1229,7 +1320,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.15.0");
+    assert_eq!(manifest["schema_version"], "0.16.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_environments[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["ambient_temperature_C"],
@@ -1478,7 +1569,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.15.0");
+    assert_eq!(manifest["schema_version"], "0.16.0");
     assert_eq!(manifest["rows"][3]["board_field"], "thermal_limits[]");
     assert_eq!(
         manifest["rows"][3]["normalized_value"]["max_measured_temperature_C"],

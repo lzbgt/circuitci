@@ -29,9 +29,9 @@ impedance or model solder-mask material loading.
 `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID`, including named coupon parameter
 parsing, reviewed coupon metadata checks, type-specific net association
 validation, board-target mapping validation, measured-vs-target impedance
-comparison, reviewed batch-statistics screening, and stable report
-construction. It intentionally does not infer coupon applicability, process
-capability, or solve impedance.
+comparison, reviewed batch-statistics screening, coupon-to-route process
+correlation screening, and stable report construction. It intentionally does
+not infer coupon applicability, process capability, or solve impedance.
 
 `src/validation/manufacturing/adjacent_plane.rs` owns
 `ADJACENT_PLANE_RETURN_PATH_VALID` and

@@ -158,6 +158,12 @@ board:
           target_impedance_ohm: 50.0
           measured_impedance_ohm: 51.2
           max_impedance_error_ohm: 3.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.20
+          max_trace_width_delta_mm: 0.03
           min_batch_sample_count: 3
           max_batch_mean_impedance_error_ohm: 1.5
           max_batch_sample_impedance_error_ohm: 2.0
@@ -265,9 +271,13 @@ target impedance must match that board target before measured coupon tolerance
 is evaluated. Optional `samples[]` plus `min_batch_sample_count`,
 `max_batch_mean_impedance_error_ohm`,
 `max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm` let
-scenarios screen reviewed coupon batch statistics. It still does not infer
-coupon applicability, calculate impedance, or prove statistical
-coupon-to-board correlation.
+scenarios screen reviewed coupon batch statistics. Optional `process_lot`,
+`panel_id`, `stackup_revision`, `coupon_trace_layer`,
+`coupon_trace_width_mm`, `max_trace_width_delta_mm`, and differential-pair
+`coupon_trace_gap_mm`/`max_trace_gap_delta_mm` fields let scenarios prove that
+the reviewed coupon report is traceable to the imported board route layer and
+geometry. It still does not infer coupon applicability, calculate impedance,
+or prove statistical coupon-to-board correlation.
 
 `THERMAL_COPPER_AREA_VALID` suggestions consume
 `board.manufacturing.thermal_copper[]` as reviewed thermal layout policy. Each
@@ -386,7 +396,11 @@ Repeated `field=controlled_impedance_coupon` rows use `value` as
 single-ended `net` or differential `first_net`/`second_net` association.
 They may also include reviewed batch limit columns:
 `min_batch_sample_count`, `max_batch_mean_impedance_error_ohm`,
-`max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm`. Repeated
+`max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm`, plus
+reviewed process/trace correlation columns: `process_lot`, `panel_id`,
+`stackup_revision`, `coupon_trace_layer`, `coupon_trace_width_mm`,
+`max_trace_width_delta_mm`, and, for differential coupons,
+`coupon_trace_gap_mm` and `max_trace_gap_delta_mm`. Repeated
 `field=controlled_impedance_coupon_sample` rows use `value` as a sampled
 `measured_impedance_ohm`, require `coupon_name`, `name`, and `source`, and
 attach to an existing or same-import coupon by `coupon_name`.

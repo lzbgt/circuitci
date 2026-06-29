@@ -233,6 +233,22 @@ pub(super) fn applied_controlled_impedance_coupon(
             "max_impedance_error_ohm",
             "controlled_impedance_coupon",
         )?,
+        process_lot: optional_raw_column(row, "process_lot"),
+        panel_id: optional_raw_column(row, "panel_id"),
+        stackup_revision: optional_raw_column(row, "stackup_revision"),
+        coupon_trace_layer: optional_raw_column(row, "coupon_trace_layer"),
+        coupon_trace_width_mm: optional_raw_column(row, "coupon_trace_width_mm")
+            .map(|value| parse_positive_number(&value, path, row, "coupon_trace_width_mm"))
+            .transpose()?,
+        max_trace_width_delta_mm: optional_raw_column(row, "max_trace_width_delta_mm")
+            .map(|value| parse_nonnegative_number(&value, path, row, "max_trace_width_delta_mm"))
+            .transpose()?,
+        coupon_trace_gap_mm: optional_raw_column(row, "coupon_trace_gap_mm")
+            .map(|value| parse_positive_number(&value, path, row, "coupon_trace_gap_mm"))
+            .transpose()?,
+        max_trace_gap_delta_mm: optional_raw_column(row, "max_trace_gap_delta_mm")
+            .map(|value| parse_nonnegative_number(&value, path, row, "max_trace_gap_delta_mm"))
+            .transpose()?,
         min_batch_sample_count: optional_raw_column(row, "min_batch_sample_count")
             .map(|value| parse_positive_usize(&value, path, row, "min_batch_sample_count"))
             .transpose()?,

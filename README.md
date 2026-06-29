@@ -218,8 +218,8 @@ solder-mask loading metadata, repeated `field=controlled_impedance_coupon`
 rows create or replace reviewed fabricator coupon measurement evidence that
 validation maps back to matching reviewed board impedance targets, repeated
 `field=controlled_impedance_coupon_sample` rows attach reviewed coupon batch
-sample measurements under named coupons,
-repeated
+sample measurements under named coupons, and coupon rows can carry reviewed
+lot/panel/stackup plus trace layer/width/gap correlation metadata. Repeated
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated
 `field=thermal_measurement` rows append reviewed measured-temperature evidence

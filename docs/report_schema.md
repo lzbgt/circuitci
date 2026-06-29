@@ -179,6 +179,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID`
+- `CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -611,6 +612,19 @@ Stable measured keys include `coupon_name`, `coupon_type`, `source`, `net`,
 `max_sample_impedance_error_ohm`, and `stddev_impedance_ohm`. Stable limit keys
 include `min_batch_sample_count`, `max_batch_mean_impedance_error_ohm`,
 `max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm`.
+
+`CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID` reports are emitted by
+`manufacturing` scenarios that compare reviewed coupon process/trace metadata
+against imported board route layer, width, and differential-pair gap evidence.
+Stable measured keys include `coupon_name`, `coupon_type`, `source`, `net`,
+`first_net`, `second_net`, `process_lot`, `panel_id`, `stackup_revision`,
+`coupon_trace_layer`, `observed_route_layers`, `layer_mismatch`,
+`width_segment_net`, `width_segment_index`, `measured_width_mm`,
+`max_width_delta_mm`, and, for differential coupons, `measured_gap_mm`,
+`max_gap_delta_mm`, `gap_first_segment_index`, and
+`gap_second_segment_index`. Stable limit keys include `coupon_trace_width_mm`,
+`max_trace_width_delta_mm`, `coupon_trace_gap_mm`, and
+`max_trace_gap_delta_mm`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

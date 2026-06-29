@@ -44,6 +44,12 @@ board:
           target_impedance_ohm: 50.0
           measured_impedance_ohm: 51.2
           max_impedance_error_ohm: 3.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.20
+          max_trace_width_delta_mm: 0.03
           min_batch_sample_count: 3
           max_batch_mean_impedance_error_ohm: 1.5
           max_batch_sample_impedance_error_ohm: 2.0
@@ -66,6 +72,14 @@ board:
           target_impedance_ohm: 90.0
           measured_impedance_ohm: 96.0
           max_impedance_error_ohm: 5.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.15
+          max_trace_width_delta_mm: 0.02
+          coupon_trace_gap_mm: 0.20
+          max_trace_gap_delta_mm: 0.03
           min_batch_sample_count: 3
           max_batch_mean_impedance_error_ohm: 1.5
           max_batch_sample_impedance_error_ohm: 2.0

@@ -17,6 +17,8 @@ const CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID: &str =
     "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID";
 const CONTROLLED_IMPEDANCE_COUPON_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_VALID";
 const CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID";
+const CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID: &str =
+    "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -40,6 +42,10 @@ pub(super) fn route_physics_suggestions(
     ));
     suggestions.extend(controlled_impedance_coupon_suggestions(bound, project_name));
     suggestions.extend(controlled_impedance_coupon_batch_suggestions(
+        bound,
+        project_name,
+    ));
+    suggestions.extend(controlled_impedance_coupon_trace_correlation_suggestions(
         bound,
         project_name,
     ));
@@ -589,6 +595,52 @@ fn controlled_impedance_coupon_batch_suggestions(
     suggestions
 }
 
+fn controlled_impedance_coupon_trace_correlation_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for coupon in &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .coupons
+    {
+        if controlled_impedance_coupon_check_declared(
+            bound,
+            CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID,
+            &coupon.name,
+        ) || !controlled_impedance_coupon_trace_correlation_has_evidence(bound, coupon)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_coupon_trace_correlation_{}",
+                sanitized_name(&coupon.name)
+            ),
+            true,
+            &format!(
+                "Controlled-impedance coupon {} has reviewed lot/panel/stackup trace-correlation metadata from {}, imported route evidence, and a matching board controlled-impedance target.",
+                coupon.name, coupon.source
+            ),
+            &format!(
+                "{}_{}_controlled_impedance_coupon_trace_correlation",
+                project_name,
+                sanitized_name(&coupon.name)
+            ),
+            CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID,
+            Some(BTreeMap::from([(
+                "coupons".to_string(),
+                json!([{ "name": coupon.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -922,6 +974,71 @@ fn controlled_impedance_coupon_batch_has_evidence(
                 && !sample.source.trim().is_empty()
                 && positive_finite(sample.measured_impedance_ohm)
         })
+}
+
+fn controlled_impedance_coupon_trace_correlation_has_evidence(
+    bound: &BoundBoard<'_>,
+    coupon: &ControlledImpedanceCoupon,
+) -> bool {
+    controlled_impedance_coupon_has_evidence(bound, coupon)
+        && coupon
+            .process_lot
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && coupon
+            .panel_id
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && coupon
+            .stackup_revision
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && coupon
+            .coupon_trace_layer
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && coupon.coupon_trace_width_mm.is_some_and(positive_finite)
+        && coupon
+            .max_trace_width_delta_mm
+            .is_some_and(non_negative_finite)
+        && match coupon.coupon_type {
+            ControlledImpedanceCouponType::SingleEnded => {
+                coupon.coupon_trace_gap_mm.is_none()
+                    && coupon.max_trace_gap_delta_mm.is_none()
+                    && coupon.net.as_deref().is_some_and(|net| {
+                        bound
+                            .project
+                            .board
+                            .layout
+                            .routes
+                            .get(net)
+                            .is_some_and(route_has_valid_segments)
+                    })
+            }
+            ControlledImpedanceCouponType::Differential => {
+                coupon.coupon_trace_gap_mm.is_some_and(positive_finite)
+                    && coupon
+                        .max_trace_gap_delta_mm
+                        .is_some_and(non_negative_finite)
+                    && coupon.first_net.as_deref().is_some_and(|first_net| {
+                        coupon.second_net.as_deref().is_some_and(|second_net| {
+                            let Some(first_route) =
+                                bound.project.board.layout.routes.get(first_net)
+                            else {
+                                return false;
+                            };
+                            let Some(second_route) =
+                                bound.project.board.layout.routes.get(second_net)
+                            else {
+                                return false;
+                            };
+                            route_has_valid_segments(first_route)
+                                && route_has_valid_segments(second_route)
+                                && routes_have_parallel_gap_evidence(first_route, second_route)
+                        })
+                    })
+            }
+        }
 }
 
 fn matching_single_ended_coupon_target(

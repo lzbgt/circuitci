@@ -274,6 +274,34 @@ fn controlled_impedance_coupon_mapping(
         "max_impedance_error_ohm".to_string(),
         serde_yaml_ng::to_value(coupon.max_impedance_error_ohm).unwrap_or(Value::Null),
     );
+    insert_optional_string(&mut mapping, "process_lot", &coupon.process_lot);
+    insert_optional_string(&mut mapping, "panel_id", &coupon.panel_id);
+    insert_optional_string(&mut mapping, "stackup_revision", &coupon.stackup_revision);
+    insert_optional_string(
+        &mut mapping,
+        "coupon_trace_layer",
+        &coupon.coupon_trace_layer,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "coupon_trace_width_mm",
+        coupon.coupon_trace_width_mm,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_trace_width_delta_mm",
+        coupon.max_trace_width_delta_mm,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "coupon_trace_gap_mm",
+        coupon.coupon_trace_gap_mm,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_trace_gap_delta_mm",
+        coupon.max_trace_gap_delta_mm,
+    );
     insert_optional_number(
         &mut mapping,
         "min_batch_sample_count",

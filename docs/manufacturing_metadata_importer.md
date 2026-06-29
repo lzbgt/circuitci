@@ -98,6 +98,11 @@ from stackup, or infer high-speed nets.
   `max_batch_mean_impedance_error_ohm`,
   `max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm` columns
   declare reviewed coupon batch acceptance limits.
+- Optional `process_lot`, `panel_id`, `stackup_revision`,
+  `coupon_trace_layer`, `coupon_trace_width_mm`, and
+  `max_trace_width_delta_mm` columns declare reviewed coupon-to-board trace
+  correlation evidence. Differential coupons may also declare
+  `coupon_trace_gap_mm` and `max_trace_gap_delta_mm`.
 - For `single_ended`, `net` is required and `first_net`/`second_net` must be
   blank.
 - For `differential`, `first_net` and `second_net` are required and `net` must
@@ -112,7 +117,8 @@ Coupon rows are reviewed measurement evidence only; the importer does not
 decide whether a coupon statistically represents the routed board. Validation
 requires each imported coupon to map to exactly one reviewed
 `controlled_impedance_net` or `controlled_impedance_pair` target with matching
-target impedance before the coupon tolerance or batch statistics are evaluated.
+target impedance before the coupon tolerance, batch statistics, or trace
+correlation evidence are evaluated.
 
 `thermal_copper` rows use `value` as `min_copper_area_mm2` and require extra
 columns:

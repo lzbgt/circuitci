@@ -548,6 +548,76 @@ fn controlled_impedance_coupon_batch_fails_closed_without_reviewed_limits() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_coupon_trace_correlation_passes_for_reviewed_route_match() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID",
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_trace_correlation_fails_for_route_width_mismatch() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace("            width_mm: 0.18", "            width_mm: 0.24");
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(
+        failure["id"],
+        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID"
+    );
+    assert_eq!(failure["measured"]["coupon_name"], "rf_coupon");
+    assert_eq!(failure["measured"]["process_lot"], "lot_2026_06_a");
+    assert_eq!(failure["measured"]["panel_id"], "panel_7");
+    assert_eq!(failure["measured"]["stackup_revision"], "stackup_rev_a");
+    assert_eq!(failure["measured"]["coupon_trace_layer"], "F.Cu");
+    assert_eq!(failure["measured"]["measured_width_mm"], 0.24);
+    assert_eq!(failure["limit"]["coupon_trace_width_mm"], 0.20);
+    assert_eq!(failure["limit"]["max_trace_width_delta_mm"], 0.03);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_trace_correlation_fails_closed_without_process_tags() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace("          process_lot: lot_2026_06_a\n", "");
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires reviewed process_lot")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_impedance_project(parameters: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     write_impedance_project_with_check(parameters, "CONTROLLED_IMPEDANCE_GEOMETRY_VALID")
 }
@@ -601,6 +671,12 @@ board:
           target_impedance_ohm: 50.0
           measured_impedance_ohm: 51.2
           max_impedance_error_ohm: 3.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.20
+          max_trace_width_delta_mm: 0.03
           min_batch_sample_count: 3
           max_batch_mean_impedance_error_ohm: 1.5
           max_batch_sample_impedance_error_ohm: 2.0
@@ -623,6 +699,14 @@ board:
           target_impedance_ohm: 90.0
           measured_impedance_ohm: 96.0
           max_impedance_error_ohm: 5.0
+          process_lot: lot_2026_06_a
+          panel_id: panel_7
+          stackup_revision: stackup_rev_a
+          coupon_trace_layer: F.Cu
+          coupon_trace_width_mm: 0.15
+          max_trace_width_delta_mm: 0.02
+          coupon_trace_gap_mm: 0.20
+          max_trace_gap_delta_mm: 0.03
           min_batch_sample_count: 3
           max_batch_mean_impedance_error_ohm: 1.5
           max_batch_sample_impedance_error_ohm: 2.0

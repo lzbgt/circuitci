@@ -273,6 +273,12 @@ without explicit imported mechanical evidence.
   after the coupon-to-board-target mapping is valid. It does not infer coupon
   applicability, calculate impedance, compute Cpk/process capability, model
   board-to-coupon correlation, or replace SI/fabricator review.
+- `CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID` compares explicit
+  reviewed coupon process/trace metadata against imported board route layer,
+  width, and differential-pair gap evidence after the coupon-to-board-target
+  mapping is valid. It does not infer coupon applicability, solve impedance,
+  model etch compensation, compute process capability, or prove statistical
+  coupon-to-board correlation.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

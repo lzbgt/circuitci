@@ -250,6 +250,22 @@ pub struct ControlledImpedanceCoupon {
     pub measured_impedance_ohm: f64,
     pub max_impedance_error_ohm: f64,
     #[serde(default)]
+    pub process_lot: Option<String>,
+    #[serde(default)]
+    pub panel_id: Option<String>,
+    #[serde(default)]
+    pub stackup_revision: Option<String>,
+    #[serde(default)]
+    pub coupon_trace_layer: Option<String>,
+    #[serde(default)]
+    pub coupon_trace_width_mm: Option<f64>,
+    #[serde(default)]
+    pub max_trace_width_delta_mm: Option<f64>,
+    #[serde(default)]
+    pub coupon_trace_gap_mm: Option<f64>,
+    #[serde(default)]
+    pub max_trace_gap_delta_mm: Option<f64>,
+    #[serde(default)]
     pub min_batch_sample_count: Option<usize>,
     #[serde(default)]
     pub max_batch_mean_impedance_error_ohm: Option<f64>,

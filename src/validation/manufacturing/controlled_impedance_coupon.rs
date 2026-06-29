@@ -1,6 +1,6 @@
 use crate::board_ir::{
     ControlledImpedanceCoupon, ControlledImpedanceCouponSample, ControlledImpedanceCouponType,
-    Scenario,
+    NetRoute, RouteSegment, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -8,7 +8,10 @@ use serde_json::json;
 use std::collections::BTreeSet;
 
 use super::super::common::validation_input_missing;
-use super::super::{CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID, CONTROLLED_IMPEDANCE_COUPON_VALID};
+use super::super::{
+    CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID, CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID,
+    CONTROLLED_IMPEDANCE_COUPON_VALID,
+};
 
 const IMPEDANCE_MATCH_EPSILON_OHM: f64 = 1.0e-9;
 
@@ -101,6 +104,65 @@ pub(in crate::validation) fn validate_controlled_impedance_coupon_batch(
             || metrics.stddev_impedance_ohm > coupon.max_batch_stddev_ohm.unwrap_or(f64::INFINITY)
         {
             findings.push(coupon_batch_finding(scenario, coupon, &metrics));
+        }
+    }
+}
+
+pub(in crate::validation) fn validate_controlled_impedance_coupon_trace_correlation(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) = coupon_names_for_check(
+        scenario,
+        findings,
+        CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID,
+    ) else {
+        return;
+    };
+    let coupons = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .coupons;
+    if coupons.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID requires board.manufacturing.controlled_impedance.coupons evidence.",
+        );
+        return;
+    }
+    for name in names {
+        let Some(coupon) = named_coupon_for_check(
+            coupons,
+            scenario,
+            findings,
+            &name,
+            CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID,
+        ) else {
+            return;
+        };
+        if !coupon_has_valid_metadata(bound, scenario, findings, coupon) {
+            return;
+        }
+        let Some(policy) = trace_correlation_policy(scenario, findings, coupon) else {
+            return;
+        };
+        let Some(metrics) = trace_correlation_metrics(bound, scenario, findings, coupon, &policy)
+        else {
+            return;
+        };
+        if metrics.layer_mismatch
+            || metrics.max_width_delta_mm > policy.max_trace_width_delta_mm + f64::EPSILON
+            || metrics.max_gap_delta_mm.is_some_and(|gap| {
+                gap > policy.max_trace_gap_delta_mm.unwrap_or(f64::INFINITY) + f64::EPSILON
+            })
+        {
+            findings.push(trace_correlation_finding(
+                scenario, coupon, &policy, &metrics,
+            ));
         }
     }
 }
@@ -827,6 +889,580 @@ fn coupon_batch_finding(
         "Review the complete fabricator coupon batch report against the controlled-impedance acceptance policy.".to_string(),
         "Check whether stackup, trace geometry, solder-mask loading, or fabrication process controls changed across the batch.".to_string(),
         "Do not treat this check as a field solver; it verifies explicit coupon sample evidence and reviewed batch limits only.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug)]
+struct TraceCorrelationPolicy {
+    process_lot: String,
+    panel_id: String,
+    stackup_revision: String,
+    coupon_trace_layer: String,
+    coupon_trace_width_mm: f64,
+    max_trace_width_delta_mm: f64,
+    coupon_trace_gap_mm: Option<f64>,
+    max_trace_gap_delta_mm: Option<f64>,
+}
+
+#[derive(Debug)]
+struct TraceCorrelationMetrics {
+    layer_mismatch: bool,
+    observed_route_layers: Vec<String>,
+    max_width_delta_mm: f64,
+    width_segment_net: String,
+    width_segment_index: usize,
+    measured_width_mm: f64,
+    max_gap_delta_mm: Option<f64>,
+    measured_gap_mm: Option<f64>,
+    gap_first_segment_index: Option<usize>,
+    gap_second_segment_index: Option<usize>,
+}
+
+fn trace_correlation_policy(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+) -> Option<TraceCorrelationPolicy> {
+    let process_lot = required_coupon_string(scenario, findings, coupon, "process_lot")?;
+    let panel_id = required_coupon_string(scenario, findings, coupon, "panel_id")?;
+    let stackup_revision = required_coupon_string(scenario, findings, coupon, "stackup_revision")?;
+    let coupon_trace_layer =
+        required_coupon_string(scenario, findings, coupon, "coupon_trace_layer")?;
+    let coupon_trace_width_mm =
+        required_coupon_positive(scenario, findings, coupon, "coupon_trace_width_mm")?;
+    let max_trace_width_delta_mm =
+        required_coupon_nonnegative(scenario, findings, coupon, "max_trace_width_delta_mm")?;
+    let (coupon_trace_gap_mm, max_trace_gap_delta_mm) = match coupon.coupon_type {
+        ControlledImpedanceCouponType::SingleEnded => {
+            if coupon.coupon_trace_gap_mm.is_some() || coupon.max_trace_gap_delta_mm.is_some() {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID single-ended coupon {} must not declare coupon_trace_gap_mm or max_trace_gap_delta_mm.",
+                        coupon.name
+                    ),
+                );
+                return None;
+            }
+            (None, None)
+        }
+        ControlledImpedanceCouponType::Differential => (
+            Some(required_coupon_positive(
+                scenario,
+                findings,
+                coupon,
+                "coupon_trace_gap_mm",
+            )?),
+            Some(required_coupon_nonnegative(
+                scenario,
+                findings,
+                coupon,
+                "max_trace_gap_delta_mm",
+            )?),
+        ),
+    };
+    Some(TraceCorrelationPolicy {
+        process_lot,
+        panel_id,
+        stackup_revision,
+        coupon_trace_layer,
+        coupon_trace_width_mm,
+        max_trace_width_delta_mm,
+        coupon_trace_gap_mm,
+        max_trace_gap_delta_mm,
+    })
+}
+
+fn required_coupon_string(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    field: &str,
+) -> Option<String> {
+    let value = match field {
+        "process_lot" => coupon.process_lot.as_deref(),
+        "panel_id" => coupon.panel_id.as_deref(),
+        "stackup_revision" => coupon.stackup_revision.as_deref(),
+        "coupon_trace_layer" => coupon.coupon_trace_layer.as_deref(),
+        _ => None,
+    }
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+    .map(str::to_string);
+    if value.is_none() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID coupon {} requires reviewed {field}.",
+                coupon.name
+            ),
+        );
+    }
+    value
+}
+
+fn required_coupon_positive(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    field: &str,
+) -> Option<f64> {
+    let value = match field {
+        "coupon_trace_width_mm" => coupon.coupon_trace_width_mm,
+        "coupon_trace_gap_mm" => coupon.coupon_trace_gap_mm,
+        _ => None,
+    };
+    required_coupon_number(scenario, findings, coupon, field, value, true)
+}
+
+fn required_coupon_nonnegative(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    field: &str,
+) -> Option<f64> {
+    let value = match field {
+        "max_trace_width_delta_mm" => coupon.max_trace_width_delta_mm,
+        "max_trace_gap_delta_mm" => coupon.max_trace_gap_delta_mm,
+        _ => None,
+    };
+    required_coupon_number(scenario, findings, coupon, field, value, false)
+}
+
+fn required_coupon_number(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    field: &str,
+    value: Option<f64>,
+    positive: bool,
+) -> Option<f64> {
+    let Some(value) = value.filter(|value| value.is_finite()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID coupon {} requires finite reviewed {field}.",
+                coupon.name
+            ),
+        );
+        return None;
+    };
+    if positive && value <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID coupon {} {field} must be positive.",
+                coupon.name
+            ),
+        );
+        return None;
+    }
+    if !positive && value < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID coupon {} {field} must be non-negative.",
+                coupon.name
+            ),
+        );
+        return None;
+    }
+    Some(value)
+}
+
+fn trace_correlation_metrics(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    policy: &TraceCorrelationPolicy,
+) -> Option<TraceCorrelationMetrics> {
+    match coupon.coupon_type {
+        ControlledImpedanceCouponType::SingleEnded => {
+            let net = coupon.net.as_deref()?;
+            let route = route_for_trace_correlation(bound, scenario, findings, net)?;
+            trace_correlation_single_metrics(net, route, policy)
+        }
+        ControlledImpedanceCouponType::Differential => {
+            let first_net = coupon.first_net.as_deref()?;
+            let second_net = coupon.second_net.as_deref()?;
+            let first_route = route_for_trace_correlation(bound, scenario, findings, first_net)?;
+            let second_route = route_for_trace_correlation(bound, scenario, findings, second_net)?;
+            trace_correlation_pair_metrics(
+                scenario,
+                findings,
+                coupon,
+                first_net,
+                first_route,
+                second_net,
+                second_route,
+                policy,
+            )
+        }
+    }
+}
+
+fn route_for_trace_correlation<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    net: &str,
+) -> Option<&'a NetRoute> {
+    let Some(route) = bound.project.board.layout.routes.get(net) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID net {net} has no board.layout.routes entry."
+            ),
+        );
+        return None;
+    };
+    if route.segments.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID net {net} route must include at least one segment."
+            ),
+        );
+        return None;
+    }
+    for segment in &route.segments {
+        if !usable_route_segment(segment) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID net {net} route segments must have finite endpoints, positive width, non-empty layer, and non-zero length."
+                ),
+            );
+            return None;
+        }
+    }
+    Some(route)
+}
+
+fn trace_correlation_single_metrics(
+    net: &str,
+    route: &NetRoute,
+    policy: &TraceCorrelationPolicy,
+) -> Option<TraceCorrelationMetrics> {
+    let width = worst_trace_width_delta(route, net, policy.coupon_trace_width_mm)?;
+    let observed_route_layers = route_layers(route);
+    Some(TraceCorrelationMetrics {
+        layer_mismatch: !observed_route_layers
+            .iter()
+            .all(|layer| layer == &policy.coupon_trace_layer),
+        observed_route_layers,
+        max_width_delta_mm: width.delta_mm,
+        width_segment_net: width.net,
+        width_segment_index: width.segment_index,
+        measured_width_mm: width.measured_width_mm,
+        max_gap_delta_mm: None,
+        measured_gap_mm: None,
+        gap_first_segment_index: None,
+        gap_second_segment_index: None,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn trace_correlation_pair_metrics(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    first_net: &str,
+    first_route: &NetRoute,
+    second_net: &str,
+    second_route: &NetRoute,
+    policy: &TraceCorrelationPolicy,
+) -> Option<TraceCorrelationMetrics> {
+    let first_width = worst_trace_width_delta(first_route, first_net, policy.coupon_trace_width_mm);
+    let second_width =
+        worst_trace_width_delta(second_route, second_net, policy.coupon_trace_width_mm);
+    let width = [first_width, second_width]
+        .into_iter()
+        .flatten()
+        .max_by(|left, right| left.delta_mm.total_cmp(&right.delta_mm))?;
+    let expected_gap = policy.coupon_trace_gap_mm?;
+    let Some(gap) = worst_trace_gap_delta(first_route, second_route, expected_gap) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID coupon {} differential route has no parallel same-layer gap evidence.",
+                coupon.name
+            ),
+        );
+        return None;
+    };
+    let mut observed_route_layers = route_layers(first_route);
+    observed_route_layers.extend(route_layers(second_route));
+    observed_route_layers.sort();
+    observed_route_layers.dedup();
+    Some(TraceCorrelationMetrics {
+        layer_mismatch: !observed_route_layers
+            .iter()
+            .all(|layer| layer == &policy.coupon_trace_layer),
+        observed_route_layers,
+        max_width_delta_mm: width.delta_mm,
+        width_segment_net: width.net,
+        width_segment_index: width.segment_index,
+        measured_width_mm: width.measured_width_mm,
+        max_gap_delta_mm: Some(gap.delta_mm),
+        measured_gap_mm: Some(gap.measured_gap_mm),
+        gap_first_segment_index: Some(gap.first_segment_index),
+        gap_second_segment_index: Some(gap.second_segment_index),
+    })
+}
+
+#[derive(Debug)]
+struct TraceWidthDelta {
+    net: String,
+    segment_index: usize,
+    measured_width_mm: f64,
+    delta_mm: f64,
+}
+
+#[derive(Debug)]
+struct TraceGapDelta {
+    first_segment_index: usize,
+    second_segment_index: usize,
+    measured_gap_mm: f64,
+    delta_mm: f64,
+}
+
+fn worst_trace_width_delta(
+    route: &NetRoute,
+    net: &str,
+    expected_width_mm: f64,
+) -> Option<TraceWidthDelta> {
+    route
+        .segments
+        .iter()
+        .enumerate()
+        .map(|(segment_index, segment)| TraceWidthDelta {
+            net: net.to_string(),
+            segment_index,
+            measured_width_mm: segment.width_mm,
+            delta_mm: (segment.width_mm - expected_width_mm).abs(),
+        })
+        .max_by(|left, right| left.delta_mm.total_cmp(&right.delta_mm))
+}
+
+fn worst_trace_gap_delta(
+    first_route: &NetRoute,
+    second_route: &NetRoute,
+    expected_gap_mm: f64,
+) -> Option<TraceGapDelta> {
+    let mut worst = None;
+    for (first_segment_index, first_segment) in first_route.segments.iter().enumerate() {
+        for (second_segment_index, second_segment) in second_route.segments.iter().enumerate() {
+            if first_segment.layer != second_segment.layer {
+                continue;
+            }
+            let Some(measured_gap_mm) = parallel_overlap_gap_mm(first_segment, second_segment)
+            else {
+                continue;
+            };
+            let delta_mm = (measured_gap_mm - expected_gap_mm).abs();
+            let gap = TraceGapDelta {
+                first_segment_index,
+                second_segment_index,
+                measured_gap_mm,
+                delta_mm,
+            };
+            if worst
+                .as_ref()
+                .is_none_or(|current: &TraceGapDelta| delta_mm > current.delta_mm)
+            {
+                worst = Some(gap);
+            }
+        }
+    }
+    worst
+}
+
+fn route_layers(route: &NetRoute) -> Vec<String> {
+    let mut layers = route
+        .segments
+        .iter()
+        .map(|segment| segment.layer.clone())
+        .collect::<Vec<_>>();
+    layers.sort();
+    layers.dedup();
+    layers
+}
+
+fn usable_route_segment(segment: &RouteSegment) -> bool {
+    segment.start.x_mm.is_finite()
+        && segment.start.y_mm.is_finite()
+        && segment.end.x_mm.is_finite()
+        && segment.end.y_mm.is_finite()
+        && segment.width_mm.is_finite()
+        && segment.width_mm > 0.0
+        && !segment.layer.trim().is_empty()
+        && segment_length_mm(segment) > f64::EPSILON
+}
+
+fn segment_length_mm(segment: &RouteSegment) -> f64 {
+    (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+}
+
+fn parallel_overlap_gap_mm(first: &RouteSegment, second: &RouteSegment) -> Option<f64> {
+    let first_dx = first.end.x_mm - first.start.x_mm;
+    let first_dy = first.end.y_mm - first.start.y_mm;
+    let second_dx = second.end.x_mm - second.start.x_mm;
+    let second_dy = second.end.y_mm - second.start.y_mm;
+    let first_len = first_dx.hypot(first_dy);
+    let second_len = second_dx.hypot(second_dy);
+    if first_len <= f64::EPSILON || second_len <= f64::EPSILON {
+        return None;
+    }
+    let first_unit_x = first_dx / first_len;
+    let first_unit_y = first_dy / first_len;
+    let second_unit_x = second_dx / second_len;
+    let second_unit_y = second_dy / second_len;
+    let cross = (first_unit_x * second_unit_y - first_unit_y * second_unit_x).abs();
+    if cross > 1.0e-6 {
+        return None;
+    }
+    let projection_a = (second.start.x_mm - first.start.x_mm) * first_unit_x
+        + (second.start.y_mm - first.start.y_mm) * first_unit_y;
+    let projection_b = (second.end.x_mm - first.start.x_mm) * first_unit_x
+        + (second.end.y_mm - first.start.y_mm) * first_unit_y;
+    let overlap_start = projection_a.min(projection_b).max(0.0);
+    let overlap_end = projection_a.max(projection_b).min(first_len);
+    if overlap_end - overlap_start <= f64::EPSILON {
+        return None;
+    }
+    let centerline_distance_mm = ((second.start.x_mm - first.start.x_mm) * first_unit_y
+        - (second.start.y_mm - first.start.y_mm) * first_unit_x)
+        .abs();
+    Some(centerline_distance_mm - (first.width_mm + second.width_mm) / 2.0)
+}
+
+fn trace_correlation_finding(
+    scenario: &Scenario,
+    coupon: &ControlledImpedanceCoupon,
+    policy: &TraceCorrelationPolicy,
+    metrics: &TraceCorrelationMetrics,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID,
+        &scenario.name,
+        format!(
+            "Controlled-impedance coupon {} trace/process metadata does not correlate with imported board route evidence.",
+            coupon.name
+        ),
+    );
+    finding
+        .measured
+        .insert("coupon_name".to_string(), json!(coupon.name));
+    finding
+        .measured
+        .insert("coupon_type".to_string(), json!(coupon_type_label(coupon)));
+    finding
+        .measured
+        .insert("source".to_string(), json!(coupon.source));
+    if let Some(net) = &coupon.net {
+        finding.measured.insert("net".to_string(), json!(net));
+    }
+    if let Some(first_net) = &coupon.first_net {
+        finding
+            .measured
+            .insert("first_net".to_string(), json!(first_net));
+    }
+    if let Some(second_net) = &coupon.second_net {
+        finding
+            .measured
+            .insert("second_net".to_string(), json!(second_net));
+    }
+    finding
+        .measured
+        .insert("process_lot".to_string(), json!(policy.process_lot));
+    finding
+        .measured
+        .insert("panel_id".to_string(), json!(policy.panel_id));
+    finding.measured.insert(
+        "stackup_revision".to_string(),
+        json!(policy.stackup_revision),
+    );
+    finding.measured.insert(
+        "coupon_trace_layer".to_string(),
+        json!(policy.coupon_trace_layer),
+    );
+    finding.measured.insert(
+        "observed_route_layers".to_string(),
+        json!(metrics.observed_route_layers),
+    );
+    finding
+        .measured
+        .insert("layer_mismatch".to_string(), json!(metrics.layer_mismatch));
+    finding.measured.insert(
+        "width_segment_net".to_string(),
+        json!(metrics.width_segment_net),
+    );
+    finding.measured.insert(
+        "width_segment_index".to_string(),
+        json!(metrics.width_segment_index),
+    );
+    finding.measured.insert(
+        "measured_width_mm".to_string(),
+        json!(metrics.measured_width_mm),
+    );
+    finding.measured.insert(
+        "max_width_delta_mm".to_string(),
+        json!(metrics.max_width_delta_mm),
+    );
+    if let Some(value) = metrics.max_gap_delta_mm {
+        finding
+            .measured
+            .insert("max_gap_delta_mm".to_string(), json!(value));
+    }
+    if let Some(value) = metrics.measured_gap_mm {
+        finding
+            .measured
+            .insert("measured_gap_mm".to_string(), json!(value));
+    }
+    if let Some(value) = metrics.gap_first_segment_index {
+        finding
+            .measured
+            .insert("gap_first_segment_index".to_string(), json!(value));
+    }
+    if let Some(value) = metrics.gap_second_segment_index {
+        finding
+            .measured
+            .insert("gap_second_segment_index".to_string(), json!(value));
+    }
+    finding.limit.insert(
+        "coupon_trace_width_mm".to_string(),
+        json!(policy.coupon_trace_width_mm),
+    );
+    finding.limit.insert(
+        "max_trace_width_delta_mm".to_string(),
+        json!(policy.max_trace_width_delta_mm),
+    );
+    if let Some(value) = policy.coupon_trace_gap_mm {
+        finding
+            .limit
+            .insert("coupon_trace_gap_mm".to_string(), json!(value));
+    }
+    if let Some(value) = policy.max_trace_gap_delta_mm {
+        finding
+            .limit
+            .insert("max_trace_gap_delta_mm".to_string(), json!(value));
+    }
+    finding.suggested_fixes = vec![
+        "Review whether the coupon report belongs to the same fabrication lot, panel, stackup revision, and routed trace geometry as the board target.".to_string(),
+        "Update coupon trace-layer/width/gap metadata only from the reviewed fabricator coupon or process report.".to_string(),
+        "Do not treat this check as a field solver; it verifies explicit coupon-to-route correlation evidence only.".to_string(),
     ];
     finding
 }

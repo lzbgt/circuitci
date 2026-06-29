@@ -10,7 +10,7 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         "scenario_suggestions_controlled_impedance"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 10);
+    assert_eq!(suggested.len(), 12);
 
     let single_ended = &suggested[0];
     assert_eq!(single_ended["id"], "controlled_impedance_rf");
@@ -250,6 +250,50 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
     );
     assert_eq!(
         differential_coupon_batch["scenario"]["parameters"]["coupons"][0]["name"],
+        "dp_dm_coupon"
+    );
+
+    let single_coupon_trace = &suggested[10];
+    assert_eq!(
+        single_coupon_trace["id"],
+        "controlled_impedance_coupon_trace_correlation_rf_coupon"
+    );
+    assert_eq!(
+        single_coupon_trace["kind"],
+        "manufacturing_controlled_impedance_coupon_trace_correlation_rf_coupon"
+    );
+    assert_eq!(single_coupon_trace["runnable"], true);
+    assert_eq!(
+        single_coupon_trace["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID"
+    );
+    assert_eq!(
+        single_coupon_trace["scenario"]["parameters"]["coupons"][0]["name"],
+        "rf_coupon"
+    );
+    assert!(
+        single_coupon_trace["reason"]
+            .as_str()
+            .unwrap()
+            .contains("lot/panel/stackup trace-correlation metadata")
+    );
+
+    let differential_coupon_trace = &suggested[11];
+    assert_eq!(
+        differential_coupon_trace["id"],
+        "controlled_impedance_coupon_trace_correlation_dp_dm_coupon"
+    );
+    assert_eq!(
+        differential_coupon_trace["kind"],
+        "manufacturing_controlled_impedance_coupon_trace_correlation_dp_dm_coupon"
+    );
+    assert_eq!(differential_coupon_trace["runnable"], true);
+    assert_eq!(
+        differential_coupon_trace["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID"
+    );
+    assert_eq!(
+        differential_coupon_trace["scenario"]["parameters"]["coupons"][0]["name"],
         "dp_dm_coupon"
     );
 }

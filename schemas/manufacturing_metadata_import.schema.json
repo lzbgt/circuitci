@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.15.0" },
+    "schema_version": { "const": "0.16.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -169,6 +169,26 @@
                   "exclusiveMinimum": 0
                 },
                 "max_impedance_error_ohm": { "type": "number", "minimum": 0 },
+                "process_lot": { "type": "string", "minLength": 1 },
+                "panel_id": { "type": "string", "minLength": 1 },
+                "stackup_revision": { "type": "string", "minLength": 1 },
+                "coupon_trace_layer": { "type": "string", "minLength": 1 },
+                "coupon_trace_width_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_trace_width_delta_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "coupon_trace_gap_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_trace_gap_delta_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
                 "min_batch_sample_count": { "type": "integer", "minimum": 1 },
                 "max_batch_mean_impedance_error_ohm": {
                   "type": "number",

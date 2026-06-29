@@ -142,6 +142,7 @@ Canonical executable check IDs:
 - `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID`
+- `CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -1935,6 +1936,43 @@ This is a reviewed batch-statistics screen only. It does not infer whether a
 coupon statistically represents routed board traces, compute process
 capability indices, solve impedance, or replace fabricator/SI acceptance
 review.
+
+Controlled-impedance coupon trace-correlation validation uses
+`CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID` with the same
+`parameters.coupons[]` shape. It first applies the single-coupon metadata,
+net-association, and board-target consistency gates, then compares reviewed
+coupon process/trace metadata against imported route layer, width, and
+differential-pair gap evidence.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_coupon_trace_correlation
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID
+    parameters:
+      coupons:
+        - name: rf_coupon
+```
+
+Controlled-impedance coupon trace-correlation algorithm:
+
+1. Require each named coupon to pass the reviewed coupon metadata and matching
+   board-target checks used by `CONTROLLED_IMPEDANCE_COUPON_VALID`.
+2. Require reviewed `process_lot`, `panel_id`, `stackup_revision`,
+   `coupon_trace_layer`, `coupon_trace_width_mm`, and
+   `max_trace_width_delta_mm` metadata.
+3. For differential coupons, also require reviewed `coupon_trace_gap_mm` and
+   `max_trace_gap_delta_mm`; single-ended coupons must not declare gap fields.
+4. Require imported route evidence for the mapped board net or unordered pair.
+5. Fail when route layer evidence does not match `coupon_trace_layer`, route
+   width differs from `coupon_trace_width_mm` beyond
+   `max_trace_width_delta_mm`, or differential-pair gap evidence differs from
+   `coupon_trace_gap_mm` beyond `max_trace_gap_delta_mm`.
+
+This is a reviewed process/trace correlation screen only. It does not infer
+coupon applicability, solve impedance, model etch compensation, compute
+statistical process capability, or replace fabricator/SI review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit
