@@ -188,8 +188,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   `board.manufacturing` fields plus reviewed `board.layout.stackup.layers[]`
   entries, RF antenna layout/topology/measurement/limit/condition constraints
   with optional sampled sweep-coverage policy, package
-  thermal metadata, reviewed controlled-impedance target/coupon/sample/trace-correlation
-  and solver-result artifact/input/roughness/etch/sample metadata, and reviewed operating environment and thermal-limit metadata,
+  thermal metadata, reviewed controlled-impedance
+  target/coupon/sample/trace-correlation and solver-result
+  artifact/input/roughness/etch/sample/qualification metadata, and reviewed
+  operating environment and thermal-limit metadata,
   preserves raw row evidence and skipped unrelated order rows in a JSON
   manifest, and does not infer process defaults, package thermal data,
   environment limits, thermal limits, coupon applicability, acceptable RF
@@ -202,9 +204,10 @@ Importers append evidence instead of guessing missing intent. Examples:
   construction lives in `src/importers/manufacturing_metadata/rows/values.rs`;
   supported-field normalization, duplicate checks, and manifest row evidence
   live in `src/importers/manufacturing_metadata/rows.rs`. CLI regression
-  coverage for generic, controlled-impedance, and thermal metadata import lives
-  in `tests/manufacturing_metadata_cli.rs`; RF antenna metadata import
-  regressions live in `tests/manufacturing_metadata_rf_cli.rs`.
+  coverage for generic and controlled-impedance metadata import lives in
+  `tests/manufacturing_metadata_cli.rs`; thermal metadata import regressions
+  live in `tests/manufacturing_metadata_thermal_cli.rs`; RF antenna metadata
+  import regressions live in `tests/manufacturing_metadata_rf_cli.rs`.
 - Gerber copper import records flashes, circular-aperture draw segments, and
   single-contour regions. Copper is anonymous until existing pad, route, zone,
   or flying-probe evidence uniquely proves net/island/owner metadata.
