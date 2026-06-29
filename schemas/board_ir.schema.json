@@ -541,6 +541,83 @@
                     "additionalProperties": false
                   }
                 },
+                "solver_material_processes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "material_library",
+                      "material_library_revision",
+                      "fabricator_stackup_revision",
+                      "dielectric_layer",
+                      "material",
+                      "process_lot",
+                      "material_lot",
+                      "process_revision",
+                      "drift_artifact_uri",
+                      "drift_artifact_sha256",
+                      "accepted_dielectric_constant",
+                      "measured_dielectric_constant",
+                      "max_dielectric_constant_delta",
+                      "accepted_thickness_mm",
+                      "measured_thickness_mm",
+                      "max_thickness_delta_mm"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "material_library": { "type": "string", "minLength": 1 },
+                      "material_library_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fabricator_stackup_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "dielectric_layer": { "type": "string", "minLength": 1 },
+                      "material": { "type": "string", "minLength": 1 },
+                      "process_lot": { "type": "string", "minLength": 1 },
+                      "material_lot": { "type": "string", "minLength": 1 },
+                      "process_revision": { "type": "string", "minLength": 1 },
+                      "drift_artifact_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "drift_artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "accepted_dielectric_constant": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "measured_dielectric_constant": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "max_dielectric_constant_delta": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "accepted_thickness_mm": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "measured_thickness_mm": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "max_thickness_delta_mm": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "solver_results": {
                   "type": "array",
                   "items": {

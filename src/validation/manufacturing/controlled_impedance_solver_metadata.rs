@@ -1,8 +1,8 @@
 use crate::board_ir::{
     ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialCorner,
-    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverQualification,
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, Scenario, StackupLayer,
-    StackupLayerKind,
+    ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverMaterialProcess,
+    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, Scenario, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -256,6 +256,9 @@ pub(super) fn solver_material_library_artifact_metadata_is_valid(
         }
     }
     if !solver_material_acceptance_metadata_is_valid(bound, scenario, findings, result) {
+        return false;
+    }
+    if !solver_material_process_metadata_is_valid(bound, scenario, findings, result) {
         return false;
     }
     true
@@ -905,6 +908,212 @@ fn solver_material_acceptance_has_valid_metadata(
         && !trimmed_set(&acceptance.accepted_corners).is_empty()
         && !trimmed_set(&acceptance.accepted_dielectric_layers).is_empty()
         && !trimmed_set(&acceptance.accepted_materials).is_empty()
+}
+
+fn solver_material_process_metadata_is_valid(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let processes = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_material_processes;
+    if processes.is_empty() {
+        return true;
+    }
+    let Some(material) = solver_result_material(bound, result) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires reviewed stackup or material-corner material evidence when solver material process rows exist.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    let fabricator_revision = result
+        .fabricator_stackup_revision
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(result.stackup_revision.trim());
+    let matches = processes
+        .iter()
+        .filter(|process| {
+            solver_material_process_matches_result(process, result, fabricator_revision, &material)
+        })
+        .collect::<Vec<_>>();
+    if matches.len() != 1 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires exactly one reviewed solver material process row for library {} revision {} fabricator stackup revision {fabricator_revision} dielectric layer {} material {material}; found {}.",
+                result.name,
+                result
+                    .solver_material_library
+                    .as_deref()
+                    .unwrap_or_default(),
+                result
+                    .solver_material_library_revision
+                    .as_deref()
+                    .unwrap_or_default(),
+                result.dielectric_layer,
+                matches.len()
+            ),
+        );
+        return false;
+    }
+    let process = matches[0];
+    if !solver_material_process_has_valid_metadata(process) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material process {} for result {} must declare non-empty source/library/revision/fabricator/layer/material/lot/artifact metadata, a 64-character SHA-256 digest, positive Dk/thickness values, and non-negative drift limits.",
+                process.name, result.name
+            ),
+        );
+        return false;
+    }
+    if (process.measured_dielectric_constant - process.accepted_dielectric_constant).abs()
+        > process.max_dielectric_constant_delta + f64::EPSILON
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material process {} for result {} exceeds reviewed dielectric-constant drift limit.",
+                process.name, result.name
+            ),
+        );
+        return false;
+    }
+    if (process.measured_thickness_mm - process.accepted_thickness_mm).abs()
+        > process.max_thickness_delta_mm + f64::EPSILON
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material process {} for result {} exceeds reviewed dielectric-thickness drift limit.",
+                process.name, result.name
+            ),
+        );
+        return false;
+    }
+    if let Some(dielectric_layer) = named_stackup_layer(
+        &bound.project.board.layout.stackup.layers,
+        &result.dielectric_layer,
+    ) {
+        if let Some(stackup_dk) = dielectric_layer.dielectric_constant
+            && (stackup_dk - process.accepted_dielectric_constant).abs() > f64::EPSILON
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material process {} for result {} accepted_dielectric_constant must match reviewed stackup layer {} dielectric_constant.",
+                    process.name, result.name, dielectric_layer.name
+                ),
+            );
+            return false;
+        }
+        if let Some(stackup_thickness) = dielectric_layer.thickness_mm
+            && (stackup_thickness - process.accepted_thickness_mm).abs() > f64::EPSILON
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID material process {} for result {} accepted_thickness_mm must match reviewed stackup layer {} thickness_mm.",
+                    process.name, result.name, dielectric_layer.name
+                ),
+            );
+            return false;
+        }
+    }
+    true
+}
+
+fn solver_result_material(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> Option<String> {
+    if let Some(layer) = named_stackup_layer(
+        &bound.project.board.layout.stackup.layers,
+        &result.dielectric_layer,
+    ) && let Some(material) = layer.material.as_deref()
+    {
+        let material = material.trim();
+        if !material.is_empty() {
+            return Some(material.to_string());
+        }
+    }
+    let materials = result
+        .material_corners
+        .iter()
+        .filter(|corner| corner.dielectric_layer.trim() == result.dielectric_layer.trim())
+        .map(|corner| corner.material.trim())
+        .filter(|material| !material.is_empty())
+        .collect::<BTreeSet<_>>();
+    if materials.len() == 1 {
+        materials
+            .iter()
+            .next()
+            .map(|material| (*material).to_string())
+    } else {
+        None
+    }
+}
+
+fn solver_material_process_matches_result(
+    process: &ControlledImpedanceSolverMaterialProcess,
+    result: &ControlledImpedanceSolverResult,
+    fabricator_revision: &str,
+    material: &str,
+) -> bool {
+    result
+        .solver_material_library
+        .as_deref()
+        .is_some_and(|value| value.trim() == process.material_library.trim())
+        && result
+            .solver_material_library_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == process.material_library_revision.trim())
+        && process.fabricator_stackup_revision.trim() == fabricator_revision
+        && process.dielectric_layer.trim() == result.dielectric_layer.trim()
+        && process.material.trim() == material
+}
+
+fn solver_material_process_has_valid_metadata(
+    process: &ControlledImpedanceSolverMaterialProcess,
+) -> bool {
+    !process.name.trim().is_empty()
+        && !process.source.trim().is_empty()
+        && !process.material_library.trim().is_empty()
+        && !process.material_library_revision.trim().is_empty()
+        && !process.fabricator_stackup_revision.trim().is_empty()
+        && !process.dielectric_layer.trim().is_empty()
+        && !process.material.trim().is_empty()
+        && !process.process_lot.trim().is_empty()
+        && !process.material_lot.trim().is_empty()
+        && !process.process_revision.trim().is_empty()
+        && !process.drift_artifact_uri.trim().is_empty()
+        && is_sha256_hex(process.drift_artifact_sha256.trim())
+        && positive(process.accepted_dielectric_constant)
+        && positive(process.measured_dielectric_constant)
+        && process.max_dielectric_constant_delta.is_finite()
+        && process.max_dielectric_constant_delta >= 0.0
+        && positive(process.accepted_thickness_mm)
+        && positive(process.measured_thickness_mm)
+        && process.max_thickness_delta_mm.is_finite()
+        && process.max_thickness_delta_mm >= 0.0
 }
 
 fn trimmed_set(values: &[String]) -> BTreeSet<&str> {

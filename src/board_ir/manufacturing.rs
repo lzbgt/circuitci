@@ -47,6 +47,8 @@ pub struct ControlledImpedanceTargets {
     #[serde(default)]
     pub solver_material_acceptances: Vec<ControlledImpedanceSolverMaterialAcceptance>,
     #[serde(default)]
+    pub solver_material_processes: Vec<ControlledImpedanceSolverMaterialProcess>,
+    #[serde(default)]
     pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
@@ -175,6 +177,28 @@ pub struct ControlledImpedanceSolverMaterialAcceptance {
     pub accepted_dielectric_layers: Vec<String>,
     #[serde(default)]
     pub accepted_materials: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverMaterialProcess {
+    pub name: String,
+    pub source: String,
+    pub material_library: String,
+    pub material_library_revision: String,
+    pub fabricator_stackup_revision: String,
+    pub dielectric_layer: String,
+    pub material: String,
+    pub process_lot: String,
+    pub material_lot: String,
+    pub process_revision: String,
+    pub drift_artifact_uri: String,
+    pub drift_artifact_sha256: String,
+    pub accepted_dielectric_constant: f64,
+    pub measured_dielectric_constant: f64,
+    pub max_dielectric_constant_delta: f64,
+    pub accepted_thickness_mm: f64,
+    pub measured_thickness_mm: f64,
+    pub max_thickness_delta_mm: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -447,6 +447,13 @@ validation also requires exactly one matching fabricator material-acceptance
 row by material library, material-library revision, and fabricator stackup
 revision. That row must declare artifact URI/SHA-256 provenance and accepted
 corners, dielectric layers, and materials covering the solver result.
+When reviewed `controlled_impedance.solver_material_processes[]` rows are
+present, validation also requires exactly one matching material lot/process row
+by material library, material-library revision, fabricator stackup revision,
+dielectric layer, and reviewed material. That row must declare process lot,
+material lot, process revision, drift artifact URI/SHA-256 provenance, and
+measured-vs-accepted dielectric constant and thickness drift within reviewed
+limits.
 Optional reviewed fabricator stackup signoff columns are
 `stackup_signoff_source`, `fabricator_stackup_revision`,
 `stackup_signoff_artifact_uri`, and `stackup_signoff_artifact_sha256`;
@@ -485,6 +492,17 @@ Repeated `field=controlled_impedance_solver_material_acceptance` rows populate
 `accepted_dielectric_layers`, and `accepted_materials`. Optional `accepted_by`
 preserves reviewer identity. These rows are reviewed fabricator acceptance
 metadata only; CircuitCI does not fetch or parse the acceptance artifact.
+Repeated `field=controlled_impedance_solver_material_process` rows populate
+`controlled_impedance.solver_material_processes[]` and require `name`,
+`source`, `material_library`, `material_library_revision`,
+`fabricator_stackup_revision`, `dielectric_layer`, `material`, `process_lot`,
+`material_lot`, `process_revision`, `drift_artifact_uri`,
+`drift_artifact_sha256`, `accepted_dielectric_constant`,
+`measured_dielectric_constant`, `max_dielectric_constant_delta`,
+`accepted_thickness_mm`, `measured_thickness_mm`, and
+`max_thickness_delta_mm`. These rows are reviewed lot/process drift metadata
+only; CircuitCI compares explicit values and does not fetch or parse the drift
+artifact.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver

@@ -602,7 +602,7 @@ fn controlled_impedance_coupon_trace_correlation_fails_closed_without_process_ta
         "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID",
     );
     let mut project = std::fs::read_to_string(&project_path).unwrap();
-    project = project.replace("          process_lot: lot_2026_06_a\n", "");
+    project = project.replacen("          process_lot: lot_2026_06_a\n", "", 1);
     std::fs::write(&project_path, project).unwrap();
 
     let report = run_validation(project_path.to_str().unwrap());
@@ -837,6 +837,38 @@ fn controlled_impedance_solver_result_fails_for_material_acceptance_gap() {
             .as_str()
             .unwrap()
             .contains("does not accept required corner high_dk")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_for_material_process_drift_gap() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          input_etch_compensation_um: 8.0\n",
+        "          input_etch_compensation_um: 8.0\n          solver_material_library: reviewed_stackup_materials\n          solver_material_library_revision: rev_a\n          solver_material_library_artifact_uri: artifacts/solver/material_library_rev_a.json\n          solver_material_library_artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd\n          input_material_library: reviewed_stackup_materials\n          input_material_library_revision: rev_a\n",
+    );
+    project = project.replace(
+        "          measured_dielectric_constant: 4.12\n",
+        "          measured_dielectric_constant: 4.20\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("exceeds reviewed dielectric-constant drift limit")
     );
     assert_report_schema_valid(&report);
 }
@@ -1484,6 +1516,25 @@ board:
           accepted_corners: [nominal, high_dk]
           accepted_dielectric_layers: [prepreg_1]
           accepted_materials: [FR-4 prepreg]
+      solver_material_processes:
+        - name: reviewed_stackup_materials_rev_a_lot_a
+          source: fabricator_material_lot_report_rev_a
+          material_library: reviewed_stackup_materials
+          material_library_revision: rev_a
+          fabricator_stackup_revision: stackup_rev_a
+          dielectric_layer: prepreg_1
+          material: FR-4 prepreg
+          process_lot: lot_2026_06_a
+          material_lot: fr4_prepeg_lot_7
+          process_revision: lamination_rev_c
+          drift_artifact_uri: artifacts/fabricator/material_lot_drift_rev_a.pdf
+          drift_artifact_sha256: 444455556666777788889999aaaabbbbccccddddeeeeffff0000111122223333
+          accepted_dielectric_constant: 4.1
+          measured_dielectric_constant: 4.12
+          max_dielectric_constant_delta: 0.05
+          accepted_thickness_mm: 0.18
+          measured_thickness_mm: 0.181
+          max_thickness_delta_mm: 0.005
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

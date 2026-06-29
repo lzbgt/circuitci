@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.29.0");
+    assert_eq!(manifest["schema_version"], "0.30.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -905,7 +905,7 @@ fn import_manufacturing_metadata_applies_coupon_trace_correlation_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.29.0");
+    assert_eq!(manifest["schema_version"], "0.30.0");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["process_lot"],
         "lot_2026_06_b"
@@ -941,11 +941,15 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     let library_output = dir
         .path()
         .join("with_solver_result_and_material_library.project.yaml");
+    let process_output = dir
+        .path()
+        .join("with_solver_result_and_material_process.project.yaml");
     let qualified_output = dir
         .path()
         .join("with_solver_result_and_qualification.project.yaml");
     let manifest_output = output.with_extension("manufacturing.json");
     let library_manifest_output = library_output.with_extension("manufacturing.json");
+    let process_manifest_output = process_output.with_extension("manufacturing.json");
     let suggestions_output = dir.path().join("suggestions.yaml");
     let project_yaml: Value = serde_yaml_ng::from_str(
         &std::fs::read_to_string("examples/scenario_suggestions_controlled_impedance/project.yaml")
@@ -1081,7 +1085,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.29.0");
+    assert_eq!(manifest["schema_version"], "0.30.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[]"
@@ -1201,6 +1205,55 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
 
     std::fs::write(
         &metadata,
+        "field,value,source,name,material_library,material_library_revision,fabricator_stackup_revision,dielectric_layer,material,process_lot,material_lot,process_revision,drift_artifact_uri,drift_artifact_sha256,accepted_dielectric_constant,measured_dielectric_constant,max_dielectric_constant_delta,accepted_thickness_mm,measured_thickness_mm,max_thickness_delta_mm\n\
+         controlled_impedance_solver_material_process,reviewed,fabricator material lot drift,reviewed_stackup_materials_rev_b_lot_a,reviewed_stackup_materials,rev_b,stackup_rev_b,prepreg_1,FR-4 prepreg,lot_2026_06_b,fr4_prepreg_lot_8,lamination_rev_d,artifacts/fabricator/material_lot_drift_rev_b.pdf,3333444455556666777788889999aaaabbbbccccddddeeeeffff000011112222,4.1,4.12,0.05,0.18,0.181,0.005\n",
+    )
+    .unwrap();
+    let process_import = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            library_output.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            process_output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        process_import.status.success(),
+        "{}",
+        String::from_utf8_lossy(&process_import.stderr)
+    );
+    common::assert_yaml_file_valid(&process_output, &validator);
+    let enriched_with_process: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&process_output).unwrap()).unwrap();
+    let process = enriched_with_process["board"]["manufacturing"]["controlled_impedance"]
+        ["solver_material_processes"]
+        .as_sequence()
+        .unwrap()
+        .iter()
+        .find(|process| process["name"] == "reviewed_stackup_materials_rev_b_lot_a")
+        .unwrap();
+    assert_eq!(process["process_lot"], "lot_2026_06_b");
+    assert_eq!(process["measured_dielectric_constant"], 4.12);
+    let process_manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(process_manifest_output).unwrap()).unwrap();
+    if let Err(error) = manifest_validator.validate(&process_manifest) {
+        panic!("Material-process metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(
+        process_manifest["rows"][0]["board_field"],
+        "controlled_impedance.solver_material_processes[]"
+    );
+    assert_eq!(
+        process_manifest["rows"][0]["normalized_value"]["drift_artifact_sha256"],
+        "3333444455556666777788889999aaaabbbbccccddddeeeeffff000011112222"
+    );
+
+    std::fs::write(
+        &metadata,
         "field,value,unit,source,notes,name,solver,solver_version,qualification_artifact_uri,qualification_artifact_sha256\n\
          controlled_impedance_solver_qualification,qualified,,si tool qualification,reviewed tool/version qualification,reviewed_2d_field_solver_2026_07,reviewed_2d_field_solver,2026.07,artifacts/solver/reviewed_2d_field_solver_2026_07_qualification.pdf,11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\n",
     )
@@ -1209,7 +1262,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
         .args([
             "import-manufacturing-metadata",
             "--project",
-            library_output.to_str().unwrap(),
+            process_output.to_str().unwrap(),
             "--metadata",
             metadata.to_str().unwrap(),
             "--output",
@@ -1312,7 +1365,7 @@ fn import_manufacturing_metadata_applies_solver_material_corner_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.29.0");
+    assert_eq!(manifest["schema_version"], "0.30.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[].material_corners[]"
@@ -1401,7 +1454,7 @@ fn import_manufacturing_metadata_applies_solver_qualification_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.29.0");
+    assert_eq!(manifest["schema_version"], "0.30.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_qualifications[]"

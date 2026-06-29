@@ -661,6 +661,9 @@ material-corner layers/materials, the check fails closed as
 `VALIDATION_INPUT_MISSING`. If reviewed solver material-acceptance evidence is
 present but missing, ambiguous, incomplete, stale, or does not accept required
 corners, dielectric layers, or materials for the solver result, the check fails
+closed as `VALIDATION_INPUT_MISSING`. If reviewed solver material-process
+evidence is present but missing, ambiguous, incomplete, stale, or has measured
+dielectric constant or thickness drift beyond reviewed limits, the check fails
 closed as `VALIDATION_INPUT_MISSING`. If reviewed solver material-corner evidence is
 declared but incomplete, ambiguous, or inconsistent with
 `required_solver_corners`, solver material library metadata, or reviewed

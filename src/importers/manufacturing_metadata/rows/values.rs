@@ -3,7 +3,8 @@ use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
     AppliedControlledImpedanceSolverMaterialAcceptance,
     AppliedControlledImpedanceSolverMaterialCorner,
-    AppliedControlledImpedanceSolverMaterialLibrary, AppliedControlledImpedanceSolverQualification,
+    AppliedControlledImpedanceSolverMaterialLibrary,
+    AppliedControlledImpedanceSolverMaterialProcess, AppliedControlledImpedanceSolverQualification,
     AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
     AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
@@ -110,6 +111,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     if let Some(acceptance) = &field.controlled_impedance_solver_material_acceptance {
         return serde_yaml_ng::to_value(controlled_impedance_solver_material_acceptance_mapping(
             acceptance,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
+    if let Some(process) = &field.controlled_impedance_solver_material_process {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_material_process_mapping(
+            process,
         ))
         .with_context(|| {
             format!(
@@ -788,6 +800,79 @@ fn controlled_impedance_solver_material_acceptance_mapping(
     mapping.insert(
         "accepted_materials".to_string(),
         serde_yaml_ng::to_value(&acceptance.accepted_materials).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_material_process_mapping(
+    process: &AppliedControlledImpedanceSolverMaterialProcess,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(process.name.clone()));
+    mapping.insert("source".to_string(), Value::String(process.source.clone()));
+    mapping.insert(
+        "material_library".to_string(),
+        Value::String(process.material_library.clone()),
+    );
+    mapping.insert(
+        "material_library_revision".to_string(),
+        Value::String(process.material_library_revision.clone()),
+    );
+    mapping.insert(
+        "fabricator_stackup_revision".to_string(),
+        Value::String(process.fabricator_stackup_revision.clone()),
+    );
+    mapping.insert(
+        "dielectric_layer".to_string(),
+        Value::String(process.dielectric_layer.clone()),
+    );
+    mapping.insert(
+        "material".to_string(),
+        Value::String(process.material.clone()),
+    );
+    mapping.insert(
+        "process_lot".to_string(),
+        Value::String(process.process_lot.clone()),
+    );
+    mapping.insert(
+        "material_lot".to_string(),
+        Value::String(process.material_lot.clone()),
+    );
+    mapping.insert(
+        "process_revision".to_string(),
+        Value::String(process.process_revision.clone()),
+    );
+    mapping.insert(
+        "drift_artifact_uri".to_string(),
+        Value::String(process.drift_artifact_uri.clone()),
+    );
+    mapping.insert(
+        "drift_artifact_sha256".to_string(),
+        Value::String(process.drift_artifact_sha256.clone()),
+    );
+    mapping.insert(
+        "accepted_dielectric_constant".to_string(),
+        serde_yaml_ng::to_value(process.accepted_dielectric_constant).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "measured_dielectric_constant".to_string(),
+        serde_yaml_ng::to_value(process.measured_dielectric_constant).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_dielectric_constant_delta".to_string(),
+        serde_yaml_ng::to_value(process.max_dielectric_constant_delta).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "accepted_thickness_mm".to_string(),
+        serde_yaml_ng::to_value(process.accepted_thickness_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "measured_thickness_mm".to_string(),
+        serde_yaml_ng::to_value(process.measured_thickness_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_thickness_delta_mm".to_string(),
+        serde_yaml_ng::to_value(process.max_thickness_delta_mm).unwrap_or(Value::Null),
     );
     mapping
 }

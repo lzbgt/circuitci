@@ -235,7 +235,10 @@ solver corners back to explicit stackup material metadata. Repeated
 material-library artifact content, and repeated
 `field=controlled_impedance_solver_material_acceptance` rows record reviewed
 fabricator acceptance of solver material library/revision and stackup revision
-coverage. Repeated
+coverage. Repeated `field=controlled_impedance_solver_material_process` rows
+record reviewed material lot/process drift evidence for solver material
+library/revision, fabricator stackup revision, dielectric layer, and material.
+Repeated
 `field=controlled_impedance_solver_qualification` rows create or replace
 reviewed solver tool/version qualification evidence. Repeated
 `field=thermal_copper` rows create or replace reviewed

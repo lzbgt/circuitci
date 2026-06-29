@@ -31,6 +31,8 @@ pub(super) struct AppliedField {
         Option<AppliedControlledImpedanceSolverMaterialLibrary>,
     pub(super) controlled_impedance_solver_material_acceptance:
         Option<AppliedControlledImpedanceSolverMaterialAcceptance>,
+    pub(super) controlled_impedance_solver_material_process:
+        Option<AppliedControlledImpedanceSolverMaterialProcess>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -61,6 +63,7 @@ impl AppliedField {
             controlled_impedance_solver_qualification: None,
             controlled_impedance_solver_material_library: None,
             controlled_impedance_solver_material_acceptance: None,
+            controlled_impedance_solver_material_process: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -259,6 +262,28 @@ pub(super) struct AppliedControlledImpedanceSolverMaterialAcceptance {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverMaterialProcess {
+    pub(super) name: String,
+    source: String,
+    material_library: String,
+    material_library_revision: String,
+    fabricator_stackup_revision: String,
+    dielectric_layer: String,
+    material: String,
+    process_lot: String,
+    material_lot: String,
+    process_revision: String,
+    drift_artifact_uri: String,
+    drift_artifact_sha256: String,
+    accepted_dielectric_constant: f64,
+    measured_dielectric_constant: f64,
+    max_dielectric_constant_delta: f64,
+    accepted_thickness_mm: f64,
+    measured_thickness_mm: f64,
+    max_thickness_delta_mm: f64,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AppliedThermalCopper {
     pub(super) name: String,
     component: String,
@@ -433,6 +458,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceSolverQualification,
     ControlledImpedanceSolverMaterialLibrary,
     ControlledImpedanceSolverMaterialAcceptance,
+    ControlledImpedanceSolverMaterialProcess,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -477,6 +503,9 @@ impl ManufacturingField {
             }
             Self::ControlledImpedanceSolverMaterialAcceptance => {
                 "controlled_impedance.solver_material_acceptances[]"
+            }
+            Self::ControlledImpedanceSolverMaterialProcess => {
+                "controlled_impedance.solver_material_processes[]"
             }
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
@@ -528,6 +557,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceSolverQualification
                 | Self::ControlledImpedanceSolverMaterialLibrary
                 | Self::ControlledImpedanceSolverMaterialAcceptance
+                | Self::ControlledImpedanceSolverMaterialProcess
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -687,6 +717,12 @@ fn applied_field(
         );
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverMaterialProcess {
+        applied.controlled_impedance_solver_material_process = Some(
+            applied_controlled_impedance_solver_material_process(row, path)?,
+        );
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -827,6 +863,13 @@ fn applied_controlled_impedance_solver_material_acceptance(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverMaterialAcceptance> {
     families::applied_controlled_impedance_solver_material_acceptance(row, path)
+}
+
+fn applied_controlled_impedance_solver_material_process(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialProcess> {
+    families::applied_controlled_impedance_solver_material_process(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1394,6 +1437,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_solver_material_processes = BTreeSet::new();
+    for process in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_solver_material_process.as_ref())
+    {
+        if !controlled_impedance_solver_material_processes.insert(process.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_material_process row name {}.",
+                process.name
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -1636,6 +1691,15 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "fieldsolvermaterialacceptance"
         | "solvermaterialacceptance" => {
             Some(ManufacturingField::ControlledImpedanceSolverMaterialAcceptance)
+        }
+        "controlledimpedancesolvermaterialprocess"
+        | "impedancesolvermaterialprocess"
+        | "controlledimpedancefieldsolvermaterialprocess"
+        | "fieldsolvermaterialprocess"
+        | "solvermaterialprocess"
+        | "solvermateriallotprocess"
+        | "solvermaterialdrift" => {
+            Some(ManufacturingField::ControlledImpedanceSolverMaterialProcess)
         }
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)

@@ -173,7 +173,12 @@ Declaring material-library columns requires a matching reviewed
 validation can accept the solver result. If reviewed
 `controlled_impedance_solver_material_acceptance` rows are present, validation
 also requires a matching fabricator acceptance row for the solver result
-material library/revision and fabricator stackup revision. Declaring any
+material library/revision and fabricator stackup revision. If reviewed
+`controlled_impedance_solver_material_process` rows are present, validation
+also requires a matching lot/process row for the solver result material
+library/revision, fabricator stackup revision, dielectric layer, and reviewed
+material, then checks explicit Dk/thickness drift against reviewed limits.
+Declaring any
 stackup signoff column requires complete
 signoff source/revision/artifact provenance, a 64-character signoff artifact
 SHA-256 digest, and a fabricator stackup revision matching the solver result
@@ -218,6 +223,21 @@ duplicate row names fail closed. Validation matches these rows to solver
 results by material library, material-library revision, and fabricator stackup
 revision, then checks that required solver corners and material-corner
 layers/materials are accepted.
+
+`controlled_impedance_solver_material_process` rows declare reviewed
+fabricator material lot/process drift evidence and require `name`, `source`,
+`material_library`, `material_library_revision`,
+`fabricator_stackup_revision`, `dielectric_layer`, `material`, `process_lot`,
+`material_lot`, `process_revision`, `drift_artifact_uri`, a 64-character
+`drift_artifact_sha256`, positive `accepted_dielectric_constant`,
+`measured_dielectric_constant`, `accepted_thickness_mm`, and
+`measured_thickness_mm`, plus non-negative `max_dielectric_constant_delta`
+and `max_thickness_delta_mm`. Rows create or replace
+`controlled_impedance.solver_material_processes[]` entries by `name`;
+duplicate row names fail closed. Validation matches these rows to solver
+results by material library, material-library revision, fabricator stackup
+revision, dielectric layer, and reviewed material, then checks measured-vs-
+accepted drift values against the reviewed limits.
 
 `controlled_impedance_solver_qualification` rows declare reviewed solver
 tool/version qualification evidence and require `name`, `source`, `solver`,

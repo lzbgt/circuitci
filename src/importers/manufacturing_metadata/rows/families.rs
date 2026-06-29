@@ -3,7 +3,8 @@ use super::{
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
     AppliedControlledImpedanceSolverMaterialAcceptance,
     AppliedControlledImpedanceSolverMaterialCorner,
-    AppliedControlledImpedanceSolverMaterialLibrary, AppliedControlledImpedanceSolverQualification,
+    AppliedControlledImpedanceSolverMaterialLibrary,
+    AppliedControlledImpedanceSolverMaterialProcess, AppliedControlledImpedanceSolverQualification,
     AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample,
     AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
     AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
@@ -832,6 +833,133 @@ pub(super) fn applied_controlled_impedance_solver_material_acceptance(
             path,
             "accepted_materials",
             "controlled_impedance_solver_material_acceptance",
+        )?,
+    })
+}
+
+pub(super) fn applied_controlled_impedance_solver_material_process(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverMaterialProcess> {
+    let process_source = optional_raw_column(row, "process_source");
+    let source = row
+        .source
+        .as_deref()
+        .into_iter()
+        .chain(process_source.as_deref())
+        .map(str::trim)
+        .find(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_material_process requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverMaterialProcess {
+        name: required_raw_column_for(
+            row,
+            path,
+            "name",
+            "controlled_impedance_solver_material_process",
+        )?,
+        source,
+        material_library: required_raw_column_for(
+            row,
+            path,
+            "material_library",
+            "controlled_impedance_solver_material_process",
+        )?,
+        material_library_revision: required_raw_column_for(
+            row,
+            path,
+            "material_library_revision",
+            "controlled_impedance_solver_material_process",
+        )?,
+        fabricator_stackup_revision: required_raw_column_for(
+            row,
+            path,
+            "fabricator_stackup_revision",
+            "controlled_impedance_solver_material_process",
+        )?,
+        dielectric_layer: required_raw_column_for(
+            row,
+            path,
+            "dielectric_layer",
+            "controlled_impedance_solver_material_process",
+        )?,
+        material: required_raw_column_for(
+            row,
+            path,
+            "material",
+            "controlled_impedance_solver_material_process",
+        )?,
+        process_lot: required_raw_column_for(
+            row,
+            path,
+            "process_lot",
+            "controlled_impedance_solver_material_process",
+        )?,
+        material_lot: required_raw_column_for(
+            row,
+            path,
+            "material_lot",
+            "controlled_impedance_solver_material_process",
+        )?,
+        process_revision: required_raw_column_for(
+            row,
+            path,
+            "process_revision",
+            "controlled_impedance_solver_material_process",
+        )?,
+        drift_artifact_uri: required_raw_column_for(
+            row,
+            path,
+            "drift_artifact_uri",
+            "controlled_impedance_solver_material_process",
+        )?,
+        drift_artifact_sha256: required_sha256_column(
+            row,
+            path,
+            "drift_artifact_sha256",
+            "controlled_impedance_solver_material_process",
+        )?,
+        accepted_dielectric_constant: required_positive_number(
+            row,
+            path,
+            "accepted_dielectric_constant",
+            "controlled_impedance_solver_material_process",
+        )?,
+        measured_dielectric_constant: required_positive_number(
+            row,
+            path,
+            "measured_dielectric_constant",
+            "controlled_impedance_solver_material_process",
+        )?,
+        max_dielectric_constant_delta: required_nonnegative_number(
+            row,
+            path,
+            "max_dielectric_constant_delta",
+            "controlled_impedance_solver_material_process",
+        )?,
+        accepted_thickness_mm: required_positive_number(
+            row,
+            path,
+            "accepted_thickness_mm",
+            "controlled_impedance_solver_material_process",
+        )?,
+        measured_thickness_mm: required_positive_number(
+            row,
+            path,
+            "measured_thickness_mm",
+            "controlled_impedance_solver_material_process",
+        )?,
+        max_thickness_delta_mm: required_nonnegative_number(
+            row,
+            path,
+            "max_thickness_delta_mm",
+            "controlled_impedance_solver_material_process",
         )?,
     })
 }

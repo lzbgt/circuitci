@@ -2036,12 +2036,17 @@ Controlled-impedance solver-result algorithm:
     solver material library/revision and fabricator stackup revision. Require
     that row's accepted corners, dielectric layers, and materials to cover the
     solver result and declared material-corner evidence.
-14. When reviewed solver material-corner evidence is present, require each
+14. When reviewed solver material-process metadata is present, require exactly
+    one reviewed `solver_material_processes[]` row matching the solver
+    material library/revision, fabricator stackup revision, dielectric layer,
+    and reviewed material. Require measured dielectric constant and thickness
+    drift to stay within reviewed limits.
+15. When reviewed solver material-corner evidence is present, require each
     required solver corner to map to the solver result dielectric layer, match
     the reviewed solver material-library name/revision, and agree with reviewed
     stackup layer material plus nominal dielectric constant when those stackup
     fields are present.
-15. Fail when solved impedance, route width, differential route gap, sampled
+16. Fail when solved impedance, route width, differential route gap, sampled
     solver impedance, required corner coverage, sample count, frequency-step
     coverage, or reviewed input-deck setup plus copper-roughness and
     etch-compensation/material-library/material-corner consistency exceeds the reviewed limits.

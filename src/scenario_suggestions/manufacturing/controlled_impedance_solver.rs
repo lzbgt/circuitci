@@ -5,8 +5,8 @@ use super::controlled_impedance::{
 use super::manufacturing_suggestion;
 use crate::board_ir::{
     ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialLibrary,
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, NetRoute, StackupLayer,
-    StackupLayerKind,
+    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, NetRoute, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -492,6 +492,7 @@ fn controlled_impedance_solver_material_library_artifact_has_evidence(
                     .any(|value| value.trim() == corner.material.trim())
         })
         && controlled_impedance_solver_material_acceptance_has_evidence(bound, result)
+        && controlled_impedance_solver_material_process_has_evidence(bound, result)
 }
 
 fn controlled_impedance_solver_material_library_matches_result(
@@ -636,6 +637,153 @@ fn controlled_impedance_solver_material_acceptance_manifest_has_content(
         && !trimmed_set(&acceptance.accepted_corners).is_empty()
         && !trimmed_set(&acceptance.accepted_dielectric_layers).is_empty()
         && !trimmed_set(&acceptance.accepted_materials).is_empty()
+}
+
+fn controlled_impedance_solver_material_process_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let processes = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_material_processes;
+    if processes.is_empty() {
+        return true;
+    }
+    let Some(material) = controlled_impedance_solver_result_material(bound, result) else {
+        return false;
+    };
+    let fabricator_revision = result
+        .fabricator_stackup_revision
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(result.stackup_revision.trim());
+    let matches = processes
+        .iter()
+        .filter(|process| {
+            controlled_impedance_solver_material_process_matches_result(
+                process,
+                result,
+                fabricator_revision,
+                &material,
+            )
+        })
+        .collect::<Vec<_>>();
+    if matches.len() != 1
+        || !controlled_impedance_solver_material_process_manifest_has_content(matches[0])
+    {
+        return false;
+    }
+    let process = matches[0];
+    if (process.measured_dielectric_constant - process.accepted_dielectric_constant).abs()
+        > process.max_dielectric_constant_delta + f64::EPSILON
+        || (process.measured_thickness_mm - process.accepted_thickness_mm).abs()
+            > process.max_thickness_delta_mm + f64::EPSILON
+    {
+        return false;
+    }
+    if let Some(dielectric_layer) = bound
+        .project
+        .board
+        .layout
+        .stackup
+        .layers
+        .iter()
+        .find(|layer| layer.name == result.dielectric_layer)
+    {
+        if let Some(stackup_dk) = dielectric_layer.dielectric_constant
+            && (stackup_dk - process.accepted_dielectric_constant).abs() > f64::EPSILON
+        {
+            return false;
+        }
+        if let Some(stackup_thickness) = dielectric_layer.thickness_mm
+            && (stackup_thickness - process.accepted_thickness_mm).abs() > f64::EPSILON
+        {
+            return false;
+        }
+    }
+    true
+}
+
+fn controlled_impedance_solver_result_material(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> Option<String> {
+    if let Some(layer) = bound
+        .project
+        .board
+        .layout
+        .stackup
+        .layers
+        .iter()
+        .find(|layer| layer.name == result.dielectric_layer)
+        && let Some(material) = layer.material.as_deref()
+    {
+        let material = material.trim();
+        if !material.is_empty() {
+            return Some(material.to_string());
+        }
+    }
+    let materials = result
+        .material_corners
+        .iter()
+        .filter(|corner| corner.dielectric_layer.trim() == result.dielectric_layer.trim())
+        .map(|corner| corner.material.trim())
+        .filter(|material| !material.is_empty())
+        .collect::<BTreeSet<_>>();
+    if materials.len() == 1 {
+        materials
+            .iter()
+            .next()
+            .map(|material| (*material).to_string())
+    } else {
+        None
+    }
+}
+
+fn controlled_impedance_solver_material_process_matches_result(
+    process: &ControlledImpedanceSolverMaterialProcess,
+    result: &ControlledImpedanceSolverResult,
+    fabricator_revision: &str,
+    material: &str,
+) -> bool {
+    result
+        .solver_material_library
+        .as_deref()
+        .is_some_and(|value| value.trim() == process.material_library.trim())
+        && result
+            .solver_material_library_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == process.material_library_revision.trim())
+        && process.fabricator_stackup_revision.trim() == fabricator_revision
+        && process.dielectric_layer.trim() == result.dielectric_layer.trim()
+        && process.material.trim() == material
+}
+
+fn controlled_impedance_solver_material_process_manifest_has_content(
+    process: &ControlledImpedanceSolverMaterialProcess,
+) -> bool {
+    !process.name.trim().is_empty()
+        && !process.source.trim().is_empty()
+        && !process.material_library.trim().is_empty()
+        && !process.material_library_revision.trim().is_empty()
+        && !process.fabricator_stackup_revision.trim().is_empty()
+        && !process.dielectric_layer.trim().is_empty()
+        && !process.material.trim().is_empty()
+        && !process.process_lot.trim().is_empty()
+        && !process.material_lot.trim().is_empty()
+        && !process.process_revision.trim().is_empty()
+        && !process.drift_artifact_uri.trim().is_empty()
+        && is_sha256_hex(process.drift_artifact_sha256.trim())
+        && positive_finite(process.accepted_dielectric_constant)
+        && positive_finite(process.measured_dielectric_constant)
+        && non_negative_finite(process.max_dielectric_constant_delta)
+        && positive_finite(process.accepted_thickness_mm)
+        && positive_finite(process.measured_thickness_mm)
+        && non_negative_finite(process.max_thickness_delta_mm)
 }
 
 fn trimmed_set(values: &[String]) -> BTreeSet<&str> {
