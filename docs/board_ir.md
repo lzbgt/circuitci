@@ -422,6 +422,10 @@ solver result setup. Optional reviewed copper roughness columns are
 `copper_roughness_model`, `copper_roughness_um`,
 `input_copper_roughness_model`, and `input_copper_roughness_um`; declaring
 any one requires the complete result/input-deck roughness pair to match.
+Optional reviewed etch compensation columns are `etch_compensation_model`,
+`etch_compensation_um`, `input_etch_compensation_model`, and
+`input_etch_compensation_um`; declaring any one requires the complete
+result/input-deck etch compensation pair to match.
 Optional reviewed sweep/corner policy columns are
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`, and
 `required_solver_corners`. Repeated

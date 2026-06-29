@@ -1041,6 +1041,10 @@ fn controlled_impedance_solver_input_deck_policy_requested(
         || result.copper_roughness_um.is_some()
         || result.input_copper_roughness_model.is_some()
         || result.input_copper_roughness_um.is_some()
+        || result.etch_compensation_model.is_some()
+        || result.etch_compensation_um.is_some()
+        || result.input_etch_compensation_model.is_some()
+        || result.input_etch_compensation_um.is_some()
 }
 
 fn controlled_impedance_solver_input_deck_has_evidence(
@@ -1077,6 +1081,7 @@ fn controlled_impedance_solver_input_deck_has_evidence(
             .input_width_mm
             .is_some_and(|value| (value - result.solved_width_mm).abs() <= f64::EPSILON)
         && controlled_impedance_solver_roughness_has_evidence(result)
+        && controlled_impedance_solver_etch_compensation_has_evidence(result)
         && match result.result_type {
             ControlledImpedanceSolverResultType::SingleEnded => result.input_gap_mm.is_none(),
             ControlledImpedanceSolverResultType::Differential => {
@@ -1097,6 +1102,41 @@ fn controlled_impedance_solver_input_deck_has_evidence(
             (None, Some(input_frequency)) => positive_finite(input_frequency),
             (None, None) => true,
         }
+}
+
+fn controlled_impedance_solver_etch_compensation_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_etch_compensation_policy_requested(result) {
+        return true;
+    }
+    result
+        .etch_compensation_model
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result.etch_compensation_um.is_some_and(positive_finite)
+        && result
+            .input_etch_compensation_model
+            .as_deref()
+            .is_some_and(|value| {
+                result
+                    .etch_compensation_model
+                    .as_deref()
+                    .is_some_and(|model| value.trim() == model.trim())
+            })
+        && result
+            .input_etch_compensation_um
+            .zip(result.etch_compensation_um)
+            .is_some_and(|(input, solved)| (input - solved).abs() <= f64::EPSILON)
+}
+
+fn controlled_impedance_solver_etch_compensation_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.etch_compensation_model.is_some()
+        || result.etch_compensation_um.is_some()
+        || result.input_etch_compensation_model.is_some()
+        || result.input_etch_compensation_um.is_some()
 }
 
 fn controlled_impedance_solver_roughness_has_evidence(

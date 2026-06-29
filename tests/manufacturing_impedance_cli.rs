@@ -861,6 +861,65 @@ fn controlled_impedance_solver_result_fails_closed_for_partial_copper_roughness_
 }
 
 #[test]
+fn controlled_impedance_solver_result_fails_for_etch_compensation_mismatch() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          input_etch_compensation_um: 8.0",
+        "          input_etch_compensation_um: 12.0",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["measured"].get("input_deck_mismatches").is_some())
+        .unwrap();
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID");
+    assert_eq!(failure["measured"]["result"], "rf_solver_result");
+    assert_eq!(
+        failure["measured"]["input_deck_mismatches"][0],
+        "etch_compensation_um"
+    );
+    assert_eq!(failure["measured"]["input_etch_compensation_um"], 12.0);
+    assert_eq!(failure["limit"]["etch_compensation_um"], 8.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_partial_etch_compensation_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace("          input_etch_compensation_um: 8.0\n", "");
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("etch compensation metadata")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_closed_without_artifact_digest() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
@@ -1050,6 +1109,10 @@ board:
           copper_roughness_um: 1.5
           input_copper_roughness_model: huray
           input_copper_roughness_um: 1.5
+          etch_compensation_model: fabricator_finished_width_bias
+          etch_compensation_um: 8.0
+          input_etch_compensation_model: fabricator_finished_width_bias
+          input_etch_compensation_um: 8.0
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]

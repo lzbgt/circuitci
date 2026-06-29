@@ -468,6 +468,14 @@ pub(super) fn applied_controlled_impedance_solver_result(
         input_copper_roughness_um: optional_raw_column(row, "input_copper_roughness_um")
             .map(|value| parse_positive_number(&value, path, row, "input_copper_roughness_um"))
             .transpose()?,
+        etch_compensation_model: optional_raw_column(row, "etch_compensation_model"),
+        etch_compensation_um: optional_raw_column(row, "etch_compensation_um")
+            .map(|value| parse_positive_number(&value, path, row, "etch_compensation_um"))
+            .transpose()?,
+        input_etch_compensation_model: optional_raw_column(row, "input_etch_compensation_model"),
+        input_etch_compensation_um: optional_raw_column(row, "input_etch_compensation_um")
+            .map(|value| parse_positive_number(&value, path, row, "input_etch_compensation_um"))
+            .transpose()?,
         min_solver_sample_count: optional_raw_column(row, "min_solver_sample_count")
             .as_deref()
             .map(|value| parse_positive_usize(value, path, row, "min_solver_sample_count"))

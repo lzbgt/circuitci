@@ -476,6 +476,26 @@ fn controlled_impedance_solver_result_mapping(
         "input_copper_roughness_um",
         result.input_copper_roughness_um,
     );
+    insert_optional_string(
+        &mut mapping,
+        "etch_compensation_model",
+        &result.etch_compensation_model,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "etch_compensation_um",
+        result.etch_compensation_um,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "input_etch_compensation_model",
+        &result.input_etch_compensation_model,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "input_etch_compensation_um",
+        result.input_etch_compensation_um,
+    );
     insert_optional_number(
         &mut mapping,
         "min_solver_sample_count",

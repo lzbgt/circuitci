@@ -276,6 +276,12 @@ fn solver_result_has_valid_metadata(
             .input_copper_roughness_um
             .is_some_and(|value| !positive(value))
         || result
+            .etch_compensation_um
+            .is_some_and(|value| !positive(value))
+        || result
+            .input_etch_compensation_um
+            .is_some_and(|value| !positive(value))
+        || result
             .min_solver_sample_count
             .is_some_and(|value| value == 0)
         || result
@@ -668,6 +674,10 @@ fn solver_input_deck_policy_requested(result: &ControlledImpedanceSolverResult) 
         || result.copper_roughness_um.is_some()
         || result.input_copper_roughness_model.is_some()
         || result.input_copper_roughness_um.is_some()
+        || result.etch_compensation_model.is_some()
+        || result.etch_compensation_um.is_some()
+        || result.input_etch_compensation_model.is_some()
+        || result.input_etch_compensation_um.is_some()
 }
 
 fn solver_input_deck_metadata_is_valid(
@@ -710,18 +720,36 @@ fn solver_input_deck_metadata_is_valid(
             .input_frequency_mhz
             .is_some_and(|value| !positive(value))
         || !solver_roughness_metadata_is_complete(result)
+        || !solver_etch_compensation_metadata_is_complete(result)
     {
         validation_input_missing(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, optional positive input_frequency_mhz, and complete positive copper roughness metadata when roughness evidence is declared.",
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, optional positive input_frequency_mhz, complete positive copper roughness metadata when roughness evidence is declared, and complete positive etch compensation metadata when etch evidence is declared.",
                 result.name
             ),
         );
         return false;
     }
     true
+}
+
+fn solver_etch_compensation_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
+    if !solver_etch_compensation_policy_requested(result) {
+        return true;
+    }
+    non_empty_option(result.etch_compensation_model.as_deref()).is_some()
+        && positive_option(result.etch_compensation_um)
+        && non_empty_option(result.input_etch_compensation_model.as_deref()).is_some()
+        && positive_option(result.input_etch_compensation_um)
+}
+
+fn solver_etch_compensation_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.etch_compensation_model.is_some()
+        || result.etch_compensation_um.is_some()
+        || result.input_etch_compensation_model.is_some()
+        || result.input_etch_compensation_um.is_some()
 }
 
 fn solver_roughness_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
@@ -823,6 +851,21 @@ fn solver_input_deck_mismatches(result: &ControlledImpedanceSolverResult) -> Vec
         && (input_roughness - roughness).abs() > f64::EPSILON
     {
         mismatches.push("copper_roughness_um");
+    }
+    if result.etch_compensation_model.as_deref().map(str::trim)
+        != result
+            .input_etch_compensation_model
+            .as_deref()
+            .map(str::trim)
+    {
+        mismatches.push("etch_compensation_model");
+    }
+    if let (Some(compensation), Some(input_compensation)) = (
+        result.etch_compensation_um,
+        result.input_etch_compensation_um,
+    ) && (input_compensation - compensation).abs() > f64::EPSILON
+    {
+        mismatches.push("etch_compensation_um");
     }
     mismatches
 }
@@ -1363,6 +1406,17 @@ fn solver_input_deck_finding(
             json!(input_roughness),
         );
     }
+    insert_optional_measured_string(
+        &mut finding,
+        "input_etch_compensation_model",
+        result.input_etch_compensation_model.as_deref(),
+    );
+    if let Some(input_compensation) = result.input_etch_compensation_um {
+        finding.measured.insert(
+            "input_etch_compensation_um".to_string(),
+            json!(input_compensation),
+        );
+    }
     finding.limit.insert(
         "stackup_revision".to_string(),
         json!(result.stackup_revision),
@@ -1399,6 +1453,16 @@ fn solver_input_deck_finding(
         finding
             .limit
             .insert("copper_roughness_um".to_string(), json!(roughness));
+    }
+    insert_optional_limit_string(
+        &mut finding,
+        "etch_compensation_model",
+        result.etch_compensation_model.as_deref(),
+    );
+    if let Some(compensation) = result.etch_compensation_um {
+        finding
+            .limit
+            .insert("etch_compensation_um".to_string(), json!(compensation));
     }
     finding.suggested_fixes.push(
         "Regenerate or re-review the solver input deck and solver-result metadata so the source-backed setup matches the routed board evidence.".to_string(),

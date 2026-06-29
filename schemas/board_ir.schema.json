@@ -467,6 +467,10 @@
                       "copper_roughness_um": { "type": "number", "exclusiveMinimum": 0 },
                       "input_copper_roughness_model": { "type": "string", "minLength": 1 },
                       "input_copper_roughness_um": { "type": "number", "exclusiveMinimum": 0 },
+                      "etch_compensation_model": { "type": "string", "minLength": 1 },
+                      "etch_compensation_um": { "type": "number", "exclusiveMinimum": 0 },
+                      "input_etch_compensation_model": { "type": "string", "minLength": 1 },
+                      "input_etch_compensation_um": { "type": "number", "exclusiveMinimum": 0 },
                       "min_solver_sample_count": { "type": "integer", "minimum": 1 },
                       "max_solver_frequency_step_mhz": {
                         "type": "number",

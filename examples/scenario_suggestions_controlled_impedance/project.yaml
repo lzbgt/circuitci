@@ -125,6 +125,10 @@ board:
           copper_roughness_um: 1.5
           input_copper_roughness_model: huray
           input_copper_roughness_um: 1.5
+          etch_compensation_model: fabricator_finished_width_bias
+          etch_compensation_um: 8.0
+          input_etch_compensation_model: fabricator_finished_width_bias
+          input_etch_compensation_um: 8.0
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]

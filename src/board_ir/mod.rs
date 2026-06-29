@@ -346,6 +346,14 @@ pub struct ControlledImpedanceSolverResult {
     #[serde(default)]
     pub input_copper_roughness_um: Option<f64>,
     #[serde(default)]
+    pub etch_compensation_model: Option<String>,
+    #[serde(default)]
+    pub etch_compensation_um: Option<f64>,
+    #[serde(default)]
+    pub input_etch_compensation_model: Option<String>,
+    #[serde(default)]
+    pub input_etch_compensation_um: Option<f64>,
+    #[serde(default)]
     pub min_solver_sample_count: Option<usize>,
     #[serde(default)]
     pub max_solver_frequency_step_mhz: Option<f64>,

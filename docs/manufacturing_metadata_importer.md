@@ -142,6 +142,8 @@ Optional `controlled_impedance_solver_result` columns are `solver_version`,
 `input_dielectric_layer`, `input_width_mm`, `input_gap_mm`,
 `input_frequency_mhz`, `copper_roughness_model`, `copper_roughness_um`,
 `input_copper_roughness_model`, `input_copper_roughness_um`,
+`etch_compensation_model`, `etch_compensation_um`,
+`input_etch_compensation_model`, `input_etch_compensation_um`,
 `min_solver_sample_count`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
 `solver_source` when the ordinary `source` column is not used. When any
@@ -150,7 +152,10 @@ provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
 result/input-deck roughness model and positive roughness values; CircuitCI
 compares them for consistency but does not calculate roughness-adjusted
-impedance. These rows are reviewed solver-result evidence only; the importer
+impedance. Declaring any etch compensation column requires complete reviewed
+result/input-deck etch compensation model and positive compensation values;
+CircuitCI compares them for consistency but does not infer finished trace
+geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
 parse solver input decks, or infer stackup parameters.
 
