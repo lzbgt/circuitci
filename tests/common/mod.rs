@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+pub mod manufacturing_metadata;
+
 pub mod impedance;
 
 use serde_json::Value;

@@ -225,10 +225,12 @@ Importers append evidence instead of guessing missing intent. Examples:
   construction lives in `src/importers/manufacturing_metadata/rows/values.rs`;
   supported-field normalization and manifest row evidence live in
   `src/importers/manufacturing_metadata/rows.rs`. CLI regression
-  coverage for generic and controlled-impedance metadata import lives in
-  `tests/manufacturing_metadata_cli.rs`; thermal metadata import regressions
-  live in `tests/manufacturing_metadata_thermal_cli.rs`; RF antenna metadata
-  import regressions live in `tests/manufacturing_metadata_rf_cli.rs`.
+  coverage for generic and controlled-impedance geometry/coupon metadata import
+  lives in `tests/manufacturing_metadata_cli.rs`; controlled-impedance solver
+  metadata import regressions live in `tests/manufacturing_metadata_solver_cli.rs`;
+  thermal metadata import regressions live in
+  `tests/manufacturing_metadata_thermal_cli.rs`; RF antenna metadata import
+  regressions live in `tests/manufacturing_metadata_rf_cli.rs`.
   Controlled-impedance validation regressions share the project fixture builder
   in `tests/common/impedance.rs`; geometry, stackup, solder-mask, and coupon
   coverage stays in `tests/manufacturing_impedance_cli.rs`, while solver-result
