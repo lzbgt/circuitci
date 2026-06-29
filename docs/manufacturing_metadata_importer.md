@@ -137,10 +137,18 @@ Rows attach under the named imported or pre-existing coupon; duplicate
   `max_route_gap_delta_mm` are required and `net` must be blank.
 
 Optional `controlled_impedance_solver_result` columns are `solver_version`,
-`frequency_mhz`, and `solver_source` when the ordinary `source` column is not
-used. These rows are reviewed solver-result evidence only; the importer
-preserves artifact provenance but does not run a field solver, fetch artifacts,
-or infer stackup parameters.
+`frequency_mhz`, `min_solver_sample_count`,
+`max_solver_frequency_step_mhz`, `required_solver_corners`, and
+`solver_source` when the ordinary `source` column is not used. These rows are
+reviewed solver-result evidence only; the importer preserves artifact
+provenance but does not run a field solver, fetch artifacts, or infer stackup
+parameters.
+
+`controlled_impedance_solver_sample` rows use `value` as sampled
+`solved_impedance_ohm` and require `solver_result_name`, `name`, `source`,
+`corner`, and `frequency_mhz`. Rows attach under the named imported or
+pre-existing solver result; duplicate `solver_result_name`/sample-name pairs
+fail closed.
 
 Coupon rows are reviewed measurement evidence only; the importer does not
 decide whether a coupon statistically represents the routed board. Validation

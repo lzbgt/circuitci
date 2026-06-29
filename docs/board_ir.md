@@ -413,7 +413,13 @@ preserve either single-ended `net` or differential `first_net`/`second_net`
 association. Differential rows also require reviewed `solved_gap_mm` and
 `max_route_gap_delta_mm`. These rows are reviewed solver-result evidence only;
 CircuitCI preserves the artifact URI and digest but does not run a field
-solver or fetch the artifact.
+solver or fetch the artifact. Optional reviewed sweep/corner policy columns
+are `min_solver_sample_count`, `max_solver_frequency_step_mhz`, and
+`required_solver_corners`. Repeated
+`field=controlled_impedance_solver_sample` rows use `value` as a sampled
+`solved_impedance_ohm`, require `solver_result_name`, `name`, `source`,
+`corner`, and `frequency_mhz`, and attach to an existing or same-import solver
+result by `solver_result_name`.
 Repeated
 `field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
 include reviewed policy columns such as `name`, `component`, `power_loss_w`,

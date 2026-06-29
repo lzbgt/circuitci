@@ -1,13 +1,13 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverResult, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
-    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
-    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
-    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
-    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample,
+    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
+    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
+    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -445,6 +445,63 @@ pub(super) fn applied_controlled_impedance_solver_result(
         frequency_mhz: optional_raw_column(row, "frequency_mhz")
             .map(|value| parse_positive_number(&value, path, row, "frequency_mhz"))
             .transpose()?,
+        min_solver_sample_count: optional_raw_column(row, "min_solver_sample_count")
+            .as_deref()
+            .map(|value| parse_positive_usize(value, path, row, "min_solver_sample_count"))
+            .transpose()?,
+        max_solver_frequency_step_mhz: optional_raw_column(row, "max_solver_frequency_step_mhz")
+            .as_deref()
+            .map(|value| parse_positive_number(value, path, row, "max_solver_frequency_step_mhz"))
+            .transpose()?,
+        required_solver_corners: optional_raw_column(row, "required_solver_corners")
+            .map(|value| parse_nonempty_list(&value))
+            .transpose()?
+            .unwrap_or_default(),
+    })
+}
+
+pub(super) fn applied_controlled_impedance_solver_sample(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverSample> {
+    let sample_source = optional_raw_column(row, "sample_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(sample_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_sample requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverSample {
+        solver_result_name: required_raw_column_for(
+            row,
+            path,
+            "solver_result_name",
+            "controlled_impedance_solver_sample",
+        )?,
+        name: required_raw_column_for(row, path, "name", "controlled_impedance_solver_sample")?,
+        source,
+        corner: required_raw_column_for(row, path, "corner", "controlled_impedance_solver_sample")?,
+        frequency_mhz: required_positive_number(
+            row,
+            path,
+            "frequency_mhz",
+            "controlled_impedance_solver_sample",
+        )?,
+        solved_impedance_ohm: parse_positive_ohms(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
     })
 }
 

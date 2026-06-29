@@ -5,7 +5,7 @@ use crate::board_ir::{
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::super::CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID;
 use super::super::common::validation_input_missing;
@@ -52,6 +52,14 @@ pub(in crate::validation) fn validate_controlled_impedance_solver_result(
         {
             findings.push(solver_result_finding(scenario, result, &metrics));
         }
+        if solver_sweep_policy_requested(result) {
+            let Some(sweep_metrics) = solver_sweep_metrics(scenario, findings, result) else {
+                return;
+            };
+            if sweep_metrics.has_failure() {
+                findings.push(solver_sweep_finding(scenario, result, &sweep_metrics));
+            }
+        }
     }
 }
 
@@ -60,6 +68,26 @@ struct SolverResultMetrics {
     impedance_error_ohm: f64,
     max_width_delta_mm: f64,
     max_gap_delta_mm: Option<f64>,
+}
+
+#[derive(Debug)]
+struct SolverSweepMetrics {
+    sample_count: usize,
+    sample_names: Vec<String>,
+    missing_corners: Vec<String>,
+    max_sample_impedance_error_ohm: f64,
+    worst_sample: Option<String>,
+    max_frequency_gap_mhz: Option<f64>,
+    frequency_gap_start_mhz: Option<f64>,
+    frequency_gap_end_mhz: Option<f64>,
+}
+
+impl SolverSweepMetrics {
+    fn has_failure(&self) -> bool {
+        !self.missing_corners.is_empty()
+            || self.max_sample_impedance_error_ohm > 0.0
+            || self.max_frequency_gap_mhz.is_some()
+    }
 }
 
 fn solver_result_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<String>> {
@@ -232,6 +260,12 @@ fn solver_result_has_valid_metadata(
         || !positive(result.solved_width_mm)
         || !non_negative(result.max_route_width_delta_mm)
         || result.frequency_mhz.is_some_and(|value| !positive(value))
+        || result
+            .min_solver_sample_count
+            .is_some_and(|value| value == 0)
+        || result
+            .max_solver_frequency_step_mhz
+            .is_some_and(|value| !positive(value))
     {
         validation_input_missing(
             findings,
@@ -241,6 +275,9 @@ fn solver_result_has_valid_metadata(
                 result.name
             ),
         );
+        return false;
+    }
+    if !solver_sweep_metadata_is_valid(scenario, findings, result) {
         return false;
     }
     if !stackup_layers_match(bound, scenario, findings, result) {
@@ -590,6 +627,177 @@ fn solver_result_metrics(
     }
 }
 
+fn solver_sweep_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.min_solver_sample_count.is_some()
+        || result.max_solver_frequency_step_mhz.is_some()
+        || !result.required_solver_corners.is_empty()
+}
+
+fn solver_sweep_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_sweep_policy_requested(result) {
+        return true;
+    }
+    if result.samples.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} declares solver sweep policy but has no reviewed samples.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    let mut corners = BTreeSet::new();
+    for corner in &result.required_solver_corners {
+        let corner = corner.trim();
+        if corner.is_empty() || !corners.insert(corner.to_string()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} must declare unique non-empty required_solver_corners.",
+                    result.name
+                ),
+            );
+            return false;
+        }
+    }
+    let mut sample_names = BTreeSet::new();
+    for sample in &result.samples {
+        if sample.name.trim().is_empty()
+            || sample.source.trim().is_empty()
+            || sample.corner.trim().is_empty()
+            || !positive(sample.frequency_mhz)
+            || !positive(sample.solved_impedance_ohm)
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} solver samples must declare non-empty name/source/corner plus positive frequency and impedance.",
+                    result.name
+                ),
+            );
+            return false;
+        }
+        if !sample_names.insert(sample.name.trim().to_string()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} repeats solver sample name {}.",
+                    result.name, sample.name
+                ),
+            );
+            return false;
+        }
+    }
+    true
+}
+
+fn solver_sweep_metrics(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> Option<SolverSweepMetrics> {
+    let mut missing_corners = Vec::new();
+    let sample_corners: BTreeSet<&str> = result
+        .samples
+        .iter()
+        .map(|sample| sample.corner.trim())
+        .collect();
+    for corner in &result.required_solver_corners {
+        let corner = corner.trim();
+        if !sample_corners.contains(corner) {
+            missing_corners.push(corner.to_string());
+        }
+    }
+    let mut max_sample_impedance_error_ohm = 0.0;
+    let mut worst_sample = None;
+    for sample in &result.samples {
+        let error = (sample.solved_impedance_ohm - result.target_impedance_ohm).abs();
+        if error > max_sample_impedance_error_ohm {
+            max_sample_impedance_error_ohm = error;
+            worst_sample = Some(sample.name.clone());
+        }
+    }
+    if let Some(min_count) = result.min_solver_sample_count
+        && result.samples.len() < min_count
+    {
+        missing_corners.push(format!("sample_count<{min_count}"));
+    }
+    let (max_frequency_gap_mhz, frequency_gap_start_mhz, frequency_gap_end_mhz) =
+        solver_frequency_gap(result, scenario, findings)?;
+    Some(SolverSweepMetrics {
+        sample_count: result.samples.len(),
+        sample_names: result
+            .samples
+            .iter()
+            .map(|sample| sample.name.clone())
+            .collect(),
+        missing_corners,
+        max_sample_impedance_error_ohm: if max_sample_impedance_error_ohm
+            > result.max_impedance_error_ohm + f64::EPSILON
+        {
+            max_sample_impedance_error_ohm
+        } else {
+            0.0
+        },
+        worst_sample,
+        max_frequency_gap_mhz,
+        frequency_gap_start_mhz,
+        frequency_gap_end_mhz,
+    })
+}
+
+fn solver_frequency_gap(
+    result: &ControlledImpedanceSolverResult,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<(Option<f64>, Option<f64>, Option<f64>)> {
+    let Some(max_step) = result.max_solver_frequency_step_mhz else {
+        return Some((None, None, None));
+    };
+    let mut groups: BTreeMap<&str, Vec<f64>> = BTreeMap::new();
+    for sample in &result.samples {
+        groups
+            .entry(sample.corner.trim())
+            .or_default()
+            .push(sample.frequency_mhz);
+    }
+    if groups.values().any(|frequencies| frequencies.len() < 2) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires at least two solver samples per corner when max_solver_frequency_step_mhz is declared.",
+                result.name
+            ),
+        );
+        return None;
+    }
+    let mut worst_gap = None;
+    let mut gap_start = None;
+    let mut gap_end = None;
+    for frequencies in groups.values_mut() {
+        frequencies.sort_by(|a, b| a.total_cmp(b));
+        for window in frequencies.windows(2) {
+            let gap = window[1] - window[0];
+            if gap > max_step + f64::EPSILON && worst_gap.is_none_or(|worst| gap > worst) {
+                worst_gap = Some(gap);
+                gap_start = Some(window[0]);
+                gap_end = Some(window[1]);
+            }
+        }
+    }
+    Some((worst_gap, gap_start, gap_end))
+}
+
 fn route_for_net<'a>(
     bound: &'a BoundBoard<'_>,
     scenario: &Scenario,
@@ -775,6 +983,96 @@ fn solver_result_finding(
     }
     finding.suggested_fixes.push(
         "Review the solver setup, controlled-impedance geometry, and imported route evidence before treating the impedance target as signed off.".to_string(),
+    );
+    finding
+}
+
+fn solver_sweep_finding(
+    scenario: &Scenario,
+    result: &ControlledImpedanceSolverResult,
+    metrics: &SolverSweepMetrics,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID,
+        scenario.name.clone(),
+        format!(
+            "Controlled-impedance solver result {} sweep evidence is outside reviewed sample, corner, or frequency limits.",
+            result.name
+        ),
+    );
+    finding
+        .measured
+        .insert("result".to_string(), json!(result.name));
+    finding
+        .measured
+        .insert("source".to_string(), json!(result.source));
+    finding
+        .measured
+        .insert("solver".to_string(), json!(result.solver));
+    finding.measured.insert(
+        "solver_artifact_uri".to_string(),
+        json!(result.solver_artifact_uri.as_deref().unwrap_or_default()),
+    );
+    finding.measured.insert(
+        "solver_artifact_sha256".to_string(),
+        json!(result.solver_artifact_sha256.as_deref().unwrap_or_default()),
+    );
+    finding
+        .measured
+        .insert("sample_count".to_string(), json!(metrics.sample_count));
+    finding
+        .measured
+        .insert("sample_names".to_string(), json!(metrics.sample_names));
+    if !metrics.missing_corners.is_empty() {
+        finding.measured.insert(
+            "missing_solver_corners".to_string(),
+            json!(metrics.missing_corners),
+        );
+    }
+    if metrics.max_sample_impedance_error_ohm > 0.0 {
+        finding.measured.insert(
+            "max_sample_impedance_error_ohm".to_string(),
+            json!(metrics.max_sample_impedance_error_ohm),
+        );
+        finding
+            .measured
+            .insert("worst_sample".to_string(), json!(metrics.worst_sample));
+    }
+    if let Some(gap) = metrics.max_frequency_gap_mhz {
+        finding
+            .measured
+            .insert("max_solver_frequency_gap_mhz".to_string(), json!(gap));
+        finding.measured.insert(
+            "frequency_gap_start_mhz".to_string(),
+            json!(metrics.frequency_gap_start_mhz),
+        );
+        finding.measured.insert(
+            "frequency_gap_end_mhz".to_string(),
+            json!(metrics.frequency_gap_end_mhz),
+        );
+    }
+    finding.limit.insert(
+        "max_impedance_error_ohm".to_string(),
+        json!(result.max_impedance_error_ohm),
+    );
+    if let Some(min_count) = result.min_solver_sample_count {
+        finding
+            .limit
+            .insert("min_solver_sample_count".to_string(), json!(min_count));
+    }
+    if let Some(max_step) = result.max_solver_frequency_step_mhz {
+        finding
+            .limit
+            .insert("max_solver_frequency_step_mhz".to_string(), json!(max_step));
+    }
+    if !result.required_solver_corners.is_empty() {
+        finding.limit.insert(
+            "required_solver_corners".to_string(),
+            json!(result.required_solver_corners),
+        );
+    }
+    finding.suggested_fixes.push(
+        "Review solver sweep setup, corner coverage, and source artifact provenance before accepting the controlled-impedance solver result.".to_string(),
     );
     finding
 }

@@ -938,6 +938,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && positive_finite(result.solved_width_mm)
         && non_negative_finite(result.max_route_width_delta_mm)
         && result.frequency_mhz.is_none_or(positive_finite)
+        && controlled_impedance_solver_sweep_has_evidence(result)
         && solver_stackup_has_evidence(bound, result)
         && match result.result_type {
             ControlledImpedanceSolverResultType::SingleEnded => result
@@ -1018,6 +1019,83 @@ fn controlled_impedance_solver_result_has_evidence(
                         })
             }
         }
+}
+
+fn controlled_impedance_solver_sweep_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if result.min_solver_sample_count.is_none()
+        && result.max_solver_frequency_step_mhz.is_none()
+        && result.required_solver_corners.is_empty()
+    {
+        return true;
+    }
+    if result
+        .min_solver_sample_count
+        .is_some_and(|count| count == 0)
+        || result
+            .max_solver_frequency_step_mhz
+            .is_some_and(|step| !positive_finite(step))
+        || result.samples.is_empty()
+    {
+        return false;
+    }
+    let mut required_corners = std::collections::BTreeSet::new();
+    for corner in &result.required_solver_corners {
+        let corner = corner.trim();
+        if corner.is_empty() || !required_corners.insert(corner.to_string()) {
+            return false;
+        }
+    }
+    let mut sample_names = std::collections::BTreeSet::new();
+    let mut sample_corners = std::collections::BTreeSet::new();
+    let mut corner_frequencies: std::collections::BTreeMap<String, Vec<f64>> =
+        std::collections::BTreeMap::new();
+    for sample in &result.samples {
+        if sample.name.trim().is_empty()
+            || sample.source.trim().is_empty()
+            || sample.corner.trim().is_empty()
+            || !positive_finite(sample.frequency_mhz)
+            || !positive_finite(sample.solved_impedance_ohm)
+            || !sample_names.insert(sample.name.trim().to_string())
+            || (sample.solved_impedance_ohm - result.target_impedance_ohm).abs()
+                > result.max_impedance_error_ohm + f64::EPSILON
+        {
+            return false;
+        }
+        let corner = sample.corner.trim().to_string();
+        sample_corners.insert(corner.clone());
+        corner_frequencies
+            .entry(corner)
+            .or_default()
+            .push(sample.frequency_mhz);
+    }
+    if let Some(min_count) = result.min_solver_sample_count
+        && result.samples.len() < min_count
+    {
+        return false;
+    }
+    if required_corners
+        .iter()
+        .any(|corner| !sample_corners.contains(corner))
+    {
+        return false;
+    }
+    if let Some(max_step) = result.max_solver_frequency_step_mhz {
+        for frequencies in corner_frequencies.values_mut() {
+            if frequencies.len() < 2 {
+                return false;
+            }
+            frequencies.sort_by(|a, b| a.total_cmp(b));
+            if frequencies
+                .windows(2)
+                .any(|window| window[1] - window[0] > max_step + f64::EPSILON)
+            {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 fn solver_stackup_has_evidence(

@@ -1,9 +1,9 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverResult, AppliedField, AppliedLayoutPoint,
-    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
-    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
+    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
+    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
     AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
     AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage,
@@ -55,6 +55,15 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(result) = &field.controlled_impedance_solver_result {
         return serde_yaml_ng::to_value(controlled_impedance_solver_result_mapping(result))
+            .with_context(|| {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            });
+    }
+    if let Some(sample) = &field.controlled_impedance_solver_sample {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_sample_mapping(sample))
             .with_context(|| {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -414,6 +423,40 @@ fn controlled_impedance_solver_result_mapping(
         result.max_route_gap_delta_mm,
     );
     insert_optional_number(&mut mapping, "frequency_mhz", result.frequency_mhz);
+    insert_optional_number(
+        &mut mapping,
+        "min_solver_sample_count",
+        result.min_solver_sample_count,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_solver_frequency_step_mhz",
+        result.max_solver_frequency_step_mhz,
+    );
+    if !result.required_solver_corners.is_empty() {
+        mapping.insert(
+            "required_solver_corners".to_string(),
+            serde_yaml_ng::to_value(&result.required_solver_corners).unwrap_or(Value::Null),
+        );
+    }
+    mapping
+}
+
+fn controlled_impedance_solver_sample_mapping(
+    sample: &AppliedControlledImpedanceSolverSample,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(sample.name.clone()));
+    mapping.insert("source".to_string(), Value::String(sample.source.clone()));
+    mapping.insert("corner".to_string(), Value::String(sample.corner.clone()));
+    mapping.insert(
+        "frequency_mhz".to_string(),
+        serde_yaml_ng::to_value(sample.frequency_mhz).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "solved_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(sample.solved_impedance_ohm).unwrap_or(Value::Null),
+    );
     mapping
 }
 

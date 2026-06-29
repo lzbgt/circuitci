@@ -668,6 +668,74 @@ fn controlled_impedance_solver_result_fails_for_out_of_tolerance_solver_result()
 }
 
 #[test]
+fn controlled_impedance_solver_result_fails_for_out_of_tolerance_solver_sample() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "              solved_impedance_ohm: 49.5",
+        "              solved_impedance_ohm: 46.5",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["measured"].get("worst_sample").is_some())
+        .unwrap();
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID");
+    assert_eq!(failure["measured"]["result"], "rf_solver_result");
+    assert_eq!(
+        failure["measured"]["worst_sample"],
+        "rf_solver_high_dk_2900"
+    );
+    assert_eq!(failure["measured"]["max_sample_impedance_error_ohm"], 3.5);
+    assert_eq!(failure["limit"]["max_impedance_error_ohm"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_for_solver_sweep_frequency_gap() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "              frequency_mhz: 2900.0",
+        "              frequency_mhz: 3200.0",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| {
+            failure["measured"]
+                .get("max_solver_frequency_gap_mhz")
+                .is_some()
+        })
+        .unwrap();
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID");
+    assert_eq!(failure["measured"]["result"], "rf_solver_result");
+    assert_eq!(failure["measured"]["max_solver_frequency_gap_mhz"], 800.0);
+    assert_eq!(failure["limit"]["max_solver_frequency_step_mhz"], 500.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_closed_without_artifact_digest() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
@@ -845,6 +913,30 @@ board:
           solved_width_mm: 0.20
           max_route_width_delta_mm: 0.03
           frequency_mhz: 2400.0
+          min_solver_sample_count: 4
+          max_solver_frequency_step_mhz: 500.0
+          required_solver_corners: [nominal, high_dk]
+          samples:
+            - name: rf_solver_nominal_2400
+              source: solver_report_rev_c
+              corner: nominal
+              frequency_mhz: 2400.0
+              solved_impedance_ohm: 50.8
+            - name: rf_solver_nominal_2900
+              source: solver_report_rev_c
+              corner: nominal
+              frequency_mhz: 2900.0
+              solved_impedance_ohm: 50.9
+            - name: rf_solver_high_dk_2400
+              source: solver_report_rev_c
+              corner: high_dk
+              frequency_mhz: 2400.0
+              solved_impedance_ohm: 49.4
+            - name: rf_solver_high_dk_2900
+              source: solver_report_rev_c
+              corner: high_dk
+              frequency_mhz: 2900.0
+              solved_impedance_ohm: 49.5
         - name: dp_dm_solver_result
           source: solver_report_rev_c
           solver: reviewed_2d_field_solver

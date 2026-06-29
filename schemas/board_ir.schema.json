@@ -450,7 +450,44 @@
                       "max_route_width_delta_mm": { "type": "number", "minimum": 0 },
                       "solved_gap_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "max_route_gap_delta_mm": { "type": "number", "minimum": 0 },
-                      "frequency_mhz": { "type": "number", "exclusiveMinimum": 0 }
+                      "frequency_mhz": { "type": "number", "exclusiveMinimum": 0 },
+                      "min_solver_sample_count": { "type": "integer", "minimum": 1 },
+                      "max_solver_frequency_step_mhz": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "required_solver_corners": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "uniqueItems": true
+                      },
+                      "samples": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "source",
+                            "corner",
+                            "frequency_mhz",
+                            "solved_impedance_ohm"
+                          ],
+                          "properties": {
+                            "name": { "type": "string", "minLength": 1 },
+                            "source": { "type": "string", "minLength": 1 },
+                            "corner": { "type": "string", "minLength": 1 },
+                            "frequency_mhz": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "solved_impedance_ohm": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      }
                     },
                     "additionalProperties": false
                   }

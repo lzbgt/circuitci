@@ -634,9 +634,14 @@ evidence. Stable measured keys include `result`, `source`, `solver`,
 `solver_version`, `solver_artifact_uri`, `solver_artifact_sha256`,
 `stackup_revision`, `route_layer`, `solved_impedance_ohm`,
 `impedance_error_ohm`, `max_route_width_delta_mm`, and, for differential
-results, `max_route_gap_delta_mm`. Stable limit keys include
-`max_impedance_error_ohm`, `max_route_width_delta_mm`, and
-`max_route_gap_delta_mm`.
+results, `max_route_gap_delta_mm`. When reviewed solver sweep/corner policy is
+present, stable measured keys also include `sample_count`, `sample_names`,
+`missing_solver_corners`, `max_sample_impedance_error_ohm`, `worst_sample`,
+`max_solver_frequency_gap_mhz`, `frequency_gap_start_mhz`, and
+`frequency_gap_end_mhz`. Stable limit keys include
+`max_impedance_error_ohm`, `max_route_width_delta_mm`,
+`max_route_gap_delta_mm`, `min_solver_sample_count`,
+`max_solver_frequency_step_mhz`, and `required_solver_corners`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

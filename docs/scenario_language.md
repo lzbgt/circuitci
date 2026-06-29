@@ -2010,12 +2010,19 @@ Controlled-impedance solver-result algorithm:
    route width against the solver modeled width.
 7. For differential results, require reviewed solved gap and route-gap delta
    limits, plus imported parallel same-layer route-gap evidence.
-8. Fail when solved impedance, route width, or differential route gap exceeds
-   the reviewed limits. Fail closed when solver metadata, target mapping,
-   stackup evidence, or route evidence is missing or contradictory.
+8. When reviewed solver sweep/corner policy is present, require explicit
+   solver samples with unique names, non-empty sources/corners, positive
+   frequency and impedance values, required corner coverage, minimum sample
+   count, and per-corner frequency-step coverage.
+9. Fail when solved impedance, route width, differential route gap, sampled
+   solver impedance, required corner coverage, sample count, or frequency-step
+   coverage exceeds the reviewed limits. Fail closed when solver metadata,
+   target mapping, stackup evidence, route evidence, or declared sweep evidence
+   is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
-artifact URI/digest evidence but does not fetch artifacts, run a field solver,
+artifact URI/digest and reviewed sample/corner evidence but does not fetch
+artifacts, run a field solver,
 infer dielectric/copper parameters, interpolate impedance, or replace
 SI/fabricator review.
 

@@ -222,7 +222,9 @@ sample measurements under named coupons, and coupon rows can carry reviewed
 lot/panel/stackup plus trace layer/width/gap correlation metadata. Repeated
 `field=controlled_impedance_solver_result` rows create or replace reviewed
 source-backed solver-result evidence under
-`board.manufacturing.controlled_impedance.solver_results[]`. Repeated
+`board.manufacturing.controlled_impedance.solver_results[]`, and repeated
+`field=controlled_impedance_solver_sample` rows attach reviewed solver
+sweep/corner samples under named solver results. Repeated
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated
 `field=thermal_measurement` rows append reviewed measured-temperature evidence

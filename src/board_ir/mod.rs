@@ -319,6 +319,23 @@ pub struct ControlledImpedanceSolverResult {
     pub max_route_gap_delta_mm: Option<f64>,
     #[serde(default)]
     pub frequency_mhz: Option<f64>,
+    #[serde(default)]
+    pub min_solver_sample_count: Option<usize>,
+    #[serde(default)]
+    pub max_solver_frequency_step_mhz: Option<f64>,
+    #[serde(default)]
+    pub required_solver_corners: Vec<String>,
+    #[serde(default)]
+    pub samples: Vec<ControlledImpedanceSolverSample>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverSample {
+    pub name: String,
+    pub source: String,
+    pub corner: String,
+    pub frequency_mhz: f64,
+    pub solved_impedance_ohm: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
