@@ -507,7 +507,7 @@ fn coupon_finding(
     finding.suggested_fixes = vec![
         "Review the fabricator coupon report against the controlled-impedance requirement.".to_string(),
         "Update stackup, trace geometry, or fabrication notes before accepting a coupon outside tolerance.".to_string(),
-        "Do not treat this check as a field solver; it verifies explicit coupon measurement evidence only.".to_string(),
+        "Do not treat this check as a field solver; it verifies explicit coupon measurement evidence and reviewed board-target consistency only.".to_string(),
     ];
     finding
 }
