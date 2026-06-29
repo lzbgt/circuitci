@@ -659,6 +659,10 @@ If reviewed solver material-corner evidence is declared but incomplete,
 ambiguous, or inconsistent with `required_solver_corners`, solver material
 library metadata, or reviewed stackup layer material/Dk evidence, the check
 fails closed as `VALIDATION_INPUT_MISSING`.
+If reviewed fabricator stackup signoff evidence is declared but incomplete or
+its `fabricator_stackup_revision` does not match the solver result
+`stackup_revision`, the check fails closed as `VALIDATION_INPUT_MISSING`
+before solver-result limit findings are emitted.
 Stable limit keys include `max_impedance_error_ohm`,
 `max_route_width_delta_mm`, `max_route_gap_delta_mm`,
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`,

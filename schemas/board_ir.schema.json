@@ -530,6 +530,22 @@
                         "type": "string",
                         "minLength": 1
                       },
+                      "stackup_signoff_source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fabricator_stackup_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "stackup_signoff_artifact_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "stackup_signoff_artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
                       "min_solver_sample_count": { "type": "integer", "minimum": 1 },
                       "max_solver_frequency_step_mhz": {
                         "type": "number",

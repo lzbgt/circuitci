@@ -564,6 +564,26 @@ fn controlled_impedance_solver_result_mapping(
         "input_material_library_revision",
         &result.input_material_library_revision,
     );
+    insert_optional_string(
+        &mut mapping,
+        "stackup_signoff_source",
+        &result.stackup_signoff_source,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "fabricator_stackup_revision",
+        &result.fabricator_stackup_revision,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "stackup_signoff_artifact_uri",
+        &result.stackup_signoff_artifact_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "stackup_signoff_artifact_sha256",
+        &result.stackup_signoff_artifact_sha256,
+    );
     insert_optional_number(
         &mut mapping,
         "min_solver_sample_count",

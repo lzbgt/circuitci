@@ -436,6 +436,12 @@ Optional reviewed solver material-library columns are
 `input_material_library_revision`; declaring any one requires complete
 material-library artifact provenance and matching result/input-deck library
 name and revision.
+Optional reviewed fabricator stackup signoff columns are
+`stackup_signoff_source`, `fabricator_stackup_revision`,
+`stackup_signoff_artifact_uri`, and `stackup_signoff_artifact_sha256`;
+declaring any one requires complete signoff source/revision/artifact
+provenance, and the fabricator revision must match the solver result
+`stackup_revision`.
 Optional reviewed sweep/corner policy columns are
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`, and
 `required_solver_corners`. Repeated

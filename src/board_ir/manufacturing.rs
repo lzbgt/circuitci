@@ -224,6 +224,14 @@ pub struct ControlledImpedanceSolverResult {
     #[serde(default)]
     pub input_material_library_revision: Option<String>,
     #[serde(default)]
+    pub stackup_signoff_source: Option<String>,
+    #[serde(default)]
+    pub fabricator_stackup_revision: Option<String>,
+    #[serde(default)]
+    pub stackup_signoff_artifact_uri: Option<String>,
+    #[serde(default)]
+    pub stackup_signoff_artifact_sha256: Option<String>,
+    #[serde(default)]
     pub min_solver_sample_count: Option<usize>,
     #[serde(default)]
     pub max_solver_frequency_step_mhz: Option<f64>,

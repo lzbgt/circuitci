@@ -84,6 +84,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && non_negative_finite(result.max_route_width_delta_mm)
         && result.frequency_mhz.is_none_or(positive_finite)
         && controlled_impedance_solver_input_deck_has_evidence(result)
+        && controlled_impedance_solver_stackup_signoff_has_evidence(result)
         && controlled_impedance_solver_qualification_has_evidence(bound, result)
         && controlled_impedance_solver_sweep_has_evidence(result)
         && solver_stackup_has_evidence(bound, result)
@@ -517,6 +518,39 @@ fn controlled_impedance_solver_sweep_has_evidence(
         }
     }
     true
+}
+
+fn controlled_impedance_solver_stackup_signoff_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_stackup_signoff_policy_requested(result) {
+        return true;
+    }
+    result
+        .stackup_signoff_source
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .fabricator_stackup_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == result.stackup_revision.trim())
+        && result
+            .stackup_signoff_artifact_uri
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .stackup_signoff_artifact_sha256
+            .as_deref()
+            .is_some_and(|value| is_sha256_hex(value.trim()))
+}
+
+fn controlled_impedance_solver_stackup_signoff_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.stackup_signoff_source.is_some()
+        || result.fabricator_stackup_revision.is_some()
+        || result.stackup_signoff_artifact_uri.is_some()
+        || result.stackup_signoff_artifact_sha256.is_some()
 }
 
 fn solver_stackup_has_evidence(

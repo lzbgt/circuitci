@@ -149,7 +149,9 @@ Optional `controlled_impedance_solver_result` columns are `solver_version`,
 `solver_material_library`, `solver_material_library_revision`,
 `solver_material_library_artifact_uri`,
 `solver_material_library_artifact_sha256`, `input_material_library`,
-`input_material_library_revision`,
+`input_material_library_revision`, `stackup_signoff_source`,
+`fabricator_stackup_revision`, `stackup_signoff_artifact_uri`,
+`stackup_signoff_artifact_sha256`,
 `min_solver_sample_count`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
 `solver_source` when the ordinary `source` column is not used. When any
@@ -166,7 +168,10 @@ CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
 verify signatures, parse solver input decks, parse material libraries, or infer
-stackup parameters.
+stackup parameters. Declaring any stackup signoff column requires complete
+signoff source/revision/artifact provenance, a 64-character signoff artifact
+SHA-256 digest, and a fabricator stackup revision matching the solver result
+`stackup_revision`.
 
 `controlled_impedance_solver_sample` rows use `value` as sampled
 `solved_impedance_ohm` and require `solver_result_name`, `name`, `source`,

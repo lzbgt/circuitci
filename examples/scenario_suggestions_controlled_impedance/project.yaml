@@ -119,6 +119,10 @@ board:
           solved_impedance_ohm: 50.8
           max_impedance_error_ohm: 2.0
           stackup_revision: stackup_rev_a
+          stackup_signoff_source: fabricator_stackup_review_rev_a
+          fabricator_stackup_revision: stackup_rev_a
+          stackup_signoff_artifact_uri: artifacts/fabricator/stackup_signoff_rev_a.pdf
+          stackup_signoff_artifact_sha256: 111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000
           route_layer: F.Cu
           reference_layer: In1.GND
           dielectric_layer: prepreg_1

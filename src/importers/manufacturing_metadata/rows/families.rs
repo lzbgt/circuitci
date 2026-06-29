@@ -497,6 +497,10 @@ pub(super) fn applied_controlled_impedance_solver_result(
             row,
             "input_material_library_revision",
         ),
+        stackup_signoff_source: optional_raw_column(row, "stackup_signoff_source"),
+        fabricator_stackup_revision: optional_raw_column(row, "fabricator_stackup_revision"),
+        stackup_signoff_artifact_uri: optional_raw_column(row, "stackup_signoff_artifact_uri"),
+        stackup_signoff_artifact_sha256: optional_stackup_signoff_artifact_sha256(row, path)?,
         min_solver_sample_count: optional_raw_column(row, "min_solver_sample_count")
             .as_deref()
             .map(|value| parse_positive_usize(value, path, row, "min_solver_sample_count"))
@@ -773,6 +777,24 @@ fn optional_solver_material_library_artifact_sha256(
     } else {
         bail!(
             "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_material_library_artifact_sha256 must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        )
+    }
+}
+
+fn optional_stackup_signoff_artifact_sha256(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<Option<String>> {
+    let Some(digest) = optional_raw_column(row, "stackup_signoff_artifact_sha256") else {
+        return Ok(None);
+    };
+    if is_sha256_hex(&digest) {
+        Ok(Some(digest.to_ascii_lowercase()))
+    } else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result stackup_signoff_artifact_sha256 must be a 64-character SHA-256 hex digest.",
             path.display(),
             row.row_number
         )

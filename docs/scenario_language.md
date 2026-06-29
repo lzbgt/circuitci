@@ -2019,27 +2019,32 @@ Controlled-impedance solver-result algorithm:
    SHA-256 provenance plus explicit stackup/layer/width/gap/frequency and
    optional copper-roughness/etch-compensation and material-library setup
    metadata that matches the solver-result setup.
-10. When reviewed solver qualification metadata is present, require each solver
+10. When reviewed fabricator stackup signoff metadata is present, require
+    signoff source, fabricator stackup revision, artifact URI, and artifact
+    SHA-256 provenance, and require the fabricator stackup revision to match
+    the solver result stackup revision.
+11. When reviewed solver qualification metadata is present, require each solver
     result to declare `solver_version` and match exactly one reviewed
     `solver_qualifications[]` row for the same solver and version.
-11. When reviewed solver material-corner evidence is present, require each
+12. When reviewed solver material-corner evidence is present, require each
     required solver corner to map to the solver result dielectric layer, match
     the reviewed solver material-library name/revision, and agree with reviewed
     stackup layer material plus nominal dielectric constant when those stackup
     fields are present.
-12. Fail when solved impedance, route width, differential route gap, sampled
+13. Fail when solved impedance, route width, differential route gap, sampled
     solver impedance, required corner coverage, sample count, frequency-step
     coverage, or reviewed input-deck setup plus copper-roughness and
     etch-compensation/material-library/material-corner consistency exceeds the reviewed limits.
     Fail closed when solver metadata, target mapping, stackup evidence, route
     evidence, declared signed-artifact evidence, declared input-deck evidence,
-    declared sweep evidence, or declared material-corner evidence is missing or
-    contradictory.
+    declared stackup-signoff evidence, declared sweep evidence, or declared
+    material-corner evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, optional signature URI/digest/signer, input-deck
-URI/digest, and reviewed sample/corner evidence but does not fetch artifacts,
-verify signatures, parse input decks, run a field solver, infer
+URI/digest, optional fabricator stackup signoff artifact URI/digest, and
+reviewed sample/corner evidence but does not fetch artifacts, verify
+signatures, parse input decks, run a field solver, infer
 dielectric/copper parameters, parse material libraries, calculate
 roughness-adjusted impedance, infer finished trace geometry from etch
 compensation, interpolate impedance, or replace SI/fabricator review.

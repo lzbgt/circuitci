@@ -682,6 +682,82 @@ fn controlled_impedance_solver_result_fails_closed_for_partial_signed_artifact_e
 }
 
 #[test]
+fn controlled_impedance_solver_result_passes_with_stackup_signoff_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          stackup_revision: stackup_rev_a\n",
+        "          stackup_revision: stackup_rev_a\n          stackup_signoff_source: fabricator_stackup_review_rev_a\n          fabricator_stackup_revision: stackup_rev_a\n          stackup_signoff_artifact_uri: artifacts/fabricator/stackup_signoff_rev_a.pdf\n          stackup_signoff_artifact_sha256: 111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_partial_stackup_signoff_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          stackup_revision: stackup_rev_a\n",
+        "          stackup_revision: stackup_rev_a\n          stackup_signoff_source: fabricator_stackup_review_rev_a\n          fabricator_stackup_revision: stackup_rev_a\n          stackup_signoff_artifact_uri: artifacts/fabricator/stackup_signoff_rev_a.pdf\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("stackup_signoff_artifact_sha256")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_stale_stackup_signoff_revision() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          stackup_revision: stackup_rev_a\n",
+        "          stackup_revision: stackup_rev_a\n          stackup_signoff_source: fabricator_stackup_review_rev_old\n          fabricator_stackup_revision: stackup_rev_old\n          stackup_signoff_artifact_uri: artifacts/fabricator/stackup_signoff_rev_old.pdf\n          stackup_signoff_artifact_sha256: 111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("fabricator_stackup_revision")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_passes_with_material_library_evidence() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:

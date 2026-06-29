@@ -164,6 +164,44 @@ pub(super) fn solver_artifact_signature_metadata_is_valid(
     true
 }
 
+pub(super) fn solver_stackup_signoff_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_stackup_signoff_policy_requested(result) {
+        return true;
+    }
+    if !solver_stackup_signoff_metadata_is_complete(result) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} stackup signoff evidence must declare non-empty stackup_signoff_source, fabricator_stackup_revision, stackup_signoff_artifact_uri, and a 64-character stackup_signoff_artifact_sha256 digest.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    let fabricator_revision = result
+        .fabricator_stackup_revision
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or_default();
+    if fabricator_revision != result.stackup_revision.trim() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} fabricator_stackup_revision {fabricator_revision} must match reviewed solver stackup_revision {}.",
+                result.name, result.stackup_revision
+            ),
+        );
+        return false;
+    }
+    true
+}
+
 pub(super) fn solver_input_deck_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
     result.solver_input_deck_uri.is_some()
         || result.solver_input_deck_sha256.is_some()
@@ -584,6 +622,23 @@ fn solver_artifact_signature_policy_requested(result: &ControlledImpedanceSolver
     result.solver_artifact_signature_uri.is_some()
         || result.solver_artifact_signature_sha256.is_some()
         || result.solver_artifact_signer.is_some()
+}
+
+fn solver_stackup_signoff_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
+    non_empty_option(result.stackup_signoff_source.as_deref()).is_some()
+        && non_empty_option(result.fabricator_stackup_revision.as_deref()).is_some()
+        && non_empty_option(result.stackup_signoff_artifact_uri.as_deref()).is_some()
+        && result
+            .stackup_signoff_artifact_sha256
+            .as_deref()
+            .is_some_and(is_sha256_hex)
+}
+
+fn solver_stackup_signoff_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.stackup_signoff_source.is_some()
+        || result.fabricator_stackup_revision.is_some()
+        || result.stackup_signoff_artifact_uri.is_some()
+        || result.stackup_signoff_artifact_sha256.is_some()
 }
 
 fn solver_etch_compensation_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
