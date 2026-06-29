@@ -377,6 +377,8 @@ pub(super) fn applied_controlled_impedance_solver_result(
             "controlled_impedance_solver_result",
         )?,
         solver_artifact_sha256: required_solver_artifact_sha256(row, path)?,
+        solver_input_deck_uri: optional_raw_column(row, "solver_input_deck_uri"),
+        solver_input_deck_sha256: optional_solver_input_deck_sha256(row, path)?,
         result_type,
         net,
         first_net,
@@ -436,14 +438,27 @@ pub(super) fn applied_controlled_impedance_solver_result(
             "max_route_width_delta_mm",
             "controlled_impedance_solver_result",
         )?,
+        input_stackup_revision: optional_raw_column(row, "input_stackup_revision"),
+        input_route_layer: optional_raw_column(row, "input_route_layer"),
+        input_reference_layer: optional_raw_column(row, "input_reference_layer"),
+        input_dielectric_layer: optional_raw_column(row, "input_dielectric_layer"),
+        input_width_mm: optional_raw_column(row, "input_width_mm")
+            .map(|value| parse_positive_number(&value, path, row, "input_width_mm"))
+            .transpose()?,
         solved_gap_mm: optional_raw_column(row, "solved_gap_mm")
             .map(|value| parse_positive_number(&value, path, row, "solved_gap_mm"))
             .transpose()?,
         max_route_gap_delta_mm: optional_raw_column(row, "max_route_gap_delta_mm")
             .map(|value| parse_nonnegative_number(&value, path, row, "max_route_gap_delta_mm"))
             .transpose()?,
+        input_gap_mm: optional_raw_column(row, "input_gap_mm")
+            .map(|value| parse_positive_number(&value, path, row, "input_gap_mm"))
+            .transpose()?,
         frequency_mhz: optional_raw_column(row, "frequency_mhz")
             .map(|value| parse_positive_number(&value, path, row, "frequency_mhz"))
+            .transpose()?,
+        input_frequency_mhz: optional_raw_column(row, "input_frequency_mhz")
+            .map(|value| parse_positive_number(&value, path, row, "input_frequency_mhz"))
             .transpose()?,
         min_solver_sample_count: optional_raw_column(row, "min_solver_sample_count")
             .as_deref()
@@ -548,6 +563,21 @@ fn required_solver_artifact_sha256(row: &MetadataCsvRow, path: &Path) -> Result<
     } else {
         bail!(
             "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_artifact_sha256 must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        )
+    }
+}
+
+fn optional_solver_input_deck_sha256(row: &MetadataCsvRow, path: &Path) -> Result<Option<String>> {
+    let Some(digest) = optional_raw_column(row, "solver_input_deck_sha256") else {
+        return Ok(None);
+    };
+    if is_sha256_hex(&digest) {
+        Ok(Some(digest.to_ascii_lowercase()))
+    } else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_input_deck_sha256 must be a 64-character SHA-256 hex digest.",
             path.display(),
             row.row_number
         )

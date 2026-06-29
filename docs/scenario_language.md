@@ -2014,15 +2014,19 @@ Controlled-impedance solver-result algorithm:
    solver samples with unique names, non-empty sources/corners, positive
    frequency and impedance values, required corner coverage, minimum sample
    count, and per-corner frequency-step coverage.
-9. Fail when solved impedance, route width, differential route gap, sampled
-   solver impedance, required corner coverage, sample count, or frequency-step
-   coverage exceeds the reviewed limits. Fail closed when solver metadata,
-   target mapping, stackup evidence, route evidence, or declared sweep evidence
-   is missing or contradictory.
+9. When reviewed input-deck metadata is present, require input-deck URI and
+   SHA-256 provenance plus explicit stackup/layer/width/gap/frequency setup
+   metadata that matches the solver-result setup.
+10. Fail when solved impedance, route width, differential route gap, sampled
+    solver impedance, required corner coverage, sample count, frequency-step
+    coverage, or reviewed input-deck setup consistency exceeds the reviewed
+    limits. Fail closed when solver metadata, target mapping, stackup evidence,
+    route evidence, declared input-deck evidence, or declared sweep evidence is
+    missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
-artifact URI/digest and reviewed sample/corner evidence but does not fetch
-artifacts, run a field solver,
+artifact URI/digest, input-deck URI/digest, and reviewed sample/corner
+evidence but does not fetch artifacts, parse input decks, run a field solver,
 infer dielectric/copper parameters, interpolate impedance, or replace
 SI/fabricator review.
 

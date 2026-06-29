@@ -736,6 +736,72 @@ fn controlled_impedance_solver_result_fails_for_solver_sweep_frequency_gap() {
 }
 
 #[test]
+fn controlled_impedance_solver_result_fails_for_input_deck_mismatch() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          input_width_mm: 0.20",
+        "          input_width_mm: 0.24",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["measured"].get("input_deck_mismatches").is_some())
+        .unwrap();
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID");
+    assert_eq!(failure["measured"]["result"], "rf_solver_result");
+    assert_eq!(
+        failure["measured"]["solver_input_deck_uri"],
+        "artifacts/solver/rf_solver_input_deck.json"
+    );
+    assert_eq!(
+        failure["measured"]["input_deck_mismatches"][0],
+        "solved_width_mm"
+    );
+    assert_eq!(failure["measured"]["input_width_mm"], 0.24);
+    assert_eq!(failure["limit"]["solved_width_mm"], 0.20);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_without_input_deck_digest() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210\n",
+        "",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("solver_input_deck_sha256")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_closed_without_artifact_digest() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
@@ -901,6 +967,8 @@ board:
           solver_version: "2026.06"
           solver_artifact_uri: artifacts/solver/rf_solver_result.json
           solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          solver_input_deck_uri: artifacts/solver/rf_solver_input_deck.json
+          solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
           result_type: single_ended
           net: RF
           target_impedance_ohm: 50.0
@@ -912,7 +980,13 @@ board:
           dielectric_layer: prepreg_1
           solved_width_mm: 0.20
           max_route_width_delta_mm: 0.03
+          input_stackup_revision: stackup_rev_a
+          input_route_layer: F.Cu
+          input_reference_layer: In1.GND
+          input_dielectric_layer: prepreg_1
+          input_width_mm: 0.20
           frequency_mhz: 2400.0
+          input_frequency_mhz: 2400.0
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]

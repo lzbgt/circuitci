@@ -638,10 +638,17 @@ results, `max_route_gap_delta_mm`. When reviewed solver sweep/corner policy is
 present, stable measured keys also include `sample_count`, `sample_names`,
 `missing_solver_corners`, `max_sample_impedance_error_ohm`, `worst_sample`,
 `max_solver_frequency_gap_mhz`, `frequency_gap_start_mhz`, and
-`frequency_gap_end_mhz`. Stable limit keys include
-`max_impedance_error_ohm`, `max_route_width_delta_mm`,
-`max_route_gap_delta_mm`, `min_solver_sample_count`,
-`max_solver_frequency_step_mhz`, and `required_solver_corners`.
+`frequency_gap_end_mhz`. When reviewed input-deck setup evidence is present,
+stable measured keys also include `solver_input_deck_uri`,
+`solver_input_deck_sha256`, `input_deck_mismatches`,
+`input_stackup_revision`, `input_route_layer`, `input_reference_layer`,
+`input_dielectric_layer`, `input_width_mm`, `input_gap_mm`, and
+`input_frequency_mhz`. Stable limit keys include `max_impedance_error_ohm`,
+`max_route_width_delta_mm`, `max_route_gap_delta_mm`,
+`min_solver_sample_count`, `max_solver_frequency_step_mhz`,
+`required_solver_corners`, `stackup_revision`, `route_layer`,
+`reference_layer`, `dielectric_layer`, `solved_width_mm`, `solved_gap_mm`, and
+`frequency_mhz`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

@@ -101,6 +101,8 @@ board:
           solver_version: "2026.06"
           solver_artifact_uri: artifacts/solver/rf_solver_result.json
           solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          solver_input_deck_uri: artifacts/solver/rf_solver_input_deck.json
+          solver_input_deck_sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
           result_type: single_ended
           net: RF
           target_impedance_ohm: 50.0
@@ -112,7 +114,13 @@ board:
           dielectric_layer: prepreg_1
           solved_width_mm: 0.20
           max_route_width_delta_mm: 0.03
+          input_stackup_revision: stackup_rev_a
+          input_route_layer: F.Cu
+          input_reference_layer: In1.GND
+          input_dielectric_layer: prepreg_1
+          input_width_mm: 0.20
           frequency_mhz: 2400.0
+          input_frequency_mhz: 2400.0
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]

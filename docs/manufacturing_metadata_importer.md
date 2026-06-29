@@ -137,12 +137,17 @@ Rows attach under the named imported or pre-existing coupon; duplicate
   `max_route_gap_delta_mm` are required and `net` must be blank.
 
 Optional `controlled_impedance_solver_result` columns are `solver_version`,
-`frequency_mhz`, `min_solver_sample_count`,
+`frequency_mhz`, `solver_input_deck_uri`, `solver_input_deck_sha256`,
+`input_stackup_revision`, `input_route_layer`, `input_reference_layer`,
+`input_dielectric_layer`, `input_width_mm`, `input_gap_mm`,
+`input_frequency_mhz`, `min_solver_sample_count`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
-`solver_source` when the ordinary `source` column is not used. These rows are
-reviewed solver-result evidence only; the importer preserves artifact
-provenance but does not run a field solver, fetch artifacts, or infer stackup
-parameters.
+`solver_source` when the ordinary `source` column is not used. When any
+input-deck column is present, validation requires complete input-deck
+provenance and checks that the reviewed input setup matches the solver-result
+setup. These rows are reviewed solver-result evidence only; the importer
+preserves artifact provenance but does not run a field solver, fetch artifacts,
+parse solver input decks, or infer stackup parameters.
 
 `controlled_impedance_solver_sample` rows use `value` as sampled
 `solved_impedance_ohm` and require `solver_result_name`, `name`, `source`,

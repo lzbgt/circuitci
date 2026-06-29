@@ -282,9 +282,10 @@ without explicit imported mechanical evidence.
 - `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID` compares explicit reviewed
   solver-result metadata and artifact URI/digest provenance against reviewed
   board impedance targets, imported route/stackup evidence, and optional
-  reviewed solver sweep/corner sample evidence. It does not fetch solver
-  artifacts, run a field solver, infer stackup parameters, interpolate
-  impedance, model copper roughness, or replace SI/fabricator review.
+  reviewed solver input-deck setup and sweep/corner sample evidence. It does
+  not fetch solver artifacts, parse solver input decks, run a field solver,
+  infer stackup parameters, interpolate impedance, model copper roughness, or
+  replace SI/fabricator review.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

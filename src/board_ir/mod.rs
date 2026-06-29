@@ -297,6 +297,10 @@ pub struct ControlledImpedanceSolverResult {
     pub solver_artifact_uri: Option<String>,
     #[serde(default)]
     pub solver_artifact_sha256: Option<String>,
+    #[serde(default)]
+    pub solver_input_deck_uri: Option<String>,
+    #[serde(default)]
+    pub solver_input_deck_sha256: Option<String>,
     pub result_type: ControlledImpedanceSolverResultType,
     #[serde(default)]
     pub net: Option<String>,
@@ -314,11 +318,25 @@ pub struct ControlledImpedanceSolverResult {
     pub solved_width_mm: f64,
     pub max_route_width_delta_mm: f64,
     #[serde(default)]
+    pub input_stackup_revision: Option<String>,
+    #[serde(default)]
+    pub input_route_layer: Option<String>,
+    #[serde(default)]
+    pub input_reference_layer: Option<String>,
+    #[serde(default)]
+    pub input_dielectric_layer: Option<String>,
+    #[serde(default)]
+    pub input_width_mm: Option<f64>,
+    #[serde(default)]
     pub solved_gap_mm: Option<f64>,
     #[serde(default)]
     pub max_route_gap_delta_mm: Option<f64>,
     #[serde(default)]
+    pub input_gap_mm: Option<f64>,
+    #[serde(default)]
     pub frequency_mhz: Option<f64>,
+    #[serde(default)]
+    pub input_frequency_mhz: Option<f64>,
     #[serde(default)]
     pub min_solver_sample_count: Option<usize>,
     #[serde(default)]

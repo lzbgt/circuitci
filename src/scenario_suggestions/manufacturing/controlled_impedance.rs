@@ -938,6 +938,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && positive_finite(result.solved_width_mm)
         && non_negative_finite(result.max_route_width_delta_mm)
         && result.frequency_mhz.is_none_or(positive_finite)
+        && controlled_impedance_solver_input_deck_has_evidence(result)
         && controlled_impedance_solver_sweep_has_evidence(result)
         && solver_stackup_has_evidence(bound, result)
         && match result.result_type {
@@ -951,6 +952,7 @@ fn controlled_impedance_solver_result_has_evidence(
                         && result.second_net.is_none()
                         && result.solved_gap_mm.is_none()
                         && result.max_route_gap_delta_mm.is_none()
+                        && result.input_gap_mm.is_none()
                         && bound.project.board.nets.contains_key(net)
                         && matching_single_ended_solver_target(bound, result, net)
                         && bound
@@ -969,6 +971,8 @@ fn controlled_impedance_solver_result_has_evidence(
                     || !result
                         .max_route_gap_delta_mm
                         .is_some_and(non_negative_finite)
+                    || (controlled_impedance_solver_input_deck_policy_requested(result)
+                        && !result.input_gap_mm.is_some_and(positive_finite))
                 {
                     return false;
                 }
@@ -1018,6 +1022,75 @@ fn controlled_impedance_solver_result_has_evidence(
                                 })
                         })
             }
+        }
+}
+
+fn controlled_impedance_solver_input_deck_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_input_deck_uri.is_some()
+        || result.solver_input_deck_sha256.is_some()
+        || result.input_stackup_revision.is_some()
+        || result.input_route_layer.is_some()
+        || result.input_reference_layer.is_some()
+        || result.input_dielectric_layer.is_some()
+        || result.input_width_mm.is_some()
+        || result.input_gap_mm.is_some()
+        || result.input_frequency_mhz.is_some()
+}
+
+fn controlled_impedance_solver_input_deck_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_input_deck_policy_requested(result) {
+        return true;
+    }
+    result
+        .solver_input_deck_uri
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_input_deck_sha256
+            .as_deref()
+            .is_some_and(|value| is_sha256_hex(value.trim()))
+        && result
+            .input_stackup_revision
+            .as_deref()
+            .is_some_and(|value| value.trim() == result.stackup_revision)
+        && result
+            .input_route_layer
+            .as_deref()
+            .is_some_and(|value| value.trim() == result.route_layer)
+        && result
+            .input_reference_layer
+            .as_deref()
+            .is_some_and(|value| value.trim() == result.reference_layer)
+        && result
+            .input_dielectric_layer
+            .as_deref()
+            .is_some_and(|value| value.trim() == result.dielectric_layer)
+        && result
+            .input_width_mm
+            .is_some_and(|value| (value - result.solved_width_mm).abs() <= f64::EPSILON)
+        && match result.result_type {
+            ControlledImpedanceSolverResultType::SingleEnded => result.input_gap_mm.is_none(),
+            ControlledImpedanceSolverResultType::Differential => {
+                if let (Some(input_gap), Some(solved_gap)) =
+                    (result.input_gap_mm, result.solved_gap_mm)
+                {
+                    (input_gap - solved_gap).abs() <= f64::EPSILON
+                } else {
+                    false
+                }
+            }
+        }
+        && match (result.frequency_mhz, result.input_frequency_mhz) {
+            (Some(frequency), Some(input_frequency)) => {
+                (input_frequency - frequency).abs() <= f64::EPSILON
+            }
+            (Some(_), None) => false,
+            (None, Some(input_frequency)) => positive_finite(input_frequency),
+            (None, None) => true,
         }
 }
 

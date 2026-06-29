@@ -52,6 +52,11 @@ pub(in crate::validation) fn validate_controlled_impedance_solver_result(
         {
             findings.push(solver_result_finding(scenario, result, &metrics));
         }
+        if solver_input_deck_policy_requested(result)
+            && !solver_input_deck_matches_result(scenario, findings, result)
+        {
+            findings.push(solver_input_deck_finding(scenario, result));
+        }
         if solver_sweep_policy_requested(result) {
             let Some(sweep_metrics) = solver_sweep_metrics(scenario, findings, result) else {
                 return;
@@ -260,6 +265,10 @@ fn solver_result_has_valid_metadata(
         || !positive(result.solved_width_mm)
         || !non_negative(result.max_route_width_delta_mm)
         || result.frequency_mhz.is_some_and(|value| !positive(value))
+        || result.input_width_mm.is_some_and(|value| !positive(value))
+        || result
+            .input_frequency_mhz
+            .is_some_and(|value| !positive(value))
         || result
             .min_solver_sample_count
             .is_some_and(|value| value == 0)
@@ -275,6 +284,9 @@ fn solver_result_has_valid_metadata(
                 result.name
             ),
         );
+        return false;
+    }
+    if !solver_input_deck_metadata_is_valid(scenario, findings, result) {
         return false;
     }
     if !solver_sweep_metadata_is_valid(scenario, findings, result) {
@@ -301,6 +313,7 @@ fn solver_result_has_valid_metadata(
                 || result.second_net.is_some()
                 || result.solved_gap_mm.is_some()
                 || result.max_route_gap_delta_mm.is_some()
+                || result.input_gap_mm.is_some()
             {
                 validation_input_missing(
                     findings,
@@ -372,12 +385,14 @@ fn solver_result_has_valid_metadata(
             }
             if !positive_option(result.solved_gap_mm)
                 || !non_negative_option(result.max_route_gap_delta_mm)
+                || (solver_input_deck_policy_requested(result)
+                    && !positive_option(result.input_gap_mm))
             {
                 validation_input_missing(
                     findings,
                     scenario,
                     format!(
-                        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID differential result {} must declare positive solved_gap_mm and non-negative max_route_gap_delta_mm.",
+                        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID differential result {} must declare positive solved_gap_mm, non-negative max_route_gap_delta_mm, and positive input_gap_mm when input-deck evidence is declared.",
                         result.name
                     ),
                 );
@@ -631,6 +646,143 @@ fn solver_sweep_policy_requested(result: &ControlledImpedanceSolverResult) -> bo
     result.min_solver_sample_count.is_some()
         || result.max_solver_frequency_step_mhz.is_some()
         || !result.required_solver_corners.is_empty()
+}
+
+fn solver_input_deck_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.solver_input_deck_uri.is_some()
+        || result.solver_input_deck_sha256.is_some()
+        || result.input_stackup_revision.is_some()
+        || result.input_route_layer.is_some()
+        || result.input_reference_layer.is_some()
+        || result.input_dielectric_layer.is_some()
+        || result.input_width_mm.is_some()
+        || result.input_gap_mm.is_some()
+        || result.input_frequency_mhz.is_some()
+}
+
+fn solver_input_deck_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_input_deck_policy_requested(result) {
+        return true;
+    }
+    let Some(_) = non_empty_option(result.solver_input_deck_uri.as_deref()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence requires non-empty solver_input_deck_uri.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    let Some(input_sha256) = non_empty_option(result.solver_input_deck_sha256.as_deref()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence requires solver_input_deck_sha256 as a 64-character SHA-256 hex digest.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    if !is_sha256_hex(input_sha256)
+        || non_empty_option(result.input_stackup_revision.as_deref()).is_none()
+        || non_empty_option(result.input_route_layer.as_deref()).is_none()
+        || non_empty_option(result.input_reference_layer.as_deref()).is_none()
+        || non_empty_option(result.input_dielectric_layer.as_deref()).is_none()
+        || !positive_option(result.input_width_mm)
+        || result
+            .input_frequency_mhz
+            .is_some_and(|value| !positive(value))
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, and optional positive input_frequency_mhz.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn solver_input_deck_matches_result(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let mismatches = solver_input_deck_mismatches(result);
+    if mismatches.is_empty() {
+        return true;
+    }
+    if mismatches.contains(&"input_frequency_mhz_missing") {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} declares solver frequency_mhz but input-deck evidence omits input_frequency_mhz.",
+                result.name
+            ),
+        );
+        return true;
+    }
+    false
+}
+
+fn solver_input_deck_mismatches(result: &ControlledImpedanceSolverResult) -> Vec<&'static str> {
+    let mut mismatches = Vec::new();
+    if result.input_stackup_revision.as_deref().map(str::trim)
+        != Some(result.stackup_revision.as_str())
+    {
+        mismatches.push("stackup_revision");
+    }
+    if result.input_route_layer.as_deref().map(str::trim) != Some(result.route_layer.as_str()) {
+        mismatches.push("route_layer");
+    }
+    if result.input_reference_layer.as_deref().map(str::trim)
+        != Some(result.reference_layer.as_str())
+    {
+        mismatches.push("reference_layer");
+    }
+    if result.input_dielectric_layer.as_deref().map(str::trim)
+        != Some(result.dielectric_layer.as_str())
+    {
+        mismatches.push("dielectric_layer");
+    }
+    if result
+        .input_width_mm
+        .is_some_and(|value| (value - result.solved_width_mm).abs() > f64::EPSILON)
+    {
+        mismatches.push("solved_width_mm");
+    }
+    match result.result_type {
+        ControlledImpedanceSolverResultType::SingleEnded => {}
+        ControlledImpedanceSolverResultType::Differential => {
+            if let (Some(input_gap), Some(solved_gap)) = (result.input_gap_mm, result.solved_gap_mm)
+                && (input_gap - solved_gap).abs() > f64::EPSILON
+            {
+                mismatches.push("solved_gap_mm");
+            }
+        }
+    }
+    if let Some(frequency_mhz) = result.frequency_mhz {
+        match result.input_frequency_mhz {
+            Some(input_frequency) => {
+                if (input_frequency - frequency_mhz).abs() > f64::EPSILON {
+                    mismatches.push("frequency_mhz");
+                }
+            }
+            None => mismatches.push("input_frequency_mhz_missing"),
+        }
+    }
+    mismatches
 }
 
 fn solver_sweep_metadata_is_valid(
@@ -1075,6 +1227,126 @@ fn solver_sweep_finding(
         "Review solver sweep setup, corner coverage, and source artifact provenance before accepting the controlled-impedance solver result.".to_string(),
     );
     finding
+}
+
+fn solver_input_deck_finding(
+    scenario: &Scenario,
+    result: &ControlledImpedanceSolverResult,
+) -> Finding {
+    let mismatches = solver_input_deck_mismatches(result);
+    let mut finding = Finding::critical(
+        CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID,
+        scenario.name.clone(),
+        format!(
+            "Controlled-impedance solver result {} input-deck metadata does not match the reviewed solver-result setup.",
+            result.name
+        ),
+    );
+    finding
+        .measured
+        .insert("result".to_string(), json!(result.name));
+    finding
+        .measured
+        .insert("source".to_string(), json!(result.source));
+    finding
+        .measured
+        .insert("solver".to_string(), json!(result.solver));
+    finding.measured.insert(
+        "solver_artifact_uri".to_string(),
+        json!(result.solver_artifact_uri.as_deref().unwrap_or_default()),
+    );
+    finding.measured.insert(
+        "solver_artifact_sha256".to_string(),
+        json!(result.solver_artifact_sha256.as_deref().unwrap_or_default()),
+    );
+    finding.measured.insert(
+        "solver_input_deck_uri".to_string(),
+        json!(result.solver_input_deck_uri.as_deref().unwrap_or_default()),
+    );
+    finding.measured.insert(
+        "solver_input_deck_sha256".to_string(),
+        json!(
+            result
+                .solver_input_deck_sha256
+                .as_deref()
+                .unwrap_or_default()
+        ),
+    );
+    finding
+        .measured
+        .insert("input_deck_mismatches".to_string(), json!(mismatches));
+    insert_optional_measured_string(
+        &mut finding,
+        "input_stackup_revision",
+        result.input_stackup_revision.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "input_route_layer",
+        result.input_route_layer.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "input_reference_layer",
+        result.input_reference_layer.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "input_dielectric_layer",
+        result.input_dielectric_layer.as_deref(),
+    );
+    if let Some(input_width) = result.input_width_mm {
+        finding
+            .measured
+            .insert("input_width_mm".to_string(), json!(input_width));
+    }
+    if let Some(input_gap) = result.input_gap_mm {
+        finding
+            .measured
+            .insert("input_gap_mm".to_string(), json!(input_gap));
+    }
+    if let Some(input_frequency) = result.input_frequency_mhz {
+        finding
+            .measured
+            .insert("input_frequency_mhz".to_string(), json!(input_frequency));
+    }
+    finding.limit.insert(
+        "stackup_revision".to_string(),
+        json!(result.stackup_revision),
+    );
+    finding
+        .limit
+        .insert("route_layer".to_string(), json!(result.route_layer));
+    finding
+        .limit
+        .insert("reference_layer".to_string(), json!(result.reference_layer));
+    finding.limit.insert(
+        "dielectric_layer".to_string(),
+        json!(result.dielectric_layer),
+    );
+    finding
+        .limit
+        .insert("solved_width_mm".to_string(), json!(result.solved_width_mm));
+    if let Some(solved_gap) = result.solved_gap_mm {
+        finding
+            .limit
+            .insert("solved_gap_mm".to_string(), json!(solved_gap));
+    }
+    if let Some(frequency) = result.frequency_mhz {
+        finding
+            .limit
+            .insert("frequency_mhz".to_string(), json!(frequency));
+    }
+    finding.suggested_fixes.push(
+        "Regenerate or re-review the solver input deck and solver-result metadata so the source-backed setup matches the routed board evidence.".to_string(),
+    );
+    finding
+}
+
+fn insert_optional_measured_string(finding: &mut Finding, key: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        finding.measured.insert(key.to_string(), json!(value));
+    }
 }
 
 fn named_stackup_layer<'a>(layers: &'a [StackupLayer], name: &str) -> Option<&'a StackupLayer> {

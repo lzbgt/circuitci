@@ -432,6 +432,11 @@
                         "type": "string",
                         "pattern": "^[A-Fa-f0-9]{64}$"
                       },
+                      "solver_input_deck_uri": { "type": "string", "minLength": 1 },
+                      "solver_input_deck_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
                       "result_type": {
                         "type": "string",
                         "enum": ["single_ended", "differential"]
@@ -448,9 +453,16 @@
                       "dielectric_layer": { "type": "string", "minLength": 1 },
                       "solved_width_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "max_route_width_delta_mm": { "type": "number", "minimum": 0 },
+                      "input_stackup_revision": { "type": "string", "minLength": 1 },
+                      "input_route_layer": { "type": "string", "minLength": 1 },
+                      "input_reference_layer": { "type": "string", "minLength": 1 },
+                      "input_dielectric_layer": { "type": "string", "minLength": 1 },
+                      "input_width_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "solved_gap_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "max_route_gap_delta_mm": { "type": "number", "minimum": 0 },
+                      "input_gap_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "frequency_mhz": { "type": "number", "exclusiveMinimum": 0 },
+                      "input_frequency_mhz": { "type": "number", "exclusiveMinimum": 0 },
                       "min_solver_sample_count": { "type": "integer", "minimum": 1 },
                       "max_solver_frequency_step_mhz": {
                         "type": "number",

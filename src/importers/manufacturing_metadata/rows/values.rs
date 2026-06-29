@@ -373,6 +373,16 @@ fn controlled_impedance_solver_result_mapping(
         "solver_artifact_sha256".to_string(),
         Value::String(result.solver_artifact_sha256.clone()),
     );
+    insert_optional_string(
+        &mut mapping,
+        "solver_input_deck_uri",
+        &result.solver_input_deck_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_input_deck_sha256",
+        &result.solver_input_deck_sha256,
+    );
     mapping.insert(
         "result_type".to_string(),
         Value::String(result.result_type.clone()),
@@ -422,7 +432,30 @@ fn controlled_impedance_solver_result_mapping(
         "max_route_gap_delta_mm",
         result.max_route_gap_delta_mm,
     );
+    insert_optional_string(
+        &mut mapping,
+        "input_stackup_revision",
+        &result.input_stackup_revision,
+    );
+    insert_optional_string(&mut mapping, "input_route_layer", &result.input_route_layer);
+    insert_optional_string(
+        &mut mapping,
+        "input_reference_layer",
+        &result.input_reference_layer,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "input_dielectric_layer",
+        &result.input_dielectric_layer,
+    );
+    insert_optional_number(&mut mapping, "input_width_mm", result.input_width_mm);
+    insert_optional_number(&mut mapping, "input_gap_mm", result.input_gap_mm);
     insert_optional_number(&mut mapping, "frequency_mhz", result.frequency_mhz);
+    insert_optional_number(
+        &mut mapping,
+        "input_frequency_mhz",
+        result.input_frequency_mhz,
+    );
     insert_optional_number(
         &mut mapping,
         "min_solver_sample_count",

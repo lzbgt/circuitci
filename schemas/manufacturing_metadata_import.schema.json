@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.19.0" },
+    "schema_version": { "const": "0.20.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -246,6 +246,14 @@
                   "type": "string",
                   "pattern": "^[A-Fa-f0-9]{64}$"
                 },
+                "solver_input_deck_uri": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_input_deck_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
                 "result_type": {
                   "type": "string",
                   "enum": ["single_ended", "differential"]
@@ -274,6 +282,26 @@
                   "type": "number",
                   "minimum": 0
                 },
+                "input_stackup_revision": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_route_layer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_reference_layer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_dielectric_layer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_width_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
                 "solved_gap_mm": {
                   "type": "number",
                   "exclusiveMinimum": 0
@@ -282,7 +310,15 @@
                   "type": "number",
                   "minimum": 0
                 },
+                "input_gap_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
                 "frequency_mhz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "input_frequency_mhz": {
                   "type": "number",
                   "exclusiveMinimum": 0
                 },
