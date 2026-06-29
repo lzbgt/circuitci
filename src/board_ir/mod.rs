@@ -249,6 +249,23 @@ pub struct ControlledImpedanceCoupon {
     pub target_impedance_ohm: f64,
     pub measured_impedance_ohm: f64,
     pub max_impedance_error_ohm: f64,
+    #[serde(default)]
+    pub min_batch_sample_count: Option<usize>,
+    #[serde(default)]
+    pub max_batch_mean_impedance_error_ohm: Option<f64>,
+    #[serde(default)]
+    pub max_batch_sample_impedance_error_ohm: Option<f64>,
+    #[serde(default)]
+    pub max_batch_stddev_ohm: Option<f64>,
+    #[serde(default)]
+    pub samples: Vec<ControlledImpedanceCouponSample>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceCouponSample {
+    pub name: String,
+    pub source: String,
+    pub measured_impedance_ohm: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

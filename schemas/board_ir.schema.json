@@ -373,7 +373,24 @@
                       "second_net": { "type": "string", "minLength": 1 },
                       "target_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 },
                       "measured_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 },
-                      "max_impedance_error_ohm": { "type": "number", "minimum": 0 }
+                      "max_impedance_error_ohm": { "type": "number", "minimum": 0 },
+                      "min_batch_sample_count": { "type": "integer", "minimum": 1 },
+                      "max_batch_mean_impedance_error_ohm": { "type": "number", "minimum": 0 },
+                      "max_batch_sample_impedance_error_ohm": { "type": "number", "minimum": 0 },
+                      "max_batch_stddev_ohm": { "type": "number", "minimum": 0 },
+                      "samples": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "source", "measured_impedance_ohm"],
+                          "properties": {
+                            "name": { "type": "string", "minLength": 1 },
+                            "source": { "type": "string", "minLength": 1 },
+                            "measured_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 }
+                          },
+                          "additionalProperties": false
+                        }
+                      }
                     },
                     "additionalProperties": false
                   }

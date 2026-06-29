@@ -10,7 +10,7 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         "scenario_suggestions_controlled_impedance"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 8);
+    assert_eq!(suggested.len(), 10);
 
     let single_ended = &suggested[0];
     assert_eq!(single_ended["id"], "controlled_impedance_rf");
@@ -206,6 +206,50 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
     );
     assert_eq!(
         differential_coupon["scenario"]["parameters"]["coupons"][0]["name"],
+        "dp_dm_coupon"
+    );
+
+    let single_coupon_batch = &suggested[8];
+    assert_eq!(
+        single_coupon_batch["id"],
+        "controlled_impedance_coupon_batch_rf_coupon"
+    );
+    assert_eq!(
+        single_coupon_batch["kind"],
+        "manufacturing_controlled_impedance_coupon_batch_rf_coupon"
+    );
+    assert_eq!(single_coupon_batch["runnable"], true);
+    assert_eq!(
+        single_coupon_batch["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID"
+    );
+    assert_eq!(
+        single_coupon_batch["scenario"]["parameters"]["coupons"][0]["name"],
+        "rf_coupon"
+    );
+    assert!(
+        single_coupon_batch["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed batch sample evidence")
+    );
+
+    let differential_coupon_batch = &suggested[9];
+    assert_eq!(
+        differential_coupon_batch["id"],
+        "controlled_impedance_coupon_batch_dp_dm_coupon"
+    );
+    assert_eq!(
+        differential_coupon_batch["kind"],
+        "manufacturing_controlled_impedance_coupon_batch_dp_dm_coupon"
+    );
+    assert_eq!(differential_coupon_batch["runnable"], true);
+    assert_eq!(
+        differential_coupon_batch["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID"
+    );
+    assert_eq!(
+        differential_coupon_batch["scenario"]["parameters"]["coupons"][0]["name"],
         "dp_dm_coupon"
     );
 }

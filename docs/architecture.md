@@ -188,8 +188,8 @@ Importers append evidence instead of guessing missing intent. Examples:
   `board.manufacturing` fields plus reviewed `board.layout.stackup.layers[]`
   entries, RF antenna layout/topology/measurement/limit/condition constraints
   with optional sampled sweep-coverage policy, package
-  thermal metadata, reviewed controlled-impedance target/coupon metadata, and
-  reviewed operating environment and thermal-limit metadata, preserves raw
+  thermal metadata, reviewed controlled-impedance target/coupon/sample
+  metadata, and reviewed operating environment and thermal-limit metadata, preserves raw
   row evidence and skipped unrelated order rows in a JSON manifest, and does
   not infer process defaults, package thermal data, environment limits, thermal
   limits, coupon applicability, acceptable RF return loss, or RF topology from

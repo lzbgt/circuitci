@@ -141,6 +141,7 @@ Canonical executable check IDs:
 - `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
 - `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_VALID`
+- `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -1896,6 +1897,43 @@ Controlled-impedance coupon algorithm:
 This is a reviewed coupon-result and board-target consistency screen only. It
 does not infer coupon applicability, calculate impedance, model coupon-to-board
 correlation, account for fabricator statistical process limits, or replace SI
+review.
+
+Controlled-impedance coupon batch validation uses
+`CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID` with the same
+`parameters.coupons[]` shape. It first applies the single-coupon metadata,
+net-association, and board-target consistency gates, then evaluates reviewed
+sample statistics declared on each coupon.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_coupon_batch
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID
+    parameters:
+      coupons:
+        - name: rf_coupon
+```
+
+Controlled-impedance coupon batch algorithm:
+
+1. Require each named coupon to pass the reviewed coupon metadata and matching
+   board-target checks used by `CONTROLLED_IMPEDANCE_COUPON_VALID`.
+2. Require reviewed batch limits on the coupon:
+   `min_batch_sample_count`, `max_batch_mean_impedance_error_ohm`,
+   `max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm`.
+3. Require `samples[]` with unique non-empty sample `name`, non-empty
+   `source`, and positive `measured_impedance_ohm`.
+4. Compute sample count, mean impedance, absolute mean error from the coupon
+   target, maximum absolute per-sample error from the coupon target, and
+   population standard deviation.
+5. Fail when any computed statistic violates its reviewed limit; fail closed
+   when sample evidence or limits are absent or malformed.
+
+This is a reviewed batch-statistics screen only. It does not infer whether a
+coupon statistically represents routed board traces, compute process
+capability indices, solve impedance, or replace fabricator/SI acceptance
 review.
 
 Adjacent-plane return-path validation uses

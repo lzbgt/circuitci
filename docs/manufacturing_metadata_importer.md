@@ -94,16 +94,25 @@ from stackup, or infer high-speed nets.
 - `coupon_type`: `single_ended` or `differential`.
 - `target_impedance_ohm`: reviewed coupon target impedance.
 - `max_impedance_error_ohm`: reviewed non-negative coupon tolerance.
+- Optional `min_batch_sample_count`,
+  `max_batch_mean_impedance_error_ohm`,
+  `max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm` columns
+  declare reviewed coupon batch acceptance limits.
 - For `single_ended`, `net` is required and `first_net`/`second_net` must be
   blank.
 - For `differential`, `first_net` and `second_net` are required and `net` must
   be blank.
 
+`controlled_impedance_coupon_sample` rows use `value` as a sampled
+`measured_impedance_ohm` and require `coupon_name`, `name`, and `source`.
+Rows attach under the named imported or pre-existing coupon; duplicate
+`coupon_name`/sample-name pairs fail closed.
+
 Coupon rows are reviewed measurement evidence only; the importer does not
 decide whether a coupon statistically represents the routed board. Validation
 requires each imported coupon to map to exactly one reviewed
 `controlled_impedance_net` or `controlled_impedance_pair` target with matching
-target impedance before the coupon tolerance is evaluated.
+target impedance before the coupon tolerance or batch statistics are evaluated.
 
 `thermal_copper` rows use `value` as `min_copper_area_mm2` and require extra
 columns:

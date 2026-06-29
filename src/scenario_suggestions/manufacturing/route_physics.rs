@@ -16,6 +16,7 @@ const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
 const CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID: &str =
     "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID";
 const CONTROLLED_IMPEDANCE_COUPON_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_VALID";
+const CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -38,6 +39,10 @@ pub(super) fn route_physics_suggestions(
         project_name,
     ));
     suggestions.extend(controlled_impedance_coupon_suggestions(bound, project_name));
+    suggestions.extend(controlled_impedance_coupon_batch_suggestions(
+        bound,
+        project_name,
+    ));
     suggestions.extend(adjacent_plane_return_path_suggestions(bound, project_name));
     suggestions.extend(reference_plane_slot_crossing_suggestions(
         bound,
@@ -504,8 +509,11 @@ fn controlled_impedance_coupon_suggestions(
         .controlled_impedance
         .coupons
     {
-        if controlled_impedance_coupon_check_declared(bound, &coupon.name)
-            || !controlled_impedance_coupon_has_evidence(bound, coupon)
+        if controlled_impedance_coupon_check_declared(
+            bound,
+            CONTROLLED_IMPEDANCE_COUPON_VALID,
+            &coupon.name,
+        ) || !controlled_impedance_coupon_has_evidence(bound, coupon)
         {
             continue;
         }
@@ -525,6 +533,52 @@ fn controlled_impedance_coupon_suggestions(
                 sanitized_name(&coupon.name)
             ),
             CONTROLLED_IMPEDANCE_COUPON_VALID,
+            Some(BTreeMap::from([(
+                "coupons".to_string(),
+                json!([{ "name": coupon.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
+fn controlled_impedance_coupon_batch_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for coupon in &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .coupons
+    {
+        if controlled_impedance_coupon_check_declared(
+            bound,
+            CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID,
+            &coupon.name,
+        ) || !controlled_impedance_coupon_batch_has_evidence(bound, coupon)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_coupon_batch_{}",
+                sanitized_name(&coupon.name)
+            ),
+            true,
+            &format!(
+                "Controlled-impedance coupon {} has reviewed batch sample evidence from {}, explicit batch acceptance limits, and a matching board controlled-impedance target.",
+                coupon.name, coupon.source
+            ),
+            &format!(
+                "{}_{}_controlled_impedance_coupon_batch",
+                project_name,
+                sanitized_name(&coupon.name)
+            ),
+            CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID,
             Some(BTreeMap::from([(
                 "coupons".to_string(),
                 json!([{ "name": coupon.name }]),
@@ -847,6 +901,27 @@ fn controlled_impedance_coupon_has_evidence(
                 && matching_differential_coupon_target(bound, coupon, first_net, second_net)
         }
     }
+}
+
+fn controlled_impedance_coupon_batch_has_evidence(
+    bound: &BoundBoard<'_>,
+    coupon: &ControlledImpedanceCoupon,
+) -> bool {
+    controlled_impedance_coupon_has_evidence(bound, coupon)
+        && coupon.min_batch_sample_count.is_some_and(|value| value > 0)
+        && coupon
+            .max_batch_mean_impedance_error_ohm
+            .is_some_and(non_negative_finite)
+        && coupon
+            .max_batch_sample_impedance_error_ohm
+            .is_some_and(non_negative_finite)
+        && coupon.max_batch_stddev_ohm.is_some_and(non_negative_finite)
+        && !coupon.samples.is_empty()
+        && coupon.samples.iter().all(|sample| {
+            !sample.name.trim().is_empty()
+                && !sample.source.trim().is_empty()
+                && positive_finite(sample.measured_impedance_ohm)
+        })
 }
 
 fn matching_single_ended_coupon_target(
@@ -1536,13 +1611,14 @@ fn controlled_impedance_pair_check_declared(
     })
 }
 
-fn controlled_impedance_coupon_check_declared(bound: &BoundBoard<'_>, coupon_name: &str) -> bool {
+fn controlled_impedance_coupon_check_declared(
+    bound: &BoundBoard<'_>,
+    check_id: &str,
+    coupon_name: &str,
+) -> bool {
     bound.project.scenarios.iter().any(|scenario| {
         scenario.scenario_type == "manufacturing"
-            && scenario
-                .checks
-                .iter()
-                .any(|declared| declared == CONTROLLED_IMPEDANCE_COUPON_VALID)
+            && scenario.checks.iter().any(|declared| declared == check_id)
             && scenario
                 .parameters
                 .get("coupons")

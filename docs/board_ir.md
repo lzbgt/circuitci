@@ -158,6 +158,17 @@ board:
           target_impedance_ohm: 50.0
           measured_impedance_ohm: 51.2
           max_impedance_error_ohm: 3.0
+          min_batch_sample_count: 3
+          max_batch_mean_impedance_error_ohm: 1.5
+          max_batch_sample_impedance_error_ohm: 2.0
+          max_batch_stddev_ohm: 0.5
+          samples:
+            - name: rf_coupon_s1
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 50.8
+            - name: rf_coupon_s2
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 51.0
         - name: dp_dm_coupon
           source: fab_coupon_report_rev_b
           coupon_type: differential
@@ -251,8 +262,12 @@ fabricator coupon measurements. `single_ended` coupons must name one Board IR
 CircuitCI requires the coupon to map to exactly one reviewed board
 controlled-impedance target for that same net or unordered pair, and the coupon
 target impedance must match that board target before measured coupon tolerance
-is evaluated. It still does not infer coupon applicability, calculate
-impedance, or prove statistical coupon-to-board correlation.
+is evaluated. Optional `samples[]` plus `min_batch_sample_count`,
+`max_batch_mean_impedance_error_ohm`,
+`max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm` let
+scenarios screen reviewed coupon batch statistics. It still does not infer
+coupon applicability, calculate impedance, or prove statistical
+coupon-to-board correlation.
 
 `THERMAL_COPPER_AREA_VALID` suggestions consume
 `board.manufacturing.thermal_copper[]` as reviewed thermal layout policy. Each
@@ -369,6 +384,12 @@ Repeated `field=controlled_impedance_coupon` rows use `value` as
 `measured_impedance_ohm`, require `name`, `coupon_type`,
 `target_impedance_ohm`, and `max_impedance_error_ohm`, and preserve either a
 single-ended `net` or differential `first_net`/`second_net` association.
+They may also include reviewed batch limit columns:
+`min_batch_sample_count`, `max_batch_mean_impedance_error_ohm`,
+`max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm`. Repeated
+`field=controlled_impedance_coupon_sample` rows use `value` as a sampled
+`measured_impedance_ohm`, require `coupon_name`, `name`, and `source`, and
+attach to an existing or same-import coupon by `coupon_name`.
 Repeated
 `field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
 include reviewed policy columns such as `name`, `component`, `power_loss_w`,

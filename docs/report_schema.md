@@ -178,6 +178,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
 - `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_VALID`
+- `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -600,6 +601,16 @@ pair. Stable measured keys include
 `target_impedance_ohm`, `measured_impedance_ohm`, and
 `impedance_error_ohm`. Stable limit keys include
 `max_impedance_error_ohm`.
+
+`CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID` reports are emitted by
+`manufacturing` scenarios that compute reviewed coupon sample statistics after
+the coupon has matched exactly one reviewed board controlled-impedance target.
+Stable measured keys include `coupon_name`, `coupon_type`, `source`, `net`,
+`first_net`, `second_net`, `target_impedance_ohm`, `sample_count`,
+`mean_impedance_ohm`, `mean_impedance_error_ohm`,
+`max_sample_impedance_error_ohm`, and `stddev_impedance_ohm`. Stable limit keys
+include `min_batch_sample_count`, `max_batch_mean_impedance_error_ohm`,
+`max_batch_sample_impedance_error_ohm`, and `max_batch_stddev_ohm`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

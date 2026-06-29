@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.14.0".to_string(),
+        schema_version: "0.15.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -170,6 +170,9 @@ fn apply_metadata(
     let board = ensure_mapping_field_mut(root, "board")?;
     let mut wrote_manufacturing = false;
     for field in fields {
+        if field.field == ManufacturingField::ControlledImpedanceCouponSample {
+            continue;
+        }
         if field.field == ManufacturingField::ControlledImpedanceNet {
             let target = field
                 .controlled_impedance_net
@@ -386,6 +389,26 @@ fn apply_metadata(
             wrote_manufacturing = true;
         }
     }
+    for field in fields
+        .iter()
+        .filter(|field| field.field == ManufacturingField::ControlledImpedanceCouponSample)
+    {
+        let sample = field
+            .controlled_impedance_coupon_sample
+            .as_ref()
+            .context("controlled_impedance_coupon_sample field must have sample value")?;
+        let value = normalized_yaml_value(field)?;
+        let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+        let controlled_impedance = ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+        let coupons = ensure_sequence_field_mut(controlled_impedance, "coupons")?;
+        upsert_controlled_impedance_coupon_sample_value(
+            coupons,
+            &sample.coupon_name,
+            &sample.name,
+            value,
+        )?;
+        wrote_manufacturing = true;
+    }
     if wrote_manufacturing {
         let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
         manufacturing.insert(
@@ -491,6 +514,40 @@ fn upsert_named_sequence_value(
         sequence.push(value);
     }
     Ok(())
+}
+
+fn upsert_controlled_impedance_coupon_sample_value(
+    coupons: &mut [Value],
+    coupon_name: &str,
+    sample_name: &str,
+    value: Value,
+) -> Result<()> {
+    let mut matched_coupon_index = None;
+    for (index, coupon) in coupons.iter().enumerate() {
+        if yaml_mapping_name(coupon) == Some(coupon_name) {
+            if matched_coupon_index.is_some() {
+                bail!(
+                    "Board IR field controlled_impedance.coupons has duplicate existing name {coupon_name}; refusing to update ambiguous coupon sample."
+                );
+            }
+            matched_coupon_index = Some(index);
+        }
+    }
+    let Some(index) = matched_coupon_index else {
+        bail!(
+            "Board IR field controlled_impedance.coupons has no coupon named {coupon_name}; refusing to attach coupon sample {sample_name}."
+        );
+    };
+    let mapping = coupons[index].as_mapping_mut().with_context(|| {
+        format!("Board IR field controlled_impedance.coupons item {coupon_name} must be an object.")
+    })?;
+    let samples = ensure_sequence_field_mut(mapping, "samples")?;
+    upsert_named_sequence_value(
+        samples,
+        sample_name,
+        value,
+        "controlled_impedance.coupons[].samples",
+    )
 }
 
 fn upsert_component_sequence_value(

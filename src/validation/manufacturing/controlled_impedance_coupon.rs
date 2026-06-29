@@ -1,11 +1,14 @@
-use crate::board_ir::{ControlledImpedanceCoupon, ControlledImpedanceCouponType, Scenario};
+use crate::board_ir::{
+    ControlledImpedanceCoupon, ControlledImpedanceCouponSample, ControlledImpedanceCouponType,
+    Scenario,
+};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 use std::collections::BTreeSet;
 
-use super::super::CONTROLLED_IMPEDANCE_COUPON_VALID;
 use super::super::common::validation_input_missing;
+use super::super::{CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID, CONTROLLED_IMPEDANCE_COUPON_VALID};
 
 const IMPEDANCE_MATCH_EPSILON_OHM: f64 = 1.0e-9;
 
@@ -46,12 +49,76 @@ pub(in crate::validation) fn validate_controlled_impedance_coupon(
     }
 }
 
+pub(in crate::validation) fn validate_controlled_impedance_coupon_batch(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(names) =
+        coupon_names_for_check(scenario, findings, CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID)
+    else {
+        return;
+    };
+    let coupons = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .coupons;
+    if coupons.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID requires board.manufacturing.controlled_impedance.coupons evidence.",
+        );
+        return;
+    }
+    for name in names {
+        let Some(coupon) = named_coupon_for_check(
+            coupons,
+            scenario,
+            findings,
+            &name,
+            CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID,
+        ) else {
+            return;
+        };
+        if !coupon_has_valid_metadata(bound, scenario, findings, coupon) {
+            return;
+        }
+        let Some(metrics) = batch_metrics(scenario, findings, coupon) else {
+            return;
+        };
+        if metrics.sample_count < coupon.min_batch_sample_count.unwrap_or_default()
+            || metrics.mean_impedance_error_ohm
+                > coupon
+                    .max_batch_mean_impedance_error_ohm
+                    .unwrap_or(f64::INFINITY)
+            || metrics.max_sample_impedance_error_ohm
+                > coupon
+                    .max_batch_sample_impedance_error_ohm
+                    .unwrap_or(f64::INFINITY)
+            || metrics.stddev_impedance_ohm > coupon.max_batch_stddev_ohm.unwrap_or(f64::INFINITY)
+        {
+            findings.push(coupon_batch_finding(scenario, coupon, &metrics));
+        }
+    }
+}
+
 fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<String>> {
+    coupon_names_for_check(scenario, findings, CONTROLLED_IMPEDANCE_COUPON_VALID)
+}
+
+fn coupon_names_for_check(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    check_id: &str,
+) -> Option<Vec<String>> {
     let Some(value) = scenario.parameters.get("coupons") else {
         validation_input_missing(
             findings,
             scenario,
-            "CONTROLLED_IMPEDANCE_COUPON_VALID requires parameters.coupons.",
+            format!("{check_id} requires parameters.coupons."),
         );
         return None;
     };
@@ -59,7 +126,7 @@ fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<
         validation_input_missing(
             findings,
             scenario,
-            "CONTROLLED_IMPEDANCE_COUPON_VALID parameters.coupons must be a list.",
+            format!("{check_id} parameters.coupons must be a list."),
         );
         return None;
     };
@@ -67,7 +134,7 @@ fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<
         validation_input_missing(
             findings,
             scenario,
-            "CONTROLLED_IMPEDANCE_COUPON_VALID parameters.coupons must not be empty.",
+            format!("{check_id} parameters.coupons must not be empty."),
         );
         return None;
     }
@@ -78,9 +145,7 @@ fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<
             validation_input_missing(
                 findings,
                 scenario,
-                format!(
-                    "CONTROLLED_IMPEDANCE_COUPON_VALID parameters.coupons[{index}] must be an object."
-                ),
+                format!("{check_id} parameters.coupons[{index}] must be an object."),
             );
             return None;
         };
@@ -88,9 +153,7 @@ fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<
             validation_input_missing(
                 findings,
                 scenario,
-                format!(
-                    "CONTROLLED_IMPEDANCE_COUPON_VALID parameters.coupons[{index}].name is required."
-                ),
+                format!("{check_id} parameters.coupons[{index}].name is required."),
             );
             return None;
         };
@@ -102,9 +165,7 @@ fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<
             validation_input_missing(
                 findings,
                 scenario,
-                format!(
-                    "CONTROLLED_IMPEDANCE_COUPON_VALID parameters.coupons[{index}].name must be a non-empty string."
-                ),
+                format!("{check_id} parameters.coupons[{index}].name must be a non-empty string."),
             );
             return None;
         };
@@ -112,9 +173,7 @@ fn coupon_names(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<Vec<
             validation_input_missing(
                 findings,
                 scenario,
-                format!(
-                    "CONTROLLED_IMPEDANCE_COUPON_VALID parameters.coupons repeats coupon name {name}."
-                ),
+                format!("{check_id} parameters.coupons repeats coupon name {name}."),
             );
             return None;
         }
@@ -129,13 +188,29 @@ fn named_coupon<'a>(
     findings: &mut Vec<Finding>,
     name: &str,
 ) -> Option<&'a ControlledImpedanceCoupon> {
+    named_coupon_for_check(
+        coupons,
+        scenario,
+        findings,
+        name,
+        CONTROLLED_IMPEDANCE_COUPON_VALID,
+    )
+}
+
+fn named_coupon_for_check<'a>(
+    coupons: &'a [ControlledImpedanceCoupon],
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    name: &str,
+    check_id: &str,
+) -> Option<&'a ControlledImpedanceCoupon> {
     let mut matches = coupons.iter().filter(|coupon| coupon.name == name);
     let Some(coupon) = matches.next() else {
         validation_input_missing(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_COUPON_VALID coupon {name} is absent from board.manufacturing.controlled_impedance.coupons."
+                "{check_id} coupon {name} is absent from board.manufacturing.controlled_impedance.coupons."
             ),
         );
         return None;
@@ -145,7 +220,7 @@ fn named_coupon<'a>(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_COUPON_VALID coupon name {name} is duplicated in board.manufacturing.controlled_impedance.coupons."
+                "{check_id} coupon name {name} is duplicated in board.manufacturing.controlled_impedance.coupons."
             ),
         );
         return None;
@@ -508,6 +583,250 @@ fn coupon_finding(
         "Review the fabricator coupon report against the controlled-impedance requirement.".to_string(),
         "Update stackup, trace geometry, or fabrication notes before accepting a coupon outside tolerance.".to_string(),
         "Do not treat this check as a field solver; it verifies explicit coupon measurement evidence and reviewed board-target consistency only.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug)]
+struct CouponBatchMetrics {
+    sample_count: usize,
+    mean_impedance_ohm: f64,
+    mean_impedance_error_ohm: f64,
+    max_sample_impedance_error_ohm: f64,
+    stddev_impedance_ohm: f64,
+}
+
+fn batch_metrics(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+) -> Option<CouponBatchMetrics> {
+    let Some(min_sample_count) = coupon.min_batch_sample_count else {
+        missing_batch_field(scenario, findings, coupon, "min_batch_sample_count");
+        return None;
+    };
+    let Some(max_mean_error) = coupon.max_batch_mean_impedance_error_ohm else {
+        missing_batch_field(
+            scenario,
+            findings,
+            coupon,
+            "max_batch_mean_impedance_error_ohm",
+        );
+        return None;
+    };
+    let Some(max_sample_error) = coupon.max_batch_sample_impedance_error_ohm else {
+        missing_batch_field(
+            scenario,
+            findings,
+            coupon,
+            "max_batch_sample_impedance_error_ohm",
+        );
+        return None;
+    };
+    let Some(max_stddev) = coupon.max_batch_stddev_ohm else {
+        missing_batch_field(scenario, findings, coupon, "max_batch_stddev_ohm");
+        return None;
+    };
+    if min_sample_count == 0
+        || !max_mean_error.is_finite()
+        || max_mean_error < 0.0
+        || !max_sample_error.is_finite()
+        || max_sample_error < 0.0
+        || !max_stddev.is_finite()
+        || max_stddev < 0.0
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID coupon {} must declare positive min_batch_sample_count and finite non-negative batch limits.",
+                coupon.name
+            ),
+        );
+        return None;
+    }
+    if coupon.samples.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID coupon {} requires reviewed samples.",
+                coupon.name
+            ),
+        );
+        return None;
+    }
+    let mut seen = BTreeSet::new();
+    for sample in &coupon.samples {
+        if !sample_has_valid_metadata(scenario, findings, coupon, sample, &mut seen) {
+            return None;
+        }
+    }
+    let sample_count = coupon.samples.len();
+    let mean_impedance_ohm = coupon
+        .samples
+        .iter()
+        .map(|sample| sample.measured_impedance_ohm)
+        .sum::<f64>()
+        / sample_count as f64;
+    let mean_impedance_error_ohm = (mean_impedance_ohm - coupon.target_impedance_ohm).abs();
+    let max_sample_impedance_error_ohm = coupon
+        .samples
+        .iter()
+        .map(|sample| (sample.measured_impedance_ohm - coupon.target_impedance_ohm).abs())
+        .fold(0.0, f64::max);
+    let variance = coupon
+        .samples
+        .iter()
+        .map(|sample| (sample.measured_impedance_ohm - mean_impedance_ohm).powi(2))
+        .sum::<f64>()
+        / sample_count as f64;
+    Some(CouponBatchMetrics {
+        sample_count,
+        mean_impedance_ohm,
+        mean_impedance_error_ohm,
+        max_sample_impedance_error_ohm,
+        stddev_impedance_ohm: variance.sqrt(),
+    })
+}
+
+fn missing_batch_field(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    field: &str,
+) {
+    validation_input_missing(
+        findings,
+        scenario,
+        format!(
+            "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID coupon {} requires reviewed {field}.",
+            coupon.name
+        ),
+    );
+}
+
+fn sample_has_valid_metadata(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    sample: &ControlledImpedanceCouponSample,
+    seen: &mut BTreeSet<String>,
+) -> bool {
+    if sample.name.trim().is_empty() || sample.source.trim().is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID coupon {} samples must declare non-empty name and source.",
+                coupon.name
+            ),
+        );
+        return false;
+    }
+    if !seen.insert(sample.name.clone()) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID coupon {} repeats sample name {}.",
+                coupon.name, sample.name
+            ),
+        );
+        return false;
+    }
+    if !sample.measured_impedance_ohm.is_finite() || sample.measured_impedance_ohm <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID coupon {} sample {} must declare finite positive measured_impedance_ohm.",
+                coupon.name, sample.name
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn coupon_batch_finding(
+    scenario: &Scenario,
+    coupon: &ControlledImpedanceCoupon,
+    metrics: &CouponBatchMetrics,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID,
+        &scenario.name,
+        format!(
+            "Controlled-impedance coupon {} batch statistics exceeded reviewed acceptance limits.",
+            coupon.name
+        ),
+    );
+    finding
+        .measured
+        .insert("coupon_name".to_string(), json!(coupon.name));
+    finding
+        .measured
+        .insert("coupon_type".to_string(), json!(coupon_type_label(coupon)));
+    finding
+        .measured
+        .insert("source".to_string(), json!(coupon.source));
+    if let Some(net) = &coupon.net {
+        finding.measured.insert("net".to_string(), json!(net));
+    }
+    if let Some(first_net) = &coupon.first_net {
+        finding
+            .measured
+            .insert("first_net".to_string(), json!(first_net));
+    }
+    if let Some(second_net) = &coupon.second_net {
+        finding
+            .measured
+            .insert("second_net".to_string(), json!(second_net));
+    }
+    finding.measured.insert(
+        "target_impedance_ohm".to_string(),
+        json!(coupon.target_impedance_ohm),
+    );
+    finding
+        .measured
+        .insert("sample_count".to_string(), json!(metrics.sample_count));
+    finding.measured.insert(
+        "mean_impedance_ohm".to_string(),
+        json!(metrics.mean_impedance_ohm),
+    );
+    finding.measured.insert(
+        "mean_impedance_error_ohm".to_string(),
+        json!(metrics.mean_impedance_error_ohm),
+    );
+    finding.measured.insert(
+        "max_sample_impedance_error_ohm".to_string(),
+        json!(metrics.max_sample_impedance_error_ohm),
+    );
+    finding.measured.insert(
+        "stddev_impedance_ohm".to_string(),
+        json!(metrics.stddev_impedance_ohm),
+    );
+    finding.limit.insert(
+        "min_batch_sample_count".to_string(),
+        json!(coupon.min_batch_sample_count),
+    );
+    finding.limit.insert(
+        "max_batch_mean_impedance_error_ohm".to_string(),
+        json!(coupon.max_batch_mean_impedance_error_ohm),
+    );
+    finding.limit.insert(
+        "max_batch_sample_impedance_error_ohm".to_string(),
+        json!(coupon.max_batch_sample_impedance_error_ohm),
+    );
+    finding.limit.insert(
+        "max_batch_stddev_ohm".to_string(),
+        json!(coupon.max_batch_stddev_ohm),
+    );
+    finding.suggested_fixes = vec![
+        "Review the complete fabricator coupon batch report against the controlled-impedance acceptance policy.".to_string(),
+        "Check whether stackup, trace geometry, solder-mask loading, or fabrication process controls changed across the batch.".to_string(),
+        "Do not treat this check as a field solver; it verifies explicit coupon sample evidence and reviewed batch limits only.".to_string(),
     ];
     finding
 }

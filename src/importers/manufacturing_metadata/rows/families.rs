@@ -1,12 +1,12 @@
 use super::{
-    AppliedControlledImpedanceCoupon, AppliedControlledImpedanceNet,
-    AppliedControlledImpedancePair, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
-    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
-    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
-    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
-    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
+    AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
+    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -232,6 +232,66 @@ pub(super) fn applied_controlled_impedance_coupon(
             path,
             "max_impedance_error_ohm",
             "controlled_impedance_coupon",
+        )?,
+        min_batch_sample_count: optional_raw_column(row, "min_batch_sample_count")
+            .map(|value| parse_positive_usize(&value, path, row, "min_batch_sample_count"))
+            .transpose()?,
+        max_batch_mean_impedance_error_ohm: optional_raw_column(
+            row,
+            "max_batch_mean_impedance_error_ohm",
+        )
+        .map(|value| {
+            parse_nonnegative_number(&value, path, row, "max_batch_mean_impedance_error_ohm")
+        })
+        .transpose()?,
+        max_batch_sample_impedance_error_ohm: optional_raw_column(
+            row,
+            "max_batch_sample_impedance_error_ohm",
+        )
+        .map(|value| {
+            parse_nonnegative_number(&value, path, row, "max_batch_sample_impedance_error_ohm")
+        })
+        .transpose()?,
+        max_batch_stddev_ohm: optional_raw_column(row, "max_batch_stddev_ohm")
+            .map(|value| parse_nonnegative_number(&value, path, row, "max_batch_stddev_ohm"))
+            .transpose()?,
+    })
+}
+
+pub(super) fn applied_controlled_impedance_coupon_sample(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceCouponSample> {
+    let sample_source = optional_raw_column(row, "sample_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(sample_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_coupon_sample requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceCouponSample {
+        coupon_name: required_raw_column_for(
+            row,
+            path,
+            "coupon_name",
+            "controlled_impedance_coupon_sample",
+        )?,
+        name: required_raw_column_for(row, path, "name", "controlled_impedance_coupon_sample")?,
+        source,
+        measured_impedance_ohm: parse_positive_ohms(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
         )?,
     })
 }

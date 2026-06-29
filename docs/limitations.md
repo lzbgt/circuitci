@@ -268,6 +268,11 @@ without explicit imported mechanical evidence.
   target for the same net or differential pair. It does not infer coupon
   applicability, calculate impedance, model coupon-to-board correlation, prove
   process capability, or replace SI/fabricator review.
+- `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID` computes only basic statistics
+  from explicit reviewed coupon sample rows and reviewed acceptance limits
+  after the coupon-to-board-target mapping is valid. It does not infer coupon
+  applicability, calculate impedance, compute Cpk/process capability, model
+  board-to-coupon correlation, or replace SI/fabricator review.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

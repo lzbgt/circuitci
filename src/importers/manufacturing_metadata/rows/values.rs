@@ -1,11 +1,11 @@
 use super::{
-    AppliedControlledImpedanceCoupon, AppliedControlledImpedanceNet,
-    AppliedControlledImpedancePair, AppliedField, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
-    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
-    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
-    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
-    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
-    AppliedThermalPackage,
+    AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
+    AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
+    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
+    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
+    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
+    AppliedThermalMeasurement, AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -42,6 +42,15 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                 )
             },
         );
+    }
+    if let Some(sample) = &field.controlled_impedance_coupon_sample {
+        return serde_yaml_ng::to_value(controlled_impedance_coupon_sample_mapping(sample))
+            .with_context(|| {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            });
     }
     if let Some(rule) = &field.thermal_copper {
         return serde_yaml_ng::to_value(thermal_copper_mapping(rule)).with_context(|| {
@@ -264,6 +273,39 @@ fn controlled_impedance_coupon_mapping(
     mapping.insert(
         "max_impedance_error_ohm".to_string(),
         serde_yaml_ng::to_value(coupon.max_impedance_error_ohm).unwrap_or(Value::Null),
+    );
+    insert_optional_number(
+        &mut mapping,
+        "min_batch_sample_count",
+        coupon.min_batch_sample_count,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_batch_mean_impedance_error_ohm",
+        coupon.max_batch_mean_impedance_error_ohm,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_batch_sample_impedance_error_ohm",
+        coupon.max_batch_sample_impedance_error_ohm,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "max_batch_stddev_ohm",
+        coupon.max_batch_stddev_ohm,
+    );
+    mapping
+}
+
+fn controlled_impedance_coupon_sample_mapping(
+    sample: &AppliedControlledImpedanceCouponSample,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(sample.name.clone()));
+    mapping.insert("source".to_string(), Value::String(sample.source.clone()));
+    mapping.insert(
+        "measured_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(sample.measured_impedance_ohm).unwrap_or(Value::Null),
     );
     mapping
 }

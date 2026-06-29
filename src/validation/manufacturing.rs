@@ -50,7 +50,9 @@ pub(super) use adjacent_plane::{
 pub(super) use annular_ring::validate_drill_annular_ring;
 pub(super) use assembly_alignment::validate_assembly_footprint_alignment;
 pub(super) use controlled_impedance::validate_controlled_impedance_geometry;
-pub(super) use controlled_impedance_coupon::validate_controlled_impedance_coupon;
+pub(super) use controlled_impedance_coupon::{
+    validate_controlled_impedance_coupon, validate_controlled_impedance_coupon_batch,
+};
 pub(super) use controlled_impedance_mask::validate_controlled_impedance_solder_mask_loading;
 pub(super) use controlled_impedance_stackup::validate_controlled_impedance_stackup_evidence;
 pub(super) use drill_slot::{

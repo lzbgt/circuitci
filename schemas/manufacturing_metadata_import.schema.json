@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.14.0" },
+    "schema_version": { "const": "0.15.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -92,6 +92,7 @@
             "controlled_impedance.nets[]",
             "controlled_impedance.differential_pairs[]",
             "controlled_impedance.coupons[]",
+            "controlled_impedance.coupons[].samples[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -167,7 +168,30 @@
                   "type": "number",
                   "exclusiveMinimum": 0
                 },
-                "max_impedance_error_ohm": { "type": "number", "minimum": 0 }
+                "max_impedance_error_ohm": { "type": "number", "minimum": 0 },
+                "min_batch_sample_count": { "type": "integer", "minimum": 1 },
+                "max_batch_mean_impedance_error_ohm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "max_batch_sample_impedance_error_ohm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "max_batch_stddev_ohm": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["name", "source", "measured_impedance_ohm"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "measured_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
               },
               "additionalProperties": false
             },

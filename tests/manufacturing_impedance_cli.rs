@@ -475,6 +475,79 @@ fn controlled_impedance_coupon_fails_closed_for_mismatched_board_target() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_coupon_batch_passes_for_reviewed_samples_within_limits() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID",
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_batch_fails_for_out_of_limit_statistics() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          measured_impedance_ohm: 51.2\n        - name: dp_dm_coupon",
+        "          measured_impedance_ohm: 54.0\n        - name: dp_dm_coupon",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID");
+    assert_eq!(failure["measured"]["coupon_name"], "rf_coupon");
+    assert_eq!(failure["measured"]["coupon_type"], "single_ended");
+    assert_eq!(failure["measured"]["sample_count"], 3);
+    assert_eq!(failure["measured"]["target_impedance_ohm"], 50.0);
+    assert_eq!(failure["limit"]["min_batch_sample_count"], 3);
+    assert_eq!(failure["limit"]["max_batch_mean_impedance_error_ohm"], 1.5);
+    assert_eq!(
+        failure["limit"]["max_batch_sample_impedance_error_ohm"],
+        2.0
+    );
+    assert_eq!(failure["limit"]["max_batch_stddev_ohm"], 0.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_batch_fails_closed_without_reviewed_limits() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace("          min_batch_sample_count: 3\n", "");
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires reviewed min_batch_sample_count")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_impedance_project(parameters: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     write_impedance_project_with_check(parameters, "CONTROLLED_IMPEDANCE_GEOMETRY_VALID")
 }
@@ -528,6 +601,20 @@ board:
           target_impedance_ohm: 50.0
           measured_impedance_ohm: 51.2
           max_impedance_error_ohm: 3.0
+          min_batch_sample_count: 3
+          max_batch_mean_impedance_error_ohm: 1.5
+          max_batch_sample_impedance_error_ohm: 2.0
+          max_batch_stddev_ohm: 0.5
+          samples:
+            - name: rf_coupon_s1
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 50.8
+            - name: rf_coupon_s2
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 51.0
+            - name: rf_coupon_s3
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 51.2
         - name: dp_dm_coupon
           source: fab_coupon_report_rev_b
           coupon_type: differential
@@ -536,6 +623,20 @@ board:
           target_impedance_ohm: 90.0
           measured_impedance_ohm: 96.0
           max_impedance_error_ohm: 5.0
+          min_batch_sample_count: 3
+          max_batch_mean_impedance_error_ohm: 1.5
+          max_batch_sample_impedance_error_ohm: 2.0
+          max_batch_stddev_ohm: 0.5
+          samples:
+            - name: dp_dm_coupon_s1
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 90.6
+            - name: dp_dm_coupon_s2
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 91.0
+            - name: dp_dm_coupon_s3
+              source: fab_coupon_report_rev_b
+              measured_impedance_ohm: 91.4
   layout:
     stackup:
       layers:
