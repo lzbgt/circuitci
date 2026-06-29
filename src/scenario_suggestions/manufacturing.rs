@@ -4,6 +4,7 @@ use crate::library::BoundBoard;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
+mod controlled_impedance;
 mod rf_antenna;
 mod route_physics;
 mod thermal;

@@ -43,26 +43,26 @@ suggestions.
 - `src/scenario_suggestions/manufacturing.rs` owns fabrication and assembly
   suggestion templates, including process-preset suggestions, manufacturing
   metadata-gated templates, assembly/footprint evidence alignment, pin-1 marker
-  templates, RF antenna keepout/feed-path/matching-topology/measured-performance
-  templates from reviewed layout/measurement constraints and imported copper,
-  route, pad, placement, and component pin evidence, and manufacturing
-  suggestion orchestration.
+  templates, and manufacturing suggestion orchestration.
+- `src/scenario_suggestions/manufacturing/rf_antenna.rs` owns RF antenna
+  keepout/feed-path/matching-topology/measured-performance templates from
+  reviewed layout/measurement constraints and imported copper, route, pad,
+  placement, and component pin evidence.
 - `src/scenario_suggestions/manufacturing/thermal.rs` owns reviewed
   thermal-copper area, via/stackup, via-plating/plating-thickness/barrel
   cross-section, derating-environment,
   package-temperature, and measured-temperature templates from board
   manufacturing metadata, model metadata, and imported copper, route-via,
   stackup, and drill evidence.
+- `src/scenario_suggestions/manufacturing/controlled_impedance.rs` owns
+  controlled-impedance geometry, stackup-evidence, solder-mask loading, coupon,
+  batch-sample, coupon-to-route process-correlation, and reviewed solver-result
+  suggestion discovery from reviewed manufacturing metadata plus imported route,
+  mask, stackup, and coupon evidence.
 - `src/scenario_suggestions/manufacturing/route_physics.rs` owns
   stackup-aware adjacent-plane return-path and reference-plane slot-crossing
   discovery from explicit route/stackup/zone evidence, stitching-via discovery
-  from explicit route/stackup/via evidence, controlled-impedance geometry
-  discovery from reviewed board manufacturing targets plus imported route
-  width/gap evidence, and controlled-impedance stackup-evidence discovery from
-  reviewed targets plus explicit copper/dielectric stackup metadata,
-  solder-mask artwork-state evidence, and reviewed coupon measurement,
-  batch-sample evidence, coupon-to-route process-correlation evidence, and
-  reviewed solver-result evidence.
+  from explicit route/stackup/via evidence.
 - `src/scenario_suggestions/types.rs` owns the serializable suggestion report
   DTOs that must stay aligned with
   `schemas/scenario_suggestion_report.schema.json`.

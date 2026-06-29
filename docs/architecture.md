@@ -370,8 +370,11 @@ limits and USB return-path budgets.
   owner-backed geometry patterns and discrete source-backed pitch rows.
 - manufacturing RF antenna suggestions live in
   `src/scenario_suggestions/manufacturing/rf_antenna.rs`, separate from the
-  fabrication/stencil orchestration in `manufacturing.rs`, route-physics
-  suggestions in `manufacturing/route_physics.rs`, and thermal suggestions in
+  fabrication/stencil orchestration in `manufacturing.rs`.
+- manufacturing controlled-impedance suggestions live in
+  `src/scenario_suggestions/manufacturing/controlled_impedance.rs`, separate
+  from adjacent-plane/slot/stitching route-physics suggestions in
+  `manufacturing/route_physics.rs` and thermal suggestions in
   `manufacturing/thermal.rs`.
 - reset-release timing suggestions become runnable only from explicit
   `board.runtime` evidence for the exact component/pin or from one unique
