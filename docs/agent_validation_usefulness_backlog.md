@@ -80,7 +80,7 @@ Useful next slices:
   fabrication override, and assembly-footprint alignment suggestion evidence,
 - board/order metadata extraction workflows beyond the current reviewed
   manufacturing metadata CSV import manifest, including reviewed scalar,
-  controlled-impedance target/coupon, stackup-layer, thermal-copper policy,
+  controlled-impedance target/coupon/solver-result, stackup-layer, thermal-copper policy,
   and measured-temperature, package thermal, operating-environment, and
   thermal-limit evidence rows plus RF antenna keepout/feed-path,
   matching-network, measurement, performance-limit, and measurement-condition
@@ -112,8 +112,8 @@ make suggestions runnable without inventing behavior.
 CircuitCI now has executable USB connector, route, VBUS, same-layer return-path,
 filled-zone, stitching-via, controlled-impedance geometry with reviewed-target
 suggestions, controlled-impedance stackup material/copper-thickness evidence
-checks, solder-mask loading artwork state, fabricator coupon measurement
-screens, adjacent-plane return-path coverage, reference-plane slot-crossing,
+checks, solder-mask loading artwork state, fabricator coupon measurement and
+reviewed solver-result screens, adjacent-plane return-path coverage, reference-plane slot-crossing,
 manufacturing-level stitching-via transition distance, reviewed RF antenna
 keepout, feed-path route/proximity,
 matching-network topology, measured return-loss, sampled S-parameter
@@ -128,8 +128,9 @@ Useful next slices:
 
 - controlled impedance proof beyond the current explicit route width/gap,
   stackup material/copper-thickness, solder-mask loading artwork, coupon
-  measurement/board-target mapping, coupon batch-statistics, and coupon-to-routed-trace
-  process-correlation evidence screens, such as field-solver integration,
+  measurement/board-target mapping, coupon batch-statistics,
+  coupon-to-routed-trace process-correlation, and source-backed solver-result
+  evidence screens, such as richer solver sweep/corner evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

@@ -10,7 +10,7 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         "scenario_suggestions_controlled_impedance"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 12);
+    assert_eq!(suggested.len(), 14);
 
     let single_ended = &suggested[0];
     assert_eq!(single_ended["id"], "controlled_impedance_rf");
@@ -295,6 +295,50 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
     assert_eq!(
         differential_coupon_trace["scenario"]["parameters"]["coupons"][0]["name"],
         "dp_dm_coupon"
+    );
+
+    let single_solver = &suggested[12];
+    assert_eq!(
+        single_solver["id"],
+        "controlled_impedance_solver_result_rf_solver_result"
+    );
+    assert_eq!(
+        single_solver["kind"],
+        "manufacturing_controlled_impedance_solver_result_rf_solver_result"
+    );
+    assert_eq!(single_solver["runnable"], true);
+    assert_eq!(
+        single_solver["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID"
+    );
+    assert_eq!(
+        single_solver["scenario"]["parameters"]["solver_results"][0]["name"],
+        "rf_solver_result"
+    );
+    assert!(
+        single_solver["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed source evidence")
+    );
+
+    let differential_solver = &suggested[13];
+    assert_eq!(
+        differential_solver["id"],
+        "controlled_impedance_solver_result_dp_dm_solver_result"
+    );
+    assert_eq!(
+        differential_solver["kind"],
+        "manufacturing_controlled_impedance_solver_result_dp_dm_solver_result"
+    );
+    assert_eq!(differential_solver["runnable"], true);
+    assert_eq!(
+        differential_solver["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID"
+    );
+    assert_eq!(
+        differential_solver["scenario"]["parameters"]["solver_results"][0]["name"],
+        "dp_dm_solver_result"
     );
 }
 

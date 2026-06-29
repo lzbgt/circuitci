@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.16.0" },
+    "schema_version": { "const": "0.17.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -93,6 +93,7 @@
             "controlled_impedance.differential_pairs[]",
             "controlled_impedance.coupons[]",
             "controlled_impedance.coupons[].samples[]",
+            "controlled_impedance.solver_results[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -209,6 +210,71 @@
                 "name": { "type": "string", "minLength": 1 },
                 "source": { "type": "string", "minLength": 1 },
                 "measured_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "solver",
+                "result_type",
+                "target_impedance_ohm",
+                "solved_impedance_ohm",
+                "max_impedance_error_ohm",
+                "stackup_revision",
+                "route_layer",
+                "reference_layer",
+                "dielectric_layer",
+                "solved_width_mm",
+                "max_route_width_delta_mm"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "solver": { "type": "string", "minLength": 1 },
+                "solver_version": { "type": "string", "minLength": 1 },
+                "result_type": {
+                  "type": "string",
+                  "enum": ["single_ended", "differential"]
+                },
+                "net": { "type": "string", "minLength": 1 },
+                "first_net": { "type": "string", "minLength": 1 },
+                "second_net": { "type": "string", "minLength": 1 },
+                "target_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "solved_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_impedance_error_ohm": { "type": "number", "minimum": 0 },
+                "stackup_revision": { "type": "string", "minLength": 1 },
+                "route_layer": { "type": "string", "minLength": 1 },
+                "reference_layer": { "type": "string", "minLength": 1 },
+                "dielectric_layer": { "type": "string", "minLength": 1 },
+                "solved_width_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_route_width_delta_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "solved_gap_mm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_route_gap_delta_mm": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "frequency_mhz": {
                   "type": "number",
                   "exclusiveMinimum": 0
                 }

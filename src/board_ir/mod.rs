@@ -200,6 +200,8 @@ pub struct ControlledImpedanceTargets {
     pub differential_pairs: Vec<ControlledImpedanceDifferentialPairTarget>,
     #[serde(default)]
     pub coupons: Vec<ControlledImpedanceCoupon>,
+    #[serde(default)]
+    pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -282,6 +284,44 @@ pub struct ControlledImpedanceCouponSample {
     pub name: String,
     pub source: String,
     pub measured_impedance_ohm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverResult {
+    pub name: String,
+    pub source: String,
+    pub solver: String,
+    #[serde(default)]
+    pub solver_version: Option<String>,
+    pub result_type: ControlledImpedanceSolverResultType,
+    #[serde(default)]
+    pub net: Option<String>,
+    #[serde(default)]
+    pub first_net: Option<String>,
+    #[serde(default)]
+    pub second_net: Option<String>,
+    pub target_impedance_ohm: f64,
+    pub solved_impedance_ohm: f64,
+    pub max_impedance_error_ohm: f64,
+    pub stackup_revision: String,
+    pub route_layer: String,
+    pub reference_layer: String,
+    pub dielectric_layer: String,
+    pub solved_width_mm: f64,
+    pub max_route_width_delta_mm: f64,
+    #[serde(default)]
+    pub solved_gap_mm: Option<f64>,
+    #[serde(default)]
+    pub max_route_gap_delta_mm: Option<f64>,
+    #[serde(default)]
+    pub frequency_mhz: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlledImpedanceSolverResultType {
+    SingleEnded,
+    Differential,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

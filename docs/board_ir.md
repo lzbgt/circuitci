@@ -404,6 +404,14 @@ reviewed process/trace correlation columns: `process_lot`, `panel_id`,
 `field=controlled_impedance_coupon_sample` rows use `value` as a sampled
 `measured_impedance_ohm`, require `coupon_name`, `name`, and `source`, and
 attach to an existing or same-import coupon by `coupon_name`.
+Repeated `field=controlled_impedance_solver_result` rows use `value` as
+`solved_impedance_ohm`, require `name`, `result_type`, `target_impedance_ohm`,
+`max_impedance_error_ohm`, `solver`, `stackup_revision`, `route_layer`,
+`reference_layer`, `dielectric_layer`, `solved_width_mm`, and
+`max_route_width_delta_mm`, and preserve either single-ended `net` or
+differential `first_net`/`second_net` association. Differential rows also
+require reviewed `solved_gap_mm` and `max_route_gap_delta_mm`. These rows are
+reviewed solver-result evidence only; CircuitCI does not run a field solver.
 Repeated
 `field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
 include reviewed policy columns such as `name`, `component`, `power_loss_w`,

@@ -120,7 +120,7 @@ pub fn import_manufacturing_metadata(
     })?;
 
     let manifest = ImportManifest {
-        schema_version: "0.16.0".to_string(),
+        schema_version: "0.17.0".to_string(),
         sources: SourceManifest {
             project: source_file_manifest(&options.project)?,
             metadata: source_csv_manifest(&options.metadata, &parsed)?,
@@ -217,6 +217,23 @@ fn apply_metadata(
                 &coupon.name,
                 value,
                 "controlled_impedance.coupons",
+            )?;
+            wrote_manufacturing = true;
+        } else if field.field == ManufacturingField::ControlledImpedanceSolverResult {
+            let result = field
+                .controlled_impedance_solver_result
+                .as_ref()
+                .context("controlled_impedance_solver_result field must have result value")?;
+            let value = normalized_yaml_value(field)?;
+            let manufacturing = ensure_mapping_field_mut(board, "manufacturing")?;
+            let controlled_impedance =
+                ensure_mapping_field_mut(manufacturing, "controlled_impedance")?;
+            let results = ensure_sequence_field_mut(controlled_impedance, "solver_results")?;
+            upsert_named_sequence_value(
+                results,
+                &result.name,
+                value,
+                "controlled_impedance.solver_results",
             )?;
             wrote_manufacturing = true;
         } else if field.field == ManufacturingField::ThermalCopper {

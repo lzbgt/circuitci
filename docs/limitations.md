@@ -279,6 +279,11 @@ without explicit imported mechanical evidence.
   mapping is valid. It does not infer coupon applicability, solve impedance,
   model etch compensation, compute process capability, or prove statistical
   coupon-to-board correlation.
+- `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID` compares explicit reviewed
+  solver-result metadata against reviewed board impedance targets and imported
+  route/stackup evidence. It does not run a field solver, infer stackup
+  parameters, interpolate impedance, model copper roughness, or replace
+  SI/fabricator review.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

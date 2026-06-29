@@ -113,6 +113,30 @@ from stackup, or infer high-speed nets.
 Rows attach under the named imported or pre-existing coupon; duplicate
 `coupon_name`/sample-name pairs fail closed.
 
+`controlled_impedance_solver_result` rows use `value` as
+`solved_impedance_ohm` and require extra columns:
+
+- `name`: stable reviewed solver-result identifier. Existing solver-result
+  rows with the same name are replaced; duplicate CSV names fail closed.
+- `result_type`: `single_ended` or `differential`.
+- `target_impedance_ohm`: reviewed board target impedance used by the solver
+  setup.
+- `max_impedance_error_ohm`: reviewed non-negative solver-result tolerance.
+- `solver`: reviewed solver/tool name.
+- `stackup_revision`, `route_layer`, `reference_layer`, and
+  `dielectric_layer`: reviewed solver setup and stackup references.
+- `solved_width_mm` and `max_route_width_delta_mm`: reviewed modeled trace
+  width and allowed imported-route width delta.
+- For `single_ended`, `net` is required and `first_net`/`second_net` must be
+  blank.
+- For `differential`, `first_net`, `second_net`, `solved_gap_mm`, and
+  `max_route_gap_delta_mm` are required and `net` must be blank.
+
+Optional `controlled_impedance_solver_result` columns are `solver_version`,
+`frequency_mhz`, and `solver_source` when the ordinary `source` column is not
+used. These rows are reviewed solver-result evidence only; the importer does
+not run a field solver or infer stackup parameters.
+
 Coupon rows are reviewed measurement evidence only; the importer does not
 decide whether a coupon statistically represents the routed board. Validation
 requires each imported coupon to map to exactly one reviewed

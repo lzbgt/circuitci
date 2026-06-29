@@ -1,12 +1,13 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
-    AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
-    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
-    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
-    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
-    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
-    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
+    AppliedControlledImpedanceSolverResult, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
+    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
+    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
+    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
+    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -312,6 +313,134 @@ pub(super) fn applied_controlled_impedance_coupon_sample(
     })
 }
 
+pub(super) fn applied_controlled_impedance_solver_result(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverResult> {
+    let name = required_raw_column_for(row, path, "name", "controlled_impedance_solver_result")?;
+    let result_type = required_solver_result_type(row, path)?;
+    let net = optional_raw_column(row, "net");
+    let first_net = optional_raw_column(row, "first_net");
+    let second_net = optional_raw_column(row, "second_net");
+    match result_type.as_str() {
+        "single_ended" => {
+            if net.is_none() || first_net.is_some() || second_net.is_some() {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result single_ended requires net and no first_net/second_net.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+        }
+        "differential" => {
+            if net.is_some() || first_net.is_none() || second_net.is_none() {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result differential requires first_net and second_net and no net.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+            if first_net == second_net {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result requires two distinct differential nets.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+        }
+        _ => unreachable!("solver result type is normalized"),
+    }
+    let result_source = optional_raw_column(row, "solver_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(result_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverResult {
+        name,
+        source,
+        solver: required_raw_column_for(row, path, "solver", "controlled_impedance_solver_result")?,
+        solver_version: optional_raw_column(row, "solver_version"),
+        result_type,
+        net,
+        first_net,
+        second_net,
+        target_impedance_ohm: required_positive_number(
+            row,
+            path,
+            "target_impedance_ohm",
+            "controlled_impedance_solver_result",
+        )?,
+        solved_impedance_ohm: parse_positive_ohms(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        max_impedance_error_ohm: required_nonnegative_number(
+            row,
+            path,
+            "max_impedance_error_ohm",
+            "controlled_impedance_solver_result",
+        )?,
+        stackup_revision: required_raw_column_for(
+            row,
+            path,
+            "stackup_revision",
+            "controlled_impedance_solver_result",
+        )?,
+        route_layer: required_raw_column_for(
+            row,
+            path,
+            "route_layer",
+            "controlled_impedance_solver_result",
+        )?,
+        reference_layer: required_raw_column_for(
+            row,
+            path,
+            "reference_layer",
+            "controlled_impedance_solver_result",
+        )?,
+        dielectric_layer: required_raw_column_for(
+            row,
+            path,
+            "dielectric_layer",
+            "controlled_impedance_solver_result",
+        )?,
+        solved_width_mm: required_positive_number(
+            row,
+            path,
+            "solved_width_mm",
+            "controlled_impedance_solver_result",
+        )?,
+        max_route_width_delta_mm: required_nonnegative_number(
+            row,
+            path,
+            "max_route_width_delta_mm",
+            "controlled_impedance_solver_result",
+        )?,
+        solved_gap_mm: optional_raw_column(row, "solved_gap_mm")
+            .map(|value| parse_positive_number(&value, path, row, "solved_gap_mm"))
+            .transpose()?,
+        max_route_gap_delta_mm: optional_raw_column(row, "max_route_gap_delta_mm")
+            .map(|value| parse_nonnegative_number(&value, path, row, "max_route_gap_delta_mm"))
+            .transpose()?,
+        frequency_mhz: optional_raw_column(row, "frequency_mhz")
+            .map(|value| parse_positive_number(&value, path, row, "frequency_mhz"))
+            .transpose()?,
+    })
+}
+
 fn required_coupon_type(row: &MetadataCsvRow, path: &Path) -> Result<String> {
     let raw = required_raw_column_for(row, path, "coupon_type", "controlled_impedance_coupon")?;
     match normalize_name(&raw).as_str() {
@@ -319,6 +448,24 @@ fn required_coupon_type(row: &MetadataCsvRow, path: &Path) -> Result<String> {
         "differential" | "diff" | "differentialpair" | "pair" => Ok("differential".to_string()),
         _ => bail!(
             "Manufacturing metadata CSV {} row {} controlled_impedance_coupon coupon_type must be single_ended or differential.",
+            path.display(),
+            row.row_number
+        ),
+    }
+}
+
+fn required_solver_result_type(row: &MetadataCsvRow, path: &Path) -> Result<String> {
+    let raw = required_raw_column_for(
+        row,
+        path,
+        "result_type",
+        "controlled_impedance_solver_result",
+    )?;
+    match normalize_name(&raw).as_str() {
+        "singleended" | "single" | "se" => Ok("single_ended".to_string()),
+        "differential" | "diff" | "differentialpair" | "pair" => Ok("differential".to_string()),
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result result_type must be single_ended or differential.",
             path.display(),
             row.row_number
         ),

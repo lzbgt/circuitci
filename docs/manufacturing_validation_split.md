@@ -33,6 +33,12 @@ comparison, reviewed batch-statistics screening, coupon-to-route process
 correlation screening, and stable report construction. It intentionally does
 not infer coupon applicability, process capability, or solve impedance.
 
+`src/validation/manufacturing/controlled_impedance_solver.rs` owns
+`CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID`, including named solver-result
+parameter parsing, reviewed solver-result metadata checks, board-target
+mapping, stackup layer checks, route geometry matching, and stable report
+construction. It intentionally does not run or approximate a field solver.
+
 `src/validation/manufacturing/adjacent_plane.rs` owns
 `ADJACENT_PLANE_RETURN_PATH_VALID` and
 `REFERENCE_PLANE_SLOT_CROSSING_VALID`, including explicit stackup/plane

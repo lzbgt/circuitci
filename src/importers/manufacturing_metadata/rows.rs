@@ -21,6 +21,7 @@ pub(super) struct AppliedField {
     pub(super) controlled_impedance_pair: Option<AppliedControlledImpedancePair>,
     pub(super) controlled_impedance_coupon: Option<AppliedControlledImpedanceCoupon>,
     pub(super) controlled_impedance_coupon_sample: Option<AppliedControlledImpedanceCouponSample>,
+    pub(super) controlled_impedance_solver_result: Option<AppliedControlledImpedanceSolverResult>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -45,6 +46,7 @@ impl AppliedField {
             controlled_impedance_pair: None,
             controlled_impedance_coupon: None,
             controlled_impedance_coupon_sample: None,
+            controlled_impedance_solver_result: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -119,6 +121,30 @@ pub(super) struct AppliedControlledImpedanceCouponSample {
     pub(super) name: String,
     source: String,
     measured_impedance_ohm: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverResult {
+    pub(super) name: String,
+    source: String,
+    solver: String,
+    solver_version: Option<String>,
+    result_type: String,
+    net: Option<String>,
+    first_net: Option<String>,
+    second_net: Option<String>,
+    target_impedance_ohm: f64,
+    solved_impedance_ohm: f64,
+    max_impedance_error_ohm: f64,
+    stackup_revision: String,
+    route_layer: String,
+    reference_layer: String,
+    dielectric_layer: String,
+    solved_width_mm: f64,
+    max_route_width_delta_mm: f64,
+    solved_gap_mm: Option<f64>,
+    max_route_gap_delta_mm: Option<f64>,
+    frequency_mhz: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -290,6 +316,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedancePair,
     ControlledImpedanceCoupon,
     ControlledImpedanceCouponSample,
+    ControlledImpedanceSolverResult,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -319,6 +346,7 @@ impl ManufacturingField {
             Self::ControlledImpedancePair => "controlled_impedance.differential_pairs[]",
             Self::ControlledImpedanceCoupon => "controlled_impedance.coupons[]",
             Self::ControlledImpedanceCouponSample => "controlled_impedance.coupons[].samples[]",
+            Self::ControlledImpedanceSolverResult => "controlled_impedance.solver_results[]",
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::ThermalPackage => "thermal_packages[]",
@@ -363,6 +391,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedancePair
                 | Self::ControlledImpedanceCoupon
                 | Self::ControlledImpedanceCouponSample
+                | Self::ControlledImpedanceSolverResult
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -488,6 +517,11 @@ fn applied_field(
             Some(applied_controlled_impedance_coupon_sample(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverResult {
+        applied.controlled_impedance_solver_result =
+            Some(applied_controlled_impedance_solver_result(row, path)?);
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -586,6 +620,13 @@ fn applied_controlled_impedance_coupon_sample(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceCouponSample> {
     families::applied_controlled_impedance_coupon_sample(row, path)
+}
+
+fn applied_controlled_impedance_solver_result(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverResult> {
+    families::applied_controlled_impedance_solver_result(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1078,6 +1119,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_solver_results = BTreeSet::new();
+    for result in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_solver_result.as_ref())
+    {
+        if !controlled_impedance_solver_results.insert(result.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_result row name {}.",
+                result.name
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -1287,6 +1340,10 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "impedancecouponsample"
         | "fabricatorimpedancecouponsample"
         | "couponimpedancesample" => Some(ManufacturingField::ControlledImpedanceCouponSample),
+        "controlledimpedancesolverresult"
+        | "impedancesolverresult"
+        | "controlledimpedancefieldsolverresult"
+        | "fieldsolverimpedance" => Some(ManufacturingField::ControlledImpedanceSolverResult),
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)
         }

@@ -462,6 +462,12 @@ The command is conservative:
   emits runnable `CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID`
   templates. The suggestion does not solve impedance or infer process
   capability; it only surfaces explicit coupon-to-route correlation evidence.
+- When reviewed
+  `board.manufacturing.controlled_impedance.solver_results[]` entries contain
+  source-backed solver metadata, matching board-target metadata, stackup layer
+  references, and imported route evidence, it emits runnable
+  `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID` templates. The suggestion does not
+  run a solver; it only surfaces explicit solver-result evidence.
 - When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
   polygon/source/clearance metadata and same-layer imported copper evidence
   exists outside any declared antenna-net exclusion, it emits a runnable

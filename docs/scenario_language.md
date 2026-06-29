@@ -143,6 +143,7 @@ Canonical executable check IDs:
 - `CONTROLLED_IMPEDANCE_COUPON_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID`
 - `CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID`
+- `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -1973,6 +1974,48 @@ Controlled-impedance coupon trace-correlation algorithm:
 This is a reviewed process/trace correlation screen only. It does not infer
 coupon applicability, solve impedance, model etch compensation, compute
 statistical process capability, or replace fabricator/SI review.
+
+Controlled-impedance solver-result validation uses
+`CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID` when Board IR includes reviewed
+solver-result evidence under
+`board.manufacturing.controlled_impedance.solver_results[]`.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_solver_result
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID
+    parameters:
+      solver_results:
+        - name: rf_solver_result
+```
+
+Controlled-impedance solver-result algorithm:
+
+1. Require `parameters.solver_results[]` with explicit result `name` values.
+2. Resolve each name from
+   `board.manufacturing.controlled_impedance.solver_results[]`.
+3. Require reviewed source, solver name, stackup revision, route layer,
+   reference layer, dielectric layer, target impedance, solved impedance,
+   impedance tolerance, solved width, and route-width delta limit.
+4. Require stackup layer evidence where the route layer is `kind: signal`, the
+   reference layer is `kind: plane`, and the dielectric layer is
+   `kind: dielectric`.
+5. Require each result to map to exactly one reviewed board
+   controlled-impedance target for the same net or unordered differential pair,
+   with matching target impedance.
+6. Require imported route evidence on the reviewed route layer and compare
+   route width against the solver modeled width.
+7. For differential results, require reviewed solved gap and route-gap delta
+   limits, plus imported parallel same-layer route-gap evidence.
+8. Fail when solved impedance, route width, or differential route gap exceeds
+   the reviewed limits. Fail closed when solver metadata, target mapping,
+   stackup evidence, or route evidence is missing or contradictory.
+
+This is a source-backed solver-result consistency screen only. It does not run
+a field solver, infer dielectric/copper parameters, interpolate impedance, or
+replace SI/fabricator review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

@@ -1,8 +1,9 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
-    AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
-    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
+    AppliedControlledImpedanceSolverResult, AppliedField, AppliedLayoutPoint,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
     AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
     AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage,
@@ -45,6 +46,15 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(sample) = &field.controlled_impedance_coupon_sample {
         return serde_yaml_ng::to_value(controlled_impedance_coupon_sample_mapping(sample))
+            .with_context(|| {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            });
+    }
+    if let Some(result) = &field.controlled_impedance_solver_result {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_result_mapping(result))
             .with_context(|| {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -335,6 +345,67 @@ fn controlled_impedance_coupon_sample_mapping(
         "measured_impedance_ohm".to_string(),
         serde_yaml_ng::to_value(sample.measured_impedance_ohm).unwrap_or(Value::Null),
     );
+    mapping
+}
+
+fn controlled_impedance_solver_result_mapping(
+    result: &AppliedControlledImpedanceSolverResult,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(result.name.clone()));
+    mapping.insert("source".to_string(), Value::String(result.source.clone()));
+    mapping.insert("solver".to_string(), Value::String(result.solver.clone()));
+    insert_optional_string(&mut mapping, "solver_version", &result.solver_version);
+    mapping.insert(
+        "result_type".to_string(),
+        Value::String(result.result_type.clone()),
+    );
+    insert_optional_string(&mut mapping, "net", &result.net);
+    insert_optional_string(&mut mapping, "first_net", &result.first_net);
+    insert_optional_string(&mut mapping, "second_net", &result.second_net);
+    mapping.insert(
+        "target_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(result.target_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "solved_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(result.solved_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_impedance_error_ohm".to_string(),
+        serde_yaml_ng::to_value(result.max_impedance_error_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "stackup_revision".to_string(),
+        Value::String(result.stackup_revision.clone()),
+    );
+    mapping.insert(
+        "route_layer".to_string(),
+        Value::String(result.route_layer.clone()),
+    );
+    mapping.insert(
+        "reference_layer".to_string(),
+        Value::String(result.reference_layer.clone()),
+    );
+    mapping.insert(
+        "dielectric_layer".to_string(),
+        Value::String(result.dielectric_layer.clone()),
+    );
+    mapping.insert(
+        "solved_width_mm".to_string(),
+        serde_yaml_ng::to_value(result.solved_width_mm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_route_width_delta_mm".to_string(),
+        serde_yaml_ng::to_value(result.max_route_width_delta_mm).unwrap_or(Value::Null),
+    );
+    insert_optional_number(&mut mapping, "solved_gap_mm", result.solved_gap_mm);
+    insert_optional_number(
+        &mut mapping,
+        "max_route_gap_delta_mm",
+        result.max_route_gap_delta_mm,
+    );
+    insert_optional_number(&mut mapping, "frequency_mhz", result.frequency_mhz);
     mapping
 }
 

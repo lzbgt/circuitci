@@ -89,6 +89,8 @@ pub(super) const CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID: &str =
     "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID";
 pub(super) const CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID: &str =
     "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID";
+pub(super) const CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID: &str =
+    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID";
 pub(super) const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 pub(super) const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 pub(super) const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -615,6 +617,15 @@ where
                         &mut findings,
                     )
                 }
+                CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID
+                    if scenario.scenario_type == "manufacturing" =>
+                {
+                    manufacturing::validate_controlled_impedance_solver_result(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 ADJACENT_PLANE_RETURN_PATH_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_adjacent_plane_return_path(
                         bound,
@@ -875,6 +886,7 @@ where
                 | CONTROLLED_IMPEDANCE_COUPON_VALID
                 | CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID
                 | CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID
+                | CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID
                 | ADJACENT_PLANE_RETURN_PATH_VALID
                 | REFERENCE_PLANE_SLOT_CROSSING_VALID
                 | RETURN_PATH_STITCHING_VIA_VALID

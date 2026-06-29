@@ -1,9 +1,9 @@
 use super::manufacturing_suggestion;
 use crate::board_ir::{
     ControlledImpedanceCoupon, ControlledImpedanceCouponType,
-    ControlledImpedanceDifferentialPairTarget, ControlledImpedanceNetTarget, CopperZone,
-    LayoutCopper, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia, StackupLayer,
-    StackupLayerKind,
+    ControlledImpedanceDifferentialPairTarget, ControlledImpedanceNetTarget,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, CopperZone, LayoutCopper,
+    LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia, StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -19,6 +19,7 @@ const CONTROLLED_IMPEDANCE_COUPON_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_VAL
 const CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_BATCH_VALID";
 const CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID: &str =
     "CONTROLLED_IMPEDANCE_COUPON_TRACE_CORRELATION_VALID";
+const CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID: &str = "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -46,6 +47,10 @@ pub(super) fn route_physics_suggestions(
         project_name,
     ));
     suggestions.extend(controlled_impedance_coupon_trace_correlation_suggestions(
+        bound,
+        project_name,
+    ));
+    suggestions.extend(controlled_impedance_solver_result_suggestions(
         bound,
         project_name,
     ));
@@ -641,6 +646,49 @@ fn controlled_impedance_coupon_trace_correlation_suggestions(
     suggestions
 }
 
+fn controlled_impedance_solver_result_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for result in &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_results
+    {
+        if controlled_impedance_solver_result_check_declared(bound, &result.name)
+            || !controlled_impedance_solver_result_has_evidence(bound, result)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_solver_result_{}",
+                sanitized_name(&result.name)
+            ),
+            true,
+            &format!(
+                "Controlled-impedance solver result {} has reviewed source evidence from {}, matching board target metadata, explicit stackup layers, and imported route geometry.",
+                result.name, result.source
+            ),
+            &format!(
+                "{}_{}_controlled_impedance_solver_result",
+                project_name,
+                sanitized_name(&result.name)
+            ),
+            CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID,
+            Some(BTreeMap::from([(
+                "solver_results".to_string(),
+                json!([{ "name": result.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -1039,6 +1087,173 @@ fn controlled_impedance_coupon_trace_correlation_has_evidence(
                     })
             }
         }
+}
+
+fn controlled_impedance_solver_result_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    !result.name.trim().is_empty()
+        && !result.source.trim().is_empty()
+        && !result.solver.trim().is_empty()
+        && !result.stackup_revision.trim().is_empty()
+        && !result.route_layer.trim().is_empty()
+        && !result.reference_layer.trim().is_empty()
+        && !result.dielectric_layer.trim().is_empty()
+        && positive_finite(result.target_impedance_ohm)
+        && positive_finite(result.solved_impedance_ohm)
+        && non_negative_finite(result.max_impedance_error_ohm)
+        && positive_finite(result.solved_width_mm)
+        && non_negative_finite(result.max_route_width_delta_mm)
+        && result.frequency_mhz.is_none_or(positive_finite)
+        && solver_stackup_has_evidence(bound, result)
+        && match result.result_type {
+            ControlledImpedanceSolverResultType::SingleEnded => result
+                .net
+                .as_deref()
+                .map(str::trim)
+                .filter(|net| !net.is_empty())
+                .is_some_and(|net| {
+                    result.first_net.is_none()
+                        && result.second_net.is_none()
+                        && result.solved_gap_mm.is_none()
+                        && result.max_route_gap_delta_mm.is_none()
+                        && bound.project.board.nets.contains_key(net)
+                        && matching_single_ended_solver_target(bound, result, net)
+                        && bound
+                            .project
+                            .board
+                            .layout
+                            .routes
+                            .get(net)
+                            .is_some_and(|route| {
+                                route_has_layer_segments(route, &result.route_layer)
+                            })
+                }),
+            ControlledImpedanceSolverResultType::Differential => {
+                if result.net.is_some()
+                    || !result.solved_gap_mm.is_some_and(positive_finite)
+                    || !result
+                        .max_route_gap_delta_mm
+                        .is_some_and(non_negative_finite)
+                {
+                    return false;
+                }
+                let Some(first_net) = result
+                    .first_net
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|net| !net.is_empty())
+                else {
+                    return false;
+                };
+                let Some(second_net) = result
+                    .second_net
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|net| !net.is_empty())
+                else {
+                    return false;
+                };
+                first_net != second_net
+                    && bound.project.board.nets.contains_key(first_net)
+                    && bound.project.board.nets.contains_key(second_net)
+                    && matching_differential_solver_target(bound, result, first_net, second_net)
+                    && bound
+                        .project
+                        .board
+                        .layout
+                        .routes
+                        .get(first_net)
+                        .is_some_and(|first_route| {
+                            bound
+                                .project
+                                .board
+                                .layout
+                                .routes
+                                .get(second_net)
+                                .is_some_and(|second_route| {
+                                    route_has_layer_segments(first_route, &result.route_layer)
+                                        && route_has_layer_segments(
+                                            second_route,
+                                            &result.route_layer,
+                                        )
+                                        && routes_have_parallel_gap_evidence(
+                                            first_route,
+                                            second_route,
+                                        )
+                                })
+                        })
+            }
+        }
+}
+
+fn solver_stackup_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let layers = &bound.project.board.layout.stackup.layers;
+    layers
+        .iter()
+        .find(|layer| layer.name == result.route_layer)
+        .is_some_and(|layer| layer.kind == StackupLayerKind::Signal)
+        && layers
+            .iter()
+            .find(|layer| layer.name == result.reference_layer)
+            .is_some_and(|layer| layer.kind == StackupLayerKind::Plane)
+        && layers
+            .iter()
+            .find(|layer| layer.name == result.dielectric_layer)
+            .is_some_and(|layer| layer.kind == StackupLayerKind::Dielectric)
+}
+
+fn route_has_layer_segments(route: &NetRoute, layer: &str) -> bool {
+    route
+        .segments
+        .iter()
+        .any(|segment| segment.layer == layer && usable_route_segment(segment))
+}
+
+fn matching_single_ended_solver_target(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+    net: &str,
+) -> bool {
+    let targets = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .nets
+        .iter()
+        .filter(|target| target.net == net)
+        .collect::<Vec<_>>();
+    targets.len() == 1
+        && positive_finite(targets[0].target_impedance_ohm)
+        && (targets[0].target_impedance_ohm - result.target_impedance_ohm).abs() <= 1.0e-9
+}
+
+fn matching_differential_solver_target(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+    first_net: &str,
+    second_net: &str,
+) -> bool {
+    let targets = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .differential_pairs
+        .iter()
+        .filter(|target| {
+            unordered_pair_matches(&target.first_net, &target.second_net, first_net, second_net)
+        })
+        .collect::<Vec<_>>();
+    targets.len() == 1
+        && positive_finite(targets[0].target_differential_impedance_ohm)
+        && (targets[0].target_differential_impedance_ohm - result.target_impedance_ohm).abs()
+            <= 1.0e-9
 }
 
 fn matching_single_ended_coupon_target(
@@ -1747,6 +1962,32 @@ fn controlled_impedance_coupon_check_declared(
                                 .get(serde_yaml_ng::Value::String("name".to_string()))
                                 .and_then(serde_yaml_ng::Value::as_str)
                         }) == Some(coupon_name)
+                    })
+                })
+    })
+}
+
+fn controlled_impedance_solver_result_check_declared(
+    bound: &BoundBoard<'_>,
+    result_name: &str,
+) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID)
+            && scenario
+                .parameters
+                .get("solver_results")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|results| {
+                    results.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(result_name)
                     })
                 })
     })

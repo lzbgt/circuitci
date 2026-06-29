@@ -5,6 +5,7 @@ mod assembly_alignment;
 mod controlled_impedance;
 mod controlled_impedance_coupon;
 mod controlled_impedance_mask;
+mod controlled_impedance_solver;
 mod controlled_impedance_stackup;
 mod drill_slot;
 mod geometry;
@@ -55,6 +56,7 @@ pub(super) use controlled_impedance_coupon::{
     validate_controlled_impedance_coupon_trace_correlation,
 };
 pub(super) use controlled_impedance_mask::validate_controlled_impedance_solder_mask_loading;
+pub(super) use controlled_impedance_solver::validate_controlled_impedance_solver_result;
 pub(super) use controlled_impedance_stackup::validate_controlled_impedance_stackup_evidence;
 pub(super) use drill_slot::{
     validate_castellated_hole, validate_drill_diameter, validate_drill_to_board_edge_clearance,
