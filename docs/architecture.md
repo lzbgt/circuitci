@@ -218,10 +218,12 @@ Importers append evidence instead of guessing missing intent. Examples:
   into `src/importers/manufacturing_metadata/rows/solver_runtime.rs` and
   `src/importers/manufacturing_metadata/rows/solver_entitlement.rs`, and
   `src/importers/manufacturing_metadata/rows/solver_environment.rs` and
-  `src/importers/manufacturing_metadata/rows/solver_run_log.rs`; Board IR YAML value
+  `src/importers/manufacturing_metadata/rows/solver_run_log.rs`; cross-row
+  duplicate/order validation lives in
+  `src/importers/manufacturing_metadata/rows/validation.rs`; Board IR YAML value
   construction lives in `src/importers/manufacturing_metadata/rows/values.rs`;
-  supported-field normalization, duplicate checks, and manifest row evidence
-  live in `src/importers/manufacturing_metadata/rows.rs`. CLI regression
+  supported-field normalization and manifest row evidence live in
+  `src/importers/manufacturing_metadata/rows.rs`. CLI regression
   coverage for generic and controlled-impedance metadata import lives in
   `tests/manufacturing_metadata_cli.rs`; thermal metadata import regressions
   live in `tests/manufacturing_metadata_thermal_cli.rs`; RF antenna metadata
