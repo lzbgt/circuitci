@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.32.0" },
+    "schema_version": { "const": "0.33.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -513,6 +513,22 @@
                 "solver_output_schema_sha256": {
                   "type": "string",
                   "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "solver_config_lock_uri": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_config_lock_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "solver_config_lock_tool": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_config_lock_revision": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "solver_input_deck_uri": {
                   "type": "string",

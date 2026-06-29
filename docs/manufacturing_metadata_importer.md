@@ -159,7 +159,10 @@ solver-artifact signature column is present, validation requires a non-empty
 signature URI, 64-character signature SHA-256 digest, and signer name. When any
 solver output-schema column is present, validation requires non-empty schema
 name, schema version, schema artifact URI, and 64-character schema artifact
-SHA-256 digest. When any input-deck column is present, validation requires complete input-deck
+SHA-256 digest. When any solver configuration-lock column is present,
+validation requires non-empty config-lock artifact URI, 64-character
+config-lock SHA-256 digest, tool name, and revision, and checks that the tool
+name matches the solver result. When any input-deck column is present, validation requires complete input-deck
 provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
 result/input-deck roughness model and positive roughness values; CircuitCI
@@ -169,8 +172,8 @@ result/input-deck etch compensation model and positive compensation values;
 CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
-verify signatures, parse solver output schemas or input decks, or infer stackup
-parameters.
+verify signatures, parse solver output schemas, parse tool configuration locks
+or input decks, or infer stackup parameters.
 Declaring material-library columns requires a matching reviewed
 `controlled_impedance_solver_material_library` artifact-content row before
 validation can accept the solver result. If reviewed

@@ -226,9 +226,10 @@ source-backed solver-result evidence under
 `field=controlled_impedance_solver_sample` rows attach reviewed solver
 sweep/corner samples under named solver results. Solver-result rows can also
 carry reviewed signed-artifact URI/digest/signer metadata, input-deck
-URI/digest, output-schema URI/digest, setup metadata, copper-roughness
-metadata, etch-compensation metadata, and material-library metadata for
-consistency screening. Repeated
+URI/digest, output-schema URI/digest, reviewed solver configuration-lock
+URI/digest/tool/revision metadata, setup metadata, copper-roughness metadata,
+etch-compensation metadata, and material-library metadata for consistency
+screening. Repeated
 `field=controlled_impedance_solver_material_corner` rows attach reviewed
 dielectric material/corner evidence under named solver results, tying required
 solver corners back to explicit stackup material metadata. Repeated

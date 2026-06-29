@@ -283,13 +283,15 @@ without explicit imported mechanical evidence.
   solver-result metadata and artifact URI/digest provenance against reviewed
   board impedance targets, imported route/stackup evidence, and optional
   signed-artifact URI/digest/signer metadata, reviewed solver input-deck
-  setup, solver output-schema provenance, copper-roughness consistency,
+  setup, solver output-schema provenance, reviewed solver tool
+  configuration-lock provenance, copper-roughness consistency,
   etch-compensation consistency, material-library artifact-content fields,
   fabricator material-acceptance, material lot/process drift, and material-corner consistency, fabricator stackup
   signoff, solver tool/version qualification, and sweep/corner sample
   evidence. It does
-  not fetch solver artifacts, verify signatures, parse solver output schemas
-  or input decks, parse material libraries, fabricator acceptance artifacts, or material
+  not fetch solver artifacts, verify signatures, parse solver output schemas,
+  parse tool configuration locks or input decks, parse material libraries,
+  fabricator acceptance artifacts, or material
   drift reports beyond reviewed artifact field/manufacturing metadata, run a field solver, infer
   stackup parameters,
   interpolate impedance, compute roughness-adjusted impedance, infer finished

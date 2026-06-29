@@ -469,6 +469,26 @@ fn controlled_impedance_solver_result_mapping(
     );
     insert_optional_string(
         &mut mapping,
+        "solver_config_lock_uri",
+        &result.solver_config_lock_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_config_lock_sha256",
+        &result.solver_config_lock_sha256,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_config_lock_tool",
+        &result.solver_config_lock_tool,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_config_lock_revision",
+        &result.solver_config_lock_revision,
+    );
+    insert_optional_string(
+        &mut mapping,
         "solver_input_deck_uri",
         &result.solver_input_deck_uri,
     );

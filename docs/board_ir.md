@@ -424,6 +424,11 @@ triple. Optional reviewed solver output-schema columns are
 `solver_output_schema`, `solver_output_schema_version`,
 `solver_output_schema_uri`, and `solver_output_schema_sha256`; declaring any
 one requires the complete schema name/version/artifact URI/SHA-256 tuple.
+Optional reviewed solver tool configuration-lock columns are
+`solver_config_lock_uri`, `solver_config_lock_sha256`,
+`solver_config_lock_tool`, and `solver_config_lock_revision`; declaring any
+one requires the complete artifact URI/SHA-256/tool/revision tuple, and the
+declared config-lock tool must match the solver result `solver`.
 When input-deck columns are present, validation compares them against the
 solver result setup. Optional reviewed copper roughness columns are
 `copper_roughness_model`, `copper_roughness_um`,

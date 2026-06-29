@@ -192,6 +192,43 @@ pub(super) fn solver_output_schema_metadata_is_valid(
     true
 }
 
+pub(super) fn solver_config_lock_metadata_is_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !solver_config_lock_policy_requested(result) {
+        return true;
+    }
+    let uri = non_empty_option(result.solver_config_lock_uri.as_deref());
+    let sha256 = non_empty_option(result.solver_config_lock_sha256.as_deref());
+    let tool = non_empty_option(result.solver_config_lock_tool.as_deref());
+    let revision = non_empty_option(result.solver_config_lock_revision.as_deref());
+    if uri.is_none() || !sha256.is_some_and(is_sha256_hex) || tool.is_none() || revision.is_none() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} solver config-lock evidence must declare non-empty solver_config_lock_uri, solver_config_lock_tool, solver_config_lock_revision, and a 64-character solver_config_lock_sha256 digest.",
+                result.name
+            ),
+        );
+        return false;
+    }
+    if tool != Some(result.solver.trim()) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} solver_config_lock_tool must match reviewed solver {}.",
+                result.name, result.solver
+            ),
+        );
+        return false;
+    }
+    true
+}
+
 pub(super) fn solver_material_library_artifact_metadata_is_valid(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -1187,6 +1224,13 @@ fn solver_output_schema_policy_requested(result: &ControlledImpedanceSolverResul
         || result.solver_output_schema_version.is_some()
         || result.solver_output_schema_uri.is_some()
         || result.solver_output_schema_sha256.is_some()
+}
+
+fn solver_config_lock_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.solver_config_lock_uri.is_some()
+        || result.solver_config_lock_sha256.is_some()
+        || result.solver_config_lock_tool.is_some()
+        || result.solver_config_lock_revision.is_some()
 }
 
 fn solver_stackup_signoff_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {

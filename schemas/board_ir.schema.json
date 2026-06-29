@@ -682,6 +682,22 @@
                         "type": "string",
                         "pattern": "^[A-Fa-f0-9]{64}$"
                       },
+                      "solver_config_lock_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_config_lock_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "solver_config_lock_tool": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_config_lock_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "solver_input_deck_uri": { "type": "string", "minLength": 1 },
                       "solver_input_deck_sha256": {
                         "type": "string",

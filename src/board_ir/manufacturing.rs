@@ -229,6 +229,14 @@ pub struct ControlledImpedanceSolverResult {
     #[serde(default)]
     pub solver_output_schema_sha256: Option<String>,
     #[serde(default)]
+    pub solver_config_lock_uri: Option<String>,
+    #[serde(default)]
+    pub solver_config_lock_sha256: Option<String>,
+    #[serde(default)]
+    pub solver_config_lock_tool: Option<String>,
+    #[serde(default)]
+    pub solver_config_lock_revision: Option<String>,
+    #[serde(default)]
     pub solver_input_deck_uri: Option<String>,
     #[serde(default)]
     pub solver_input_deck_sha256: Option<String>,

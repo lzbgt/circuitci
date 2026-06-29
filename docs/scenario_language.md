@@ -2002,7 +2002,10 @@ Controlled-impedance solver-result algorithm:
    width, and route-width delta limit. When signed-artifact metadata is
    declared, require a signature URI, signature SHA-256 digest, and signer.
    When output-schema metadata is declared, require schema name/version plus
-   schema artifact URI/SHA-256 provenance.
+   schema artifact URI/SHA-256 provenance. When solver configuration-lock
+   metadata is declared, require config-lock artifact URI/SHA-256 provenance,
+   tool name, and revision, and require the tool name to match the solver
+   result solver.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2055,14 +2058,16 @@ Controlled-impedance solver-result algorithm:
     etch-compensation/material-library/material-corner consistency exceeds the reviewed limits.
     Fail closed when solver metadata, target mapping, stackup evidence, route
     evidence, declared signed-artifact evidence, declared input-deck evidence,
+    declared output-schema evidence, declared configuration-lock evidence,
     declared stackup-signoff evidence, declared sweep evidence, or declared
     material-corner evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
-artifact URI/digest, optional signature URI/digest/signer, input-deck
+artifact URI/digest, optional signature URI/digest/signer, optional
+configuration-lock URI/digest/tool/revision evidence, input-deck
 URI/digest, optional fabricator stackup signoff artifact URI/digest, and
 reviewed sample/corner evidence but does not fetch artifacts, verify
-signatures, parse input decks, run a field solver, infer
+signatures, parse tool configuration locks or input decks, run a field solver, infer
 dielectric/copper parameters, parse material libraries, calculate
 roughness-adjusted impedance, infer finished trace geometry from etch
 compensation, interpolate impedance, or replace SI/fabricator review.

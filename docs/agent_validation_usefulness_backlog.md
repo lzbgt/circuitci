@@ -136,8 +136,9 @@ Useful next slices:
   corner correlation screens, solver-to-fabricator stackup revision signoff
   evidence, solver material-library artifact content and field coverage checks,
   and solver setup-to-fabricator material acceptance plus material lot/process
-  drift evidence, plus reviewed solver artifact output-schema provenance, such
-  as reviewed solver tool configuration lock evidence,
+  drift evidence, plus reviewed solver artifact output-schema provenance and
+  reviewed solver tool configuration lock evidence, such as solver runtime
+  options allowlist evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,
