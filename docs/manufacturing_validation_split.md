@@ -35,14 +35,16 @@ not infer coupon applicability, process capability, or solve impedance.
 
 `src/validation/manufacturing/controlled_impedance_solver.rs` owns
 `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID`, including named solver-result
-parameter parsing, reviewed solver-result metadata and artifact-provenance
-checks, optional signed-artifact metadata checks, optional reviewed input-deck
-setup plus copper-roughness and etch-compensation consistency checks, optional
-solver material-library and material-corner consistency checks, optional
-reviewed solver tool/version qualification checks, optional reviewed solver
-sample/corner sweep checks, board-target mapping, stackup layer checks, route
-geometry matching, and stable report construction. It intentionally does not
-fetch solver artifacts, verify signatures, parse input decks, parse material libraries,
+parameter parsing, optional reviewed solver sample/corner sweep checks,
+board-target mapping, route geometry matching, and stable report construction.
+`src/validation/manufacturing/controlled_impedance_solver_metadata.rs` owns the
+source-backed metadata screens behind that rule: reviewed solver-result base
+metadata, artifact provenance, optional signed-artifact metadata, optional
+reviewed input-deck setup plus copper-roughness and etch-compensation
+consistency checks, optional solver material-library and material-corner
+consistency checks, optional reviewed solver tool/version qualification checks,
+and stackup layer checks. These modules intentionally do not fetch solver
+artifacts, verify signatures, parse input decks, parse material libraries,
 compute roughness-adjusted impedance, infer finished trace geometry, or
 run/approximate a field solver.
 
