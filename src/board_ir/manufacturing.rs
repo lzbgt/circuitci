@@ -264,6 +264,25 @@ pub struct ControlledImpedanceSolverRunLog {
     pub numeric_tolerance_policy: String,
     pub max_residual_error: f64,
     pub max_iterations: usize,
+    #[serde(default)]
+    pub min_rerun_count: Option<usize>,
+    #[serde(default)]
+    pub max_rerun_impedance_delta_ohm: Option<f64>,
+    #[serde(default)]
+    pub reruns: Vec<ControlledImpedanceSolverRerun>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverRerun {
+    pub name: String,
+    pub source: String,
+    pub run_id: String,
+    pub artifact_uri: String,
+    pub artifact_sha256: String,
+    pub random_seed: String,
+    pub solved_impedance_ohm: f64,
+    pub residual_error: f64,
+    pub iterations: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]

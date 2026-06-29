@@ -669,8 +669,10 @@ If solver execution-environment metadata is declared but missing, incomplete,
 stale, or does not cover every declared locked component, the check fails
 closed as `VALIDATION_INPUT_MISSING`; environment metadata is provenance input
 and is not repeated in pass/fail measured maps.
-If solver run-log metadata is declared but missing, incomplete, stale, or has
-residual/iteration evidence outside reviewed limits, the check fails closed as
+If solver run-log metadata is declared but missing, incomplete, stale, has
+residual/iteration evidence outside reviewed limits, or declares deterministic
+rerun policy without enough matching rerun samples inside the reviewed
+impedance/residual/iteration windows, the check fails closed as
 `VALIDATION_INPUT_MISSING`; run-log metadata is provenance input and is not
 repeated in pass/fail measured maps.
 With reviewed material-library evidence, stable input-deck mismatch measured

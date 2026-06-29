@@ -2,9 +2,10 @@ use crate::board_ir::{
     ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverExecutionEnvironment,
     ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialCorner,
     ControlledImpedanceSolverMaterialLibrary, ControlledImpedanceSolverMaterialProcess,
-    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRunLog,
-    ControlledImpedanceSolverRuntimeAllowlist, Scenario, StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverQualification, ControlledImpedanceSolverRerun,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType,
+    ControlledImpedanceSolverRunLog, ControlledImpedanceSolverRuntimeAllowlist, Scenario,
+    StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -534,6 +535,9 @@ pub(super) fn solver_run_log_metadata_is_valid(
                 result.name, iterations, run_log.max_iterations
             ),
         );
+        return false;
+    }
+    if !solver_run_log_reruns_are_valid(scenario, findings, result, run_log) {
         return false;
     }
     true
@@ -1752,6 +1756,135 @@ fn solver_run_log_has_valid_metadata(run_log: &ControlledImpedanceSolverRunLog) 
         && run_log.max_residual_error.is_finite()
         && run_log.max_residual_error >= 0.0
         && run_log.max_iterations > 0
+        && run_log.min_rerun_count.unwrap_or(1) > 0
+        && run_log
+            .max_rerun_impedance_delta_ohm
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
+        && (run_log.min_rerun_count.is_some() == run_log.max_rerun_impedance_delta_ohm.is_some())
+}
+
+fn solver_run_log_reruns_are_valid(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+    run_log: &ControlledImpedanceSolverRunLog,
+) -> bool {
+    let rerun_policy_requested =
+        run_log.min_rerun_count.is_some() || run_log.max_rerun_impedance_delta_ohm.is_some();
+    if !rerun_policy_requested {
+        return true;
+    }
+    let Some(min_rerun_count) = run_log.min_rerun_count else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} deterministic-rerun evidence requires min_rerun_count.",
+                run_log.name
+            ),
+        );
+        return false;
+    };
+    let Some(max_impedance_delta) = run_log.max_rerun_impedance_delta_ohm else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} deterministic-rerun evidence requires max_rerun_impedance_delta_ohm.",
+                run_log.name
+            ),
+        );
+        return false;
+    };
+    if run_log.reruns.len() < min_rerun_count {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} requires at least {} deterministic rerun samples; found {}.",
+                run_log.name,
+                min_rerun_count,
+                run_log.reruns.len()
+            ),
+        );
+        return false;
+    }
+    let mut rerun_names = BTreeSet::new();
+    let mut rerun_ids = BTreeSet::new();
+    for rerun in &run_log.reruns {
+        if !solver_rerun_has_valid_metadata(rerun)
+            || !rerun_names.insert(rerun.name.trim())
+            || !rerun_ids.insert(rerun.run_id.trim())
+        {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID run log {} deterministic reruns must declare unique non-empty names/run IDs, artifact URI and SHA-256, positive impedance, finite non-negative residual error, and positive iterations.",
+                    run_log.name
+                ),
+            );
+            return false;
+        }
+        if rerun.random_seed.trim() != run_log.random_seed.trim() {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID rerun {} for run log {} must use reviewed random_seed {}.",
+                    rerun.name, run_log.name, run_log.random_seed
+                ),
+            );
+            return false;
+        }
+        if (rerun.solved_impedance_ohm - result.solved_impedance_ohm).abs() > max_impedance_delta {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID rerun {} for result {} exceeds deterministic rerun impedance delta limit.",
+                    rerun.name, result.name
+                ),
+            );
+            return false;
+        }
+        if rerun.residual_error > run_log.max_residual_error {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID rerun {} for run log {} exceeds reviewed residual error limit.",
+                    rerun.name, run_log.name
+                ),
+            );
+            return false;
+        }
+        if rerun.iterations > run_log.max_iterations {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID rerun {} for run log {} exceeds reviewed iteration limit.",
+                    rerun.name, run_log.name
+                ),
+            );
+            return false;
+        }
+    }
+    true
+}
+
+fn solver_rerun_has_valid_metadata(rerun: &ControlledImpedanceSolverRerun) -> bool {
+    !rerun.name.trim().is_empty()
+        && !rerun.source.trim().is_empty()
+        && !rerun.run_id.trim().is_empty()
+        && !rerun.artifact_uri.trim().is_empty()
+        && is_sha256_hex(rerun.artifact_sha256.trim())
+        && !rerun.random_seed.trim().is_empty()
+        && positive(rerun.solved_impedance_ohm)
+        && rerun.residual_error.is_finite()
+        && rerun.residual_error >= 0.0
+        && rerun.iterations > 0
 }
 
 fn has_unique_non_empty_values(values: &[String]) -> bool {

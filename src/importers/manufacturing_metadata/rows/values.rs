@@ -7,10 +7,11 @@ use super::{
     AppliedControlledImpedanceSolverMaterialCorner,
     AppliedControlledImpedanceSolverMaterialLibrary,
     AppliedControlledImpedanceSolverMaterialProcess, AppliedControlledImpedanceSolverQualification,
-    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverRunLog,
-    AppliedControlledImpedanceSolverRuntimeAllowlist, AppliedControlledImpedanceSolverSample,
-    AppliedField, AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedControlledImpedanceSolverRerun, AppliedControlledImpedanceSolverResult,
+    AppliedControlledImpedanceSolverRunLog, AppliedControlledImpedanceSolverRuntimeAllowlist,
+    AppliedControlledImpedanceSolverSample, AppliedField, AppliedLayoutPoint,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
     AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
     AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage,
@@ -168,6 +169,15 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(run_log) = &field.controlled_impedance_solver_run_log {
         return serde_yaml_ng::to_value(controlled_impedance_solver_run_log_mapping(run_log))
+            .with_context(|| {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            });
+    }
+    if let Some(rerun) = &field.controlled_impedance_solver_rerun {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_rerun_mapping(rerun))
             .with_context(|| {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -1118,6 +1128,46 @@ fn controlled_impedance_solver_run_log_mapping(
     mapping.insert(
         "max_iterations".to_string(),
         serde_yaml_ng::to_value(run_log.max_iterations).unwrap_or(Value::Null),
+    );
+    insert_optional_number(&mut mapping, "min_rerun_count", run_log.min_rerun_count);
+    insert_optional_number(
+        &mut mapping,
+        "max_rerun_impedance_delta_ohm",
+        run_log.max_rerun_impedance_delta_ohm,
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_rerun_mapping(
+    rerun: &AppliedControlledImpedanceSolverRerun,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(rerun.name.clone()));
+    mapping.insert("source".to_string(), Value::String(rerun.source.clone()));
+    mapping.insert("run_id".to_string(), Value::String(rerun.run_id.clone()));
+    mapping.insert(
+        "artifact_uri".to_string(),
+        Value::String(rerun.artifact_uri.clone()),
+    );
+    mapping.insert(
+        "artifact_sha256".to_string(),
+        Value::String(rerun.artifact_sha256.clone()),
+    );
+    mapping.insert(
+        "random_seed".to_string(),
+        Value::String(rerun.random_seed.clone()),
+    );
+    mapping.insert(
+        "solved_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(rerun.solved_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "residual_error".to_string(),
+        serde_yaml_ng::to_value(rerun.residual_error).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "iterations".to_string(),
+        serde_yaml_ng::to_value(rerun.iterations).unwrap_or(Value::Null),
     );
     mapping
 }

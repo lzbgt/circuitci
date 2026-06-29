@@ -1,6 +1,6 @@
 use super::{
-    AppliedControlledImpedanceSolverRunLog, MetadataCsvRow, optional_raw_column,
-    required_raw_column_for,
+    AppliedControlledImpedanceSolverRerun, AppliedControlledImpedanceSolverRunLog, MetadataCsvRow,
+    optional_raw_column, required_raw_column_for,
 };
 use anyhow::{Context, Result, bail};
 use std::path::Path;
@@ -81,6 +81,99 @@ pub(super) fn applied_controlled_impedance_solver_run_log(
             "max_iterations",
             "controlled_impedance_solver_run_log",
         )?,
+        min_rerun_count: optional_raw_column(row, "min_rerun_count")
+            .map(|value| {
+                parse_positive_usize(
+                    &value,
+                    path,
+                    row,
+                    "min_rerun_count",
+                    "controlled_impedance_solver_run_log",
+                )
+            })
+            .transpose()?,
+        max_rerun_impedance_delta_ohm: optional_raw_column(row, "max_rerun_impedance_delta_ohm")
+            .map(|value| {
+                parse_nonnegative_number(
+                    &value,
+                    path,
+                    row,
+                    "max_rerun_impedance_delta_ohm",
+                    "controlled_impedance_solver_run_log",
+                )
+            })
+            .transpose()?,
+    })
+}
+
+pub(super) fn applied_controlled_impedance_solver_rerun(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverRerun> {
+    let rerun_source = optional_raw_column(row, "rerun_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(rerun_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_rerun requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverRerun {
+        solver_run_log_name: optional_raw_column(row, "solver_run_log")
+            .or_else(|| optional_raw_column(row, "run_log"))
+            .with_context(|| {
+                format!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_solver_rerun requires solver_run_log.",
+                    path.display(),
+                    row.row_number
+                )
+            })?,
+        name: required_raw_column_for(row, path, "name", "controlled_impedance_solver_rerun")?,
+        source,
+        run_id: required_raw_column_for(row, path, "run_id", "controlled_impedance_solver_rerun")?,
+        artifact_uri: required_raw_column_for(
+            row,
+            path,
+            "artifact_uri",
+            "controlled_impedance_solver_rerun",
+        )?,
+        artifact_sha256: required_sha256_column(
+            row,
+            path,
+            "artifact_sha256",
+            "controlled_impedance_solver_rerun",
+        )?,
+        random_seed: required_raw_column_for(
+            row,
+            path,
+            "random_seed",
+            "controlled_impedance_solver_rerun",
+        )?,
+        solved_impedance_ohm: required_positive_number(
+            row,
+            path,
+            "solved_impedance_ohm",
+            "controlled_impedance_solver_rerun",
+        )?,
+        residual_error: required_nonnegative_number(
+            row,
+            path,
+            "residual_error",
+            "controlled_impedance_solver_rerun",
+        )?,
+        iterations: required_positive_usize(
+            row,
+            path,
+            "iterations",
+            "controlled_impedance_solver_rerun",
+        )?,
     })
 }
 
@@ -125,6 +218,54 @@ fn required_nonnegative_number(
     Ok(value)
 }
 
+fn parse_nonnegative_number(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+    record: &str,
+) -> Result<f64> {
+    let value = raw.parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be a finite non-negative number.",
+            path.display(),
+            row.row_number
+        )
+    })?;
+    if !value.is_finite() || value < 0.0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be finite and non-negative.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
+fn required_positive_number(
+    row: &MetadataCsvRow,
+    path: &Path,
+    column: &str,
+    record: &str,
+) -> Result<f64> {
+    let raw = required_raw_column_for(row, path, column, record)?;
+    let value = raw.parse::<f64>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be a finite positive number.",
+            path.display(),
+            row.row_number
+        )
+    })?;
+    if !value.is_finite() || value <= 0.0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be finite and positive.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
 fn required_positive_usize(
     row: &MetadataCsvRow,
     path: &Path,
@@ -132,6 +273,30 @@ fn required_positive_usize(
     record: &str,
 ) -> Result<usize> {
     let raw = required_raw_column_for(row, path, column, record)?;
+    let value = raw.parse::<usize>().with_context(|| {
+        format!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be a positive integer.",
+            path.display(),
+            row.row_number
+        )
+    })?;
+    if value == 0 {
+        bail!(
+            "Manufacturing metadata CSV {} row {} {record} {column} must be positive.",
+            path.display(),
+            row.row_number
+        );
+    }
+    Ok(value)
+}
+
+fn parse_positive_usize(
+    raw: &str,
+    path: &Path,
+    row: &MetadataCsvRow,
+    column: &str,
+    record: &str,
+) -> Result<usize> {
     let value = raw.parse::<usize>().with_context(|| {
         format!(
             "Manufacturing metadata CSV {} row {} {record} {column} must be a positive integer.",

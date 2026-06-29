@@ -254,7 +254,9 @@ provenance, a reproducibility fingerprint, and locked component names.
 Repeated `field=controlled_impedance_solver_run_log` rows record reviewed
 solver run-log reproducibility evidence, including artifact provenance, run
 id, random seed, numeric tolerance policy, residual limit, and iteration
-limit.
+limit. Optional rerun limits on that row can require reviewed deterministic
+rerun samples imported with repeated `field=controlled_impedance_solver_rerun`
+rows.
 Repeated
 `field=controlled_impedance_solver_qualification` rows create or replace
 reviewed solver tool/version qualification evidence. Repeated

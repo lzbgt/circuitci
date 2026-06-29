@@ -196,6 +196,27 @@ board:
           numeric_tolerance_policy: si_solver_tolerance_rev_a
           max_residual_error: 0.000001
           max_iterations: 120
+          min_rerun_count: 2
+          max_rerun_impedance_delta_ohm: 0.05
+          reruns:
+            - name: rf_solver_rerun_a
+              source: si_solver_rerun_review_rev_a
+              run_id: rf_solver_run_2026_06_a_rerun_1
+              artifact_uri: artifacts/solver/rf_solver_run_2026_06_a_rerun_1.log
+              artifact_sha256: 9999888877776666555544443333222211110000ffffeeeeddddccccbbbbaaaa
+              random_seed: seed_2026_06_rf
+              solved_impedance_ohm: 50.82
+              residual_error: 0.0000005
+              iterations: 86
+            - name: rf_solver_rerun_b
+              source: si_solver_rerun_review_rev_a
+              run_id: rf_solver_run_2026_06_a_rerun_2
+              artifact_uri: artifacts/solver/rf_solver_run_2026_06_a_rerun_2.log
+              artifact_sha256: 888877776666555544443333222211110000ffffeeeeddddccccbbbbaaaa9999
+              random_seed: seed_2026_06_rf
+              solved_impedance_ohm: 50.79
+              residual_error: 0.0000004
+              iterations: 83
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

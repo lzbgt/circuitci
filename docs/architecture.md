@@ -214,7 +214,7 @@ Importers append evidence instead of guessing missing intent. Examples:
   row-family parsing lives in
   `src/importers/manufacturing_metadata/rows/families.rs`, with the
   controlled-impedance solver runtime allowlist, entitlement, execution
-  environment, and run-log parsers split
+  environment, run-log, and deterministic-rerun parsers split
   into `src/importers/manufacturing_metadata/rows/solver_runtime.rs` and
   `src/importers/manufacturing_metadata/rows/solver_entitlement.rs`, and
   `src/importers/manufacturing_metadata/rows/solver_environment.rs` and

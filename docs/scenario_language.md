@@ -2017,7 +2017,10 @@ Controlled-impedance solver-result algorithm:
    When solver run-log metadata is declared, require a reviewed run-log row
    matching the solver, solver version, run id, random seed, and numeric
    tolerance policy, then require explicit residual error and iteration count
-   to stay within reviewed limits.
+   to stay within reviewed limits. If the reviewed run-log row declares
+   deterministic rerun policy, require enough reviewed rerun samples with
+   matching random seed and solved impedance, residual error, and iteration
+   count inside the declared limits.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2072,8 +2075,8 @@ Controlled-impedance solver-result algorithm:
     evidence, declared signed-artifact evidence, declared input-deck evidence,
     declared output-schema evidence, declared configuration-lock evidence,
     declared runtime allowlist evidence, declared solver entitlement evidence,
-    declared solver execution-environment evidence, declared solver run-log
-    evidence, declared stackup-signoff evidence, declared sweep evidence, or
+    declared solver execution-environment evidence, declared solver run-log or
+    deterministic-rerun evidence, declared stackup-signoff evidence, declared sweep evidence, or
     declared material-corner evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves

@@ -550,7 +550,11 @@ Repeated `field=controlled_impedance_solver_run_log` rows populate
 `max_residual_error`, and `max_iterations`. Validation matches these rows to
 solver results by name, solver, solver version, run id, random seed, and
 numeric tolerance policy, then checks explicit residual and iteration evidence
-against the reviewed limits.
+against the reviewed limits. Optional `min_rerun_count` and
+`max_rerun_impedance_delta_ohm` fields require deterministic rerun samples
+under `reruns[]`. Repeated `field=controlled_impedance_solver_rerun` metadata
+rows populate `controlled_impedance.solver_run_logs[].reruns[]` for a named
+`solver_run_log`.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver

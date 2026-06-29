@@ -46,6 +46,7 @@ pub(super) struct AppliedField {
     pub(super) controlled_impedance_solver_execution_environment:
         Option<AppliedControlledImpedanceSolverExecutionEnvironment>,
     pub(super) controlled_impedance_solver_run_log: Option<AppliedControlledImpedanceSolverRunLog>,
+    pub(super) controlled_impedance_solver_rerun: Option<AppliedControlledImpedanceSolverRerun>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -81,6 +82,7 @@ impl AppliedField {
             controlled_impedance_solver_entitlement: None,
             controlled_impedance_solver_execution_environment: None,
             controlled_impedance_solver_run_log: None,
+            controlled_impedance_solver_rerun: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -376,6 +378,22 @@ pub(super) struct AppliedControlledImpedanceSolverRunLog {
     numeric_tolerance_policy: String,
     max_residual_error: f64,
     max_iterations: usize,
+    min_rerun_count: Option<usize>,
+    max_rerun_impedance_delta_ohm: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverRerun {
+    pub(super) solver_run_log_name: String,
+    pub(super) name: String,
+    source: String,
+    run_id: String,
+    artifact_uri: String,
+    artifact_sha256: String,
+    random_seed: String,
+    solved_impedance_ohm: f64,
+    residual_error: f64,
+    iterations: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -558,6 +576,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceSolverEntitlement,
     ControlledImpedanceSolverExecutionEnvironment,
     ControlledImpedanceSolverRunLog,
+    ControlledImpedanceSolverRerun,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -616,6 +635,9 @@ impl ManufacturingField {
                 "controlled_impedance.solver_execution_environments[]"
             }
             Self::ControlledImpedanceSolverRunLog => "controlled_impedance.solver_run_logs[]",
+            Self::ControlledImpedanceSolverRerun => {
+                "controlled_impedance.solver_run_logs[].reruns[]"
+            }
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::ThermalPackage => "thermal_packages[]",
@@ -671,6 +693,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceSolverEntitlement
                 | Self::ControlledImpedanceSolverExecutionEnvironment
                 | Self::ControlledImpedanceSolverRunLog
+                | Self::ControlledImpedanceSolverRerun
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -858,6 +881,11 @@ fn applied_field(
             Some(applied_controlled_impedance_solver_run_log(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverRerun {
+        applied.controlled_impedance_solver_rerun =
+            Some(applied_controlled_impedance_solver_rerun(row, path)?);
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -1033,6 +1061,13 @@ fn applied_controlled_impedance_solver_run_log(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverRunLog> {
     solver_run_log::applied_controlled_impedance_solver_run_log(row, path)
+}
+
+fn applied_controlled_impedance_solver_rerun(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverRerun> {
+    solver_run_log::applied_controlled_impedance_solver_rerun(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1658,6 +1693,20 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             bail!(
                 "Manufacturing metadata CSV repeats controlled_impedance_solver_run_log row name {}.",
                 run_log.name
+            );
+        }
+    }
+    let mut controlled_impedance_solver_reruns = BTreeSet::new();
+    for rerun in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_solver_rerun.as_ref())
+    {
+        let key = (rerun.solver_run_log_name.clone(), rerun.name.clone());
+        if !controlled_impedance_solver_reruns.insert(key.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_rerun row {} for run log {}.",
+                rerun.name,
+                rerun.solver_run_log_name
             );
         }
     }

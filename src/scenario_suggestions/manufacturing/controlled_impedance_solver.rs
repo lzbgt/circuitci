@@ -6,9 +6,10 @@ use super::manufacturing_suggestion;
 use crate::board_ir::{
     ControlledImpedanceSolverEntitlement, ControlledImpedanceSolverExecutionEnvironment,
     ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialLibrary,
-    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRunLog,
-    ControlledImpedanceSolverRuntimeAllowlist, NetRoute, StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverRerun,
+    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType,
+    ControlledImpedanceSolverRunLog, ControlledImpedanceSolverRuntimeAllowlist, NetRoute,
+    StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -644,6 +645,7 @@ fn controlled_impedance_solver_run_log_has_evidence(
         && result
             .solver_iterations
             .is_some_and(|value| value <= matches[0].max_iterations)
+        && controlled_impedance_solver_run_log_reruns_have_evidence(matches[0], result)
 }
 
 fn controlled_impedance_solver_run_log_metadata_is_complete(
@@ -717,6 +719,67 @@ fn controlled_impedance_solver_run_log_has_valid_metadata(
         && run_log.max_residual_error.is_finite()
         && run_log.max_residual_error >= 0.0
         && run_log.max_iterations > 0
+        && run_log.min_rerun_count.unwrap_or(1) > 0
+        && run_log
+            .max_rerun_impedance_delta_ohm
+            .is_none_or(|value| value.is_finite() && value >= 0.0)
+        && (run_log.min_rerun_count.is_some() == run_log.max_rerun_impedance_delta_ohm.is_some())
+}
+
+fn controlled_impedance_solver_run_log_reruns_have_evidence(
+    run_log: &ControlledImpedanceSolverRunLog,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let rerun_policy_requested =
+        run_log.min_rerun_count.is_some() || run_log.max_rerun_impedance_delta_ohm.is_some();
+    if !rerun_policy_requested {
+        return true;
+    }
+    let (Some(min_rerun_count), Some(max_impedance_delta)) = (
+        run_log.min_rerun_count,
+        run_log.max_rerun_impedance_delta_ohm,
+    ) else {
+        return false;
+    };
+    min_rerun_count > 0
+        && max_impedance_delta.is_finite()
+        && max_impedance_delta >= 0.0
+        && run_log.reruns.len() >= min_rerun_count
+        && has_unique_named_reruns(&run_log.reruns)
+        && run_log.reruns.iter().all(|rerun| {
+            controlled_impedance_solver_rerun_has_valid_metadata(rerun)
+                && rerun.random_seed.trim() == run_log.random_seed.trim()
+                && (rerun.solved_impedance_ohm - result.solved_impedance_ohm).abs()
+                    <= max_impedance_delta
+                && rerun.residual_error <= run_log.max_residual_error
+                && rerun.iterations <= run_log.max_iterations
+        })
+}
+
+fn controlled_impedance_solver_rerun_has_valid_metadata(
+    rerun: &ControlledImpedanceSolverRerun,
+) -> bool {
+    !rerun.name.trim().is_empty()
+        && !rerun.source.trim().is_empty()
+        && !rerun.run_id.trim().is_empty()
+        && !rerun.artifact_uri.trim().is_empty()
+        && is_sha256_hex(rerun.artifact_sha256.trim())
+        && !rerun.random_seed.trim().is_empty()
+        && rerun.solved_impedance_ohm.is_finite()
+        && rerun.solved_impedance_ohm > 0.0
+        && rerun.residual_error.is_finite()
+        && rerun.residual_error >= 0.0
+        && rerun.iterations > 0
+}
+
+fn has_unique_named_reruns(reruns: &[ControlledImpedanceSolverRerun]) -> bool {
+    let mut names = BTreeSet::new();
+    let mut run_ids = BTreeSet::new();
+    reruns.iter().all(|rerun| {
+        let name = rerun.name.trim();
+        let run_id = rerun.run_id.trim();
+        !name.is_empty() && !run_id.is_empty() && names.insert(name) && run_ids.insert(run_id)
+    })
 }
 
 fn has_unique_non_empty_values(values: &[String]) -> bool {

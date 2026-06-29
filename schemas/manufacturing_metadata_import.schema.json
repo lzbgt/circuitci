@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.37.0" },
+    "schema_version": { "const": "0.38.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -104,6 +104,7 @@
             "controlled_impedance.solver_entitlements[]",
             "controlled_impedance.solver_execution_environments[]",
             "controlled_impedance.solver_run_logs[]",
+            "controlled_impedance.solver_run_logs[].reruns[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -183,7 +184,44 @@
                   "minLength": 1
                 },
                 "max_residual_error": { "type": "number", "minimum": 0 },
-                "max_iterations": { "type": "integer", "minimum": 1 }
+                "max_iterations": { "type": "integer", "minimum": 1 },
+                "min_rerun_count": { "type": "integer", "minimum": 1 },
+                "max_rerun_impedance_delta_ohm": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "run_id",
+                "artifact_uri",
+                "artifact_sha256",
+                "random_seed",
+                "solved_impedance_ohm",
+                "residual_error",
+                "iterations"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "run_id": { "type": "string", "minLength": 1 },
+                "artifact_uri": { "type": "string", "minLength": 1 },
+                "artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "random_seed": { "type": "string", "minLength": 1 },
+                "solved_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "residual_error": { "type": "number", "minimum": 0 },
+                "iterations": { "type": "integer", "minimum": 1 }
               },
               "additionalProperties": false
             },

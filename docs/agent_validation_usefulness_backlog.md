@@ -137,10 +137,13 @@ Useful next slices:
   evidence, solver material-library artifact content and field coverage checks,
   and solver setup-to-fabricator material acceptance plus material lot/process
   drift evidence, plus reviewed solver artifact output-schema provenance,
-  reviewed solver tool configuration lock evidence, and reviewed solver runtime
-  options allowlist evidence, solver license/feature entitlement evidence, and
-  solver execution environment reproducibility evidence, such as reviewed
-  solver run-log, random-seed, and numerical tolerance evidence, such as reviewed solver convergence-window or deterministic rerun evidence,
+  reviewed solver tool configuration lock evidence, reviewed solver runtime
+  options allowlist evidence, solver license/feature entitlement evidence,
+  solver execution environment reproducibility evidence, reviewed solver
+  run-log/random-seed/numerical tolerance evidence, and deterministic rerun
+  evidence with reviewed impedance/residual/iteration windows,
+- controlled-impedance solver proof beyond deterministic rerun samples, such as
+  reviewed convergence-window and stopping-criteria evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,
