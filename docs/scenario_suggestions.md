@@ -466,11 +466,11 @@ The command is conservative:
   `board.manufacturing.controlled_impedance.solver_results[]` entries contain
   source-backed solver metadata, solver artifact URI/digest evidence, matching
   board-target metadata, stackup layer references, imported route evidence,
-  any declared reviewed input-deck setup evidence, and any declared reviewed
-  solver sample/corner evidence, it emits runnable
+  any declared reviewed input-deck setup and copper-roughness evidence, and
+  any declared reviewed solver sample/corner evidence, it emits runnable
   `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID` templates. The suggestion does
   not run a solver, fetch artifacts, or parse input decks; it only surfaces
-  explicit solver-result, input-deck, and sweep evidence.
+  explicit solver-result, input-deck, roughness, and sweep evidence.
 - When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
   polygon/source/clearance metadata and same-layer imported copper evidence
   exists outside any declared antenna-net exclusion, it emits a runnable

@@ -2015,20 +2015,21 @@ Controlled-impedance solver-result algorithm:
    frequency and impedance values, required corner coverage, minimum sample
    count, and per-corner frequency-step coverage.
 9. When reviewed input-deck metadata is present, require input-deck URI and
-   SHA-256 provenance plus explicit stackup/layer/width/gap/frequency setup
-   metadata that matches the solver-result setup.
+   SHA-256 provenance plus explicit stackup/layer/width/gap/frequency and
+   optional copper-roughness setup metadata that matches the solver-result
+   setup.
 10. Fail when solved impedance, route width, differential route gap, sampled
     solver impedance, required corner coverage, sample count, frequency-step
-    coverage, or reviewed input-deck setup consistency exceeds the reviewed
-    limits. Fail closed when solver metadata, target mapping, stackup evidence,
-    route evidence, declared input-deck evidence, or declared sweep evidence is
-    missing or contradictory.
+    coverage, or reviewed input-deck setup and copper-roughness consistency
+    exceeds the reviewed limits. Fail closed when solver metadata, target
+    mapping, stackup evidence, route evidence, declared input-deck evidence, or
+    declared sweep evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, input-deck URI/digest, and reviewed sample/corner
 evidence but does not fetch artifacts, parse input decks, run a field solver,
-infer dielectric/copper parameters, interpolate impedance, or replace
-SI/fabricator review.
+infer dielectric/copper parameters, calculate roughness-adjusted impedance,
+interpolate impedance, or replace SI/fabricator review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

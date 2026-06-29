@@ -225,8 +225,8 @@ source-backed solver-result evidence under
 `board.manufacturing.controlled_impedance.solver_results[]`, and repeated
 `field=controlled_impedance_solver_sample` rows attach reviewed solver
 sweep/corner samples under named solver results. Solver-result rows can also
-carry reviewed input-deck URI/digest and setup metadata for consistency
-screening. Repeated
+carry reviewed input-deck URI/digest, setup metadata, and copper-roughness
+metadata for consistency screening. Repeated
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated
 `field=thermal_measurement` rows append reviewed measured-temperature evidence

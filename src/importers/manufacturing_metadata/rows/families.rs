@@ -460,6 +460,14 @@ pub(super) fn applied_controlled_impedance_solver_result(
         input_frequency_mhz: optional_raw_column(row, "input_frequency_mhz")
             .map(|value| parse_positive_number(&value, path, row, "input_frequency_mhz"))
             .transpose()?,
+        copper_roughness_model: optional_raw_column(row, "copper_roughness_model"),
+        copper_roughness_um: optional_raw_column(row, "copper_roughness_um")
+            .map(|value| parse_positive_number(&value, path, row, "copper_roughness_um"))
+            .transpose()?,
+        input_copper_roughness_model: optional_raw_column(row, "input_copper_roughness_model"),
+        input_copper_roughness_um: optional_raw_column(row, "input_copper_roughness_um")
+            .map(|value| parse_positive_number(&value, path, row, "input_copper_roughness_um"))
+            .transpose()?,
         min_solver_sample_count: optional_raw_column(row, "min_solver_sample_count")
             .as_deref()
             .map(|value| parse_positive_usize(value, path, row, "min_solver_sample_count"))

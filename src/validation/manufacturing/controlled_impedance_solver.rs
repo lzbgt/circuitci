@@ -270,6 +270,12 @@ fn solver_result_has_valid_metadata(
             .input_frequency_mhz
             .is_some_and(|value| !positive(value))
         || result
+            .copper_roughness_um
+            .is_some_and(|value| !positive(value))
+        || result
+            .input_copper_roughness_um
+            .is_some_and(|value| !positive(value))
+        || result
             .min_solver_sample_count
             .is_some_and(|value| value == 0)
         || result
@@ -658,6 +664,10 @@ fn solver_input_deck_policy_requested(result: &ControlledImpedanceSolverResult) 
         || result.input_width_mm.is_some()
         || result.input_gap_mm.is_some()
         || result.input_frequency_mhz.is_some()
+        || result.copper_roughness_model.is_some()
+        || result.copper_roughness_um.is_some()
+        || result.input_copper_roughness_model.is_some()
+        || result.input_copper_roughness_um.is_some()
 }
 
 fn solver_input_deck_metadata_is_valid(
@@ -699,18 +709,36 @@ fn solver_input_deck_metadata_is_valid(
         || result
             .input_frequency_mhz
             .is_some_and(|value| !positive(value))
+        || !solver_roughness_metadata_is_complete(result)
     {
         validation_input_missing(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, and optional positive input_frequency_mhz.",
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, optional positive input_frequency_mhz, and complete positive copper roughness metadata when roughness evidence is declared.",
                 result.name
             ),
         );
         return false;
     }
     true
+}
+
+fn solver_roughness_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
+    if !solver_roughness_policy_requested(result) {
+        return true;
+    }
+    non_empty_option(result.copper_roughness_model.as_deref()).is_some()
+        && positive_option(result.copper_roughness_um)
+        && non_empty_option(result.input_copper_roughness_model.as_deref()).is_some()
+        && positive_option(result.input_copper_roughness_um)
+}
+
+fn solver_roughness_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.copper_roughness_model.is_some()
+        || result.copper_roughness_um.is_some()
+        || result.input_copper_roughness_model.is_some()
+        || result.input_copper_roughness_um.is_some()
 }
 
 fn solver_input_deck_matches_result(
@@ -781,6 +809,20 @@ fn solver_input_deck_mismatches(result: &ControlledImpedanceSolverResult) -> Vec
             }
             None => mismatches.push("input_frequency_mhz_missing"),
         }
+    }
+    if result.copper_roughness_model.as_deref().map(str::trim)
+        != result
+            .input_copper_roughness_model
+            .as_deref()
+            .map(str::trim)
+    {
+        mismatches.push("copper_roughness_model");
+    }
+    if let (Some(roughness), Some(input_roughness)) =
+        (result.copper_roughness_um, result.input_copper_roughness_um)
+        && (input_roughness - roughness).abs() > f64::EPSILON
+    {
+        mismatches.push("copper_roughness_um");
     }
     mismatches
 }
@@ -1310,6 +1352,17 @@ fn solver_input_deck_finding(
             .measured
             .insert("input_frequency_mhz".to_string(), json!(input_frequency));
     }
+    insert_optional_measured_string(
+        &mut finding,
+        "input_copper_roughness_model",
+        result.input_copper_roughness_model.as_deref(),
+    );
+    if let Some(input_roughness) = result.input_copper_roughness_um {
+        finding.measured.insert(
+            "input_copper_roughness_um".to_string(),
+            json!(input_roughness),
+        );
+    }
     finding.limit.insert(
         "stackup_revision".to_string(),
         json!(result.stackup_revision),
@@ -1337,6 +1390,16 @@ fn solver_input_deck_finding(
             .limit
             .insert("frequency_mhz".to_string(), json!(frequency));
     }
+    insert_optional_limit_string(
+        &mut finding,
+        "copper_roughness_model",
+        result.copper_roughness_model.as_deref(),
+    );
+    if let Some(roughness) = result.copper_roughness_um {
+        finding
+            .limit
+            .insert("copper_roughness_um".to_string(), json!(roughness));
+    }
     finding.suggested_fixes.push(
         "Regenerate or re-review the solver input deck and solver-result metadata so the source-backed setup matches the routed board evidence.".to_string(),
     );
@@ -1346,6 +1409,12 @@ fn solver_input_deck_finding(
 fn insert_optional_measured_string(finding: &mut Finding, key: &str, value: Option<&str>) {
     if let Some(value) = value {
         finding.measured.insert(key.to_string(), json!(value));
+    }
+}
+
+fn insert_optional_limit_string(finding: &mut Finding, key: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        finding.limit.insert(key.to_string(), json!(value));
     }
 }
 

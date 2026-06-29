@@ -456,6 +456,26 @@ fn controlled_impedance_solver_result_mapping(
         "input_frequency_mhz",
         result.input_frequency_mhz,
     );
+    insert_optional_string(
+        &mut mapping,
+        "copper_roughness_model",
+        &result.copper_roughness_model,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "copper_roughness_um",
+        result.copper_roughness_um,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "input_copper_roughness_model",
+        &result.input_copper_roughness_model,
+    );
+    insert_optional_number(
+        &mut mapping,
+        "input_copper_roughness_um",
+        result.input_copper_roughness_um,
+    );
     insert_optional_number(
         &mut mapping,
         "min_solver_sample_count",

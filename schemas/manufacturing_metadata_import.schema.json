@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.20.0" },
+    "schema_version": { "const": "0.21.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -319,6 +319,22 @@
                   "exclusiveMinimum": 0
                 },
                 "input_frequency_mhz": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "copper_roughness_model": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "copper_roughness_um": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "input_copper_roughness_model": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_copper_roughness_um": {
                   "type": "number",
                   "exclusiveMinimum": 0
                 },

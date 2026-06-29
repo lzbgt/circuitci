@@ -643,12 +643,15 @@ stable measured keys also include `solver_input_deck_uri`,
 `solver_input_deck_sha256`, `input_deck_mismatches`,
 `input_stackup_revision`, `input_route_layer`, `input_reference_layer`,
 `input_dielectric_layer`, `input_width_mm`, `input_gap_mm`, and
-`input_frequency_mhz`. Stable limit keys include `max_impedance_error_ohm`,
+`input_frequency_mhz`; with reviewed roughness evidence, stable measured keys
+also include `input_copper_roughness_model` and
+`input_copper_roughness_um`. Stable limit keys include `max_impedance_error_ohm`,
 `max_route_width_delta_mm`, `max_route_gap_delta_mm`,
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`,
 `required_solver_corners`, `stackup_revision`, `route_layer`,
 `reference_layer`, `dielectric_layer`, `solved_width_mm`, `solved_gap_mm`, and
-`frequency_mhz`.
+`frequency_mhz`; with reviewed roughness evidence, stable limit keys also
+include `copper_roughness_model` and `copper_roughness_um`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

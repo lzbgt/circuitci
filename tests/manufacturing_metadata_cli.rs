@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -905,7 +905,7 @@ fn import_manufacturing_metadata_applies_coupon_trace_correlation_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["process_lot"],
         "lot_2026_06_b"
@@ -948,12 +948,12 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
     std::fs::write(
         &metadata,
-        "field,value,unit,source,notes,name,result_type,net,target_impedance_ohm,max_impedance_error_ohm,solver,solver_version,solver_artifact_uri,solver_artifact_sha256,solver_input_deck_uri,solver_input_deck_sha256,stackup_revision,route_layer,reference_layer,dielectric_layer,solved_width_mm,max_route_width_delta_mm,input_stackup_revision,input_route_layer,input_reference_layer,input_dielectric_layer,input_width_mm,frequency_mhz,input_frequency_mhz,min_solver_sample_count,max_solver_frequency_step_mhz,required_solver_corners,solver_result_name,corner\n\
-         controlled_impedance_solver_result,50.6,ohm,solver report,reviewed solver evidence,rf_solver_result,single_ended,RF,50.0,2.0,reviewed_2d_field_solver,2026.07,artifacts/solver/rf_solver_result.json,0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,artifacts/solver/rf_solver_input_deck.json,fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,0.03,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,2400,2400,4,500,nominal;high_dk,,\n\
-         controlled_impedance_solver_sample,50.6,ohm,solver report,nominal sample,rf_solver_nominal_2400,,,,,,,,,,,,,,,,,,,,,,2400,,,,,rf_solver_result,nominal\n\
-         controlled_impedance_solver_sample,50.7,ohm,solver report,nominal sample,rf_solver_nominal_2900,,,,,,,,,,,,,,,,,,,,,,2900,,,,,rf_solver_result,nominal\n\
-         controlled_impedance_solver_sample,49.5,ohm,solver report,high dk sample,rf_solver_high_dk_2400,,,,,,,,,,,,,,,,,,,,,,2400,,,,,rf_solver_result,high_dk\n\
-         controlled_impedance_solver_sample,49.6,ohm,solver report,high dk sample,rf_solver_high_dk_2900,,,,,,,,,,,,,,,,,,,,,,2900,,,,,rf_solver_result,high_dk\n",
+        "field,value,unit,source,notes,name,result_type,net,target_impedance_ohm,max_impedance_error_ohm,solver,solver_version,solver_artifact_uri,solver_artifact_sha256,solver_input_deck_uri,solver_input_deck_sha256,stackup_revision,route_layer,reference_layer,dielectric_layer,solved_width_mm,max_route_width_delta_mm,input_stackup_revision,input_route_layer,input_reference_layer,input_dielectric_layer,input_width_mm,frequency_mhz,input_frequency_mhz,min_solver_sample_count,max_solver_frequency_step_mhz,required_solver_corners,solver_result_name,corner,copper_roughness_model,copper_roughness_um,input_copper_roughness_model,input_copper_roughness_um\n\
+         controlled_impedance_solver_result,50.6,ohm,solver report,reviewed solver evidence,rf_solver_result,single_ended,RF,50.0,2.0,reviewed_2d_field_solver,2026.07,artifacts/solver/rf_solver_result.json,0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,artifacts/solver/rf_solver_input_deck.json,fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,0.03,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,2400,2400,4,500,nominal;high_dk,,,huray,1.5,huray,1.5\n\
+         controlled_impedance_solver_sample,50.6,ohm,solver report,nominal sample,rf_solver_nominal_2400,,,,,,,,,,,,,,,,,,,,,,2400,,,,,rf_solver_result,nominal,,,,\n\
+         controlled_impedance_solver_sample,50.7,ohm,solver report,nominal sample,rf_solver_nominal_2900,,,,,,,,,,,,,,,,,,,,,,2900,,,,,rf_solver_result,nominal,,,,\n\
+         controlled_impedance_solver_sample,49.5,ohm,solver report,high dk sample,rf_solver_high_dk_2400,,,,,,,,,,,,,,,,,,,,,,2400,,,,,rf_solver_result,high_dk,,,,\n\
+         controlled_impedance_solver_sample,49.6,ohm,solver report,high dk sample,rf_solver_high_dk_2900,,,,,,,,,,,,,,,,,,,,,,2900,,,,,rf_solver_result,high_dk,,,,\n",
     )
     .unwrap();
 
@@ -1004,6 +1004,10 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     assert_eq!(result["solved_impedance_ohm"], 50.6);
     assert_eq!(result["stackup_revision"], "stackup_rev_b");
     assert_eq!(result["input_width_mm"], 0.20);
+    assert_eq!(result["copper_roughness_model"], "huray");
+    assert_eq!(result["copper_roughness_um"], 1.5);
+    assert_eq!(result["input_copper_roughness_model"], "huray");
+    assert_eq!(result["input_copper_roughness_um"], 1.5);
     assert_eq!(result["min_solver_sample_count"], 4);
     assert_eq!(result["max_solver_frequency_step_mhz"], 500.0);
     assert_eq!(result["required_solver_corners"][0], "nominal");
@@ -1020,7 +1024,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[]"
@@ -1143,7 +1147,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -1311,7 +1315,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
@@ -1451,7 +1455,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_environments[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["ambient_temperature_C"],
@@ -1700,7 +1704,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.20.0");
+    assert_eq!(manifest["schema_version"], "0.21.0");
     assert_eq!(manifest["rows"][3]["board_field"], "thermal_limits[]");
     assert_eq!(
         manifest["rows"][3]["normalized_value"]["max_measured_temperature_C"],

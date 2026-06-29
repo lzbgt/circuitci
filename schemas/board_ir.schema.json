@@ -463,6 +463,10 @@
                       "input_gap_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "frequency_mhz": { "type": "number", "exclusiveMinimum": 0 },
                       "input_frequency_mhz": { "type": "number", "exclusiveMinimum": 0 },
+                      "copper_roughness_model": { "type": "string", "minLength": 1 },
+                      "copper_roughness_um": { "type": "number", "exclusiveMinimum": 0 },
+                      "input_copper_roughness_model": { "type": "string", "minLength": 1 },
+                      "input_copper_roughness_um": { "type": "number", "exclusiveMinimum": 0 },
                       "min_solver_sample_count": { "type": "integer", "minimum": 1 },
                       "max_solver_frequency_step_mhz": {
                         "type": "number",

@@ -802,6 +802,65 @@ fn controlled_impedance_solver_result_fails_closed_without_input_deck_digest() {
 }
 
 #[test]
+fn controlled_impedance_solver_result_fails_for_copper_roughness_mismatch() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          input_copper_roughness_um: 1.5",
+        "          input_copper_roughness_um: 2.0",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["measured"].get("input_deck_mismatches").is_some())
+        .unwrap();
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID");
+    assert_eq!(failure["measured"]["result"], "rf_solver_result");
+    assert_eq!(
+        failure["measured"]["input_deck_mismatches"][0],
+        "copper_roughness_um"
+    );
+    assert_eq!(failure["measured"]["input_copper_roughness_um"], 2.0);
+    assert_eq!(failure["limit"]["copper_roughness_um"], 1.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_partial_copper_roughness_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace("          input_copper_roughness_um: 1.5\n", "");
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("copper roughness metadata")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_closed_without_artifact_digest() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:
@@ -987,6 +1046,10 @@ board:
           input_width_mm: 0.20
           frequency_mhz: 2400.0
           input_frequency_mhz: 2400.0
+          copper_roughness_model: huray
+          copper_roughness_um: 1.5
+          input_copper_roughness_model: huray
+          input_copper_roughness_um: 1.5
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]

@@ -121,6 +121,10 @@ board:
           input_width_mm: 0.20
           frequency_mhz: 2400.0
           input_frequency_mhz: 2400.0
+          copper_roughness_model: huray
+          copper_roughness_um: 1.5
+          input_copper_roughness_model: huray
+          input_copper_roughness_um: 1.5
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]
