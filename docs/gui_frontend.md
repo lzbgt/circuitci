@@ -73,6 +73,11 @@ click automation in screenshot checks. Imported high-pin KiCad symbols keep
 their pin connection coordinates, but Sketch spreads side labels into readable
 lanes before Fit All bounds are computed so dense symbol blocks do not collapse
 into a KiCad-like text cluster.
+For headless visual QA, prefer
+`cargo run --features gui --bin circuitci -- export-sketch-svg project.yaml -o out/sketch.svg`.
+The command uses the same Sketch graph layout and Fit All bounds as the GUI,
+then writes a deterministic SVG with nodes, wires, pin anchors, and pin labels
+without depending on OS screenshot permissions.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
 bar, project overlay, status panel, permanent Sketch central canvas,
 secondary overlay windows, Project landing view, Reports view, and

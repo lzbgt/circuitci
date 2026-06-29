@@ -81,6 +81,7 @@ mod sketch_selection_inspector;
 #[cfg(test)]
 mod sketch_selection_tests;
 mod sketch_spice;
+mod sketch_svg;
 mod sketch_symbols;
 #[cfg(test)]
 mod sketch_tests;
@@ -136,6 +137,17 @@ pub fn run() -> eframe::Result<()> {
             Ok(Box::new(app))
         }),
     )
+}
+
+pub use sketch_svg::SketchSvgExportSummary;
+
+pub fn export_sketch_svg(
+    project: &Path,
+    output: &Path,
+    width: u32,
+    height: u32,
+) -> Result<SketchSvgExportSummary> {
+    sketch_svg::export_sketch_svg(project, output, width, height)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

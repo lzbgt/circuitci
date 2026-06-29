@@ -58,6 +58,16 @@ enum Command {
         #[arg(long, short = 'o', default_value = "out/scenario_suggestions.yaml")]
         output: PathBuf,
     },
+    #[cfg(feature = "gui")]
+    ExportSketchSvg {
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long, default_value_t = 1280)]
+        width: u32,
+        #[arg(long, default_value_t = 820)]
+        height: u32,
+    },
     SetManufacturingMetadata {
         project: PathBuf,
         #[arg(long, short = 'o')]
@@ -277,6 +287,13 @@ pub fn run() -> Result<()> {
             profile,
             output,
         }) => run_suggest_scenarios(project, profile, output),
+        #[cfg(feature = "gui")]
+        Some(Command::ExportSketchSvg {
+            project,
+            output,
+            width,
+            height,
+        }) => run_export_sketch_svg(project, output, width, height),
         Some(Command::SetManufacturingMetadata {
             project,
             output,
@@ -456,6 +473,21 @@ fn run_suggest_scenarios(
         "CircuitCI suggested {} scenarios for {} -> {}",
         report.suggestions.len(),
         report.project,
+        output.display()
+    );
+    Ok(())
+}
+
+#[cfg(feature = "gui")]
+fn run_export_sketch_svg(project: PathBuf, output: PathBuf, width: u32, height: u32) -> Result<()> {
+    let summary = crate::gui::export_sketch_svg(&project, &output, width, height)?;
+    println!(
+        "CircuitCI exported Sketch SVG for {} (components={}, nets={}, wires={}, pins={}) -> {}",
+        project.display(),
+        summary.components,
+        summary.nets,
+        summary.wires,
+        summary.pin_anchors,
         output.display()
     );
     Ok(())
