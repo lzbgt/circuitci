@@ -100,7 +100,10 @@ from stackup, or infer high-speed nets.
   be blank.
 
 Coupon rows are reviewed measurement evidence only; the importer does not
-decide whether a coupon statistically represents the routed board.
+decide whether a coupon statistically represents the routed board. Validation
+requires each imported coupon to map to exactly one reviewed
+`controlled_impedance_net` or `controlled_impedance_pair` target with matching
+target impedance before the coupon tolerance is evaluated.
 
 `thermal_copper` rows use `value` as `min_copper_area_mm2` and require extra
 columns:

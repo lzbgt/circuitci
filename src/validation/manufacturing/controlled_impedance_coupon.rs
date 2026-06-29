@@ -7,6 +7,8 @@ use std::collections::BTreeSet;
 use super::super::CONTROLLED_IMPEDANCE_COUPON_VALID;
 use super::super::common::validation_input_missing;
 
+const IMPEDANCE_MATCH_EPSILON_OHM: f64 = 1.0e-9;
+
 pub(in crate::validation) fn validate_controlled_impedance_coupon(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -222,6 +224,9 @@ fn coupon_has_valid_metadata(
                 );
                 return false;
             }
+            if !coupon_matches_single_ended_target(bound, scenario, findings, coupon, net) {
+                return false;
+            }
         }
         ControlledImpedanceCouponType::Differential => {
             if coupon.net.is_some() {
@@ -291,9 +296,158 @@ fn coupon_has_valid_metadata(
                     return false;
                 }
             }
+            if !coupon_matches_differential_target(
+                bound, scenario, findings, coupon, first_net, second_net,
+            ) {
+                return false;
+            }
         }
     }
     true
+}
+
+fn coupon_matches_single_ended_target(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    net: &str,
+) -> bool {
+    let targets = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .nets
+        .iter()
+        .filter(|target| target.net == net)
+        .collect::<Vec<_>>();
+    let Some(target) = unique_target(scenario, findings, coupon, net, targets.len()) else {
+        return false;
+    };
+    let target = targets[target];
+    if !target.target_impedance_ohm.is_finite() || target.target_impedance_ohm <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_VALID board target for coupon {} net {net} must declare finite positive target_impedance_ohm.",
+                coupon.name
+            ),
+        );
+        return false;
+    }
+    if (coupon.target_impedance_ohm - target.target_impedance_ohm).abs()
+        > IMPEDANCE_MATCH_EPSILON_OHM
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_VALID coupon {} target {:.3} ohm conflicts with reviewed board target {:.3} ohm for net {net}.",
+                coupon.name, coupon.target_impedance_ohm, target.target_impedance_ohm
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn coupon_matches_differential_target(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    first_net: &str,
+    second_net: &str,
+) -> bool {
+    let targets = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .differential_pairs
+        .iter()
+        .filter(|target| {
+            unordered_pair_matches(&target.first_net, &target.second_net, first_net, second_net)
+        })
+        .collect::<Vec<_>>();
+    let label = format!("{first_net}/{second_net}");
+    let Some(target) = unique_target(scenario, findings, coupon, &label, targets.len()) else {
+        return false;
+    };
+    let target = targets[target];
+    if !target.target_differential_impedance_ohm.is_finite()
+        || target.target_differential_impedance_ohm <= 0.0
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_VALID board target for coupon {} pair {label} must declare finite positive target_differential_impedance_ohm.",
+                coupon.name
+            ),
+        );
+        return false;
+    }
+    if (coupon.target_impedance_ohm - target.target_differential_impedance_ohm).abs()
+        > IMPEDANCE_MATCH_EPSILON_OHM
+    {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_COUPON_VALID coupon {} target {:.3} ohm conflicts with reviewed board differential target {:.3} ohm for pair {label}.",
+                coupon.name, coupon.target_impedance_ohm, target.target_differential_impedance_ohm
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn unique_target(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    coupon: &ControlledImpedanceCoupon,
+    label: &str,
+    count: usize,
+) -> Option<usize> {
+    match count {
+        0 => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_COUPON_VALID coupon {} requires exactly one reviewed board controlled-impedance target for {label}.",
+                    coupon.name
+                ),
+            );
+            None
+        }
+        1 => Some(0),
+        _ => {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "CONTROLLED_IMPEDANCE_COUPON_VALID coupon {} found duplicate reviewed board controlled-impedance targets for {label}.",
+                    coupon.name
+                ),
+            );
+            None
+        }
+    }
+}
+
+fn unordered_pair_matches(
+    first: &str,
+    second: &str,
+    expected_first: &str,
+    expected_second: &str,
+) -> bool {
+    (first == expected_first && second == expected_second)
+        || (first == expected_second && second == expected_first)
 }
 
 fn coupon_finding(

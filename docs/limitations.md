@@ -263,9 +263,11 @@ without explicit imported mechanical evidence.
   effect of solder mask material, model registration tolerance, infer mask
   intent from copper names, or replace field-solver/coupon signoff.
 - `CONTROLLED_IMPEDANCE_COUPON_VALID` compares explicit reviewed coupon
-  measured impedance against explicit target and tolerance metadata. It does
-  not infer coupon applicability, calculate impedance, model coupon-to-board
-  correlation, prove process capability, or replace SI/fabricator review.
+  measured impedance against explicit target and tolerance metadata only after
+  the coupon maps to exactly one matching reviewed board controlled-impedance
+  target for the same net or differential pair. It does not infer coupon
+  applicability, calculate impedance, model coupon-to-board correlation, prove
+  process capability, or replace SI/fabricator review.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,
   declared plane `reference_net`, route segments, and sampled zone polygons to
   screen for adjacent-plane coverage. It does not infer reference planes from

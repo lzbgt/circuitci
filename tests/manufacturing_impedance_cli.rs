@@ -413,6 +413,68 @@ fn controlled_impedance_coupon_fails_closed_without_named_coupon_evidence() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_coupon_fails_closed_without_matching_board_target() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        r#"      nets:
+        - net: RF
+          source: fab_stackup_table_rev_a
+          target_impedance_ohm: 50
+          expected_width_mm: 0.20
+          max_width_error_mm: 0.03
+"#,
+        "",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires exactly one reviewed board controlled-impedance target for RF")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_fails_closed_for_mismatched_board_target() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: dp_dm_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "          target_differential_impedance_ohm: 90",
+        "          target_differential_impedance_ohm: 85",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("conflicts with reviewed board differential target")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_impedance_project(parameters: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     write_impedance_project_with_check(parameters, "CONTROLLED_IMPEDANCE_GEOMETRY_VALID")
 }
@@ -443,6 +505,21 @@ board:
       kind: ground
   manufacturing:
     controlled_impedance:
+      nets:
+        - net: RF
+          source: fab_stackup_table_rev_a
+          target_impedance_ohm: 50
+          expected_width_mm: 0.20
+          max_width_error_mm: 0.03
+      differential_pairs:
+        - first_net: DP
+          second_net: DM
+          source: fab_stackup_table_rev_a
+          target_differential_impedance_ohm: 90
+          expected_width_mm: 0.15
+          expected_gap_mm: 0.20
+          max_width_error_mm: 0.02
+          max_gap_error_mm: 0.03
       coupons:
         - name: rf_coupon
           source: fab_coupon_report_rev_b

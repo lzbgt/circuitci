@@ -516,7 +516,7 @@ fn controlled_impedance_coupon_suggestions(
             ),
             true,
             &format!(
-                "Controlled-impedance coupon {} has reviewed measured impedance evidence from {} and a reviewed tolerance.",
+                "Controlled-impedance coupon {} has reviewed measured impedance evidence from {}, a reviewed tolerance, and a matching board controlled-impedance target.",
                 coupon.name, coupon.source
             ),
             &format!(
@@ -819,6 +819,7 @@ fn controlled_impedance_coupon_has_evidence(
                 coupon.first_net.is_none()
                     && coupon.second_net.is_none()
                     && bound.project.board.nets.contains_key(net)
+                    && matching_single_ended_coupon_target(bound, coupon, net)
             }),
         ControlledImpedanceCouponType::Differential => {
             if coupon.net.is_some() {
@@ -843,8 +844,61 @@ fn controlled_impedance_coupon_has_evidence(
             first_net != second_net
                 && bound.project.board.nets.contains_key(first_net)
                 && bound.project.board.nets.contains_key(second_net)
+                && matching_differential_coupon_target(bound, coupon, first_net, second_net)
         }
     }
+}
+
+fn matching_single_ended_coupon_target(
+    bound: &BoundBoard<'_>,
+    coupon: &ControlledImpedanceCoupon,
+    net: &str,
+) -> bool {
+    let targets = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .nets
+        .iter()
+        .filter(|target| target.net == net)
+        .collect::<Vec<_>>();
+    targets.len() == 1
+        && positive_finite(targets[0].target_impedance_ohm)
+        && (targets[0].target_impedance_ohm - coupon.target_impedance_ohm).abs() <= 1.0e-9
+}
+
+fn matching_differential_coupon_target(
+    bound: &BoundBoard<'_>,
+    coupon: &ControlledImpedanceCoupon,
+    first_net: &str,
+    second_net: &str,
+) -> bool {
+    let targets = bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .differential_pairs
+        .iter()
+        .filter(|target| {
+            unordered_pair_matches(&target.first_net, &target.second_net, first_net, second_net)
+        })
+        .collect::<Vec<_>>();
+    targets.len() == 1
+        && positive_finite(targets[0].target_differential_impedance_ohm)
+        && (targets[0].target_differential_impedance_ohm - coupon.target_impedance_ohm).abs()
+            <= 1.0e-9
+}
+
+fn unordered_pair_matches(
+    first: &str,
+    second: &str,
+    expected_first: &str,
+    expected_second: &str,
+) -> bool {
+    (first == expected_first && second == expected_second)
+        || (first == expected_second && second == expected_first)
 }
 
 fn positive_finite(value: f64) -> bool {

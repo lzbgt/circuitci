@@ -128,8 +128,9 @@ Useful next slices:
 
 - controlled impedance proof beyond the current explicit route width/gap,
   stackup material/copper-thickness, solder-mask loading artwork, and coupon
-  measurement evidence screens, such as field-solver integration, coupon
-  batch statistics, and board-to-coupon trace mapping,
+  measurement/board-target mapping evidence screens, such as field-solver
+  integration, coupon batch statistics, and richer coupon-to-routed-trace
+  process correlation,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

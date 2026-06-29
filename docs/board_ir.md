@@ -248,9 +248,11 @@ bounded solder-mask artwork-state check rather than an impedance calculation.
 `board.manufacturing.controlled_impedance.coupons[]` stores reviewed
 fabricator coupon measurements. `single_ended` coupons must name one Board IR
 `net`; `differential` coupons must name `first_net` and `second_net`.
-CircuitCI compares only the explicit measured impedance against the explicit
-target and tolerance; it does not infer coupon applicability or solve
-impedance.
+CircuitCI requires the coupon to map to exactly one reviewed board
+controlled-impedance target for that same net or unordered pair, and the coupon
+target impedance must match that board target before measured coupon tolerance
+is evaluated. It still does not infer coupon applicability, calculate
+impedance, or prove statistical coupon-to-board correlation.
 
 `THERMAL_COPPER_AREA_VALID` suggestions consume
 `board.manufacturing.thermal_copper[]` as reviewed thermal layout policy. Each

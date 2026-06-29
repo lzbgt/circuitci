@@ -215,7 +215,8 @@ evidence in a JSON manifest. Repeated `field=controlled_impedance_net` and
 `field=controlled_impedance_pair` rows create or replace reviewed
 `board.manufacturing.controlled_impedance` targets, including optional
 solder-mask loading metadata, repeated `field=controlled_impedance_coupon`
-rows create or replace reviewed fabricator coupon measurement evidence,
+rows create or replace reviewed fabricator coupon measurement evidence that
+validation maps back to matching reviewed board impedance targets,
 repeated
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated

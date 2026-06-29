@@ -211,6 +211,33 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
 }
 
 #[test]
+fn suggest_scenarios_skips_unmapped_controlled_impedance_coupon() {
+    let dir = tempfile::tempdir().unwrap();
+    let project_path = dir.path().join("project.yaml");
+    let mut project =
+        std::fs::read_to_string("examples/scenario_suggestions_controlled_impedance/project.yaml")
+            .unwrap();
+    project = project.replace(
+        "          target_impedance_ohm: 50.0\n          measured_impedance_ohm: 51.2",
+        "          target_impedance_ohm: 55.0\n          measured_impedance_ohm: 51.2",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let suggestions = run_suggest_scenarios(project_path.to_str().unwrap());
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert!(
+        suggested
+            .iter()
+            .all(|suggestion| suggestion["id"] != "controlled_impedance_coupon_rf_coupon")
+    );
+    assert!(
+        suggested
+            .iter()
+            .any(|suggestion| suggestion["id"] == "controlled_impedance_coupon_dp_dm_coupon")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_adjacent_plane_return_path_template() {
     let suggestions = run_suggest_scenarios(
         "examples/scenario_suggestions_adjacent_plane_return_path/project.yaml",

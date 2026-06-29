@@ -593,7 +593,9 @@ keys include `expected_solder_mask_state`.
 
 `CONTROLLED_IMPEDANCE_COUPON_VALID` reports are emitted by `manufacturing`
 scenarios that compare reviewed fabricator coupon measurements against
-reviewed impedance tolerance windows. Stable measured keys include
+reviewed impedance tolerance windows after the coupon has matched exactly one
+reviewed board controlled-impedance target for the same net or differential
+pair. Stable measured keys include
 `coupon_name`, `coupon_type`, `source`, `net`, `first_net`, `second_net`,
 `target_impedance_ohm`, `measured_impedance_ohm`, and
 `impedance_error_ohm`. Stable limit keys include

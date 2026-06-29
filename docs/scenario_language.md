@@ -1858,8 +1858,10 @@ signoff.
 Controlled-impedance coupon validation uses
 `CONTROLLED_IMPEDANCE_COUPON_VALID` when Board IR includes reviewed fabricator
 coupon measurements under `board.manufacturing.controlled_impedance.coupons[]`.
-It proves only whether named measured coupon impedance values stay within
-their reviewed tolerance windows.
+It first requires each named coupon to map to exactly one reviewed board
+controlled-impedance target for the same net or unordered differential pair,
+with matching target impedance, then proves whether measured coupon impedance
+stays within the reviewed tolerance window.
 
 ```yaml
 scenarios:
@@ -1883,14 +1885,18 @@ Controlled-impedance coupon algorithm:
 4. Require `coupon_type: single_ended` coupons to declare one existing `net`
    and no pair nets. Require `coupon_type: differential` coupons to declare
    two distinct existing pair nets and no single-ended `net`.
-5. Fail when `abs(measured_impedance_ohm - target_impedance_ohm)` exceeds
+5. Require exactly one reviewed Board IR controlled-impedance target for that
+   net or unordered pair, and require the coupon target impedance to match the
+   reviewed board target.
+6. Fail when `abs(measured_impedance_ohm - target_impedance_ohm)` exceeds
    `max_impedance_error_ohm`.
-6. Fail closed when named coupon evidence or type-specific net metadata is
-   absent or malformed.
+7. Fail closed when named coupon evidence, type-specific net metadata, or
+   board-target mapping is absent, duplicated, or contradictory.
 
-This is a reviewed coupon-result screen only. It does not infer coupon
-applicability, calculate impedance, model coupon-to-board correlation, account
-for fabricator statistical process limits, or replace SI review.
+This is a reviewed coupon-result and board-target consistency screen only. It
+does not infer coupon applicability, calculate impedance, model coupon-to-board
+correlation, account for fabricator statistical process limits, or replace SI
+review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit
