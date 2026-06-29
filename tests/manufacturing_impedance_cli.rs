@@ -634,6 +634,54 @@ fn controlled_impedance_solver_result_passes_for_reviewed_solver_and_route_match
 }
 
 #[test]
+fn controlled_impedance_solver_result_passes_with_reviewed_solver_qualification() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "      solver_results:\n",
+        "      solver_qualifications:\n        - name: reviewed_2d_field_solver_2026_06\n          source: si_tool_qualification_rev_a\n          solver: reviewed_2d_field_solver\n          solver_version: \"2026.06\"\n          qualification_artifact_uri: artifacts/solver/reviewed_2d_field_solver_2026_06_qualification.pdf\n          qualification_artifact_sha256: 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff\n      solver_results:\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_closed_for_unqualified_solver_version() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "      solver_results:\n",
+        "      solver_qualifications:\n        - name: reviewed_2d_field_solver_2026_05\n          source: si_tool_qualification_rev_a\n          solver: reviewed_2d_field_solver\n          solver_version: \"2026.05\"\n          qualification_artifact_uri: artifacts/solver/reviewed_2d_field_solver_2026_05_qualification.pdf\n          qualification_artifact_sha256: 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff\n      solver_results:\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires exactly one reviewed solver qualification")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_fails_for_out_of_tolerance_solver_result() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:

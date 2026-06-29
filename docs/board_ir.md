@@ -433,6 +433,11 @@ Optional reviewed sweep/corner policy columns are
 `solved_impedance_ohm`, require `solver_result_name`, `name`, `source`,
 `corner`, and `frequency_mhz`, and attach to an existing or same-import solver
 result by `solver_result_name`.
+Repeated `field=controlled_impedance_solver_qualification` rows populate
+`controlled_impedance.solver_qualifications[]` with reviewed solver
+tool/version qualification evidence. When this collection is present, solver
+result validation requires each result to match exactly one qualification by
+`solver` and `solver_version`.
 Repeated
 `field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
 include reviewed policy columns such as `name`, `component`, `power_loss_w`,

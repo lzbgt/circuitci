@@ -939,6 +939,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && non_negative_finite(result.max_route_width_delta_mm)
         && result.frequency_mhz.is_none_or(positive_finite)
         && controlled_impedance_solver_input_deck_has_evidence(result)
+        && controlled_impedance_solver_qualification_has_evidence(bound, result)
         && controlled_impedance_solver_sweep_has_evidence(result)
         && solver_stackup_has_evidence(bound, result)
         && match result.result_type {
@@ -1023,6 +1024,41 @@ fn controlled_impedance_solver_result_has_evidence(
                         })
             }
         }
+}
+
+fn controlled_impedance_solver_qualification_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let qualifications = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_qualifications;
+    if qualifications.is_empty() {
+        return true;
+    }
+    let Some(version) = result
+        .solver_version
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return false;
+    };
+    let matches = qualifications
+        .iter()
+        .filter(|qualification| {
+            qualification.solver.trim() == result.solver.trim()
+                && qualification.solver_version.trim() == version
+        })
+        .collect::<Vec<_>>();
+    matches.len() == 1
+        && !matches[0].name.trim().is_empty()
+        && !matches[0].source.trim().is_empty()
+        && !matches[0].qualification_artifact_uri.trim().is_empty()
+        && is_sha256_hex(matches[0].qualification_artifact_sha256.trim())
 }
 
 fn controlled_impedance_solver_input_deck_policy_requested(

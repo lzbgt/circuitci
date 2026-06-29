@@ -1,6 +1,7 @@
 use crate::board_ir::{
-    ControlledImpedanceSolverResult, ControlledImpedanceSolverResultType, NetRoute, RouteSegment,
-    Scenario, StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverQualification, ControlledImpedanceSolverResult,
+    ControlledImpedanceSolverResultType, NetRoute, RouteSegment, Scenario, StackupLayer,
+    StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -301,6 +302,9 @@ fn solver_result_has_valid_metadata(
     if !solver_input_deck_metadata_is_valid(scenario, findings, result) {
         return false;
     }
+    if !solver_qualification_metadata_is_valid(bound, scenario, findings, result) {
+        return false;
+    }
     if !solver_sweep_metadata_is_valid(scenario, findings, result) {
         return false;
     }
@@ -488,6 +492,77 @@ fn missing_layer(
             result.name
         ),
     );
+}
+
+fn solver_qualification_metadata_is_valid(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let qualifications = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_qualifications;
+    if qualifications.is_empty() {
+        return true;
+    }
+    let Some(version) = non_empty_option(result.solver_version.as_deref()) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires solver_version when reviewed solver qualification metadata exists.",
+                result.name
+            ),
+        );
+        return false;
+    };
+    let matches = qualifications
+        .iter()
+        .filter(|qualification| {
+            qualification.solver.trim() == result.solver.trim()
+                && qualification.solver_version.trim() == version
+        })
+        .collect::<Vec<_>>();
+    if matches.len() != 1 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} requires exactly one reviewed solver qualification for solver {} version {version}; found {}.",
+                result.name,
+                result.solver,
+                matches.len()
+            ),
+        );
+        return false;
+    }
+    if !solver_qualification_has_valid_metadata(matches[0]) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID solver qualification {} for result {} must declare non-empty name/source/solver/version/artifact URI and a 64-character SHA-256 digest.",
+                matches[0].name, result.name
+            ),
+        );
+        return false;
+    }
+    true
+}
+
+fn solver_qualification_has_valid_metadata(
+    qualification: &ControlledImpedanceSolverQualification,
+) -> bool {
+    !qualification.name.trim().is_empty()
+        && !qualification.source.trim().is_empty()
+        && !qualification.solver.trim().is_empty()
+        && !qualification.solver_version.trim().is_empty()
+        && !qualification.qualification_artifact_uri.trim().is_empty()
+        && is_sha256_hex(qualification.qualification_artifact_sha256.trim())
 }
 
 fn solver_matches_single_ended_target(

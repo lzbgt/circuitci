@@ -201,6 +201,8 @@ pub struct ControlledImpedanceTargets {
     #[serde(default)]
     pub coupons: Vec<ControlledImpedanceCoupon>,
     #[serde(default)]
+    pub solver_qualifications: Vec<ControlledImpedanceSolverQualification>,
+    #[serde(default)]
     pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
@@ -284,6 +286,16 @@ pub struct ControlledImpedanceCouponSample {
     pub name: String,
     pub source: String,
     pub measured_impedance_ohm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverQualification {
+    pub name: String,
+    pub source: String,
+    pub solver: String,
+    pub solver_version: String,
+    pub qualification_artifact_uri: String,
+    pub qualification_artifact_sha256: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

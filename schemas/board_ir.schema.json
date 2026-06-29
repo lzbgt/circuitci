@@ -403,6 +403,35 @@
                     "additionalProperties": false
                   }
                 },
+                "solver_qualifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "solver",
+                      "solver_version",
+                      "qualification_artifact_uri",
+                      "qualification_artifact_sha256"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "solver": { "type": "string", "minLength": 1 },
+                      "solver_version": { "type": "string", "minLength": 1 },
+                      "qualification_artifact_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "qualification_artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "solver_results": {
                   "type": "array",
                   "items": {

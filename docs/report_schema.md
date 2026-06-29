@@ -655,7 +655,10 @@ measured keys also include `input_etch_compensation_model` and
 `frequency_mhz`; with reviewed roughness evidence, stable limit keys also
 include `copper_roughness_model` and `copper_roughness_um`; with reviewed
 etch compensation evidence, stable limit keys also include
-`etch_compensation_model` and `etch_compensation_um`.
+`etch_compensation_model` and `etch_compensation_um`. When reviewed
+`controlled_impedance.solver_qualifications[]` evidence exists, missing,
+ambiguous, or malformed solver/version qualification evidence is reported as
+`VALIDATION_INPUT_MISSING` before solver-result limit findings are emitted.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

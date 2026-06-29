@@ -94,6 +94,13 @@ board:
             - name: dp_dm_coupon_s3
               source: fab_coupon_report_rev_b
               measured_impedance_ohm: 91.4
+      solver_qualifications:
+        - name: reviewed_2d_field_solver_2026_06
+          source: si_tool_qualification_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          qualification_artifact_uri: artifacts/solver/reviewed_2d_field_solver_2026_06_qualification.pdf
+          qualification_artifact_sha256: 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff
       solver_results:
         - name: rf_solver_result
           source: solver_report_rev_c

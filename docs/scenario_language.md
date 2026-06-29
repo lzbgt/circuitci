@@ -2018,7 +2018,10 @@ Controlled-impedance solver-result algorithm:
    SHA-256 provenance plus explicit stackup/layer/width/gap/frequency and
    optional copper-roughness/etch-compensation setup metadata that matches the
    solver-result setup.
-10. Fail when solved impedance, route width, differential route gap, sampled
+10. When reviewed solver qualification metadata is present, require each solver
+    result to declare `solver_version` and match exactly one reviewed
+    `solver_qualifications[]` row for the same solver and version.
+11. Fail when solved impedance, route width, differential route gap, sampled
     solver impedance, required corner coverage, sample count, frequency-step
     coverage, or reviewed input-deck setup plus copper-roughness and
     etch-compensation consistency exceeds the reviewed limits. Fail closed when

@@ -131,8 +131,9 @@ Useful next slices:
   measurement/board-target mapping, coupon batch-statistics,
   coupon-to-routed-trace process-correlation, and source-backed solver-result
   artifact-provenance, input-deck consistency, plus sweep/corner sample
-  and copper-roughness/etch-compensation consistency screens, such as
-  reviewed solver tool/version qualification evidence,
+  copper-roughness/etch-compensation consistency, and reviewed solver
+  tool/version qualification screens, such as solver artifact signing or
+  reviewed solver-material-corner library evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

@@ -1,13 +1,14 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample,
-    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
-    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
-    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
-    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedControlledImpedanceSolverQualification, AppliedControlledImpedanceSolverResult,
+    AppliedControlledImpedanceSolverSample, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
+    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
+    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
+    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
+    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -536,6 +537,55 @@ pub(super) fn applied_controlled_impedance_solver_sample(
     })
 }
 
+pub(super) fn applied_controlled_impedance_solver_qualification(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverQualification> {
+    let qualification_source = optional_raw_column(row, "qualification_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(qualification_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_solver_qualification requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceSolverQualification {
+        name: required_raw_column_for(
+            row,
+            path,
+            "name",
+            "controlled_impedance_solver_qualification",
+        )?,
+        source,
+        solver: required_raw_column_for(
+            row,
+            path,
+            "solver",
+            "controlled_impedance_solver_qualification",
+        )?,
+        solver_version: required_raw_column_for(
+            row,
+            path,
+            "solver_version",
+            "controlled_impedance_solver_qualification",
+        )?,
+        qualification_artifact_uri: required_raw_column_for(
+            row,
+            path,
+            "qualification_artifact_uri",
+            "controlled_impedance_solver_qualification",
+        )?,
+        qualification_artifact_sha256: required_solver_qualification_sha256(row, path)?,
+    })
+}
+
 fn required_coupon_type(row: &MetadataCsvRow, path: &Path) -> Result<String> {
     let raw = required_raw_column_for(row, path, "coupon_type", "controlled_impedance_coupon")?;
     match normalize_name(&raw).as_str() {
@@ -594,6 +644,24 @@ fn optional_solver_input_deck_sha256(row: &MetadataCsvRow, path: &Path) -> Resul
     } else {
         bail!(
             "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_input_deck_sha256 must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        )
+    }
+}
+
+fn required_solver_qualification_sha256(row: &MetadataCsvRow, path: &Path) -> Result<String> {
+    let digest = required_raw_column_for(
+        row,
+        path,
+        "qualification_artifact_sha256",
+        "controlled_impedance_solver_qualification",
+    )?;
+    if is_sha256_hex(&digest) {
+        Ok(digest.to_ascii_lowercase())
+    } else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_qualification qualification_artifact_sha256 must be a 64-character SHA-256 hex digest.",
             path.display(),
             row.row_number
         )

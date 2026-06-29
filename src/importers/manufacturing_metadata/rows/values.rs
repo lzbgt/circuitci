@@ -1,9 +1,10 @@
 use super::{
     AppliedControlledImpedanceCoupon, AppliedControlledImpedanceCouponSample,
     AppliedControlledImpedanceNet, AppliedControlledImpedancePair,
-    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
-    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedControlledImpedanceSolverQualification, AppliedControlledImpedanceSolverResult,
+    AppliedControlledImpedanceSolverSample, AppliedField, AppliedLayoutPoint,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
     AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
     AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage,
@@ -70,6 +71,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
                     field.field.board_key()
                 )
             });
+    }
+    if let Some(qualification) = &field.controlled_impedance_solver_qualification {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_qualification_mapping(
+            qualification,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
     }
     if let Some(rule) = &field.thermal_copper {
         return serde_yaml_ng::to_value(thermal_copper_mapping(rule)).with_context(|| {
@@ -529,6 +541,37 @@ fn controlled_impedance_solver_sample_mapping(
     mapping.insert(
         "solved_impedance_ohm".to_string(),
         serde_yaml_ng::to_value(sample.solved_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_qualification_mapping(
+    qualification: &AppliedControlledImpedanceSolverQualification,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert(
+        "name".to_string(),
+        Value::String(qualification.name.clone()),
+    );
+    mapping.insert(
+        "source".to_string(),
+        Value::String(qualification.source.clone()),
+    );
+    mapping.insert(
+        "solver".to_string(),
+        Value::String(qualification.solver.clone()),
+    );
+    mapping.insert(
+        "solver_version".to_string(),
+        Value::String(qualification.solver_version.clone()),
+    );
+    mapping.insert(
+        "qualification_artifact_uri".to_string(),
+        Value::String(qualification.qualification_artifact_uri.clone()),
+    );
+    mapping.insert(
+        "qualification_artifact_sha256".to_string(),
+        Value::String(qualification.qualification_artifact_sha256.clone()),
     );
     mapping
 }

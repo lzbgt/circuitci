@@ -227,6 +227,8 @@ source-backed solver-result evidence under
 sweep/corner samples under named solver results. Solver-result rows can also
 carry reviewed input-deck URI/digest, setup metadata, copper-roughness
 metadata, and etch-compensation metadata for consistency screening. Repeated
+`field=controlled_impedance_solver_qualification` rows create or replace
+reviewed solver tool/version qualification evidence. Repeated
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated
 `field=thermal_measurement` rows append reviewed measured-temperature evidence

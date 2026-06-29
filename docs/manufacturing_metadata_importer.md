@@ -165,6 +165,13 @@ parse solver input decks, or infer stackup parameters.
 pre-existing solver result; duplicate `solver_result_name`/sample-name pairs
 fail closed.
 
+`controlled_impedance_solver_qualification` rows declare reviewed solver
+tool/version qualification evidence and require `name`, `source`, `solver`,
+`solver_version`, `qualification_artifact_uri`, and a 64-character
+`qualification_artifact_sha256`. Rows create or replace
+`board.manufacturing.controlled_impedance.solver_qualifications[]` entries by
+stable `name`; duplicate CSV names fail closed.
+
 Coupon rows are reviewed measurement evidence only; the importer does not
 decide whether a coupon statistically represents the routed board. Validation
 requires each imported coupon to map to exactly one reviewed
