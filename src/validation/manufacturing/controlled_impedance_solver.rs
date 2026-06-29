@@ -810,6 +810,12 @@ fn solver_input_deck_policy_requested(result: &ControlledImpedanceSolverResult) 
         || result.etch_compensation_um.is_some()
         || result.input_etch_compensation_model.is_some()
         || result.input_etch_compensation_um.is_some()
+        || result.solver_material_library.is_some()
+        || result.solver_material_library_revision.is_some()
+        || result.solver_material_library_artifact_uri.is_some()
+        || result.solver_material_library_artifact_sha256.is_some()
+        || result.input_material_library.is_some()
+        || result.input_material_library_revision.is_some()
 }
 
 fn solver_input_deck_metadata_is_valid(
@@ -853,12 +859,13 @@ fn solver_input_deck_metadata_is_valid(
             .is_some_and(|value| !positive(value))
         || !solver_roughness_metadata_is_complete(result)
         || !solver_etch_compensation_metadata_is_complete(result)
+        || !solver_material_library_metadata_is_complete(result)
     {
         validation_input_missing(
             findings,
             scenario,
             format!(
-                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, optional positive input_frequency_mhz, complete positive copper roughness metadata when roughness evidence is declared, and complete positive etch compensation metadata when etch evidence is declared.",
+                "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID result {} input-deck evidence must declare digest, stackup/layer setup, positive input_width_mm, optional positive input_frequency_mhz, complete positive copper roughness metadata when roughness evidence is declared, complete positive etch compensation metadata when etch evidence is declared, and complete solver material-library metadata when material-library evidence is declared.",
                 result.name
             ),
         );
@@ -899,6 +906,30 @@ fn solver_roughness_policy_requested(result: &ControlledImpedanceSolverResult) -
         || result.copper_roughness_um.is_some()
         || result.input_copper_roughness_model.is_some()
         || result.input_copper_roughness_um.is_some()
+}
+
+fn solver_material_library_metadata_is_complete(result: &ControlledImpedanceSolverResult) -> bool {
+    if !solver_material_library_policy_requested(result) {
+        return true;
+    }
+    non_empty_option(result.solver_material_library.as_deref()).is_some()
+        && non_empty_option(result.solver_material_library_revision.as_deref()).is_some()
+        && non_empty_option(result.solver_material_library_artifact_uri.as_deref()).is_some()
+        && result
+            .solver_material_library_artifact_sha256
+            .as_deref()
+            .is_some_and(is_sha256_hex)
+        && non_empty_option(result.input_material_library.as_deref()).is_some()
+        && non_empty_option(result.input_material_library_revision.as_deref()).is_some()
+}
+
+fn solver_material_library_policy_requested(result: &ControlledImpedanceSolverResult) -> bool {
+    result.solver_material_library.is_some()
+        || result.solver_material_library_revision.is_some()
+        || result.solver_material_library_artifact_uri.is_some()
+        || result.solver_material_library_artifact_sha256.is_some()
+        || result.input_material_library.is_some()
+        || result.input_material_library_revision.is_some()
 }
 
 fn solver_input_deck_matches_result(
@@ -949,6 +980,24 @@ fn solver_input_deck_mismatches(result: &ControlledImpedanceSolverResult) -> Vec
         .is_some_and(|value| (value - result.solved_width_mm).abs() > f64::EPSILON)
     {
         mismatches.push("solved_width_mm");
+    }
+    if solver_material_library_policy_requested(result) {
+        if result.input_material_library.as_deref().map(str::trim)
+            != result.solver_material_library.as_deref().map(str::trim)
+        {
+            mismatches.push("solver_material_library");
+        }
+        if result
+            .input_material_library_revision
+            .as_deref()
+            .map(str::trim)
+            != result
+                .solver_material_library_revision
+                .as_deref()
+                .map(str::trim)
+        {
+            mismatches.push("solver_material_library_revision");
+        }
     }
     match result.result_type {
         ControlledImpedanceSolverResultType::SingleEnded => {}
@@ -1511,6 +1560,36 @@ fn solver_input_deck_finding(
         &mut finding,
         "input_dielectric_layer",
         result.input_dielectric_layer.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "solver_material_library",
+        result.solver_material_library.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "solver_material_library_revision",
+        result.solver_material_library_revision.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "solver_material_library_artifact_uri",
+        result.solver_material_library_artifact_uri.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "solver_material_library_artifact_sha256",
+        result.solver_material_library_artifact_sha256.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "input_material_library",
+        result.input_material_library.as_deref(),
+    );
+    insert_optional_measured_string(
+        &mut finding,
+        "input_material_library_revision",
+        result.input_material_library_revision.as_deref(),
     );
     if let Some(input_width) = result.input_width_mm {
         finding

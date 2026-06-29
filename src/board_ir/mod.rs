@@ -372,6 +372,18 @@ pub struct ControlledImpedanceSolverResult {
     #[serde(default)]
     pub input_etch_compensation_um: Option<f64>,
     #[serde(default)]
+    pub solver_material_library: Option<String>,
+    #[serde(default)]
+    pub solver_material_library_revision: Option<String>,
+    #[serde(default)]
+    pub solver_material_library_artifact_uri: Option<String>,
+    #[serde(default)]
+    pub solver_material_library_artifact_sha256: Option<String>,
+    #[serde(default)]
+    pub input_material_library: Option<String>,
+    #[serde(default)]
+    pub input_material_library_revision: Option<String>,
+    #[serde(default)]
     pub min_solver_sample_count: Option<usize>,
     #[serde(default)]
     pub max_solver_frequency_step_mhz: Option<f64>,

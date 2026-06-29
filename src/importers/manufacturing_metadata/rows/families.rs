@@ -480,6 +480,23 @@ pub(super) fn applied_controlled_impedance_solver_result(
         input_etch_compensation_um: optional_raw_column(row, "input_etch_compensation_um")
             .map(|value| parse_positive_number(&value, path, row, "input_etch_compensation_um"))
             .transpose()?,
+        solver_material_library: optional_raw_column(row, "solver_material_library"),
+        solver_material_library_revision: optional_raw_column(
+            row,
+            "solver_material_library_revision",
+        ),
+        solver_material_library_artifact_uri: optional_raw_column(
+            row,
+            "solver_material_library_artifact_uri",
+        ),
+        solver_material_library_artifact_sha256: optional_solver_material_library_artifact_sha256(
+            row, path,
+        )?,
+        input_material_library: optional_raw_column(row, "input_material_library"),
+        input_material_library_revision: optional_raw_column(
+            row,
+            "input_material_library_revision",
+        ),
         min_solver_sample_count: optional_raw_column(row, "min_solver_sample_count")
             .as_deref()
             .map(|value| parse_positive_usize(value, path, row, "min_solver_sample_count"))
@@ -665,6 +682,24 @@ fn optional_solver_artifact_signature_sha256(
     } else {
         bail!(
             "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_artifact_signature_sha256 must be a 64-character SHA-256 hex digest.",
+            path.display(),
+            row.row_number
+        )
+    }
+}
+
+fn optional_solver_material_library_artifact_sha256(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<Option<String>> {
+    let Some(digest) = optional_raw_column(row, "solver_material_library_artifact_sha256") else {
+        return Ok(None);
+    };
+    if is_sha256_hex(&digest) {
+        Ok(Some(digest.to_ascii_lowercase()))
+    } else {
+        bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_result solver_material_library_artifact_sha256 must be a 64-character SHA-256 hex digest.",
             path.display(),
             row.row_number
         )

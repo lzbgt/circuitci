@@ -139,6 +139,12 @@ board:
           etch_compensation_um: 8.0
           input_etch_compensation_model: fabricator_finished_width_bias
           input_etch_compensation_um: 8.0
+          solver_material_library: reviewed_stackup_materials
+          solver_material_library_revision: rev_a
+          solver_material_library_artifact_uri: artifacts/solver/material_library_rev_a.json
+          solver_material_library_artifact_sha256: abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd
+          input_material_library: reviewed_stackup_materials
+          input_material_library_revision: rev_a
           min_solver_sample_count: 4
           max_solver_frequency_step_mhz: 500.0
           required_solver_corners: [nominal, high_dk]

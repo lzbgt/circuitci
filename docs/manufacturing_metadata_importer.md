@@ -146,6 +146,10 @@ Optional `controlled_impedance_solver_result` columns are `solver_version`,
 `input_copper_roughness_model`, `input_copper_roughness_um`,
 `etch_compensation_model`, `etch_compensation_um`,
 `input_etch_compensation_model`, `input_etch_compensation_um`,
+`solver_material_library`, `solver_material_library_revision`,
+`solver_material_library_artifact_uri`,
+`solver_material_library_artifact_sha256`, `input_material_library`,
+`input_material_library_revision`,
 `min_solver_sample_count`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
 `solver_source` when the ordinary `source` column is not used. When any
@@ -161,7 +165,8 @@ result/input-deck etch compensation model and positive compensation values;
 CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
-verify signatures, parse solver input decks, or infer stackup parameters.
+verify signatures, parse solver input decks, parse material libraries, or infer
+stackup parameters.
 
 `controlled_impedance_solver_sample` rows use `value` as sampled
 `solved_impedance_ohm` and require `solver_result_name`, `name`, `source`,

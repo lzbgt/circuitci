@@ -650,6 +650,11 @@ measured keys also include `input_etch_compensation_model` and
 `input_etch_compensation_um`. If signed-artifact metadata is declared but
 incomplete, the check fails closed as `VALIDATION_INPUT_MISSING`; signature
 metadata is provenance input and is not repeated in pass/fail measured maps.
+With reviewed material-library evidence, stable input-deck mismatch measured
+keys also include `solver_material_library`,
+`solver_material_library_revision`, `solver_material_library_artifact_uri`,
+`solver_material_library_artifact_sha256`, `input_material_library`, and
+`input_material_library_revision`.
 Stable limit keys include `max_impedance_error_ohm`,
 `max_route_width_delta_mm`, `max_route_gap_delta_mm`,
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`,

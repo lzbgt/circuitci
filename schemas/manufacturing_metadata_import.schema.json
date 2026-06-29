@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.24.0" },
+    "schema_version": { "const": "0.25.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -392,6 +392,30 @@
                 "input_etch_compensation_um": {
                   "type": "number",
                   "exclusiveMinimum": 0
+                },
+                "solver_material_library": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_material_library_revision": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_material_library_artifact_uri": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_material_library_artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "input_material_library": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_material_library_revision": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "min_solver_sample_count": {
                   "type": "integer",

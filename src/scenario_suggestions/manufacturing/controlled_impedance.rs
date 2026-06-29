@@ -1082,6 +1082,12 @@ fn controlled_impedance_solver_input_deck_policy_requested(
         || result.etch_compensation_um.is_some()
         || result.input_etch_compensation_model.is_some()
         || result.input_etch_compensation_um.is_some()
+        || result.solver_material_library.is_some()
+        || result.solver_material_library_revision.is_some()
+        || result.solver_material_library_artifact_uri.is_some()
+        || result.solver_material_library_artifact_sha256.is_some()
+        || result.input_material_library.is_some()
+        || result.input_material_library_revision.is_some()
 }
 
 fn controlled_impedance_solver_artifact_signature_policy_requested(
@@ -1147,6 +1153,7 @@ fn controlled_impedance_solver_input_deck_has_evidence(
             .is_some_and(|value| (value - result.solved_width_mm).abs() <= f64::EPSILON)
         && controlled_impedance_solver_roughness_has_evidence(result)
         && controlled_impedance_solver_etch_compensation_has_evidence(result)
+        && controlled_impedance_solver_material_library_has_evidence(result)
         && match result.result_type {
             ControlledImpedanceSolverResultType::SingleEnded => result.input_gap_mm.is_none(),
             ControlledImpedanceSolverResultType::Differential => {
@@ -1237,6 +1244,59 @@ fn controlled_impedance_solver_roughness_policy_requested(
         || result.copper_roughness_um.is_some()
         || result.input_copper_roughness_model.is_some()
         || result.input_copper_roughness_um.is_some()
+}
+
+fn controlled_impedance_solver_material_library_has_evidence(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    if !controlled_impedance_solver_material_library_policy_requested(result) {
+        return true;
+    }
+    result
+        .solver_material_library
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_material_library_revision
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_material_library_artifact_uri
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_material_library_artifact_sha256
+            .as_deref()
+            .is_some_and(|value| is_sha256_hex(value.trim()))
+        && result
+            .input_material_library
+            .as_deref()
+            .is_some_and(|value| {
+                result
+                    .solver_material_library
+                    .as_deref()
+                    .is_some_and(|library| value.trim() == library.trim())
+            })
+        && result
+            .input_material_library_revision
+            .as_deref()
+            .is_some_and(|value| {
+                result
+                    .solver_material_library_revision
+                    .as_deref()
+                    .is_some_and(|revision| value.trim() == revision.trim())
+            })
+}
+
+fn controlled_impedance_solver_material_library_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_material_library.is_some()
+        || result.solver_material_library_revision.is_some()
+        || result.solver_material_library_artifact_uri.is_some()
+        || result.solver_material_library_artifact_sha256.is_some()
+        || result.input_material_library.is_some()
+        || result.input_material_library_revision.is_some()
 }
 
 fn controlled_impedance_solver_sweep_has_evidence(

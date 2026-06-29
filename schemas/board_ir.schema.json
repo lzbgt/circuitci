@@ -512,6 +512,24 @@
                       "etch_compensation_um": { "type": "number", "exclusiveMinimum": 0 },
                       "input_etch_compensation_model": { "type": "string", "minLength": 1 },
                       "input_etch_compensation_um": { "type": "number", "exclusiveMinimum": 0 },
+                      "solver_material_library": { "type": "string", "minLength": 1 },
+                      "solver_material_library_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_material_library_artifact_uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_material_library_artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "input_material_library": { "type": "string", "minLength": 1 },
+                      "input_material_library_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "min_solver_sample_count": { "type": "integer", "minimum": 1 },
                       "max_solver_frequency_step_mhz": {
                         "type": "number",

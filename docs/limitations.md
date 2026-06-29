@@ -283,10 +283,11 @@ without explicit imported mechanical evidence.
   solver-result metadata and artifact URI/digest provenance against reviewed
   board impedance targets, imported route/stackup evidence, and optional
   signed-artifact URI/digest/signer metadata, reviewed solver input-deck
-  setup, copper-roughness consistency, etch-compensation consistency, solver
-  tool/version qualification, and sweep/corner sample evidence. It does not
-  fetch solver artifacts, verify signatures, parse solver input decks, run a
-  field solver, infer stackup parameters, interpolate impedance, compute
+  setup, copper-roughness consistency, etch-compensation consistency,
+  material-library consistency, solver tool/version qualification, and
+  sweep/corner sample evidence. It does not fetch solver artifacts, verify
+  signatures, parse solver input decks, parse material libraries, run a field
+  solver, infer stackup parameters, interpolate impedance, compute
   roughness-adjusted impedance, infer finished trace geometry from etch
   compensation, or replace SI/fabricator review.
 - `ADJACENT_PLANE_RETURN_PATH_VALID` uses explicit stackup layer order,

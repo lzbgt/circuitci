@@ -2017,26 +2017,26 @@ Controlled-impedance solver-result algorithm:
    count, and per-corner frequency-step coverage.
 9. When reviewed input-deck metadata is present, require input-deck URI and
    SHA-256 provenance plus explicit stackup/layer/width/gap/frequency and
-   optional copper-roughness/etch-compensation setup metadata that matches the
-   solver-result setup.
+   optional copper-roughness/etch-compensation and material-library setup
+   metadata that matches the solver-result setup.
 10. When reviewed solver qualification metadata is present, require each solver
     result to declare `solver_version` and match exactly one reviewed
     `solver_qualifications[]` row for the same solver and version.
 11. Fail when solved impedance, route width, differential route gap, sampled
     solver impedance, required corner coverage, sample count, frequency-step
     coverage, or reviewed input-deck setup plus copper-roughness and
-    etch-compensation consistency exceeds the reviewed limits. Fail closed when
-    solver metadata, target mapping, stackup evidence, route evidence, declared
-    signed-artifact evidence, declared input-deck evidence, or declared sweep
-    evidence is missing or contradictory.
+    etch-compensation/material-library consistency exceeds the reviewed limits.
+    Fail closed when solver metadata, target mapping, stackup evidence, route
+    evidence, declared signed-artifact evidence, declared input-deck evidence,
+    or declared sweep evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, optional signature URI/digest/signer, input-deck
 URI/digest, and reviewed sample/corner evidence but does not fetch artifacts,
 verify signatures, parse input decks, run a field solver, infer
-dielectric/copper parameters, calculate roughness-adjusted impedance, infer
-finished trace geometry from etch compensation, interpolate impedance, or
-replace SI/fabricator review.
+dielectric/copper parameters, parse material libraries, calculate
+roughness-adjusted impedance, infer finished trace geometry from etch
+compensation, interpolate impedance, or replace SI/fabricator review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

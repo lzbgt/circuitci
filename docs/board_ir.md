@@ -429,6 +429,13 @@ Optional reviewed etch compensation columns are `etch_compensation_model`,
 `etch_compensation_um`, `input_etch_compensation_model`, and
 `input_etch_compensation_um`; declaring any one requires the complete
 result/input-deck etch compensation pair to match.
+Optional reviewed solver material-library columns are
+`solver_material_library`, `solver_material_library_revision`,
+`solver_material_library_artifact_uri`,
+`solver_material_library_artifact_sha256`, `input_material_library`, and
+`input_material_library_revision`; declaring any one requires complete
+material-library artifact provenance and matching result/input-deck library
+name and revision.
 Optional reviewed sweep/corner policy columns are
 `min_solver_sample_count`, `max_solver_frequency_step_mhz`, and
 `required_solver_corners`. Repeated

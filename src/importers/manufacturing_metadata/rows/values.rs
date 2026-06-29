@@ -523,6 +523,36 @@ fn controlled_impedance_solver_result_mapping(
         "input_etch_compensation_um",
         result.input_etch_compensation_um,
     );
+    insert_optional_string(
+        &mut mapping,
+        "solver_material_library",
+        &result.solver_material_library,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_material_library_revision",
+        &result.solver_material_library_revision,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_material_library_artifact_uri",
+        &result.solver_material_library_artifact_uri,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_material_library_artifact_sha256",
+        &result.solver_material_library_artifact_sha256,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "input_material_library",
+        &result.input_material_library,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "input_material_library_revision",
+        &result.input_material_library_revision,
+    );
     insert_optional_number(
         &mut mapping,
         "min_solver_sample_count",

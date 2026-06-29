@@ -468,12 +468,13 @@ The command is conservative:
   signed-artifact URI/digest/signer evidence when declared, matching
   board-target metadata, stackup layer references, imported route evidence, any
   declared reviewed input-deck setup, copper-roughness, etch-compensation
-  evidence, any declared reviewed solver sample/corner evidence, and matching
-  reviewed solver qualification evidence when `solver_qualifications[]` is
-  present, it emits runnable `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID`
-  templates. The suggestion does not run a solver, fetch artifacts, verify
-  signatures, or parse input decks; it only surfaces explicit solver-result,
-  signed-artifact, input-deck, roughness, etch-compensation, sweep, and
+  evidence, material-library evidence, any declared reviewed solver
+  sample/corner evidence, and matching reviewed solver qualification evidence
+  when `solver_qualifications[]` is present, it emits runnable
+  `CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID` templates. The suggestion does not
+  run a solver, fetch artifacts, verify signatures, parse input decks, or parse
+  material libraries; it only surfaces explicit solver-result, signed-artifact,
+  input-deck, roughness, etch-compensation, material-library, sweep, and
   qualification evidence.
 - When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
   polygon/source/clearance metadata and same-layer imported copper evidence
