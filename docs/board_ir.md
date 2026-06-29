@@ -429,6 +429,11 @@ Optional reviewed solver tool configuration-lock columns are
 `solver_config_lock_tool`, and `solver_config_lock_revision`; declaring any
 one requires the complete artifact URI/SHA-256/tool/revision tuple, and the
 declared config-lock tool must match the solver result `solver`.
+Optional reviewed solver runtime columns are `solver_runtime_allowlist`,
+`solver_runtime_profile`, and `solver_runtime_options`; declaring any one
+requires a matching reviewed
+`controlled_impedance.solver_runtime_allowlists[]` row for the same solver,
+configuration-lock revision, profile, and explicit allowed options.
 When input-deck columns are present, validation compares them against the
 solver result setup. Optional reviewed copper roughness columns are
 `copper_roughness_model`, `copper_roughness_um`,

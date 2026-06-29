@@ -203,7 +203,7 @@ Importers append evidence instead of guessing missing intent. Examples:
   thermal metadata, reviewed controlled-impedance
   target/coupon/sample/trace-correlation and solver-result
   artifact/input/roughness/etch/sample/qualification/material-library/
-  material-corner/stackup-signoff metadata, and reviewed operating environment and thermal-limit metadata,
+  material-corner/stackup-signoff/runtime-allowlist metadata, and reviewed operating environment and thermal-limit metadata,
   preserves raw row evidence and skipped unrelated order rows in a JSON
   manifest, and does not infer process defaults, package thermal data,
   environment limits, thermal limits, coupon applicability, acceptable RF
@@ -212,7 +212,9 @@ Importers append evidence instead of guessing missing intent. Examples:
   `src/importers/manufacturing_metadata.rs`; CSV file/header/token parsing
   lives in `src/importers/manufacturing_metadata/rows/csv.rs`; reviewed
   row-family parsing lives in
-  `src/importers/manufacturing_metadata/rows/families.rs`; Board IR YAML value
+  `src/importers/manufacturing_metadata/rows/families.rs`, with the
+  controlled-impedance solver runtime allowlist parser split into
+  `src/importers/manufacturing_metadata/rows/solver_runtime.rs`; Board IR YAML value
   construction lives in `src/importers/manufacturing_metadata/rows/values.rs`;
   supported-field normalization, duplicate checks, and manifest row evidence
   live in `src/importers/manufacturing_metadata/rows.rs`. CLI regression

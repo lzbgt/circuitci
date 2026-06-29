@@ -625,6 +625,46 @@
                     "additionalProperties": false
                   }
                 },
+                "solver_runtime_allowlists": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "solver",
+                      "solver_config_lock_revision",
+                      "runtime_profile",
+                      "allowlist_revision",
+                      "artifact_uri",
+                      "artifact_sha256",
+                      "allowed_options"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "solver": { "type": "string", "minLength": 1 },
+                      "solver_config_lock_revision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "runtime_profile": { "type": "string", "minLength": 1 },
+                      "allowlist_revision": { "type": "string", "minLength": 1 },
+                      "artifact_uri": { "type": "string", "minLength": 1 },
+                      "artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{64}$"
+                      },
+                      "allowed_options": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "solver_results": {
                   "type": "array",
                   "items": {
@@ -697,6 +737,20 @@
                       "solver_config_lock_revision": {
                         "type": "string",
                         "minLength": 1
+                      },
+                      "solver_runtime_allowlist": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_runtime_profile": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "solver_runtime_options": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 },
+                        "minItems": 1,
+                        "uniqueItems": true
                       },
                       "solver_input_deck_uri": { "type": "string", "minLength": 1 },
                       "solver_input_deck_sha256": {

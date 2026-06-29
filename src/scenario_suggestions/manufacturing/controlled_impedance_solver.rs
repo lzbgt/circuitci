@@ -6,7 +6,8 @@ use super::manufacturing_suggestion;
 use crate::board_ir::{
     ControlledImpedanceSolverMaterialAcceptance, ControlledImpedanceSolverMaterialLibrary,
     ControlledImpedanceSolverMaterialProcess, ControlledImpedanceSolverResult,
-    ControlledImpedanceSolverResultType, NetRoute, StackupLayer, StackupLayerKind,
+    ControlledImpedanceSolverResultType, ControlledImpedanceSolverRuntimeAllowlist, NetRoute,
+    StackupLayer, StackupLayerKind,
 };
 use crate::library::BoundBoard;
 use crate::scenario_suggestions::{ScenarioSuggestion, sanitized_name};
@@ -76,6 +77,7 @@ fn controlled_impedance_solver_result_has_evidence(
         && controlled_impedance_solver_artifact_signature_has_evidence(result)
         && controlled_impedance_solver_output_schema_has_evidence(result)
         && controlled_impedance_solver_config_lock_has_evidence(result)
+        && controlled_impedance_solver_runtime_allowlist_has_evidence(bound, result)
         && !result.stackup_revision.trim().is_empty()
         && !result.route_layer.trim().is_empty()
         && !result.reference_layer.trim().is_empty()
@@ -331,6 +333,106 @@ fn controlled_impedance_solver_config_lock_has_evidence(
             .solver_config_lock_revision
             .as_deref()
             .is_some_and(|value| !value.trim().is_empty())
+}
+
+fn controlled_impedance_solver_runtime_allowlist_policy_requested(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result.solver_runtime_allowlist.is_some()
+        || result.solver_runtime_profile.is_some()
+        || !result.solver_runtime_options.is_empty()
+}
+
+fn controlled_impedance_solver_runtime_allowlist_has_evidence(
+    bound: &BoundBoard<'_>,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    let allowlists = &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .solver_runtime_allowlists;
+    if !controlled_impedance_solver_runtime_allowlist_policy_requested(result) {
+        return true;
+    }
+    if !controlled_impedance_solver_runtime_metadata_is_complete(result) {
+        return false;
+    }
+    let matches = allowlists
+        .iter()
+        .filter(|allowlist| {
+            controlled_impedance_solver_runtime_allowlist_matches_result(allowlist, result)
+        })
+        .collect::<Vec<_>>();
+    matches.len() == 1
+        && controlled_impedance_solver_runtime_allowlist_has_valid_metadata(matches[0])
+        && result.solver_runtime_options.iter().all(|option| {
+            matches[0]
+                .allowed_options
+                .iter()
+                .any(|allowed| allowed.trim() == option.trim())
+        })
+}
+
+fn controlled_impedance_solver_runtime_metadata_is_complete(
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_runtime_allowlist
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_runtime_profile
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && result
+            .solver_config_lock_revision
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && has_unique_non_empty_values(&result.solver_runtime_options)
+}
+
+fn controlled_impedance_solver_runtime_allowlist_matches_result(
+    allowlist: &ControlledImpedanceSolverRuntimeAllowlist,
+    result: &ControlledImpedanceSolverResult,
+) -> bool {
+    result
+        .solver_runtime_allowlist
+        .as_deref()
+        .is_some_and(|name| name.trim() == allowlist.name.trim())
+        && allowlist.solver.trim() == result.solver.trim()
+        && result
+            .solver_config_lock_revision
+            .as_deref()
+            .is_some_and(|revision| revision.trim() == allowlist.solver_config_lock_revision.trim())
+        && result
+            .solver_runtime_profile
+            .as_deref()
+            .is_some_and(|profile| profile.trim() == allowlist.runtime_profile.trim())
+}
+
+fn controlled_impedance_solver_runtime_allowlist_has_valid_metadata(
+    allowlist: &ControlledImpedanceSolverRuntimeAllowlist,
+) -> bool {
+    !allowlist.name.trim().is_empty()
+        && !allowlist.source.trim().is_empty()
+        && !allowlist.solver.trim().is_empty()
+        && !allowlist.solver_config_lock_revision.trim().is_empty()
+        && !allowlist.runtime_profile.trim().is_empty()
+        && !allowlist.allowlist_revision.trim().is_empty()
+        && !allowlist.artifact_uri.trim().is_empty()
+        && is_sha256_hex(allowlist.artifact_sha256.trim())
+        && has_unique_non_empty_values(&allowlist.allowed_options)
+}
+
+fn has_unique_non_empty_values(values: &[String]) -> bool {
+    let mut seen = BTreeSet::new();
+    !values.is_empty()
+        && values
+            .iter()
+            .map(|value| value.trim())
+            .all(|value| !value.is_empty() && seen.insert(value))
 }
 
 fn controlled_impedance_solver_input_deck_has_evidence(

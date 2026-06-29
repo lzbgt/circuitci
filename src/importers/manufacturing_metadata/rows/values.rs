@@ -5,9 +5,10 @@ use super::{
     AppliedControlledImpedanceSolverMaterialCorner,
     AppliedControlledImpedanceSolverMaterialLibrary,
     AppliedControlledImpedanceSolverMaterialProcess, AppliedControlledImpedanceSolverQualification,
-    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverSample, AppliedField,
-    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
+    AppliedControlledImpedanceSolverResult, AppliedControlledImpedanceSolverRuntimeAllowlist,
+    AppliedControlledImpedanceSolverSample, AppliedField, AppliedLayoutPoint,
+    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
+    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
     AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
     AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
     AppliedThermalMeasurement, AppliedThermalPackage,
@@ -122,6 +123,17 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     if let Some(process) = &field.controlled_impedance_solver_material_process {
         return serde_yaml_ng::to_value(controlled_impedance_solver_material_process_mapping(
             process,
+        ))
+        .with_context(|| {
+            format!(
+                "Failed to encode manufacturing metadata {}.",
+                field.field.board_key()
+            )
+        });
+    }
+    if let Some(allowlist) = &field.controlled_impedance_solver_runtime_allowlist {
+        return serde_yaml_ng::to_value(controlled_impedance_solver_runtime_allowlist_mapping(
+            allowlist,
         ))
         .with_context(|| {
             format!(
@@ -489,6 +501,22 @@ fn controlled_impedance_solver_result_mapping(
     );
     insert_optional_string(
         &mut mapping,
+        "solver_runtime_allowlist",
+        &result.solver_runtime_allowlist,
+    );
+    insert_optional_string(
+        &mut mapping,
+        "solver_runtime_profile",
+        &result.solver_runtime_profile,
+    );
+    if !result.solver_runtime_options.is_empty() {
+        mapping.insert(
+            "solver_runtime_options".to_string(),
+            serde_yaml_ng::to_value(&result.solver_runtime_options).unwrap_or(Value::Null),
+        );
+    }
+    insert_optional_string(
+        &mut mapping,
         "solver_input_deck_uri",
         &result.solver_input_deck_uri,
     );
@@ -844,6 +872,46 @@ fn controlled_impedance_solver_material_acceptance_mapping(
     mapping.insert(
         "accepted_materials".to_string(),
         serde_yaml_ng::to_value(&acceptance.accepted_materials).unwrap_or(Value::Null),
+    );
+    mapping
+}
+
+fn controlled_impedance_solver_runtime_allowlist_mapping(
+    allowlist: &AppliedControlledImpedanceSolverRuntimeAllowlist,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(allowlist.name.clone()));
+    mapping.insert(
+        "source".to_string(),
+        Value::String(allowlist.source.clone()),
+    );
+    mapping.insert(
+        "solver".to_string(),
+        Value::String(allowlist.solver.clone()),
+    );
+    mapping.insert(
+        "solver_config_lock_revision".to_string(),
+        Value::String(allowlist.solver_config_lock_revision.clone()),
+    );
+    mapping.insert(
+        "runtime_profile".to_string(),
+        Value::String(allowlist.runtime_profile.clone()),
+    );
+    mapping.insert(
+        "allowlist_revision".to_string(),
+        Value::String(allowlist.allowlist_revision.clone()),
+    );
+    mapping.insert(
+        "artifact_uri".to_string(),
+        Value::String(allowlist.artifact_uri.clone()),
+    );
+    mapping.insert(
+        "artifact_sha256".to_string(),
+        Value::String(allowlist.artifact_sha256.clone()),
+    );
+    mapping.insert(
+        "allowed_options".to_string(),
+        serde_yaml_ng::to_value(&allowlist.allowed_options).unwrap_or(Value::Null),
     );
     mapping
 }

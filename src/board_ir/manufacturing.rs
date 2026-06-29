@@ -49,6 +49,8 @@ pub struct ControlledImpedanceTargets {
     #[serde(default)]
     pub solver_material_processes: Vec<ControlledImpedanceSolverMaterialProcess>,
     #[serde(default)]
+    pub solver_runtime_allowlists: Vec<ControlledImpedanceSolverRuntimeAllowlist>,
+    #[serde(default)]
     pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
@@ -204,6 +206,19 @@ pub struct ControlledImpedanceSolverMaterialProcess {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverRuntimeAllowlist {
+    pub name: String,
+    pub source: String,
+    pub solver: String,
+    pub solver_config_lock_revision: String,
+    pub runtime_profile: String,
+    pub allowlist_revision: String,
+    pub artifact_uri: String,
+    pub artifact_sha256: String,
+    pub allowed_options: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ControlledImpedanceSolverResult {
     pub name: String,
     pub source: String,
@@ -236,6 +251,12 @@ pub struct ControlledImpedanceSolverResult {
     pub solver_config_lock_tool: Option<String>,
     #[serde(default)]
     pub solver_config_lock_revision: Option<String>,
+    #[serde(default)]
+    pub solver_runtime_allowlist: Option<String>,
+    #[serde(default)]
+    pub solver_runtime_profile: Option<String>,
+    #[serde(default)]
+    pub solver_runtime_options: Vec<String>,
     #[serde(default)]
     pub solver_input_deck_uri: Option<String>,
     #[serde(default)]

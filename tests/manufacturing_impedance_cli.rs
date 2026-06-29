@@ -806,6 +806,62 @@ fn controlled_impedance_solver_result_fails_for_config_lock_tool_mismatch() {
 }
 
 #[test]
+fn controlled_impedance_solver_result_passes_with_runtime_allowlist_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "      solver_results:\n",
+        "      solver_runtime_allowlists:\n        - name: reviewed_2d_field_solver_runtime_lock_c\n          source: si_runtime_review_rev_a\n          solver: reviewed_2d_field_solver\n          solver_config_lock_revision: config_lock_rev_c\n          runtime_profile: production_si\n          allowlist_revision: runtime_allowlist_rev_a\n          artifact_uri: artifacts/solver/runtime_allowlist_rev_a.json\n          artifact_sha256: 777788889999aaaabbbbccccddddeeeeffff0000111122223333444455556666\n          allowed_options: [quasi_static, finite_thickness_copper, huray_roughness, fabricator_etch_bias]\n      solver_results:\n",
+    );
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_config_lock_uri: artifacts/solver/reviewed_2d_field_solver_config_lock_rev_c.json\n          solver_config_lock_sha256: 6666777788889999aaaabbbbccccddddeeeeffff000011112222333344445555\n          solver_config_lock_tool: reviewed_2d_field_solver\n          solver_config_lock_revision: config_lock_rev_c\n          solver_runtime_allowlist: reviewed_2d_field_solver_runtime_lock_c\n          solver_runtime_profile: production_si\n          solver_runtime_options: [quasi_static, finite_thickness_copper, huray_roughness]\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_for_runtime_option_not_allowlisted() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      solver_results:
+        - name: rf_solver_result
+"#,
+        "CONTROLLED_IMPEDANCE_SOLVER_RESULT_VALID",
+    );
+    let mut project = std::fs::read_to_string(&project_path).unwrap();
+    project = project.replace(
+        "      solver_results:\n",
+        "      solver_runtime_allowlists:\n        - name: reviewed_2d_field_solver_runtime_lock_c\n          source: si_runtime_review_rev_a\n          solver: reviewed_2d_field_solver\n          solver_config_lock_revision: config_lock_rev_c\n          runtime_profile: production_si\n          allowlist_revision: runtime_allowlist_rev_a\n          artifact_uri: artifacts/solver/runtime_allowlist_rev_a.json\n          artifact_sha256: 777788889999aaaabbbbccccddddeeeeffff0000111122223333444455556666\n          allowed_options: [quasi_static, finite_thickness_copper]\n      solver_results:\n",
+    );
+    project = project.replace(
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "          solver_artifact_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n          solver_config_lock_uri: artifacts/solver/reviewed_2d_field_solver_config_lock_rev_c.json\n          solver_config_lock_sha256: 6666777788889999aaaabbbbccccddddeeeeffff000011112222333344445555\n          solver_config_lock_tool: reviewed_2d_field_solver\n          solver_config_lock_revision: config_lock_rev_c\n          solver_runtime_allowlist: reviewed_2d_field_solver_runtime_lock_c\n          solver_runtime_profile: production_si\n          solver_runtime_options: [quasi_static, disallowed_fast_mode]\n",
+    );
+    std::fs::write(&project_path, project).unwrap();
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("disallowed_fast_mode")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn controlled_impedance_solver_result_passes_with_stackup_signoff_evidence() {
     let (_dir, project_path) = write_impedance_project_with_check(
         r#"      solver_results:

@@ -392,6 +392,12 @@ pub(super) fn applied_controlled_impedance_solver_result(
         solver_config_lock_sha256: optional_solver_config_lock_sha256(row, path)?,
         solver_config_lock_tool: optional_raw_column(row, "solver_config_lock_tool"),
         solver_config_lock_revision: optional_raw_column(row, "solver_config_lock_revision"),
+        solver_runtime_allowlist: optional_raw_column(row, "solver_runtime_allowlist"),
+        solver_runtime_profile: optional_raw_column(row, "solver_runtime_profile"),
+        solver_runtime_options: optional_raw_column(row, "solver_runtime_options")
+            .map(|value| parse_nonempty_list(&value))
+            .transpose()?
+            .unwrap_or_default(),
         solver_input_deck_uri: optional_raw_column(row, "solver_input_deck_uri"),
         solver_input_deck_sha256: optional_solver_input_deck_sha256(row, path)?,
         result_type,

@@ -2005,7 +2005,9 @@ Controlled-impedance solver-result algorithm:
    schema artifact URI/SHA-256 provenance. When solver configuration-lock
    metadata is declared, require config-lock artifact URI/SHA-256 provenance,
    tool name, and revision, and require the tool name to match the solver
-   result solver.
+   result solver. When solver runtime allowlist metadata is declared, require
+   a reviewed allowlist row matching the solver, configuration-lock revision,
+   runtime profile, and every declared runtime option.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.
@@ -2059,15 +2061,17 @@ Controlled-impedance solver-result algorithm:
     Fail closed when solver metadata, target mapping, stackup evidence, route
     evidence, declared signed-artifact evidence, declared input-deck evidence,
     declared output-schema evidence, declared configuration-lock evidence,
+    declared runtime allowlist evidence,
     declared stackup-signoff evidence, declared sweep evidence, or declared
     material-corner evidence is missing or contradictory.
 
 This is a source-backed solver-result consistency screen only. It preserves
 artifact URI/digest, optional signature URI/digest/signer, optional
-configuration-lock URI/digest/tool/revision evidence, input-deck
+configuration-lock URI/digest/tool/revision evidence, optional runtime
+allowlist/profile/options evidence, input-deck
 URI/digest, optional fabricator stackup signoff artifact URI/digest, and
 reviewed sample/corner evidence but does not fetch artifacts, verify
-signatures, parse tool configuration locks or input decks, run a field solver, infer
+signatures, parse tool configuration locks, runtime allowlists, or input decks, run a field solver, infer
 dielectric/copper parameters, parse material libraries, calculate
 roughness-adjusted impedance, infer finished trace geometry from etch
 compensation, interpolate impedance, or replace SI/fabricator review.
