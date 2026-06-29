@@ -177,6 +177,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
 - `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
+- `CONTROLLED_IMPEDANCE_COUPON_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -589,6 +590,14 @@ targets. Stable measured keys include `net`, `route_layer`,
 `solder_mask_layer`, `target_source`, `route_segment_index`, `sample_index`,
 `sample_x_mm`, `sample_y_mm`, and `measured_solder_mask_state`. Stable limit
 keys include `expected_solder_mask_state`.
+
+`CONTROLLED_IMPEDANCE_COUPON_VALID` reports are emitted by `manufacturing`
+scenarios that compare reviewed fabricator coupon measurements against
+reviewed impedance tolerance windows. Stable measured keys include
+`coupon_name`, `coupon_type`, `source`, `net`, `first_net`, `second_net`,
+`target_impedance_ohm`, `measured_impedance_ohm`, and
+`impedance_error_ohm`. Stable limit keys include
+`max_impedance_error_ohm`.
 
 `ADJACENT_PLANE_RETURN_PATH_VALID` reports are emitted by `manufacturing`
 scenarios that compare imported `board.layout.routes` evidence against

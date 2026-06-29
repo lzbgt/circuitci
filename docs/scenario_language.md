@@ -140,6 +140,7 @@ Canonical executable check IDs:
 - `CONTROLLED_IMPEDANCE_GEOMETRY_VALID`
 - `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID`
 - `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID`
+- `CONTROLLED_IMPEDANCE_COUPON_VALID`
 - `ADJACENT_PLANE_RETURN_PATH_VALID`
 - `REFERENCE_PLANE_SLOT_CROSSING_VALID`
 - `RETURN_PATH_STITCHING_VIA_VALID`
@@ -1853,6 +1854,43 @@ This is a solder-mask artwork evidence screen only. It does not solve
 impedance, model dielectric loading from solder mask material, account for
 registration tolerance, prove coupon results, or replace field-solver/SI
 signoff.
+
+Controlled-impedance coupon validation uses
+`CONTROLLED_IMPEDANCE_COUPON_VALID` when Board IR includes reviewed fabricator
+coupon measurements under `board.manufacturing.controlled_impedance.coupons[]`.
+It proves only whether named measured coupon impedance values stay within
+their reviewed tolerance windows.
+
+```yaml
+scenarios:
+  - name: controlled_impedance_coupon
+    type: manufacturing
+    checks:
+      - CONTROLLED_IMPEDANCE_COUPON_VALID
+    parameters:
+      coupons:
+        - name: rf_coupon
+```
+
+Controlled-impedance coupon algorithm:
+
+1. Require `parameters.coupons[]` with explicit coupon `name` values.
+2. Resolve each name from
+   `board.manufacturing.controlled_impedance.coupons[]`.
+3. Require every coupon to declare non-empty `source`, positive
+   `target_impedance_ohm`, positive `measured_impedance_ohm`, and non-negative
+   `max_impedance_error_ohm`.
+4. Require `coupon_type: single_ended` coupons to declare one existing `net`
+   and no pair nets. Require `coupon_type: differential` coupons to declare
+   two distinct existing pair nets and no single-ended `net`.
+5. Fail when `abs(measured_impedance_ohm - target_impedance_ohm)` exceeds
+   `max_impedance_error_ohm`.
+6. Fail closed when named coupon evidence or type-specific net metadata is
+   absent or malformed.
+
+This is a reviewed coupon-result screen only. It does not infer coupon
+applicability, calculate impedance, model coupon-to-board correlation, account
+for fabricator statistical process limits, or replace SI review.
 
 Adjacent-plane return-path validation uses
 `ADJACENT_PLANE_RETURN_PATH_VALID` when Board IR includes explicit

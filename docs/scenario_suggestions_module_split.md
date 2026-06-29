@@ -59,7 +59,9 @@ suggestions.
   from explicit route/stackup/via evidence, controlled-impedance geometry
   discovery from reviewed board manufacturing targets plus imported route
   width/gap evidence, and controlled-impedance stackup-evidence discovery from
-  reviewed targets plus explicit copper/dielectric stackup metadata.
+  reviewed targets plus explicit copper/dielectric stackup metadata,
+  solder-mask artwork-state evidence, and reviewed coupon measurement
+  evidence.
 - `src/scenario_suggestions/types.rs` owns the serializable suggestion report
   DTOs that must stay aligned with
   `schemas/scenario_suggestion_report.schema.json`.

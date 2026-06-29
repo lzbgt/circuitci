@@ -31,6 +31,8 @@ Input CSV columns:
   fields may be unitless fractions or `%`, which is normalized to a fraction.
   `controlled_impedance_net` and `controlled_impedance_pair` rows use
   `ohm`/`ohms` for the target impedance value.
+  `controlled_impedance_coupon` rows use `ohm`/`ohms` for the measured coupon
+  impedance value.
   `thermal_copper` rows use `mm2`/square millimeters for minimum copper area.
   `thermal_measurement` rows use `C`/`celsius` for measured temperature.
   `thermal_package` rows use `C/W` for junction-to-ambient package thermal
@@ -83,6 +85,22 @@ existing differential-pair targets by unordered net pair, so repeated imports
 stay deterministic. Duplicate CSV targets fail closed. These rows are reviewed
 target evidence only; the importer does not calculate impedance, derive targets
 from stackup, or infer high-speed nets.
+
+`controlled_impedance_coupon` rows use `value` as
+`measured_impedance_ohm` and require extra columns:
+
+- `name`: stable coupon identifier. Existing coupon rows with the same name
+  are replaced; duplicate CSV names fail closed.
+- `coupon_type`: `single_ended` or `differential`.
+- `target_impedance_ohm`: reviewed coupon target impedance.
+- `max_impedance_error_ohm`: reviewed non-negative coupon tolerance.
+- For `single_ended`, `net` is required and `first_net`/`second_net` must be
+  blank.
+- For `differential`, `first_net` and `second_net` are required and `net` must
+  be blank.
+
+Coupon rows are reviewed measurement evidence only; the importer does not
+decide whether a coupon statistically represents the routed board.
 
 `thermal_copper` rows use `value` as `min_copper_area_mm2` and require extra
 columns:

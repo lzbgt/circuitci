@@ -348,6 +348,35 @@
                     },
                     "additionalProperties": false
                   }
+                },
+                "coupons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "source",
+                      "coupon_type",
+                      "target_impedance_ohm",
+                      "measured_impedance_ohm",
+                      "max_impedance_error_ohm"
+                    ],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "source": { "type": "string", "minLength": 1 },
+                      "coupon_type": {
+                        "type": "string",
+                        "enum": ["single_ended", "differential"]
+                      },
+                      "net": { "type": "string", "minLength": 1 },
+                      "first_net": { "type": "string", "minLength": 1 },
+                      "second_net": { "type": "string", "minLength": 1 },
+                      "target_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 },
+                      "measured_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 },
+                      "max_impedance_error_ohm": { "type": "number", "minimum": 0 }
+                    },
+                    "additionalProperties": false
+                  }
                 }
               },
               "additionalProperties": false

@@ -24,6 +24,12 @@ checks, sampled covered/opened route-state comparison, fail-closed missing
 mask evidence, and stable report construction. It intentionally does not solve
 impedance or model solder-mask material loading.
 
+`src/validation/manufacturing/controlled_impedance_coupon.rs` owns
+`CONTROLLED_IMPEDANCE_COUPON_VALID`, including named coupon parameter parsing,
+reviewed coupon metadata checks, type-specific net association validation,
+measured-vs-target impedance comparison, and stable report construction. It
+intentionally does not infer coupon applicability or solve impedance.
+
 `src/validation/manufacturing/adjacent_plane.rs` owns
 `ADJACENT_PLANE_RETURN_PATH_VALID` and
 `REFERENCE_PLANE_SLOT_CROSSING_VALID`, including explicit stackup/plane

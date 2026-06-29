@@ -1,10 +1,11 @@
 use super::{
-    AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedField,
-    AppliedLayoutPoint, AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout,
-    AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
-    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
-    AppliedThermalMeasurement, AppliedThermalPackage,
+    AppliedControlledImpedanceCoupon, AppliedControlledImpedanceNet,
+    AppliedControlledImpedancePair, AppliedField, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
+    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
+    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
+    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -24,6 +25,16 @@ pub(super) fn normalized_yaml_value(field: &AppliedField) -> Result<Value> {
     }
     if let Some(target) = &field.controlled_impedance_pair {
         return serde_yaml_ng::to_value(controlled_impedance_pair_mapping(target)).with_context(
+            || {
+                format!(
+                    "Failed to encode manufacturing metadata {}.",
+                    field.field.board_key()
+                )
+            },
+        );
+    }
+    if let Some(coupon) = &field.controlled_impedance_coupon {
+        return serde_yaml_ng::to_value(controlled_impedance_coupon_mapping(coupon)).with_context(
             || {
                 format!(
                     "Failed to encode manufacturing metadata {}.",
@@ -225,6 +236,34 @@ fn controlled_impedance_pair_mapping(
         &mut mapping,
         "solder_mask_source",
         &target.solder_mask_source,
+    );
+    mapping
+}
+
+fn controlled_impedance_coupon_mapping(
+    coupon: &AppliedControlledImpedanceCoupon,
+) -> BTreeMap<String, Value> {
+    let mut mapping = BTreeMap::new();
+    mapping.insert("name".to_string(), Value::String(coupon.name.clone()));
+    mapping.insert("source".to_string(), Value::String(coupon.source.clone()));
+    mapping.insert(
+        "coupon_type".to_string(),
+        Value::String(coupon.coupon_type.clone()),
+    );
+    insert_optional_string(&mut mapping, "net", &coupon.net);
+    insert_optional_string(&mut mapping, "first_net", &coupon.first_net);
+    insert_optional_string(&mut mapping, "second_net", &coupon.second_net);
+    mapping.insert(
+        "target_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(coupon.target_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "measured_impedance_ohm".to_string(),
+        serde_yaml_ng::to_value(coupon.measured_impedance_ohm).unwrap_or(Value::Null),
+    );
+    mapping.insert(
+        "max_impedance_error_ohm".to_string(),
+        serde_yaml_ng::to_value(coupon.max_impedance_error_ohm).unwrap_or(Value::Null),
     );
     mapping
 }

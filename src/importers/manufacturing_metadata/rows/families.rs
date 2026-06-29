@@ -1,11 +1,12 @@
 use super::{
-    AppliedControlledImpedanceNet, AppliedControlledImpedancePair, AppliedLayoutPoint,
-    AppliedRfAntennaFeedPath, AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement,
-    AppliedRfAntennaMatchingNetwork, AppliedRfAntennaMeasurement,
-    AppliedRfAntennaMeasurementCondition, AppliedRfAntennaPerformanceLimit, AppliedStackupLayer,
-    AppliedThermalCopper, AppliedThermalEnvironment, AppliedThermalLimit,
-    AppliedThermalMeasurement, AppliedThermalPackage, MetadataCsvRow, normalize_name,
-    optional_raw_column, parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
+    AppliedControlledImpedanceCoupon, AppliedControlledImpedanceNet,
+    AppliedControlledImpedancePair, AppliedLayoutPoint, AppliedRfAntennaFeedPath,
+    AppliedRfAntennaKeepout, AppliedRfAntennaMatchingElement, AppliedRfAntennaMatchingNetwork,
+    AppliedRfAntennaMeasurement, AppliedRfAntennaMeasurementCondition,
+    AppliedRfAntennaPerformanceLimit, AppliedStackupLayer, AppliedThermalCopper,
+    AppliedThermalEnvironment, AppliedThermalLimit, AppliedThermalMeasurement,
+    AppliedThermalPackage, MetadataCsvRow, normalize_name, optional_raw_column,
+    parse_nonempty_list, parse_nonnegative_mm, parse_nonnegative_number,
     parse_nonnegative_temperature_delta_c, parse_positive_area_mm2, parse_positive_c_per_w,
     parse_positive_number, parse_positive_ohms, parse_positive_usize, parse_positive_watts,
     parse_temperature_c, required_nonnegative_number, required_positive_number,
@@ -150,6 +151,100 @@ fn optional_solder_mask_state(
             path.display(),
             row.row_number,
             field_name
+        ),
+    }
+}
+
+pub(super) fn applied_controlled_impedance_coupon(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceCoupon> {
+    let name = required_raw_column_for(row, path, "name", "controlled_impedance_coupon")?;
+    let coupon_type = required_coupon_type(row, path)?;
+    let net = optional_raw_column(row, "net");
+    let first_net = optional_raw_column(row, "first_net");
+    let second_net = optional_raw_column(row, "second_net");
+    match coupon_type.as_str() {
+        "single_ended" => {
+            if net.is_none() || first_net.is_some() || second_net.is_some() {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_coupon single_ended requires net and no first_net/second_net.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+        }
+        "differential" => {
+            if net.is_some() || first_net.is_none() || second_net.is_none() {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_coupon differential requires first_net and second_net and no net.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+            if first_net == second_net {
+                bail!(
+                    "Manufacturing metadata CSV {} row {} controlled_impedance_coupon requires two distinct differential nets.",
+                    path.display(),
+                    row.row_number
+                );
+            }
+        }
+        _ => unreachable!("coupon type is normalized"),
+    }
+    let coupon_source = optional_raw_column(row, "coupon_source");
+    let source = row
+        .source
+        .as_deref()
+        .or(coupon_source.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .with_context(|| {
+            format!(
+                "Manufacturing metadata CSV {} row {} controlled_impedance_coupon requires source.",
+                path.display(),
+                row.row_number
+            )
+        })?
+        .to_string();
+    Ok(AppliedControlledImpedanceCoupon {
+        name,
+        source,
+        coupon_type,
+        net,
+        first_net,
+        second_net,
+        target_impedance_ohm: required_positive_number(
+            row,
+            path,
+            "target_impedance_ohm",
+            "controlled_impedance_coupon",
+        )?,
+        measured_impedance_ohm: parse_positive_ohms(
+            row.value.trim(),
+            row.unit.as_deref(),
+            path,
+            row,
+            "value",
+        )?,
+        max_impedance_error_ohm: required_nonnegative_number(
+            row,
+            path,
+            "max_impedance_error_ohm",
+            "controlled_impedance_coupon",
+        )?,
+    })
+}
+
+fn required_coupon_type(row: &MetadataCsvRow, path: &Path) -> Result<String> {
+    let raw = required_raw_column_for(row, path, "coupon_type", "controlled_impedance_coupon")?;
+    match normalize_name(&raw).as_str() {
+        "singleended" | "single" | "se" => Ok("single_ended".to_string()),
+        "differential" | "diff" | "differentialpair" | "pair" => Ok("differential".to_string()),
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_coupon coupon_type must be single_ended or differential.",
+            path.display(),
+            row.row_number
         ),
     }
 }

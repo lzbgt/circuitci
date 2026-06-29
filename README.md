@@ -214,7 +214,9 @@ Or import the same reviewed facts from a source CSV while preserving row-level
 evidence in a JSON manifest. Repeated `field=controlled_impedance_net` and
 `field=controlled_impedance_pair` rows create or replace reviewed
 `board.manufacturing.controlled_impedance` targets, including optional
-solder-mask loading metadata, repeated
+solder-mask loading metadata, repeated `field=controlled_impedance_coupon`
+rows create or replace reviewed fabricator coupon measurement evidence,
+repeated
 `field=thermal_copper` rows create or replace reviewed
 `board.manufacturing.thermal_copper[]` policy entries, and repeated
 `field=thermal_measurement` rows append reviewed measured-temperature evidence

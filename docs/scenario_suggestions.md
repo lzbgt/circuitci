@@ -445,6 +445,11 @@ The command is conservative:
   `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID` templates. The suggestion
   does not estimate solder-mask loading; it only proves imported mask artwork
   matches the reviewed covered/opened target state.
+- When `board.manufacturing.controlled_impedance.coupons[]` contains reviewed
+  coupon measurements with explicit targets and tolerances, it emits runnable
+  `CONTROLLED_IMPEDANCE_COUPON_VALID` templates. The suggestion does not infer
+  whether a coupon represents a routed trace; it only surfaces complete
+  coupon-result evidence for validation.
 - When `board.layout.constraints.rf_antenna.keepouts[]` contains reviewed
   polygon/source/clearance metadata and same-layer imported copper evidence
   exists outside any declared antenna-net exclusion, it emits a runnable

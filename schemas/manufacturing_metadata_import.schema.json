@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.13.0" },
+    "schema_version": { "const": "0.14.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -91,6 +91,7 @@
             "max_stitch_via_distance_mm",
             "controlled_impedance.nets[]",
             "controlled_impedance.differential_pairs[]",
+            "controlled_impedance.coupons[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -135,6 +136,38 @@
                 "solder_mask_state": { "enum": ["covered", "opened"] },
                 "solder_mask_layer": { "type": "string", "minLength": 1 },
                 "solder_mask_source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "coupon_type",
+                "target_impedance_ohm",
+                "measured_impedance_ohm",
+                "max_impedance_error_ohm"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "coupon_type": {
+                  "type": "string",
+                  "enum": ["single_ended", "differential"]
+                },
+                "net": { "type": "string", "minLength": 1 },
+                "first_net": { "type": "string", "minLength": 1 },
+                "second_net": { "type": "string", "minLength": 1 },
+                "target_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "measured_impedance_ohm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "max_impedance_error_ohm": { "type": "number", "minimum": 0 }
               },
               "additionalProperties": false
             },

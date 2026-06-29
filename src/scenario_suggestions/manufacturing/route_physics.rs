@@ -1,5 +1,6 @@
 use super::manufacturing_suggestion;
 use crate::board_ir::{
+    ControlledImpedanceCoupon, ControlledImpedanceCouponType,
     ControlledImpedanceDifferentialPairTarget, ControlledImpedanceNetTarget, CopperZone,
     LayoutCopper, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia, StackupLayer,
     StackupLayerKind,
@@ -14,6 +15,7 @@ const CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID: &str =
     "CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID";
 const CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID: &str =
     "CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID";
+const CONTROLLED_IMPEDANCE_COUPON_VALID: &str = "CONTROLLED_IMPEDANCE_COUPON_VALID";
 const ADJACENT_PLANE_RETURN_PATH_VALID: &str = "ADJACENT_PLANE_RETURN_PATH_VALID";
 const REFERENCE_PLANE_SLOT_CROSSING_VALID: &str = "REFERENCE_PLANE_SLOT_CROSSING_VALID";
 const RETURN_PATH_STITCHING_VIA_VALID: &str = "RETURN_PATH_STITCHING_VIA_VALID";
@@ -35,6 +37,7 @@ pub(super) fn route_physics_suggestions(
         bound,
         project_name,
     ));
+    suggestions.extend(controlled_impedance_coupon_suggestions(bound, project_name));
     suggestions.extend(adjacent_plane_return_path_suggestions(bound, project_name));
     suggestions.extend(reference_plane_slot_crossing_suggestions(
         bound,
@@ -489,6 +492,49 @@ fn controlled_impedance_solder_mask_loading_suggestions(
     suggestions
 }
 
+fn controlled_impedance_coupon_suggestions(
+    bound: &BoundBoard<'_>,
+    project_name: &str,
+) -> Vec<ScenarioSuggestion> {
+    let mut suggestions = Vec::new();
+    for coupon in &bound
+        .project
+        .board
+        .manufacturing
+        .controlled_impedance
+        .coupons
+    {
+        if controlled_impedance_coupon_check_declared(bound, &coupon.name)
+            || !controlled_impedance_coupon_has_evidence(bound, coupon)
+        {
+            continue;
+        }
+        suggestions.push(manufacturing_suggestion(
+            &format!(
+                "controlled_impedance_coupon_{}",
+                sanitized_name(&coupon.name)
+            ),
+            true,
+            &format!(
+                "Controlled-impedance coupon {} has reviewed measured impedance evidence from {} and a reviewed tolerance.",
+                coupon.name, coupon.source
+            ),
+            &format!(
+                "{}_{}_controlled_impedance_coupon",
+                project_name,
+                sanitized_name(&coupon.name)
+            ),
+            CONTROLLED_IMPEDANCE_COUPON_VALID,
+            Some(BTreeMap::from([(
+                "coupons".to_string(),
+                json!([{ "name": coupon.name }]),
+            )])),
+            Vec::new(),
+        ));
+    }
+    suggestions
+}
+
 #[derive(Debug)]
 struct AdjacentPlaneEvidence {
     reference_net: String,
@@ -749,6 +795,56 @@ fn mask_route_parameter(
         "expected_solder_mask_state": evidence.expected_solder_mask_state,
         "source": evidence.source
     })
+}
+
+fn controlled_impedance_coupon_has_evidence(
+    bound: &BoundBoard<'_>,
+    coupon: &ControlledImpedanceCoupon,
+) -> bool {
+    if coupon.name.trim().is_empty()
+        || coupon.source.trim().is_empty()
+        || !positive_finite(coupon.target_impedance_ohm)
+        || !positive_finite(coupon.measured_impedance_ohm)
+        || !non_negative_finite(coupon.max_impedance_error_ohm)
+    {
+        return false;
+    }
+    match coupon.coupon_type {
+        ControlledImpedanceCouponType::SingleEnded => coupon
+            .net
+            .as_deref()
+            .map(str::trim)
+            .filter(|net| !net.is_empty())
+            .is_some_and(|net| {
+                coupon.first_net.is_none()
+                    && coupon.second_net.is_none()
+                    && bound.project.board.nets.contains_key(net)
+            }),
+        ControlledImpedanceCouponType::Differential => {
+            if coupon.net.is_some() {
+                return false;
+            }
+            let Some(first_net) = coupon
+                .first_net
+                .as_deref()
+                .map(str::trim)
+                .filter(|net| !net.is_empty())
+            else {
+                return false;
+            };
+            let Some(second_net) = coupon
+                .second_net
+                .as_deref()
+                .map(str::trim)
+                .filter(|net| !net.is_empty())
+            else {
+                return false;
+            };
+            first_net != second_net
+                && bound.project.board.nets.contains_key(first_net)
+                && bound.project.board.nets.contains_key(second_net)
+        }
+    }
 }
 
 fn positive_finite(value: f64) -> bool {
@@ -1381,6 +1477,29 @@ fn controlled_impedance_pair_check_declared(
                                 if (left == first_net && right == second_net)
                                     || (left == second_net && right == first_net)
                         )
+                    })
+                })
+    })
+}
+
+fn controlled_impedance_coupon_check_declared(bound: &BoundBoard<'_>, coupon_name: &str) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario
+                .checks
+                .iter()
+                .any(|declared| declared == CONTROLLED_IMPEDANCE_COUPON_VALID)
+            && scenario
+                .parameters
+                .get("coupons")
+                .and_then(serde_yaml_ng::Value::as_sequence)
+                .is_some_and(|coupons| {
+                    coupons.iter().any(|item| {
+                        item.as_mapping().and_then(|mapping| {
+                            mapping
+                                .get(serde_yaml_ng::Value::String("name".to_string()))
+                                .and_then(serde_yaml_ng::Value::as_str)
+                        }) == Some(coupon_name)
                     })
                 })
     })

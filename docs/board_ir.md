@@ -150,6 +150,22 @@ board:
           solder_mask_state: covered
           solder_mask_layer: F.Mask
           solder_mask_source: fab_solder_mask_review_rev_a
+      coupons:
+        - name: rf_coupon
+          source: fab_coupon_report_rev_b
+          coupon_type: single_ended
+          net: RF
+          target_impedance_ohm: 50.0
+          measured_impedance_ohm: 51.2
+          max_impedance_error_ohm: 3.0
+        - name: dp_dm_coupon
+          source: fab_coupon_report_rev_b
+          coupon_type: differential
+          first_net: DP
+          second_net: DM
+          target_impedance_ohm: 90.0
+          measured_impedance_ohm: 96.0
+          max_impedance_error_ohm: 5.0
     thermal_copper:
       - name: u1_heat_spreader
         component: U1
@@ -228,6 +244,13 @@ Those controlled-impedance targets may also declare optional
 `solder_mask_source` fields. Scenario suggestions use them only when imported
 route evidence and imported solder-mask opening evidence exist, producing a
 bounded solder-mask artwork-state check rather than an impedance calculation.
+
+`board.manufacturing.controlled_impedance.coupons[]` stores reviewed
+fabricator coupon measurements. `single_ended` coupons must name one Board IR
+`net`; `differential` coupons must name `first_net` and `second_net`.
+CircuitCI compares only the explicit measured impedance against the explicit
+target and tolerance; it does not infer coupon applicability or solve
+impedance.
 
 `THERMAL_COPPER_AREA_VALID` suggestions consume
 `board.manufacturing.thermal_copper[]` as reviewed thermal layout policy. Each
@@ -340,6 +363,10 @@ while repeated `field=controlled_impedance_pair` rows use `value` as
 columns and replace existing targets by net or net pair. Optional
 `solder_mask_state`, `solder_mask_layer`, and `solder_mask_source` columns are
 preserved as reviewed controlled-impedance solder-mask loading metadata.
+Repeated `field=controlled_impedance_coupon` rows use `value` as
+`measured_impedance_ohm`, require `name`, `coupon_type`,
+`target_impedance_ohm`, and `max_impedance_error_ohm`, and preserve either a
+single-ended `net` or differential `first_net`/`second_net` association.
 Repeated
 `field=thermal_copper` rows use `value` as `min_copper_area_mm2` and may
 include reviewed policy columns such as `name`, `component`, `power_loss_w`,

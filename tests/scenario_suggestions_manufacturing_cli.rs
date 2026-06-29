@@ -10,7 +10,7 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         "scenario_suggestions_controlled_impedance"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 6);
+    assert_eq!(suggested.len(), 8);
 
     let single_ended = &suggested[0];
     assert_eq!(single_ended["id"], "controlled_impedance_rf");
@@ -167,6 +167,47 @@ fn suggest_scenarios_derives_controlled_impedance_templates() {
         assert_eq!(route["expected_solder_mask_state"], "covered");
         assert_eq!(route["source"], "fab_solder_mask_review_rev_a");
     }
+
+    let single_coupon = &suggested[6];
+    assert_eq!(single_coupon["id"], "controlled_impedance_coupon_rf_coupon");
+    assert_eq!(
+        single_coupon["kind"],
+        "manufacturing_controlled_impedance_coupon_rf_coupon"
+    );
+    assert_eq!(single_coupon["runnable"], true);
+    assert_eq!(
+        single_coupon["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_COUPON_VALID"
+    );
+    assert_eq!(
+        single_coupon["scenario"]["parameters"]["coupons"][0]["name"],
+        "rf_coupon"
+    );
+    assert!(
+        single_coupon["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed measured impedance evidence")
+    );
+
+    let differential_coupon = &suggested[7];
+    assert_eq!(
+        differential_coupon["id"],
+        "controlled_impedance_coupon_dp_dm_coupon"
+    );
+    assert_eq!(
+        differential_coupon["kind"],
+        "manufacturing_controlled_impedance_coupon_dp_dm_coupon"
+    );
+    assert_eq!(differential_coupon["runnable"], true);
+    assert_eq!(
+        differential_coupon["scenario"]["checks"][0],
+        "CONTROLLED_IMPEDANCE_COUPON_VALID"
+    );
+    assert_eq!(
+        differential_coupon["scenario"]["parameters"]["coupons"][0]["name"],
+        "dp_dm_coupon"
+    );
 }
 
 #[test]

@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -314,6 +314,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "solder_mask_state",
             "solder_mask_layer",
             "solder_mask_source",
+            "coupon_type",
+            "target_impedance_ohm",
+            "max_impedance_error_ohm",
         ],
         [
             "controlled_impedance_net",
@@ -337,6 +340,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "covered",
             "F.Mask",
             "fab solder mask review",
+            "",
+            "",
+            "",
         ],
         [
             "controlled_impedance_pair",
@@ -360,6 +366,61 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "covered",
             "F.Mask",
             "fab solder mask review",
+            "",
+            "",
+            "",
+        ],
+        [
+            "controlled_impedance_coupon",
+            "51.2",
+            "ohm",
+            "fab coupon report",
+            "reviewed RF coupon",
+            "RF",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "rf_coupon",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "single_ended",
+            "50.0",
+            "3.0",
+        ],
+        [
+            "controlled_impedance_coupon",
+            "96.0",
+            "ohm",
+            "fab coupon report",
+            "reviewed USB coupon",
+            "",
+            "DP",
+            "DM",
+            "",
+            "",
+            "",
+            "",
+            "dp_dm_coupon",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "differential",
+            "90.0",
+            "5.0",
         ],
         [
             "stackup_layer",
@@ -378,6 +439,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "",
             "",
             "35.0",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -406,6 +470,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "",
             "",
             "",
+            "",
+            "",
+            "",
         ],
         [
             "stackup_layer",
@@ -424,6 +491,9 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
             "GND",
             "",
             "17.5",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -461,7 +531,7 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
         "{}",
         String::from_utf8_lossy(&command_output.stderr)
     );
-    assert!(String::from_utf8_lossy(&command_output.stdout).contains("5 applied fields"));
+    assert!(String::from_utf8_lossy(&command_output.stdout).contains("7 applied fields"));
 
     let schema: serde_json::Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -508,6 +578,23 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
         controlled_impedance["differential_pairs"][0]["solder_mask_layer"],
         "F.Mask"
     );
+    assert_eq!(controlled_impedance["coupons"][0]["name"], "rf_coupon");
+    assert_eq!(
+        controlled_impedance["coupons"][0]["coupon_type"],
+        "single_ended"
+    );
+    assert_eq!(controlled_impedance["coupons"][0]["net"], "RF");
+    assert_eq!(
+        controlled_impedance["coupons"][0]["measured_impedance_ohm"],
+        51.2
+    );
+    assert_eq!(controlled_impedance["coupons"][1]["name"], "dp_dm_coupon");
+    assert_eq!(
+        controlled_impedance["coupons"][1]["coupon_type"],
+        "differential"
+    );
+    assert_eq!(controlled_impedance["coupons"][1]["first_net"], "DP");
+    assert_eq!(controlled_impedance["coupons"][1]["second_net"], "DM");
     let stackup_layers = enriched["board"]["layout"]["stackup"]["layers"]
         .as_sequence()
         .unwrap();
@@ -549,11 +636,27 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     );
     assert_eq!(
         manifest["rows"][2]["board_field"],
+        "controlled_impedance.coupons[]"
+    );
+    assert_eq!(
+        manifest["rows"][2]["normalized_value"]["measured_impedance_ohm"],
+        51.2
+    );
+    assert_eq!(
+        manifest["rows"][3]["board_field"],
+        "controlled_impedance.coupons[]"
+    );
+    assert_eq!(
+        manifest["rows"][3]["normalized_value"]["coupon_type"],
+        "differential"
+    );
+    assert_eq!(
+        manifest["rows"][4]["board_field"],
         "layout.stackup.layers[]"
     );
-    assert_eq!(manifest["rows"][2]["normalized_value"]["name"], "F.Cu");
+    assert_eq!(manifest["rows"][4]["normalized_value"]["name"], "F.Cu");
     assert_eq!(
-        manifest["rows"][4]["normalized_value"]["reference_net"],
+        manifest["rows"][6]["normalized_value"]["reference_net"],
         "GND"
     );
 
@@ -574,6 +677,8 @@ fn import_manufacturing_metadata_applies_controlled_impedance_targets() {
     assert_runnable(&suggestions, "controlled_impedance_stackup_dp_dm");
     assert_runnable(&suggestions, "controlled_impedance_solder_mask_rf");
     assert_runnable(&suggestions, "controlled_impedance_solder_mask_dp_dm");
+    assert_runnable(&suggestions, "controlled_impedance_coupon_rf_coupon");
+    assert_runnable(&suggestions, "controlled_impedance_coupon_dp_dm_coupon");
 }
 
 #[test]
@@ -874,7 +979,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.keepouts[]"
@@ -1068,7 +1173,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.measurement_conditions[]"
@@ -1179,7 +1284,7 @@ fn import_manufacturing_metadata_applies_thermal_copper_policy_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(manifest["rows"][0]["board_field"], "thermal_copper[]");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["min_thermal_via_plating_thickness_um"],
@@ -1347,7 +1452,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_packages[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["thermal_resistance_junction_to_ambient_C_per_W"],
@@ -1487,7 +1592,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(manifest["rows"][1]["board_field"], "thermal_environments[]");
     assert_eq!(
         manifest["rows"][1]["normalized_value"]["ambient_temperature_C"],
@@ -1736,7 +1841,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.13.0");
+    assert_eq!(manifest["schema_version"], "0.14.0");
     assert_eq!(manifest["rows"][3]["board_field"], "thermal_limits[]");
     assert_eq!(
         manifest["rows"][3]["normalized_value"]["max_measured_temperature_C"],

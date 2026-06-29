@@ -198,6 +198,8 @@ pub struct ControlledImpedanceTargets {
     pub nets: Vec<ControlledImpedanceNetTarget>,
     #[serde(default)]
     pub differential_pairs: Vec<ControlledImpedanceDifferentialPairTarget>,
+    #[serde(default)]
+    pub coupons: Vec<ControlledImpedanceCoupon>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -231,6 +233,29 @@ pub struct ControlledImpedanceDifferentialPairTarget {
     pub solder_mask_layer: Option<String>,
     #[serde(default)]
     pub solder_mask_source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceCoupon {
+    pub name: String,
+    pub source: String,
+    pub coupon_type: ControlledImpedanceCouponType,
+    #[serde(default)]
+    pub net: Option<String>,
+    #[serde(default)]
+    pub first_net: Option<String>,
+    #[serde(default)]
+    pub second_net: Option<String>,
+    pub target_impedance_ohm: f64,
+    pub measured_impedance_ohm: f64,
+    pub max_impedance_error_ohm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlledImpedanceCouponType {
+    SingleEnded,
+    Differential,
 }
 
 #[derive(Debug, Clone, Deserialize)]

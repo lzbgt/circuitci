@@ -19,6 +19,7 @@ pub(super) struct AppliedField {
     pub(super) string_value: Option<String>,
     pub(super) controlled_impedance_net: Option<AppliedControlledImpedanceNet>,
     pub(super) controlled_impedance_pair: Option<AppliedControlledImpedancePair>,
+    pub(super) controlled_impedance_coupon: Option<AppliedControlledImpedanceCoupon>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -41,6 +42,7 @@ impl AppliedField {
             string_value: None,
             controlled_impedance_net: None,
             controlled_impedance_pair: None,
+            controlled_impedance_coupon: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -82,6 +84,19 @@ pub(super) struct AppliedControlledImpedancePair {
     solder_mask_state: Option<String>,
     solder_mask_layer: Option<String>,
     solder_mask_source: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceCoupon {
+    pub(super) name: String,
+    source: String,
+    coupon_type: String,
+    net: Option<String>,
+    first_net: Option<String>,
+    second_net: Option<String>,
+    target_impedance_ohm: f64,
+    measured_impedance_ohm: f64,
+    max_impedance_error_ohm: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -251,6 +266,7 @@ pub(super) enum ManufacturingField {
     MaxStitchViaDistanceMm,
     ControlledImpedanceNet,
     ControlledImpedancePair,
+    ControlledImpedanceCoupon,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -278,6 +294,7 @@ impl ManufacturingField {
             Self::MaxStitchViaDistanceMm => "max_stitch_via_distance_mm",
             Self::ControlledImpedanceNet => "controlled_impedance.nets[]",
             Self::ControlledImpedancePair => "controlled_impedance.differential_pairs[]",
+            Self::ControlledImpedanceCoupon => "controlled_impedance.coupons[]",
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::ThermalPackage => "thermal_packages[]",
@@ -320,6 +337,7 @@ impl ManufacturingField {
             self,
             Self::ControlledImpedanceNet
                 | Self::ControlledImpedancePair
+                | Self::ControlledImpedanceCoupon
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -436,6 +454,10 @@ fn applied_field(
         applied.controlled_impedance_pair = Some(applied_controlled_impedance_pair(row, path)?);
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceCoupon {
+        applied.controlled_impedance_coupon = Some(applied_controlled_impedance_coupon(row, path)?);
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -520,6 +542,13 @@ fn applied_controlled_impedance_pair(
     path: &Path,
 ) -> Result<AppliedControlledImpedancePair> {
     families::applied_controlled_impedance_pair(row, path)
+}
+
+fn applied_controlled_impedance_coupon(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceCoupon> {
+    families::applied_controlled_impedance_coupon(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -987,6 +1016,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_coupons = BTreeSet::new();
+    for coupon in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_coupon.as_ref())
+    {
+        if !controlled_impedance_coupons.insert(coupon.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_coupon row name {}.",
+                coupon.name
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -1188,6 +1229,10 @@ fn normalize_field(value: &str) -> Option<ManufacturingField> {
         | "controlledimpedancedifferentialpair"
         | "differentialimpedancepair"
         | "differentialpairimpedance" => Some(ManufacturingField::ControlledImpedancePair),
+        "controlledimpedancecoupon"
+        | "impedancecoupon"
+        | "fabricatorimpedancecoupon"
+        | "couponimpedance" => Some(ManufacturingField::ControlledImpedanceCoupon),
         "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
             Some(ManufacturingField::ThermalCopper)
         }

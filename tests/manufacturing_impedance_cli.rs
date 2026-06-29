@@ -351,6 +351,68 @@ fn controlled_impedance_solder_mask_loading_fails_closed_without_mask_evidence()
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_coupon_passes_for_reviewed_measurement_within_tolerance() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: rf_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_VALID",
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_fails_for_out_of_tolerance_measurement() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: dp_dm_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_VALID",
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "CONTROLLED_IMPEDANCE_COUPON_VALID");
+    assert_eq!(failure["measured"]["coupon_name"], "dp_dm_coupon");
+    assert_eq!(failure["measured"]["coupon_type"], "differential");
+    assert_eq!(failure["measured"]["first_net"], "DP");
+    assert_eq!(failure["measured"]["second_net"], "DM");
+    assert_eq!(failure["measured"]["source"], "fab_coupon_report_rev_b");
+    assert_eq!(failure["measured"]["target_impedance_ohm"], 90.0);
+    assert_eq!(failure["measured"]["measured_impedance_ohm"], 96.0);
+    assert_eq!(failure["measured"]["impedance_error_ohm"], 6.0);
+    assert_eq!(failure["limit"]["max_impedance_error_ohm"], 5.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_coupon_fails_closed_without_named_coupon_evidence() {
+    let (_dir, project_path) = write_impedance_project_with_check(
+        r#"      coupons:
+        - name: missing_coupon
+"#,
+        "CONTROLLED_IMPEDANCE_COUPON_VALID",
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("coupon missing_coupon is absent")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_impedance_project(parameters: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     write_impedance_project_with_check(parameters, "CONTROLLED_IMPEDANCE_GEOMETRY_VALID")
 }
@@ -379,6 +441,24 @@ board:
       kind: digital_or_analog
     GND:
       kind: ground
+  manufacturing:
+    controlled_impedance:
+      coupons:
+        - name: rf_coupon
+          source: fab_coupon_report_rev_b
+          coupon_type: single_ended
+          net: RF
+          target_impedance_ohm: 50.0
+          measured_impedance_ohm: 51.2
+          max_impedance_error_ohm: 3.0
+        - name: dp_dm_coupon
+          source: fab_coupon_report_rev_b
+          coupon_type: differential
+          first_net: DP
+          second_net: DM
+          target_impedance_ohm: 90.0
+          measured_impedance_ohm: 96.0
+          max_impedance_error_ohm: 5.0
   layout:
     stackup:
       layers:

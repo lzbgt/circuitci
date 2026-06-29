@@ -249,6 +249,7 @@ named preset or supplied as board/order metadata:
 | `controlled_impedance_<net>` / `controlled_impedance_<first>_<second>` | `CONTROLLED_IMPEDANCE_GEOMETRY_VALID` | `board.manufacturing.controlled_impedance` reviewed targets plus explicit route width and, for differential pairs, parallel gap evidence |
 | `controlled_impedance_stackup_<net>` / `controlled_impedance_stackup_<first>_<second>` | `CONTROLLED_IMPEDANCE_STACKUP_EVIDENCE_VALID` | `board.manufacturing.controlled_impedance` reviewed targets plus explicit route layer and stackup copper/dielectric metadata |
 | `controlled_impedance_solder_mask_<net>` / `controlled_impedance_solder_mask_<first>_<second>` | `CONTROLLED_IMPEDANCE_SOLDER_MASK_LOADING_VALID` | `board.manufacturing.controlled_impedance` reviewed solder-mask state targets plus explicit route and imported solder-mask opening evidence |
+| `controlled_impedance_coupon_<name>` | `CONTROLLED_IMPEDANCE_COUPON_VALID` | `board.manufacturing.controlled_impedance.coupons[]` reviewed measured coupon impedance, target, tolerance, and net association evidence |
 
 This confirms the fabricated-release ingestion is now strong enough to produce
 a concrete manufacturing checklist automatically. The remaining gap is process
