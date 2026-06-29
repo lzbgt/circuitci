@@ -7,13 +7,16 @@ use std::path::Path;
 
 mod csv;
 mod families;
+mod field_names;
 mod solver_entitlement;
 mod solver_environment;
+mod solver_run_log;
 mod solver_runtime;
 mod values;
 
 use csv::MetadataCsvRow;
 pub(super) use csv::{ParsedMetadata, parse_metadata_csv};
+use field_names::normalize_field;
 
 #[derive(Debug, Clone)]
 pub(super) struct AppliedField {
@@ -42,6 +45,7 @@ pub(super) struct AppliedField {
         Option<AppliedControlledImpedanceSolverEntitlement>,
     pub(super) controlled_impedance_solver_execution_environment:
         Option<AppliedControlledImpedanceSolverExecutionEnvironment>,
+    pub(super) controlled_impedance_solver_run_log: Option<AppliedControlledImpedanceSolverRunLog>,
     pub(super) thermal_copper: Option<AppliedThermalCopper>,
     pub(super) thermal_measurement: Option<AppliedThermalMeasurement>,
     pub(super) thermal_package: Option<AppliedThermalPackage>,
@@ -76,6 +80,7 @@ impl AppliedField {
             controlled_impedance_solver_runtime_allowlist: None,
             controlled_impedance_solver_entitlement: None,
             controlled_impedance_solver_execution_environment: None,
+            controlled_impedance_solver_run_log: None,
             thermal_copper: None,
             thermal_measurement: None,
             thermal_package: None,
@@ -179,6 +184,12 @@ pub(super) struct AppliedControlledImpedanceSolverResult {
     solver_execution_environment: Option<String>,
     solver_environment_fingerprint: Option<String>,
     solver_environment_components: Vec<String>,
+    solver_run_log: Option<String>,
+    solver_run_id: Option<String>,
+    solver_random_seed: Option<String>,
+    solver_numeric_tolerance_policy: Option<String>,
+    solver_residual_error: Option<f64>,
+    solver_iterations: Option<usize>,
     solver_input_deck_uri: Option<String>,
     solver_input_deck_sha256: Option<String>,
     result_type: String,
@@ -350,6 +361,21 @@ pub(super) struct AppliedControlledImpedanceSolverExecutionEnvironment {
     artifact_sha256: String,
     reproducibility_fingerprint: String,
     locked_components: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AppliedControlledImpedanceSolverRunLog {
+    pub(super) name: String,
+    source: String,
+    solver: String,
+    solver_version: String,
+    run_id: String,
+    artifact_uri: String,
+    artifact_sha256: String,
+    random_seed: String,
+    numeric_tolerance_policy: String,
+    max_residual_error: f64,
+    max_iterations: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -531,6 +557,7 @@ pub(super) enum ManufacturingField {
     ControlledImpedanceSolverRuntimeAllowlist,
     ControlledImpedanceSolverEntitlement,
     ControlledImpedanceSolverExecutionEnvironment,
+    ControlledImpedanceSolverRunLog,
     ThermalCopper,
     ThermalMeasurement,
     ThermalPackage,
@@ -588,6 +615,7 @@ impl ManufacturingField {
             Self::ControlledImpedanceSolverExecutionEnvironment => {
                 "controlled_impedance.solver_execution_environments[]"
             }
+            Self::ControlledImpedanceSolverRunLog => "controlled_impedance.solver_run_logs[]",
             Self::ThermalCopper => "thermal_copper[]",
             Self::ThermalMeasurement => "thermal_measurements[]",
             Self::ThermalPackage => "thermal_packages[]",
@@ -642,6 +670,7 @@ impl ManufacturingField {
                 | Self::ControlledImpedanceSolverRuntimeAllowlist
                 | Self::ControlledImpedanceSolverEntitlement
                 | Self::ControlledImpedanceSolverExecutionEnvironment
+                | Self::ControlledImpedanceSolverRunLog
                 | Self::ThermalCopper
                 | Self::ThermalMeasurement
                 | Self::ThermalPackage
@@ -824,6 +853,11 @@ fn applied_field(
         );
         return Ok(applied);
     }
+    if field == ManufacturingField::ControlledImpedanceSolverRunLog {
+        applied.controlled_impedance_solver_run_log =
+            Some(applied_controlled_impedance_solver_run_log(row, path)?);
+        return Ok(applied);
+    }
     if field == ManufacturingField::ThermalCopper {
         applied.thermal_copper = Some(applied_thermal_copper(row, path)?);
         return Ok(applied);
@@ -992,6 +1026,13 @@ fn applied_controlled_impedance_solver_execution_environment(
     path: &Path,
 ) -> Result<AppliedControlledImpedanceSolverExecutionEnvironment> {
     solver_environment::applied_controlled_impedance_solver_execution_environment(row, path)
+}
+
+fn applied_controlled_impedance_solver_run_log(
+    row: &MetadataCsvRow,
+    path: &Path,
+) -> Result<AppliedControlledImpedanceSolverRunLog> {
+    solver_run_log::applied_controlled_impedance_solver_run_log(row, path)
 }
 
 fn applied_thermal_copper(row: &MetadataCsvRow, path: &Path) -> Result<AppliedThermalCopper> {
@@ -1608,6 +1649,18 @@ fn validate_applied_fields(fields: &[AppliedField]) -> Result<()> {
             );
         }
     }
+    let mut controlled_impedance_solver_run_logs = BTreeSet::new();
+    for run_log in fields
+        .iter()
+        .filter_map(|field| field.controlled_impedance_solver_run_log.as_ref())
+    {
+        if !controlled_impedance_solver_run_logs.insert(run_log.name.clone()) {
+            bail!(
+                "Manufacturing metadata CSV repeats controlled_impedance_solver_run_log row name {}.",
+                run_log.name
+            );
+        }
+    }
     let mut thermal_copper_names = BTreeSet::new();
     for rule in fields
         .iter()
@@ -1774,166 +1827,6 @@ fn row_manifest(
         notes: row.notes.clone(),
         raw_columns: row.raw_fields.clone(),
         message,
-    }
-}
-
-fn normalize_field(value: &str) -> Option<ManufacturingField> {
-    match normalize_name(value).as_str() {
-        "stencilthicknessmm" | "stencilthickness" | "stencilfoilthickness" => {
-            Some(ManufacturingField::StencilThicknessMm)
-        }
-        "mindrilledgeclearancemm"
-        | "mindrilledgeclearance"
-        | "holetoboardedgeclearance"
-        | "minimumholetoboardedgeclearance" => Some(ManufacturingField::MinDrillEdgeClearanceMm),
-        "minslotedgeclearancemm" | "minslotedgeclearance" | "slottoboardedgeclearance" => {
-            Some(ManufacturingField::MinSlotEdgeClearanceMm)
-        }
-        "minpastearearatio" | "minimumsolderpastearearatio" => {
-            Some(ManufacturingField::MinPasteAreaRatio)
-        }
-        "maxpastearearatio" | "maximumsolderpastearearatio" => {
-            Some(ManufacturingField::MaxPasteAreaRatio)
-        }
-        "minsolderpastespacingmm" | "minsolderpastespacing" | "minpastespace" => {
-            Some(ManufacturingField::MinSolderPasteSpacingMm)
-        }
-        "maxstitchviadistancemm"
-        | "maxstitchviadistance"
-        | "maximumstitchviadistance"
-        | "stitchviadistance" => Some(ManufacturingField::MaxStitchViaDistanceMm),
-        "controlledimpedancenet" | "controlledimpedance" | "impedancenet" => {
-            Some(ManufacturingField::ControlledImpedanceNet)
-        }
-        "controlledimpedancepair"
-        | "controlledimpedancedifferentialpair"
-        | "differentialimpedancepair"
-        | "differentialpairimpedance" => Some(ManufacturingField::ControlledImpedancePair),
-        "controlledimpedancecoupon"
-        | "impedancecoupon"
-        | "fabricatorimpedancecoupon"
-        | "couponimpedance" => Some(ManufacturingField::ControlledImpedanceCoupon),
-        "controlledimpedancecouponsample"
-        | "impedancecouponsample"
-        | "fabricatorimpedancecouponsample"
-        | "couponimpedancesample" => Some(ManufacturingField::ControlledImpedanceCouponSample),
-        "controlledimpedancesolverresult"
-        | "impedancesolverresult"
-        | "controlledimpedancefieldsolverresult"
-        | "fieldsolverimpedance" => Some(ManufacturingField::ControlledImpedanceSolverResult),
-        "controlledimpedancesolversample"
-        | "impedancesolversample"
-        | "controlledimpedancefieldsolversample"
-        | "fieldsolverimpedancesample" => Some(ManufacturingField::ControlledImpedanceSolverSample),
-        "controlledimpedancesolvermaterialcorner"
-        | "impedancesolvermaterialcorner"
-        | "controlledimpedancefieldsolvermaterialcorner"
-        | "fieldsolvermaterialcorner"
-        | "solvermaterialcorner" => {
-            Some(ManufacturingField::ControlledImpedanceSolverMaterialCorner)
-        }
-        "controlledimpedancesolverqualification"
-        | "impedancesolverqualification"
-        | "controlledimpedancefieldsolverqualification"
-        | "fieldsolverqualification"
-        | "solverqualification" => Some(ManufacturingField::ControlledImpedanceSolverQualification),
-        "controlledimpedancesolvermateriallibrary"
-        | "impedancesolvermateriallibrary"
-        | "controlledimpedancefieldsolvermateriallibrary"
-        | "fieldsolvermateriallibrary"
-        | "solvermateriallibrary" => {
-            Some(ManufacturingField::ControlledImpedanceSolverMaterialLibrary)
-        }
-        "controlledimpedancesolvermaterialacceptance"
-        | "impedancesolvermaterialacceptance"
-        | "controlledimpedancefieldsolvermaterialacceptance"
-        | "fieldsolvermaterialacceptance"
-        | "solvermaterialacceptance" => {
-            Some(ManufacturingField::ControlledImpedanceSolverMaterialAcceptance)
-        }
-        "controlledimpedancesolvermaterialprocess"
-        | "impedancesolvermaterialprocess"
-        | "controlledimpedancefieldsolvermaterialprocess"
-        | "fieldsolvermaterialprocess"
-        | "solvermaterialprocess"
-        | "solvermateriallotprocess"
-        | "solvermaterialdrift" => {
-            Some(ManufacturingField::ControlledImpedanceSolverMaterialProcess)
-        }
-        "controlledimpedancesolverruntimeallowlist"
-        | "impedancesolverruntimeallowlist"
-        | "controlledimpedancefieldsolverruntimeallowlist"
-        | "fieldsolverruntimeallowlist"
-        | "solverruntimeallowlist"
-        | "solverruntimeoptions" => {
-            Some(ManufacturingField::ControlledImpedanceSolverRuntimeAllowlist)
-        }
-        "controlledimpedancesolverentitlement"
-        | "impedancesolverentitlement"
-        | "controlledimpedancefieldsolverentitlement"
-        | "fieldsolverentitlement"
-        | "solverentitlement"
-        | "solverlicense"
-        | "solverlicensedfeatures"
-        | "solverfeatureentitlement" => {
-            Some(ManufacturingField::ControlledImpedanceSolverEntitlement)
-        }
-        "controlledimpedancesolverexecutionenvironment"
-        | "impedancesolverexecutionenvironment"
-        | "controlledimpedancefieldsolverexecutionenvironment"
-        | "fieldsolverexecutionenvironment"
-        | "solverexecutionenvironment"
-        | "solverenvironment"
-        | "solverenvironmentlock"
-        | "solverreproducibility" => {
-            Some(ManufacturingField::ControlledImpedanceSolverExecutionEnvironment)
-        }
-        "thermalcopper" | "thermalcopperpolicy" | "thermalpolicy" | "thermalcopperarea" => {
-            Some(ManufacturingField::ThermalCopper)
-        }
-        "thermalmeasurement" | "thermalmeasuredtemperature" | "measuredtemperature" => {
-            Some(ManufacturingField::ThermalMeasurement)
-        }
-        "thermalpackage" | "packagethermal" | "componentthermalpackage" => {
-            Some(ManufacturingField::ThermalPackage)
-        }
-        "thermalenvironment" | "operatingthermalenvironment" | "reviewedthermalenvironment" => {
-            Some(ManufacturingField::ThermalEnvironment)
-        }
-        "thermallimit" | "thermallimits" | "temperaturelimit" | "thermaltemperaturelimit" => {
-            Some(ManufacturingField::ThermalLimit)
-        }
-        "stackuplayer" | "stackuplayermetadata" | "boardstackuplayer" => {
-            Some(ManufacturingField::StackupLayer)
-        }
-        "rfantennakeepout" | "antennakeepout" | "rfkeepout" => {
-            Some(ManufacturingField::RfAntennaKeepout)
-        }
-        "rfantennafeedpath" | "antennafeedpath" | "rffeedpath" => {
-            Some(ManufacturingField::RfAntennaFeedPath)
-        }
-        "rfantennamatchingnetwork"
-        | "antennamatchingnetwork"
-        | "rfmatchingnetwork"
-        | "rfantennamatchingtopology"
-        | "antennamatchingtopology" => Some(ManufacturingField::RfAntennaMatchingNetwork),
-        "rfantennameasurement"
-        | "antennas11"
-        | "antennareturnloss"
-        | "rfmeasurement"
-        | "rfantennareturnloss" => Some(ManufacturingField::RfAntennaMeasurement),
-        "rfantennaperformancelimit"
-        | "antennaperformancelimit"
-        | "rfperformancelimit"
-        | "rfantennareturnlosslimit"
-        | "antennareturnlosslimit" => Some(ManufacturingField::RfAntennaPerformanceLimit),
-        "rfantennameasurementcondition"
-        | "antennameasurementcondition"
-        | "rfmeasurementcondition"
-        | "rfantennatestcondition"
-        | "antennatestcondition" => Some(ManufacturingField::RfAntennaMeasurementCondition),
-        "source" | "evidencesource" => Some(ManufacturingField::Source),
-        _ => None,
     }
 }
 

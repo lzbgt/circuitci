@@ -63,6 +63,75 @@ fn controlled_impedance_solver_result_fails_for_unlocked_environment_component()
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn controlled_impedance_solver_result_passes_with_run_log_evidence() {
+    let (_dir, project_path) = write_solver_environment_project(
+        r#"      solver_run_logs:
+        - name: reviewed_2d_field_solver_run_log_rf
+          source: si_solver_run_review_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          run_id: rf_solver_run_2026_06_a
+          artifact_uri: artifacts/solver/rf_solver_run_2026_06_a.log
+          artifact_sha256: aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999
+          random_seed: seed_2026_06_rf
+          numeric_tolerance_policy: si_solver_tolerance_rev_a
+          max_residual_error: 0.000001
+          max_iterations: 120
+      solver_results:
+"#,
+        r#"          solver_run_log: reviewed_2d_field_solver_run_log_rf
+          solver_run_id: rf_solver_run_2026_06_a
+          solver_random_seed: seed_2026_06_rf
+          solver_numeric_tolerance_policy: si_solver_tolerance_rev_a
+          solver_residual_error: 0.0000004
+          solver_iterations: 84
+"#,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn controlled_impedance_solver_result_fails_for_run_log_residual_limit() {
+    let (_dir, project_path) = write_solver_environment_project(
+        r#"      solver_run_logs:
+        - name: reviewed_2d_field_solver_run_log_rf
+          source: si_solver_run_review_rev_a
+          solver: reviewed_2d_field_solver
+          solver_version: "2026.06"
+          run_id: rf_solver_run_2026_06_a
+          artifact_uri: artifacts/solver/rf_solver_run_2026_06_a.log
+          artifact_sha256: aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999
+          random_seed: seed_2026_06_rf
+          numeric_tolerance_policy: si_solver_tolerance_rev_a
+          max_residual_error: 0.000001
+          max_iterations: 120
+      solver_results:
+"#,
+        r#"          solver_run_log: reviewed_2d_field_solver_run_log_rf
+          solver_run_id: rf_solver_run_2026_06_a
+          solver_random_seed: seed_2026_06_rf
+          solver_numeric_tolerance_policy: si_solver_tolerance_rev_a
+          solver_residual_error: 0.00002
+          solver_iterations: 84
+"#,
+    );
+
+    let report = run_validation(project_path.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("residual error")
+    );
+    assert_report_schema_valid(&report);
+}
+
 fn write_solver_environment_project(
     solver_metadata: &str,
     result_environment: &str,

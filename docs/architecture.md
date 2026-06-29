@@ -213,11 +213,12 @@ Importers append evidence instead of guessing missing intent. Examples:
   lives in `src/importers/manufacturing_metadata/rows/csv.rs`; reviewed
   row-family parsing lives in
   `src/importers/manufacturing_metadata/rows/families.rs`, with the
-  controlled-impedance solver runtime allowlist, entitlement, and execution
-  environment parsers split
+  controlled-impedance solver runtime allowlist, entitlement, execution
+  environment, and run-log parsers split
   into `src/importers/manufacturing_metadata/rows/solver_runtime.rs` and
   `src/importers/manufacturing_metadata/rows/solver_entitlement.rs`, and
-  `src/importers/manufacturing_metadata/rows/solver_environment.rs`; Board IR YAML value
+  `src/importers/manufacturing_metadata/rows/solver_environment.rs` and
+  `src/importers/manufacturing_metadata/rows/solver_run_log.rs`; Board IR YAML value
   construction lives in `src/importers/manufacturing_metadata/rows/values.rs`;
   supported-field normalization, duplicate checks, and manifest row evidence
   live in `src/importers/manufacturing_metadata/rows.rs`. CLI regression

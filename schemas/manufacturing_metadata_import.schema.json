@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "rows"],
   "properties": {
-    "schema_version": { "const": "0.36.0" },
+    "schema_version": { "const": "0.37.0" },
     "sources": {
       "type": "object",
       "required": ["project", "metadata"],
@@ -103,6 +103,7 @@
             "controlled_impedance.solver_runtime_allowlists[]",
             "controlled_impedance.solver_entitlements[]",
             "controlled_impedance.solver_execution_environments[]",
+            "controlled_impedance.solver_run_logs[]",
             "thermal_copper[]",
             "thermal_measurements[]",
             "thermal_packages[]",
@@ -147,6 +148,42 @@
                 "solder_mask_state": { "enum": ["covered", "opened"] },
                 "solder_mask_layer": { "type": "string", "minLength": 1 },
                 "solder_mask_source": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "solver",
+                "solver_version",
+                "run_id",
+                "artifact_uri",
+                "artifact_sha256",
+                "random_seed",
+                "numeric_tolerance_policy",
+                "max_residual_error",
+                "max_iterations"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "solver": { "type": "string", "minLength": 1 },
+                "solver_version": { "type": "string", "minLength": 1 },
+                "run_id": { "type": "string", "minLength": 1 },
+                "artifact_uri": { "type": "string", "minLength": 1 },
+                "artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                },
+                "random_seed": { "type": "string", "minLength": 1 },
+                "numeric_tolerance_policy": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "max_residual_error": { "type": "number", "minimum": 0 },
+                "max_iterations": { "type": "integer", "minimum": 1 }
               },
               "additionalProperties": false
             },
@@ -674,6 +711,30 @@
                   "type": "array",
                   "items": { "type": "string", "minLength": 1 },
                   "minItems": 1
+                },
+                "solver_run_log": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_run_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_random_seed": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_numeric_tolerance_policy": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "solver_residual_error": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "solver_iterations": {
+                  "type": "integer",
+                  "minimum": 1
                 },
                 "solver_input_deck_uri": {
                   "type": "string",

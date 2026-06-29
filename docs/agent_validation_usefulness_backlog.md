@@ -140,7 +140,7 @@ Useful next slices:
   reviewed solver tool configuration lock evidence, and reviewed solver runtime
   options allowlist evidence, solver license/feature entitlement evidence, and
   solver execution environment reproducibility evidence, such as reviewed
-  solver run-log, random-seed, or numerical tolerance evidence,
+  solver run-log, random-seed, and numerical tolerance evidence, such as reviewed solver convergence-window or deterministic rerun evidence,
 - return-path proof beyond sampled adjacent-plane zone, slot-crossing, and
   stitching-via distance evidence, such as stitching topology, via-transition
   impedance, and solver-backed return-current behavior,

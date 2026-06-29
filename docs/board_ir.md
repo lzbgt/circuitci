@@ -543,6 +543,14 @@ populate `controlled_impedance.solver_execution_environments[]` and require
 matches these rows to solver results by name, solver, solver version, and
 fingerprint, then checks that each declared result environment component is
 explicitly locked by the reviewed environment row.
+Repeated `field=controlled_impedance_solver_run_log` rows populate
+`controlled_impedance.solver_run_logs[]` and require `name`, `source`,
+`solver`, `solver_version`, `run_id`, `artifact_uri`, a 64-character
+`artifact_sha256`, `random_seed`, `numeric_tolerance_policy`,
+`max_residual_error`, and `max_iterations`. Validation matches these rows to
+solver results by name, solver, solver version, run id, random seed, and
+numeric tolerance policy, then checks explicit residual and iteration evidence
+against the reviewed limits.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver

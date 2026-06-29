@@ -156,7 +156,9 @@ Optional `controlled_impedance_solver_result` columns are `solver_version`,
 `max_solver_frequency_step_mhz`, `required_solver_corners`, and
 `solver_entitlement`, `solver_entitlement_features`,
 `solver_execution_environment`, `solver_environment_fingerprint`,
-`solver_environment_components`, and
+`solver_environment_components`, `solver_run_log`, `solver_run_id`,
+`solver_random_seed`, `solver_numeric_tolerance_policy`,
+`solver_residual_error`, `solver_iterations`, and
 `solver_source` when the ordinary `source` column is not used. When any
 solver-artifact signature column is present, validation requires a non-empty
 signature URI, 64-character signature SHA-256 digest, and signer name. When any
@@ -178,6 +180,12 @@ non-empty `solver_execution_environment`, `solver_version`,
 `solver_environment_fingerprint`, and `solver_environment_components`, plus a
 matching reviewed `controlled_impedance_solver_execution_environment` row for
 the solver, version, and fingerprint.
+When any solver run-log column is present, validation requires non-empty
+`solver_run_log`, `solver_version`, `solver_run_id`, `solver_random_seed`, and
+`solver_numeric_tolerance_policy`, plus non-negative `solver_residual_error`,
+positive `solver_iterations`, and a matching reviewed
+`controlled_impedance_solver_run_log` row for the solver, version, run id,
+seed, and tolerance policy.
 When any input-deck column is present, validation requires complete input-deck
 provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
@@ -189,8 +197,8 @@ CircuitCI compares them for consistency but does not infer finished trace
 geometry. These rows are reviewed solver-result evidence only; the importer
 preserves artifact provenance but does not run a field solver, fetch artifacts,
 verify signatures, parse solver output schemas, parse tool configuration locks
-or runtime allowlist/entitlement/environment artifacts, parse input decks, or infer
-stackup parameters.
+or runtime allowlist/entitlement/environment/run-log artifacts, parse input
+decks, replay solver runs, or infer stackup parameters.
 Repeated `field=controlled_impedance_solver_runtime_allowlist` rows require
 `name`, `source`, `solver`, `solver_config_lock_revision`, `runtime_profile`,
 `allowlist_revision`, `artifact_uri`, `artifact_sha256`, and
@@ -203,6 +211,10 @@ Repeated `field=controlled_impedance_solver_execution_environment` rows require
 `name`, `source`, `solver`, `solver_version`, `environment_id`,
 `environment_revision`, `artifact_uri`, `artifact_sha256`,
 `reproducibility_fingerprint`, and `locked_components`.
+Repeated `field=controlled_impedance_solver_run_log` rows require `name`,
+`source`, `solver`, `solver_version`, `run_id`, `artifact_uri`,
+`artifact_sha256`, `random_seed`, `numeric_tolerance_policy`,
+`max_residual_error`, and `max_iterations`.
 Declaring material-library columns requires a matching reviewed
 `controlled_impedance_solver_material_library` artifact-content row before
 validation can accept the solver result. If reviewed

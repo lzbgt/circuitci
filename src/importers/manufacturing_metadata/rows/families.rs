@@ -409,6 +409,19 @@ pub(super) fn applied_controlled_impedance_solver_result(
             .map(|value| parse_nonempty_list(&value))
             .transpose()?
             .unwrap_or_default(),
+        solver_run_log: optional_raw_column(row, "solver_run_log"),
+        solver_run_id: optional_raw_column(row, "solver_run_id"),
+        solver_random_seed: optional_raw_column(row, "solver_random_seed"),
+        solver_numeric_tolerance_policy: optional_raw_column(
+            row,
+            "solver_numeric_tolerance_policy",
+        ),
+        solver_residual_error: optional_raw_column(row, "solver_residual_error")
+            .map(|value| parse_nonnegative_number(&value, path, row, "solver_residual_error"))
+            .transpose()?,
+        solver_iterations: optional_raw_column(row, "solver_iterations")
+            .map(|value| parse_positive_usize(&value, path, row, "solver_iterations"))
+            .transpose()?,
         solver_input_deck_uri: optional_raw_column(row, "solver_input_deck_uri"),
         solver_input_deck_sha256: optional_solver_input_deck_sha256(row, path)?,
         result_type,

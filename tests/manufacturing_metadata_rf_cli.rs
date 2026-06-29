@@ -302,7 +302,7 @@ fn import_manufacturing_metadata_applies_rf_antenna_constraints() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.keepouts[]"
@@ -496,7 +496,7 @@ board:
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "layout.constraints.rf_antenna.measurement_conditions[]"

@@ -55,6 +55,8 @@ pub struct ControlledImpedanceTargets {
     #[serde(default)]
     pub solver_execution_environments: Vec<ControlledImpedanceSolverExecutionEnvironment>,
     #[serde(default)]
+    pub solver_run_logs: Vec<ControlledImpedanceSolverRunLog>,
+    #[serde(default)]
     pub solver_results: Vec<ControlledImpedanceSolverResult>,
 }
 
@@ -250,6 +252,21 @@ pub struct ControlledImpedanceSolverExecutionEnvironment {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ControlledImpedanceSolverRunLog {
+    pub name: String,
+    pub source: String,
+    pub solver: String,
+    pub solver_version: String,
+    pub run_id: String,
+    pub artifact_uri: String,
+    pub artifact_sha256: String,
+    pub random_seed: String,
+    pub numeric_tolerance_policy: String,
+    pub max_residual_error: f64,
+    pub max_iterations: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ControlledImpedanceSolverResult {
     pub name: String,
     pub source: String,
@@ -298,6 +315,18 @@ pub struct ControlledImpedanceSolverResult {
     pub solver_environment_fingerprint: Option<String>,
     #[serde(default)]
     pub solver_environment_components: Vec<String>,
+    #[serde(default)]
+    pub solver_run_log: Option<String>,
+    #[serde(default)]
+    pub solver_run_id: Option<String>,
+    #[serde(default)]
+    pub solver_random_seed: Option<String>,
+    #[serde(default)]
+    pub solver_numeric_tolerance_policy: Option<String>,
+    #[serde(default)]
+    pub solver_residual_error: Option<f64>,
+    #[serde(default)]
+    pub solver_iterations: Option<usize>,
     #[serde(default)]
     pub solver_input_deck_uri: Option<String>,
     #[serde(default)]

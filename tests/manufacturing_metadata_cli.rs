@@ -237,7 +237,7 @@ fn import_manufacturing_metadata_applies_csv_with_manifest() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(manifest["sources"]["metadata"]["data_rows"], 9);
     assert_eq!(manifest["import"]["applied_fields"], 8);
     assert_eq!(manifest["import"]["skipped_rows"], 1);
@@ -905,7 +905,7 @@ fn import_manufacturing_metadata_applies_coupon_trace_correlation_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["process_lot"],
         "lot_2026_06_b"
@@ -950,6 +950,9 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     let environment_output = dir
         .path()
         .join("with_solver_result_and_environment.project.yaml");
+    let run_log_output = dir
+        .path()
+        .join("with_solver_result_and_run_log.project.yaml");
     let process_output = dir
         .path()
         .join("with_solver_result_and_material_process.project.yaml");
@@ -960,6 +963,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     let runtime_manifest_output = runtime_output.with_extension("manufacturing.json");
     let entitlement_manifest_output = entitlement_output.with_extension("manufacturing.json");
     let environment_manifest_output = environment_output.with_extension("manufacturing.json");
+    let run_log_manifest_output = run_log_output.with_extension("manufacturing.json");
     let library_manifest_output = library_output.with_extension("manufacturing.json");
     let process_manifest_output = process_output.with_extension("manufacturing.json");
     let suggestions_output = dir.path().join("suggestions.yaml");
@@ -971,8 +975,8 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     std::fs::write(&input, serde_yaml_ng::to_string(&project_yaml).unwrap()).unwrap();
     std::fs::write(
         &metadata,
-        "field,value,unit,source,notes,name,result_type,net,target_impedance_ohm,max_impedance_error_ohm,solver,solver_version,solver_artifact_uri,solver_artifact_sha256,solver_input_deck_uri,solver_input_deck_sha256,stackup_revision,route_layer,reference_layer,dielectric_layer,solved_width_mm,max_route_width_delta_mm,input_stackup_revision,input_route_layer,input_reference_layer,input_dielectric_layer,input_width_mm,frequency_mhz,input_frequency_mhz,min_solver_sample_count,max_solver_frequency_step_mhz,required_solver_corners,solver_result_name,corner,copper_roughness_model,copper_roughness_um,input_copper_roughness_model,input_copper_roughness_um,etch_compensation_model,etch_compensation_um,input_etch_compensation_model,input_etch_compensation_um,solver_artifact_signature_uri,solver_artifact_signature_sha256,solver_artifact_signer,solver_output_schema,solver_output_schema_version,solver_output_schema_uri,solver_output_schema_sha256,solver_config_lock_uri,solver_config_lock_sha256,solver_config_lock_tool,solver_config_lock_revision,solver_runtime_allowlist,solver_runtime_profile,solver_runtime_options,solver_material_library,solver_material_library_revision,solver_material_library_artifact_uri,solver_material_library_artifact_sha256,input_material_library,input_material_library_revision,stackup_signoff_source,fabricator_stackup_revision,stackup_signoff_artifact_uri,stackup_signoff_artifact_sha256,solver_entitlement,solver_entitlement_features,solver_execution_environment,solver_environment_fingerprint,solver_environment_components\n\
-         controlled_impedance_solver_result,50.6,ohm,solver report,reviewed solver evidence,rf_solver_result,single_ended,RF,50.0,2.0,reviewed_2d_field_solver,2026.07,artifacts/solver/rf_solver_result.json,0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,artifacts/solver/rf_solver_input_deck.json,fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,0.03,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,2400,2400,4,500,nominal;high_dk,,,huray,1.5,huray,1.5,fabricator_finished_width_bias,8.0,fabricator_finished_width_bias,8.0,artifacts/solver/rf_solver_result.sig,1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef,si_review_key_2026,circuitci_controlled_impedance_solver_result,1.0,artifacts/solver/controlled_impedance_solver_result_schema_v1.json,55556666777788889999aaaabbbbccccddddeeeeffff00001111222233334444,artifacts/solver/reviewed_2d_field_solver_config_lock_rev_c.json,6666777788889999aaaabbbbccccddddeeeeffff000011112222333344445555,reviewed_2d_field_solver,config_lock_rev_c,reviewed_2d_field_solver_runtime_lock_c,production_si,quasi_static;finite_thickness_copper;huray_roughness;fabricator_etch_bias,reviewed_stackup_materials,rev_b,artifacts/solver/material_library_rev_b.json,abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd,reviewed_stackup_materials,rev_b,fabricator_stackup_review_rev_b,stackup_rev_b,artifacts/fabricator/stackup_signoff_rev_b.pdf,111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000,reviewed_2d_field_solver_si_entitlement,2d_field_solver;lossy_copper_roughness,reviewed_2d_field_solver_env_lock,env_fp_2026_07_a,solver_binary;material_library;config_lock\n\
+        "field,value,unit,source,notes,name,result_type,net,target_impedance_ohm,max_impedance_error_ohm,solver,solver_version,solver_artifact_uri,solver_artifact_sha256,solver_input_deck_uri,solver_input_deck_sha256,stackup_revision,route_layer,reference_layer,dielectric_layer,solved_width_mm,max_route_width_delta_mm,input_stackup_revision,input_route_layer,input_reference_layer,input_dielectric_layer,input_width_mm,frequency_mhz,input_frequency_mhz,min_solver_sample_count,max_solver_frequency_step_mhz,required_solver_corners,solver_result_name,corner,copper_roughness_model,copper_roughness_um,input_copper_roughness_model,input_copper_roughness_um,etch_compensation_model,etch_compensation_um,input_etch_compensation_model,input_etch_compensation_um,solver_artifact_signature_uri,solver_artifact_signature_sha256,solver_artifact_signer,solver_output_schema,solver_output_schema_version,solver_output_schema_uri,solver_output_schema_sha256,solver_config_lock_uri,solver_config_lock_sha256,solver_config_lock_tool,solver_config_lock_revision,solver_runtime_allowlist,solver_runtime_profile,solver_runtime_options,solver_material_library,solver_material_library_revision,solver_material_library_artifact_uri,solver_material_library_artifact_sha256,input_material_library,input_material_library_revision,stackup_signoff_source,fabricator_stackup_revision,stackup_signoff_artifact_uri,stackup_signoff_artifact_sha256,solver_entitlement,solver_entitlement_features,solver_execution_environment,solver_environment_fingerprint,solver_environment_components,solver_run_log,solver_run_id,solver_random_seed,solver_numeric_tolerance_policy,solver_residual_error,solver_iterations\n\
+         controlled_impedance_solver_result,50.6,ohm,solver report,reviewed solver evidence,rf_solver_result,single_ended,RF,50.0,2.0,reviewed_2d_field_solver,2026.07,artifacts/solver/rf_solver_result.json,0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,artifacts/solver/rf_solver_input_deck.json,fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,0.03,stackup_rev_b,F.Cu,In1.GND,prepreg_1,0.20,2400,2400,4,500,nominal;high_dk,,,huray,1.5,huray,1.5,fabricator_finished_width_bias,8.0,fabricator_finished_width_bias,8.0,artifacts/solver/rf_solver_result.sig,1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef,si_review_key_2026,circuitci_controlled_impedance_solver_result,1.0,artifacts/solver/controlled_impedance_solver_result_schema_v1.json,55556666777788889999aaaabbbbccccddddeeeeffff00001111222233334444,artifacts/solver/reviewed_2d_field_solver_config_lock_rev_c.json,6666777788889999aaaabbbbccccddddeeeeffff000011112222333344445555,reviewed_2d_field_solver,config_lock_rev_c,reviewed_2d_field_solver_runtime_lock_c,production_si,quasi_static;finite_thickness_copper;huray_roughness;fabricator_etch_bias,reviewed_stackup_materials,rev_b,artifacts/solver/material_library_rev_b.json,abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd,reviewed_stackup_materials,rev_b,fabricator_stackup_review_rev_b,stackup_rev_b,artifacts/fabricator/stackup_signoff_rev_b.pdf,111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000,reviewed_2d_field_solver_si_entitlement,2d_field_solver;lossy_copper_roughness,reviewed_2d_field_solver_env_lock,env_fp_2026_07_a,solver_binary;material_library;config_lock,reviewed_2d_field_solver_run_log_rf,rf_solver_run_2026_07_a,seed_2026_07_rf,si_solver_tolerance_rev_a,0.0000004,84\n\
          controlled_impedance_solver_sample,50.6,ohm,solver report,nominal sample,rf_solver_nominal_2400,,,,,,,,,,,,,,,,,,,,,,2400,,,,,rf_solver_result,nominal,,,,,,,,,,,,,,,,,,,,,,,,,,,\n\
          controlled_impedance_solver_sample,50.7,ohm,solver report,nominal sample,rf_solver_nominal_2900,,,,,,,,,,,,,,,,,,,,,,2900,,,,,rf_solver_result,nominal,,,,,,,,,,,,,,,,,,,,,,,,,,,\n\
          controlled_impedance_solver_sample,49.5,ohm,solver report,high dk sample,rf_solver_high_dk_2400,,,,,,,,,,,,,,,,,,,,,,2400,,,,,rf_solver_result,high_dk,,,,,,,,,,,,,,,,,,,,,,,,,,,\n\
@@ -1072,6 +1076,18 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     assert_eq!(result["solver_environment_fingerprint"], "env_fp_2026_07_a");
     assert_eq!(result["solver_environment_components"][2], "config_lock");
     assert_eq!(
+        result["solver_run_log"],
+        "reviewed_2d_field_solver_run_log_rf"
+    );
+    assert_eq!(result["solver_run_id"], "rf_solver_run_2026_07_a");
+    assert_eq!(result["solver_random_seed"], "seed_2026_07_rf");
+    assert_eq!(
+        result["solver_numeric_tolerance_policy"],
+        "si_solver_tolerance_rev_a"
+    );
+    assert_eq!(result["solver_residual_error"], 0.0000004);
+    assert_eq!(result["solver_iterations"], 84);
+    assert_eq!(
         result["solver_input_deck_uri"],
         "artifacts/solver/rf_solver_input_deck.json"
     );
@@ -1143,7 +1159,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[]"
@@ -1203,6 +1219,18 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["solver_environment_components"][1],
         "material_library"
+    );
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["solver_run_log"],
+        "reviewed_2d_field_solver_run_log_rf"
+    );
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["solver_numeric_tolerance_policy"],
+        "si_solver_tolerance_rev_a"
+    );
+    assert_eq!(
+        manifest["rows"][0]["normalized_value"]["solver_iterations"],
+        84
     );
     assert_eq!(
         manifest["rows"][0]["normalized_value"]["solver_input_deck_uri"],
@@ -1376,6 +1404,51 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
 
     std::fs::write(
         &metadata,
+        "field,value,source,name,solver,solver_version,run_id,artifact_uri,artifact_sha256,random_seed,numeric_tolerance_policy,max_residual_error,max_iterations\n\
+         controlled_impedance_solver_run_log,reviewed,solver run review,reviewed_2d_field_solver_run_log_rf,reviewed_2d_field_solver,2026.07,rf_solver_run_2026_07_a,artifacts/solver/rf_solver_run_2026_07_a.log,aaaabbbbccccddddeeeeffff0000111122223333444455556666777788889999,seed_2026_07_rf,si_solver_tolerance_rev_a,0.000001,120\n",
+    )
+    .unwrap();
+    let run_log_import = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-manufacturing-metadata",
+            "--project",
+            environment_output.to_str().unwrap(),
+            "--metadata",
+            metadata.to_str().unwrap(),
+            "--output",
+            run_log_output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        run_log_import.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run_log_import.stderr)
+    );
+    common::assert_yaml_file_valid(&run_log_output, &validator);
+    let enriched_with_run_log: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&run_log_output).unwrap()).unwrap();
+    let run_log = &enriched_with_run_log["board"]["manufacturing"]["controlled_impedance"]["solver_run_logs"]
+        [0];
+    assert_eq!(run_log["name"], "reviewed_2d_field_solver_run_log_rf");
+    assert_eq!(run_log["run_id"], "rf_solver_run_2026_07_a");
+    assert_eq!(run_log["max_iterations"], 120);
+    let run_log_manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_log_manifest_output).unwrap()).unwrap();
+    if let Err(error) = manifest_validator.validate(&run_log_manifest) {
+        panic!("Solver run-log metadata import manifest failed schema validation: {error}");
+    }
+    assert_eq!(
+        run_log_manifest["rows"][0]["board_field"],
+        "controlled_impedance.solver_run_logs[]"
+    );
+    assert_eq!(
+        run_log_manifest["rows"][0]["normalized_value"]["numeric_tolerance_policy"],
+        "si_solver_tolerance_rev_a"
+    );
+
+    std::fs::write(
+        &metadata,
         "field,value,source,name,material_library,material_library_revision,artifact_uri,artifact_sha256,corners,dielectric_layers,materials,content_fields,fabricator_stackup_revision,acceptance_artifact_uri,acceptance_artifact_sha256,accepted_by,accepted_corners,accepted_dielectric_layers,accepted_materials\n\
          controlled_impedance_solver_material_library,reviewed,solver material library,reviewed_stackup_materials_rev_b,reviewed_stackup_materials,rev_b,artifacts/solver/material_library_rev_b.json,abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd,nominal;high_dk,prepreg_1,FR-4 prepreg,corner;dielectric_layer;material;dielectric_constant;nominal_dielectric_constant,,,,,,,\n\
          controlled_impedance_solver_material_acceptance,reviewed,fabricator material acceptance,reviewed_stackup_materials_rev_b_acceptance,reviewed_stackup_materials,rev_b,,,,,,,stackup_rev_b,artifacts/fabricator/material_acceptance_rev_b.pdf,22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111,fabricator_si_review,nominal;high_dk,prepreg_1,FR-4 prepreg\n",
@@ -1385,7 +1458,7 @@ fn import_manufacturing_metadata_applies_solver_result_rows() {
         .args([
             "import-manufacturing-metadata",
             "--project",
-            environment_output.to_str().unwrap(),
+            run_log_output.to_str().unwrap(),
             "--metadata",
             metadata.to_str().unwrap(),
             "--output",
@@ -1613,7 +1686,7 @@ fn import_manufacturing_metadata_applies_solver_material_corner_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_results[].material_corners[]"
@@ -1702,7 +1775,7 @@ fn import_manufacturing_metadata_applies_solver_qualification_rows() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("Manufacturing metadata import manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.36.0");
+    assert_eq!(manifest["schema_version"], "0.37.0");
     assert_eq!(
         manifest["rows"][0]["board_field"],
         "controlled_impedance.solver_qualifications[]"
