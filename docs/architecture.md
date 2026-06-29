@@ -212,8 +212,9 @@ Importers append evidence instead of guessing missing intent. Examples:
   `src/importers/manufacturing_metadata.rs`; CSV file/header/token parsing
   lives in `src/importers/manufacturing_metadata/rows/csv.rs`; reviewed
   row-family parsing lives in
-  `src/importers/manufacturing_metadata/rows/families.rs`, with the
-  controlled-impedance solver runtime allowlist, entitlement, execution
+  `src/importers/manufacturing_metadata/rows/families.rs`, with RF antenna
+  metadata parsing split into `src/importers/manufacturing_metadata/rows/rf.rs`
+  and the controlled-impedance solver runtime allowlist, entitlement, execution
   environment, run-log, deterministic-rerun, and convergence-sample parsers split
   into `src/importers/manufacturing_metadata/rows/solver_runtime.rs` and
   `src/importers/manufacturing_metadata/rows/solver_entitlement.rs`, and
