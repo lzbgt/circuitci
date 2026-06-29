@@ -516,9 +516,12 @@ component-library `simulation.spice.model_path` metadata, resolve paths from
 the project directory and its ancestors, and add missing SHA-pinned entries
 without requiring manual path/hash entry.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
-generation for generated-from-Board simulations, with focused regression
-coverage split into `src/gui/analog_tests.rs`. `src/gui/analog_generated.rs`
-owns generated scenario analysis settings, ground/node mapping, component
+generation for generated-from-Board simulations, with assertion display and YAML
+field-name mapping split into `src/gui/analog_assertion_fields.rs` and focused
+regression coverage split into `src/gui/analog_tests.rs`.
+`src/gui/analog_sweeps.rs` owns analog input-sweep YAML mutation, with focused
+sweep regressions split into `src/gui/analog_sweeps_tests.rs`.
+`src/gui/analog_generated.rs` owns generated scenario analysis settings, ground/node mapping, component
 membership, and associated pin-binding repair.
 `src/gui/analog_branches.rs`
 owns supported source/passive/semiconductor branch current and power expression

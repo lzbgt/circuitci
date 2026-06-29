@@ -8,6 +8,7 @@ mod analog;
 mod analog_ac_presets;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
+mod analog_assertion_fields;
 mod analog_assertion_kinds;
 mod analog_branches;
 mod analog_dc_presets;
@@ -20,6 +21,8 @@ mod analog_run_setup;
 mod analog_stimulus;
 mod analog_sweep_monte_carlo;
 mod analog_sweeps;
+#[cfg(test)]
+mod analog_sweeps_tests;
 #[cfg(test)]
 mod analog_tests;
 mod file_dialogs;
