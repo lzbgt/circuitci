@@ -674,7 +674,9 @@ residual/iteration evidence outside reviewed limits, or declares deterministic
 rerun policy without enough matching rerun samples inside the reviewed
 impedance/residual/iteration windows, or declares convergence-window policy
 without enough matching convergence samples inside the reviewed
-stopping-criteria/impedance/residual/iteration windows, the check fails closed as
+stopping-criteria/impedance/residual/iteration windows, or requires monotonic
+residual decrease but has convergence samples whose residual error increases
+with iteration, the check fails closed as
 `VALIDATION_INPUT_MISSING`; run-log metadata is provenance input and is not
 repeated in pass/fail measured maps.
 With reviewed material-library evidence, stable input-deck mismatch measured

@@ -2023,7 +2023,9 @@ Controlled-impedance solver-result algorithm:
    count inside the declared limits. If the reviewed run-log row declares
    convergence-window policy, require enough reviewed convergence samples with
    matching stopping criteria and solved impedance, residual error, and
-   iteration count inside the declared limits.
+   iteration count inside the declared limits. If the run-log row requires
+   monotonic residual decrease, require convergence sample residual error to be
+   non-increasing when sorted by iteration.
 4. Require stackup layer evidence where the route layer is `kind: signal`, the
    reference layer is `kind: plane`, and the dielectric layer is
    `kind: dielectric`.

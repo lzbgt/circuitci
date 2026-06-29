@@ -795,12 +795,17 @@ fn controlled_impedance_solver_convergence_policy_has_valid_shape(
             .as_deref()
             .is_some_and(|value| !value.trim().is_empty()),
     ];
-    declared.iter().all(|declared| !declared)
+    let convergence_policy_valid = declared.iter().all(|declared| !declared)
         || (declared.iter().all(|declared| *declared)
             && run_log.min_convergence_sample_count.unwrap_or(1) > 0
             && run_log
                 .max_convergence_impedance_delta_ohm
-                .is_none_or(|value| value.is_finite() && value >= 0.0))
+                .is_none_or(|value| value.is_finite() && value >= 0.0));
+    convergence_policy_valid
+        && (!run_log
+            .require_monotonic_residual_decrease
+            .is_some_and(|value| value)
+            || declared.iter().all(|declared| *declared))
 }
 
 fn controlled_impedance_solver_convergence_samples_have_evidence(
@@ -812,7 +817,10 @@ fn controlled_impedance_solver_convergence_samples_have_evidence(
         || run_log
             .required_stopping_criteria
             .as_deref()
-            .is_some_and(|value| !value.trim().is_empty());
+            .is_some_and(|value| !value.trim().is_empty())
+        || run_log
+            .require_monotonic_residual_decrease
+            .is_some_and(|value| value);
     if !policy_requested {
         return true;
     }
@@ -848,6 +856,10 @@ fn controlled_impedance_solver_convergence_samples_have_evidence(
         max_impedance = max_impedance.max(sample.solved_impedance_ohm);
     }
     max_impedance - min_impedance <= max_impedance_delta
+        && (!run_log
+            .require_monotonic_residual_decrease
+            .is_some_and(|value| value)
+            || convergence_residuals_are_monotonic(&run_log.convergence_samples))
 }
 
 fn controlled_impedance_solver_convergence_sample_has_valid_metadata(
@@ -874,6 +886,16 @@ fn has_unique_named_convergence_samples(
         let name = sample.name.trim();
         !name.is_empty() && names.insert(name) && iterations.insert(sample.iteration)
     })
+}
+
+fn convergence_residuals_are_monotonic(
+    samples: &[ControlledImpedanceSolverConvergenceSample],
+) -> bool {
+    let mut ordered = samples.iter().collect::<Vec<_>>();
+    ordered.sort_by_key(|sample| sample.iteration);
+    ordered
+        .windows(2)
+        .all(|window| window[1].residual_error <= window[0].residual_error)
 }
 
 fn has_unique_non_empty_values(values: &[String]) -> bool {

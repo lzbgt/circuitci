@@ -260,7 +260,8 @@ rows. Optional convergence-window limits on the run-log row can require
 reviewed solver convergence samples imported with repeated
 `field=controlled_impedance_solver_convergence_sample` rows, including
 stopping criteria, residual, iteration, artifact URI, and artifact digest
-evidence.
+evidence. A run-log row can also opt into monotonic residual trend evidence
+with `require_monotonic_residual_decrease`.
 Repeated
 `field=controlled_impedance_solver_qualification` rows create or replace
 reviewed solver tool/version qualification evidence. Repeated

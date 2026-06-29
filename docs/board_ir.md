@@ -559,7 +559,9 @@ rows populate `controlled_impedance.solver_run_logs[].reruns[]` for a named
 require reviewed convergence samples under `convergence_samples[]`. Repeated
 `field=controlled_impedance_solver_convergence_sample` metadata rows populate
 `controlled_impedance.solver_run_logs[].convergence_samples[]` for a named
-`solver_run_log`.
+`solver_run_log`. Optional `require_monotonic_residual_decrease: true` requires
+the reviewed convergence samples to have non-increasing residual error when
+sorted by iteration.
 Repeated `field=controlled_impedance_solver_qualification` rows populate
 `controlled_impedance.solver_qualifications[]` with reviewed solver
 tool/version qualification evidence. When this collection is present, solver

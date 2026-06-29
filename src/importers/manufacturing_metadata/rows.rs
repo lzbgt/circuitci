@@ -386,6 +386,7 @@ pub(super) struct AppliedControlledImpedanceSolverRunLog {
     min_convergence_sample_count: Option<usize>,
     max_convergence_impedance_delta_ohm: Option<f64>,
     required_stopping_criteria: Option<String>,
+    require_monotonic_residual_decrease: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

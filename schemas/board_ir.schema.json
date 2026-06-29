@@ -799,6 +799,9 @@
                         "type": "string",
                         "minLength": 1
                       },
+                      "require_monotonic_residual_decrease": {
+                        "type": "boolean"
+                      },
                       "reruns": {
                         "type": "array",
                         "items": {

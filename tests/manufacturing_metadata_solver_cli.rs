@@ -39,6 +39,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "min_convergence_sample_count",
             "max_convergence_impedance_delta_ohm",
             "required_stopping_criteria",
+            "require_monotonic_residual_decrease",
             "solver_run_log",
             "iteration",
             "solved_impedance_ohm",
@@ -62,6 +63,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "2",
             "0.04",
             "residual_and_delta",
+            "true",
             "",
             "",
             "",
@@ -85,6 +87,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "",
             "",
             "",
+            "",
             "reviewed_2d_field_solver_run_log_rf",
             "92",
             "50.81",
@@ -101,6 +104,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
             "",
             "artifacts/solver/rf_solver_converged_96.json",
             "6666555544443333222211110000ffffeeeeddddccccbbbbaaaa999988887777",
+            "",
             "",
             "",
             "",
@@ -154,6 +158,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
     assert_eq!(run_log["min_convergence_sample_count"], 2);
     assert_eq!(run_log["max_convergence_impedance_delta_ohm"], 0.04);
     assert_eq!(run_log["required_stopping_criteria"], "residual_and_delta");
+    assert_eq!(run_log["require_monotonic_residual_decrease"], true);
     assert_eq!(
         run_log["convergence_samples"].as_sequence().unwrap().len(),
         2
@@ -169,7 +174,7 @@ fn import_manufacturing_metadata_applies_solver_convergence_rows() {
 
     let manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(manifest_output).unwrap()).unwrap();
-    assert_eq!(manifest["schema_version"], "0.39.0");
+    assert_eq!(manifest["schema_version"], "0.40.0");
     assert_eq!(
         manifest["rows"][2]["board_field"],
         "controlled_impedance.solver_run_logs[].convergence_samples[]"

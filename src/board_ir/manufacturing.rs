@@ -277,6 +277,8 @@ pub struct ControlledImpedanceSolverRunLog {
     #[serde(default)]
     pub required_stopping_criteria: Option<String>,
     #[serde(default)]
+    pub require_monotonic_residual_decrease: Option<bool>,
+    #[serde(default)]
     pub convergence_samples: Vec<ControlledImpedanceSolverConvergenceSample>,
 }
 

@@ -130,6 +130,12 @@ pub(super) fn applied_controlled_impedance_solver_run_log(
         })
         .transpose()?,
         required_stopping_criteria: optional_raw_column(row, "required_stopping_criteria"),
+        require_monotonic_residual_decrease: optional_raw_column(
+            row,
+            "require_monotonic_residual_decrease",
+        )
+        .map(|value| parse_bool(&value, path, row, "require_monotonic_residual_decrease"))
+        .transpose()?,
     })
 }
 
@@ -342,6 +348,18 @@ fn parse_nonnegative_number(
         );
     }
     Ok(value)
+}
+
+fn parse_bool(raw: &str, path: &Path, row: &MetadataCsvRow, column: &str) -> Result<bool> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "true" | "yes" | "1" => Ok(true),
+        "false" | "no" | "0" => Ok(false),
+        _ => bail!(
+            "Manufacturing metadata CSV {} row {} controlled_impedance_solver_run_log {column} must be true/false, yes/no, or 1/0.",
+            path.display(),
+            row.row_number
+        ),
+    }
 }
 
 fn required_positive_number(

@@ -194,7 +194,9 @@ If that reviewed run-log row declares `min_convergence_sample_count`,
 `max_convergence_impedance_delta_ohm`, and `required_stopping_criteria`,
 validation also requires matching convergence samples whose stopping criteria,
 solved impedance, residual error, and iteration remain inside the reviewed
-run-log limits.
+run-log limits. If the row also sets
+`require_monotonic_residual_decrease`, those reviewed convergence samples must
+show non-increasing residual error when sorted by iteration.
 When any input-deck column is present, validation requires complete input-deck
 provenance and checks that the reviewed input setup matches the solver-result
 setup. Declaring any copper roughness column requires complete reviewed
@@ -228,7 +230,10 @@ Repeated `field=controlled_impedance_solver_run_log` rows require `name`,
 `max_rerun_impedance_delta_ohm` columns declare a deterministic rerun policy.
 Optional `min_convergence_sample_count`,
 `max_convergence_impedance_delta_ohm`, and `required_stopping_criteria`
-columns declare a convergence-window policy.
+columns declare a convergence-window policy. Optional
+`require_monotonic_residual_decrease` accepts `true`/`false`, `yes`/`no`, or
+`1`/`0` and requires the convergence sample residual trend to be
+non-increasing by iteration when true.
 Repeated `field=controlled_impedance_solver_rerun` rows require
 `solver_run_log`, `name`, `source`, `run_id`, `artifact_uri`,
 `artifact_sha256`, `random_seed`, `solved_impedance_ohm`, `residual_error`,

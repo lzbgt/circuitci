@@ -1161,6 +1161,11 @@ fn controlled_impedance_solver_run_log_mapping(
         "required_stopping_criteria",
         &run_log.required_stopping_criteria,
     );
+    insert_optional_bool(
+        &mut mapping,
+        "require_monotonic_residual_decrease",
+        run_log.require_monotonic_residual_decrease,
+    );
     mapping
 }
 
@@ -1377,6 +1382,12 @@ fn insert_optional_number<T: Serialize>(
             key.to_string(),
             serde_yaml_ng::to_value(value).unwrap_or(Value::Null),
         );
+    }
+}
+
+fn insert_optional_bool(mapping: &mut BTreeMap<String, Value>, key: &str, value: Option<bool>) {
+    if let Some(value) = value {
+        mapping.insert(key.to_string(), Value::Bool(value));
     }
 }
 

@@ -201,6 +201,7 @@ board:
           min_convergence_sample_count: 2
           max_convergence_impedance_delta_ohm: 0.04
           required_stopping_criteria: residual_and_delta
+          require_monotonic_residual_decrease: true
           reruns:
             - name: rf_solver_rerun_a
               source: si_solver_rerun_review_rev_a
