@@ -167,6 +167,12 @@ only writes display positions for the labels that are currently visible.
 | `ValidationReport` | `reports` | Final pass/fail result and serialized finding set. |
 | `BoardYamlRepairReport` | `repair_yaml` | Agent-facing patch-and-rerun proof for supported Board IR YAML repairs, currently `INVALID_POWER_DOMAIN` net-kind correction, `NET_NOT_FOUND` net creation, `PIN_NOT_DECLARED` stray-pin removal, and metadata-proven `REQUIRED_PIN_FLOATING` pin connection on a copied project. |
 
+`src/board_ir/mod.rs` owns the root project, schematic, runtime, layout,
+component, net, scenario, and loader types. `src/board_ir/manufacturing.rs`
+owns Board IR manufacturing metadata types, including controlled-impedance
+targets/coupons/solver evidence and thermal policy/measurement metadata, while
+`board_ir` re-exports those types so existing public paths remain stable.
+
 Binding diagnostics such as `MODEL_NOT_FOUND` and `PIN_NOT_DECLARED` are report
 findings. Rule implementations should rely on `BoundBoard` rather than
 duplicating library binding checks.
