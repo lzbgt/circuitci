@@ -1295,6 +1295,16 @@ pub struct AnalogTransientAnalysis {
     pub fourier_output_expression: Option<String>,
     #[serde(default)]
     pub fourier_harmonics: Option<u32>,
+    #[serde(default)]
+    pub measure_mode: Option<String>,
+    #[serde(default)]
+    pub measure_statements: Vec<AnalogMeasureStatement>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogMeasureStatement {
+    pub name: String,
+    pub statement: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

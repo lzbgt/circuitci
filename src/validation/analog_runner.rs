@@ -1379,6 +1379,7 @@ pub(super) enum AnalogRuntimeFeature {
     PoleZero,
     Sensitivity,
     Fourier,
+    Measure,
 }
 
 impl AnalogRuntimeFeature {

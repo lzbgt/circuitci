@@ -178,6 +178,7 @@ Canonical executable check IDs:
 - `SPICE_POLE_ZERO_ANALYSIS`
 - `SPICE_SENSITIVITY_ANALYSIS`
 - `SPICE_FOURIER_ANALYSIS`
+- `SPICE_MEASURE_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
 automatic critical finding emitted by `SPICE_TRANSIENT_ANALYSIS` when generated

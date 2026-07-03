@@ -182,6 +182,16 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
   unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
   with planning evidence for this path.
+- `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for ngspice
+  `.MEASURE` scalar extraction from transient or AC runs. The Board IR/schema
+  can declare `analysis.type: measure`, `measure_mode`, and reviewed
+  `measure_statements[]`. External `ngspice` runs write `measure_raw.txt`,
+  `measure_summary.csv`, and `solver_manifest.json`; the normalized summary
+  records measurement name, mode, scalar value, and raw solver line. Opt-in
+  real-ngspice conformance coverage is available through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; it skips
+  unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
+  with planning evidence for this path.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

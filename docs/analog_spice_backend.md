@@ -64,7 +64,9 @@ contract for `.PZ` pole and zero extraction. An `analog_sensitivity` scenario
 owns a DC or AC output-variable sensitivity contract with optional ngspice
 parameter filters for `.SENS` exports. An `analog_fourier` scenario owns a
 transient-backed `.FOUR` harmonic extraction contract for a bound output
-expression and fundamental frequency.
+expression and fundamental frequency. An `analog_measure` scenario owns
+reviewed ngspice `.MEASURE` scalar extraction statements for transient or AC
+results.
 
 Required fields:
 
@@ -85,7 +87,11 @@ Required fields:
   `sensitivity_filters`, and AC frequency fields when `sensitivity_mode: ac`.
   Fourier contracts use `type: fourier`, transient `stop_time_us` and
   `max_step_us`, `fourier_fundamental_frequency_hz`,
-  `fourier_output_expression`, and optional `fourier_harmonics`.
+  `fourier_output_expression`, and optional `fourier_harmonics`. Measurement
+  contracts use `type: measure`, `measure_mode: tran|ac`, and
+  `measure_statements[]`; transient measure mode uses `stop_time_us` and
+  `max_step_us`, while AC measure mode uses start/stop frequency and points per
+  decade.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -342,6 +348,28 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
    `PATH`.
 7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `fourier_summary` contract.
+
+For a scenario with check `SPICE_MEASURE_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: measure`, `measure_mode: tran|ac`, and at least one
+   named `measure_statements[]` item.
+3. Each statement must be a single-line ngspice `meas`/`.meas` command whose
+   mode and result name match the declared metadata. Voltage/current references
+   in the statement must bind to declared scenario nodes/components.
+4. Transient mode requires positive finite `stop_time_us` and `max_step_us`.
+   AC mode requires valid start/stop frequency and points per decade.
+5. External `ngspice` writes `circuitci_ngspice_measure.cir`,
+   `ngspice_measure.log`, `measure_raw.txt`, `measure_summary.csv`, and
+   `solver_manifest.json`. The normalized summary records measurement name,
+   mode, scalar value, and raw solver line.
+6. Opt-in real-ngspice conformance coverage is available through
+   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; the
+   test is skipped by default unless the variable is set and `ngspice` is on
+   `PATH`.
+7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+   until those adapters emit the same normalized `measure_summary` contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical
