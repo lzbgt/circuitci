@@ -1,0 +1,381 @@
+<head>
+<title>Qucs-S: Qucs with SPICE</title>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+</head>
+
+<body>
+
+<center>
+<h1 id="top">Qucs-S: Qucs with SPICE</h2>
+</center>
+
+
+<table>
+<tr>
+<td valign="top" width=25%>
+<small>
+<h2>Download links</h2>
+
+The latest stable release is Qucs-S-26.1.1
+<ul>
+    <li>Quick reference guide as <a href=pdf/qucs_s_tutorial.pdf>PDF</a></li>
+    <li><a href=https://www.youtube.com/watch?v=90RaVy38DB8>Video tutorial</a> from Kasper Nielsen</li>
+	<Li>Source tarball:
+	<a href=https://github.com/ra3xdh/qucs_s/releases/download/26.1.1/qucs-s-26.1.1.tar.gz>
+	qucs-s-26.1.1.tar.gz
+        </a>
+	<li> <a href=https://github.com/ra3xdh/qucs_s>Github repository</a></li>
+    <li>Linux reporsitories for Debian, Ubuntu, Fedora, OpenSUSE.
+        Find packages for your distribution <a href=https://software.opensuse.org/download.html?project=home%3Ara3xdh&package=qucs-s>here</a>
+    </li>
+    <li><a href=https://github.com/ra3xdh/qucs_s/releases/download/25.2.0/Qucs-S-26.1.1-linux-x86_64.AppImage>AppImage</a> for other Linux distributions</li>
+	<li>Flatpak package at <a href=https://flathub.org/apps/io.github.ra3xdh.qucs_s>Flathub</a></li>
+    <li>FreeBSD using <a href=https://www.freshports.org/cad/qucs-s/>ports</a></li>
+	<li>Windows portable package:
+	<a href=https://github.com/ra3xdh/qucs_s/releases/download/26.1.1/Qucs-S-26.1.1-win64.zip>
+	Qucs-S-26.1.1-win64.zip
+	</a></li>
+	<li>Windows installer with Ngspice:
+	<a href=https://github.com/ra3xdh/qucs_s/releases/download/26.1.1/Qucs-S-26.1.1-win64-setup.exe>
+    Qucs-S-26.1.1-setup.exe</a></li>
+    <li>MacOS using homebrew: <a href=https://github.com/ra3xdh/homebrew-qucs-s>https://github.com/ra3xdh/homebrew-qucs-s</a></li>
+</ul>
+<a href=#inst>(Installation instructions...)</a>
+<h3>Contribution guide</h3>
+Qucs-S is open for everyone's contribution. See <a href=#cg>here</a> for contribution guide.
+<h3>Donations</h3>
+Qucs-S accepts donations using Boosty: <a href="https://boosty.to/qucs_s">https://boosty.to/qucs_s</a>
+</small>
+</td>
+
+<td valign="top" width=30%>
+<small>
+<h2>News</h2>
+
+<ul>
+	<li><i>April, 09, 2026</i> Qucs-S-26.1.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/26.1.0>Release notes and dowload link</a></li>
+	<li><i>September, 06, 2025</i> Qucs-S-25.2.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/25.2.0>Release notes and dowload link</a></li>
+	<li><i>February, 20, 2025</i> Qucs-S-25.1.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/25.1.0>Release notes and dowload link</a></li>
+	<li><i>October, 31, 2024</i> Qucs-S-24.4.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/24.4.0>Release notes and dowload link</a></li>
+	<li><i>July, 23, 2024</i> Qucs-S-24.3.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/24.3.0>Release notes and dowload link</a></li>
+	<li><i>March, 25, 2024</i> Qucs-S-24.2.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/24.2.0>Release notes and dowload link</a></li>
+	<li><i>February, 16, 2024</i> Qucs-S-24.1.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/24.1.0>Release notes and dowload link</a></li>
+	<li><i>October, 26, 2023</i> Qucs-S-2.1.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/2.1.0>Release notes and dowload link</a></li>
+	<li><i>August, 19, 2023</i> Qucs-S-2.0.0 is released! See
+	<a href=https://github.com/ra3xdh/qucs_s/releases/tag/2.0.0>Release notes and dowload link</a></li>
+	<li><i>June, 07, 2023</i> Qucs-S-1.1.0 is released!</li>
+	<li><i>April, 23, 2023</i> Qucs-S-1.0.2 is released!</li>
+	<li><i>February, 4, 2023</i> Qucs-S-1.0.1 is released!</li>
+	<li><i>October, 30, 2022</i> Qucs-S-1.0.0 is released!</li>
+	<li><i>July, 01, 2022</i> Qucs-S-0.0.24 is released!</li>
+	<li><i>February, 20, 2022</i> Qucs-S-0.0.23 is released! Application ported to Qt5.</li>
+	<li><i>January, 19, 2020</i> Qucs-S-0.0.22 is released!</li>
+	<li><i>October, 31, 2018</i> Qucs-S-0.0.21 is released!</li>
+	<li><i>June, 24, 2018</i> Added packages for Ubuntu 18.04<br></li>
+	<li><i>October, 31, 2017</i> Qucs-S-0.0.20 is released!</li>
+	<li><i>October, 25, 2017</i> Added packages for CentOS and Fedora<br></li>
+	<li><i>January, 26, 2017</i> Qucs-S 0.0.19 is released! The first stable release.</li>
+	<li><i>July 25, 2015</i> Qucs-S RC1 released.</li>
+</ul>
+</small>
+</td>
+<td valign="top">
+<small>
+<h2>Simulation example with Qucs-S and Ngspice</h2>
+<a href=ne5532.png><img src=ne5532.png width=500></a>
+<br>
+<a href="#scrnshots">(More screenshots...)</a>
+<h2>Support</h2>
+<ul>
+<li>Forum: <a href=https://github.com/ra3xdh/qucs_s/discussions>https://github.com/ra3xdh/qucs_s/discussions</a></li>
+<li>Bugtracker: <a href=https://github.com/ra3xdh/qucs_s/issues>https://github.com/ra3xdh/qucs_s/issues</a></li>
+</ul>
+<h2>Publications</h2>
+Qucs-S is also a research software. Check our <a href=#pub>publication list</a>.
+</small>
+</td>
+</tr>
+</table>
+
+<h2>What is Qucs-S?</h2>
+
+Qucs-S is a circuit simulation program based on<A href=http://qucs.github.io/>Qucs</A>
+circuit simulator. The "S" letter indicates SPICE. The purpose of the Qucs-S project is
+to use free circuit simulation kernels (Ngspice, Qucsator, Xyce) with the unified GUI based
+on Qt6 toolkit. It merges the power of SPICE and the simplicity of the Qucs GUI. Qucs-S is not
+a simulator by itself, but it requires to use an external simulation backend with it. Qucs-S
+allows to use the following open-source simulation kernels:
+
+<ul>
+	<li><A href=http://ngspice.org>Ngspice</A> is recommended to use.
+	Ngspice is powerful mixed-level/mixed-signal circuit simulator. The
+	most of industrial SPICE models are compatible with Ngspice. It has an
+	excellent simulation performance and powerful postprocessor.
+    Google Skywater 130nm PDK supports Ngspice.</li>
+	<li><A href=https://xyce.sandia.gov>XYCE</A> is a new SPICE-compatible
+	circuit simulator written by Sandia from the scratch. It supports basic
+	SPICE simulation types and has an advanced RF simulation features such
+	as Harmonic balance simulation. </li>
+    <li><A href=https://github.com/ra3xdh/qucsator_rf>QucsatorRF</A> for RF and microwave circuits design.
+    It provides advanced models for such devices microstrip lines and waveguides. QucsatorRF is not
+    SPICE compatible. The general purpose circuits simulation is also possible but not recommended. </li>
+	<li><A href=http://spiceopus.si>SpiceOpus</A> is developed by the Faculty of
+	Electrical Engineering of the Ljubljana University. It based on the
+	SPICE-3f5 code</li>
+</ul>
+
+<h2 id="scrnshots">Screenshots</h2>
+
+<ul>
+<table>
+	<tr>
+	<td>
+	<li>NE5532 amplifier using SPICE model<br>
+	<A href="ne5532.png">
+	<img src="ne5532.png" width=450 alt="NE5532 amplifier"></a></li>
+        </td>
+	<td>
+	<li>JFET mixer
+	<br>
+	<a href=mixer.png>
+	<img src="mixer.png" width=450 alt="JFET mixer"></a></li>
+        </td>
+	</tr>
+	<tr>
+	<td>
+        <li>Single-ended tube amplifier<br>
+	<a href=tub.png>
+        <img src="tub.png" width=450 alt="Tube amplifier"></a></li>
+        </td>
+	<td>
+	<li>Hi-Fi bipolar transistor audio amplifier<br>
+	<a href=amp.png>
+	<img src="amp.png" width=450 alt="Hi-Fi transisitor amplifier"></a></li>
+	</td>
+        </tr>
+</table>
+</ul>
+
+<p>
+<a href=#top>(to top...)</a>
+
+
+<h2>Main features</h2>
+
+
+<ul>
+	<li>Basic and advanced simulation types: AC, DC, transient, S-parameter, FFT, distortion, pole-zero,
+    parametric sweep.</li>
+    <li>Advanced RF simulation with Qucsator RF backend;</li>
+    <li>Quick switching of the simulation kernel without application restart;</li>
+    <li>Tuner simulation mode</li>
+	<li>Direct support of SPICE models from components datasheets;</li>
+	<li>Basic SPICE components: RCL, BJT, MOSFET, JFET, MESFET, switches;</li>
+	<li>Advanced SPICE components: Equation-defined sources and RCLs, transmission lines;</li>
+	<li>Parametric circuits (.PARAM) and SPICE postrprocessor (Nutmeg)</li>
+	<li>Basic SPICE simulations: DC, AC, TRAN;</li>
+	<li>Advanced SPICE simulation: DISTO, NOISE, SENS (added in 0.0.20), Spectrum analysis;</li>
+	<li>Harmonic balance analysis with XYCE	and Qucsator RF backends;</li>
+	<li>Nutmeg script simulation: direct access to the SPICE code and
+	construct your own simulation;</li>
+	<li>XYCE script simulation type;</li>
+	<li>XYCE digital devices library;</li>
+</ul>
+
+<h2 id="inst">Installation</h2>
+
+<h3>Linux</h3>
+
+<h4>Binary packages</h4>
+
+The usage of binary packages is the preffered way to get Qucs-S.
+
+<ul>
+<li>
+The DEB and RPM packages for Qucs-S are prepared with openSUSE build service. Check the package for your distribution
+<a href=https://software.opensuse.org/download.html?project=home%3Ara3xdh&package=qucs-s>here</a> Then click on
+distribution icon and find the installation instructions. You may need to install <tt>ngspice</tt> manually.
+</li>
+<li>
+Arch and Manjaro users may install Qucs-S from <a href=https://aur.archlinux.org/packages/qucs-s>AUR</a>
+</li>
+<li>
+The packages for AltLinux are available from Sysyphus repository <a href=https://packages.altlinux.org/ru/sisyphus/srpms/qucs-s/>here</a>
+</li>
+</ul>
+
+<h4>AppImage for all Linux distributions</h4>
+
+<p>You can run Qucs-S on all Linux platforms using AppImage without building it from source. This way is preferrable, if there is
+no prebuilt package for your distribution and/or you have not root access to the machine. Otherwise it is recommneded to install
+the binary package from the repository (see the section above).
+
+<p>Download AppImage and make it executable, then run it from the console or your file manager. Please
+note that AppImage doesn't include Ngspice and you need to install it using system package manager.
+
+
+<h4>Building from source</h4>
+
+If binary packages are not available for your distrubution, then you will need
+to build Qucs-S from source:
+
+<ul>
+	<li>Install all necessary dependencies: Qt, C++ compilers, etc.</li>
+	<li>Install desired simulation backends: Ngspice, XYCE, SpiceOpus. You can use all
+        these backends together or only one of them. QucsatorRF backend is shipped with Qucs-S.</li>
+	<li>Download and unpack tarball</li>
+	<li>Use CMake to configure.</li>
+	<li>Invoke <tt>make</tt> and <tt>make install</tt></li>
+</ul>
+
+
+Refer to the README.md of the Qucs-S github <a href=https://github.com/ra3xdh/qucs_s>repository</a> for the recent build instructions.
+
+
+<h3>FreeBSD</h3>
+
+<p>
+Qucs could be installed on FreeBSD using ports or binary package.
+
+<ul>
+    <li>Execute the following command to install port:</li>
+    <p><tt>cd /usr/ports/cad/qucs-s/ && make install clean</tt>
+    <li>Use the following command to add the package:</li>
+    <p><tt>pkg install qucs-s</tt>
+</ul>
+
+<h3>Windows</h3>
+
+<p>Windows portable package could be downloaded as zipped distribution. Unpack and launch <tt>qucs-s.exe</tt>
+from bin subdirectory. Only 64-bit windows packages are available:
+
+<p>You need to download and install
+Ngspice and/or XYCE manually from official websites: <A	href=http://ngspice.org/>http://ngspice.org/</A>
+<A href=https://xyce.sandia.gov/>https://xyce.sandia.gov</A> respectively.
+
+<p>You may also use Windows installer. Launch the installer executable and follow the installation wizard guide.
+Windows installer includes both Ngspice and QucsatorRF simulation kernels. You may download and update simulation
+backends manually and specify the simulator paths in application settings.
+
+<h3>MacOS</h3>
+
+<p>Use homebrew to install Qucs-S. Run below command to install latest Qucs-S.
+
+
+<p><tt>brew install --cask ra3xdh/qucs-s/qucs-s@nightly</tt>
+
+
+
+
+
+<h3>Linux</h3>
+
+Run <tt>qucs-s</tt> from the the command line or launch Qucs-S icon in your desktop
+environment menu after the installation. Ngspice is set as the default simulation
+backend at the first run. You can change it later in the application settings.
+
+<h3>Windows</h3>
+
+<p>For portable package run the qucs-s.exe binary to launch application. You may create a desktop shortcut for it.
+
+<p>
+<a href=#top>(to top...)</a>
+
+<h2>Developers</h2>
+
+<p>Project founders:
+<ul>
+	<li>Vadim Kuznetsov <a href=mailto:ra3xdh@gmail.com>ra3xdh@gmail.com</a></li>
+	<li>Mike Brinson <a href=mailto:mbrin72043@yahoo.co.uk>mbrin72043@yahoo.co.uk</a></li>
+</ul>
+
+<p>See the full contributors list at the Github repository page: <a href=https://github.com/ra3xdh/qucs_s/graphs/contributors>https://github.com/ra3xdh/qucs_s/graphs/contributors</a>
+
+<h2 id=cg>Contribution guide</h2>
+
+<h3>Steps to contribute</h3>
+
+<p>Source code of the Qucs-S is hosted at the Github in the following repository:
+<a href=https://github.com/ra3xdh/qucs_s>https://github.com/ra3xdh/qucs_s</a>. You
+need to clone this repository if you wish to contribute.
+
+<p>
+<tt>
+	git clone https://github.com/ra3xdh/qucs_s<br>
+	cd qucs_s<br>
+	git checkout -b your_feature<br>
+</tt>
+
+Use CMake to compile Qucs-S. After you make changes, prepare a
+pull request to Qucs-S repository.
+
+<h3>Branching model</h3>
+
+Currently there are two main branches in Qucs-S repository:
+
+<ul>
+	<li><tt>master</tt> reflects the state of the latest Qucs-S release. </li>
+	<li><tt>current</tt> is development branch. Use this branch to target patches. </li>
+    <li><a href=https://github.com/ra3xdh/qucsator_rf>QucsatorRF</a> repository hosts
+    the RF simulation backend code. It has a separate release system.</li>
+</ul>
+
+
+<h3>Build instruction (development branches)</h3>
+
+Refer to the README.md of the Qucs-S github <a href=https://github.com/ra3xdh/qucs_s>repository</a> for the recent build instructions.
+
+<a href=#top>(to top...)</a>
+
+<h2 id=docs>Documentation</h2>
+
+
+<ul>
+	<li>Presentation at the
+	<a href=http://www.mos-ak.org/lausanne_2016/presentations/T04_Brinson_MOS-AK_Lausanne_2016.pdf>
+        Spring MOS-AK 2016</a> at Lausanne</li>
+	<li>Presentation at the
+	<a href=http://www.mos-ak.org/lausanne_2017/presentations/T03_Kuznetsov_MOS-AK_DATE_2017.pdf>
+        Spring MOS-AK 2017</a> at Lausanne</li>
+<li>Presentation at the MIXDES2017 conference: <a href=https://www.researchgate.net/publication/318099550_An_outline_of_Qucs-S_compact_device_modelling_History_and_capabilities_Part_1_Equation-Defined_Device_EDD_modelling_to_Verilog-A_module_synthesis>Part 1</a> and <a href=https://www.researchgate.net/publication/318099462_An_outline_of_Qucs-S_compact_device_modelling_History_and_capabilities_Part_2_XSPICE_Code_Models_basic_properties_to_model_synthesis_and_beyond>Part 2</a></li>
+</ul>
+
+<h2 id=pub>Publications</h2>
+
+Qucs-S is not a simple circuit simulator, but also a research software. Please
+cite our articles, if you are using Qucs-S in your research.
+
+<h3>Journal articles</h3>
+
+<ol>
+	<li>Kuznetsov, V. Improved Jiles–Atherton Magnetic Core Model and Its SPICE Implementation. Electronics 2026, 15, 1009. <a href=https://doi.org/10.3390/electronics15051009>https://doi.org/10.3390/electronics15051009</a> </li>
+	<li>Ryzhov, S.; Kuznetsov, V.; Andreev, V. Corner Simulation of CMOS Analog Integrated Circuit Taking into Account Radiation Influence. Micromachines 2026, 17, 300. <a href=https://doi.org/10.3390/mi17030300>https://doi.org/10.3390/mi17030300</a> </li>
+	<li>Kuznetsov, V.; Andreev, D.; Andreev, V.; Piskunov, S.; Popov, A.I. The Compact Model Synthesis for the RADFET Device. Technologies 2025, 13, 492. <a href=https://doi.org/10.3390/technologies13110492>https://doi.org/10.3390/technologies13110492</a> </li>
+	<li>Kuznetsov, V. Microstrip Line Modeling Taking into Account Dispersion Using a General-Purpose SPICE Simulator. J. Low Power Electron. Appl. 2025, 15, 42. <a href=https://doi.org/10.3390/jlpea15030042>https://doi.org/10.3390/jlpea15030042</a> </li>
+	<li>Brinson, M. E., and Kuznetsov, V. (2016) A new approach to compact semiconductor device modelling with Qucs Verilog-A analogue module synthesis. Int. J. Numer. Model., 29: 1070-1088. (<a href=ijnm.bib>BibTeX</a>)</li>
+	<li>M. Brinson and V. Kuznetsov, "Extended behavioural device modelling and circuit simulation with Qucs-S" International Journal of Electronics, 2017, pp.1 - 14
+	(<a href=qucs_ije.bib>BibTeX</a>)</li>
+
+</ol>
+
+<h3>Conference papers</h3>
+
+<ol>
+	<li>V. V. Kuznetsov, V. V. Andreev and S. A. Lomakin, "Semiconductor Device Compact Simulation Taking Into Account the ESD Effect and Using the Free Circuit Simulation Software," 2025 7th International Youth Conference on Radio Electronics, Electrical and Power Engineering (REEPE), Moscow, Russian Federation, 2025, pp. 1-5, doi: <a href=https://doi.org/10.1109/REEPE63962.2025.10970809>10.1109/REEPE63962.2025.10970809</a></li>
+	<li>D. Tomaszewski, G. Głuszko, M. Brinson, V. Kuznetsov and W. Grabinski, "FOSS as an efficient tool for extraction of MOSFET compact model parameters," 2016 MIXDES - 23rd International Conference Mixed Design of Integrated Circuits and Systems, Lodz, 2016, pp. 68-73.  (<a href=foss_mixdes.bib>BibTeX</a>)</li>
+	<li>M. Brinson and V. Kuznetsov, "Qucs-0.0.19S: A new open-source circuit simulator and its application for hardware design," 2016 International Siberian Conference on Control and Communications (SIBCON), Moscow, 2016, pp. 1-5.  (<a href=qucs_sibcon.bib>BibTeX</a>)</li>
+	<li>M. Brinson and V. Kuznetsov, "Improvements in Qucs-S equation-defined modelling of semiconductor devices and IC's," 2017 MIXDES - 24th International Conference "Mixed Design of Integrated Circuits and Systems, Bydgoszcz, 2017, pp. 137-142.
+	(<a href=qucs_s_mixdes.bib>BibTeX</a>)</li>
+</ol>
+
+
+</body>
+

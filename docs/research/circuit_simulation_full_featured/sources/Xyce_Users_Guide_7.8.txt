@@ -1,0 +1,1150 @@
+SANDIA REPORT
+SAND2023-13274
+Printed November 2023
+Prepared by
+Sandia National Laboratories
+Albuquerque, New Mexico 87185
+Livermore, California 94550
+Xyce
+™
+Parallel Electronic Simulator
+Users’ Guide, Version 7.8
+Eric R. Keiter, Richard L. Schiek, Heidi K. Thornquist,
+Ting Mei, Jason C. Verley, Karthik V. Aadithya,
+Joshua D. Schickling, Gary L. Hennigan
+
+Issued by Sandia National Laboratories, operated for the United States Department of Energy by National Technology &
+Engineering Solutions of Sandia, LLC.
+NOTICE:This report was prepared as an account of work sponsored by an agency of the United States Government. Neither the
+United States Government, nor any agency thereof, nor any of their employees, nor any of their contractors, subcontractors, or their
+employees, makeany warranty, express orimplied, or assume anylegal liability orresponsibility for the accuracy,completeness, or
+usefulness of any information, apparatus, product, or process disclosed, or represent that its use would not infringe privately owned
+rights. Reference herein to any specific commercial product, process, or service by trade name, trademark, manufacturer, or
+otherwise, does not necessarily constitute or imply its endorsement, recommendation, or favoring by the United States
+Government, any agency thereof, or any of their contractors or subcontractors. The views and opinions expressed herein do not
+necessarily state or reflect those of the United States Government, any agency thereof, or any of their contractors.
+Printed in the United States of America. This report has been reproduced directly from the best available copy.
+Available to DOE and DOE contractors from
+U.S. Department of Energy
+Office of Scientific and Technical Information
+P.O. Box 62
+Oak Ridge, TN 37831
+Telephone: (865) 576-8401
+Facsimile: (865) 576-5728
+E-Mail: reports@osti.gov
+Online ordering: http://www.osti.gov/scitech
+Available to the public from
+U.S. Department of Commerce
+National Technical Information Service
+5301 Shawnee Road
+Alexandria, VA 22312
+Telephone: (800) 553-6847
+Facsimile: (703) 605-6900
+E-Mail: orders@ntis.gov
+Online order: https://classic.ntis.gov/help/order-methods
+DEPARTMENT OF ENERGY
+• •UNITEDSTATES OF AMERICA
+2
+
+ABSTRACT
+This manual describes the use of the Xyce Parallel Electronic Simulator. Xyce has been designed as a
+SPICE-compatible, high-performance analog circuit simulator, and has been written to support the
+simulation needs of the Sandia National Laboratories electrical designers. This development has focused on
+improving capability over the current state-of-the-art in the following areas:
+•Capability to solve extremely large circuit problems by supporting large-scale parallel computing
+platforms (up to thousands of processors). This includes support for most popular parallel and serial
+computers.
+•A differential-algebraic-equation (DAE) formulation, which better isolates the device model package
+from solver algorithms. This allows one to develop new types of analysis without requiring the
+implementation of analysis-specific device models.
+•Device models that are specifically tailored to meet Sandia’s needs, including some radiation-aware
+devices (for Sandia users only).
+•Object-oriented code design and implementation using modern coding practices.
+Xyce is a parallel code in the most general sense of the phrase — a message passing parallel
+implementation — which allows it to run efficiently a wide range of computing platforms. These include
+serial, shared-memory and distributed-memory parallel platforms. Attention has been paid to the specific
+nature of circuit-simulation problems to ensure that optimal parallel efficiency is achieved as the number of
+processors grows.
+3
+
+ACKNOWLEDGMENTS
+We would like to acknowledge all the developers, DevOps engineers, and Scrum team members who have
+contributed to the Xyce project over the years: Aaron Gibson, Alan Lundin, Antonio Gonzales, Ashley
+Meek, Bart van Bloemen Waanders, Brad Bond, Brian Fett, Christina Warrender, David Baur, David
+Collins, David Day, David Shirley, Debbie Serna, Deborah Fixel, Derek Barnes, Eric Rankin, Erik Zeek,
+Herman "Buddy" Watts, Hue Lai, Jim Emery, Jonathan Woodbridge, Jonathen Kwok, Josh Smith, Keith
+Santarelli, Laura Boucheron, Lawrence Musson, Lon Waters, Mary Meinelt, Michael Skoufis, Mingyu
+"Genie" Hsieh, Nicholas Johnson, Peter Sholander, Philip Campbell, Rachel Campbell, Randall Lober,
+Rebecca Arnold, Regina Schells, Richard Drake, Robert Hoekstra, Roger Pawlowski, Russell Hooper,
+Samuel Browne, Scott Hutchinson, Simon Zou, Smitha Sam, Steven Verzi, Tamara Kolda, Thomas V.
+Russo, Timur Takhtaganov, and Todd Coffey.
+Also, thanks to for the original typesetting of this document in LATEX.
+Trademarks
+Xyce Electronic Simulator™ and Xyce™ are trademarks of National Technology & Engineering Solutions
+of Sandia, LLC (NTESS).
+Contact Information
+Address Electrical Models & Simulation Dept.
+Sandia National Laboratories
+P.O. Box 5800, MS 1177
+Albuquerque, NM 87185-1177
+Outside Sandia
+World Wide Web http://xyce.sandia.gov
+Email xyce@sandia.gov
+Inside Sandia
+World Wide Web https://info-ng.sandia.gov/xyce/
+Email xyce-sandia@sandia.gov
+This document is copyright©2002-2023 National Technology &
+Engineering Solutions of Sandia, LLC.
+4
+
+CONTENTS
+1. Introduction 19
+1.1. Xyce Overview ................................................................. 20
+1.2. Xyce Capabilities................................................................ 20
+1.2.1. Support for Large-Scale Parallel Computing .................................. 20
+1.2.2. Differential-Algebraic Equation (DAE) formulation ............................ 20
+1.2.3. Device Model Support .................................................... 20
+1.3. Reference Guide ................................................................ 21
+1.4. How to Use this Guide ........................................................... 21
+1.4.0.1. Typographical conventions ........................................ 21
+2. Installing and Running Xyce 23
+2.1. Xyce Installation ................................................................ 24
+2.1.1. Postinstallation steps: PATH setting ......................................... 24
+2.2. Running Xyce .................................................................. 24
+2.2.1. Command Line Simulation................................................. 24
+2.2.1.1. Guidance for Running Xyce in Parallel .............................. 25
+2.2.2. Command Line Options ................................................... 26
+3. Simulation Examples with Xyce 29
+3.1. Example Circuit Construction ..................................................... 30
+3.1.0.1. Example: diode clipper circuit ..................................... 30
+3.2. DC Sweep Analysis.............................................................. 31
+3.2.0.1. Example: DC sweep analysis ...................................... 32
+3.3. Transient Analysis............................................................... 34
+3.3.0.1. Example: transient analysis ........................................ 34
+4. Netlist Basics 37
+4.1. General Overview ............................................................... 38
+4.1.1. Introduction ............................................................. 38
+4.1.2. Nodes .................................................................. 38
+4.1.2.1. Global Nodes ................................................... 39
+4.1.3. Elements ................................................................ 39
+4.1.3.1. Title, Comments and End ......................................... 40
+4.1.3.2. Continuation Lines............................................... 41
+4.1.3.3. Netlist Commands ............................................... 41
+4.1.3.4. Analog Devices ................................................. 41
+4.2. Devices Available for Simulation .................................................. 42
+4.3. Parameters and Expressions....................................................... 44
+4.3.1. Parameters .............................................................. 44
+4.3.2. How to Declare and Use Parameters ......................................... 44
+4.3.2.1. Example: Declaring a parameter.................................... 45
+5
+
+4.3.2.2. Example: Using a parameter in the circuit............................ 45
+4.3.3. Global Parameters ........................................................ 45
+4.3.4. Expressions ............................................................. 46
+4.3.4.1. Example: Using an expression ..................................... 46
+4.4. Device Multiplier M.............................................................. 47
+5. Working with Subcircuits and Models 49
+5.1. Model Definitions ............................................................... 50
+5.2. Subcircuit Creation .............................................................. 51
+5.2.1. Examples of Scoping for Parameters, Models and Functions ..................... 52
+5.3. Model Organization ............................................................. 54
+5.3.1. Model Libraries .......................................................... 54
+5.3.2. Model Library Configuration using.INCLUDE ................................ 54
+5.3.3. Model Library Configuration using.LIB ..................................... 55
+5.4. Subcircuit Multiplier M ........................................................... 56
+6. Analog Behavioral Modeling 59
+6.1. Overview of Analog Behavioral Modeling (ABM) .................................... 60
+6.2. Specifying ABM Devices......................................................... 60
+6.2.1. Additional constructs for use in ABM expressions ............................. 61
+6.2.2. Examples of Analog Behavioral Modeling.................................... 61
+6.2.2.1. Behavioral modeling with tables ................................... 62
+6.2.2.2. Behavioral modeling with splines................................... 63
+6.2.2.3. Automatically sparsifying tabular data............................... 64
+6.2.3. Alternate behavioral modeling sources ....................................... 64
+6.3. Guidance for ABM Use .......................................................... 64
+6.3.1. ABM devices add equations to the system of equations used by the solver.......... 64
+6.3.2. Expressions used in ABM devices must be valid for any possible input ............ 65
+6.3.3. Infinite slope transitions can cause convergence problems ....................... 66
+6.3.4. ABM devices should not be used purely for output postprocessing ................ 67
+6.3.5. ABM devices in frequency domain analysis................................... 68
+7. Analysis Types 69
+7.1. Introduction .................................................................... 70
+7.2. Steady-State (.DC) Analysis....................................................... 70
+7.2.1. .DC Statement ........................................................... 70
+7.2.2. Setting Up and Running a DC Sweep ........................................ 71
+7.2.3. OP Analysis ............................................................. 71
+7.2.4. Output .................................................................. 72
+7.3. Transient Analysis............................................................... 74
+7.3.1. .TRAN Statement ........................................................ 74
+7.3.2. Defining a Time-Dependent (transient) Source ................................ 74
+7.3.2.1. Overview of Source Elements...................................... 74
+7.3.2.2. Defining Transient Sources ........................................ 75
+7.3.3. Transient Time Steps...................................................... 75
+7.3.4. Time Integration Methods ................................................. 75
+7.3.5. Error Controls ........................................................... 76
+7.3.5.1. Local Truncation Error (LTE) Strategy .............................. 76
+6
+
+7.3.5.2. Non-LTE Strategy ............................................... 77
+7.3.6. Breakpoints ............................................................. 78
+7.3.7. Checkpointing and Restarting .............................................. 78
+7.3.7.1. Checkpointing Command Format................................... 78
+7.3.7.2. Restarting Command Format ...................................... 79
+7.3.8. Output .................................................................. 79
+7.4. STEP Parametric Analysis ........................................................ 81
+7.4.1. .STEP Statement ......................................................... 81
+7.4.2. Sweeping over a Device Instance Parameter................................... 81
+7.4.3. Sweeping over a Device Model Parameter .................................... 82
+7.4.4. Sweeping over Temperature ................................................ 84
+7.4.5. Special cases: Sweeping Independent Sources, Resistors, Capacitors and Inductors .. 84
+7.4.6. Output files.............................................................. 84
+7.5. Random Sampling Analysis ....................................................... 86
+7.5.1. .SAMPLING and .EMBEDDEDSAMPLING Statements........................ 86
+7.5.2. .options SAMPLES and EMBEDDEDSAMPLES Statements .................... 87
+7.5.3. Specifying Uncertain Inputs ................................................ 88
+7.5.3.1. Sampling a Device Instance Parameter .............................. 88
+7.5.3.2. Sampling a Device Model Parameter ................................ 88
+7.5.3.3. Sampling a User-Defined Parameter ................................ 88
+7.5.3.4. Sampling over Temperature........................................ 90
+7.5.3.5. Special cases: Sampling Independent Sources, Resistors, Capacitors and
+Inductors ....................................................... 90
+7.5.3.6. Sampling using random operators from expressions ................... 91
+7.5.3.7. Local and global variation......................................... 92
+7.5.4. Output files.............................................................. 92
+7.5.4.1. .SAMPLING output files ........................................... 92
+7.5.4.2. .EMBEDDEDSAMPLING output files .................................. 93
+7.5.5. Statistical Outputs ........................................................ 93
+7.5.6. Random Sampling and Running in Parallel ................................... 95
+7.5.6.1. .SAMPLING in Parallel ............................................ 95
+7.5.6.2. .EMBEDDEDSAMPLING in Parallel ................................... 95
+7.6. Polynomial Chaos Expansion (PCE) methods ........................................ 96
+7.6.1. Regression-based Polynomial Chaos......................................... 97
+7.6.2. Non-Intrusive Spectral Projection (NISP)..................................... 99
+7.6.3. Fully Intrusive Spectral Projection........................................... 102
+7.6.4. Comparing PCE methods: Gilbert Cell Mixer PCE example ..................... 104
+7.7. Harmonic Balance Analysis....................................................... 108
+7.7.1. .HB Statement ........................................................... 108
+7.7.2. HB Options ............................................................. 108
+7.7.2.1. Nonlinear Solver Options ......................................... 109
+7.7.2.2. Linear Solver Options ............................................ 109
+7.7.3. Output .................................................................. 110
+7.7.4. User Guidance ........................................................... 111
+7.8. AC Analysis .................................................................... 111
+7.8.1. .AC Statement ........................................................... 111
+7.8.2. AC Voltage and Current Sources ............................................ 111
+7
+
+7.8.3. Example ................................................................ 112
+7.8.3.1. Linear Solver Options ............................................ 112
+7.8.4. Output .................................................................. 113
+7.9. NOISE Analysis ................................................................ 114
+7.9.1. .NOISE Statement ........................................................ 115
+7.9.2. NOISE Voltage and Current Sources......................................... 115
+7.9.3. Examples ............................................................... 115
+7.9.4. Output .................................................................. 115
+7.9.5. Device Model Support .................................................... 117
+7.10. Sensitivity Analysis.............................................................. 120
+7.10.1. Steady-State (DC) sensitivities.............................................. 120
+7.10.2. Transient sensitivities ..................................................... 121
+7.10.2.1. Transient Direct Sensitivities ...................................... 121
+7.10.2.2. Transient Adjoint Sensitivities ..................................... 123
+7.10.3. AC Sensitivities .......................................................... 126
+7.10.4. Notes about .SENS accuracy and formulation ................................. 129
+7.10.4.1. Direct Sensivity ................................................. 129
+7.10.4.2. Adjoint Sensivity ................................................ 130
+7.10.4.3. Analytical vs Numerical derivatives................................. 130
+7.10.4.4. Time integration error ............................................ 130
+7.10.4.5. AC Sensitivities ................................................. 130
+7.10.5. Output .................................................................. 132
+7.11. S-parameter Analysis ............................................................ 134
+7.11.1. .LIN Statement........................................................... 134
+7.11.2. Port Devices ............................................................. 134
+7.11.3. Example ................................................................ 134
+7.11.4. Output .................................................................. 136
+8. Homotopy and Continuation Methods 139
+8.1. Continuation Algorithms Overview ................................................ 140
+8.1.1. Continuation Algorithms Available in Xyce ................................... 140
+8.2. Natural Parameter Continuation ................................................... 141
+8.2.1. Explanation of Parameters, Best Practice ..................................... 141
+8.2.2. Source Scaling Continuation ............................................... 142
+8.3. Natural Multiparameter Continuation ............................................... 144
+8.3.1. Explanation of Parameters, Best Practice ..................................... 144
+8.4. GMIN Stepping ................................................................. 145
+8.5. Source Stepping................................................................. 146
+8.6. MOSFET Continuation........................................................... 147
+8.6.1. Explanation of Parameters, Best Practice ..................................... 147
+8.7. Pseudo Transient ................................................................ 148
+8.7.1. Explanation of Parameters, Best Practice ..................................... 148
+8.8. Arc Length Continuation ......................................................... 149
+8.8.1. Explanation of Parameters, Best Practice ..................................... 149
+9. Results Output and Evaluation Options 151
+9.1. Control of Results Output......................................................... 152
+9.1.1. .PRINT Command........................................................ 152
+8
+
+9.1.2. Additional Output Options ................................................. 157
+9.1.2.1. Output Intervals ................................................. 157
+9.1.2.2. Suppressing output file header and footer ............................ 157
+9.1.2.3. Outputting all solution variables to file .............................. 158
+9.1.3. Output File Redirection.................................................... 158
+9.1.3.1. -r Output ....................................................... 158
+9.1.3.2. -o Output ....................................................... 159
+9.1.3.3. FILE= Qualifier on .PRINT Lines .................................. 159
+9.1.3.4. Multi-File Output for AC and HB Analysis........................... 160
+9.2. Output Analysis................................................................. 160
+9.2.1. .MEASURE ............................................................. 160
+9.2.2. .FOUR ................................................................. 164
+9.2.3. .FFT ................................................................... 166
+9.3. Graphical Display of Solution Results .............................................. 167
+10.Circuit Diagnostics and Troubleshooting 169
+10.1. Diagnostic Output ............................................................... 170
+10.1.1. Introduction ............................................................. 170
+10.1.2. Enabling Diagnostic Output ................................................ 170
+10.1.3. DC Operating Point Information ............................................ 171
+10.1.4. Extrema Output .......................................................... 171
+10.1.5. Voltage and Current Output ................................................ 173
+10.1.6. Discontinuity Output...................................................... 174
+11.Guidance for Running Xyce in Parallel 177
+11.1. Introduction .................................................................... 178
+11.2. Processor Affinity on Linux systems................................................ 178
+11.2.1. Default OpenMPI Behavior with Processor Affinity Support ..................... 178
+11.2.2. Why You Have to Know About This ......................................... 178
+11.2.3. Affected Systems ......................................................... 179
+11.2.4. mpirun Command Line Options to Change Default Behavior .................... 179
+11.3. Problem Size ................................................................... 180
+11.3.1. Ideal Problem Size........................................................ 180
+11.3.2. Smallest Possible Problem Size ............................................. 180
+11.4. Linear Solver Options ............................................................ 181
+11.4.1. KLU ................................................................... 182
+11.4.2. KSparse................................................................. 182
+11.4.3. SuperLU and SuperLU DIST ............................................... 182
+11.4.4. AztecOO................................................................ 183
+11.4.4.1. Common AztecOO Warnings ...................................... 183
+11.4.5. Belos ................................................................... 184
+11.4.6. Preconditioning Options ................................................... 185
+11.4.7. ShyLU.................................................................. 186
+11.5. Transformation Options .......................................................... 186
+11.5.1. Removing Dense Rows and Columns ........................................ 186
+11.5.2. Reordering the Linear System .............................................. 187
+11.5.3. Partitioning the Linear System .............................................. 187
+11.5.4. Permuting the Linear System to Block Triangular Form......................... 188
+9
+
+11.6. Device Distribution Options ...................................................... 188
+12.Handling Power Node Parasitics 191
+12.1. Power Node Parasitics............................................................ 192
+12.2. Two Level Algorithms Overview................................................... 192
+12.3. Examples ...................................................................... 193
+12.3.1. Explanation and Guidance ................................................. 193
+12.4. Restart ........................................................................ 195
+13.Specifying Initial Conditions 197
+13.1. Initial Conditions Overview ....................................................... 198
+13.2. Device Level IC= Specification .................................................... 199
+13.3. .IC and .DCVOLT Initial Condition Statements ...................................... 200
+13.3.1. Syntax .................................................................. 200
+13.3.2. Example ................................................................ 200
+13.4. .NODESET Initial Condition Statements ............................................ 201
+13.4.1. Syntax .................................................................. 201
+13.4.2. Example ................................................................ 201
+13.5. .SAVE Statements ............................................................... 202
+13.6. UIC and NOOP ................................................................. 203
+13.6.1. Example ................................................................ 203
+14.Working with .PREPROCESS Commands 205
+14.1. Introduction .................................................................... 206
+14.2. Ground Synonym Replacement .................................................... 206
+14.3. Removal of Unused Components................................................... 208
+14.4. Adding Resistors to Dangling Nodes ............................................... 210
+15.TCAD (PDE Device) Simulation with Xyce 217
+15.1. Introduction .................................................................... 218
+15.1.1. Equations ............................................................... 218
+15.1.1.1. Poisson equation................................................. 218
+15.1.1.2. Species continuity equations ....................................... 218
+15.1.2. Discretization ............................................................ 219
+15.2. One Dimensional Example........................................................ 219
+15.2.1. Netlist Explanation ....................................................... 219
+15.2.2. Boundary Conditions and Doping Profile ..................................... 221
+15.2.3. Results ................................................................. 221
+15.3. Two-Dimensional Example ....................................................... 221
+15.3.1. Netlist Explanation ....................................................... 222
+15.3.2. Doping Profile ........................................................... 224
+15.3.3. Boundary Conditions and Electrode Configuration ............................. 224
+15.3.4. Results ................................................................. 225
+15.4. Doping Profile .................................................................. 225
+15.4.1. Manually Specifying the Doping ............................................ 225
+15.4.2. Default Doping Profiles ................................................... 229
+15.4.2.1. One-Dimensional Case ........................................... 229
+15.4.2.2. Two-Dimensional Case ........................................... 229
+10
+
+15.5. Electrodes...................................................................... 231
+15.5.1. Electrode Specification .................................................... 231
+15.5.1.1. Boundary Conditions ............................................. 231
+15.5.1.2. Electrode Material ............................................... 231
+15.5.1.3. Location Parameters.............................................. 232
+15.5.2. Electrode Defaults ........................................................ 232
+15.5.2.1. Location Parameters.............................................. 234
+15.6. Meshes ........................................................................ 234
+15.7. Cylindrical meshes .............................................................. 234
+15.8. Mobility Models ................................................................ 234
+15.9. Bulk Materials.................................................................. 235
+15.10.Output and Visualization ......................................................... 235
+15.10.1.Using the.PRINT Command ............................................... 235
+15.10.2.Multidimensional Plots .................................................... 235
+15.10.2.1.Tecplot Data .................................................... 236
+15.10.2.2.Gnuplot Data.................................................... 236
+15.10.3.Additional Text Data ...................................................... 236
+Bibliography 239
+Appendices 243
+A. Third Party Licenses 243
+Index 259
+Distribution List 263
+11
+
+This page intentionally left blank.
+12
+
+LIST OF FIGURES
+Figure 3-1. Schematic of diode clipper circuit with DC and transient voltage sources. ............ 30
+Figure 3-2. Diode clipper circuit netlist................................................... 31
+Figure 3-3. DC sweep voltages at Vin, node 2, and Vout..................................... 32
+Figure 3-4. Diode clipper circuit netlist for DC sweep analysis ............................... 33
+Figure 3-5. Diode clipper circuit netlist for transient analysis................................. 35
+Figure 3-6. Sinusoidal input signal and clipped outputs ..................................... 36
+Figure 5-1. Example subcircuit model. ................................................... 51
+Figure 5-2. Example subcircuit hierarchy, with scoping. ..................................... 52
+Figure 5-3. Example subcircuit, with parameter definition override. ........................... 53
+Figure 5-4. Example subcircuit, with PARAMS arguments. .................................. 53
+Figure 5-5. Example subcircuit using a multiplier........................................... 56
+Figure 5-6. Example nested subcircuits using a multiplier. ................................... 56
+Figure 5-7. Examplenestedsubcircuitsusingamultiplier,whereamultiplierissetwithanexpression. 57
+Figure 5-8. Example of Mbeing used as a subcircuit multiplier and a user-defined parameter. ...... 57
+Figure 7-1. Diode clipper circuit netlist for DC sweep analysis. ............................... 71
+Figure 7-2. DC sweep voltages at Vin, node 2 and Vout...................................... 72
+Figure 7-3. Diode clipper circuit netlist for step transient analysis ............................. 82
+Figure 7-4. Diode clipper circuit netlist for 2-step transient analysis ........................... 83
+Figure 7-5. Voltage divider circuit netlist with sampling of a device instance parameter. Sampling
+commands are in red. ....................................................... 88
+Figure 7-6. Diodeclippercircuitnetlistwithsamplinganalysis.Thisexampleusesamodelparam-
+eter as one of the sampling parameters. Sampling commands are in red. ............. 89
+Figure 7-7. Voltagedividercircuitnetlistwithsamplingofaglobalparameter.Samplingcommands
+areinred.Thiscircuitwillalsoworkifthe .global_paramstatementsarechangedto
+.param. .................................................................. 90
+Figure 7-8. Voltage divider circuit netlist using random expression operators. .................. 91
+Figure 7-9. Typical statistical outputs for figure 7-5......................................... 94
+Figure 7-10. Typical statistical outputs for figure 7-6......................................... 94
+Figure 7-11. Voltage divider regression PCE netlist. The sampling-related commands are in red. ... 98
+Figure 7-12. Voltage divider regression PCE result. There are 3 sets of statistics in this ouptut. The
+first set is computed from the 12 LHS sample points. As this is a PCE calculation, the
+number of points is small and so the statistics based on them are probably not very
+accurate. The second set is computed from the PCE approximation, which are purely
+analytical.Thethirdsetisfromrunning1000samplesonthePCEapproximation.This
+output is enabled byresample=true. ......................................... 98
+Figure 7-13. CMOS Inverter Non-intrusive Spectral Projection (NISP) netlist. The NISP-related
+commands are in red. ....................................................... 100
+Figure 7-14. CMOS Inverter NISP Output ................................................. 101
+Figure 7-15. Diode clipper fully intrusive PCE netlist. The PCE-related commands are in red. ..... 102
+Figure 7-16. Diode clipper fully intrusive PCE Output ....................................... 103
+13
+
+Figure 7-17. Gilbert cell mixer schematic .................................................. 104
+Figure 7-18. Gilbert Cell Non-Instrusive Spectral Project (NISP) netlist. UQ commands are in red,
+and NISP is specified using theprojection_pceparameter. ..................... 106
+Figure 7-19. Gilbert Cell Mixer Output for several Xyce embedded UQ methods ................. 107
+Figure 7-20. AC Example Netlist ......................................................... 112
+Figure 7-21. Noise Example Netlist With Decade Sweep ..................................... 116
+Figure 7-22. Noise Example Netlist With .Data Statement .................................... 116
+Figure 7-23. Noise Example: Use of DNI and DNO Operators ................................ 118
+Figure 7-24. Example Output for -noise_names_file Command Line Option ..................... 119
+Figure 7-25. Steady-State Sensitivity Example Netlist........................................ 120
+Figure 7-26. Direct Transient Sensitivity Example Netlist .................................... 121
+Figure 7-27. Transient direct sensitivity result .............................................. 122
+Figure 7-28. Adjoint Transient Sensitivity Example Netlist ................................... 123
+Figure 7-29. Transient adjoint sensitivity result ............................................. 124
+Figure 7-30. Adjoint Transient Sensitivity Example Netlist for list of time points ................. 125
+Figure 7-31. AC Sensitivity Example Netlist ............................................... 127
+Figure 7-32. AC Sensitivity Example Result................................................ 127
+Figure 7-33. AC Sensitivity Example Netlist, using expression-based objective function ........... 128
+Figure 7-34. AC Sensitivity Example Result................................................ 128
+Figure 7-35. S-parameter Example Netlist ................................................. 135
+Figure 8-1. Example natural parameter continuation netlist .................................. 141
+Figure 8-2. Example natural parameter continuation netlist .................................. 143
+Figure 8-3. Example multiparameter continuation netlist .................................... 144
+Figure 8-4. Example GMIN stepping netlist. .............................................. 145
+Figure 8-5. Example source stepping netlist................................................ 146
+Figure 8-6. MOSFET continuation netlist example.......................................... 147
+Figure 8-7. Pseudo transient solver options example......................................... 148
+Figure 8-8. Arclength continuation example. .............................................. 149
+Figure 8-9. Arclength continuation example result. ........................................ 150
+Figure 9-1. TecPlot plot of diode clipper circuit transient response from Xyce.prnfile. .......... 167
+Figure 10-1. Basic diagnostic option line .................................................. 170
+Figure 10-2. Sample use of the diagnostic EXTREMALIMIT ................................. 172
+Figure 10-3. Example circuit with an intentional discontinuity ................................ 174
+Figure 12-1. Power node parasitics example. ............................................... 192
+Figure 12-2. Two-level top netlist example.................................................. 193
+Figure 12-3. Two-level inner netlist example. ............................................... 194
+Figure 13-1. Example result with and without an Initial Condition (IC).......................... 198
+Figure 13-2. Example netlist with device-level IC=. ......................................... 199
+Figure 13-3. Example netlist with.IC. .................................................... 200
+Figure 13-4. Example netlist with UIC..................................................... 203
+Figure 14-1. Example netlist –Gndtreated differentfrom node0. .............................. 206
+Figure 14-2. Circuit diagram corresponding to figure 14-1. ................................... 207
+Figure 14-3. Example netlist —Gndas a synonym for node0.................................. 207
+14
+
+Figure 14-4. Circuit diagram corresponding to figure 14-3. ................................... 207
+Figure 14-5. Netlist with a resistor with terminals both the same node........................... 208
+Figure 14-6. Circuit of figure 14-5. ....................................................... 208
+Figure 14-7. Circuit with an improperly connected voltage source. ............................. 209
+Figure 14-8. Circuit with an “unused” resistor R3 removed from the netlist. ..................... 209
+Figure 14-9. Circuit of figure 14-8. ....................................................... 211
+Figure 14-10. Netlist of circuit with two dangling nodes. ...................................... 211
+Figure 14-11. Schematic of netlist in figure 14-10............................................. 212
+Figure 14-12. Schematic with an incomplete connection. ...................................... 212
+Figure 14-13. Netlistofcircuitwithtwodanglingnodeswith .PREPROCESS ADDRESISTORS statements.213
+Figure 14-14. Output file resulting from.PREPROCESS ADDRESISTOR statements for figure 14-12. .. 214
+Figure 14-15. Schematic corresponding to figure 14-14. ....................................... 215
+Figure 15-1. One-dimensional diode netlist ................................................ 220
+Figure 15-2. Voltage regulator schematic .................................................. 220
+Figure 15-3. Results for voltage regulator .................................................. 222
+Figure 15-4. Two-dimensional BJT netlist.................................................. 223
+Figure 15-5. Two-dimensional BJT circuit schematic ........................................ 224
+Figure 15-6. Initial two-dimensional BJT result ............................................. 225
+Figure 15-7. Final two-dimensional BJT result. ............................................. 226
+Figure 15-8. I-V two-dimensional BJT result for the netlist in figure 15-4 ....................... 226
+Figure 15-9. One-dimensional example, with detailed doping ................................. 227
+Figure 15-10. Doping profile, absolute value ................................................ 228
+Figure 15-11. Two-dimensional example, with detailed doping and detailed electrodes. ............ 233
+Figure 15-12. Text output ................................................................ 237
+15
+
+This page intentionally left blank.
+16
+
+LIST OF TABLES
+Table 1-1. Xyce typographical conventions. ................................................ 21
+Table 2-1. List of Xyce command line arguments. ........................................... 26
+Table 4-1. Scaling factors................................................................ 40
+Table 4-2. Analog Device Quick Reference. ............................................... 42
+Table 4-2. Analog Device Quick Reference. ............................................... 43
+Table 4-3. Devices supporting multipliers ................................................. 47
+Table 7-1. Output generated for DC analysis ............................................... 73
+Table 7-2. Summary of Xyce-supported time-dependent sources .............................. 75
+Table 7-3. Summary of Xyce-supported time integration methods ............................. 76
+Table 7-4. Output generated for Transient analysis .......................................... 80
+Table 7-5. Output generated for HB analysis ............................................... 110
+Table 7-6. Output generated for AC analysis ............................................... 113
+Table 7-7. Output generated for NOISE analysis ............................................ 117
+Table 7-8. Output generated for SENS analysis for .TRAN.................................... 132
+Table 7-9. Output generated for SENS analysis for .AC....................................... 133
+Table 7-10. Output generated for transient adjoint SENS analysis ............................... 133
+Table 7-11. Output generated for .LIN analysis .............................................. 137
+Table 9-1. .PRINT Print Types ........................................................... 153
+Table 9-2. .PRINT command options. ..................................................... 154
+Table 9-3. .PRINT FORMAT options...................................................... 154
+Table 9-4. Pseudo Variables for Complex Output............................................ 155
+Table 11-1. Xyce Simulation Modes........................................................ 181
+Table 11-2. Xyce Default Linear Solver ..................................................... 182
+Table 11-3. KLU linear solver options. ..................................................... 182
+Table 11-4. AztecOO linear solver options................................................... 183
+Table 11-5. Belos linear solver options. ..................................................... 184
+Table 11-6. Preconditioner options. ........................................................ 185
+Table 11-7. ShyLU linear solver options..................................................... 186
+Table 11-8. Partitioning options............................................................ 187
+Table 11-9. Device Distribution options. .................................................... 188
+Table 14-1. Keywords and device types valid in a.PREPROCESS REMOVEUNUSED statement. ........ 209
+Table 14-1. Keywords and device types valid in a.PREPROCESS REMOVEUNUSED statement. ........ 210
+Table 15-1. Description of the flatx, flaty doping parameters ................................... 228
+Table 15-2. Default doping profiles for different numbers of electrodes .......................... 229
+Table 15-2. Default doping profiles for different numbers of electrodes .......................... 230
+Table 15-3. Electrode Material Options..................................................... 231
+17
+
+Table 15-3. Electrode Material Options..................................................... 232
+Table 15-4. Mobility models available for PDE devices ....................................... 235
+18
+
+1. INTRODUCTION
+Welcome toXyce
+™
+The Xyce™ Parallel Electronic Simulator is a SPICE-compatible [1] [2] circuit simulator that has been
+written to support the unique simulation needs of electrical designers at Sandia National Laboratories. It is
+specifically targeted to run on large-scale parallel computing platforms, but is also available on a variety of
+architectures including single processor workstations. It aims to support a variety of devices and models
+specific to Sandia needs, as well as standard capabilities available from current commercial simulators.
+19
+
+1.1. Xyce Overview
+The Xyce Parallel Electronic Simulator project was started in 1999 to support the simulation needs of
+electrical designers at Sandia National Laboratories and has evolved into a mature platform for large-scale
+circuit simulation.
+Xyce includes several unique features. An important driver has been the need to simulate very large-scale
+circuits (100,000 devices or more) on the transistor level. To this end, scalable algorithms for simulating
+large circuits in parallel have been developed. In addition Xyce includes novel approaches to numerical
+kernels including model-order reduction, continuation algorithms, time-integration, nonlinear and linear
+solvers. Also, unlike most SPICE-based codes, Xyce uses a differential-algebraic-equation (DAE)
+formulation, which better isolates the device model package from solver algorithms.
+1.2. Xyce Capabilities
+1.2.1. Support for Large-Scale Parallel Computing
+Xyce is a truly parallel simulation code, designed and written from the ground up to support large-scale
+parallel computing architectures with up to thousands of processors. This provides Xyce the capability to
+solve large circuit problems with quick enough runtimes to make these simulations practical. Xyce uses a
+message passing parallel implementation, allowing it to run efficiently on a variety of parallel computing
+platforms. These include serial, shared-memory and distributed-memory parallel. Careful attention has
+been paid to the specific nature of circuit-simulation problems to ensure optimal parallel efficiency, even as
+the number of processors increases.
+1.2.2. Differential-Algebraic Equation (DAE) formulation
+Xyce has been designed to use a DAE formulation. Among other advantages, this has the benefit of
+allowing the device models to be nearly independent of the type analysis to be performed, and allows a lot
+of encapsulation between the models and the solver layers of the source code. In a SPICE-based code, new
+device functions are created for each type of analysis, such as transient and AC analysis. With Xyce’s DAE
+implementation, this is not necessary. The same device load functions can be used for all analysis types,
+resulting in faster development time for new types of analysis.
+1.2.3. Device Model Support
+The Xyce development team continually adds new device models to Xyce to meet the needs of Sandia users.
+This includes the full set of models that can be found in most SPICE-based codes. For current device
+availability, consult The Xyce Reference Guide [3].
+20
+
+1.3. Reference Guide
+The Xyce User’s Guide companion document, the Xyce Reference Guide [3], contains detailed information
+including a netlist reference for Xyce-supported input-file commands and elements; a command line
+reference, which describes the available command line arguments; and quick-references for users of other
+circuit codes, such as Orcad’s PSpice [4].
+1.4. How to Use this Guide
+This guide is designed to enable one to quickly find the information needed to use Xyce. It assumes
+familiarity with basic Unix-type commands, and how Unix manages applications and files to perform
+routine tasks (e.g., starting applications, opening files, and saving work).
+1.4.0.1. Typographical conventions
+Table 1-1 defines the typographical conventions used in this guide.
+Table 1-1. Xyce typographical conventions.
+Notation Example Description
+Typewriter text mpirun -np 4
+Commands entered from the
+keyboard on the command line
+or text entered in a netlist.
+Bold Roman Font Set nominal temperature using
+theTNOMoption.
+SPICE-type parameters used in
+models, etc.
+Gray Shaded Text DEBUGLEVEL
+Feature that is designed
+primarily for use by Xyce
+developers.
+[text in brackets] Xyce [options] <netlist> Optional parameters.
+<text in angle brackets> Xyce [options] <netlist> Parameters to be inserted by the
+user.
+<object with asterisk>* K1 <ind. 1> [<ind. n>*] Parameter that may be multiply
+specified.
+<TEXT1|TEXT2> .PRINT TRAN
++ DELIMITER=<TAB|COMMA>
+Parameters that may only take
+specified values.
+21
+
+This page intentionally left blank.
+22
+
+2. INSTALLING AND RUNNING XYCE
+Chapter Overview
+This chapter describes the basic mechanics of installing and running Xyce. It includes the following
+sections:
+•Section 2.1,Xyce Installation
+•Section 2.2,Running Xyce
+23
+
+2.1. Xyce Installation
+Xyce is distributed in two ways: source code and binary installers. Instructions for both methods of
+installation are available on the Xyce web sitehttp://xyce.sandia.gov.
+2.1.1. Postinstallation steps: PATH setting
+In order to run Xyce, either type the path to its binary every time, or add the installed location of Xyce to the
+PATH variable. Do so by editing the shell start-up file (.bashrcif your shell is bash,.profileif the shell
+is sh, or.cshrc if the shell is the c-shell). Exact syntax depends on the shell used, but for bash and sh the
+syntax is:
+export PATH=$PATH:/usr/local/Xyce-Release-6.9.0/bin
+The exact path will depend on the installed version of Xyce. Look in/usr/localwith the following
+command:
+ls -l /usr/local
+to identify the actual install directory used by the installed version of Xyce. Once entered into the start-up
+file, the path will be set this way at the next log in. The same command can be issued directly in the
+command line and it will take effect immediately.
+Binary installations on Windows create a “Command Prompt” shortcut for Xyce that sets this path for you.
+Whenthecommandpromptisopenedwiththisshortcut,Xycemaysimplybeinvokedbytypingitsname.
+2.2. Running Xyce
+While it is possible to connect Xyce to graphical interfaces, such as gEDA [5] or Qucs-s [6], Xyce is not
+provided with any graphical user interface. It is primarily used as a command-line-only program across all
+supported platforms, including traditionally “GUI-centered” platforms such as Mac OS X and Microsoft
+Windows.
+This section describes how Xyce is run from the command line, for serial and MPI parallel simulations.
+2.2.1. Command Line Simulation
+The syntax for running Xyce from the command line differs depending it is the serial or parallel version.
+24
+
+Running Xyce Assuming theXyceexecutable in in the user’s path, then the commands for running Xyce
+are:
+•Running serial Xyce:
+Xyce [options] <netlist filename>
+•Running Xyce in parallel:
+mpirun -np <# procs> Xyce [options] <netlist filename>
+Note thatmpiexecis sometimes provided as an alternative tompirun. With Open MPI, the two commands
+are identical, but that is not the case for all MPI implementations.
+General comments The [options]are the command line arguments for Xyce. For example, to log
+output to a file namedsample.logtype:
+Xyce -l sample.log <netlist filename>
+The next example runs parallel Xyce on four processors and places the results into a set of files with the
+“basename” ofresults. So, for example, the output from any.PRINT TRAN and/or .MEASURE TRAN
+linesinthenetlistwouldbeplacedintothefiles results.prnand results.mt0,respectively(assuminga
+source code install):
+mpirun -np 4 Xyce -o results <netlist filename>
+While Xyce is running, simulation progress is output to the command line window along with any error
+messages.
+Xyce assumes that<netlist filename> is either in the current working directory, or includes the path
+(full or relative) to the netlist file. Enclose the filename in quotation marks (") if the path contains spaces.
+Help is accessible with the-h option.
+Consult the documentation installed with MPI on the user’s platform for more details concerning MPI
+options. The-np <# procs> denotes the number of processors to use for the simulation.
+NOTE: It is critical that the number of processors used must be smaller than the number of devices and
+voltage nodes in the netlist.
+2.2.1.1. Guidance for Running Xyce in Parallel
+ThebasicmechanicsofrunningXyceinparallelhavebeendiscussedabove.Forgeneralguidanceregarding
+solver options, partitioning options, and other parallel issues, refer to chapter 11. Distributed memory
+circuit simulation still contains a number of research issues, so obtaining an optimal simulation in parallel
+is a bit of an art.
+NOTE: If you are running on Linux, please see chapter 11, especially section 11.2, for critical guidance on
+OpenMPI options that can seriously impact the performance of parallel jobs on a multiuser system.
+25
+
+2.2.2. Command Line Options
+Xyce supports a handful of command line options that must be givenbeforethe netlist filename. Table 2-1
+lists Xyce core options.
+Table 2-1. List of Xyce command line arguments.
+Argument Description Usage Default
+-h Help option. Prints usage and exits. -h -
+-v Prints the version banner and exits. -v -
+-license Prints the license text and exits. -license -
+-capabilities Prints a list of compiled-in options
+and exits. -capabilities -
+-delim Set the output file field delimiter. -delim
+<TAB|COMMA|string> -
+-o
+Place the output result(s) into file(s)
+with the specified basename and the
+appropriate extension (e.g.,
+<basename>.prn or
+<basename>.mt0).
+-o <basename>
+output file
+name(s) based on
+netlist file name.
+-l Place the log output into specified
+file. -l <file> Log output sent
+to standard out.
+-r Output a binary rawfile. -r <file> No rawfile
+written.
+-a
+Use with-r to output a readable
+(ASCII) rawfile. Without the
+concurrent use of-r, -awill cause
+all .PRINT lines that use
+FORMAT=RAW to produce ASCII
+rawfiles.
+-r <file> -a
+-a
+Default rawfile is
+binary.
+-nox Use the NOX nonlinear solver. -nox <ON|OFF> on
+-linsolv Set the linear solver.
+-linsolv <KLU|
+KSPARSE|SUPERLU|
+AZTECOO|BELOS>
+klu(serial) and
+aztecoo(parallel)
+-param
+Print a terse summary of model
+parameters, device parameters and
+default values.
+-param -
+-remeasure Recompute .measure and/or .fft
+results with existing data. -remeasure -
+-syntax Check netlist syntax and exit. -syntax -
+-norun Check netlist syntax and topology
+and exit. -norun -
+-quiet
+Suppress some of the
+simulation-progress messages sent
+to stdout for transient simulations.
+-quiet -
+-namesfile
+Output a list of all solution
+variables generated by the netlist
+into <filename>
+-namesfile <filename> -
+-noise_names_file
+Output a list of all noise sources for
+all devices generated by the netlist
+into <filename>
+-noise_names_file
+<filename> -
+26
+
+Table 2-1. List of Xyce command line arguments.
+Argument Description Usage Default
+-randseed
+Set random number seed for
+expression library’s random number
+functions and also.SAMPLING
+analysis.
+-randseed <number>
+If not provided,
+Xyce will select a
+seed using the
+system “time”
+function.
+-maxord Maximum time integration order. -maxord <1..5> -
+-max-warnings Maximum number of warning
+messages. -max-warnings <#> 100
+-jacobian_test Jacobian matrix diagnostic. -jacobian_test -
+-redefined_params
+Set precendence for multiply
+defined parameters. Can be set to
+ignore (use last),usefirst, warn
+or error.
+-redefined_params
+<option>
+ignore, which
+means use the last
+duplicate
+parameter in the
+netlist without
+warning or error.
+-hspice-ext
+Hspice parser extensions. This will
+override several parser issues that
+are difficult to translate with scripts.
+-hspice-ext
+<all|separator
+|units|math>
+The second
+argument will
+determine which
+features are
+enabled. For
+details see the
+Xyce Reference
+Guide [3].
+While these options are intended for general use, others may exist for new features that are disabled by
+default, and older, deprecated features. The Xyce Reference Guide [3] provides a comprehensive list,
+including trial and deprecated options.
+27
+
+This page intentionally left blank.
+28
+
+3. SIMULATION EXAMPLES WITH XYCE
+Chapter Overview
+This chapter provides several simple examples of Xyce usage. An example circuit is provided for each
+available analysis type.
+•Section 3.1,Example Circuit Construction
+•Section 3.2,DC Sweep Analysis
+•Section 3.3,Transient Analysis
+29
+
+3.1. Example Circuit Construction
+This section describes how to use Xyce to create the simple diode clipper circuit shown in figure 3-1.
+Xyce only supports circuit creation via netlist editing. Xyce supports most of the standard netlist entries
+common to Berkeley SPICE 3F5 and Orcad PSpice. For users familiar with PSpice netlists, the Xyce
+Reference Guide [3] lists the differences between PSpice and Xyce netlists.
+3.1.0.1. Example: diode clipper circuit
+Figure 3-1. Schematic of diode clipper circuit with DC and transient voltage sources.
+Using a plain text editor (e.g., vi, Emacs, Notepad), but not a word processor (e.g., OpenOffice or Microsoft
+Word), create a file containing the netlist of figure 3-2. For this example, the file is namedclipper.cir
+The netlist in figure 3-2 illustrates some of the syntax of a netlist input file. Netlists always begin with a title
+line (e.g.“Diode Clipper Circuit ”), and may contain comments (lines beginning with the “*”
+character), devices, and model definitions. Netlists must always end with the “.END” statement.
+The diode clipper circuit contains two-terminal devices (diodes, resistors, and capacitors), each of which
+specifies two connecting nodes and either a model (for the diode) or a value (resistance or capacitance). The
+netlist of figure 3-2 describes the circuit shown in the schematic of figure 3-1
+This netlist file is not yet complete and will not run properly using Xyce (see section 2.2 for instructions on
+running Xyce) as it lacks an analysis statement. This chapter later decribes how to add the appropriate
+analysis statement and run the diode clipper circuit.
+30
+
+Diode Clipper Circuit
+*
+* Voltage Sources
+VCC 1 0 5V
+VIN 3 0 0V
+* Diodes
+D1 2 1 D1N3940
+D2 0 2 D1N3940
+* Resistors
+R1 2 3 1K
+R2 1 2 3.3K
+R3 2 0 3.3K
+R4 4 0 5.6K
+* Capacitor
+C1 2 4 0.47u
+*
+* GENERIC FUNCTIONAL EQUIVALENT = 1N3940
+* TYPE: DIODE
+* SUBTYPE: RECTIFIER
+.MODEL D1N3940 D(
++ IS = 4E-10
++ RS = .105
++ N = 1.48
++ TT = 8E-7
++ CJO = 1.95E-11
++ VJ = .4
++ M = .38
++ EG = 1.36
++ XTI = -8
++ KF = 0
++ AF = 1
++ FC = .9
++ BV = 600
++ IBV = 1E-4)
+*
+.END
+Figure 3-2. Diode clipper circuit netlist
+3.2. DC Sweep Analysis
+This section includes an example of DC sweep analysis using Xyce. The DC response of the clipper circuit
+is obtained by sweeping the DC voltage source (Vin) from -10 to 15 volts in one-volt steps. Chapter 7.2
+provides more details about DC analysis, as does the Xyce Reference Guide [3].
+31
+
+3.2.0.1. Example: DC sweep analysis
+To set up and run a DC sweep analysis using the diode clipper circuit:
+1. Open the diode clipper circuit netlist file (clipper.cir) using a standard text editor (e.g.vi, Emacs,
+Notepad,etc.).
+2. Enter the analysis control statement (as shown in the netlist in figure 3-4):
+.DC VIN -10 15 1
+3. Enter the output control statement:
+.PRINT DC V(3) V(2) V(4)
+4. Save the netlist file and run Xyce on the circuit. For example, to run serial Xyce:
+Xyce clipper.cir
+5. Open the results file (clipper.cir.prn) and examine (or plot) the output voltages that were
+calculated for nodes 3 (Vin), 2 and 4 (Out). Figure 3-3 shows the output plotted as a function of the
+swept variable Vin.
+Figure 3-3. DC sweep voltages at Vin, node 2, and Vout
+32
+
+Diode Clipper Circuit with DC sweep analysis statement
+*
+* Voltage Sources
+VCC 1 0 5V
+VIN 3 0 0V
+* Analysis Command
+.DC VIN -10 15 1
+* Output
+.PRINT DC V(3) V(2) V(4)
+* Diodes
+D1 2 1 D1N3940
+D2 0 2 D1N3940
+* Resistors
+R1 2 3 1K
+R2 1 2 3.3K
+R3 2 0 3.3K
+R4 4 0 5.6K
+* Capacitor
+C1 2 4 0.47u
+*
+* GENERIC FUNCTIONAL EQUIVALENT = 1N3940
+* TYPE: DIODE
+* SUBTYPE: RECTIFIER
+.MODEL D1N3940 D(
++ IS = 4E-10
++ RS = .105
++ N = 1.48
++ TT = 8E-7
++ CJO = 1.95E-11
++ VJ = .4
++ M = .38
++ EG = 1.36
++ XTI = -8
++ KF = 0
++ AF = 1
++ FC = .9
++ BV = 600
++ IBV = 1E-4)
+*
+.END
+Figure 3-4. Diode clipper circuit netlist for DC sweep analysis
+33
+
+3.3. Transient Analysis
+This section containsan example of transient analysis inXyce. In this example, the DC analysisof the diode
+clipper circuit of the previous section has been modified so that the input voltage source (Vin) is a
+time-dependent sinusoidal input source. The frequency ofVinis 1 kHz, and has an amplitude of 10 volts.
+For more details about transient analysis see chapter 7.3, or the Xyce Reference Guide [3].
+3.3.0.1. Example: transient analysis
+To set up and run a transient analysis using the diode clipper circuit:
+1. Open the diode clipper circuit netlist file file (clipper.cir) using a standard text editor (e.g.VI,
+Emacs, Notepad,etc.).
+2. Remove DC analysis and output statements if added in the previous example (figure 3-4).
+3. Enter the analysis control (as shown in the netlist in figure 3-5):
+.TRAN 2ns 2ms
+4. Enter the output control statement:
+.PRINT TRAN V(3) V(2) V(4)
+5. Modify the input voltage source (Vin) to generate the sinusoidal input signal:
+VIN 3 0 SIN(0V 10V 1kHz)
+6. At this point, the netlist should look similar to the netlist in figure 3-5. Save the netlist file and run
+Xyce on the circuit. For example, to run serial Xyce:
+Xyce clipper.cir
+7. Open the results file and examine (or plot) the output voltages for nodes 3 (Vin), 2, and 4 (Out). The
+plot in figure 3-6 shows the output plotted as a function of time.
+Figure 3-5 shows the modified netlist and figure 3-6 shows the corresponding results.
+34
+
+Diode clipper circuit with transient analysis statement
+*
+* Voltage Sources
+VCC 1 0 5V
+VIN 3 0 SIN(0V 10V 1kHz)
+* Analysis Command
+.TRAN 2ns 2ms
+* Output
+.PRINT TRAN V(3) V(2) V(4)
+* Diodes
+D1 2 1 D1N3940
+D2 0 2 D1N3940
+* Resistors
+R1 2 3 1K
+R2 1 2 3.3K
+R3 2 0 3.3K
+R4 4 0 5.6K
+* Capacitor
+C1 2 4 0.47u
+*
+* GENERIC FUNCTIONAL EQUIVALENT = 1N3940
+* TYPE: DIODE
+* SUBTYPE: RECTIFIER
+.MODEL D1N3940 D(
++ IS = 4E-10
++ RS = .105
++ N = 1.48
++ TT = 8E-7
++ CJO = 1.95E-11
++ VJ = .4
++ M = .38
++ EG = 1.36
++ XTI = -8
++ KF = 0
++ AF = 1
++ FC = .9
++ BV = 600
++ IBV = 1E-4)
+*
+.END
+Figure 3-5. Diode clipper circuit netlist for transient analysis
+35
+
+Figure 3-6. Sinusoidal input signal and clipped outputs
+36
+
+4. NETLIST BASICS
+Chapter Overview
+This chapter contains introductory material on netlist syntax and usage. Sections include:
+•Section 4.1General Overview
+•Section 4.2Devices Available for Simulation
+•Section 4.3Parameters and Expressions
+•Section 4.4Device MultiplierM
+37
+
+4.1. General Overview
+4.1.1. Introduction
+Using a netlist to describe a circuit for Xyce is the primary method for running a circuit simulation. Netlist
+support within Xyce largely conforms to that used by Berkeley SPICE 3F5 and other SPICE-style
+simulators, with several new options for controlling functionality unique to Xyce.
+In a netlist, the circuit is described by a set ofelement linesdefining circuit elements and their associated
+parameters, the circuit topology (i.e., the connection of the circuit elements), and a variety of control
+options for the simulation. The first line in the netlist file must be a title and the last line must be “.END”.
+Between these two constraints, the order of the statements is irrelevant.
+4.1.2. Nodes
+Nodes and elements form the foundation for the circuit topology. Each node represents a point in the circuit
+that is connected to the leads of multiple elements (devices). Each lead of every element is connected to a
+node, and each node is connected to multiple element leads.
+A node is simply a named point in the circuit. The naming of normal nodes is mainly known within the
+level of circuit hierarchy where they appear. Nodes can be passed into subcircuits through an argument list,
+andinthismannersubcircuitsaregivenaccesstonodesfromtheupper-levelcircuit.Historicaly,thisishow
+nodes are passed thru the circuit hierarchy in most circuit simulators, and this is the convention used by
+most circuit netlists.
+However, Xyce also has the capability for fully resolved, internal subcircuit nodes to be accessed in the top
+level circuit. Examples of this usage are as follows:
+* example usage of fully resolved subcircuit nodes
+Vin 1 0 1.0
+Rin 1 2 1.0
+X1 2 3 test
+Rout 3 0 1.0
+.subckt test A B
+Rt1 A testNode 1.0
+Rt2 testNode B 1.0
+.ends
+* this works:
+Btest1 4 0 V = V(X1:testNode)
+Rtest1 4 0 1.0
+* this also works:
+Itest2 0 5 1.0
+Rtest2 X1:testNode 5 1.0
+Rtest3 X1:testNode 0 1.0
+38
+
+The fully resolved name is specific to a single subcircuit instance. Also, note that the field separator in this
+example is the colon (:), but Xyce can optionally use other characters as the separator, including a period
+(.) . For information about specifying a different separator, see section 2.2.2, about Xyce command line
+arguments, or the Xyce Reference Guide [3] for even more details.
+4.1.2.1. Global Nodes
+For cases where a particular node is used widely throughout various subcircuits it can be more convenient
+to use a global node, which is referenced by the same name throughout the circuit. This is often the case for
+power rails such asVDDor VSS.
+Global nodes start with the prefix$G. Examples of global node names would be:$G_VDD or$G1. Nodes
+or global nodes require no declaration, as they are declared implicitly by appearing inelement lines.
+The .GLOBALcommand can be used to define global nodes that do not start with the prefix “$G”. Consult
+the Xyce Reference Guide [3] for more details.
+4.1.3. Elements
+Anelement linedefines each circuit element instance. While each element type determines the specific
+format, the general format is given by:
+<type><name> <node information> <element information...>
+The <type> must be a letter (A through Z) with the<name> immediately following. For example,
+RARESISTORspecifies a device of type “R” (for “Resistor”) with a nameARESISTOR. Nodes are separated
+by spaces, and additional element information required by the device is given after the node list as
+described in the Netlist Reference section of the Xyce Reference Guide [3]. Xyce ignores character case
+when reading a netlist such thatRARESISTORis equivalent toraresistor. The only exception to this case
+insensitivity occurs when including external files in a netlist where the filename specified in the netlist must
+have the same case as the actual filename.
+A number field may be an integer or a floating-point value. Either one may be followed by one of the
+following scaling factors shown in Table 4-1:
+39
+
+Table 4-1. Scaling factors.
+Symbol Equivalent Value
+T 1012
+G 109
+Meg 106
+X 106
+K 103
+mil 25.4−6
+m 10−3
+u(𝜇) 10−6
+n 10−9
+p 10−12
+f 10−15
+Node information is given in terms of node names, which are character strings. One key requirement is that
+the ground node is named ‘0’. (Note: Consult the Xyce Reference Guide [3] for more details on allowed
+characters in both node names and device names.) There is one restriction on the circuit topology: there
+can be no loop of voltage sources and/or inductors. In addition to this requirement, the following additional
+topology constraints are highly recommended:
+•Every node has a DC path to ground.
+•Every node has at least two connections (with the exception of unterminated transmission lines and
+MOSFET substrate nodes).
+While Xyce can theoretically handle netlists that violate the above two constraints, such topologies are
+typically the result of human error in creating a netlist file, and will often lead to convergence failures.
+Chapter 14 provides more information on this topic.
+The following line provides an example of an element line that defines a resistor between nodes1and 3
+with a resistance value of10kΩ.
+Example: RARESISTOR 1 3 10K
+4.1.3.1. Title, Comments and End
+The first line of the netlist is the title line of the netlist. This line is treated as a comment even if it does not
+begin with an asterisk. It is a common mistake to forget the meaning of this first line and begin the circuit
+elements on the first line; doing so will probably result in a parsing error.
+Example: Test RLC Circuit
+The “.END” line must be the last line in the netlist.
+40

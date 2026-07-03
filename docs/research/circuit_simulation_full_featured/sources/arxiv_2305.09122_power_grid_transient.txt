@@ -1,0 +1,3879 @@
+   
+979
+-
+8
+-
+3503
+-
+3540
+-
+8/23/$31.00 ©2023 IEEE
+ 
+Power 
+Grid
+ 
+Transient Analysis via 
+Open
+-
+Source 
+Circuit Simulator: A Case Study of 
+HVDC
+ 
+ 
+Yongli Zhu
+ 
+ 
+Texas A&M University 
+ 
+College Station
+, 
+TX, 
+USA
+ 
+yzhu16@vols.utk.edu
+ 
+ 
+Xiang Zhang
+ 
+Purdue University
+ 
+West Lafayette, 
+IN, 
+USA
+ 
+xiang.zhang@alumni.purdue.edu
+ 
+ 
+Ren
+chang Dai
+ 
+Puget Sound Energy
+ 
+B
+e
+llevue
+, 
+WA, 
+USA
+ 
+renchang.dai@pse.com
+ 
+Abstract
+—
+This paper proposes a
+n electronic
+ 
+circuit simulator
+-
+based 
+method 
+to 
+accelerate
+ 
+the power system transient 
+simulation
+, where 
+the
+ 
+modeling of 
+a generic 
+HVDC
+ 
+(
+High 
+Voltage Direct C
+urrent
+) 
+system 
+is
+ 
+focused
+.
+ 
+The 
+electronic circuit 
+simulation equations
+ 
+and 
+the
+ 
+backward differentiation formula
+ 
+for 
+numerical
+ 
+solving
+ 
+are
+ 
+described
+. Then, the 
+circuit
+ 
+modeling 
+process
+ 
+for
+ 
+power system components such as slack bus, 
+constant power load
+, and 
+HVDC 
+are
+ 
+respectively
+ 
+illustrated
+. 
+Finally, 
+a 
+case study
+ 
+is
+ 
+conducted
+ 
+on 
+a
+ 
+four
+-
+bus
+ 
+power
+ 
+system
+ 
+to 
+demonstrate the 
+effectiveness
+ 
+of the 
+proposed
+ 
+modeling and 
+simulation 
+method
+.
+ 
+K
+ey
+words
+—
+ 
+circuit theory,
+ 
+HVDC
+,
+ 
+modeling
+ 
+and simulation
+,
+ 
+transient simulation
+,
+ 
+Xyce
+.
+ 
+I.
+ 
+I
+NTRODUCTION
+ 
+To date,
+ 
+the 
+power 
+utility grid
+ 
+ha
+s
+ 
+been encountering
+ 
+various new challenges
+ 
+due to
+ 
+the increasing 
+penetration 
+of 
+nonlinear
+-
+behavior comp
+onents with large power capacity and 
+complicated structures and controllers, e.g.
+,
+ 
+power inverter
+-
+based
+ 
+renewables
+ 
+(IBR), 
+SVC (Static Var Compensator)
+, 
+and 
+HVDC (high voltage direct current) systems
+ 
+[1]
+. 
+HVDC has 
+certain advantages over conventional AC 
+tra
+nsmission
+ 
+lines. 
+For example, 
+lower costs for rights
+-
+of
+-
+way and overhead 
+lines
+; 
+connection of asynchronous grids
+; 
+firewalling of AC 
+grids against cascading blackouts
+;
+ 
+c
+ompensation of 
+AC 
+system disturbances thanks to fast and flexible control of 
+power flows
+. However, because 
+power electronics 
+devices 
+typically
+ 
+have much smaller time constants than 
+synchronous 
+generators, 
+it
+ 
+can
+ 
+bring
+ 
+the notorious “stiffness” issue
+ 
+in
+ 
+solving 
+the
+ 
+sys
+tem 
+differential
+-
+algebrai
+c equations 
+during
+ 
+(
+conventional
+) 
+transient
+ 
+simulat
+ion
+, 
+causing
+ 
+super 
+slow
+ 
+running
+ 
+or 
+simulation
+ 
+diverging
+. 
+ 
+Th
+erefore
+,
+ 
+a fast and 
+robust
+ 
+(i.e.
+,
+ 
+less sensitive to the 
+stiffness issues) 
+tran
+sient
+ 
+simulation 
+tool 
+is 
+beneficial to
+ 
+power 
+system operators 
+for
+ 
+either 
+post
+-
+fault study 
+or 
+preventive 
+contro
+l 
+purpos
+e
+s
+.
+ 
+However
+,
+ 
+m
+ainstream
+ 
+off
+-
+the
+-
+shelf 
+transient 
+simulation 
+software
+ 
+(
+proprietary 
+product
+s
+ 
+or open
+-
+sourc
+e 
+tool
+s
+) 
+can only
+ 
+meet
+ 
+the above need
+ 
+to some extent
+. 
+Based on
+ 
+our 
+tests
+,
+ 
+about seconds
+-
+level wall
+-
+clock time is typically
+ 
+required 
+for 
+a “10
+-
+sec
+” simula
+tion 
+of
+ 
+a 
+mid
+-
+size power 
+grid
+ 
+(e.g., 
+a power
+ 
+grid
+ 
+with
+ 
+more than 10
+ 
+high
+-
+order generator 
+models plus exciters and governors
+)
+,
+ 
+even
+ 
+on
+ 
+workstation
+-
+level 
+computer
+s
+.
+ 
+ 
+EMTP, ATP
+-
+DRAW, and 
+PSCAD/EMTDC
+ 
+are 
+famous
+ 
+tool
+s
+ 
+for 
+(
+electromagnetic
+)
+ 
+transient 
+sim
+ulation
+ 
+of HVDC 
+systems
+ 
+[
+2
+]
+. H
+owever, due to 
+the
+ 
+design of 
+their
+ 
+internal
+ 
+numerical
+ 
+algorithms
+, 
+the
+ir
+ 
+simulation
+ 
+speed for
+ 
+multi
+-
+machine
+ 
+power 
+systems
+ 
+can be 
+extremely
+ 
+slow or 
+easily
+ 
+diverge when 
+it considers 
+high
+-
+order generator 
+models
+.
+ 
+Other 
+advanced 
+sol
+utions
+,
+ 
+such as products based on FPGA [
+3
+] 
+and 
+O
+penMP
+ 
+[
+4
+]
+,
+ 
+have been proposed by commercial companies
+. 
+Unfortunately, 
+the 
+learning curves 
+in 
+hardware configuration 
+or algorithm adaptation of those commercial products can be 
+hard for junior researchers and 
+students
+;
+ 
+the purchasing 
+price 
+can 
+also be
+ 
+prohibitively 
+high
+ 
+for 
+university users
+. 
+ 
+In light of the above issues
+, other 
+simulation 
+approache
+s
+ 
+can
+ 
+be
+ 
+leveraged
+, e.g
+.,
+ 
+modeling 
+the 
+power system 
+components 
+by electronic circuit
+s
+.
+ 
+Previously
+, researcher
+s
+ 
+have
+ 
+already
+ 
+employed
+ 
+circuit theory
+ 
+and 
+tools 
+in
+ 
+power 
+system steady
+-
+state 
+stud
+ies
+. 
+For example,
+ 
+a
+n
+ 
+electronic 
+circuit
+ 
+theory
+-
+based
+ 
+robust solver 
+is 
+invented
+ 
+to
+ 
+solve three
+-
+phase 
+power flow
+ 
+problem
+s
+ 
+[5]
+. In [6], 
+the
+ 
+a
+djoint 
+p
+ower 
+f
+low 
+method
+ 
+is 
+invented
+ 
+for
+ 
+t
+he 
+power
+ 
+flow
+ 
+feasibility study 
+based 
+on 
+the 
+electronic 
+circuit theory
+.
+ 
+To
+ 
+our limited
+ 
+knowledge
+, 
+so 
+far
+,
+ 
+there 
+is 
+no
+ 
+public research reported
+ 
+for HVDC 
+modeling 
+in
+ 
+transient simulation using 
+electronic circu
+it 
+theory or 
+tools.
+ 
+This paper uses the electroni
+c circui
+t simulator Xyce [7]
+ 
+for 
+HVDC
+ 
+system 
+modeling 
+in
+ 
+power system 
+transient
+ 
+simulation
+.
+ 
+Section II
+ 
+illustrates
+ 
+the
+ 
+theoretical 
+foun
+dations 
+of 
+electronic 
+circuit simulation
+,
+ 
+including equation formulation 
+and numerical solv
+ers
+. Section
+s
+ 
+III
+ 
+and IV
+ 
+illus
+trate
+ 
+th
+e 
+electronic circuit modeling for three power system 
+components: slack bus,
+ 
+constant power load
+, 
+and 
+a generic 
+HVDC system
+. 
+Simulation results are presented in Section V 
+on 
+a
+ 
+four
+-
+bus
+ 
+test system
+. C
+onclu
+sions 
+are given
+ 
+in
+ 
+the final 
+section
+,
+ 
+with 
+th
+e 
+next s
+tep indicated
+.
+ 
+II.
+ 
+F
+OUNDATIONS 
+O
+F 
+E
+LECTRONIC
+ 
+C
+IRCUIT 
+S
+IMULATION 
+ 
+In this section, 
+some 
+foundations 
+of circuit simulation 
+theory 
+are
+ 
+explained here
+ 
+based on 
+[
+7
+].
+ 
+ 
+Modified nodal analysis
+ 
+is usually applied to solve the 
+circuit simulation problem
+, 
+common
+ly 
+used
+ 
+in the 
+well
+-
+known
+ 
+SPICE progra
+m
+ 
+[7]
+.
+ 
+I
+n the original KCL formulation, a circuit 
+of
+ 
+N
+ 
+nodes will have 
+N
+-
+1 equations due to 
+the 
+KCL law
+, 
+with
+ 
+N
+-
+1 voltage 
+(
+state
+)
+ 
+variables (considering one node 
+as
+ 
+a 
+reference 
+node
+ 
+with 
+a 
+known voltage). 
+Meanwhile, c
+u
+rrents 
+b
+etween 
+two
+ 
+nodes can be expressed as a function of the 
+voltage drop
+, e.g., the 
+current through 
+a
+ 
+resistor 
+satisfies
+ 
+I
+=
+G
+*
+V
+,
+ 
+where 
+G
+ 
+is the so
+-
+called “conductance”. 
+Moreover,
+ 
+This 
+study
+ 
+was supported by
+ 
+China
+ 
+S
+tate 
+G
+rid 
+C
+orporation technology
+ 
+ 
+project 5455HJ180018
+ 
+in 2019.
+ 
+
+the 
+conductance 
+may
+ 
+also
+ 
+depend on 
+the 
+voltage
+ 
+drop
+. T
+h
+us
+,
+ 
+the
+ 
+equation 
+can
+ 
+be rewr
+itten as
+ 
+I
+=
+G
+(
+V
+)*
+V
+. 
+The above
+ 
+expression is called 
+conductance
+ 
+representation
+.
+ 
+Electronic 
+d
+evices 
+with conductance representations include resistors, 
+capacitors, diodes, and transistors
+.
+ 
+ 
+Unlike the original KCL
+ 
+formulation, t
+h
+e
+ 
+modified KCL 
+formula
+tion 
+may
+ 
+incorporate
+ 
+non
+-
+Ohmic devices into the 
+circuit 
+equations 
+via
+ 
+non
+-
+KCL equations 
+and 
+auxiliary
+ 
+variables (
+typically 
+current
+s
+).
+ 
+To illustrate the above idea, two
+ 
+example
+ 
+circuits
+ 
+are described below
+: 
+a 
+linear
+ 
+circuit
+ 
+and a 
+time
+-
+dependent circuit
+. 
+ 
+A.
+ 
+Li
+near Cir
+cuits
+ 
+B
+y 
+O
+hm’s law and KCL, t
+he 
+compact form
+ 
+equations
+ 
+for 
+the circuit 
+schematic
+ 
+in Fig. 
+1
+ 
+are 
+shown in
+ 
+Eq. 
+(
+1
+)
+.
+ 
+Node1
+Node2
+Ground
+V
+src
+G
+1
+G
+2
+ 
+Figure 1. 
+ 
+Example 
+schematic 
+for
+ 
+a 
+l
+inear circuit 
+ 
+
+1 1 1
+1 1 2 2
+1 0
+: 0 0 0
+1 0 0
+f
+Vsrc src
+G G V
+G G G V
+I V
+
+   
+ 
+   
+ 
+    
+   
+ 
+   
+ 
+ 
+   
+
+
+
+
+
+
+T
+he 
+Newton
+-
+type 
+algorithm
+s
+ 
+are
+ 
+typically 
+utilized
+ 
+to 
+solve
+ 
+the 
+above 
+circuit 
+equations 
+(d
+enot
+ing the
+ 
+state variable 
+x
+ 
+= [
+V
+1
+, 
+V
+2
+, 
+I
+Vsrc
+]
+)
+:
+ 
+
+1 1 1
+( ) ( ),
+J x f x  x x x
+k k k k k k
+x
+  
+     
+
+
+
+
+
+
+In Eq. (2)
+,
+ 
+the Jacobian matrix 
+J
+ 
+is 
+a 
+3
+-
+by
+-
+3 
+coefficient matrix
+ 
+and 
+
+x
+ 
+= [
+
+V
+1
+,
+ 
+ 
+
+V
+2
+, 
+
+I
+Vsrc
+]
+.
+ 
+The iteration repeat
+s
+ 
+until 
+the pre
+-
+defined
+ 
+stop
+ 
+criteria 
+are 
+reached, e.g., the 
+uniform
+-
+norm ||
+
+x
+|| 
+becomes
+ 
+less than 
+0.001
+.
+ 
+B.
+ 
+Time
+-
+Dependent Circuits
+ 
+E
+lectronic
+ 
+circuits 
+can 
+contain time
+-
+dependent elements, 
+and many of those elements (
+e.g.
+, 
+capacitors and inductors) 
+are described by ordinary differential equations (ODEs) 
+with
+ 
+time
+-
+derivative terms. For example, the current 
+through
+ 
+a 
+constant
+ 
+capacitor is given by
+:
+ 
+
+,
+C
+dq
+I q C V
+dt
+  
+
+
+
+
+
+
+
+
+
+
+
+Then, the 
+circuit
+ 
+equations 
+will be
+ 
+a set of differential
+-
+algebraic equations (DAEs
+)
+.
+ 
+Most
+ 
+t
+ime
+-
+d
+ependent
+ 
+circuit
+ 
+equations can be 
+transformed
+ 
+to the so
+-
+called 
+index one
+ 
+DAEs, 
+and the techniques for solving 
+this
+ 
+kind
+ 
+of 
+DAEs 
+have been
+ 
+well 
+studi
+ed
+.
+ 
+The 
+DAEs 
+can be described 
+by 
+Eq. (4)
+:
+ 
+
+, ,
+x
+f x 0
+d
+t
+dt
+ 
+
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+F
+or example, 
+the derived DAEs in compact form for 
+the 
+circuit 
+schematic 
+in Fig.
+ 
+2
+  
+are
+ 
+shown in 
+Eq. 
+(
+5
+)
+:
+ 
+Node1
+Node2
+Ground
+V
+src
+C
+G
+2
+ 
+Figure 2. 
+ 
+Example schematic for
+ 
+a
+ 
+t
+ime
+-
+d
+ependent 
+ci
+rcuit
+.
+ 
+1 1
+1 1
+1 1
+2 2 2
+1 1
+0 0 1 1 0
+0 0 0 0 0
+1 0 0 0 0 0
+i i
+i i
+i i
+src
+Vsrc Vsrc
+V V
+C C
+d
+G V C C V
+dt
+V
+I I
+ 
+ 
+ 
+   
+
+ 
+   
+   
+ 
+   
+   
+   
+ 
+   
+   
+ 
+   
+
+   
+ 
+   
+   
+
+
+
+
+
+w
+here
+ 
+the superscript 
+i
+ 
+stands for the 
+i
+-
+th iteration.
+ 
+U
+sing the 
+backward 
+differentiation 
+formula (BDF) in (
+6
+)
+, 
+t
+he DAE
+s
+ 
+can 
+be rewritten as Eq.
+ 
+(
+7
+)
+, where 
+h
+ 
+is the integration time step
+.
+ 
+
+1
+12
+12 12
+( ) /
+i i
+dV
+V V h
+dt
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+1 1
+1
+2 2 2
+1
+1 1 0
+1 1
+0 0 0
+0 0 0 0 0
+i i
+i i
+i i
+src
+Vsrc Vsrc
+V V
+C C h C C
+C G h C V C C V
+h h
+h V
+I I
+
+
+
+   
+  
+ 
+   
+   
+ 
+   
+    
+   
+ 
+   
+   
+ 
+   
+   
+ 
+   
+   
+
+
+
+
+
+
+
+
+
+
+
+Special 
+techniques
+ 
+have been invented 
+for 
+accelerating the 
+electronic
+ 
+circuit simulation, 
+e.g.,
+ 
+inexact Jacobian 
+computation, 
+state condensation
+,
+ 
+and 
+variable
+-
+step
+ 
+integration. 
+More d
+et
+ails 
+can 
+be found
+ 
+in 
+[7]
+.
+ 
+ 
+Besides
+, l
+ike other circuit simulat
+or
+s
+, 
+Xyce
+ 
+uses
+ 
+the SPICE 
+language
+ 
+to describe the
+ 
+circuit
+ 
+netlist
+. For example, the 
+following sentence defines a constant voltage source of 1.
+2
+0 V 
+in
+-
+between “Node1” and “Node2” 
+with 
+the 
+name 
+“V
+src”
+ 
+(in 
+Xyce, the first letter “V” and “B” stands for voltage source 
+and current source respectively)
+:
+ 
+Vsrc
+ 
+Node1 Node2 1.
+2
+0V
+ 
+For o
+ther
+ 
+grammar 
+and usages 
+of the 
+SP
+I
+CE language
+ 
+in 
+Xyce,
+ 
+readers can refer to
+ 
+[
+8
+]
+.
+ 
+ 
+ 
+III.
+ 
+M
+ODELING 
+OF 
+P
+OWER 
+S
+YSTEM
+ 
+C
+OMPONENT
+S 
+IN 
+X
+Y
+CE
+ 
+By 
+default
+, t
+he e
+lectronic circuit simulator does not accept 
+complex numbers. However, real and imaginary parts of a 
+power syste
+m quantit
+y
+ 
+can be
+ 
+split
+ 
+into two circuit groups 
+(
+actually
+,
+ 
+the two groups are still electronically connected). 
+Xyce provide
+s t
+hree 
+different 
+model
+ing
+ 
+format
+s
+ 
+to describe
+ 
+power systems 
+components: 
+PQP (
+means
+ 
+PQ Polar), PQR (PQ 
+Rectangular), and I=YV (real and imaginary 
+parts of voltage 
+and current
+)
+ 
+[9]
+.
+ 
+The 
+I=YV 
+format uses
+ 
+the 
+rectangular form 
+of a complex number
+, 
+whose soluti
+on 
+variables are the real 
+and imaginary parts of the voltage (
+e.g., “
+VR
+”
+ 
+and 
+“
+VI
+”
+)
+ 
+and 
+current (
+e.g., “
+IR
+”
+ 
+and 
+“
+II
+”
+).
+ 
+ 
+O
+ne
+ 
+basic idea of
+ 
+model
+ing 
+power system components 
+by
+ 
+the 
+circuit simulator is:
+ 
+each
+ 
+“
+power system 
+quantity
+”
+ 
+will be 
+mimicked by an 
+“
+elec
+tro
+nic voltage
+ 
+or 
+current
+ 
+signal
+” (in most 
+
+case
+s
+,
+ 
+voltage 
+signal
+)
+, 
+which 
+is
+ 
+illustrated 
+in the following 
+paragraphs
+.
+ 
+Besides
+, s
+imilar to the 
+object
+ 
+or 
+subroutine
+ 
+concept in 
+certain 
+advanced
+ 
+programming languages, Xyce 
+uses
+ 
+“subcircuit” (
+SUBCKT
+) to encapsul
+at
+e 
+a
+ 
+user
+-
+defined 
+model
+ 
+(
+device
+)
+.
+ 
+A.
+ 
+Slack Bus Model
+ 
+The
+ 
+slack bus
+ 
+(
+steady
+-
+state
+ 
+generator)
+ 
+circuit
+ 
+schematic
+ 
+is 
+shown in 
+Fig.
+ 
+3
+(a)
+ 
+(only 
+shows the 
+real part)
+. In this 
+subcircuit
+, two ideal voltage sources are connected in series. 
+The top one is connected to
+ 
+t
+he 
+actual
+ 
+bus
+ 
+node denoted as 
+‘Bus1R’ with 
+|V|=
+1.0507V. 
+Due to the naming convention of 
+Xyce, the nodes are named in a pattern of ‘BusXXR’ (real part 
+signal) and ‘BusXXI’ (imaginary part signal), where ‘XX’ can 
+be either a number or string. Note that, by
+ 
+t
+he Xyce rule, a 
+zero
+-
+value ideal voltage source represents the ideal ampere 
+meter. Its positive end is placed nearby the ground to 
+satisfy 
+the 
+“
+generator
+-
+convention
+”
+ 
+in power systems, i.e., 
+positive
+ 
+when 
+injecting
+ 
+power into the 
+bus
+.
+ 
+Its SPICE
+-
+style netl
+is
+t code 
+is 
+given
+ 
+in 
+Appendix.
+ 
+A.
+ 
+V
+1
+R
+Vamm
+1
+R
+Ground
+Bus
+1
+R
+ 
+(
+Slack bus
+)
+ammBus
+1
+R
+VammR
+Ground
+Rnode 
+(
+CPL
+)
+ammR
+BloadR
+I
+=
+{
+(
+P
+*
+Vr
++
+Q
+*
+Vi
+)/(
+Vr
+^
+2
++
+Vi
+^
+2
+)
+}
+(
+a
+)
+(
+b
+)
+ 
+Figure 3. 
+ 
+Example schematic
+ 
+(only real parts)
+ 
+for (a)
+ 
+s
+lack 
+b
+us  (b) 
+c
+onstant 
+power load
+ 
+B.
+ 
+Constant Power Load 
+(CPL) 
+Mode
+l
+ 
+The circuit 
+schematic
+ 
+is show
+n in Fig
+.
+ 
+3
+(b)
+ 
+(only shows 
+the real part)
+.
+ 
+T
+h
+e
+ 
+amper
+e 
+meter is defined so that positive 
+power 
+flows
+ 
+into the load.
+ 
+To express the complex current by 
+the associated 
+real and reactive 
+power injections 
+ 
+(
+p
+er unit)
+ 
+in 
+the 
+I=YV format
+, 
+ 
+Eq
+. 
+(
+8
+)
+ 
+i
+s
+ 
+utilized
+:
+ 
+
+*
+2 2 2 2
+( ) ( )
+r i i r
+r i
+r i r i
+PV QV PV QV
+S
+I I jI j
+V V V V V
+ 
+ 
+    
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+The 
+main part o
+f 
+the 
+subcircuit
+ 
+netlist is 
+presented
+ 
+in 
+Appendix.
+ 
+B
+. 
+Not
+e that 
+a
+ 
+“
+limiter
+” 
+is 
+added in the 
+subcircuit 
+code
+ 
+to prevent 
+drastic
+ 
+current 
+change
+ 
+during initializations
+.
+ 
+For example, 
+if 
+a 
+higher
+-
+level netlist program need
+s
+ 
+to define 
+a constant power load, th
+e 
+en
+capsulated CPL model 
+can be 
+defined
+ 
+as follows:
+ 
+Xload1
+ 
+bus1R bus1I CPL 
+PARAMS
+:
+ 
+P=0.9 Q=0.49
+ 
+IV.
+ 
+M
+ODELING
+ 
+OF 
+HVDC
+ 
+IN 
+X
+YCE
+ 
+There are different 
+HVDC models 
+based on
+ 
+the different 
+physical configuration
+s
+ 
+of power electronic devices, filters, 
+and 
+controller desig
+n
+s
+. 
+This section considers the LCC (line
+-
+commutated current
+-
+sourced converters) HVDC (
+VSC
+-
+type 
+HVDC can 
+also be 
+model
+ed
+ 
+similarly by the methodology 
+introduced 
+in this paper). 
+The 
+t
+ypical
+ 
+o
+ne
+-
+line 
+d
+iagram
+ 
+of
+ 
+a 
+m
+onopolar 
+b
+ack
+-
+to
+-
+back 
+HVDC system
+ 
+is shown in
+ 
+F
+ig
+. 
+4
+.  
+ 
+K
+r
+:1
+I
+d
+cr
+L
+smooth
+,
+r
+V
+d
+cr
+V
+d
+ci
+L
+smooth
+,
+i
+I
+d
+ci
+1:
+K
+i
+P
+r
++jQ
+r
+P
+i
++jQ
+i
+Rectifier Station
+DC Line
+Inverter Station
+R
+cr
+,
+ 
+X
+cr
+R
+ci
+,
+ 
+X
+ci
+V
+acr
+I
+acr
+V
+aci
+I
+aci
+ 
+Figure 4. 
+ 
+The one
+-
+line diagram of 
+a 
+monopolar 
+HVDC system
+ 
+All 
+HVDC 
+systems, whether two
+-
+terminal, multi
+-
+terminal, 
+or back
+-
+to
+-
+back, have similarly designed AC/DC converter 
+stations. 
+In 
+the system 
+stability stud
+y involving
+ 
+HV
+DC 
+co
+nverters, the interactions of the converter with the AC 
+system are extremely important and complex
+: i
+f the AC 
+voltage at a converter bus is perturbed, there will be an 
+immediate change in the DC voltage on the converter.
+ 
+This 
+paper models the converter
+ 
+b
+y 
+the “average value model” for 
+the power system 
+(
+electromechanical
+)
+ 
+transient stability study
+. 
+ 
+Due to
+ 
+this 
+paper
+’s 
+scope
+, the following 
+points 
+are not 
+considere
+d
+:
+ 
+1) 
+does not intend to handle
+ 
+unbalance
+ 
+system and 
+unbalance
+d
+ 
+faults events;
+ 
+2) does not con
+si
+der
+ 
+secondary 
+system
+s, s
+uch 
+as 
+protection
+ 
+relays
+,
+ 
+lightning arrester
+s
+, etc
+.
+ 
+Fig
+. 
+4
+ 
+depicts
+ 
+a functional one
+-
+line diagram of a 
+monopolar
+, 
+two
+-
+terminal
+ 
+HVDC system
+. T
+he subscript “
+r
+” 
+represents the physics quantities of the rectifier side
+,
+ 
+and “
+i
+” 
+represen
+ts
+ 
+the physics quantities of the inverter side.
+ 
+ 
+A.
+ 
+HVDC Line Model 
+ 
+In 
+the 
+transient stability study, each HV
+DC transmission 
+line 
+can be 
+modeled as an equivalent resistor and an 
+equivalent inductor
+,
+ 
+as shown in
+ 
+Fig. 5
+. 
+ 
+I
++
+ 
+V
+k
+-
+ 
++
+V
+m
+-
+ 
+R
+L
+ 
+Figure 5. 
+ 
+HVDC Tra
+nsmiss
+ion Line Model
+ 
+ 
+The 
+HV
+DC transmission line equation
+ 
+is shown in Eq. (9)
+. 
+The unknown variable 
+here 
+is the DC current
+ 
+I
+.
+ 
+k m
+dI
+V V RI L
+dt
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+B.
+ 
+Equivalent 
+C
+ircuit Model
+ 
+In 
+the 
+transie
+nt sta
+bility study, 
+by defining the following 
+quantities in 
+Eq. (
+10
+) to (
+12
+), the HVDC primary system can 
+be conceptually represented by two (nonlinearly coupled) 
+Thevenin
+-
+equivalent circuits, as shown in Fig. 6, 
+where
+ 
+the 
+rectifier, the HVDC line, and the
+ 
+inver
+ter
+ 
+are 
+model
+ed
+.
+ 
+ 
+,
+1.75
+DC Line Indcutance
+2
+rec cr
+r smooth r
+N X
+L L
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,
+1.75
+DC Line Indcutance
+2
+inv ci
+i smooth i
+N X
+L L
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DC Line Resistance/ 2, ( )
+r i dc r i
+R R X L L
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+E
+rec
+R
+rec
+R
+r
+V
+dcr
+R
+i
+R
+inv
+V
+dci
+I
+dcr
+I
+dci
+E
+inv
+L
+r
+L
+i
+X
+dc
+ 
+Figure 6. 
+ 
+HVDC (Thevenin) equivalent circuit model
+ 
+The rectifier side algebraic equations
+ 
+are
+:
+ 
+1
+3 2
+( ), cos
+3 2
+2 , cos (cos )
+acr
+dcr rec rec rec dcr rec
+r
+cr dcr cr
+rec cr
+acr
+V
+V E N R I E
+K
+X I X
+R R
+E
+
+
+  
+
+
+  
+    
+    
+(13)
+ 
+where
+ 
+
+,
+ 
+
+,
+ 
+N
+rec
+ 
+are respectively
+ 
+the firing angle
+, 
+the
+ 
+commutation overlap 
+angle
+, and 
+the number of commutation 
+bridges
+ 
+at
+ 
+the rectifier
+ 
+side
+.
+ 
+Similarly, t
+he inverter side algebraic equations
+ 
+are:
+ 
+1
+3 2
+( ), cos
+3 2
+2 , cos (cos )
+aci
+dci inv inv inv dci inv
+i
+ci dci ci
+inv ci
+aci
+V
+V E N R I E
+K
+X I X
+R R
+E
+
+
+ 
+
+
+  
+   
+             
+(14)
+ 
+where 
+
+, 
+
+, 
+N
+inv 
+ar
+e respectively the arc
+-
+extinction angle, the 
+commutation overlap 
+angle, and the number of commutation 
+bridges at the inverter side, and 
+
+ 
+:= 
+
+ 
++
+
+ 
+by 
+its 
+definition.
+ 
+Finally, 
+t
+he 
+modeling of HVDC
+ 
+in Xyce
+ 
+is
+ 
+illustrated
+ 
+in
+ 
+Fig. 
+7
+.
+ 
+Note that the detailed HVDC 
+modeling in this paper is 
+based
+ 
+on the “CHVDC2” 
+structure in [
+10
+], of
+ 
+which 
+a
+ 
+generic
+ 
+HVDC 
+transfer function block diagram is shown in
+ 
+Fig. 8
+.
+ 
+I
+d
+Rectifier
+DC
+Inverter
+AC
+AC
+Real system
+Rectifier
+Inverter
+AC
+AC
+Xyce
+ 
+simulated model
+I
+_
+rec
+_
+R
+I
+_
+rec
+_
+I
+I
+_
+inv
+_
+I
+I
+_
+inv
+_
+R
+Coupled 
+by I
+dc
+ 
+Figure 7. 
+ 
+The conceptual illustration of electronic
+-
+circuit modeling of 
+HVDC (two
+-
+terminal, 
+monopolar
+) in Xyce
+ 
+ 
+C.
+ 
+HVDC Cont
+rol System Model
+ 
+There 
+are
+ 
+no standardized control models applicable to all 
+schemes
+ 
+of HVDC
+. 
+However, 
+HVDC systems from various 
+manufacturers share a common element, 
+viz.
+ 
+control of the 
+current, power, 
+and 
+firing
+ 
+(or extinction)
+ 
+angle of each 
+converter
+. Al
+so, the controller can be categorized as the inner
+-
+loop controller and the outer
+-
+loop controller. For example, one 
+kind of inner
+-
+loop control can be found in Fig. 8, where 
+Idc_ref
+ 
+(the DC current command) is impacted by AC side 
+voltage 
+Vac
+ 
+via complex logi
+c. 
+ 
+Regarding outer
+-
+loop control, there can be various designs 
+depending on different goals or modes of system operation. 
+For example, the 
+Power and Current
+ 
+control mode 
+takes the 
+active power or current as the control parameter
+. T
+he power 
+comman
+d 
+is divid
+ed by the filtered DC 
+voltage to yield the 
+DC current command
+ 
+Idc_ref
+. Besides, 
+the 
+E
+xtinction 
+A
+ngle
+ 
+control
+ 
+can be 
+(simultaneously)
+ 
+used. 
+Since the paper focuses 
+on the modeling and simulation aspect of HVDC per se, 
+details for the outer
+-
+loop controller a
+re omitted here. More 
+details can be found in [10].
+ 
+ 
+Figure 8. 
+ 
+A generic
+ 
+transfer function block 
+diagram for HVDC [10]
+ 
+V.
+ 
+C
+ASE 
+S
+TUDY
+ 
+In this section, 
+a 
+four
+-
+bus,
+ 
+two
+-
+area 
+power 
+system 
+is built 
+in the Xyce environment
+ 
+with an HVDC link between bus
+-
+1 
+and bus
+-
+2 (as shown
+ 
+in Fig. 9)
+. 
+Bus
+-
+2 is connected with an 
+“infinity bus” (i.e.
+,
+ 
+V
+=
+1.0
+
+0
+
+pu), which represents the 
+external grid. 
+T
+he 
+high
+-
+order model (“GENROU”) with 
+exciter and governor
+ 
+is
+ 
+adopted for the synchronous generator.
+ 
+Rectifier
+Gen
+AC 
+grid
+Bus
+-
+4
+Bus
+-
+1
+Bus
+-
+2
+Bus
+-
+3
+HVDC
+Inverter
+ 
+Figure 9. 
+ 
+A
+ 
+four
+-
+bus, two
+-
+area 
+power 
+system
+ 
+with
+ 
+HVDC
+ 
+A.
+ 
+S
+imulation 
+Settings and P
+arameters
+ 
+All the generators use high
+-
+order models considering 
+exciters
+, 
+governors
+, and saturation effects
+.
+ 
+S
+imulation settings 
+and partial 
+system parameters are 
+listed
+ 
+in Table
+s
+ 
+I
+ 
+to 
+III
+.
+ 
+TABLE I. 
+ 
+S
+YSTEM PARAME
+TERS AND SIMULATION SETTINGS
+ 
+Xyce integral time step
+ 
+10ms
+ 
+x
+12
+ 
+0.2pu
+ 
+Simulation length
+ 
+2
+00s
+ 
+x
+13
+ 
+0.1pu
+ 
+Xyce RelTolerance
+ 
+1e
+-
+1
+ 
+x
+1
+4
+ 
+0.1pu
+ 
+Xyce
+ 
+AbsTolerance 
+ 
+1e
+-
+3
+ 
+x
+23
+ 
+0.1pu
+ 
+V
+2
+ 
+magnitude
+ 
+1.0pu
+ 
+V
+4
+ 
+magnitude
+ 
+1.0971pu
+ 
+
+TABLE II. 
+ 
+HVDC
+ 
+PARAMETERS
+ 
+Tap 
+ 
+1.0
+ 
+X
+cr
+,
+ 
+X
+c
+i
+ 
+0.2
+ 
+Idc
+_ref
+ 
+1.0pu
+ 
+N
+rec
+,
+ 
+N
+inv
+ 
+6
+ 
+Vac_ref
+ 
+1.0pu
+ 
+P
+dc_rec
+ 
+0.8
+ 
+X
+dc
+ 
+0.111pu
+ 
+P
+dc_inv
+ 
+0.7
+ 
+TABLE III. 
+ 
+G
+ENERATOR PARAMETERS
+ 
+T
+d
+
+ 
+7s
+ 
+x
+l
+ 
+0.
+15
+pu
+ 
+T
+d
+
+
+ 
+0.03s
+ 
+x
+d
+ 
+2
+.1pu
+ 
+T
+q
+
+ 
+0.75s
+ 
+x
+d
+
+ 
+0.
+2
+pu
+ 
+T
+q
+
+
+ 
+0.05s
+ 
+x
+d
+
+
+ 
+0.1
+8
+pu
+ 
+x
+q
+ 
+0.5
+pu
+ 
+x
+q
+
+ 
+0.25
+pu
+ 
+r
+a
+ 
+0.0pu
+ 
+x
+q
+
+
+ 
+0.18pu
+ 
+H
+ 
+3s
+ 
+D
+ 
+0.5pu
+ 
+ 
+B.
+ 
+S
+imulation
+ 
+Resul
+t
+s
+ 
+1)
+ 
+Without 
+E
+xtinction 
+A
+ngle 
+C
+ontrol
+ 
+Let
+ 
+the inverter side
+ 
+not consider the extinction
+ 
+angle 
+.
+firing
+/
+extinction
+ 
+angles are 
+depicted 
+in Fig. 
+10 and 11
+.
+ 
+The 
+wall clock time cost is about 
+4.4 
+seconds for a “200sec” 
+simulation length.
+ 
+ 
+Figure 10. 
+ 
+The 
+bus voltages 
+w
+ithout
+ 
+extinction angle control
+ 
+C
+o
+s
+i
+n
+e
+s
+ 
+o
+f
+ 
+t
+h
+e
+ 
+f
+i
+r
+i
+n
+g
+ 
+a
+n
+g
+l
+e
+s
+ 
+Figure 11. 
+ 
+The firing
+/
+extinction angle
+s
+ 
+w
+ithout
+ 
+extinction angle control
+ 
+ 
+It can be observed that when there is no 
+extinction
+ 
+angle 
+control, the voltage 
+magnitudes
+ 
+at the 
+rectifier
+ 
+side are 
+relatively low due to 
+the 
+large reactive power 
+su
+pplied
+ 
+from 
+the infinity system
+ 
+side
+.
+ 
+ 
+2)
+ 
+With 
+E
+xtinction 
+A
+ngle 
+C
+ontrol
+ 
+Let
+ 
+the inverter side
+ 
+consider the extinction angle control 
+and set 
+
+ref
+ 
+= 20
+
+. 
+The
+ 
+responses of the 
+bus voltages
+ 
+and 
+firing
+/extinction 
+angles are 
+depicted
+ 
+in Fig. 
+12 and 13
+. 
+The 
+wall clo
+ck time cost is about 4.9 seconds for a “200sec” 
+simulation length.
+ 
+It can be observed that when the extinction angle control is 
+adopted at the inverter side, the voltage magnitudes of buses at 
+the rectifier side can finally increase to 1.0pu 
+or abov
+e.
+ 
+ 
+Figure 12. 
+ 
+T
+he bus voltages with extinction angle control
+ 
+ 
+Figure 13. 
+ 
+The firing/extinction angle
+s 
+with extinction angle control
+ 
+ 
+VI.
+ 
+C
+ONCLUSION
+ 
+In this paper, a circuit simulator
+-
+based 
+HVDC modeling 
+method for 
+power system transient
+ 
+simulation
+ 
+is proposed. 
+T
+he case study
+ 
+res
+ults 
+f
+or 
+a
+ 
+four
+-
+bus
+ 
+system 
+demonstrate
+ 
+the 
+method’s 
+applicability 
+and 
+computational
+ 
+speed
+. 
+The next step 
+is 
+implementing
+ 
+othe
+r
+ 
+Xyce models
+ 
+for
+ 
+practical
+ 
+HVDC 
+applications
+,
+ 
+e.g., the
+ 
+protective relays
+, 
+filter banks
+, 
+and 
+multi
+-
+terminal HVDCs
+.
+ 
+A
+PPENDIX
+:
+ 
+C
+ODE
+ 
+S
+NIPPE
+TS 
+OF
+ 
+X
+YCE
+ 
+A.
+ 
+Slack Bus Model
+ing
+ 
+************************************************
+ 
+* Bus 1 is the slack bus, VMag=1.0507, Vtheta=0.51deg*
+ 
+************************************************
+ 
+V1R
+ 
+Bus1R ammBus1R 1.0507V
+ 
+V1I
+  
+Bus1I   ammBus1I  0.00935V
+ 
+VammR
+ 
+0 
+ammBus
+1R 0V
+ 
+VammI
+  
+0 ammBus1I   0V
+ 
+ 
+ 
+B.
+ 
+CPL Model
+ing
+ 
+************************************************
+ 
+* Constant Power Load                                                      *
+ 
+************************************************
+ 
+.
+SUBCKT
+ 
+CPL
+ 
+RNode INode
+ 
+PARAMS
+:
+ 
+P=0.5
+ 
+Q=0.0 
+CurrLim=1000
+ 
+……
+ 
+BloadR
+ 
+RNode ammR
+ 
++
+ 
+I={limit((P*V(RNode)+Q*V(INode))/(V(RNode)*V(RNode)
++V(INode)*V(INode)),
+ 
+-
+CurrLim,CurrLim)}
+ 
+……
+ 
+BloadI
+ 
+INode ammI
+ 
++
+ 
+ 
+I={limit((P*V(INode)
+-
+Q*V(RNode))/(V(RNode)*V(RNo
+ 
+de)+V(INode)*V(INode)),
+ 
+-
+CurrLim, CurrLim)}
+ 
+.
+ENDS
+ 
+
+C.
+ 
+HVDC
+ 
+Modeling
+ 
+*************************************************
+ 
+* Subcircuit definition for 
+the
+ 
+HVDC CHVDC2 diagram
+ 
+*************************************************
+ 
+* Output cos_alpha_rec 
+ 
+* Output cos_beta_inv  
+ 
+.SUBCKT
+ 
+CHVDC2
+_Module Vac_Rec_r Vac
+_Inv_r
+ 
+Vac_Rec_i Vac_Inv_i
+ 
++ PARAMS: I_rate=1 Tr=0.005 V_rate=1 Tur=1 Tdr=1 
+V1=1 V2=1 Imax1=1 Imax2=1 
+ 
++  Alpha_min_r=0.21 Alpha_max_r=0.35 rmin=0 rmax=1 
+Talpr=1 Alpha_max_ram=0.21, Tap=1.0 Xc=0.2 Gdc =0.111 
+Nbr=6
+ 
+……
+ 
+BVac_rec
+  
+Vac_r 0 
+V={SQRT(V(Vac_Rec_r)*
+V(Vac_
+Rec_r)+V(Vac_Rec_i)*V
+(Vac_Rec_i))}
+ 
+BVac_inv
+  
+Vac_i 0 
+V={SQRT(V(Vac_Inv_r)*V(Vac_Inv_r)+V(Vac_Inv_i)*V(
+Vac_Inv_i))}
+ 
+……
+ 
+BVdc_rec
+  
+Vdc_rec 0 
+V={Nbr*(3/PI)*(SQRT(2)*V(Eeq_rec)*V(cos_alpha_rec)
+-
+Xc*V(Idc))}
+ 
+BVdc_inv
+  
+Vdc_inv 0 
+V={Nbr*(3/PI)*(SQRT(2)*V(Eeq_
+rec)*V
+(cos_beta_inv)
+-
+Xc*V(Idc))}
+ 
+……
+ 
+* (Rectifier)
+ 
+VammR
+_rec ammR_rec 0 0V
+ 
+VammI
+_rec ammI_rec 0 0V
+ 
+BloadR
+_rec Vac_Rec_r ammR_rec
+ 
++ I={limit( (Pdc_rec*V(Vac_Rec_r)+ 
+V(Qdc_rec)*V(Vac_Rec_i))/(V(Vac_Rec_r)*V(Vac_Rec_r)
++V(Vac_Rec_i)*V(Vac_Rec_i)), 
+-
+1000,1000)}
+ 
+BloadI
+_rec Vac_Rec_i ammI_rec
+ 
++ I={limit( (Pdc_rec*V(Vac_Rec_i)
+-
+ 
+V(Qdc_rec)*V(Vac_Rec_r))/(V(Vac_Rec_r)*V(Vac_Rec_r)
++V(Vac_Rec_i)*V(Vac_Rec_i)), 
+-
+1000,1000)}
+ 
+* (Inverter)
+ 
+VammR
+_inv ammR_inv 0 0V
+ 
+VammI
+_inv ammI_inv 0 0V
+ 
+BloadR
+_inv Vac_Inv_r ammR_inv
+ 
++ I={limit( (
+-
+Pdc_inv*V(Vac_Inv_r)
+-
+ 
+V(Qdc_inv)*V(Vac_Inv_i))/(V(Vac_Inv_r)*V(Vac_Inv_r)+
+V(Vac_Inv_i)*V(Vac_Inv_i)), 
+-
+1000,1000)}
+ 
+BloadI
+_inv Vac_Inv_i ammI_inv
+ 
++ I={limit( (
+-
+Pdc_inv*V(Vac_Inv_i)+ 
+V(Qdc_inv)*V(Vac_Inv_r))/(V(Vac_Inv_r)*V(Vac_Inv_r)+
+V(Vac_Inv
+_i)*V(Vac_Inv_i)), 
+-
+1000,1000)}
+ 
+.
+ENDS
+ 
+ 
+R
+EFERENCES
+ 
+[1]
+ 
+K. R. Padiyar
+, HVDC Power Transmission Systems: Technology and 
+System Interactions, 1st ed. New 
+Delhi
+, India: New Age International
+ 
+(P) Ltd.
+, 1990
+.
+ 
+[2]
+ 
+EMTDC 
+user
+ 
+guide
+. http://
+www.pscad.com.
+ 
+[3]
+ 
+R. Razzaghi, M. Mi
+tjans, F. Rachidi, and M. Paolone, “An automated 
+FPGA real
+-
+time simulator for power electronics and power systems 
+electromagnetic transient applications,” 
+Electr. Power Syst. Res.
+, vol. 
+141, pp. 147
+–
+156, 2016
+.
+ 
+[4]
+ 
+P. Aristidou, S. Lebeau and T. Van Cutsem, "Po
+wer System Dynamic 
+Simulations Using a Parallel Two
+-
+Level Schur
+-
+Complement 
+Decomposition," 
+IEEE
+ 
+Trans
+. 
+Power
+ 
+Syst.
+, vol. 31, no. 5, pp. 3984
+-
+3995, Sept. 2016.
+ 
+[5]
+ 
+A. Pandey, M. Jereminov, M. R. Wagner, D. M. Bromberg, G. Hug, 
+and L. Pileggi, “Robust Power Flow
+ 
+and Three
+-
+Phase Power Flow 
+Analyses,” 
+IEEE Trans. Power Syst.
+, 2019.
+ 
+[6]
+ 
+M. Jereminov, D. M. Bromberg, A. Pandey, M. R. Wagner and L. 
+Pileggi, "Evaluating Feasibility Within Power Flow,"
+ 
+IEEE Trans
+. 
+Smart Grid
+, vol. 11, no. 4, pp. 3522
+-
+3534, July 2020.
+ 
+[7]
+ 
+Xyce
+™ 
+Parallel Electronic
+ 
+Simulator Design: 
+Math Formulation. 
+https://xyce.sandia.gov/downloads/_assets/documents/Xyce_Math_For
+mulation.pdf
+.
+ 
+[8]
+ 
+Xyce™ Parallel Electronic Simulator
+ 
+Users’ Guide, Version 
+6.9
+.
+ 
+https://xyce.sandia.gov/downloads/assets/documents/Users_G
+uide.pdf
+.
+ 
+[9]
+ 
+Application Note:
+ 
+Power Grid Modeling 
+W
+ith Xyce™. 
+https://xyce.sandia.gov/downloads/_assets/documents/AppNote
+-
+PowerGridModelingWithXyce.pdf
+.
+ 
+[10]
+ 
+DC Line Model: CHVDC2
+. PowerWorld 
+Corporation
+.
+ 
+https://www.powerworld.com/WebHelp/Content/TransientModels
+_HT
+ML/DC%20Line%20CHVDC2.htm
+ 
+ 

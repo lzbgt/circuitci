@@ -44,6 +44,9 @@ See [docs/limitations.md](docs/limitations.md) and
 [docs/common_iot_board_readiness_gaps.md](docs/common_iot_board_readiness_gaps.md).
 For a concise engineering assessment of current practical value and boundaries,
 see [docs/project_status_assessment.md](docs/project_status_assessment.md).
+For the full-featured time/frequency-domain simulation research and backend
+roadmap, see
+[docs/research/circuit_simulation_full_featured/README.md](docs/research/circuit_simulation_full_featured/README.md).
 For the prioritized backlog that makes CircuitCI more useful to board-validation
 agents, see
 [docs/agent_validation_usefulness_backlog.md](docs/agent_validation_usefulness_backlog.md).

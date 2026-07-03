@@ -1,0 +1,801 @@
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint
+Sensitivity Analysis
+Julian Sarpe 1*, Andreas Klaedtke 2 and Herbert De Gersem 1
+1*Institute for Accelerator Science and Electromagnetic Fields
+(TEMF), Technische Universität Darmstadt,
+Schloßgartenstraße 8, 64289 Darmstadt, Germany.
+2Corporate Sector Research and Advance Engineering, Robert
+Bosch GmbH, Robert-Bosch-Campus 1, 71272 Renningen,
+Germany.
+*Corresponding author(s). E-mail(s):
+julian_johannes.buschbaum@tu-darmstadt.de;
+Contributing authors: andreas.klaedtke@de.bosch.com;
+degersem@temf.tu-darmstadt.de;
+Abstract
+This paper presents a transient forward harmonic adjoint sensitivity
+analysis (TFHA), which is a combination of a transient forward cir-
+cuit analysis with a harmonic balance based adjoint sensitivity analysis.
+TFHA provides sensitivities of quantities of interest from time-periodic
+problems w.r.t. many design parameters, as used in the design process
+of power-electronics devices. The TFHA shows advantages in appli-
+cations where the harmonic balance based adjoint sensitivity analysis
+or finite difference approaches for sensitivity analysis perform poorly.
+In contrast to existing methods, the TFHA can be used in combi-
+nation with arbitrary forward solvers, i.e. general transient solvers.
+Keywords: direct sensitivity analysis, adjoint sensitivity analysis, harmonic
+balance method, nonlinear circuit analysis
+1
+arXiv:2401.13496v1  [math.NA]  24 Jan 2024
+
+Springer Nature 2021 LATEX template
+2 Transient Forward Harmonic Adjoint Sensitivity Analysis
+1 Introduction
+The development cost of devices containing electronic circuits is directly linked
+to the number of prototyping cycles. A means of reducing the number of pro-
+totype cycles is the use of electric circuit analysis tools, such as Spice, that
+help predict the behavior of the circuits without the need to create any hard-
+ware. For time-harmonic systems, the analysis can be performed either in time
+or frequency domain. Transient circuit analysis treats nonlinear devices by
+linearizing their behavior at every time step. In frequency domain, nonlinear
+devices cause a mutual dependence of different spectral components. Thus,
+frequency domain analyses are not generally possible [1, 2]. Nonetheless, a non-
+linear circuit problem can be solved in frequency domain using the harmonic
+balance (HB) method [1]. The HB method approximates the solution of the
+steady state for a finite number of harmonics with Newton iteration [3]. The
+HB method avoids the issue of long transients in time domain simulations.
+However one also has to consider the drawbacks of HB. The more harmonics
+that are necessary to approximate the nonlinear device behavior, the more de-
+grees of freedom (DoF) the equation system has. Moreover, the convergence
+of the Newton procedure is suffering in strongly nonlinear systems [3, 4].
+A systematic approach for circuit analysis is the employment of sensitiv-
+ity analysis, which aims to reduce optimization cycles in the early stages of
+development by systematically optimizing certain design parameters [5]. A
+common global sensitivity analysis is performed by computing Sobol indices
+from a Polynomial Chaos Expansion (PCE) surrogate model. [6]. However,
+PCE and similar methods are limited by the number of design parameters due
+to the curse of dimensionality [7] that makes this type of analysis unfeasible
+for large parameter spaces. Another category of sensitivity analysis techniques
+involves computing the gradient of the Quantity of Interest (QoI) w.r.t. one or
+more design parameters. Gradient based methods are also referred to as local
+sensitivity analysis [7].
+Adjoint sensitivity analysis is the method of choice for a setting with
+many design parameters [5, 8]. Transient adjoint sensitivity analysis [8, 9] as
+well as sensitivity analysis based on HB solvers [10] have been published and
+used before. Transient adjoint sensitivity analysis is an efficient approach for
+the analysis of strongly nonlinear systems. However, when dealing with time-
+dependent sensitivities, the inherent part of solving multiple adjoint problems
+creates a computational bottleneck [5]. This issue does not exist for HB based
+sensitivity analysis. Combining the advantages of transient analysis and HB
+based adjoint sensitivity analysis, it is possible to utilize an HB based adjoint
+sensitivity analysis while at the same time avoiding convergence problems and
+many necessary Newton iterations for strongly nonlinear problems.
+This paper proposes the transient forward adjoint harmonic sensitivity
+analysis (TFHA) as a combination of a nonlinear transient forward analy-
+sis with a harmonic adjoint sensitivity analysis. The TFHA is an efficient
+and robust method for sensitivity analysis in power-electronics applications as
+demonstrated in practical examples in section 5.
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 3
+This paper is structured as follows: Section 2 gives a brief introduction to
+the used circuit analysis methods and necessary considerations for the analysis
+of nonlinear circuits. Section 3 gives an overview over the mentioned sensitivity
+analysismethods.Section4introducestheTFHAasanovelsensitivityanalysis
+method. After that, TFHA is applied to several model problems in section 5.
+Conclusions on the applicability of the TFHA are drawn in section 6.
+2 Nonlinear Circuit Analysis
+To perform the sensitivity analysis, a simulation framework for the considered
+nonlinear circuits must be introduced first. All presented methods are based
+on the modified nodal analysis (MNA), which will be introduced first.
+2.1 Modified Nodal Analysis
+MNA has been the method of choice for most circuit problems since its intro-
+duction in 1975 [11]. MNA extends nodal analysis to accommodate impedance
+devices such as inductances or voltage sources in addition to the admittance
+devices. In the static case, the MNA problem reads:
+F (x) = Ax − is = 0. (1)
+The solution vectorx contains the nodal voltagesunodes for all nodes and the
+edge currentsiedge for the impedance devices. MNA employs an extended sys-
+tem matrixA, containing the nodal admittance matrixY , the edge impedance
+matrix Z of the impedance devices and two incidence matricesB and BT
+coupling both submatrices:
+A =
+
+
+Y BT
+B Z
+
+ . (2)
+The right hand sideis of the nodal analysis is modified accordingly such that
+it contains all input nodal currents inodes and edge voltages uedge for the
+respective impedance devices:
+is =
+ inodes uedge
+T
+. (3)
+2.2 Nonlinear Transient Circuit Analysis
+MNA can be utilized for a transient circuit analysis. The transient MNA is
+given as a differential algebraic equation (DAE) system
+F (x, ˙x, t) = AC ˙x(t) + AGx(t) − is(t) = 0 , x(t = 0) = 0 , (4)
+
+Springer Nature 2021 LATEX template
+4 Transient Forward Harmonic Adjoint Sensitivity Analysis
+where AC contains capacitor and inductor contributions, AG contains con-
+ductance contributions andis contains the independent sources. If the circuit
+contains nonlinear devices, a linearization of the system is required. This is
+done by using the Newton method [12] and the introduction of the Jacobian
+matrix J
+JG(x, t) = AG − ∂inl(x(t), t)
+∂x(t) , (5)
+where inl denotes the vector of voltage dependent currents for nonlinear ad-
+mittance devices. For impedance and energy storage devices, the linearization
+is performed analogously. For transient analyses, the linearization is performed
+for each time stept.
+2.3 Harmonic Balance Method
+A linear system can directly be transferred to frequency domain [5]:
+F (x, ω) = j ωACx(ω) + AGx(ω) − is(ω) = 0 , (6)
+where the underlining indicates the phasors of the corresponding quantities
+and ω is the circular frequency. The resulting system matrices are combined
+into a single matrixA = jωAC + AG which gives the consitutive equation for
+the default MNA in frequency domain:
+F (x) = Ax − is = 0. (7)
+The HB method is a formalism to approximate the solution of a nonlinear
+system iteratively with a Newton iteration in frequency domain [1]. The Jaco-
+bian (8) is defined at multiple frequencies in order to represent the nonlinear
+behavior
+J (x, ω) = A(ω) − ∂inl(x, ω)
+∂x , (8)
+where ω is the vector of all considered frequencies in the system. Approxi-
+mation with multiple harmonic frequencies increases the number of degrees
+of freedom (DoF) the stronger the nonlinearities [3]. Resultingly, the HB
+method is very performant in weakly nonlinear systems that exhibit long tran-
+sient times. This performance advantage is diminished for strongly nonlinear
+systems due to the exploding number of DoFs.
+The holomorphy of the function vector (7) needs to be ensured in the
+computational domain to define the Jacobian matrix. The Paley-Wiener
+theorem [13] states that the Fourier transform of a bounded functionF ∈ L2
+is holomorphic if the function variable is in the upper half plane, i.e. when t
+is restricted toℜ+, which can be assumed in real world applications without
+the loss of generality.
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 5
+3 Sensitivity Analysis
+This section summarizes known methods to obtain the sensitivity for a QoIU
+w.r.t. one or multiple design parametersp. The QoI can be any quantity within
+the circuit such as an edge voltage or current. Design parameters in our ap-
+plication are components within the circuit, such as inductances, capacitances
+or resistances. The presented methods are limited to gradient based sensitiv-
+ities. This limitation is introduced since the applications exhibit very large
+parameter spaces which makes global sensitivity analysis not well suited [7].
+3.1 Transient Direct Sensitivity Analysis
+U (x) depends on the circuit solution, and hence, indirectly on time. Therefore,
+the calculation of the sensitivity [8]:
+dU
+dp = ∂U
+∂x
+dx
+dp (9)
+involves the calculation of the derivativedx/dp of the circuit solutionx w.r.t.
+the parameterp. ∂U/∂ x is a mapping operator that obtains the sensitivity for
+the QoI from the derivativedx
+dp. dx
+dp is obtained by taking the derivative of (4)
+w.r.t. p.
+dF
+dp = AC
+d ˙x
+dp + JG
+dx
+dp +
+ dAC
+dp ˙x + dAG
+dp x
+
+= 0. (10)
+This approach is referred to as direct sensitivity analysis (DSA) [5]. Eq.(10)
+needs to be solved individually for every design parameter. As a result, DSA
+is expensive for the sensitivity analysis w.r.t. many design parameters.
+3.2 Transient Adjoint Sensitivity Analysis
+Transient adjoint sensitivity analysis determines sensitivities based on the
+systemsolution xandatestfunction λ.Theworkflowfortransientadjointsen-
+sitivity analysis is outlined in Fig. 1. To obtain the adjoint sensitivity analysis,
+differential equation (10) is multiplied withλ as a test function and integrated
+quantity of interest U
+system matrices
+AG and AC
+system solution x
+adjoint
+solution λ
+AT
+C ˙λ− AT
+Gλ= ∂U
+∂x
+dU/dx
+dAC/dp
+design parameters p
+sensitivity solution
+dU
+dp (tm) =∫ tm
+0
+∂
+∂tm
+λT(tm)
+(dAC
+dp ˙x
++ dAG
+dp x
+)
+dt
+dAG/dp
+Figure 1: Workflow of the transient adjoint sensitivity method.
+
+Springer Nature 2021 LATEX template
+6 Transient Forward Harmonic Adjoint Sensitivity Analysis
+over time:
+Z tm
+0
+λT(tm)
+
+AC
+d ˙x
+dp + JG
+dx
+dp
+
+dt = −
+Z tm
+0
+λT(tm)
+ dAC
+dp ˙x + dAG
+dp x
+
+dt.
+(11)
+Integration by parts eliminates the time derivative ofdx/dp [5]:
+Z tm
+0
+
+− ˙λTAC + λT(tm)JG
+ dx
+dp dt
+= −
+Z tm
+0
+λT(tm)
+ dAC
+dp ˙x + dAG
+dp x
+
+dt −
+
+λT(tm)AC
+dx
+dp
+tm
+0
+. (12)
+Without loss of generalityλ is chosen as the solution of the adjoint system, to
+eliminate the boundary terms and accommodate the left hand side term:
+AT
+C ˙λ − J T
+Gλ = ∂U
+∂x , λ (t = tm) = 0 . (13)
+The adjoint solution is calculated backwards in time to ensure the reverse
+initial condition λ(t = tm) = 0 for arbitrary tm [8]. The term at t = 0 is
+eliminated due to the initial conditionx(t = 0) = 0 in Eq.(4). Substituting
+Eq.(13) into Eq.(12) and multiplication by -1 yields the integration for the
+sensitivity of the QoIU.
+Z tm
+0
+dU
+dp dt =
+Z tm
+0
+λT(tm)
+ dAC
+dp ˙x + dAG
+dp x
+
+dt (14)
+The generalized version of Leibniz integral rule is applied to the right hand side
+term [14], to obtain the sensitivity for the QoI at a specific time instanttm:
+dU
+dp (tm) =
+Z tm
+0
+∂
+∂T λT(tm)
+ dAC
+dp ˙x + dAG
+dp x
+
+dt. (15)
+There is an adjoint solution for each time instanttm, as computed by solving
+equation (13). Thus, the task of computing the solution to Eq.(13) has to be
+redone for each instant in time where the sensitivity is to be considered.
+3.3 Harmonic Balance based Direct Sensitivity Analysis
+Analogously to the transient case, DSA is derived by symbolic differentiation
+of the reverse initial condition from Eq.(7) for the HB method.
+dF (φ)
+dp = dA
+dp x +
+
+A − ∂inl
+∂x
+ dx
+dp = dA
+dp x + J dx
+dp = 0 (16)
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 7
+From Eq.(16) we can solve the system for the sensitivitydx/dp:
+dA
+dp x + J dx
+dp = 0 ⇒ dx
+dp = −J −1 dA
+dp x (17)
+The Jacobian is determined in each Newton iteration when used for the har-
+monic balance solver. If the goal is to perform sensitivity analysis based on an
+existing circuit solution, the Jacobian is given as the converged solution from
+the nonlinear problem [10].
+If many design parametersp are analyzed, the numerical efficiency of HB
+based direct sensitivity decreases, because Eq.(17) contains a matrix multipli-
+cation with the dense matrixJ −1. This dense matrix multiplication can be
+avoided by introducing an HB based adjoint sensitivity analysis.
+3.4 Harmonic Balance based Adjoint Sensitivity Analysis
+The adjoint system for the harmonic balance case (16) is given as
+J Hλ = ∂U
+∂x ⇒ λ = ∂U
+∂x J −H. (18)
+AstheJacobiandoesnotdependontheadjointsolution λ,theadjointproblem
+is linear. The sensitivity of the QoIU (p) w.r.t. the design parameterp follows
+as:
+dU (p)
+dp = −
+ ∂U
+∂x
+H
+J −1 dA
+dp x = −λH dA
+dp x. (19)
+In frequency domain, the adjoint solution can be reused for all considered fre-
+quencies, which eliminates the issues of the transient analysis but increases
+the number of DoFs for large frequency spaces. Compared to the HB based
+direct sensitivity analysis, HB based adjoint sensitivity analysis does not con-
+tain any dense matrix multiplications, improving performance. The procedure
+is outlined as the green dashed box in Fig. 2.
+The issue that remains is the bad performance for strongly nonlinear
+systems. This is particularly problematic when the Jacobian has to be approx-
+imated along many convergence steps of the HB iteration (Eq.(7)). A hybrid
+time-frequency domain method, that eliminates the issue of many Newton
+iteration steps, is proposed in the following section.
+4 Transient Forward Harmonic Adjoint
+Sensitivity Analysis
+The HB method is well suited for simulating steady-state operation. If strong
+nonlinearities occur, the harmonics become coupled across a wide range of
+frequencies. Especially in the context of power electronics, short rise and fall
+times are present, which requires us to consider a large number of harmon-
+ics [3]. A procedure consisting of a forward HB solve combined with a harmonic
+
+Springer Nature 2021 LATEX template
+8 Transient Forward Harmonic Adjoint Sensitivity Analysis
+adjoint method for calculating the sensitivities was proposed in [10] and has
+been recapitulated in section 3.3. Obtaining the forward solution forx with
+the harmonic balance method is not compulsory for the sensitivity analysis.
+This motivates the following procedure. The circuit solution is calculated by a
+transient circuit solver. The adjoint solution is obtained by a harmonic analy-
+sis. This procedure extends the HB based adjoint sensitivity analysis (in green)
+as depicted by the red dotted box in Fig. 2.
+The TFHA obtains the circuit solution x through the utilization of an
+efficient transient solver of choice. Once an approximation to the steady state
+is found, the Fourier transformx of one period ofx is used to calculate the
+Jacobian J. The approximated Jacobian matrix is then used to obtain the
+adjoint solution in frequency domain, analogously to the way presented in
+section 3.4. Subsequently, the adjoint solution is combined with the symbolic
+derivative of system matrixdA/dp to calculate the sensitivities. Depending on
+the application, the sensitivity can be illustrated as a frequency spectrum or
+be transformed back to time.
+The TFHA is exposed to information loss which results in a residual error,
+due to a finite number of harmonics. The Euclidean distance of the solution
+with fewer harmonics against the solution with more harmonics quantifies the
+residual. This is based on the idea of the Zienkiewicz-Zhu error estimator [15].
+The relative error is approximated by the quotient of the absolute error divided
+by the norm of the fine solution:
+Erel ≈
+
+
+
+
+dU
+dp
+
+fine
+−
+
+dU
+dp
+
+coarse
+
+
+
+2
+
+
+
+dU
+dp
+
+fine
+
+
+
+2
+. (20)
+Without prior considerations of the spectral circuit behavior, the sensitivity is
+determined by iteratively increasing the number of harmonics. The quantifica-
+tion of the error (Eq.(20)) is finally used as a termination condition to assess
+the converged solution.
+quantity of interest U
+system matrix A
+transient
+solutionx F{}harmonic
+solutionx
+Jacobian
+J =A−∂inl(x)
+∂x
+adjoint
+solutionλ
+J Hλ= ∂U
+∂ϕ
+∂U
+∂x
+dA
+dpdesign parameters p
+sensitivity
+solution
+dU
+dp =−λH dA
+dpx
+Figure 2:Workflowfortheharmonicbalancebasedadjointsensitivityanalysis
+and the TFHA.
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 9
+5 Results
+The TFHA is illustrated for three different examples: A half-wave rectifier
+as a nonlinear, academic example and two different power electronics circuits
+serving as industrial examples.
+5.1 Half-Wave Rectifier
+A half-wave rectifier rectifier (Fig. 3) consists of only one nonlinear and two
+linear components. Fig. 4 displays both the time domain and the frequency
+domain sensitivity of the output voltage w.r.t. the resistanceR. Due to the
+weak nonlinearities within the circuit, the sensitivity solution converges fastly
+even for a small number of harmonics.
+5.2 Boost Converter
+A boost converter is a type of DC-DC converter circuit which is used in
+many power electronic applications. In a circuit model, parasitic effects can be
+modeled as lumped circuit elements such as resistances, inductances and ca-
+pacitances. The circuit with parasitic lumped elements is shown in Fig. 5. The
+sensitivity of the drain voltageVdrain w.r.t. the output resistanceR1 is shown
+in Fig. 6. A significant overshoot is observed for the sensitivity and the drain
+voltage throughout the switching process. This is attributed to the broadband
+nature of the system. The overshoot can heavily influence the sensitivities es-
+pecially close to the switching of the transistor. Hence, this is a relevant test
+for accuracy and performance of the algorithm. The results in Fig. 6 show that
+D
+Vin
+ VoutR
+ C
+Figure 3: Schematic of a functional half-wave rectifying circuit.
+0 0.5 1 1.5 2
+-50
+0
+50
+Time [ µs]
+sensitivity [mVΩ −1]
+−5
+0
+5
+voltage [V]
+output voltage
+sensitivity dVout/dR
+(a) Time domain plot over two periods
+0 20 40
+0
+2
+4
+6
+frequency [MHz]
+sensitivity [mVΩ −1] (b) Frequency domain plot of sensitivity
+Figure 4: Sensitivity of the output voltage w.r.t. the resistanceR for the half-
+wave rectifying circuit in time and frequency domain.
+
+Springer Nature 2021 LATEX template
+10 Transient Forward Harmonic Adjoint Sensitivity Analysis
+Vin
+ VoutR1
+ C
+Vgate
+M
+L1 D
+drain
+gate
+R2 L2 R3 L3
+R4 L4
+Figure 5: Boost converter circuit model with parasitics. The elementsL1, R1,
+C and M model the functional behavior of the boost converter, the elements
+R2, L2, R3, L3, R4 and L4 are parasitic elements which model the EMC effects
+on the circuit board.
+0 0.02 0.04 0.06 0.08 0.1 0.12 0.14
+−2
+0
+2
+4
+6
+time [ms]
+sensitivity [VΩ −1]
+−20
+0
+20
+40
+60
+voltage [V]
+drain voltage
+gate voltage
+sensitivity dVdrain/dR1
+Figure 6 : Time resolved sensitivity of the gate voltageVdrain w.r.t. the re-
+sistance R1 related to the drain and gate voltages of the boost converter
+MOSFET.
+the algorithm correctly approximates the overshoot while limiting the Gibbs
+ripples when a frequency domain solution with an insufficient number of har-
+monics is calculated. The spectral TFHA solution gives a good indication of
+this behavior (Fig. 7). The spectrum does not decrease steadily for higher
+harmonics, but rather shows a side lobe, with higher peaks at around0.8 MHz.
+0 0.5 1 1.5 2 2.5
+0
+0.1
+0.2
+frequency [MHz]
+sensitivity [VΩ −1]
+Figure 7 : Sensitivity spectrum dVdrain/dR1 of the boost converter circuit
+showing a significant spectral content at around0.8 MHz that must not be
+neglected.
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 11
+5.3 Active Filter Circuit
+An active filter circuit that injects a reversed polarity noise signal serves as
+an example with a larger number of elements. This circuit is nonlinear. Fig. 8
+shows a reduced schematic of the entire active filter setup as used in the
+analysis. The complete circuit consists of 240 linear and nonlinear elements and
+has 152 degrees of freedom. The circuit contains several specific transistor and
+diode models. The Xyce [16] circuit simulator is used to assemble the Jacobian
+in frequency domain. The sensitivity of several QoIs is analyzed w.r.t. several
+design parameters of the circuit. The first QoI is the output potential of the
+OPAMP V(OPout). Due to the filter properties of the circuit, the quantity
+OPout is smoother than other quantities in the circuit (Fig. 8). The sensitivity
+results for the QoI V(OPout) w.r.t.the capacitancesC1 and C2 as well as the
+resistances R1 and R2 are shown in Fig. 9. The capacitances show a large
+influence on the amplitude of V(OPout). The resistances strongly influence the
+pre-filter properties on the input of the OPAMP. As a result, variations of the
+resistances lead to sensitivities which vary quickly in time. It is conclusive that
+Inoise
+OPout
+C1
+R1
+R2
+R3 R4
+C2
+Zload
+Figure 8: Functional schematic for the nonlinear active filter circuit.
+25 50 75 100
+−1
+0
+1
+time ( µs)
+voltage (V)
+dV(OPout)
+25 50 75 100
+−1
+0
+1
+time ( µs)
+voltage (V)
+dV(OPout )
+25 50 75 100
+−1
+0
+1
+time ( µs)
+voltage (V)
+dV(OPout)
+25 50 75 100
+−1
+0
+1
+time ( µs)
+voltage (V)
+dV(OPout )
+25 50 75 100
+−2
+−1
+0
+1
+2
+sensitivity [VΩ −1]
+dV/dR1
+25 50 75 100
+−2
+−1
+0
+1
+2
+sensitivity [VF−1]
+dV/dC2
+25 50 75 100
+−2
+−1
+0
+1
+2
+sensitivity [VF−1]
+dV/dC1
+25 50 75 100
+−2
+−1
+0
+1
+2
+sensitivity [VΩ −1]
+dV/dR2
+Figure 9: Sensitivity results for V(OPout) of the nonlinear active filter circuit
+w.r.t. different design parameters.
+
+Springer Nature 2021 LATEX template
+12 Transient Forward Harmonic Adjoint Sensitivity Analysis
+T able 1: List of the ten most influential design parameters (ten largest nor-
+malized sensitivities).
+sensitivity value (normalized to maximum sensitivity)
+dV (OPout)/dL4 1
+dV (OPout)/dC1 0.9733
+dV (OPout)/dR3 0.9590
+dV (OPout)/dC2 0.4331
+dV (OPout)/dC6 0.3670
+dV (OPout)/dC3 0.3664
+dV (OPout)/dR11 0.2990
+dV (OPout)/dC5 0.1264
+dV (OPout)/dR2 0.1056
+dV (OPout)/dR1 0.0982
+0 25 50 75 100
+-3
+0
+3
+6
+time ( µs)
+sensitivity ( mVF−1)
+sensitivity dV (OPin)/dC2
+dV (OPin)/dC2 direct sensitivity
+Figure 10: Sensitivity results for V(OPin) w.r.t. capacitanceC2 of the filter
+circuit computed by the TFHA compared to the transient direct Xyce [17]
+sensitivity solution.
+the resistances have the most influence on the flank steepness of the OPAMP
+output.
+The sensitivity analysis is executed for all design parameters in the circuit
+to benchmark the performance of the TFHA. The adjoint solution is calculated
+in 20 seconds using the implementation of Eq.(18). The evaluation of the sen-
+sitivity with Eq.(19) takes less than 2 seconds for each design parameter. This
+is a significant speedup compared to existing methods for the given example.
+Direct sensitivity analysis with Xyce takes 12 seconds for each design parame-
+ter. As a result, a speedup of85 % can be observed for the considered number
+of design parameters. The sensitivities for the ten most influential design pa-
+rameters are listed in table 1. Note here that the design parameters not visible
+in Fig. 8 are part of the load impedanceZload. The input node of the active
+filter has more oscillations at high frequencies. As Fig. 10 shows, the V(OPin)
+sensitivity w.r.t. C2 requires more spectral components for a high frequency
+approximation. To illustrate this, the sensitivity of V(OPin) w.r.t. elementC2
+is calculated with the TFHA and compared to the sensitivity solution of the
+direct sensitivity solver of Xyce [17]. The comparison is shown in Fig. 10. As
+expected, TFHA can accurately determine the sensitivity in smooth intervals
+but deviates for sharp peaks.
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 13
+6 Conclusions
+This paper recapitulated transient adjoint sensitivity analysis methods as well
+as HB based adjoint sensitivity analysis for nonlinear circuits. Transient for-
+ward harmonic adjoint sensitivity analysis (TFHA) which combines transient
+solvers with harmonic adjoint sensitivity analysis was introduced as a novel
+method that improves the efficiency of sensitivity computation with regards
+to a large number of parameters. Results calculated by the TFHA have been
+presented and compared to results calculated by transient or harmonic adjoint
+sensitivity analysis.
+TFHA is advantageous in applications where purely transient sensitivity
+analysis is costly, but the HB method itself might need many Newton iterations
+to converge. This can be the case in fastly oscillating or strongly nonlinear sys-
+tems [3], such as power electronic applications. The TFHA requires one steady
+state time domain solution obtained by a solver of choice and only one solu-
+tion for the adjoint system and therefore one inversion of the Jacobian matrix.
+The TFHA performs well in weakly nonlinear systems where many design pa-
+rameters are considered. Additionally, TFHA is particularly performant for
+sensitivity analysis on time-dependent QoIs, since it requires only one adjoint
+solution in such scenarios.
+Declarations
+Ethical Approval
+Not applicable.
+Competing interests
+The authors declare no conflict of interest.
+Authors’ contributions
+J. Sarpe wrote the main manuscript text and prepared the figures. A. Klaedtke
+provided the models for the "Boost Converter" and the "Active Filter Circuit".
+All authors wrote the introduction and the conclusions. All authors reviewed
+the manuscript.
+Funding
+The authors declare no funding.
+Availability of data and materials
+Not applicable.
+References
+[1] Nakhla, M., Vlach, J.: A piecewise harmonic balance technique for deter-
+mination of periodic response of nonlinear systems. IEEE Transactions on
+
+Springer Nature 2021 LATEX template
+14 Transient Forward Harmonic Adjoint Sensitivity Analysis
+Circuits and Systems23(2), 85–91 (1976). https://doi.org/10.1109/TCS.
+1976.1084181
+[2] Kundert, K.S., Sangiovanni-Vincentelli, A.: Simulation of nonlinear cir-
+cuits in the frequency domain. IEEE Transactions on Computer-Aided
+Design of Integrated Circuits and Systems5(4), 521–535 (1986). https:
+//doi.org/10.1109/TCAD.1986.1270223
+[3] Maas, S.A.: Nonlinear Microwave and RF Circuits. Artech House, Long
+Beach (2003)
+[4] Rizzoli,V.,Lipparini,A.,Marazzi,E.:Ageneral-purposeprogramfornon-
+linear microwave circuit design. IEEE Transactions on Microwave Theory
+and Techniques 31(9), 762–770 (1983). https://doi.org/10.1109/TMTT.
+1983.1131587
+[5] Nikolova, N.K., Bandler, J.W., Bakr, M.H.: Adjoint techniques for sen-
+sitivity analysis in high-frequency structure CAD. IEEE Transactions on
+Microwave Theory and Techniques 52(1), 403–419 (2004). https://doi.
+org/10.1109/TMTT.2003.820905
+[6] Sobol, I.M.: Global sensitivity indices for nonlinear mathematical models
+and their Monte Carlo estimates. Mathematics and Computers in Sim-
+ulation 55(1), 271–280 (2001). https://doi.org/10.1016/S0378-4754(00)
+00270-6
+[7] Sudret, B.: Global sensitivity analysis using polynomial chaos expansions.
+Reliability Engineering & System Safety 93(7), 964–979 (2008). https:
+//doi.org/10.1016/j.ress.2007.04.002
+[8] Cao, Y., Li, S., Petzold, L., Serban, R.: Adjoint sensitivity analysis for
+differential-algebraic equations: The adjoint DAE system and its numeri-
+calsolution.SIAMJournalonScientificComputing 24,1076–1089(2003).
+https://doi.org/10.1137/S1064827501380630
+[9] Ilievski, Z., Xu, H., Verhoeven, A., Ter Maten, E., Schilders, W., Mattheij,
+R.: Adjoint transient sensitivity analysis in circuit simulation, 183–189
+(2007). https://doi.org/10.1007/978-3-540-71980-9_18
+[10] Bandler,J.W.,Zhang,Q.-J.,Biernacki,R.:Aunifiedtheoryforfrequency-
+domain simulation and sensitivity analysis of linear and nonlinear circuits.
+IEEE Transactions on Microwave Theory and Techniques36(12), 1661–
+1669 (1988). https://doi.org/10.1109/22.17397
+[11] Ho, C.-W., Ruehli, A., Brennan, P.: The modified nodal approach to net-
+work analysis. IEEE Transactions on Circuits and Systems22(6), 504–509
+(1975). https://doi.org/10.1109/TCS.1975.1084079
+
+Springer Nature 2021 LATEX template
+Transient Forward Harmonic Adjoint Sensitivity Analysis 15
+[12] Vlach, J., Singhal, K.: Computer Methods for Circuit Analysis and
+Design. Springer, Waterloo, Canada (1983)
+[13] Hille, E., Tamarkin, J.D.: On a theorem of Paley and Wiener. Annals of
+Mathematics 34(3), 606–614 (1933)
+[14] Flanders, H.: Differentiation under the integral sign. The American
+Mathematical Monthly 80(6), 615–627 (1973). https://doi.org/10.2307/
+2319163
+[15] Zienkiewicz, O.C., Zhu, J.Z.: The superconvergent patch recovery and a
+posteriori error estimates. part 1: The recovery technique. International
+Journal for Numerical Methods in Engineering33(7), 1331–1364 (1992).
+https://doi.org/10.1002/nme.1620330702
+[16] Keiter, E., Russo, T., Schiek, R., Thornquist, H., Mei, T., Verley, J.,
+Aadithya, K., Schickling, J.: Xyce parallel electronic simulator reference
+guide, version 7.5. (2022)
+[17] Keiter, E.R., Swiler, L.P., Russo, T.V., Wilcox, I.Z.: Sensitivity analysis
+in Xyce. (2016)

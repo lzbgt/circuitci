@@ -1,0 +1,623 @@
+A N OVEL PHASE -N OISE MODULE FOR THE QUCS C IRCUIT
+SIMULATOR . P ART I : THE PERIODIC STEADY -S TATE.
+arXiv PREPRINT
+Torsten Djurhuus ∗
+Goethe-University Frankfurt
+t.djurhuus@physik.uni-frankfurt.de
+Viktor Krozer
+Goethe-University Frankfurt &
+Ferdinand-Braun-Institut, Leibniz
+Institut für Höchstfrequenztechnik
+krozer@physik.uni-frankfurt.de
+December 12, 2025
+ABSTRACT
+The paper discusses work done to expand and extend the capabilities of the open-source QUCS cir-
+cuit simulator through the implementation of a computationally efﬁcient time-domain steady-state
+analysis module, supporting simulation of autonomous circuits. To our knowledge, this represents
+the ﬁrst time such an analysis module has been implemented in the QUCS environment. Hitherto, the
+only available option was a harmonic-balance module which was strictly limited to non-autonomous
+(driven) circuits. The research has several important scientiﬁc and industrial applications in the area
+of large-signal steady-state analysis of autonomous circuits e.g. free-running and coupled oscillator
+circuit networks. The reported results will have great impact w.r .t.analyzing, synthesizing and opti-
+mizing oscillatory behavior of various important industrial circuits and systems. The developed tool,
+furthermore, introduces support for simulating noise performance of circuits operating under large-
+signal conditions. This paper is the ﬁrst part of a two-part series documenting the implementation
+of a novel (coupled)-oscillator phase-noise simulator engine in the QUCS environment. The goal of
+this undertaking is the advancement of the open-source QUCS project towards becoming a viable
+competitor to the commercial simulators currently on the market.
+Keywords periodic steady-state, numerical analysis, circuit simulation, circuit analysis, autonomous circuits,
+oscillators, oscillator phase-noise.
+1 Introduction
+Efﬁcient and rigorous modelling tools for analyzing, synthesizing and optimizing the large-signal Periodic Steady-
+State (PSS) of non-linear driven and autonomous circuits play a critical role in the design cycle of various circuits
+with important applications in e.g. modern communication and remote-sensing systems. Given the ever-increasing
+complexity of contemporary device models, and scale of modern circuit schematics, such work necessitates using an
+Electronic-Design-Automation (EDA) simulation program.
+The work described herein considers the open-source Quite Universal Circuit Simulator ( QUCS) [1,2], published under
+the GNU General Public License (GPL). The QUCS project was initiated in 2005 [ 1] and has since gone through sev-
+eral development cycles, updates and tests resulting in a robust and computationally efﬁcient simulator for analysis of
+large-scale digital and analog circuits including an accessible Graphical User Interface (GUI) for schematic capture.
+The distribution comes with several important device models built-in and includes an interface for both the Verilog
+and VHDL hardware description languages. The QUCS distribution contains two main modules : the simulation engine,
+known as qucsator, and the GUI application for schematic capture. They communicate through a text-ﬁle based
+∗The authors are with the Institute of Physics, Goethe University of Frankfurt am Main, Max-von- Laue-Strasse 1, 60438,
+Frankfurt am Main. (correspondence e-mail: t.djurhuus@physik.uni-frankfurt.de).
+arXiv:2512.10373v1  [eess.SY]  11 Dec 2025
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+netlist interface powered by a ﬂex/yacc interpretation application. Herein, a choice was made to use the GUI applica-
+tion from the open-source (GPL) QUCS-S distribution [3–5] instead of the original QUCS GUI program. The QUCS-S
+distribution represents a QUCS clone project, inheriting various modules from the original package while also adding
+a new GUI application & external SPICE engine compatibility. It is furthermore able to directly interface with the
+original qucsator engine module. The package heritage structure described here was chosen after facing various
+practical problems installing the original QUCS GUI application on our workstation.
+Unlike commercial counterparts, such as e.g. Keysight-ADS© or Cadence SpectreRF ©, the QUCS package currently
+has no option for steady-state analysis of autonomous circuits ( e.g. free-running oscillators). A large-signal harmonic-
+balance (HB) simulator is included in the distribution, but this analysis option is limited to non-autonomous circuits
+e.g. driven RF power ampliﬁers. Autonomous circuits, such as free-running oscillators/clocks, injection-locked &
+phase-locked systems, bilaterally coupled oscillators etc., represent critically important circuit modules in modern
+communication and remote-sensing systems. The design of these applications necessitate robust numerical analy-
+sis tools for proper circuit development and design. Speciﬁcally, a PSS simulation tool is fundamentally important
+in-order to estimate, analyze, synthesize and optimize autonomous circuits w.r .t.output signal power, steady-state fre-
+quency and stability of the large-signal solution. An option for simulating the PSS is furthermore required in-order to
+evaluate the large-signal noise-response [6–11] of (coupled) oscillator and clock circuit modules which are ubiquitous
+in modern electronic communication systems.
+The QUCS/QUCS-S project clone, described here, is referred to as the QUCS-COPEN (working title)
+project/distribution/package etc. with the acronym COPEN standing for Coupled Oscillator PhasE-Noise. The
+QUCS-COPEN project is currently a work-in-progress and, as the name suggest, involves the implementation of a phase-
+noise (PNOISE) analysis tool. This planned PNOISE engine module, which is based on a novel model developed by
+the authors in [ 11], requires a numerically calculated PSS solution and hence depend directly upon the engine API
+developed herein. The implementation of the QUCS-COPEN PNOISE module is discussed in part 2 of this paper-series.
+1.1 A Note on Alternative Open-Source Engines : qucsatorRF, GnuCap, ngspice & Xyce.
+The QUCS-S software package [ 3–5] ships with its own qucsator engine clone called qucsatorRF. From a quick
+initial inspection, this package looks very similar to the original. The qucsatorRF engine, being a clone of the
+qucsator engine, also does not contain a PSS module for autonomous circuit analysis (see qucsator discussion
+above). A choice was made to exclusively work with the original qucsator engine for the QUCS-COPEN project.
+Both the QUCS and QUCS-S packages include the option to link to other non- QUCS, SPICE based, open-source engines.
+The QUCS suite includes an interface to the GnuCap package [12] whereas QUCS-S links to both the ngspice [13] and
+Xyce [14] engines. According to the latest published manual, the GnuCap API does not currently support any type
+of large-signal steady-state analysis [ 12]. The Xyce simulator does support PSS analysis of driven/non-autonomous
+circuits (similarly to the qucsator & qucsatorRF engines) but, importantly, does not support PSS analysis of au-
+tonomous circuits [14, section 7.7, second paragraph].
+The latest ngspice manual release does indeed talk about a PSS option for autonomous circuits [ 13, section 11.3.12].
+Importantly, this entry emphasizes (ﬁrst line) : "Experimental code, not yet made publicly available." V ery little
+information exists w.r .t. this PSS algorithm which, as far as the authors can tell, is only discussed in two sets of
+presentation slides [ 15, 16] and very brieﬂy in the paper [ 17]. In the slides of [ 15, 16] the algorithm is referred to
+as the transient shooting (TRAN-SHOOT) method. Despite its name, this algorithm seems to have very little in
+common with the classical shooting method (PSS-SHOOT) [ 18–20]. The PSS-SHOOT algorithm, utilized herein (see
+discussion below in section 2), deﬁnes the PSS as the zero of non-linear system of equations. This represents a clearly
+stated problem with a well-understood solution procedure i.e. numerical multidimensional root ﬁnding. On the other
+hand, the lack of documentation, makes it very difﬁcult to gauge the performance and convergence properties of the
+experimental TRAN-SHOOT method. From our perspective, several open questions exist w.r .t. the TRAN-SHOOT
+method, such as e.g. for what set of initial conditions (basin of attraction) is convergence guaranteed?, what is the rate
+of convergence within this basin? etc. Note, that these are all questions which can be answered (qualitatively at-least)
+in the context of the PSS-SHOOT algorithm employed herein. Use of the ngspice API is further complicated by its
+SPICE 3 heritage. From [ 17], this entails, among other things, that it is not possible to sort circuit elements based
+on their component class. This type of operation is, however, required in-order to implement the PNOISE module
+discussed above. Due to the circumstance described here, a decision was made to implement our own in-house PSS
+tool for the QUCS-COPEN project.
+2
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+1.2 Outline of paper
+Below, various theoretical and practical aspects w.r .t.the QUCS-COPEN PSS simulator engine are discussed. Sections 2,
+2.1 and 2.2 reviews the theory behind the implemented algorithm whereas sections 2.3 and 2.4 discusses the various
+practical issues related to the actual implementation & integration of the tool into the QUCS-COPEN package. The
+text here will, in places, contain brief discussion of C++ code [ 21] (the QUCS program language) including the use of
+some C++ notation and keywords. In section 3, the new QUCS-COPEN PSS tool will be demonstrated on three example
+oscillator circuits. Examples are restricted to autonomous (clock) circuits as this aligns with the topic of this paper-
+series, i.e. (coupled)-oscillator phase-noise analysis. Then in section 3.1 the results produced by the developed PSS
+tool are validated through a comparison study w/ the commercial Keysight-ADS© EDA HB simulator. The section also
+contains a detailed discussion of the convergence properties of the implemented tool. Finally, section 4 summarizes
+the obtained results and outlines future work & projects, currently in the pipeline w.r .t.to the QUCS-COPEN project.
+2 Background Theory & PSS Module Implementation.
+The circuit equations are written using standard Modiﬁed-Nodal-Analysis (MNA) notation
+˙q(x(t)) + i(x(t)) + s(t) = 0 (1)
+where, x(t) : R → Rn, represents the circuit state, assuming an n-dimensional system, with vectors, q(x), i(x) :
+Rn → Rn, holding the reactive and resistive contributions, respectively, and s(t) : R → Rn representing the con-
+tributions of independent sources. Calculating the solution to eq. ( 1) represents an Initial-V alue-Problem (IVP). The
+Linear-Response (LR) equations, generated from eq. ( 1), have the form
+d(C(t)δx(t))/dt + G(t)δx(t) = 0 (2)
+where, δx(t) : R → Rn, is the LR state vector, whereas, C(t)=dq(s)/ds, G(t)=di(s)/ds
+
+s=x(t): R → Rn×n, are
+two time-dependent n-dimnesional Jacobian matrices governing the LR system dynamics.
+The PSS, xs(t) : R → Rn, represents a special solution of eq. ( 1), subject to the Boundary-Condition (BC)
+xs(t0) = xs(t0 + T0) ⇔ xs(t0) − xs(t0 + T0) = 0 (3)
+with, t0 > 0, being some offset and, T0 > 0, the period of the PSS. Equation ( 1), subject to the eq. ( 3), then no
+longer constitutes an IVP but instead is classiﬁed as a (2-point) Boundary-V alue-Problem (BVP). How to calculate
+the solution to such a BVP is not immediately obvious. It might seem possible to simply integrate eq. ( 1) until all
+transients have died out and then represent the PSS in-terms of this asymptotic solution. This brute-force approach is,
+however, entirely unworkable practice2.
+The QUCS-COPEN PSS calculator routine, documented herein, is designed around a kernel procedure modelled on
+the PSS-SHOOT algorithm, ﬁrst described in [ 18, 22], and brieﬂy reviewed below in section 2.2. Over the years,
+considerable research has gone into improving this time-domain methodology (see e.g. [19, 20, 23, 24, 27] for reviews)
+and the scheme has been employed in various important research and industrial projects (see e.g. Cadence SpectreRF©
+documentation). It represents a variant of the general shooting-method algorithm.
+2.1 The Shooting-Method.
+Consider the dynamical system in eq. ( 1) on the interval t ∈ [ta, tb] subject to some unspeciﬁed BC. The solution
+procedure involves meshing interval into K sub-intervals ta = t1 < t 2 · · · < t K+1 = tb, and then deﬁning [ 27]
+Gq(x(ti; si−1), sj) = 0 , i = 1, 2 · · · , K + 1 , j, q = 1, 2, · · · , K (4)
+where Gq : Rn × Rn → Rn is a series of K maps enforcing continuity at the mesh boundaries plus the BC at the
+endpoints, x(t), is the state-vector (see eq. (1)) whereas, sk, denotes the initial-value at mesh boundary tk. For, K > 1,
+2Electrical circuits generally represent stiff dynamical systems w/ widely separated time-constants which implies long transient
+integration time + small/narrow time-steps. Furthermore, the precision of a solution obtained using this approach would not sufﬁce
+for subsequent sensitivity or noise-analysis.
+3
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+the procedure is referred to as multiple-shooting [27] whereas, K = 1, describes the single-shooting scenario [18, 22].
+Below, only single shooting is considered w/ the mesh ta = t1 < t 2 = tb. At this point, a reduced notation is adopted
+in-order to keep expressions as simple as possible 3. The solution at, t2 = tb, is then written, xτ (x0), with τ = tb − ta
+whereas, x0, represents the initial value at t1 = ta (see footnote 3 for further explanation). Applying this new notation,
+the single-shooting variant of eq. ( 4) is written
+F (x0) = G1(xτ (x0), x0) = 0 (5)
+The expression in eq. ( 5) transforms the original BVP into an IVP combined w/ the added problem of ﬁnding a root
+of an n-dimensional multivariate map. This is a well understood problem w/ several established solution procedures.
+Using e.g. a Newton-Raphson (NR) solver approach, w/ initial guess, x(0)
+0 , (in the basin of attraction) a solution can
+be iterated as follows
+x(l+1)
+0 = x(l)
+0 −
+
+J (l)−1
+F
+
+x(l)
+0
+
+(6)
+where, x(l)
+0 , is the lth iterate of the solution, F : Rn → Rn is given in eq. ( 5), and J (l) ∈ Rn×n is the Jacobian of this
+map at x(l)
+0
+J (l) = ∂F (x(l)
+0 )/∂x(l)
+0 = Γ (l)
+A Φ(l)
+τ + Γ(l)
+B (7)
+Here Γ(l)
+A , Γ(l)
+B ∈ Rn×n are the lth iterate Jacobians of G1 : Rn × Rn → Rn w.r .t. its arguments and, Φτ , is the
+sensitivity matrix
+Φ(l)
+τ = ∂xτ (x(l)
+0 )/∂x(l)
+0 (8)
+which can be calculated by integrating the LR equations in eq. ( 2) in parallel with the full solution, calculated through
+eq. (1).
+2.2 The PSS-SHOOT Method.
+The PSS-SHOOT method represents a special version the general algorithm discussed above. From section 2.1
+and eq. ( 3), we consider the mesh ta = t0, tb = t0 + T0 and τ = t1 − t0 = T0. From eq. ( 5), the PSS problem
+is then formulated
+FP (x0) = G1(xT (x0), x0) = x0 − xT (x0) = 0 (9)
+From eq. (6), in section 2.1, the root in eq. ( 9) is found through iteration
+x(l+1)
+0 = x(l)
+0 −
+
+J (l)
+P
+−1
+x(l)
+0 − x(l)
+T
+
+, (10)
+where the Jacobian, J (l)
+P , follows from eq. ( 7) subject to the PSS map in eq. ( 9). From inspection of eq. ( 9), ΓA = −In
+and ΓB = In, (see discussion in section 2.1) where In ∈ Rn×n is the n-dimnesional identity matrix. Inserting into
+eq. (7) gives
+J (l)
+P = I − Φ(l)
+T (11)
+with, Φ(l)
+T = ∂xT (x(l)
+0 )/∂x(l)
+0 , being the lth iterated sensitivity matrix (see eq. ( 8) above).
+3The initial value at t1 = ta is represented by the symbol x0 i.e. s1 ≡ x0 and thus x(t2; s1) ≡ x(t2; x0). Given the interval,
+τ = tb − ta, the solution at t2 = tb is written x(t2; x0) ≡ xτ (t1, x0). Finally, the absolute time-variable, t1, is eliminated
+from the expression, which leaves xτ (x0). Note, this expression implicitly contains the absolute time-variable index, t1, through
+the inclusion of x0 which, by deﬁnition, is tied to this time-point. Hence, although not explicitly stated, the expression, xτ (x0),
+includes absolute time-dependence and thus represents a valid notation for both autonomous and non-autonomous systems.
+4
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+2.2.1 The Autonomous Case.
+The text above assumes that the frequency of operation, f0 = 1 /T0, is a known ﬁxed parameter. For autonomous
+circuits, e.g. free-running oscillators, this is of-course not the case. Below, the augmented PSS representation &
+operators, for the autonomous case, will be derived. In-order to limit notational complexity, the iteration index, l ∈
+Z≥0, (see e.g. eq. (10)) will be neglected. From the discussion in sections 2.1 and 2.2 above, it should be clear how to
+re-introduce this index into the derived expressions.
+The period, T0, is now a system variable and thus must be included in the state-vector. The augmented PSS state-vector,
+˜x0 : Rn+1 is then written
+˜x0 = [x0 T0]⊤ (12)
+With n+1 variables, the n-dimensional map in eq. ( 9) is now under-determined. To ﬁx this issue, an additional
+equation, α⊤x0 = 0 , is added to the system. Here, α ∈ Rn is a constant n-dimensional vector and the introduced
+equation hence simply ﬁxes of the phase of the PSS solution. The augmented PSS map is then written
+˜FP (˜x0) =
+
+FP (˜x0) α⊤x0
+⊤
+(13)
+where, FP , is the map introduced above in eq. ( 9). The augmented Jacobian, deﬁned as the derivative of the map in
+eq. (13), is then written from inspection
+˜JP =
+ Jp ΨT
+α⊤ 0
+
+=
+I − ΦT ΨT
+α⊤ 0
+
+(14)
+where, JP , is the original PSS Jacobian, ΦT , is the sensitivity matrix (see eq. ( 11)) and the vector, ΨT ∈ Rn, holds the
+components of vector, −∂xT (x0)/∂T0 ∈ Rn. Employing the augmented operators, eqs. (12) to (14), (w/ re-introduced
+iteration index (l)) in eq. ( 10) of section 2.2, the PSS-SHOOT algorithm is readily extended to include autonomous
+circuits.
+2.3 Implementing the QUCS-COPEN PSS Module.
+The QUCS-COPEN PSS module kernel is brieﬂy outlined in algorithm. 1. As discussed above, this kernel is designed
+around the PSS-SHOOT algorithm reviewed above in sections 2.2 and 2.2.1. The module code resides within the new
+psssolver C++ class, which, in-turn, inherits directly from the existing trsolver class containing the qucsator
+transient engine implementation. For reasons discussed below, it was necessary to refactor and slightly rewrite, the
+original transient engine code in trsolver. Care was taken to maintain integrity of the original qucsator API, inline
+with our goal of extending the simulator w/o changing or destroying the interface and/or already existing functionality.
+In algorithm. 1 (algorithm. 1) calls are made to transient engine subroutines TranInit and TranPss, both which are
+member methods belonging to the trsolver base-class. Here, calls of the type Tran[Init/Pss](ta, tb, x0) both
+generate paths, x(ta) → x(tb), by integrating the IVP in eq. ( 1), subject to initial condition x(ta) = x0. Despite
+this similarity, the implementation of these two methods is notably different in-terms of e.g. initialization of solution
+state arrays, class state variable histories, the unwieldy large set of trsolver protected class members (acting as
+quasi-global state variables), various solver mode variables & switches, as well the invocation of allocation and clean-
+up/exit routines etc. The original qucsator API was simply not written to handle this level of ﬂexibility described here
+w.r .t.different ﬂavors of transient engine solver calls. This problem, in addition to a myriad of other implementation
+issues w.r .tthe trsolver->psssolver C++ inheritance architecture, triggered the refactoring of the QUCS-COPEN
+transient engine mentioned above.
+The method, collectGC, called on algorithm. 1 of algorithm. 1 is a psssolver subroutine responsible for collecting
+the Jacobian matrices, C(t), G(t), introduced in eq. ( 2), along the path, xs(t), t ∈ [t0; t0 + T0] (see discussion w.r .t.
+TranPss above). This job is complicated somewhat by the fact that the qucsator implementation of the circuit
+equations does not employ the standard MNA format shown in eqs. ( 1) and ( 2). The qucsator circuit equations
+(transient analysis) are instead written [ 1] A(t)x(t) = Ieq(t) +s(t), where, A(t) : R → Rn×n represents the Jacobian
+matrix and x(t), s(t) again denote the system state/source-vectors (see eq. ( 1)). The vector function, Ieq(t) : R →
+Rn, holds the equivalent source vector which contains past Linear-Multistep (LMS) terms of reactive components,
+nonlinear resistive component contributions and artiﬁcial offset terms which are included to ﬁx double counting issues
+[1]. The two MNA representation discussed here (eq. ( 1) + the above) are obviously equivalent as they must produce
+the same set of KCL/KVL equations. From standard LMS theory, A(t) = a0C(t) + G(t), where the scalar, a0 ∈ R,
+5
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+Algorithm 1 QUCS-COPEN PSS Module Kernel.
+Parameters : Tper, Tstab, MaxItr, EpsMax ▷ Tper : init. period guess, Tstab : stabilization time.
+Input : xDC ▷ calculated DC solution.
+Output Datasets : init. tran. (Xt), PSS (Xp), abs. spec. (Xpa) ▷ DS ﬁle ext. w/ X=[V/I], V olt./Current.
+Require: Tper > 0, Tstab ≥ 10 × Tper, MaxItr ≥ 10, EpsMax ≤ 10−6
+Ensure: isNum(xDC) = true ▷ check : xDC is valid DC solution.
+1: xinit ← TranInit(0, Tstab; xDC)
+2: t0 ← Tstab, T0 ← Tper
+3: x(0)
+0 ← xinit
+4: x(0)
+T ← TranPss(t0, t0 + T0; x(0)
+0 ) ▷ eval PSS, x(l=0)
+s (t) : x(l)
+s (t0)=x(l)
+0 , x(l)
+s (t0 + T0)=x(l)
+T
+5: l ← 0, done ← false
+6: while done = false and l ≤ MaxItr do
+7: G(l)(t), C(l)(t) ← collectGC(x(l)
+s (t)) ▷ eval G(l)(t), C(l)(t) along path x(l)
+s (t) (see eq. ( 2)).
+8: Φ(l)
+T ← TranΦ(t0, t0 + T0; x(l)
+0 ) ▷ calc. sensitivity matrix (see eqs. ( 8) and ( 11)).
+9: J (l)
+P ← I − Φ(l)
+T
+10: F (l)
+P ← x(l)
+0 − x(l)
+T
+11: x(l+1)
+0 ← x(l)
+0 −
+
+J (l)
+P
+−1
+F (l)
+P
+12: x(l+1)
+T ← TranPss(t0, t0 + T0; x(l+1)
+0 ) ▷ generates l+1th iterated PSS, x(l+1)
+s (t), (see algorithm. 1
+comment)
+13: ϵ(l) ← ∥x(l+1)
+T −x(l+1)
+0 ∥
+14: if ϵ(l) < EpsMax then
+15: done ← true ▷ PSS solution found, exit routine,
+16: else
+17: l ← l + 1
+18: end if
+19: end while
+20: xs(t) ← x(l+1)
+s (t) ▷ store iterated PSS solution.
+depends on the speciﬁc LMS method and order employed. The matrix, G(t), represents the DC Jacobian matrix
+function which can be calculated using the existing qucsator API. Subtracting this matrix from the above expression
+for the Jacobian allows for the evaluation of a0C(t), and hence C(t). The call to psssolver method, TranΦ, on
+algorithm. 1 of algorithm. 1 then proceeds to calculate the circuit sensitivity matrix by integrating the LR equation in
+eq. ( 2) along the path, xs(t), using the matrix functions evaluated in collectGC. This LR method must follow the
+exact same LMS method & order, time-step mesh, program state histories etc. as the trsolver integration routine,
+TranPss, which generated xs(t).
+2.4 The GUI Environment & Output Datasets.
+As mentioned in section 1, the choice was made to link QUCS-COPEN extended simulator engine to QUCS-S GUI
+environment. Figure 1 illustrates newly implemented PSS tool operating inside this application. The ﬁgure shows the
+result of running a PSS simulation for some unspeciﬁed oscillator circuit. The PSS simulator (currently) outputs 3
+datasets (see also algorithm. 1) : the stabilization transient (ﬁle-extensions .Vt,.It), the PSS time-domain solution
+(ﬁle-extensions .Vp,.Ip) and the PSS absolute-value spectrum (ﬁle-extensions .Vpa,.Ipa). From the ﬁgure it is also
+seen that the PSS analysis module has two main parameters : Tper & Tstab, which are described in the comments of
+algorithm. 1 (parameter section).
+3 Example Oscillator Circuits.
+Below, the QUCS-COPEN PSS solver is applied to three different oscillator circuits. As far as the authors can tell, the
+tool demonstrated here represents the ﬁrst successful implementation of such a module, applicable to simulation of
+nonlinear autonomous circuits, into the QUCS ecosystem.
+The ﬁrst example considered is a simple V an-der-Pol equivalent circuit, shown ﬁg. 2. The oscillator negative con-
+ductance is implemented using a QUCS Equation-Deﬁned-Device (EDD) [ 2] w/ the current/voltage characteristic
+In = a0 + a1V + a2V 2 + a3V 3, where a0 = a2 = 0 and a1 = −1.0mS, a3 = 100 .0µA/V3. Main PSS pa-
+6
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+Initial Transient - Stabilization (.Vt, .It)
+PSS  (.Vp, .Ip)PSS Analysis Unit
+PSS Main Dock Selector
+PSS Spectrum Abs. (.Vpa, .Ipa)
+Figure 1: The ﬁgure shows the QUCS-COPEN PSS simulation unit integrated into the QUCS-S GUI environment. The
+analysis module is chosen from the main-dock and then placed on the schematic. The unit has two main parameters :
+Tper and Tstab, and the PSS precision is ﬁxed in all experiments at EpsMax=10−12 (see algorithm. 1) The 3 plotted
+graphs represent the 3 types of output datasets generated by the PSS simulator (unspeciﬁed oscillator circuit & output
+node). These are (w/ ﬁle extensions), purple graph : initial/stabilization transient, ( .Vt, .It), blue graph : PSS time-
+domain solution, ( .Vp, .Ip) and red graph : PSS solution, frequency-domain spectrum, absolute value, ( .Vpa, .Ipa).
+which is plotted in dBm
+rameters are set as : Tper = 1 .0ns and Tstab = 30 .5ns. The PSS module calculates a solution with oscillation
+frequency f0 = 1 /T0 = 896 .6MHz. The ﬁgure plots the PSS solution and abs. PSS spectrum datasets, see also
+section 2.4 and ﬁg. 1 for details on datasets.
+Figure 3 shows the same simulation setup as in ﬁg. 2 but this time for a BJT Collpitts oscillator ﬁrst proposed in the
+paper [25]. Compared with the original oscillator design, the circuit in ﬁg. 3 includes a few modiﬁcations. Firstly, the
+resistor in the series LCR resonator was changed from 0.65Ohm in [ 25] to 1.65Ohm in the schematic shown here.
+Secondly, due to some internal qucsator BJT modelling issues (see footnote 4), which will be ﬁxed in future releases
+of QUCS-COPEN, it was found necessary to neglect the BJT nonlinear base-resistance contribution 4. Here, this internal
+component was cancelled by setting BJT model parameters Rbm = Rb = 0.0Ohm. All remaining contributions of the
+nonlinear BJT model are included in the simulation. The QUCS-COPEN PSS calculator ﬁnds a solution oscillating at,
+f0 = 76 .07MHz, and the output datasets are plotted for the external emitter node of the BJT device. Finally, ﬁg. 4
+shows the PSS module applied to a MOSFET cross-coupled pair, LC tank oscillator. The circuit is similar to the
+MOSFET oscillator proposed in [ 26, ﬁg. 3] including identical device models. The circuit in ﬁg. 4 differs from the
+original by the addition of inductor series resistances rs = 10 .0Ohm. The simulator ﬁnds a solution oscillating at,
+f0 = 888.6MHz, and the PSS output datasets are plotted.
+3.1 V eriﬁcation of the Obtained PSS Solutions & Convergence Tests.
+Deﬁne the measure, Γf = ( f QC
+0 − f K-ADS
+0 )/f QC
+0 , where f QC
+0 and f K-ADS
+0 are the steady-state oscillator frequencies
+calculated using the QUCS-COPEN PSS tool and the commercial Keysight-ADS © HB simulator, respectively. Thus, Γf
+4After a rather lengthy debug session it was found that the qucsator code did not fully implement the Jacobian matrix contri-
+butions for the BJT base resistance. It only included the ﬁrst-order contributions, i.e. the resistor itself, but not derivatives of the
+nonlinear characteristic. This type of modelling seems to sufﬁce for DC, transient simulation etc., however, the PSS calculation
+involves integrating the Jacobian (see section 2.3 and algorithm. 1), alongside the actual solution, and this modelling issue was
+found to lead to numerical instability problems.
+7
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+Figure 2: The ﬁgure shows the QUCS-COPEN PSS calculator applied to a simple V an-der-Pol(VDP)-type oscillator ﬁrst
+proposed in [ 11, Fig. 3]. This circuit is referred to below as OSC.#1. All parameters are as in [ 11] (primary osc.
+parameter set). Two of the three available PSS datasets are plotted for the voltage node, vout, (stabilization transient
+data is not shown). Refer to ﬁg. 1 caption for details.
+Figure 3: The simulator is applied to a BJT Colpitts oscillator taken from [ 25]. All circuit parameters as in [ 25], w/
+the following exceptions : resonator resistor r0 = 1.65Ohm (was 0.65Ohm in the paper) and the BJT nonlinear base
+resistor is set to zero due to an internal qucsator BJT model issue (see footnote 4). This circuit is referred to below
+as OSC.#2. The ﬁgures plot the PSS output datasets for the external BJT emitter node, referred to as, Vemit, in the
+schematic. See the captions of ﬁgs. 1 and 2 for details.
+8
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+Figure 4: Figure shows the QUCS-COPEN PSS simulation tool applied to a MOSFET cross-coupled LC-tank oscillator.
+The circuit is similar to the oscillator proposed in [ 26, ﬁg. 3] with minor variations (see text). This circuit is referred
+to below as OSC.#3. The ﬁgures plot the PSS output datasets for the right-hand MOSFET device drain-node, referred
+to as, Vm, in the schematic. See also ﬁgs. 1 and 2 for details.
+Table 1: The table lists PSS oscillator frequencies calculated using the QUCS-COPEN package and the commercial
+Keysight-ADS© simulator for circuits : OSC.#1 = VDP circuit in ﬁg. 2, OSC.#2 = BJT circuit in ﬁg. 3 and OSC.#3 =
+MOSFET circuit in ﬁg. 4. The relative deviation between the calculated values are recorded by measure Γf (see text
+in section 3.1).
+records, for a given oscillator circuit, the deviation of PSS frequencies calculated applying these two very different
+EDA programs. Table 1 displays the calculated PSS frequencies and the resulting measure, |Γf |, for each of the three
+oscillators discussed above in section 3. The maximum measured relative error is |Γf | ∼ 0.008%, or |Γf | ∼ 80ppm
+(parts-per-million). The results listed in table 1 serve to validate the developed QUCS-COPEN PSS tool.
+Two PSS convergence measures are deﬁned
+ϵ(l) = ∥x(l)
+s − ¯xs∥ (15)
+∆f (l) = ∥f (l)
+0 − ¯f0∥/ ¯f0 (16)
+where ϵ(l) : Z≥0 → R, in eq. ( 15), represents the precision of the lth iterated PSS solution, x(l)
+s , (see sections 2.2
+and 2.3 and algorithm. 1) with ¯xs denoting the true PSS solution; i.e. the numerically calculated PSS solution. Like-
+wise, ∆f (l) : Z≥0 → R, in eq. ( 16), measures the relative frequency precision of the lth iterated solution with f (l)
+0
+and ¯f0 denoting the frequency of the lth iterate and the true PSS frequency ( i.e. frequency of ¯xs), respectively. To
+quantify initial conditions of experiments below, two further measures are deﬁned
+9
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+Figure 5: Convergence measures, ϵ (solid line left y-axis), and ∆f (dashed line, right y-axis), deﬁned in eqs. ( 15)
+and ( 16), plotted as a function of the PSS iteration index l (see sections 2.1 and 2.2 and algorithm. 1) for different
+circuits and parameter conﬁgurations. Dotted curves represent sequences of varying convergence order σ (see sec-
+tion A) : σ = 2 (brown · · · ), σ = 1 .5 (cyan · · · ), σ = 1 (purple · · · ) w/ linear convergence rate µL = 2 . (a)
+: PSS measures, ϵ, ∆f , are plotted for each of the oscillators OSC.#1-3 (see table 1 caption & ﬁgs. 2 to 4) w/ initial
+conditions, ∆init
+f ∼ 6% and KSTAB ∼ 30−35 (see eqs. ( 17) and ( 18)). (b) : ﬁgure plots the PSS measures for circuit
+OSC.#3, for 3 different initial conditions as speciﬁed by the parameter ∆init
+f and w/ KSTAB ∼ 30−35.
+∆init
+f := ∆f (0) (17)
+KSTAB := Tstab mod ¯T0 (18)
+where ∆init
+f is the relative error of the initial PSS frequency guess and KSTAB represents the stabilization interval (see
+algorithm. 1) expressed to the nearest multiple of the PSS period ¯T0 = 1/ ¯f0.
+Figure 5 shows the results of a series of convergence experiments expressed in-terms of the measures deﬁned above
+in eqs. ( 15) and ( 16). Speciﬁcally, ﬁg. 5.(a) plots these two measures as a function of the iteration index, l ∈ Z≥0, for
+each of the three oscillator circuits, OSC.#1-3, shown in ﬁgs. 2 to 4, for a ﬁxed set of initial conditions (∆init
+f , KSTAB)
+whereas ﬁg. 5.(b) plots the measures for the OSC.#3 circuit (see ﬁg. 4), for a range of initial conditions, as described
+by ∆init
+f in eq. (17).
+3.1.1 The Convergence Zone BC.
+Initial conditions, leading to convergence are said to lie inside the solver’s basin of attraction . Inspecting ﬁg. 5 this
+basin can be divided (roughly) into two main regions : the initial transition zone/region, BT, where the solver does not
+really converge but traverses the state-space until a suitable point is reached. Once this happens the solver enters the
+convergence zone/region, BC. Denote the iteration step where the solver state enters BC, or leaves BT, as l0 ∈ Z≥0.
+The markers BT, BC, l0 are illustrated in ﬁg. 5.(b), for ∆init
+f ∼ 12% (red curves), where the solver is seen to enter
+the convergence zone around l = l0 = 11 . Obviously, the goal is to enter BC as quickly as possible, or equivalently,
+minimize the number of steps inside BT. Generally, l0 should decrease w/ ∆init
+f , as this will move the solver initial state
+towards a perfect PSS frequency guess (see eqs. ( 15) and ( 17)). Thus, we expect to observe, l0 → 0, for, ∆init
+f → 0.
+Inspecting ﬁg. 5.(b), this trend can indeed be observed, i.e. improving the frequency guess leads to quicker PSS
+convergence. Empirical rules, of the type discussed above, however only describe a trend and do not guarantee that
+the relation always hold. Figure 5.(a) illustrates this issue as circuits OSC.#2-3 display as much smaller l0 (reaches
+BC faster) compared to OSC.#1 for identical initial conditions. It should be possible to advance the robustness of
+the QUCS-COPEN PSS algorithm by introducing e.g. multiple-shooting solver methods [ 27] (see also section 2.1)
+and implementing global & local solver dampening techniques [ 24]. It will furthermore be interesting to look into
+employing Krylov (matrix-free) linear solvers [ 19, 20], something not currently available in the QUCS package, which
+10
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+should signiﬁcantly increase efﬁciency, especially for large circuits. The ideas mentioned above will all be considered
+for future work on the QUCS-COPEN project.
+3.1.2 The Convergence Rate Inside BC.
+We seek to quantify the convergence order & rate for the QUCS-COPEN PSS module experiments in ﬁg. 5 inside
+convergence zone BC. The basic concepts required for this discussion are reviewed in section A. For our purposes, 3
+additional sequences, w/ 3 convergence orders are plotted in ﬁg. 5 (dotted curves, see caption for details). Comparing
+the convergence curves w/ these added test-sequences, the following observations w.r .tthe rate of convergence inside
+BC can be stated.
+1. the solver never obtains the ideal Newton solver quadratic convergence ( σ = 2).
+2. the convergence order inside, BC, is larger than 1, i.e. faster than linear-convergence.
+3. from inspection of the various curves in ﬁg. 5, a rough estimate of the convergence order inside, BC, could
+be around σ = 1.5 (compare with brown dotted curve).
+4. the linear-convergence test-sequence (purple dotted) represents a rough tangential to the convergence curves
+around the PSS convergence point, ϵc = EpsMax. Hence, in a small region around ϵc the error sequence
+measures, ϵ(l), ∆f (l), deﬁned in eqs. ( 15) and (16), can be approximated as linear sequences w/ convergence
+rate µL = 2.
+Let, σQC, denote the convergence order of the QUCS-COPEN PSS module, it then follows from the remarks that, σQC ∼
+1.5, inside BC. Furthermore, from item 4 in the above list, since the linear approximation close to convergence, ϵ ≃ ϵc,
+has convergence-rate µL = 2 , it follows that the precision of the solution, as measured by the closeness of, ϵ, ∆f , to
+zero, increases two decimal digits for each iteration step in this area (see section A for details).
+The QUCS-COPEN PSS module is not able to attain the ideal Newton-solver quadratic convergence. However, this
+should not be too surprising. This quadratic convergence rule, often quoted, is an idealized theoretical result and does
+not take into account the various issues involved with implementing a real-world numerical PSS solver, such as e.g.
+operating w/ ﬁnite number precision, non-ideal linear matrix solvers, considering a nonlinear map which, implicitly,
+an involves a IVP which brings a whole new set of issues ( e.g. truncation error, internal linear solver errors) etc. This
+is however not to say that there is no room for improvement, as this is almost certainly the case. We intend to explore
+various schemes for advancing the PSS tool w.r .t.convergence rate, including, implementing the ideas discussed above
+in section 3.1.1.
+4 Conclusion & Future Work.
+The paper documents the work done implementing a periodic steady-state analysis module, based around a single-
+shooting/Newton-solver kernel algorithm, into the novel QUCS-COPEN simulator engine; a clone the QUCS and QUCS-S
+software projects. The work advances the state of the QUCS project as this represents, to our knowledge, the ﬁrst
+time such a tool, applicable to autonomous circuits, has been developed for this environment. The PSS module
+was validated through a comparison-study w/ the commercial Keysight-ADS © EDA program and the convergence
+properties were analyzed w/ proposals and ideas for improving robustness and efﬁciency of the algorithm. Future
+work will focus on increasing the reliability & efﬁciency of the tool by exploring more robust multiple-shooting
+solvers and using more elaborate solver dampening schemes to ensure convergence even for weak initial conditions.
+We furthermore intend to investigate the possible use of Krylov (matrix-free) linear-solvers which should increase the
+performance of the engine signiﬁcantly, especially for larger circuits. The long-term goal of the work, described herein,
+is the development of a novel (coupled)-oscillator phase-noise analysis module to be integrated into the QUCS-COPEN
+distribution. This module builds on top of the steady-state tool described herein, and it is the topic of the second part
+of this paper-series.
+Acknowledgment
+The authors gratefully acknowledge partial ﬁnancial support by German Research Foundation (DFG) (grant no.
+KR1016/17-1).
+11
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+A Brief Summary of Convergence Order & Rate.
+An iterated sequence, fk, which converges asymptotically towards zero, limk→∞ fk = 0 , is said to have asymptotic
+convergence order & rate, σ, µ, if limk→∞ |fk+1|/|fk|σ = µ. Here σ = 1 is called linear-convergence whereas σ = 2
+refers to quadratic-convergence and so on. Note that, σ = 1 , is referred to as "linear" convergence since a sequence,
+plotted w/ a log-linear axis conﬁguration, will produce a straight line. Hence, "linear" convergence, in this context,
+actually implies exponential convergence curve whereas, σ > 1, denotes convergence faster than exponential. The
+Newton-Raphson (NR) solver, upon which the PSS algorithm discussed herein is based on, is known to converge w/
+at-least quadratic order, in small open region containing the root. For linear convergence order, σ = 1 , it is usual
+practice to introduce the convergence rate as µL = − log10(µ) which expresses the number of decimal digits the
+solution improves, per iteration step. Thus, let fk be a sequence w/ linear convergence towards 0 and let µL = m. In
+this case, the error, ek = |fk|, moves m decimal digits closer to zero for each iteration step.
+References
+[1] S. Jahn, M. Margraf, V . Habchi, and R. Jacob. Qucs technical papers. Technical report, 2007.
+[2] S. Jahn and J. C. Borrás. Getting started with qucs. Technical report, March 2007.
+[3] Mike Brinson and V adim Kuznetsov. Qucs equation-deﬁned and verilog-a rf device models for harmonic bal-
+ance circuit simulation. In 2015 22nd International Conference Mixed Design of Integrated Circuits & Systems
+(MIXDES), pages 192–197. IEEE, 2015.
+[4] Mike Brinson and V adim Kuznetsov. Qucs-0.0. 19s: A new open-source circuit simulator and its application for
+hardware design. In 2016 International Siberian Conference on Control and Communications (SIBCON) , pages
+1–5. IEEE, 2016.
+[5] Mike Brinson and V adim Kuznetsov. Improvements in qucs-s equation-deﬁned modelling of semiconductor
+devices and ic’s. In 2017 MIXDES-24th International Conference" Mixed Design of Integrated Circuits and
+Systems, pages 137–142. IEEE, 2017.
+[6] Torsten Djurhuus, Viktor Krozer, J Vidkjar, and Tom K Johansen. Trade-off between phase-noise and signal
+quadrature in unilaterally coupled oscillators. In IEEE MTT-S International Microwave Symposium Digest, 2005.,
+pages 883–886. IEEE, 2005.
+[7] Torsten Djurhuus, Viktor Krozer, Jens Vidkjær, and Tom K Johansen. Nonlinear analysis of a cross-coupled
+quadrature harmonic oscillator. IEEE Transactions on Circuits and Systems I: Regular Papers , 52(11):2276–
+2285, 2005.
+[8] Torsten Djurhuus, Viktor Krozer, Jens Vidkjær, and Tom K Johansen. Am to pm noise conversion in a cross-
+coupled quadrature harmonic oscillator. International Journal of RF and Microwave Computer-Aided Engineer-
+ing: Co-sponsored by the Center for Advanced Manufacturing and Packaging of Microwave, Optical, and Digital
+Electronics (CAMPmode) at the University of Colorado at Boulder , 16(1):34–41, 2006.
+[9] Torsten Djurhuus, Viktor Krozer, Jens Vidkjær, and Tom K Johansen. Oscillator phase noise: A geometrical
+approach. IEEE Transactions on Circuits and Systems I: Regular Papers , 56(7):1373–1382, 2008.
+[10] Torsten Djurhuus and Viktor Krozer. A study of amplitude-to-phase noise conversion in planar oscillators. Inter-
+national journal of circuit theory and applications , 49(1):1–17, 2021.
+[11] Torsten Djurhuus and Viktor Krozer. A generalized model of coupled oscillator phase-noise response. Interna-
+tional journal of circuit theory and applications , 50(1):35–55, 2022.
+[12] GNU Project - the Free Software Foundation. GnuCap Manual , January 2024. Available at http://www.
+gnucap.org/dokuwiki/doku.php/gnucap:manual:introduction.
+[13] Paolo Nenzi Holger V ogt, Giles Atkinson. Ngspice User’s Manual V ersion 44plus , June 2025. Available at
+https://ngspice.sourceforge.io/docs/ngspice-manual.pdf.
+[14] Eric R. Keiter. Xyce™ Parallel Electronic Simulator User’s Guide . Sandia National Lab.(SNL-NM), Albu-
+querque, NM (United States), 2025. Available at https://xyce.sandia.gov/documentation-tutorials/.
+[15] Stefano Perticaroli, Paolo Nenzi, Fabrizio Palma, et al. A novel pss analysis implementation reusing the tran
+analysis of ngspice circuit simulator. In Proceedings of 2011 MOS-AK Workshop, 2011.
+[16] Francesco Lannutti and Stefano Perticaroli. Klu and pss analysis implementations into ngspice. MOS-AK 2012,
+December 2012.
+12
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part I : the Periodic Steady-State. arXiv PREPRINT
+[17] Wladek Grabinski, Mike Brinson, Paolo Nenzi, Francesco Lannutti, Nikolaos Makris, Angelos Antonopoulos,
+and Matthias Bucher. Open-source circuit simulation tools for rf compact semiconductor device modelling.
+International Journal of Numerical Modelling: Electronic Networks, Devices and Fields, 27(5-6):761–779, 2014.
+[18] TJJR Aprille and T Trick. A computer algorithm to determine the steady-state response of nonlinear oscillators.
+IEEE Transactions on Circuit Theory, 19(4):354–360, 1972.
+[19] Ricardo Telichevesky, Kenneth S Kundert, and Jacob K White. Efﬁcient steady-state analysis based on matrix-
+free krylov-subspace methods. In Proceedings of the 32nd annual ACM/IEEE Design Automation Conference ,
+pages 480–484, 1995.
+[20] Kundert. Simulation methods for rf integrated circuits. In 1997 Proceedings of IEEE International Conference
+on Computer Aided Design (ICCAD) , pages 752–765. IEEE, 1997.
+[21] Bjarne Stroustrup. The C++ programming language. Pearson Education, 2013.
+[22] Thomas J Aprille and Timothy N Trick. Steady-state analysis of nonlinear circuits with periodic inputs. Proceed-
+ings of the IEEE , 60(1):108–114, 1972.
+[23] Kai Bittner and Hans Georg Brachtendorf. Multirate shooting method with frequency sweep for circuit simula-
+tion. In Scientiﬁc Computing in Electrical Engineering: SCEE 2016, St. Wolfgang, Austria, October 2016 , pages
+113–125. Springer, 2018.
+[24] Makiko Kakizaki and Tsutomu Sugawara. A modiﬁed newton method for the steady-state analysis. IEEE
+transactions on computer-aided design of integrated circuits and systems , 4(4):662–667, 1985.
+[25] Franz X Kaertner. Analysis of white and f- α noise in oscillators. International Journal of Circuit Theory and
+Applications, 18(5):485–519, 1990.
+[26] Paolo Maffezzoni, Federico Pepe, and Andrea Bonfanti. A uniﬁed method for the analysis of phase and amplitude
+noise in electrical oscillators. IEEE transactions on microwave theory and techniques , 61(9):3277–3284, 2013.
+[27] Jeffrey R Parkhurst and Lawrence L Ogborn. Determining the steady-state output of nonlinear oscillatory cir-
+cuits using multiple shooting. IEEE transactions on computer-aided design of integrated circuits and systems ,
+14(7):882–889, 2002.
+13

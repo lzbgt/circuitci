@@ -1,0 +1,596 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Chapter 13. RF simulation with Ngspice, Xyce and SPICE OPUS &mdash; Qucs-S Help 0.0.19-S documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+
+  
+    <link rel="stylesheet" href="https://media.readthedocs.org/css/sphinx_rtd_theme.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Qucs-S Help 0.0.19-S documentation" href="index.html"/>
+        <link rel="next" title="Chapter 14. Qucs-S/Octave circuit simulation and device parameter extraction interface" href="ParameterExt.html"/>
+        <link rel="prev" title="Chapter 12. Verilog-A compact semiconductor device modelling" href="VerilogA.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+
+<!-- RTD Extra Head -->
+
+<!-- 
+Always link to the latest version, as canonical.
+http://docs.readthedocs.org/en/latest/canonical.html
+-->
+<link rel="canonical" href="http://qucs-help.readthedocs.io/en/latest/RF.html" />
+
+<link rel="stylesheet" href="https://media.readthedocs.org/css/readthedocs-doc-embed.css" type="text/css" />
+
+<script type="text/javascript" src="_static/readthedocs-data.js"></script>
+
+<!-- Add page-specific data, which must exist in the page js, not global -->
+<script type="text/javascript">
+READTHEDOCS_DATA['page'] = 'RF' 		
+READTHEDOCS_DATA['source_suffix'] = '.rst'
+</script>
+
+<script type="text/javascript" src="_static/readthedocs-dynamic-include.js"></script>
+
+<!-- end RTD <extrahead> --><script async type="text/javascript" src="/_/static/javascript/readthedocs-addons.js"></script><meta name="readthedocs-project-slug" content="qucs-help" /><meta name="readthedocs-version-slug" content="spice4qucs" /><meta name="readthedocs-resolver-filename" content="/RF.html" /><meta name="readthedocs-http-status" content="200" /></head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Qucs-S Help
+          
+
+          
+          </a>
+
+          
+            
+            
+            
+              <div class="version">
+                spice4qucs
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Intro.html">Chapter 1. Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BasSim.html">Chapter 2. Basic Ngspice, Xyce and SPICE OPUS simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="SubLib.html">Chapter 3. <code class="docutils literal"><span class="pre">Spice4qucs</span></code> subcircuits, macromodels and device libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="DModel.html">Chapter 4. Device and component modelling with algebraic equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ASim.html">Chapter 5. More advanced circuit simulation techniques.</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PostSim.html">Chapter 6.  Ngspice, Xyce and SPICE OPUS post-simulation data processing with Qucs-S and Octave</a></li>
+<li class="toctree-l1"><a class="reference internal" href="SPICEComp.html">Chapter 7. Qucs and SPICE simulation models that work with ngspice, Xyce and SPICE OPUS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Custom.html">Chapter 8. Ngspice custom simulation technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="XSPICECL.html">Chapter 9. XSPICE standard components and library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="XSPICEUM.html">Chapter 10. XSPICE user written device models and library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MMSim.html">Chapter 11. Introduction to mixed analogue/digital simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="VerilogA.html">Chapter 12. Verilog-A compact semiconductor device modelling</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Chapter 13. RF simulation with Ngspice, Xyce and SPICE OPUS</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction-to-capabilities">13.1 Introduction to capabilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#small-signal-ac-s-parameter-simulation">13.2 Small signal AC S-parameter simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#small-signal-ac-two-port-network-simulation-analysis">13.3 Small signal AC two port network simulation/analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#single-tone-large-signal-ac-harmonic-balance-simulation">13.4 Single tone large signal AC Harmonic Balance simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-tone-large-signal-ac-hb-simulation">13.5 Multi-tone Large signal AC HB simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-spice-opus-large-signal-ac-steady-state-transient-shooting-method">13.6 The SPICE OPUS large signal AC steady state transient shooting method</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#emulation-of-qucs-rfedd-components">13.7 Emulation of Qucs RFEDD components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rf-device-models">13.8 RF device models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#rf-resistor-models">13.8.1  RF resistor models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#metal-thin-film-axial-leaded-resistors">13.8.2 Metal thin-film axial leaded resistors</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#more-example-rf-circuit-simulations">13.9 More example RF circuit simulations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ParameterExt.html">Chapter 14. Qucs-S/Octave circuit simulation and device parameter extraction interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Ref.html">Chapter 15. References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Qucs-S Help</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Chapter 13. RF simulation with Ngspice, Xyce and SPICE OPUS</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <a href="https://github.com/Qucs/qucs-help/blob/spice4qucs/source/RF.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="chapter-13-rf-simulation-with-ngspice-xyce-and-spice-opus">
+<h1>Chapter 13. RF simulation with Ngspice, Xyce and SPICE OPUS<a class="headerlink" href="#chapter-13-rf-simulation-with-ngspice-xyce-and-spice-opus" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction-to-capabilities">
+<h2>13.1 Introduction to capabilities<a class="headerlink" href="#introduction-to-capabilities" title="Permalink to this headline">¶</a></h2>
+<p>The original motivation behind the development of Qucs was the need for an open source
+RF circuit simulator which was freely available to all interested in RF and microwave
+circuit and system design. Today, Qucs has become a relatively stable simulation
+package with good high frequency analysis capabilities like small signal AC two port and multi-port S parameter
+analysis, noise analysis and rudimentary single tone Harmonic Balance (HB) circuit simulation.  For anyone
+interested in RF circuit design Qucs is distributed with a selection of built-in RF component models, including
+microstrip and coplanar technology components, making the package a good choice for investigation
+the performance of high frequency circuits.  At RF, Qucs implements models and analysis features not included in the traditional SPICE 2g6
+and 3f5 circuit simulators. In contrast to SPICE 3f5 the Ngspice, Xyce and SPICE OPUS GPL simulators have been extended
+with features which are designed specifically for RF circuit simulation. These include single tone and multi-tone HB
+simulation (Xyce) and a transient simulation shooting method (SPICE OPUS) for large signal AC steady state simulation.
+These RF simulation techniques, when coupled with the fact that Ngspice, Xyce and SPICE OPUS support small signal AC two port network analysis
+via the spice4qucs extension, makes the Qucs-S version of Qucs a useful addition to the GPL RF circuit simulation scene.</p>
+<p>HB is a circuit simulation method that solves for the steady state solution of nonlinear circuits in the frequency domain.
+In HB simulation, the voltages and currents in a nonlinear circuit are represented by truncated Fourier series. HB computes the frequency spectrum
+of circuit voltages and currents when signals reach a steady state, following excitation with an external signal source.
+This source can be a large signal AC signal. In practice the HB simulation technique is often more efficient than transient analysis, particularly in situations where
+transient analysis can take a long time to reach a steady state solution due to widely differing frequency signals present in a circuit, for example amplitude
+or frequency modulated communications signals.
+HB is particularly suited to the simulation of analogue RF and microwave circuits.</p>
+<p>In this chapter the Qucs-S RF capabilities are introduced and described.  To demonstrate these new features
+a number of example RF circuit simulations are presented together with a new <strong>Template</strong> element which allows libraries of analysis
+and post-simulation data processing <strong>Nutmeg</strong> scripts to be stored and embedded in Qucs schematics. The idea  of a predefined <strong>Test Bench</strong> is
+also outlined and applied to RF circuit simulation case studies.</p>
+<p>The Qucs-S version of Qucs includes spice4qucs extensions which allow the package to be used for analysis of RF circuits.
+The central features of the spice4qucs RF elements are:</p>
+<ul class="simple">
+<li>Small signal AC two port S-parameter simulation (Ngspice, XYCE and SPICE OPUS)</li>
+<li>Small signal AC two port Y,Z etc. network simulation/analysis (Ngspice and SPICE OPUS)</li>
+<li>Single and multi-tone large signal AC Harmonic Balance simulation (Xyce only)</li>
+<li>Large signal AC transient simulation with steady state shooting methods (SPICE OPUS only)</li>
+<li>Emulation of Qucs RFEDD components (limited support at this time)</li>
+<li>A range of lumped RF and microwave components for use in high frequency circuit design (limited but growing support)</li>
+</ul>
+<p>Where needed each of the above can make use of Octave scripts and functions in the analysis of simulation data.</p>
+<p>Readers will have probably noticed from the list presented above that multi-port S-parameter modelling and RF simulation features
+are not implemented in Qucs-S. Currently, there are no immediate plans to add this extension to the existing Qucs-S simulation
+and modelling features. Anyone interested in multi-port S-parameter RF circuit analysis is advised to use the standard Qucs package.</p>
+<p>The S-parameter probes, templates and examples introduced in this chapter can be found in the Qucs-S examples directory. They are stored as project
+spice4qucs-helpChapter13_prj.</p>
+</div>
+<div class="section" id="small-signal-ac-s-parameter-simulation">
+<h2>13.2 Small signal AC S-parameter simulation<a class="headerlink" href="#small-signal-ac-s-parameter-simulation" title="Permalink to this headline">¶</a></h2>
+<p>S-parameter two port RF and microwave circuit simulation is not implemented in traditional SPICE 2g6 and 3f5 simulators.
+This is a serious omission because at RF frequencies  S-parameter and other two-port network parameters are widely used in circuit analysis and design.
+To overcome this limitation four small signal AC analysis probes have been added to the spice4qucs RF extensions.  When combined with signal sources
+they form a <strong>Two-port S-parameter circuit test bench</strong>.  This test bench is shown in Figure 13.1. Its main features are space on the test bench
+schematic to place the device under test (DUT) circuit diagram, input AC signal sources with <span class="math">\(Z_0\)</span> characteristic impedance, <span class="math">\(Z_0\)</span> load
+impedances and the S-parameter measurement probes.  Notice that two copies of the DUT are require; firstly to measure <span class="math">\(S_{11}\)</span> and <span class="math">\(S_{12}\)</span> and
+secondly <span class="math">\(S_{22}\)</span> and <span class="math">\(S_{21}\)</span>.  The test bench also includes a detailed set of instructions on how to use it to measure simulated two-port S-parameters.
+The two-port S-parameter test bench illustrated in Figure 13.1 will work with the Ngspice, Xyce and SPICE OPUS circuit simulators.</p>
+<div class="figure">
+<img alt="_images/Fig13p1.png" src="_images/Fig13p1.png" />
+</div>
+<p>Figure 13.1 A small signal AC S-parameter test bench with S-parameter probes.</p>
+<p>The schematic shown in Figure 13.2 demonstrates the use of the S-parameter test bench.  In this example two identical copies of a Butterworth passive low pass filter
+circuit with <span class="math">\(f_c\)</span> = 100 kHZ and <span class="math">\(Z_0\)</span> = 50 Ohms are connected between the pairs of DUT terminals labelled <strong>IN</strong> and <strong>OUT</strong>. Notice that the orientation of both DUT is the same.
+The outputs from the S-parameter probes are called <code class="docutils literal"><span class="pre">nS11</span></code>, <code class="docutils literal"><span class="pre">nS12</span></code>, <code class="docutils literal"><span class="pre">nS21</span></code> and <code class="docutils literal"><span class="pre">S22</span></code> being represented as voltages specified by complex numbers.  Figure 13.2
+also shows typical plots of the magnitudes of the simulated S-parameters. For convenience the test-bench instructions have been deleted from Figure 13.3.  Also, if
+required the size of the area allocated to each DUT can be changed, provided the test-bench signal and load circuit connections are not changed. Similarly, the value of <span class="math">\(Z_0\)</span>
+and the source and load resistors (<span class="math">\(R_1\)</span>, <span class="math">\(R_2\)</span>, <span class="math">\(R_3\)</span> and <span class="math">\(R_4\)</span> in Figure 13.2) can be changed from 50 Ohms.</p>
+<p><img alt="small_signal_S2_EN" src="_images/Fig13p2.png" /></p>
+<p>Figure 13.2 Extraction of a low pass filter small signal S-Parameters using a Qucs-S test-bench.</p>
+</div>
+<div class="section" id="small-signal-ac-two-port-network-simulation-analysis">
+<h2>13.3 Small signal AC two port network simulation/analysis<a class="headerlink" href="#small-signal-ac-two-port-network-simulation-analysis" title="Permalink to this headline">¶</a></h2>
+<p>The spice4qucs extensions introduce post-simulation data conversion for two-port networks centred
+around Qucs-S <strong>Nutmeg scripts</strong> and Qucs-S <strong>Nutmeg equation</strong> blocks. These are designed specifically to
+work with Ngspice and Xyce. Conversion of two port parameters from
+one format to another format is simply one example of the application of Qucs-S embedded nutmeg scripts for the
+control of circuit simulation and the extraction of circuit parameters from output data.
+The Xyce circuit simulator is more limited in that it does not have a post-processing scripting language
+for extracting transfer function parameters and other data from simulation output. However, it
+does allow SPICE style AC .PRINT statements which can include equations provided these  are
+written in a form constructed from the real and imaginary components of circuit voltages and
+currents. In practice this is not very convenient, particularly when these equations involve many
+algebraic terms.  At this time the Xyce facilities for the extraction of AC data items are at a rudimentary stage in the
+packages development and for this reason are not considered further in this document.</p>
+<p><img alt="small_signal_S3_EN" src="_images/Fig13p3.png" /></p>
+<p>Figure 13.3 <strong>Nutmeg script</strong> controlled simulation and two-port parameter extraction.</p>
+<p>Figure 13.3 presents an S-parameter test bench used to extract the S parameters of the same low pass filter
+introduced in Figure 13.1.  However, unlike Figure 13.1 Qucs/Qucs-S simulation icons are NOT attached to the
+test-bench circuit schematic.  Instead a Qucs-S <strong>Nutmeg script</strong> is used.  This script controls the simulation sequence
+and provides post processing algebraic equations which generate small signal AC <span class="math">\(Y\)</span> and <span class="math">\(Z\)</span> parameters from the data
+output by the S-parameter probes. Figure 13.4 shows a set of simulation plots obtained with the Nutmeg script and SPICE OPUS.  Identical
+data was recorded with Ngspice.  However, one difference was noticed when simulating circuits via the <strong>Nutmeg script</strong> route.  SPICE OPUS
+requires that the code words, like for example ac and let, must be entered with lower case letters, otherwise the SPICE OPUS simulation fails.
+Chapter 8 presents much more detail on how to set up <strong>Nutmeg scripts</strong> and gives a number of additional examples of their use in Qucs-S circuit
+simulation.</p>
+<p><img alt="small_signal_S4_EN" src="_images/Fig13p4.png" /></p>
+<p>Figure 13.4 Typical S-parameter, <span class="math">\(Y\)</span> parameter and <span class="math">\(Z\)</span> parameter data for the test circuit given in Figure 13.3.</p>
+<p>One of the pioneering circuit simulation features implemented by Qucs is the <strong>Equation</strong> block.  This allows blocks of algebraic equations to be attached
+to a circuit schematic.  Any equations which do NOT include quantities computed during simulation, like circuit voltages and currents, are evaluated prior to the start of simulation.
+These quantities remain fixed during simulation and may be referenced by the simulator when calculating voltages and currents. In contrast, if an <strong>Equation</strong> block includes
+variables which are functions of simulation variables these are evaluated, based on the stored simulation output data, after a simulation finishes.
+Qucs has a Octave style numerical analysis package built into the software for this purpose.</p>
+<p>Qucs-S uses a slightly different approach to post simulation data processing.  Both Ngspice and Xyce use an extended form of the  SPICE nutmeg software for post-simulation data processing.
+Unfortunately, because Xyce does not include a feature equivalent to SPICE nutmeg, AC post-simulation data processing is not possible with Xyce.
+To setup and use a Qucs-S <strong>Nutmeg</strong> equation block place the <strong>Nutmeg</strong> icon on an empty schematic sheet and enter the individual variable equations in a
+similar fashion to Qucs <strong>Equation</strong> blocks.  Once complete copy the <strong>Nutmeg</strong> equation black to the current work circuit schematic.
+Such <strong>Nutmeg</strong> equation blocks are called <strong>Templates</strong> by the Qucs-S Development Team. These templates can be saved in a project and used over and over again.
+Templates add a new and important facility to Qucs-S which allows users to develop libraries of-post simulation data processing scripts and store them for future use.
+See Chapters 7 and 8 for more details and examples of the use of Qucs-S <strong>Custom Simulation</strong> technology and <strong>Nutmeg</strong> equation blocks.
+Figure 13.5 shows Qucs-S <strong>Templates</strong> for the conversion of S-parameters to <span class="math">\(Y\)</span> and <span class="math">\(Z\)</span> two port parameters. Note that these do NOT include commands for
+simulations, for example ac ......, and do not have the same named variable defined more than ONCE.</p>
+<a class="reference internal image-reference" href="_images/Fig13p5.png"><img alt="_images/Fig13p5.png" class="align-center" src="_images/Fig13p5.png" style="width: 413.0px; height: 392.0px;" /></a>
+<p>Figure 13.5 Qucs-S <strong>Nutmeg</strong> equation block templates for <span class="math">\(S\)</span> to <span class="math">\(Y\)</span> and <span class="math">\(Z\)</span> parameter conversion.</p>
+</div>
+<div class="section" id="single-tone-large-signal-ac-harmonic-balance-simulation">
+<h2>13.4 Single tone large signal AC Harmonic Balance simulation<a class="headerlink" href="#single-tone-large-signal-ac-harmonic-balance-simulation" title="Permalink to this headline">¶</a></h2>
+<p>The Spice4qucs subsystem supports Xyce single tone and multi-tone Harmonic Balance (HB).
+Unlike the rudimentary version of HB simulation implemented in Qucs the Xyce version can simulate circuits
+with a full range of SPICE components. It is also faster and much more stable. In general no changes to the SPICE
+semiconductor device or component models are required. To invoke single tone HB just place
+the Qucs-S <code class="docutils literal"><span class="pre">HB</span> <span class="pre">simulation</span></code> icon on a circuit schematic, define the number of harmonics and
+simulate the circuit with Xyce. The spice4qucs output data parser automatically converts output variable names to Qucs notation.
+For example, for node voltage <code class="docutils literal"><span class="pre">out</span></code> plot <code class="docutils literal"><span class="pre">out.Vb</span></code>.</p>
+<p>Figure 13.6 shows the schematic and Figure 13.7 the simulation output plots for a basic diode circuit similar to the original Qucs HB example found
+on the Qucs web site. For comparison Figure 13.7 presents the output voltage spectrum plots generated by Qucs and Qucs-S/Xyce.</p>
+<a class="reference internal image-reference" href="_images/diode_HB.png"><img alt="_images/diode_HB.png" class="align-center" src="_images/diode_HB.png" style="width: 235.2px; height: 162.0px;" /></a>
+<p>Figure 13.6 Diode clipper harmonic balance simulation.</p>
+<p>The HB simulation results for the diode clipper circuit are shown in the Figure 13.7.</p>
+<p><img alt="diode_HB_res_EN" src="_images/diode_HB_res.png" /></p>
+<p>Figure 13.7 Output voltage spectrum at Node2 for Qucs (left plot), and measured with voltage probe Pr1 for Xyce (right plot).</p>
+<p>Comparing these two plots highlights an obvious difference in the plot frequency scales.
+The Qucs-S/Xyce output plot is represented as a function of negative and positive frequency components.
+In this example there are eight harmonics (<code class="docutils literal"><span class="pre">n=8</span></code>) arranged as 8 positive frequencies and eight
+negative frequencies plus a DC component.</p>
+<p>Qucs HB simulation data are output as a plot of frequency domain spectral amplitude components <span class="math">\(|H|\)</span>, where</p>
+<div class="math">
+\[|H| = U(0),U(f_1), U(f_2), U(f_3), ......\]</div>
+<p><span class="math">\(U(0)\)</span> is the DC spectral component, <span class="math">\(U(f_n)\)</span> is the magnitude of a harmonic component at frequency <span class="math">\(f_n\)</span> and <span class="math">\(n=1, 2, 3, 4,...\)</span>.
+In contrast to Qucs,  Xyce outputs HB voltage and current simulation data as plots of complex conjugate spectral components, where</p>
+<div class="math">
+\[|H| = U(0), 2 \cdot \sqrt {U(-f_1) \cdot \overline{U(f_1)} }, 2 \cdot \sqrt{U(-f_2) \cdot \overline{U(f_2)} },.....\]</div>
+<p>yielding, eight very similar magnitude harmonic spectra values to Qucs <span class="math">\(|H|\)</span>. If required the phase at each harmonic frequency can be extracted
+from the Xyce HB simulation data.</p>
+</div>
+<div class="section" id="multi-tone-large-signal-ac-hb-simulation">
+<h2>13.5 Multi-tone Large signal AC HB simulation<a class="headerlink" href="#multi-tone-large-signal-ac-hb-simulation" title="Permalink to this headline">¶</a></h2>
+<p>Since Xyce release 6.3 the package has supported multi-tone HB simulation. Xyce multi-tone allows more
+than one tone frequency in the <code class="docutils literal"><span class="pre">HB</span> <span class="pre">simulation</span> <span class="pre">component</span></code> properties box.
+Perform the following steps to setup a multi-tone Xyce HB simulation:</p>
+<ul class="simple">
+<li>Specify a list of space separated frequencies in the <code class="docutils literal"><span class="pre">f</span></code> parameter box.</li>
+<li>Specify a comma separated list of the number of harmonic frequencies for each of the source signals in the <code class="docutils literal"><span class="pre">n</span></code> parameter box.</li>
+<li>Construct an input signal generator using two or more series AC voltage sources, with the required frequencies and amplitudes, or</li>
+<li>construct an input signal generator using two or more parallel AC current sources driving a one Ohm resistor.</li>
+</ul>
+<p>Normally, multi-tone HB simulation signal sources consist of two or three AC sources with different frequencies and similar amplitudes.
+With two AC signal sources with nearly equal frequencies, that are not integer related, circuit modulation components can be extracted from circuit output spectra.
+A multi-tone HB example illustrating this feature is given in Figure 13.8, where two AC signals of 0.8 V peak and frequencies 0.95 MHz and 1.05 MHz  are applied to a simple diode circuit.
+The frequencies of individual diode current spectral components are show as combinations of signal frequencies <span class="math">\(f_1\)</span> and <span class="math">\(f_2\)</span> and marked in red on Figure 13.9.</p>
+<p><img alt="diode_HB_2t_EN" src="_images/HBTTFig1.png" /></p>
+<p>Figure 13.8 An example diode 2-tone Xyce HB simulation circuit plus diode voltage spectra.</p>
+<p><img alt="diode_HB_2t2_EN" src="_images/HBTTFig2.png" /></p>
+<p>Figure 13.9 Diode 2-tone Xyce HB simulation current spectra.</p>
+</div>
+<div class="section" id="the-spice-opus-large-signal-ac-steady-state-transient-shooting-method">
+<h2>13.6 The SPICE OPUS large signal AC steady state transient shooting method<a class="headerlink" href="#the-spice-opus-large-signal-ac-steady-state-transient-shooting-method" title="Permalink to this headline">¶</a></h2>
+<p>Fourier analysis of circuits driven by periodic AC input signals works well at low to moderate frequencies provided that they have a period similar to the circuit time constants.
+Unfortunately, high frequency RF signals normally have very small periods, implying that an RF transient simulation has to
+run for a very large number of signal cycles before a steady state circuit response is reached.
+This can result in a prohibitively long simulation time which can grow at an alarming rate as the circuit size is increased.
+One way to reduce simulation time is to  undertake the simulation of RF communication circuits in the AC domain.
+This approach forms the basis for the single and multi-tone Harmonic Balance methods introduced in previous sections of this chapter.</p>
+<p>A second method, which is particularly suited to simulating RF communication circuits, is the so called &#8220;shooting method&#8221;.
+This is a modified form of time domain transient simulation.
+In the shooting method it is assumed that a non-linear circuit has a periodic solution which can be found from the circuit state where transients are NOT present.
+This state is called a steady state circuit solution.
+If <span class="math">\(x(t)\)</span> is a set of circuit variables obtained by time domain simulation at time t, then for periodicity <span class="math">\(x(t) = x(t+T)\)</span>, where T is the period of the input signal.
+The time domain simulation starts by  calculating the initial state <span class="math">\(x(0)\)</span>, often using DC simulation when the input signal is zero.
+Using <span class="math">\(x(0)\)</span> as an initial state, a circuit under test is simulated in the time domain from <span class="math">\(t\)</span> = 0 to <span class="math">\(t\)</span> = <span class="math">\(T\)</span> than an estimate of the circuit state is made.
+This process is repeated, increasing time by <span class="math">\(T\)</span> at each iteration, until <span class="math">\(x(t+n \cdot T) = x(t+(n+1) \cdot T)\)</span> is satisfied within a reasonable tolerance.
+Unlike direct transient methods a circuit is only simulated over one period per solution iteration cycle.
+Hence, the shooting method can be more more efficient, provided that a steady state solution can be found in a number of iterations that are smaller than the
+number of periods simulated by direct transient simulation.</p>
+<p>The SPICE OPUS implementation of the shooting method was first released with software version 2.25 in December 2006.
+It can be used to simulate the performance of linear and non-linear circuits with either small or large amplitude periodic input signals.
+It can be launched by Qucs-S using the new <strong>Custom simulation</strong> feature.
+SPICE OPUS steady response analysis in the transient domain is implemented as an additional nutmeg command called <strong>ssse</strong>.
+Nutmeg command <strong>ssse</strong> runs a time domain shooting method with extrapolation via the following statement:</p>
+<div class="highlight-Bash"><div class="highlight"><pre><span></span>ssse v<span class="o">([</span>,<span class="o">])</span> <span class="o">[</span>level<span class="o">]</span> <span class="o">[</span>step<span class="o">]</span> <span class="o">[</span>skip<span class="o">]</span> <span class="o">[</span>period<span class="o">]</span> <span class="o">[</span>history<span class="o">]</span>
+</pre></div>
+</div>
+<p>where v([,]) indicates the observed response of a voltage at a circuit node, referenced to ground, or a voltage difference between two nodes, for example v(n1) or v(n1,n2) respectively;
+level indicates the circuit hierarchical at which the shooting method data is calculated, level=0 is a circuit expanded to component level, default=0;
+step is the time step for transient simulation (same meaning as the nutmeg tran command), default=1;
+skip is the time skipped before the shooting method starts sampling response v([,]), default=0;
+period is the number of periods taken into account for sampling, default=2;
+history is a flag which if set causes nutmeg to record data from all transient iterations. If history is NOT set then only the final steady state solution is recorded.
+In the above SPICE OPUS nutmeg <code class="docutils literal"><span class="pre">ssse</span></code> statement the brackets <code class="docutils literal"><span class="pre">[</span> <span class="pre">]</span></code> indicate optional quantities.
+Also note that SPICE OPUS option <code class="docutils literal"><span class="pre">sssetol</span></code> can be changed, if required, to improve simulation convergence.</p>
+<p>Figure 13.20 introduces a simple test circuit designed to test the performance of a DC forward biassed semiconductor diode subjected to an AC input voltage signal.  The SPICE OPUS nutmeg
+script is shown in Figure 13.20 attached tp a Qucs-S <strong>Nutmeg script</strong> icon.  This script follows the statement rules required by the SPICE OPUS extended form of SPICE
+nutmeg.  For comparison the example script shown in Figure 13.20 and Figure 13.21 includes entries for launching and saving the simulation data from transient, Fourier and <strong>ssse</strong> simulations.
+Notice that each set of simulated data is written to separate named files.
+The names of these files are registered by pressing the &#8220;Find all outputs&#8221; tab on the Qucs-S Custom simulation control script editing window, see Figure 13.21.
+Variables for post-simulation visualization can be found in a similar way by pressing the &#8220;Find all variables&#8221; tab.
+More details of the use of Qucs-S Custom simulation can be found in Chapter 8.
+Pressing key &#8220;F2&#8221; causes Qucs-S to simulate the current circuit schematic; firstly generating a Qucs circuit netlist, secondly synthesizing a SPICE style netlist from the Qucs netlist
+(Figure 13.22  shows the SPICE OPUS netlist generated by Qucs-S for the diode test circuit Custom simulation), and finally simulates the circuit netlist using the nutmeg statements
+located between the SPICE <code class="docutils literal"><span class="pre">.control</span></code> and <code class="docutils literal"><span class="pre">.endc</span></code> statements. Following successful simulation Qucs-S visualization features can be used to plot the transient and frequency domain
+data output.  A typical set of plots is illustrated in Figure 13.23. Notice that the Fourier and <strong>ssse</strong> spectral data for the diode current are identical.</p>
+<a class="reference internal image-reference" href="_images/chap13ssseFig1.png"><img alt="_images/chap13ssseFig1.png" class="align-center" src="_images/chap13ssseFig1.png" style="width: 502.2px; height: 325.8px;" /></a>
+<p>Figure 13.20   SPICE OPUS shooting method test circuit for a semiconductor diode.</p>
+<a class="reference internal image-reference" href="_images/chap13ssseFig2.png"><img alt="_images/chap13ssseFig2.png" class="align-center" src="_images/chap13ssseFig2.png" style="width: 380.4px; height: 451.2px;" /></a>
+<p>Figure 13.21  Qucs-S <strong>Custom simulation</strong> control script editing window.</p>
+<a class="reference internal image-reference" href="_images/chap13ssseFig2A.png"><img alt="_images/chap13ssseFig2A.png" class="align-center" src="_images/chap13ssseFig2A.png" style="width: 532.2px; height: 534.0px;" /></a>
+<p>Figure 13.22  SPICE OPUS netlist for semiconductor diode transient, Fourier and ssse simulation.</p>
+<a class="reference internal image-reference" href="_images/chap13ssseFig3.png"><img alt="_images/chap13ssseFig3.png" class="align-center" src="_images/chap13ssseFig3.png" style="width: 368.5px; height: 485.5px;" /></a>
+<p>Figure 13.23 Transient, Fourier and <strong>ssse</strong> semiconductor diode current plots in the time and frequency domains.</p>
+</div>
+<div class="section" id="emulation-of-qucs-rfedd-components">
+<h2>13.7 Emulation of Qucs RFEDD components<a class="headerlink" href="#emulation-of-qucs-rfedd-components" title="Permalink to this headline">¶</a></h2>
+<p>RFEDD passive components (RCL) and B-type sources could be represented using
+<code class="docutils literal"><span class="pre">hertz</span></code> variable in equations. See official Ngspice manual for additional
+information.</p>
+</div>
+<div class="section" id="rf-device-models">
+<h2>13.8 RF device models<a class="headerlink" href="#rf-device-models" title="Permalink to this headline">¶</a></h2>
+<p>Circuit simulators based on SPICE include a range of passive component and active device models.
+Often the passive R, C and L models have ideal characteristics that only provide correct simulation data at low frequencies.
+SPICE active device models are the opposite in that they operate correctly over a wide band of signal frequencies, from low frequencies
+to RF or microwave frequencies.
+At RF and above it is unusual for active models to include device package parasitics.
+The models introduced in this section  introduce readers to a number of passive models that provide more realistic simulation data at RF and higher frequencies.
+They provide more accurate simulation data for some of the currently available commercial components while simultaneously introducing
+readers to the modelling principles needed in RF component and device modelling.</p>
+<p>As a starting point the modelling of RF <span class="math">\(R\)</span>, <span class="math">\(C\)</span> and <span class="math">\(L\)</span> is introduced through the development of lumped element models for these components.
+In this context the term lumped element is taken to mean an electrical equivalent circuit which provides accurate device characteristics up to a signal frequency
+where the physical size of a component is not greater than roughly 5% of the signal wavelength.
+Lumped component models of this form also have the advantage that they can be simulated in the time domain by SPICE based circuit simulators.</p>
+<div class="section" id="rf-resistor-models">
+<h3>13.8.1  RF resistor models<a class="headerlink" href="#rf-resistor-models" title="Permalink to this headline">¶</a></h3>
+<p>The most common form of resistor used in the construction of circuits mounted on printed circuit boards (PCB) are:</p>
+<ul class="simple">
+<li>Carbon composite axial leaded resistors,</li>
+<li>Carbon or metal thin-film axial leaded resistors,</li>
+<li>Wire wound axial leaded resistors, and</li>
+<li>Surface mount chip resistors.</li>
+</ul>
+<p>For RF circuits, metal thin-film axial resistors and surface mount chip resistors are the preferred types due to their superior RF performance and straight forward PCB mounting procedures.
+Cross sectional diagrams for these components and their electrical equivalent circuits are shown in Figure 13.8.1.</p>
+<img alt="_images/ResFig1381.png" src="_images/ResFig1381.png" />
+<p>Figure 13.8.1 RF resistor cross sectional diagrams and electrical models for common RF lumped component resistors.</p>
+</div>
+<div class="section" id="metal-thin-film-axial-leaded-resistors">
+<h3>13.8.2 Metal thin-film axial leaded resistors<a class="headerlink" href="#metal-thin-film-axial-leaded-resistors" title="Permalink to this headline">¶</a></h3>
+<p>The values for the <span class="math">\(R\)</span>, <span class="math">\(C\)</span>, and <span class="math">\(L\)</span> components in Figure 13.8.1 are often given by manufacturers, having been
+determined by measurement of the RF model small signal AC performance. For those components that do not have
+model parameters listed in their specification approximate values for each of the model parameters can be calculated
+using the following equations:</p>
+<p>1.      The inductance of the resistor lead wires are labelled <span class="math">\(L1\)</span> and <span class="math">\(L2\)</span> in Figure 13.8.2(a) and <span class="math">\(L\)</span> is approximated by the
+equation for a single wire with a circular cross-section</p>
+<div class="math">
+\[L \approx \frac{\mu o \cdot Wlength} {2.0 \cdot \pi } \left [ \ln \left( \frac{2.0 \cdot Wlength }{Wradius} \right ) - 0.75  \right ]\]</div>
+<p>Here, <span class="math">\(Wlength\)</span> and <span class="math">\(Wradius\)</span> are the lead length and radius in metres, respectively.
+As a first approximation the inductance of the thin-film resistor can be estimated from the <span class="math">\(L\)</span> associated with a thin strip
+of resistive material formed by a spiral of the thin-film resistive coating cut from the material deposited on a dielectric cylindrical tube, where</p>
+<div class="math">
+\[L \approx  \frac{\mu o   \cdot Lstrip } {2.0 \cdot \pi} \left [0.5 \cdot \ln \left ( \frac{ 2.0 \cdot Lstrip}{Wstrip} \right) + \frac{Wstrip}{3.0 \cdot Lstrip} \right ]\]</div>
+<p>Here, <span class="math">\(Lstrip\)</span> is the length and <span class="math">\(Wstrip\)</span> the width of the thin-film strip, respectively. For the purposes of estimating <span class="math">\(Ls\)</span> the thin-film resistor is assumed to be formed
+from a spiral with a cut traversing the resistor material four times, set by <span class="math">\(Ns\)</span> = 4, giving a very rough order of magnitude for <span class="math">\(Lstrip\)</span> and <span class="math">\(Wstrip\)</span> of</p>
+<div class="math">
+\[Lstrip \approx  2.0 \cdot \pi \cdot Bradius \cdot Ns\]</div>
+<div class="math">
+\[Wstrip \approx  0.75 \cdot \frac {Blength}{Ns}\]</div>
+<p>Where <span class="math">\(Blength\)</span> and <span class="math">\(Bradius\)</span> are the physical body length and body radius of the thin-film resistor in metres, respectively.
+To take account of the thin-film resistor end-caps, that connect the thin-film resistor to the component leads, the body length of the resistor is estimated
+to be roughly 0.75 times the external component length.</p>
+<ol class="arabic simple" start="2">
+<li>The thin-film resistor capacitors <span class="math">\(Cp\)</span> and <span class="math">\(Cpad\)</span> can also be estimated using the following equations</li>
+</ol>
+<div class="math">
+\[ \begin{align}\begin{aligned}Cp \approx \frac{Erb \cdot \epsilon o \cdot \pi \cdot Bradius \cdot Bradius }{0.75 \cdot Blength}\\Cpad \approx \frac{Erp \cdot \epsilon o \cdot 1.5 \cdot Blength \cdot Bradius}{H}\end{aligned}\end{align} \]</div>
+<p>Where <span class="math">\(Erb\)</span> is the relative permeability of the resistor substrate, <span class="math">\(Erp\)</span> is the relative permeability of the PCB and <span class="math">\(H\)</span> is the distance below the resistor to
+ground. If <span class="math">\(H\)</span> is greater than the PCB thickness it implies that there is no ground plane on the underside of the PCB and as a consequence capacitor <span class="math">\(Cp\)</span> becomes
+very small or goes to zero.</p>
+<img alt="_images/ResFig1382.png" src="_images/ResFig1382.png" />
+<p>Figure 13.18.2  The RF thin-film axial leaded resistor model: (a) a debug version which estimates the model parameters from the component physical dimensions and material properties, and (b)
+a simulation version of the model that has the <span class="math">\(L\)</span>, <span class="math">\(C\)</span> and <span class="math">\(R\)</span> values as parameters.</p>
+<img alt="_images/ResFig1383.png" src="_images/ResFig1383.png" />
+<p>Figure 13.18.3  A basic test bench for simulating the small signal AC performance of a thin-film axial leaded resistor.</p>
+<p>In Figure 13.18.3 the Qucs-S schematic symbol for a thin-film resistor shows a resistor colour code on a blue background.
+Please note that the drawn colour code is just indicative of a typical axial resistor value and is identical for all resistor symbols placed on a schematic.
+However, also note that the <span class="math">\(R0\)</span> parameter must be set to a specific value as required by the circuit under simulation test.</p>
+<img alt="_images/ResFig1384.png" src="_images/ResFig1384.png" />
+<p>Figure 13.18.4  A set of resistor impedance data generated using the test bench shown in Figure 13.18.3.</p>
+<p>Notice that in Figure 13.18.4 a resistor value of around 200 <span class="math">\(\Omega\)</span> gives the widest AC bandwidth, in this example approaching 1GHz.
+Hence, it is better to build a 50 <span class="math">\(\Omega\)</span> RF axial resistor from four parallel 200 <span class="math">\(\Omega\)</span> components rather than use a single 50 <span class="math">\(\Omega\)</span> resistor.</p>
+</div>
+</div>
+<div class="section" id="more-example-rf-circuit-simulations">
+<h2>13.9 More example RF circuit simulations<a class="headerlink" href="#more-example-rf-circuit-simulations" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><a class="reference external" href="#top">back to the top</a></div></blockquote>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="ParameterExt.html" class="btn btn-neutral float-right" title="Chapter 14. Qucs-S/Octave circuit simulation and device parameter extraction interface" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="VerilogA.html" class="btn btn-neutral" title="Chapter 12. Verilog-A compact semiconductor device modelling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright Contributing Authors 2015, 2016.
+      
+        <span class="commit">
+          Revision <code>f093faaa</code>.
+        </span>
+      
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  
+
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.19-S',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="https://media.readthedocs.org/javascript/jquery/jquery-2.0.3.min.js"></script>
+      <script type="text/javascript" src="https://media.readthedocs.org/javascript/jquery/jquery-migrate-1.2.1.min.js"></script>
+      <script type="text/javascript" src="https://media.readthedocs.org/javascript/underscore.js"></script>
+      <script type="text/javascript" src="https://media.readthedocs.org/javascript/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="https://media.readthedocs.org/javascript/readthedocs-doc-embed.js"></script>
+
+  
+
+  
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

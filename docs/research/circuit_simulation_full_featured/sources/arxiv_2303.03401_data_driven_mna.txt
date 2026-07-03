@@ -1,0 +1,1155 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 1
+Data-driven Modiﬁed Nodal Analysis Circuit Solver
+Armin Galetzka∗, Dimitrios Loukrezis∗†, Herbert De Gersem∗†
+∗Institute for Accelerator Science and Electromagnetic Fields, Technische Universit ¨at Darmstadt, Germany
+†Computational Engineering, Technische Universit ¨at Darmstadt Darmstadt, Germany
+Abstract—This work introduces a novel data-driven modiﬁed
+nodal analysis (MNA) circuit solver. The solver is capable of
+handling circuit problems featuring elements for which solely
+measurement data are available. Rather than utilizing hard-
+coded phenomenological model representations, the data-driven
+MNA solver reformulates the circuit problem such that the
+solution is found by minimizing the distance between circuit
+states that fulﬁll Kirchhoff’s laws, to states belonging to the mea-
+surement data. In this way, the previously inevitable demand for
+model representations is abolished, thus avoiding the introduction
+of related modeling errors and uncertainties. The proposed solver
+is applied to linear and nonlinear RC-circuits and to a half-wave
+rectiﬁer.
+Index Terms —circuit simulation, data-driven computing,
+model free solver, modiﬁed nodal analysis
+I. I NTRODUCTION
+C
+IRCUIT simulations play a key role in the design and
+optimization process of electrical devices. To solve cir-
+cuit problems, two types of equations are necessary. On the
+one hand, there are Kirchhoff’s laws, which are derived from
+ﬁrst principles and are accepted as exactly known [21]. On
+the other hand, there are model descriptions that represent the
+actual element behavior, which are essential in classical circuit
+solvers. These models are mostly empirically known, thus
+introducing errors and epistemic (model-form) uncertainties
+arising from the modeling process [28]. Very commonly, these
+models are obtained via data-ﬁtting techniques, e.g., based
+on physically motivated approaches [26, 20] or sophisticated
+machine learning regression methods [15, 7, 19], to name a
+few options.
+Nowadays, the availability of data increases steadily. For
+many circuit elements, the amount of behavioral data is
+unprecedentedly high, raising the opportunity for novel data-
+driven modeling and simulation methods. Under this light,
+data-driven computation has emerged as and grown into a
+research area of its own in recent years. A model-free data-
+driven approach was ﬁrst proposed in [16, 17] for elasticity-
+related problems. Since then, the so-called data-driven comput-
+ing framework has been extended to several problem classes
+as well [4, 18, 3, 11], including the authors’ contributions in
+the ﬁeld of magnetic ﬁeld simulation [8, 9, 10].
+A common aspect in all aforementioned works is that the
+data-driven computing framework abolishes the previously
+inevitable need for model representations, e.g., regarding
+constitutive (material) laws. Instead, a double minimization
+problem is introduced to obtain the solution. Therein, the
+Manuscript received December x, xxxx; revised August xx, xxxx. Corre-
+sponding author: A. Galetzka (email: galetzka@temf.tu-darmstadt.de).
+sought solution must simultaneously conform to the ﬁrst-
+principle equations and be as close as possible to the provided
+measurement data. In this way, the simulation workﬂow is
+substantially reduced, as the problem at hand can be solved
+directly using the available measurement data, rather than
+investing effort in the development of model representations,
+which, even if considered to be adequate, remain empirical and
+inexact. Contrarily, using the data-driven computing frame-
+work, the modeling process and the associated errors and
+uncertainties are bypassed altogether.
+This paper extends data-driven computation to the case
+of circuit solvers. In particular, a novel data-driven modiﬁed
+nodal analysis (MNA) [14] solver is introduced, which is able
+to resolve circuit problems where only data are available for
+certain circuit elements. Therein, some circuit elements are
+assumed to be exactly known, while only measurement data
+are available for the remaining elements. The MNA is then
+reformulated along the lines of the data-driven computing
+framework, such that a double minimization solver yields
+the states that conform to Kirchhoff’s laws, while also being
+as close as possible to the measurements. Three numerical
+experiments validate the data-driven MNA method, which is
+able to recover reference solutions obtained with standard
+MNA solvers. As would be expected, the solutions of the data-
+driven MNA solver become increasingly more accurate as the
+number of available measurements increases.
+Note that the suggested data-driven MNA solver is com-
+pletely different than other approaches that appear in the
+literature and which are also labeled as “data-driven” [1,
+2, 5, 6, 12, 13, 22, 23, 29]. Speciﬁcally, the data-driven
+MNA solver does not rely on machine learning regression
+for computing circuit element models, which can then be
+used within standard circuit simulation tools. Instead, the
+suggested data-driven MNA solution method incorporates the
+measurement data directly into the solver and bypasses the
+element modeling step altogether.
+The remaining of the paper is structured as follows. In
+Section II, we introduce the data-driven computing formula-
+tions in the MNA framework and derive the data-driven MNA
+circuit solver. Several numerical investigations are presented
+and discussed in Section III, namely for a linear RC-circuit, a
+nonlinear RC-circuit with a voltage-dependent capacitor, and
+a nonlinear half-wave rectiﬁer. A discussion on the compu-
+tational cost of the data-driven MNA solver is provided in
+Section IV. The paper is concluded with Section V, where we
+summarize our ﬁndings.
+arXiv:2303.03401v1  [cs.CE]  6 Mar 2023
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 2
+II. M ETHODOLOGY
+In this work we consider circuits that contain passive ele-
+ments, i.e., resistors (G), capacitors (C) and inductors (L),
+voltage sources (V) and current sources (I). Let AX ∈
+R(n−1)×nX denote the reduced incidence matrices of an ar-
+bitrary circuit, where n denotes the number of nodes and
+X∈{ G, C, L, V, I}. Then, employing the MNA, Kirchhoff’s
+laws can be formulated as
+AGiG(t) + AC ˙qC(t) + ALiL(t) + AViV(t) = AIisrc(t),
+(1a)
+A⊤
+GΦ(t)− vG(t) = 0, (1b)
+A⊤
+CΦ(t)− vC(t) = 0, (1c)
+A⊤
+L Φ(t)− ˙ΨL(t) = 0, (1d)
+A⊤
+VΦ(t)− vsrc(t) = 0. (1e)
+Here, Φ∈ Rn−1 denotes the potential difference between the
+nodes and the mass node and iG ∈ RnG, iL ∈ RnL, iV ∈
+RnV, isrc∈ Rnsrc are the currents in branches with resistors,
+inductors, voltage sources, and current sources, respectively.
+The changes in charges and ﬂuxes are denoted as ˙qC∈ RnC
+and ˙ΨL∈ RnL respectively.
+Applying a time-discretization scheme, e.g., the backward
+Euler method, the time-discrete counterpart of (1) reads
+AGin+1
+G +h−1ACqn+1
+C
++ALin+1
+L + AVin+1
+V = AIin+1
+src +h−1ACqn
+C, (2a)
+A⊤
+GΦn+1− vn+1
+G = 0, (2b)
+A⊤
+CΦn+1− vn+1
+C = 0, (2c)
+A⊤
+L Φn+1−h−1Ψn+1
+L =h−1Ψn
+L, (2d)
+A⊤
+VΦn+1− vn+1
+src = 0, (2e)
+where h denotes the time step and fn+1 = f(t + h),
+respectively, fn = f(t). To ease notation, we omit the
+superscript n+1 in the following. All states that conform to
+Kirchhoff’s laws are collected in the set K = {ζ : ζ =
+(Φ, iG, qC, Ψ, iL, iV)∈Z : (2)}, where Z denotes the set
+of all possible states. For a traditional circuit solver, models
+for the circuits elements are needed to solve (2). The models’
+responses can be collected in a set ˜D, which we deﬁne as
+˜D =
+{
+×
+e
+{i =Ge(v)v}
+}
+×
+{
+×
+e
+{q =Ce(v)v}
+}
+×
+{
+×
+e
+{Ψ =Le(i)i}
+}
+,
+(3)
+where e refers to the branch that contains the considered
+element. The traditional solution is then determined by
+ζ =K∩ ˜D. (4)
+The need for model representations is abolished when
+employing the data-driven MNA solver, within which the
+information on some or all circuit elements is solely available
+through measurement data. The per element measurement data
+are collected in the sets
+DG,e =
+{(
+v†
+G,i†
+G
+)
+n
+}NG,e
+n=1
+, (5a)
+DC,e =
+{(
+v†
+C,q†
+C
+)
+n
+}NC,e
+n=1
+, (5b)
+DL,e =
+{(
+Ψ†
+L,i†
+L
+)
+n
+}NL,e
+n=1
+. (5c)
+which deﬁne the global measurement set
+D ={×
+e
+DX,e}X={G,C,L}, (6)
+where the cardinality of D, i.e., the total number of used
+measurement data points, is given by N = ∑
+eNG,e +∑
+eNC,e+∑
+eNL,e. However, searching for a solution similar
+to (4) yields ζ =K∩D =∅, since only a ﬁnite number of mea-
+surement data points are available. Therefore, the data-driven
+framework relaxes the condition (4) by accepting a solution
+that minimizes the distance between states that conform to
+Kirchhoff’s laws and states belonging to the measurement set
+D. We deﬁne the distance function at each element as
+fG,e ((vG,i G),DG,e) = min
+(v†
+G,i†
+G)∈DG,e
+(vG,i G)− (v†
+G,i†
+G)
+
+2
+˜G
+, (7a)
+fC,e ((vC,q C),DC,e) = min
+(v†
+C,q†
+C)∈DC,e
+(vC,q C)− (v†
+C,q†
+C)
+
+2
+˜C
+, (7b)
+fL,e ((ΨL,i L),DL,e) = min
+(Ψ†
+L,i†
+L)∈DL,e
+(ΨL,i L)− (Ψ†
+L,i†
+L)
+
+2
+˜L
+, (7c)
+with the weighted Euclidean distance ∥(p, q)∥2
+˜X =
+∑M
+i=1(1/2 ˜Xi
+−1
+p2
+i + 1/2 ˜Xiq2
+i ), for p, q, ˜X ∈ RM . Note
+that the weighting factors ˜G, ˜C, ˜L are only of computational
+nature and do not represent the underlying model of the
+elements [16, 9]. For now, we only demand for constants that
+are bounded such that 0 < ˜X < ∞. The global distance
+function is then deﬁned as
+F (ζ,D) =FG (vG, iG) +FC(vC, qC) +FL(iL, ΨL), (8)
+where the per element distance functions sum over all ele-
+ments, i.e., FX = ∑
+efX,e for X∈{ G, C, L}. For a given
+state ζ, the distance function (8) returns the minimum distance
+of that state to the available measurement data. To obtain a
+solution that fulﬁlls Kirchhoff’s laws, the minimization of (8)
+simply needs to be constrained by (2), thus resulting in the
+constrained minimization problem
+min
+ζ
+F (ζ,D)
+subject to (2),
+(9)
+which is known as the data-driven formulation. The data-
+driven minimization problem (9) is essentially a double-
+minimization problem, which can be formulated as
+ζ = argmin
+ζ◦∈K
+{
+min
+ζ×∈D
+{ζ◦− ζ×2
+˜G, ˜C, ˜L
+}}
+, (10)
+where ∥ζ∥2
+˜G, ˜C, ˜L = ∥(vG, iG)∥2
+˜G + ∥(vC, qC)∥2
+˜C +
+∥(ΨL, iL)∥2
+˜L.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 3
+To solve (10), we split the double minimization problem
+into two separate minimization problems, as follows:
+1) Projection on circuit state: Given a state ζ×∈D , a
+new state ζ◦∈K which is compatible with Kirchhoff’s
+laws and closest to a measurement state is found by
+solving
+ζ◦ = argmin
+ζ◦∈K
+ζ◦− ζ×2
+˜G, ˜C, ˜L,
+subject to (2).
+(11)
+The constrained minimization problem can be solved
+with the help of Lagrange multipliers and by replacing
+the unknown voltages by potentials, which yields
+L =
+(
+A⊤
+GΦ, iG
+)
+−
+(
+v×
+G, i×
+G
+)2
+˜G +
+(
+A⊤
+CΦ, qC
+)
+−
+(
+v×
+C, q×
+C
+)2
+˜C +
+(ΨL, iL)−
+(
+Ψ×
+L, i×
+L
+)2
+˜L−
+η⊤
+(
+AGiG + AC
+qC− qn
+C
+h
+)
+−
+η⊤ (ALiL + AViV + AIisrc)−
+λ⊤
+L
+(
+A⊤
+L Φ− ΨL− Ψn
+L
+h
+)
+−
+λ⊤
+V
+(
+A⊤
+VΦ− vsrc
+)
+.
+(12)
+The minimum of (12) with respect to
+Φ, iG, qC, Ψ, iL, iV is found by taking the derivatives
+with respect to the unknowns, which results in a linear
+system of the form Mζ = b. The system matrix M is
+given by
+
+AG ˜GA⊤
+G
++AC ˜CA⊤
+C 0 0 0 0 0 0 −AL−AV
+0 ˜R 0 0 0 0 −A⊤
+G 0 0
+0 0 ˜K 0 0 0 −h−1A⊤
+C 0 0
+0 0 0 ˜L 0 0 −A⊤
+L 0 0
+0 0 0 0 ˜M 0 0 h−1 0
+0 0 0 0 0 0 −A⊤
+V 0 0
+0 AG h−1AC AL 0 AV 0 0 0
+A⊤
+L 0 0 0 −h−1 0 0 0 0
+A⊤
+V 0 0 0 0 0 0 0 0
+
+
+(13)
+and the right hand side reads
+b =
+
+
+AG ˜Gv×
+G+AC ˜Cv×
+C
+˜Ri×
+G
+˜Kq×
+C
+˜Li×
+L
+˜MΨ×
+L
+0
+h−1ACqn
+C−AIisrc
+−h−1Ψn
+L
+vsrc
+
+
+. (14)
+Thus, a state ζ◦ ∈ Kthat is closest to a given state
+ζ×∈D is obtained with
+ζ◦ =PK(ζ×), (15)
+wherePK denotes the closest point projection of a state
+ζ×∈D toK.
+2) Projection on measurement state: Given a state ζ◦∈
+K, a new state ζ×∈D which belongs to the measure-
+ment set and is closest to ζ◦ is found by solving
+ζ× = argmin
+ζ×∈D
+ζ◦− ζ×2
+˜G, ˜C, ˜L. (16)
+Kirchhoﬀ’s laws
+ζ∈K
+measurements
+ζ†∈D
+•••
+Projection on
+circuit state
+Projection on
+measurement state
+ζ◦
+1
+ζ◦
+2 ζ◦
+p+1
+ζ×
+0
+ζ×
+1
+ζ×
+2
+PK PD
+Fig. 1. Illustration of the ﬁx-point iteration.
+Problem (16) is essentially a nearest neighbor problem,
+which can be solved with brute-force methods or kd-tree
+methods, to name but a few options [27]. Note that the
+minimization problem (16) is solved independently for
+each element. Introducing the operator PD that denotes
+the closest point projection of a state ζ◦∈K toD, a
+new state ζ×∈D is obtained through
+ζ× =PD(ζ◦). (17)
+Thus for each solver iteration, the two minimization problems
+(11) and (16) must be solved. Depending on the initial value,
+the iteration scheme can be deﬁned as
+ζ◦
+p+1 = (PM◦PD) (ζ◦
+p), (18)
+respectively
+ζ×
+p+1 = (PD◦PM) (ζ×
+p ), (19)
+which can be seen as a ﬁx-point iteration, as visually illustrated
+in Figure 1. This minimization procedure is carried out until
+either ζ◦
+p and ζ×
+p do not change after two consecutive iterations
+or until a desired accuracy is reached. The accuracy at iteration
+p can be measured in terms of the energy mismatch ϵem,p,
+which is deﬁned as
+ϵ2
+em,p =
+ζ◦
+p− ζ×
+p
+2
+˜G, ˜C, ˜L, (20)
+which is essentially the weighted distance between the two
+states. Convergence is then achieved if the change in energy
+mismatch (20) between two consecutive iterations is below
+a user-deﬁned tolerance. Once the data-driven solver has
+converged, we carry on with the next time step. The most
+recent data-driven solution is employed as starting point in
+the new time step.
+It is customary that most of the elements in a circuit are
+well-known and model representations are available. In this
+case, various approaches combining exactly known models
+with data-driven computing have been proposed by the authors
+in [8]. We consider the least intrusive approach, where the
+minimization (16) is now performed to the known model
+representation. In addition, the weighting factors in (13) and
+(14) are chosen according to the known model coefﬁcients.
+Furthermore, it has been shown by the authors that, for
+elements featuring a strongly nonlinear response and where
+only data-starved or unevenly ﬁlled measurement sets are
+available, constant weighting factors hinder the convergence
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 4
+rate of the data-driven solver [9]. Therefore, we follow the
+approach developed in [9] and choose the weighting factors
+to be the local tangent of the current state with respect to the
+surrounding states in the measurement set.
+III. N UMERICAL EXPERIMENTS
+In the following, we consider different circuit conﬁgura-
+tions. To validate the data-driven solver, we generate artiﬁcial
+measurement data of increasing cardinality, for each of which
+the circuit is solved. At every time step tk, k= 1,...,K , and
+at a speciﬁc element X∈{ G, C, L}, we calculate the energy
+mismatch with respect to an analytic reference solution, e.g.,
+obtained with a traditional MNA solver utilizing the “true”
+circuit elements. The energy mismatch error is deﬁned as
+ϵ2
+EM, ˜X(t) =∥(pref,q ref)− (p,q )∥2
+˜X
+⏐⏐⏐
+t
+. (21)
+Furthermore, we deﬁne the root mean square (RMS) error over
+the entire time interval as
+ϵRMS, ˜X =
+
+
+∫T
+t0
+ϵ2
+EM, ˜X(t) dt
+∫T
+t0
+(∥(pref,q ref)∥2
+˜X dt
+
+
+1
+2
+≈
+
+
+∑K
+k=0ϵ2
+EM, ˜X(tk)
+∑K
+k=0(∥(pref,q ref)∥2
+˜X)|tk
+
+
+1
+2
+,
+(22)
+The weighting factors in (21) and (22) correspond to the actual
+model parameters which are used for the reference solution.
+A. Linear RC-circuit
+For a ﬁrst test, we consider an RC-circuit, with R and
+C in series. The circuit is excited by a constant voltage
+source. Furthermore, in order to use the analytical solution
+as a reference, we consider only linear elements. We employ
+a data-driven solver based on the backward Euler scheme and
+on the trapezoidal rule, where the resistor and the capacitor
+are assumed to be unknown and only measurement data
+is available for these elements. Additionally, solutions for
+different time step values, equivalently, numbers of time steps,
+are computed.
+Figure 2 shows the RMS error for solutions obtained with
+the backward Euler method and the trapezoidal rule for
+different numbers of time steps. Furthermore, the RMS error
+for a traditional MNA solver is shown. The results show
+that the accuracy of the data-driven solution improves as
+more measurement data are employed. However, for certain
+combinations of employed measurement data and number of
+time steps, the convergence stagnates. To analyse this behavior,
+we consider the overall error of a state (p,q ) to the reference
+solution. The error is given as
+ϵ =∥(pref,q ref)− (p,q )∥2
+˜X
+=∥(pref−ptrad,q ref−qtrad)− (p−ptrad,q−qtrad)∥2
+˜X
+≤∥ (pref,q ref)− (ptrad,q trad)∥2
+˜X  
+ϵtime
++∥(p,q )− (ptrad,q trad)∥2
+˜X  
+ϵdata
+,
+(23)
+102 103 104 105 106
+10−6
+10−5
+10−4
+10−3
+10−2
+number of measurements N
+ϵRMS,C
+Backward Euler T rapezoidal Rule
+K = 10 2 K = 10 2
+K = 10 3 K = 10 3
+ϵtime, K= 10 2 ϵtime, K= 10 2
+ϵtime, K= 10 3
+Fig. 2. Linear RC-circuit: RMS error at the capacitor C over number of
+measurements. The horizontal lines mark the time-discretization errors for a
+traditional MNA circuit solver.
+0 0.5 1 1.5 2 2.5
+0
+2
+4
+6
+8
+t in s
+vC in V
+N = 10 2
+N = 10 3
+N = 10 4
+reference
+0 0 . 5 1 1 . 5 2 2 . 5
+0
+2
+4
+6
+8
+t in s
+v
+C
+in V
+N = 10
+2
+N = 10
+3
+N = 10
+4
+reference
+Fig. 3. Linear RC-circuit: V oltage vC at the capacitor over time. The plot
+shows the analytical reference solution, as well as data-driven solutions for
+an increasing number of measurement data.
+where (ptrad,q trad) is a state computed with a traditional
+MNA solver. Hence, the overall error can be decomposed
+into an error stemming from the time discretization scheme
+and an error attributed to the ﬁnite measurement data. This
+decomposition can be clearly observed in Figure 2. The ﬁgure
+shows several cases where extending the measurement set does
+not lead to an improvement in the accuracy. In those cases, the
+time-discretization error ϵtime, is dominant and the accuracy
+of the data-driven solver stagnates at the accuracy level of
+the traditional solver. Hence, to avoid unnecessary computa-
+tional costs, the time discretization scheme and the number
+of employed measurement data points should preferably be
+chosen according to one another. In cases where the time
+discretization error ϵtime is negligible, e.g., for K = 1000 and
+the trapezoidal rule, the data-driven solver achieves a linear
+convergence rate with respect to the employed measurement
+data.
+Next, we focus on the error attributed to the limited mea-
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 5
+0 0.5 1 1.5 2 2.5
+10−5
+10−4
+10−3
+10−2
+10−1
+100
+N = 10 2
+N = 10 3
+N = 10 4
+N = 10 5
+N = 10 6
+t in s
+ϵEM,C
+2
+4
+6
+8
+vC in V
+Fig. 4. Linear RC-circuit: Energy mismatch at the capacitor C over time.
+The error is shown for an increasing number of measurement data N ∈{
+102, 103, 104, 105, 106}
+. The dashed line shows the voltage vC.
+surement data. Therefore, the circuit is simulated using the
+the trapezoidal rule and K = 1000 time steps. The reference
+solution vC as well as data-driven solutions for measurement
+data sets of increasing size are depicted in Figure 3. We can
+already qualitatively observe that, if the measurement data set
+is not sufﬁciently large, e.g., for N = 102, the solution of the
+data-driven solver captures the behavior of the circuit, albeit
+a large error to the analytic solution remains. Furthermore,
+the ﬁgure shows that due to the discrete data, the solution is
+not continuous and exhibits jumps at certain time steps. More
+precisely, due to the ﬁnite data, the solver might select the
+same measurement state in consecutive time steps. However, as
+more data become available, these discontinuities are reduced.
+Figure 4 shows the energy mismatch to the reference solution
+over time for measurement sets of increasing cardinality. The
+ﬁgure clearly shows that the solution accuracy increases with
+the number of measurement data points.
+B. Nonlinear RC-circuit
+We revisit the RC-circuit, yet this time we consider a
+voltage-dependent capacitor C(vC(t)). The response of the
+capacitor as well as the charge over the applied voltage is
+shown in Figure 5. This nonlinear response is the typical
+behavior of multi-layer ceramic capacitors, for which the
+capacitance drops rapidly for moderate voltages to a nearly
+constant value [25, 30].
+The data-driven solver treats the resistor as a known ele-
+ment. Contrarily, only measurement data is available for the
+voltage-dependent capacitor. To validate the results obtained
+with the data-driven solver, we generate measurement data
+sets of increasing cardinality. Both the reference solver and
+the data-driven solver employ the trapezoidal rule for time
+discretization. Figure 6 shows the capacitor voltage over time.
+Similar to the linear case, the data-driven solution shows large
+jumps between the time steps if the number of measurement
+data points is not sufﬁciently large. As the number of measure-
+ments increases, the data-driven solution becomes increasingly
+smoother and eventually identical to the conventional MNA
+solution. This is also evident by the results shown in Figure 8
+0 2 4 6 8 100
+2
+4
+6
+8
+vC in V
+C(v) in µ F
+0
+10
+20
+30
+qC in µ A s
+Fig. 5. Nonlinear RC-circuit: V oltage-dependent capacitor C(vC) and charge
+qC(vC) over applied voltage vC.
+0 0.5 1 1.5 2
+0
+2
+4
+6
+8
+10
+t in s
+vC in V
+N = 10 2
+N = 10 3
+N = 10 4
+reference
+0 0 . 5 1 1 . 5 2
+0
+2
+4
+6
+8
+10
+t in s
+v
+C
+in V
+N = 10
+2
+N = 10
+3
+N = 10
+4
+reference
+Fig. 6. Nonlinear RC-circuit: voltage vC at the capacitor over time. The plot
+shows the analytical reference solution, as well as data-driven solutions for a
+increasing number of measurement data N∈
+{
+102, 103, 104}
+.
+regarding the RMS error over time for an increasing number
+of measurement data points. Similar to the linear RC circuit,
+a linear convergence rate with respect to the number of
+measurement points is observed. The energy mismatch over
+time and for measurement sets of increasing cardinality is
+shown in Figure 7. Again, the ﬁgure clearly shows that the
+solution accuracy increases with the number of measurement
+data points. We also observe that the error in time is slightly
+larger in the strongly nonlinear region, that is, for t <0.5 s,
+respectively for vC < 4 V.
+C. Half-wave rectiﬁer
+The next test case considers the well-known half-wave
+rectiﬁer circuit, depicted in Figure 9. The circuit elements
+are RC = 1 k Ω, RD = 10 m Ω, C = 100 µF and vsrc =
+5 V sin(ωt), where ω = 2πf and f = 100 Hz. The diode is
+modeled using the Shockley diode model [26], such that
+i(t) =is
+(
+e
+vD (t)
+nvT − 1
+)
+, (24)
+where vD is the voltage at the diode, is = 2.52 nA is the
+saturation current,vT = 25.85 mV is the thermal voltage, here
+for T = 300 K, and n = 1.752 is the ideality factor.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 6
+0 0. 5 1 1. 5 2
+10−9
+10−8
+10−7
+10−6
+10−5
+10−4
+10−3
+N = 10 2
+N = 10 3
+N = 10 4
+N = 10 5
+t in s
+ϵEM,C
+0
+2
+4
+6
+8
+vC in V
+Fig. 7. Nonlinear RC-circuit: Energy mismatch at the capacitor C over time.
+The error is shown for an increasing number of measurement data N ∈{
+102, 103, 104, 105}
+. The dashed line shows the voltage vC.
+102 103 104 105
+10−3
+10−2
+10−1
+number of measurements N
+ϵRMS,C
+Fig. 8. Nonlinear RC-circuit: RMS error at the capacitor C over number of
+measurements.
+D RD Φ2
+Φ0
+C RC
+Φ1
+vsrc
+Fig. 9. Half-wave rectiﬁer circuit.
+We assume that the resistors and the capacitor are known
+elements, whereas the diode is only known by measurement
+data. The parasitic resistor RD is part of the circuit model in
+the NGSPICE simulation [24]. Hence, the measurement data is
+generated from the diode model including the parasitic resistor
+RD. The data-driven solutions are compared to a reference
+solution obtained with NGSPICE . For both the reference and
+the data-driven solutions, K = 400 time steps are used. The
+data-driven solver is based on the trapezoidal rule. Figure 10
+shows the output voltagevC of the half-wave rectiﬁer. The ﬁg-
+ure clearly shows that the data-driven solution becomes more
+0 5 10 15 20
+−6
+−4
+−2
+0
+2
+4
+6
+t in ms
+vC in V
+N = 10 5
+N = 10 6
+reference
+vsrc
+0 5 10 15 20
+− 6
+− 4
+− 2
+0
+2
+4
+6
+t in ms
+v
+C
+in V
+N = 10
+5
+N = 10
+6
+reference
+v
+src
+Fig. 10. Half-wave rectiﬁer: V oltage vC at the capacitor over time. The plot
+shows the reference solution obtained with NGSPICE and data-driven solutions
+for an increasing number of measurement data N∈
+{
+105, 106}
+.
+0 5 10 15 2010−4
+10−3
+10−2
+10−1 N = 10 3,N = 10 4
+N = 10 5
+N = 10 6
+t in ms
+ϵEM,C
+0
+1
+2
+3
+4
+vC in V
+Fig. 11. Half-wave rectiﬁer: Energy mismatch at the capacitor C over time.
+The error is shown for an increasing number of measurement data N ∈{
+103, 104, 105, 106}
+. The dashed line shows the output voltage vC.
+accurate if more measurement data is employed. However,
+we also observe that a rather large number of measurement
+data is needed to achieve an adequately accurate solution.
+This behavior can also be seen in Figure 11, which shows
+the energy mismatch over time, as well as in Figure 12,
+which shows the RMS error at the capacitor. The reduced
+convergence rate can be explained by the switching behavior of
+the diode. That is, the distance-minimizing data-driven solver
+faces problems in the regime where the current of the diode
+remains almost constant, i.e., for vD≪vfv, where vfv is the
+forward threshold voltage.
+IV. C OMPUTATIONAL COST
+In the following, we brieﬂy discuss the computational cost
+of the data-driven MNA solver. For a more detailed discussion
+on the computational complexity of data-driven solvers, the
+reader is referred to [9, 10].
+In each data-driven iteration, we have to solve a linear
+system of size 2n−2+nG +nC +3nL +2nV. The number of
+data-driven iterations is strongly connected to the number of
+employed measurement data. Furthermore, strongly nonlinear
+element responses also demand for more data-driven iterations.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 7
+103 104 105 106
+100
+101
+number of measurements N
+ϵRMS,C
+Fig. 12. Half-wave rectiﬁer: RMS error at the capacitor C over number of
+measurements.
+In the case of the linear RC-circuit, the number of data-driven
+iterations per time step vary from 5 (for N = 10 2) to 45
+(for N = 10 6). For the nonlinear RC-circuit, the number
+of iterations depends on the current operation point in the
+(uC,q C) phase-space. In the region where the relation is
+almost linear, the number of data-driven iterations is similar
+to the ones of the linear RC-circuit. If the operation point is
+in the strongly nonlinear regions, the iterations range from 20
+(for N = 10 2) to 140 (for N = 10 6). In comparison, the
+traditional solver must solve the nonlinear problem at each
+time step, which resulted in 12 iterations on average in the
+case of the nonlinear RC circuit.
+Hence, the data-driven MNA solver in its current imple-
+mentation still needs up to ten times more simulation time.
+This is the price to pay for the beneﬁt of not requiring models
+for the circuit elements. It is expected that progress in data-
+processing will further decrease the gap between traditional
+and data-driven MNA solvers.
+Last, we note that the aforementioned remarks on the
+computational cost of the traditional and the data-driven MNA
+solvers only take into account the aspect of computational
+complexity in terms of linear system size, system solutions,
+and solver iterations. That is, this discussion does not include
+the effort that is usually needed to identify and construct model
+representations to be used within traditional MNA solvers.
+While this element modeling effort is difﬁcult to assess, it must
+be underlined that the modeling step is bypassed altogether
+when the data-driven solver is employed.
+V. C ONCLUSION
+This paper proposes a data-driven MNA circuit solver,
+which relies on Kirchhoff’s laws and on measurement data for
+the elements instead of traditional element models. The solver
+was ﬁrst applied to a linear RC-circuit, where an investiga-
+tion on the different approximation errors concluded that the
+available measurement data and the time step employed in the
+time integration method should match one another in order
+to avoid unnecessary computational costs. The solver was
+additionally applied to a nonlinear RC-circuit with a voltage-
+dependent capacitor and to a half-wave rectiﬁer with a data-
+driven diode. In the former case, the solver achieves a linear
+convergence rate with respect to the number of measurement
+data points. This convergence rate is not observed in the latter
+case, where the switching behavior of the diode model, in
+particular the regime before the threshold voltage, hinders
+solver convergence and demands for comparatively large data
+sets.
+The numerical results have shown that the data-driven MNA
+solver developed in this work constitutes a viable alternative
+for standard MNA circuit simulation, in particular for cases
+featuring elements with an unknown model representation, but
+for which measurement data are available instead. Due to the
+identiﬁed limitations of the data-drive MNA solver in handling
+circuits with a switching behavior, such as the half-wave rec-
+tiﬁer unit shown in Section III-C, future research efforts shall
+concentrate on a more in-depth investigation of these speciﬁc
+cases. Additional topics for future research include data-driven
+circuit simulation incorporating noisy measurement data, as
+well as the handling of elements that cannot be described
+through the classical two-port network model.
+ACKNOWLEDGMENT
+This work has been supported by the DFG, Research
+Training Group 2128 ”Accelerator Science and Technology
+for Energy Recovery Linacs”.
+REFERENCES
+[1] K. Aadithya, P. Kuberry, B. Paskaleva, P. Bochev, K.
+Leeson, A. Mar, T. Mei, and E. Keiter. “Data-driven
+Compact Models for Circuit Design and Analysis”.
+In: Proceedings of The First Mathematical and Scien-
+tiﬁc Machine Learning Conference . Ed. by J. Lu and
+R. Ward. V ol. 107. Proceedings of Machine Learning
+Research. PMLR, 2020, pp. 555–569.
+[2] M. V . Andrejevi ´c and V . B. Litovski. “Electronic circuits
+modeling using artiﬁcial neural networks”. In: Journal
+of Automatic Control 13.1 (2003), pp. 31–37.
+[3] X. Bai, J. Yang, W. Yan, Q. Huang, S. Belouettar, and H.
+Hu. “A data-driven approach for instability analysis of
+thin composite structures”. In: Computers & Structures
+273 (2022). DOI: https://doi.org/10.1016/j.compstruc.
+2022.106898.
+[4] P. Carrara, L. De Lorenzis, L. Stainier, and M. Ortiz.
+“Data-driven fracture mechanics”. In: Computer Meth-
+ods in Applied Mechanics and Engineering 372 (2020),
+p. 113390. ISSN : 0045-7825. DOI: https://doi.org/10.
+1016/j.cma.2020.113390.
+[5] X. Chen, G.-F. Wang, W. Zhou, Q.-L. Zhang, and
+J.-F. Xu. “Application of neural networks for integrated
+circuit modeling”. In: Advances in Neural Networks-
+ISNN 2006: Third International Symposium on Neural
+Networks, Chengdu, China, May 28-June 1, 2006, Pro-
+ceedings, Part III 3 . Springer. 2006, pp. 1304–1312.
+[6] Z. Chen, M. Raginsky, and E. Rosenbaum. “Verilog-A
+compatible recurrent neural network model for transient
+circuit simulation”. In: 2017 IEEE 26th Conference
+on Electrical Performance of Electronic Packaging and
+Systems (EPEPS). IEEE. 2017, pp. 1–3.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020 8
+[7] T. ´Ciri´c, R. Dhuri, Z. Marinkovi ´c, O. Proni ´c-Ranˇci´c,
+V . Markovi´c, and L. Vietzorreck. “Neural based lumped
+element model of capacitive RF MEMS switches”. In:
+Frequenz 72.11-12 (2018), pp. 539–546.
+[8] H. De Gersem, A. Galetzka, I. G. Ion, D. Loukrezis,
+and U. R ¨omer. “Magnetic Field Simulation with Data-
+Driven Material Modeling”. In: IEEE Transactions on
+Magnetics 56.8 (2020), pp. 1–6. ISSN : 1941-0069. DOI:
+10.1109/TMAG.2020.3002092.
+[9] A. Galetzka, D. Loukrezis, and H. De Gersem. “Data-
+driven solvers for strongly nonlinear material response”.
+In: International Journal for Numerical Methods in
+Engineering 122.6 (2021), pp. 1538–1562. DOI: https:
+//doi.org/10.1002/nme.6589.
+[10] A. Galetzka, D. Loukrezis, and H. De Gersem. “Three-
+dimensional data-driven magnetostatic ﬁeld computa-
+tion using real-world measurement data”. In: COMPEL
+- The international journal for computation and mathe-
+matics in electrical and electronic engineering (2021).
+DOI: https://doi.org/10.1108/COMPEL-06-2021-0219.
+[11] P.-W. Gerbaud, D. N ´eron, and P. Ladev `eze. “Data-
+driven elasto-(visco)-plasticity involving hidden state
+variables”. In: Computer Methods in Applied Mechanics
+and Engineering 402 (2022), p. 115394. DOI: https :
+//doi.org/10.1016/j.cma.2022.115394.
+[12] D. Gorissen, L. De Tommasi, K. Crombecq, and T.
+Dhaene. “Sequential modeling of a low noise ampliﬁer
+with neural networks and active learning”. In: Neural
+Computing and Applications 18 (2009), pp. 485–494.
+[13] H. B. Hammouda, M. Mhiri, Z. Gafsi, and K. Besbes.
+“Neural-based models of semiconductor devices for
+SPICE simulator”. In: American Journal of Applied
+Sciences 5.4 (2008), pp. 385–391.
+[14] C.-W. Ho, A. Ruehli, and P. Brennan. “The modiﬁed
+nodal approach to network analysis”. In: IEEE Transac-
+tions on Circuits and Systems 22.6 (1975), pp. 504–509.
+DOI: 10.1109/TCS.1975.1084079.
+[15] H. Kabir, L. Zhang, M. Yu, P. H. Aaen, J. Wood, and
+Q.-J. Zhang. “Smart Modeling of Microwave Devices”.
+In: IEEE Microwave Magazine 11.3 (2010), pp. 105–
+118. DOI: 10.1109/MMM.2010.936079.
+[16] T. Kirchdoerfer and M. Ortiz. “Data-driven computa-
+tional mechanics”. In: Computer Methods in Applied
+Mechanics and Engineering 304 (2016), pp. 81 –101.
+ISSN : 0045-7825. DOI: https://doi.org/10.1016/j.cma.
+2016.02.001.
+[17] T. Kirchdoerfer and M. Ortiz. “Data Driven Computing
+with noisy material data sets”. In: Computer Methods
+in Applied Mechanics and Engineering 326 (2017),
+pp. 622 –641. ISSN : 0045-7825. DOI: https://doi.org/
+10.1016/j.cma.2017.07.039.
+[18] T. Kirchdoerfer and M. Ortiz. “Data-driven computing
+in dynamics”. In: International Journal for Numerical
+Methods in Engineering 113.11 (2018), pp. 1697–1710.
+[19] D. K. Klein, R. Ortigosa, J. Mart ´ınez-Frutos, and
+O. Weeger. “Finite electro-elasticity with physics-
+augmented neural networks”. In: Computer Methods
+in Applied Mechanics and Engineering 400 (2022),
+p. 115501. ISSN : 0045-7825. DOI: https://doi.org/10.
+1016/j.cma.2022.115501.
+[20] N. M. Kriplani, S. Bowyer, J. Huckaby, and M. B. Steer.
+“Modelling of an Esaki Tunnel Diode in a Circuit Sim-
+ulator”. In: Active and Passive Electronic Components
+2011 (2011). ISSN : 0882-7516. DOI: 10 . 1155 / 2011 /
+830182.
+[21] S. Kurz, H. De Gersem, A. Galetzka, A. Klaedtke,
+M. Liebsch, D. Loukrezis, S. Russenschuck, and M.
+Schmidt. “Hybrid modeling: towards the next level of
+scientiﬁc computing in engineering”. In: Journal of
+Mathematics in Industry 12.1 (2022), p. 8. ISSN : 2190-
+5983. DOI: 10.1186/s13362-022-00123-0.
+[22] M. Li, O. ˙Irsoy, C. Cardie, and H. G. Xing. “Physics-
+inspired neural networks for efﬁcient device compact
+modeling”. In: IEEE Journal on Exploratory Solid-State
+Computational Devices and Circuits 2 (2016), pp. 44–
+49.
+[23] V . B. Litovski, ˇZ. Mr ˇcarica, and T. Ili ´c. “Simulation
+of non-linear magnetic circuits modelled using artiﬁcial
+neural network”. In: Simulation Practice and Theory
+5.6 (1997), pp. 553–570.
+[24] P. Nenzi and H. V ogt. Ngspice Users Manual Version
+23. 2011.
+[25] S. Scheier and S. Frei. “Characterization and modeling
+of ESD-behavior of multi layer ceramic capacitors”.
+In: 2013 International Symposium on Electromagnetic
+Compatibility. 2013, pp. 1028–1033.
+[26] W. Shockley. “The theory of p-n junctions in semi-
+conductors and p-n junction transistors”. In: The Bell
+System Technical Journal 28.3 (1949), pp. 435–489.
+DOI: 10.1002/j.1538-7305.1949.tb03645.x.
+[27] K. Taunk, S. De, S. Verma, and A. Swetapadma. “A
+brief review of nearest neighbor algorithm for learning
+and classiﬁcation”. In: 2019 International Conference
+on Intelligent Computing and Control Systems (ICCS) .
+IEEE. 2019, pp. 1255–1260.
+[28] E. Wit, E. van den Heuvel, and J.-W. Romeijn. “‘All
+models are wrong...’: an introduction to model uncer-
+tainty”. In: Statistica Neerlandica 66.3 (2012), pp. 217–
+236.
+[29] A. H. Zaabab, Q.-J. Zhang, and M. Nakhla. “A neural
+network modeling approach to circuit optimization and
+statistical design”. In: IEEE Transactions on Microwave
+Theory and Techniques 43.6 (1995), pp. 1349–1358.
+[30] I. Zeltser and S. Ben-Yaakov. “On SPICE Simulation of
+V oltage-Dependent Capacitors”. In: IEEE Transactions
+on Power Electronics 33.5 (2018), pp. 3703–3710. DOI:
+10.1109/TPEL.2017.2766025.

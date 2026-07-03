@@ -1,0 +1,1951 @@
+1
+A topological decoupling of modified nodal analysis
+including controlled sources
+Idoia Cortes Garcia, Peter F. F ¨orster, Lennart Jansen, Wil Schilders, and Sebastian Sch ¨ops
+Abstract—We derive a topological decoupling of the equations
+of modified nodal analysis (MNA) to a semi-explicit index one
+differential-algebraic equation. The decoupling explicitly allows
+for controlled sources, which play a crucial role in engineering
+design workflows. Furthermore, the proof is constructive and pro-
+vides a graph-based algorithmic framework for the computation
+of the decoupling, enabling its application to a variety of industry
+problems. These include the generation of consistent initial con-
+ditions, model order reduction, (scientific) machine learning, as
+well as speeding up conventional circuit simulation. In addition,
+the decoupling preserves the structure of MNA, i.e. the resulting
+systems remain sparse and key parts remain positive definite. We
+illustrate the decoupling using multiple examples, including some
+of the most common subcircuits containing controlled sources.
+Lastly, we also provide a first software implementation of the
+decoupling.
+Index Terms—Circuit simulation, Network theory (graphs),
+Modified nodal analysis, Differential-algebraic equations
+I. INTRODUCTION
+M
+ODIFIED nodal analysis (MNA) [1] is one of the
+most common circuit formulations and forms the basis
+for SPICE-like circuit simulators such as LTspice [2], Xyce
+[3] and PSpice [4]. Due to its popularity, MNA has been
+extensively studied not only from an engineering, but also from
+a mathematical perspective. In this context, it is important to
+note that MNA can be abstractly characterized as a differential-
+algebraic equation (DAE)
+f(x ′,x, t) =0,
+where the Jacobian offw.r.t.x ′ is singular. DAEs are
+inherently different from the more commonly encountered
+ordinary differential equations and can lead to significant
+numerical problems [5]. As a consequence, so-called index
+concepts were developed to better understand and classify
+their behavior [6]. Regarding MNA, one of the most well-
+known index results is due to Tischendorf [7]. It provides a
+topological characterization of the tractability and differenti-
+ation indices of MNA, when only considering independent,
+but not controlled, sources. The extension to a topological
+result that also accounts for controlled sources was provided
+shortly after by Est ´evez Schwarz and Tischendorf [8]. For
+many purposes this result marks the state of the art, as it
+allows to verify whether a given circuit can be simulated using
+standard algorithms such as TR-BDF2 [9].
+More recently, Jansen [10] introduced the dissection index,
+which not only provides an equivalent topological index result
+for MNA, but also a topological decoupling of the system of
+MNA to a semi-explicit index one DAE 1. Such a decoupling
+1See Definition 1 for a rigorous definition.
+enables many applications, as it e.g. allows for efficient model
+order reduction or machine learning approaches along the lines
+of [11] and [12], while also facilitating the computation of
+consistent initial values fulfilling the hidden constraints of
+the DAE, compare [13]. Moreover, it may provide an avenue
+towards speeding up conventional simulations, by leveraging
+the semi-explicit structure using appropriate time integrators,
+see e.g. [10, Chapter 7].
+A major obstacle regarding industry-level applications has
+so far been the issue that the topological decoupling is only
+available for circuits without controlled sources, as the latter
+are crucial for modeling common circuit elements such as
+transistors, switches or operational amplifiers. We now remove
+this obstacle, by generalizing the result from [10] to one
+allowing for controlled sources underlying almost identical
+conditions as those introduced in [8]. Furthermore, we also
+provide a first software implementation of the decoupling [14].
+The structure of the paper is as follows. Section II collects
+prerequisites for the decoupling presented in Section III,
+while Section IV provides a number of examples that include
+some of the most common controlled circuit elements. Lastly,
+Section V draws conclusions.
+II. PREREQUISITES
+We begin by listing a few definitions and assumptions that
+are required for the decoupling. First, we provide a rigorous
+definition for semi-explicit index one DAEs, see also [15,
+Section 2.2], as this marks the goal of the decoupling.
+Definition 1(Semi-explicit index one DAE).A DAE of the
+form
+d
+dt x=f(x,y, t)(1a)
+0=g(x,y, t)(1b)
+is called semi-explicit index one DAE if the Jacobian ofgw.r.t.
+yis regular. (This implies thatgis uniquely solvable fory
+by the implicit function theorem.) We further refer toxas the
+differentialvariables andyas thealgebraicvariables.
+Next, we recall the basic definition of an incidence matrix,
+as it represents the fundamental building block of MNA.
+Definition 2(Incidence matrix).The entriesa i,j of an unre-
+duced incidence matrixA∈R n×b, describing a circuit with
+nnodes andbbranches, are defined as
+ai,j :=
+
+
+
++1,if branchjleaves nodei,
+−1,if branchjenters nodei,
+0,if branchjis not incident to nodei.
+arXiv:2604.20475v1  [math.NA]  22 Apr 2026
+
+2
+A reduced incidence matrixA ′ is obtained by eliminating one
+row ofA(this corresponds to choosing a ground node). In the
+following, we mostly work with reduced incidence matrices,
+thus these should be understood as the default. We therefore
+writeAalso for reduced incidence matrices and explicitly
+remark when dealing with unreduced ones.
+The following definition introduces the key concept used
+for the decoupling, compare also [10, Definition 4.5].
+Definition 3(Basis matrices).LetA ⊤ ∈R b×n, then we define
+four basis matrices 2 P,Q,V,Wsuch that
+imQ= kerA ⊤,imW= kerA
+and the columns of[P,Q]form a basis ofR n, while the
+columns of[V,W]form a basis ofR b.
+We can now present the assumptions needed for the decou-
+pling, beginning with the standard assumptions required for
+the problem to be well-posed, compare also [8, Theorem 2.2].
+Assumption 1(Well-posedness assumptions).
+1)The circuit is connected, not shorted and contains no
+self-loops.
+2)The circuit contains noV-loops made up of only voltage
+sources.
+3)The circuit contains noI-cutsets made up of only current
+sources.
+The latter two of these topological assumptions can be
+translated into the following algebraic ones, compare again
+[8, Theorem 2.2]. (Subscripts indicate which element types the
+incidence matrices belong to, e.g.Vsignifies voltage sources.)
+Proposition 1.Assumption 1 implies that
+2)A V has full column rank and that
+3)[A C,A L,A R,A V]has full row rank.
+In addition to Assumption 1, we also assume the topology
+of the circuit to be fixed. In cases where the topology changes
+over time, e.g. due to switches, the corresponding switching
+events need to be detected and resolved during time integra-
+tion, see e.g. [16]. The decoupling may then be computed
+independently (in advance) for each relevant topology.
+The following common assumption, compare e.g. [8, The-
+orem 4.1], ensures all passive elements behave passively.
+Assumption 2(Positive definite element Jacobians).The
+Jacobians
+C(x) := ∂qC(x)
+∂x
+L(x) := ∂ϕL(x)
+∂x
+G(x,y) := ∂gR(x,y)
+∂x
+of the functionsq C,ϕ L andg R, describing capacitors, induc-
+tors and resistors respectively, are all positive definite.
+2Note that the original definition is given in terms of basis functions, as it
+allows for the matrix entries to depend on the solution [10, Definition 4.5].
+We only deal with constant basis functions however, hence the name change.
+We explicitly note that the function describing resistors con-
+tains an additional non-standard argument, as this will become
+important later. Furthermore, we remark that Assumption 2
+also allows for multiport elements, compare [7] and [8]. This
+implies that elements of the same type, e.g. two resistors, can
+control each others values, as long as the resulting Jacobian is
+still positive definite. In particular this includes transformers,
+which can be interpreted as multiport inductors.
+In the following, we distinguish betweenindependent
+sources that only depend on time, indicated by a subscript
+s, andcontrolledsources which may also depend on so-
+lution variables, indicated by a subscriptc. We then write
+AV = [AVs ,A Vc]andA I = [AIs ,A Ic]for the corresponding
+(reduced) incidence matrices of voltage and current sources,
+respectively. We further split the controlled current sources
+into four typesA Ici
+,1≤i≤4, which will be used
+to distinguish their topological properties, and writeA Ic =
+[AIc1 , . . . ,AIc4 ]. Each controlled current source belongs to
+exactly one of the four types. Using this notation, we can now
+state the assumptions on controlled sources.
+Assumption 3(Assumptions on controlled sources).
+1)Controlled voltage sources are not part of anyC-Vloop.
+(AC-Vloop is a loop made up of only capacitors or 3
+voltage sources.)
+2)Controlled current sources described byA Ic1 have a
+Vs-only path between their terminals.
+3)Controlled current sources described byA Ic2 have a
+C-Vs-only path between their terminals.
+4)Controlled current sources described byA Ic3 have a
+C-V-only path between their terminals.
+5)Controlled current sources described byA Ic4 are not
+part of anyL-Icutset. (AnL-Icutset is a cutset made
+up of only inductors or current sources.)
+In order to gain some intuition for these assumptions,
+we compare them to those of the topological index result
+about MNA [8, Theorem 4.1]. In doing so, we first note that
+Assumption 3.1 and Assumption 3.5 can be seen to ensure that
+controlled sources do not appear differentiated in time in any
+of the expressions resulting from the decoupling. Furthermore,
+the remaining assumptions ensure that the algebraic equations
+derived by the decoupling remain uniquely solvable for the
+algebraic variables, compare Definition 1, while allowing for
+as many controlled source contributions as possible. Similar
+to [8], we also remark that the listed conditions are sufficient,
+but not necessary, i.e. there might be circuits that violate one
+of the assumptions but still allow for a topological decoupling.
+Lastly, Fig. 1 shows an abstract illustration of the conditions,
+which we will come back to in Section III.
+As with Assumption 1, we can again derive algebraic
+conditions from these topological assumptions. (The proof is
+provided later in Section III.) Introducing a shorthand for the
+product of multiple basis matrices, e.g.Q VsC :=Q Vs QC,
+the derived conditions read as follows. (The transpose of the
+shorthand should be read as, e.g.,Q ⊤
+VsC =Q ⊤
+CQ⊤
+Vs.)
+3We use or in the logical sense, meaning inclusive or.
+
+3
+Vc
+C
+Vs
+Vc
+(a)C-Vloops
+Ic
+Vs
+C Vc (b)C-V-only paths
+Ic
+L
+Is
+Ic (c)L-Icutsets
+Fig. 1. Illustrations of the conditions from Assumption 3.
+Proposition 2.Assumption 3 implies that
+1)A ⊤
+Vc QVsC has full row rank.
+2)Q ⊤
+Vs AIc1 =0.
+3)Q ⊤
+VsCAIc2 =0.
+4)Q ⊤
+VsCVc AIc3 =0.
+5)Q ⊤
+VsCVcRAIc4 =0.
+In addition to controlled sources, we also allow for con-
+trolled resistors, since these frequently occur in circuit models,
+e.g. in the context of power electronics. This constitutes
+the reason for the extra argument ofg R in Assumption 2.
+Furthermore, we introduce a shorthand for groups of incidence
+matrices, e.g.A CV := [AC,A V]. Finally, we write
+ic
+
+A⊤φ,i L,i Vc , t
+
+=
+
+
+ic1
+
+A⊤φ,i L,i Vc , t
+
+ic2
+
+A⊤
+CR Vφ,i L,i Vc , t
+
+ic3
+
+A⊤
+CR Vφ,i L, t
+
+ic4
+
+A⊤
+CVφ,i L, t
+
+
+ (2)
+for the controlled current sources, where we only include
+those dependencies, that allow for a topological decoupling.
+In general, controlled current sources may depend on specific
+subsets of the branch voltagesA ⊤φ, whereφare the nodal
+potentials, as well as currents through inductors, denoted byi L.
+Depending on their topological configuration, they may also
+depend on currents through controlled voltage sources, given
+byi Vc, however they may never depend on currents through
+independent voltage sources, which are written asi Vs.
+Using all the introduced notation, we can write MNA in the
+following form
+AC
+d
+dt qC
+
+A⊤
+Cφ
+
++A RgR
+
+A⊤
+Rφ,A⊤
+CVφ,i L, t
+
++A LiL +A Vs iVs +A Vc iVc
++A Is is(t) +A Ic ic
+
+A⊤φ,i L,i Vc , t
+
+=0(3a)
+d
+dt ϕL(iL)−A ⊤
+Lφ=0(3b)
+A⊤
+Vs φ−v s(t) =0(3c)
+A⊤
+Vc φ−v c
+
+A⊤
+CVs φ,i L, t
+
+=0,(3d)
+where we again only include those dependencies in expres-
+sions for controlled elements, which still allow for a topo-
+logical decoupling. For resistors this implies that, outside
+of voltages across other resistors, they may also depend on
+voltages across capacitors or voltage sources, as well as
+currents through inductors. Controlled voltage sources on the
+other hand, represented byv c, may only depend on voltages
+across capacitors or independent voltage sources. Similar to
+resistors, they may also depend on inductor currents, but not
+on any other solution variables, such as e.g. currents through
+voltage sources. Lastly, we note thati s(t)andv s(t)describe
+independent current and voltage sources, respectively.
+III. TOPOLOGICAL DECOUPLING
+The following theorem states the main result regarding the
+decoupling of the equations of MNA.
+Theorem 1(Decoupling of MNA).Using Assumptions 1, 2
+and 3, the system of MNA, as stated in(3), can be decoupled
+to a semi-explicit index one DAE using only basis matrices as
+introduced in Definition 3.
+Before proving Theorem 1, we collect a few auxiliary
+results. These will be needed at key points during the de-
+coupling, however their proofs are shifted to Appendix A, to
+not distract from the main argument.
+Lemma 1.
+1)LetPbe a basis matrix ofA ⊤, thenA ⊤Phas full
+column rank. IfA ⊤ further has full row rank, thenA ⊤P
+is regular.
+2)LetVbe a basis matrix ofA ⊤ and letA ⊤ have full
+column rank, thenAVis regular.
+3)Letn∈Nand[A 1,A 2, . . . ,An]have full row rank,
+thenQ ⊤
+n−1 · · ·Q⊤
+1 An also has full row rank, whereQ 1
+is a basis matrix ofA ⊤
+1 andQ m, m≥2is a basis
+matrix ofA ⊤
+mQ1 · · ·Q m−1.
+4)LetA,Bbe matrices withAbeing positive definite and
+Bhaving full column rank, thenB ⊤ABis also positive
+definite.
+
+4
+5)Letn∈NandA 1,A 2, . . . ,An be regular, then any
+block lower triangular matrix
+A=
+
+
+A1 0· · ·0
+•A 2
+... ...
+... ... ... 0
+• · · · •A n
+
+
+,
+where the•denote arbitrary blocks, is also regular.
+Proof of Theorem 1.The proof is split into four steps, the
+first two of which eliminate (3c) and (3d), before dealing
+with (3b) and finally identifying a semi-explicit index one
+DAE, as promised. The first two steps amount to identifying
+and isolating constraints on the nodal potentials that are
+due to (independent and controlled) voltage sources. These
+constraints in turn imply restrictions on the currents through
+voltage sources, which can be handled in an analogous fashion
+due to the similarity of the conditions. Lastly, we isolate
+constraints on the currents through inductors, which arise from
+particular topological configurations.
+Eliminating(3c).Based on ideas from [7], [8] and following a
+strategy similar to [10, Section 7.1.3], we begin by introducing
+basis matricesP Vs andQ Vs ofA ⊤
+Vs to split the nodal
+potentials asφ=P Vs ˜φVs +Q Vs ¯φVs. Inserting this splitting
+into (3c) gives
+g1(˜φVs , t) :=A ⊤
+Vs PVs ˜φVs −v s(t) =0(4)
+and this equation is uniquely solvable for ˜φVs by Proposi-
+tion 1.1 and Lemma 1.1. Note that we defined an auxiliary
+functiong 1 here (in reference to the notation of Definition 1)
+and that we will continue to define similar functions in order
+to help simplify notation later on.
+Moving on with the decoupling, we also split (3a), by
+multiplying withP ⊤
+Vs andQ ⊤
+Vs from the left. This yields
+P⊤
+Vs
+
+AC
+d
+dt qC
+
+A⊤
+Cφ
+
++A RgR
+
+A⊤
+Rφ,A⊤
+CVφ,i L, t
+
++A LiL +A Vc iVc +A Is is(t)
++A Ic ic
+
+A⊤φ,i L,i Vc , t
+
++P ⊤
+Vs AVs iVs =0(5)
+Q⊤
+Vs
+
+AC
+d
+dt qC(·) +A RgR(·)
++A LiL +A Vc iVc +A Is is(t)
+
++Q ⊤
+Vs AIc ic
+
+A⊤
+CR Vφ,i L,i Vc , t
+
+=0,(6)
+where we note that (5) is uniquely solvable fori Vs by the same
+reasoning as before. We further note that the arguments of the
+controlled current source term in (6) changed in accordance
+with (2) and Proposition 2.2. Here and in the following, we
+replace dependencies that are not central to an argument with
+·to improve readability.
+Eliminating(3d).In a second step, we introduce basis matrices
+PC andQ C ofA ⊤
+CQVs and further split the nodal potentials
+as ¯φVs =P C ˜φC +Q C ¯φC. We also continue to split (6), by
+multiplying withP ⊤
+C andQ ⊤
+C from the left to obtain
+P⊤
+CQ⊤
+Vs
+
+AC
+d
+dt qC(·) +A RgR(·)
++A LiL +A Vc iVc +A Is is(t)
+
++P ⊤
+CQ⊤
+Vs AIc ic
+
+A⊤
+CR Vφ,i L,i Vc , t
+
+=0(7)
+Q⊤
+VsC
+
+ARgR(·) +A LiL +A Vc iVc +A Is is(t)
+
++Q ⊤
+VsCAIc ic
+
+A⊤
+CR Vφ,i L, t
+
+=0,(8)
+where we again changed the arguments of the controlled
+current sources in (8), in line with (2) and Proposition 2.3.
+Next, we use basis matricesP Vc andQ Vc ofA ⊤
+Vc QVsC
+to split the nodal potentials once more as ¯φC =P Vc ˜φVc +
+QVc ¯φVc. Inserting the entire splitting ofφup to this point
+into (3d), we find
+g3(·) :=A ⊤
+Vc
+
+PVs ˜φVs +Q Vs
+
+PC ˜φC +Q CPVc ˜φVc
+
+−v c
+
+A⊤
+CVs
+
+PVs ˜φVs +Q Vs PC ˜φC
+
+,i L, t
+
+=0,
+(9)
+which is uniquely solvable for ˜φVc by Proposition 2.1 and
+Lemma 1.1. We also continue to split (8). Multiplying with
+P⊤
+Vc andQ ⊤
+Vc from the left yields
+g5(·) :=P ⊤
+Vc Q⊤
+VsC
+
+ARgR
+
+A⊤
+Rφ,A⊤
+CVφ,i L, t
+
++A LiL +A Is is(t)
+
++P ⊤
+Vc Q⊤
+VsCAIc ic
+
+A⊤
+CR Vφ,i L, t
+
++P ⊤
+Vc Q⊤
+VsCAVc iVc =0(10)
+Q⊤
+VsCVc
+
+ARgR(·) +A LiL +A Is is(t)
+
++Q ⊤
+VsCVc AIc ic
+
+A⊤
+CVφ,i L, t
+
+=0,(11)
+where we note that (10) is uniquely solvable fori Vc by the
+same argument as before. The dependencies of the controlled
+current sources in (11) also changed again, this time according
+to (2) and Proposition 2.4.
+Dealing with(3b).We complete the splitting of the nodal
+potentials by introducing basis matricesP R andQ R of
+A⊤
+RQVsCVc and writing ¯φVc =P R ˜φR +Q R ¯φR. Multiplying
+(11) byP ⊤
+R andQ ⊤
+R from the left gives
+g4(·) :=P ⊤
+RQ⊤
+VsCVc
+
+ARgR(·) +A LiL +A Is is(t)
+
++P ⊤
+RQ⊤
+VsCVc AIc ic
+
+A⊤
+CVφ,i L, t
+
+=0
+(12)
+Q⊤
+VsCVcR
+
+ALiL +A Is is(t)
+
+=0,
+(13)
+where we eliminated also the last controlled current source
+type from (13), in line with Proposition 2.5. In a last step,
+we introduce basis matricesV L andW L ofA ⊤
+LQVsCVcR and
+split the inductor currents asi L =V L˜iL +W L¯iL. Inserting
+this splitting into (13), we find
+g2(·) :=Q ⊤
+VsCVcR
+
+ALVL˜iL +A Is is(t)
+
+=0,(14)
+
+5
+which is uniquely solvable for ˜iL by Proposition 1.2,
+Lemma 1.3 and Lemma 1.2.
+Finally, we split (3b) by multiplying withV ⊤
+L andW ⊤
+L from
+the left to find
+V⊤
+L
+ d
+dt ϕL(iL)−A ⊤
+Lφ
+
+=0(15)
+W⊤
+L
+ d
+dt ϕL(iL)−A ⊤
+Lφ
+
+=0.(16)
+Inserting the entire splitting ofφinto (15) gives
+V⊤
+L
+d
+dt ϕL(iL)−V ⊤
+LA⊤
+L
+
+PVs ˜φVs +Q Vs
+
+PC ˜φC
++Q C
+
+PVc ˜φVc +Q Vc PR ˜φR
+
+−V ⊤
+LA⊤
+LQVsCVcR ¯φR =0,(17)
+which can be seen to be uniquely solvable for ¯φR by the same
+reasoning as before.
+Identifying the semi-explicit index one DAE.We can now
+identify and collect the differential and algebraic parts cor-
+responding to Definition 1. For the differential part, we take
+(7) and (16), insert the variable splittings forφandi L at key
+locations and resolve the total time derivatives to find
+P⊤
+CQ⊤
+Vs
+
+ACC
+
+A⊤
+Cφ
+
+A⊤
+CQVs PC
+d
+dt ˜φC
++A CC
+
+A⊤
+Cφ
+
+A⊤
+CPVs
+d
+dt ˜φVs
++A RgR
+
+A⊤
+Rφ,A⊤
+CVφ,i L, t
+
++A LiL +A Vc iVc +A Is is(t)
+
++P ⊤
+CQ⊤
+Vs AIc ic
+
+A⊤
+CR Vφ,i L,i Vc , t
+
+=0(18a)
+W⊤
+L
+
+L(iL)WL
+d
+dt
+¯iL +L(i L)VL
+d
+dt
+˜iL −A ⊤
+Lφ
+
+=0.(18b)
+Here,CandLare defined as in Assumption 2 and we
+emphasize that both ˜φVs and ˜iL are purely time-dependent
+functions depending only on independent voltage and current
+sources, by (4) and (14) respectively. We can therefore bring
+(18) to the form of (1a) in Definition 1, withx ⊤ = [ ˜φ⊤
+C,¯i⊤
+L ]
+as the differential variables, since the leading expressions (in
+front of time derivatives involving differential variables) are
+positive definite by Lemma 1.1, Definition 3, Assumption 2
+and Lemma 1.4. Furthermore, we remark that all expressions
+remain sparse and that they can be assembled efficiently due
+to the topological nature of the basis matrices, see the proof
+of Proposition 3 later.
+Before we identify the algebraic variablesyfrom Defini-
+tion 1, we note that neitheri Vs nor ¯φR appear in the differ-
+ential part 4 (18). In fact, these two variables form a third set
+z⊤ = [i⊤
+Vs , ¯φ⊤
+R], in the following referred to asoutputvariables,
+since they influence neither the differential nor the algebraic
+variables but can instead be recovered from them. Therefore,
+we can deal with the corresponding equations (5) and (17)
+4In (18a) this is true asA ⊤
+LIφdoes not appear and in (18b) this is
+guaranteed by the definition ofW L.
+separately. Written as one system 5 h(x′,y ′,x,y,z, t) =0,
+the corresponding Jacobian w.r.t.zreads
+∂h
+∂z =
+P⊤
+Vs AVs
+−V⊤
+LA⊤
+LQVsCVcR
+
+,
+since (5) does not depend on ¯φR asA ⊤
+LIφdoes not appear.
+We recall that we already showed both diagonal blocks to
+be regular earlier, thus the Jacobian itself is also regular by
+Lemma 1.5 and hencehis uniquely solvable forz.
+We can now identify the algebraic variables
+y⊤ = [˜φ⊤
+Vs ,˜i⊤
+L , ˜φ⊤
+Vc , ˜φ⊤
+R,i⊤
+Vc]
+and therefore the algebraic partgcorresponding to (1b) in
+Definition 1 is given by
+g(x,y, t) =
+
+
+g1(˜φVs , t)
+g2(˜iL, t)
+g3(˜φVc ,·, t)
+g4(˜φR,·, t)
+g5(iVc ,·, t)
+
+
+=0,(19)
+where we only list key dependencies for improved readability
+and replace the remaining ones using·similar to before. We
+emphasize thatgis not allowed to depend on the output
+variableszand indeed, this can easily be verified as neither
+iVs norA ⊤
+LIφappear in any of the functions, cf. (4), (9), (10),
+(12) and (14). The Jacobian ofgw.r.t.yis given by
+∂g
+∂y =
+
+
+A1
+A2
+• •A 3
+• • •A 4
+• • • •A 5
+
+
+,
+where the individual matrix blocks are defined as follows
+A1 :=A ⊤
+Vs PVs
+A2 :=Q ⊤
+VsCVcRALVL
+A3 :=A ⊤
+Vc QVsCPVc
+A4 :=P ⊤
+RQ⊤
+VsCVc ARG
+
+A⊤
+Rφ,A⊤
+CVφ,i L, t
+
+A⊤
+RQVsCVc PR
+A5 :=P ⊤
+Vc Q⊤
+VsCAVc .
+Here,Gis defined analogous toCandLbefore, with
+x=A ⊤
+Rφwhen comparing with Assumption 2.A 4 can then
+be shown to be regular in the same way as the expression
+containingCearlier. Since the remaining diagonal blocks
+were already proved to be regular, Lemma 1.5 yields thatg
+is uniquely solvable fory, which completes the proof.
+As a final remark, we note that the first three equations can
+be solved independently of the last two and that they each
+only require the solution of one linear system. Furthermore,
+we again emphasize that all products involving incidence and
+basis matrices remain sparse and that they can be assembled
+efficiently, compare also the proof of Proposition 3.
+The following proposition ensures that the decoupling can
+be computed using only topological information about the
+circuit.
+5The extra argumentsx ′ andy ′ indicate thathmay also depend on the
+time derivatives of the differential and algebraic variables.
+
+6
+Proposition 3(Topological basis matrices).All basis matrices
+involved in the decoupling can be determined topologically,
+i.e. by only looking at the graph of the circuit.
+Before proving Proposition 3, we note the following (well-
+known) properties of incidence matrices of spanning trees.
+Lemma 2(Incidence matrix of a spanning tree).
+1)The unreduced incidence matrix of a spanning tree has
+full column rank.
+2)A reduced incidence matrix of a spanning tree is regular.
+Proof.See e.g. [17, Lemma 2.2 and Lemma 2.7].
+Proof of Proposition 3.We begin the proof by noting that
+there are three different kinds of structures for which we
+need to determine basis matrices. The first kind are basis
+matrices of incidence matrices, as e.g.P Vs andQ Vs ofA ⊤
+Vs.
+The second kind are basis matrices of products of basis and
+incidence matrices, as e.g.P C andQ C ofA ⊤
+CQVs, but also
+all subsequent basis matrices required for splitting the nodal
+potentials fall into this category. The third and last kind
+are basis matrices of the transpose of products of basis and
+incidence matrices, as needed forV L andW L ofA ⊤
+LQVsCVcR
+in the final step of the decoupling. In the following, we provide
+topological constructions and interpretations for each of these
+structures.
+Basis matrices of incidence matrices.We first consider a
+reduced incidence matrixA E ∈R nE×bE corresponding to an
+arbitrary element typeE. In order to determineQ E, we need
+to find a basis forkerA ⊤
+E, compare Definition 3. For this, we
+note that the transpose of the unreduced incidence matrix of
+an arbitrary circuit fulfilling Assumption 1 can be written as
+A⊤ =
+"
+A⊤
+t
+A⊤
+ℓ
+#
+,(20)
+where the upper part describes a spanning tree and the lower
+part the branches leading to fundamental loops, in the follow-
+ing simply referred to as the fundamental loops. We further
+note that the nonzero entries in each row ofA ⊤ must sum to
+zero by Definition 2 and therefore, a basisQforkerA ⊤ is
+given byQ=1 n, withA ⊤ ∈R b×n and1 n a vector ofnones,
+askerA ⊤ is one-dimensional by Lemma 2.1. For a reduced
+incidence matrixA ′, we instead find the trivial kernel, since
+the corresponding spanning tree is regular by Lemma 2.2.
+Returning toA E and summarizing, we can consider all the
+connected components (c 1 throughc c) ofA E individually to
+end up with
+QE =
+
+
+1|c1|
+1|c2|
+...
+1|cc−1|
+0|cc|
+
+
+,(21)
+where we reordered the nodes according to thecconnected
+components ofA E and defined the last component to contain
+the ground node, compare also [10, Section 7.1.1]. (Note that
+each node not incident to an element of typeEcorresponds
+to an individual component.)
+In order to describeP E, we simply need one identity matrix
+of appropriate size per connected component to completeQ E
+to a basis ofR nE. This yields
+PE =
+
+
+I|c1|−1
+0⊤
+|c1|−1
+I|c2|−1
+0⊤
+|c2|−1
+...
+I|cc|
+
+
+,(22)
+whereI n denotes an identity matrix of sizenand matrices
+of size zero are ignored. (The latter occur for each node not
+incident to an element of typeE.)
+Basis matrices of products.We begin by determining the
+structure of a productA ⊤
+E2 QE1, forE 1,E 2 two different
+element types and distinguish the following three cases:
+1) If both nodes of a branch (column)b∈R nE2 ofA E2 are
+in the same component ofA E1, thenb ⊤QE1 =0 ⊤
+qE1
+,
+whereQ E1 ∈R nE1 ×qE1 .
+2) If one of the nodes ofbis in the ground component of
+AE1 while the other is not, we haveb ⊤QE1 = (b ′)⊤,
+withb ′ containing only one nonzero entry corresponding
+to the non-ground component.
+3) If the nodes are in two different non-ground components
+ofA E1, we again findb ⊤QE1 = (b ′)⊤, however this
+timeb ′ contains two nonzero entries corresponding to
+the respective components ofA E1.
+If we order the branches ofA E2 according to these cases, we
+can rewrite the product as
+A⊤
+E2 QE1 =
+
+
+B⊤
+1
+B⊤
+2
+B⊤
+3
+
+ QE1 =
+" 0
+(A′
+E2)⊤
+#
+,(23)
+whereA ′
+E2 corresponds to the graph obtained from contracting
+AE2 by the branches ofA E1. Here, contracting a graph is de-
+fined as identifying the nodes of each branch that is contracted.
+This topological interpretation therefore corresponds to cases
+2 and 3 (B 2 andB 3) above, as each component ofA E1 is
+contracted into a single node. Case 1 corresponds to branches
+that are contracted into self-loops and since self-loops are not
+well-defined in the context of circuits, compare Definition 2
+and Assumption 1, they end up leading to zero rows. Fig. 2
+shows an example illustrating this topological correspondence.
+Moving on, we can now identify a basis matrixQ E2 of
+A⊤
+E2 QE1. By noting the specific structure of (23), we can
+chooseQ E2 as a basis matrix of(A ′
+E2)⊤, as this yields
+A⊤
+E2 QE1 QE2 =
+" 0
+(A′
+E2)⊤
+#
+QE2 =0.
+SinceA ′
+E2 is the incidence matrix of a contracted graph, we
+can further determineQ E2 in the same topological manner as
+explained earlier.
+
+7
+b1,1b2,1
+b1,2
+b2,2
+b2,3
+n3
+n1
+n4
+n2
+b2,1
+b2,2
+b2,3
+n1,3
+n2
+contract
+kernel
+product
+A⊤
+E1 =
+n1 n3 n2 n4[ ]+1−1 b 1,1
++1 b 1,2
+QE1 =
+
+
+
+
+1 n 1
+1 n 3
+1 n 2
+0 n 4
+A⊤
+E2 =
+n1 n3 n2 n4[ ]+1−1 b 2,1
++1−1 b 2,2
++1−1 b 2,3
+A⊤
+E2 QE1 =
+n1,3 n2[ ]0 b 2,1
++1 b 2,2
++1−1 b 2,3
+Fig. 2. Example illustrating branch contraction as in (23), where the branchesb 2,i with1≤i≤3belong to caseiin the proof, respectively. The nodes are
+ordered according to the connected components ofA E1 , to comply with the notation from (21) and (22).
+Lastly, we note that we can again reuse the case distinction
+to also identify the structure ofA ⊤
+E3 QE1 QE2, forE 3 a third
+element type. We immediately see that
+A⊤
+E3 QE1 QE2 =
+" 0
+(A′
+E3)⊤
+#
+QE2
+and thus, we can apply the same reasoning as before to
+(A′
+E3)⊤QE2, i.e. to the already contracted graphA ′
+E3. As this
+leaves the general structure from (23) unchanged, all products
+of basis and incidence matrices of this kind can be handled
+this way.
+Before characterizing transposed products, we briefly look
+at the structure ofA ⊤
+E2 PE1. This is e.g. necessary for effi-
+ciently assembling the final systems as mentioned in the proof
+of Theorem 1. We distinguish three cases:
+1) If both nodes of a branchbofA E2 correspond to last
+nodes (in the sense of the ordering of (22)) of non-
+ground components ofA E1, thenb ⊤PE1 =0 ⊤
+pE1
+, where
+PE1 ∈R nE1 ×pE1 .
+2) If one of the nodes ofbcorresponds to the last node of
+a non-ground component ofA E1 while the other does
+not, we haveb ⊤PE1 = (b′)⊤, withb ′ containing only
+one nonzero entry corresponding to the latter node.
+b1,1 b1,2
+b2,1
+b2,2
+b2,3
+n3
+n1
+n4
+n2
+b1,1
+b1,2
+b2,1
+b2,2
+b2,3n1 n2
+identify
+basis
+product
+A⊤
+E1 =
+n1 n3 n2 n4[ ]+1−1 b 1,1
++1−1 b 1,2
+PE1 =
+
+
+
+
+1 n 1
+0 n 3
+1 n 2
+0 n 4
+A⊤
+E2 =
+n1 n4 n2 n3[ ] −1 +1 b 2,1
++1−1 b 2,2
++1−1 b 2,3
+A⊤
+E2PE1 =
+n1 n2[ ]0 b 2,1
++1 b 2,2
++1−1 b 2,3
+Fig. 3. Example illustrating (ground) node identification, where the branchesb 2,i with1≤i≤3again belong to caseiin the proof, respectively. The
+nodes are also again ordered to comply with the notation from (22).
+
+8
+3) If neither node corresponds to the last node of a non-
+ground component ofA E1, we again findb ⊤PE1 =
+(b′)⊤, howeverb ′ now contains two nonzero entries
+corresponding to the respective nodes.
+Overall, this gives rise to the same structure as in (23)
+A⊤
+E2 PE1 =
+" 0
+(A′
+E2)⊤
+#
+,
+where this timeA ′
+E2 corresponds to the graph obtained by
+identifying all last nodes of non-ground components ofA E1
+with the ground node. This topological correspondence is also
+illustrated by an example, see Fig. 3.
+Basis matrices of transposed products.In a first step, we deter-
+mine a basis matrixW E of an incidence matrixA E ∈R nE×bE
+by looking atkerA E, compare again Definition 3. For this, we
+once more consider the structure from (20) for the unreduced
+incidence matrix of an arbitrary circuit fulfilling Assumption 1,
+A=
+At Aℓ
+
+. From Lemma 2.1, we already know that the
+kernel ofAmust have dimension|ℓ|, where|ℓ|denotes the
+number of fundamental loops. Further noting that each column
+ofA ℓ, i.e. each fundamental loop, connects exactly two nodes
+of the treeA t such that a (fundamental) loop is formed, we
+can identify the following definition for the entries of a basis
+WofA
+wi,j :=
+
+
+
++1, if branchiand fundamental loop
+jhave the same orientation,
+−1, if branchiand fundamental loop
+jhave opposite orientation,
+0,if branchiis not part of loopj,
+(24)
+compare again [10, Section 7.1.1]. Here, the loop direction
+is in principle arbitrary, but we choose the convention of
+fixing it based on the orientation of the fundamental loop.
+We verify that this definition truly ensuresAW=0, by
+noting that each node (that is part of a loop) appears exactly
+twice per loop, with the signs of the corresponding entries in
+Wdepending on the orientations of the respective branches
+in such a way, that their contributions sum to zero. (If the
+respective branches have the same orientation e.g., one branch
+will leave the node while the other will enter it, leading to a
+cancellation.) Furthermore, the columns ofWare all linearly
+independent, as there is precisely one column containing a
+nonzero entry for each fundamental loop. Finally, a simple
+choice forVis given by
+V=
+"
+I|t|
+0
+#
+,(25)
+where|t|denotes the size of the tree. The definitions ofV
+andWare again best illustrated using an example, see Fig. 4.
+In the general case, whereA E containscconnected com-
+ponents, we can once again consider each component individ-
+ually to end up with the following basis matrices
+WE =
+
+
+Wc1
+...
+Wcc
+
+ ,V E =
+
+
+Vc1
+...
+Vcc
+
+ ,
+where we reordered the nodes according to the connected
+components, as in (21). We also note that the ground compo-
+nent requires no special treatment this time, as the derivation
+relies solely on the full column rank of the incidence matrix
+of a spanning tree, cf. Lemma 2. Furthermore, the same
+construction still works when considering basis matricesV E2,
+WE2 of products of the form 6 Q⊤
+E1 AE2, since
+Q⊤
+E1 AE2 WE2 =
+0 A′
+E2
+
+WE2
+and hence we can choose
+WE2 =
+I
+W′
+E2
+
+,V E2 =
+"
+0
+V′
+E2
+#
+,
+whereIis an identity matrix of appropriate size,W ′
+E2 is a
+basis matrix of the contracted graphA ′
+E2, compare (23), and
+V′
+E2 is a basis matrix corresponding toW ′
+E2.
+Finally, we conclude that all products of incidence and
+basis matrices can be represented topologically. They therefore
+remain sparse and efficient to assemble, fulfilling our promise
+from the proof of Theorem 1.
+6It suffices to only consider this case, as we already proved all products of
+interest to be of the same general form.
+b1 b2
+b4
+b3
+b5
+⟳⟲
+n1 n2
+n3
+incidence
+kernel
+basis
+A=
+b1 b2 b4 b3 b5[ ]+1 +1 n1
++1−1 +1 n 2
+−1 +1 n 3
+W=
+ℓ1 ℓ2
+
+
+
++1 b 1
+−1−1 b 2
+−1 b 4
++1 b 3
++1 b 5
+V=
+
+
+
+
+1 b 1
+1 b 2
+1 b 4
+0 b 3
+0 b 5
+Fig. 4. Example illustrating the basis matricesVandWof an incidence matrix.
+
+9
+The topological nature of the decoupling further lends
+itself to directly computing sets of differential and algebraic
+variables, as e.g. required for the approach described in [12].
+Corollary 1(Topological splitting).Using the topological
+basis matrices from Proposition 3, we can explicitly determine
+sets of differential and algebraic variables by only looking at
+the graph of the circuit.
+Proof.We begin by considering a generic splitting of the nodal
+potentialsφ=P ˜φ+Q ¯φwithφ∈R n. Following a similar
+strategy as in the proof of Proposition 3, we first look at a
+single non-ground component and find
+φ=
+In−1
+0⊤
+n−1
+
+˜φ+1 n ¯φ,
+compare also (21) and (22). This implies that we can choose
+the algebraic variables as ¯φ=φ n, while the differential
+variables are then given by
+˜φ=
+
+
+φ1 −φ n
+...
+φn−1 −φ n
+
+ .(26)
+In general, the algebraic variable can be chosen as the potential
+corresponding to the last node, given the respective ordering
+of the component.
+When considering arbitrarily many components, ¯φcontains
+the potentials corresponding to the last nodes of each non-
+ground component, while ˜φcontains differences as in (26)
+for the non-ground components and simply all potentials of
+the ground component, compare again (22). This also works
+recursively, such that ¯φmay be split further using the same
+considerations, as it only contains the potentials corresponding
+to individual nodes.
+We now look at a generic current splittingi=V ˜i+W ¯i. For
+a single connected component, (25) yields
+i=
+"
+I|t|
+0
+#
+˜i+W ¯i,
+where we note that all fundamental loops correspond to zero
+entries inVby construction. Furthermore, we can identify the
+following general structure forWfrom (24), compare also the
+example of Fig. 4,
+W=
+"
+•
+I|ℓ|
+#
+.
+Hence we can choose the algebraic variables as
+¯i=
+
+
+i|t|+1
+...
+i|t|+|ℓ|
+
+ .
+For the differential variables, we then find
+˜i=
+
+
+i1
+...
+i|t|
+
+ −W ¯i,
+which can be efficiently evaluated using (24).
+When dealing with arbitrarily many components, we can
+simply apply the same reasoning for each component sepa-
+rately, i.e. ¯iwill contain all the fundamental loop currents,
+while ˜iwill consist of differences between the tree currents
+and (local) fundamental loop contributions.
+Using the notation and insights derived from proving Propo-
+sition 3, we can now also provide a proof for Proposition 2.
+Proof of Proposition 2.
+1) Fig. 1a provides an abstract illustration ofC-Vloops,
+where any number (including zero) of the elements
+depicted in gray may form a loop in any order with
+the controlled voltage source highlighted in black. As
+Assumption 3.1 forbids such loops, the same reasoning
+that lead to (23) now yields
+A⊤
+Vc QVsC = (A′
+Vc)⊤,
+since contractingA Vc by the branches inA Vs andA C
+cannot lead to zero rows, as there must always be some
+element of a different type in any path connecting the
+terminals of a controlled voltage source. Furthermore,
+Assumption 3.1 also implies that the contracted graph
+A′
+Vc cannot contain a loop made up of only controlled
+voltage sources either. Thus, each connected component
+is a spanning tree and hence(A ′
+Vc)⊤ has full row rank
+by Lemma 2.
+2–4) We consider cases 2 through 4 together, as the cor-
+responding arguments all follow the same structure.
+Fig. 1b shows an illustration of the paths required
+according to Assumption 3, with case 2 requiring aV s-
+only path, while case 3 also allows for capacitors and
+case 4 further allows for controlled voltage sources. In
+each case, we note that the existence of the specific paths
+implies that contracting theA Ici
+,1≤i≤3by the
+element types present in the respective paths, leads to
+the contracted graphsA ′
+Ici
+consisting only of self-loops.
+This proves the claims.
+5) Fig. 1c provides an abstract illustration ofL-Icutsets,
+where again any number (including zero) of the elements
+depicted in gray may form a loop in any order with
+the controlled current source highlighted in black. The
+important difference to case 1 is that there cannot
+be a path containing other element types between the
+terminals of the highlighted controlled current source,
+for the depicted subcircuit to form anL-Icutset. As
+Assumption 3.5 forbids such cutsets, it implies that there
+exists aC-R-V-only path between the terminals of any
+controlled current source inA Ic4
+. The statement then
+follows from the same argument as for cases 2 through
+4 earlier.
+Before we move on to some examples, we briefly note
+(without proof) that the decoupling result from Theorem 1 can
+also be transferred to flux-charge MNA, a variant of MNA
+that is often used in practice due to its favorable numerical
+properties [18, Section I.4].
+Theorem 2(Decoupling of flux-charge MNA).Under the
+assumptions of Theorem 1, one can derive an analogous
+
+10
+decoupling for the flux-charge formulation of MNA, compare
+also [8, Theorem 4.2] for a corresponding index result.
+IV. EXAMPLES
+We now present a number of examples illustrating the
+decoupling. The examples show that the assumptions of the
+decoupling are fulfilled by many common subcircuits and that
+in case Assumption 3 is violated, minor changes to the circuit
+may suffice to still make the decoupling possible. Furthermore,
+the assumptions can serve as a guide to what changes should
+be made. This guiding feature can be attributed to the locality
+of the topological conditions, compare also [8].
+Example 1(Buck converter).We begin with a buck converter,
+an example from power electronics, see e.g. [19] for further
+background. Fig. 5 shows the entire circuit at the top and
+the intermediate stages of the decoupling below it. The ex-
+pressions next to the arrows always indicate the respective
+subgraphs highlighted in black directly below, compare also
+the topological interpretation of (23). Grayed out parts do not
+appear in the respective subgraphs, while red parts indicate
+branches that are contracted away but still contribute zero
+rows, see again (23). We also note that voltages across ele-
+ments can be written asv=A ⊤φin MNA, as it is common to
+express nonlinear dependencies in terms of voltages rather than
+nodal potentials in practice. Aside from the voltage controlled
+resistorg S(vR), we assume the diode to be modeled by a
+nonlinear resistorg D(vD).
+In order to compare the topological approach with the
+algebraic perspective, we also walk through the decoupling
+in terms of matrices. For this, we first collect the incidence
+matrix of the circuit, ordered by element types
+A=
+
+
+C L gs gD R Vs
++1 +1 φ1
++1 −1 −1 φ2
++1 −1 +1 φ3
+
+ .
+With this, we can now successively write down the basis
+matrices as derived from the topologies of the subgraphs
+highlighted in Fig. 5, while simultaneously verifying that they
+indeed fulfill Definition 3. For the first set of basis matrices
+corresponding to the second graph in Fig. 5, we find
+QVs =
+
+
+0 φ1
+1 φ2
+1 φ3
+
+ ,P Vs =
+
+
+1
+0
+0
+
+ ,
+which leads to
+¯φVs =
+
+φ2
+φ3
+
+, ˜φVs = [φ1]
+as the initial variable splitting. Note that there is no need to
+follow the node ordering of (21) in general, which is why we
+explicitly state the ordering ofQ Vs. Moving on to the third
+graph of Fig. 5, we find
+QC =
+1
+0
+
+,P C =
+0
+1
+
+for the basis matrices and
+¯φC = [φ2], ˜φC = [φ3]
+A⊤
+Vs
+A⊤
+CQVs
+A⊤
+VcQVsC
+A⊤
+RQVsCVc
+vs(t)
+gS(vR) iL
+vD C vR
+φ1 φ2 φ3
+vs(t)
+gS(vR) iL
+vD C vR
+φ1 φ2 φ3
+gS(vR) iL
+vD C vR
+φ2 φ3
+gS(vR) iL
+vD vR
+φ2
+gS(vR) iL
+vD vR
+φ2
+Fig. 5. Buck converter with simple voltage control, modeled by a voltage
+controlled resistorg S(vR).
+for the variable splitting. We note that at this point, the resistor
+Ris contracted away alongside the capacitorC, however it
+may still contribute a zero row, as mentioned earlier.
+The subsequent step also illustrates what happens if there
+are no elements of a particular type. In this case, the graph
+simply remains the same and thus all variables become alge-
+
+11
+braic variables of that type
+QVc = 1,P Vc = 0
+¯φVc = [φ2], ˜φVc = [].
+Finally, we complete the variable splitting forφwith
+QR = [0],P R = [1]
+¯φR = [], ˜φR = [φ2],
+compare also the last graph in Fig. 5.
+The same graph also tells us that the inductorLis contracted
+away alongside the remaining resistive elements, implying
+that the entire graph is contracted into the ground node. This
+leaves us with a single zero row inQ ⊤
+VsCVcRAL, such that
+the inductor currents are split as follows
+WL = [1],V L = [0]
+¯iL = [iL], ˜iL = [].
+This yields the following system for the differential part
+C d
+dt φ3 +Gφ 3 −i L = 0
+L d
+dt iL −(φ 2 −φ 3) = 0,
+whereG= 1/R, while the algebraic part is given by
+φ1 −v s(t) = 0
+−gS(φ3)(φ1 −φ 2)−g D(−φ2)(−φ2) +i L = 0. (27)
+Lastly, we note that the current through the voltage source is
+an output variable and that it can be determined using
+gS(φ3)(φ1 −φ 2) +i Vs = 0.(28)
+The example also serves to illustrate how the decoupling
+may be used for generating consistent initial conditions, as
+mentioned in Section I. In order to achieve this, one first
+determines sets of differential and algebraic variables accord-
+ing to Corollary 1. Afterwards, the initial conditions of the
+differential variables can be chosen freely, while the algebraic
+and output variables are obtained by solving (19), (5) and (17).
+For the buck converter from Fig. 5, this amounts to identifying
+φ3 andi L as differential variables and choosing arbitrary
+values for these, before solving (27) and (28) to finally obtain
+consistent initial conditions.
+Example 2(MOSFET).For the second example, we again
+consider a buck converter, however this time we replace the
+controlled resistor from Fig. 5 by a MOSFET together with a
+controlled voltage source. The new circuit can be seen on the
+left of Fig. 6, while the right shows the (rotated) MOSFET
+model, compare also [20, Fig. 3.37] or [8, Fig. 2]. As this
+circuit already leads to large system matrices, we will only
+verify that it can be decoupled by looking at Assumption 3 and
+the dependencies for controlled sources listed in (2) and (3).
+Nonetheless, the resulting matrices are available at [14].
+We begin with the controlled current source of the MOSFET
+model on the right, as it represents the more interesting
+and instructive case. Comparing Assumption 3.3 with the
+subcircuit, we note that there is aC-only path between the
+terminals of the controlled current source, as marked in red in
+Fig. 6. Moving on to (2), we note that the controlling voltages
+must be contained inA ⊤
+CR Vφand observe that they can indeed
+all be represented using only voltages across capacitors and
+resistors. Forv gs, this correspondence is highlighted in purple
+vc(vR)
+vs(t)
+iL
+vD vC vR
+φg
+φd φs φo
+vRg
+Cgs
+vCgd
+vRd
+Dd
+Cbd
+vCbs
+Ds
+Cgb
+id(vgs, vds, vbs)
+vRs
+φg
+φ1
+φ2
+φd
+φ3
+φb
+φs
+vgs
+φg
+φd
+φs
+Fig. 6. Buck converter with a MOSFET model and a controlled voltage source replacing the voltage controlled resistor from Fig. 5. The subcircuit on the
+right shows the internals of the MOSFET model.
+
+12
+in Fig. 6 and it can be expressed as
+vgs =φ G −φ S = (φg −φ 1) + (φ1 −φ 3) + (φ3 −φ s)
+=v Rg +v Cgs +v Rs .
+We emphasize that this kind of equivalence can be guaranteed
+topologically, in this specific case e.g. by finding aC-R-V-
+only path between the nodes defining the controlling voltage.
+As such, this step can be efficiently automated. For com-
+pleteness, we also provide similar expressions for the other
+controlling voltagesv ds andv bs
+vds =v Rd +v Cgd +v Cgs +v Rs
+vbs =v Cbs +v Rs .
+In total, this shows that the MOSFET model on the right will
+always lead to a circuit that can be decoupled, so long as there
+are no other controlled sources present that violate Assump-
+tion 3 or the dependencies from (2) or (3). In particular, this
+means that the buck converter on the left of Fig. 6 can be
+decoupled, as the remaining controlled voltage source fulfills
+Assumption 3.1 and its controlling voltage can be expressed as
+vR =v C, which can be represented usingA ⊤
+CVs φas marked
+in orange in Fig. 6.
+Example 3(OPAMP).As a further example, we consider an
+idealized OPAMP model as shown in Fig. 7. Commonly, one
+assumes that the input impedanceZ i is given by a very large
+resistance, while the output impedanceZ o corresponds to a
+very small resistance. (In the limit case, the resistances go to
+infinity and zero, respectively.) However it is also possible to
+consider an additional reactive part, see e.g. [21, Fig. 2].
+Looking at the controlled voltage source in the center of
+Fig. 7, we see that it depends on the voltagev Zi across the
+input impedance, as marked in red. In terms of the decoupling,
+it is therefore necessary to e.g. consider the input impedance
+to be made up of a capacitor in parallel with a resistor, such
+that the voltagev Zi may be represented using onlyA ⊤
+CVs φ,
+as explained earlier. In practice, OPAMP models are often
+much more complex and built up from multiple MOSFETs,
+a common model of which we already investigated in the
+previous example.
+vZi
+vc(vZi )
+Zo
+φ−
+φ+
+φoφ1
+Fig. 7. Idealized OPAMP model.
+Example 4(SMPS).As a final example, we extend the buck
+converter from Fig. 6 to a more accurate model of a voltage
+controlled switched-mode power supply (SMPS), as shown in
+Fig. 8. The model consists of four distinct parts. An input
+filter highlighted in gray, a PID controller based on the output
+voltage highlighted in purple, a PWM generator highlighted in
+orange7 and the actual converter, in this case a buck converter.
+From the previous two examples, we already know that neither
+the MOSFET marked in red, nor the OPAMP highlighted
+in purple present a hindrance to the decoupling. Taking into
+account that the comparator (CMP), marked in orange, can
+also be modeled using the OPAMP circuit from Fig. 7, we
+therefore see that also the entire SMPS circuit from Fig. 8 may
+be decoupled. This further emphasizes that arbitrarily complex
+systems can be decoupled, so long as their constituent parts
+do not violate any of the assumptions. Lastly, we remark that
+the corresponding matrices can again be found at [14].
+V. CONCLUSION
+We introduced a topological decoupling for the system
+of MNA including controlled sources, that is valid under
+Assumption 3 and allows for the dependencies of controlled
+sources specified in (2) and (3). We showed that the decoupling
+preserves the structure of MNA in terms of sparsity and
+positive-definiteness and that, due to the constructive nature
+of the proof, the decoupling can be efficiently implemented.
+Using examples, we also demonstrated that the assumptions
+are general enough, similar to those of [8, Theorem 4.1], such
+that most common circuits can be decoupled, possibly after
+some minor modifications.
+From an applied perspective, the decoupling lends itself
+to various applications in the contexts of model order re-
+duction and machine learning, however it may also find use
+in computing consistent initial conditions or speeding up
+conventional simulations. From a more theoretical perspective,
+our analysis did not consider controlled sources depending on
+time derivatives of solution variables or terms including time
+delays. Both phenomena appear in practice and have already
+been investigated with regards to their mathematical structure,
+see e.g. [22] in the context of field-circuit coupling or [23]
+in systems control. Thus, it may be of interest to further
+extend the decoupling in these directions. Finally, as remarked
+in Section II, we assumed the topology of the circuit to be
+fixed. As ideal switches frequently occur in models of, e.g.,
+power electronic systems however, it may also be interesting
+to extend the decoupling in this direction using ideas related
+to [24], [25].
+ACKNOWLEDGMENTS
+This work is supported by the Graduate School CE within
+the Centre for Computational Engineering at Technische Uni-
+versit¨at Darmstadt and the ECSEL Joint Undertaking (JU)
+under grant agreement No. 101007319. The JU receives sup-
+port from the European Union’s Horizon 2020 research and
+innovation programme and the Netherlands, Hungary, France,
+7In practice, the PWM generator is followed by a gate driver for the
+MOSFET, which we leave out for simplicity.
+
+13
+CMP
+−
++
+vs(t)
+Lf
+Cf
+L
+vD C R
+vt(t)
+Rd
+Ci
+vref
+Rp
+Cd
+Ri
+φg
+φd φs φo
+input filter
+PID controllerPWM generator
+Fig. 8. V oltage controlled switched-mode power supply model based on the buck converter from Fig. 6.
+Poland, Austria, Germany, Italy and Switzerland. Note that this
+work only reflects the authors’ views and that the JU is not
+responsible for any use that may be made of the information
+it contains.
+REFERENCES
+[1] C.-W. Ho, A. Ruehli, and P. Brennan, “The modified nodal approach to
+network analysis,”IEEE Transactions on Circuits and Systems, vol. 22,
+no. 6, pp. 504–509, 1975.
+[2] Analog Devices, “LTspice,” 2022. [Online]. Available:
+https://www.analog.com/en/design-center/design-tools-and-calculators/
+ltspice-simulator.html
+[3] Sandia National Laboratories, “Xyce,” 2022. [Online]. Available:
+https://xyce.sandia.gov
+[4] Cadence Design Systems, “PSpice,” 2022. [Online]. Available:
+https://www.pspice.com
+[5] L. Petzold, “Differential/algebraic equations are not ODE’s,”SIAM
+Journal on Scientific and Statistical Computing, vol. 3, no. 3, pp. 367–
+384, 1982.
+[6] V . Mehrmann,Index Concepts for Differential-Algebraic Equations,
+B. Engquist, Ed. Springer International Publishing, 2015.
+[7] C. Tischendorf, “Topological index calculation of differential-algebraic
+equations in circuit simulation,”Surveys on Mathematics for Industry,
+vol. 8, pp. 187–199, 1999.
+[8] D. Est ´evez Schwarz and C. Tischendorf, “Structural analysis of electric
+circuits and consequences for MNA,”International Journal of Circuit
+Theory and Applications, vol. 28, no. 2, pp. 131–162, 2000.
+[9] M. E. Hosea and L. F. Shampine, “Analysis and implementation of TR-
+BDF2,”Applied Numerical Mathematics, vol. 20, no. 1, pp. 21–37, 1996.
+[10] L. Jansen, “A dissection concept for DAEs,” Ph.D. dissertation, 2014.
+[11] G. Al `ı, N. Banagaaya, W. H. A. Schilders, and C. Tischendorf, “Index-
+aware model order reduction for differential-algebraic equations,”Math-
+ematical and Computer Modelling of Dynamical Systems, vol. 20, no. 4,
+pp. 345–373, 2014.
+[12] I. Cortes Garcia, P. F ¨orster, L. Jansen, W. Schilders, and S. Sch ¨ops,
+“Index-aware learning of circuits,”International Journal of Circuit
+Theory and Applications, 2023.
+[13] D. E. Schwarz and R. Lamour, “InitDAE: Computation of consistent
+values, index determination and diagnosis of singularities of DAEs
+using automatic differentiation in Python,”Journal of Computational
+and Applied Mathematics, vol. 387, p. 112486, 2021.
+[14] J. Dach, P. F ¨orster, and S. Sch ¨ops, 2026.
+[15] K. E. Brenan, S. L. Campbell, and L. R. Petzold,Numerical Solution
+of Initial-Value Problems in Differential-Algebraic Equations. Society
+for Industrial and Applied Mathematics, 1995.
+[16] J. Tant and J. Driesen, “On the numerical accuracy of electromagnetic
+transient simulation with power electronics,”IEEE Transactions on
+Power Delivery, vol. 33, no. 5, pp. 2492–2501, 2018.
+[17] R. B. Bapat,Graphs and Matrices. Springer London, 2014.
+[18] M. G ¨unther, U. Feldmann, and J. ter Maten,Modelling and Discretiza-
+tion of Circuit Problems. Elsevier, 2005.
+[19] R. W. Erickson and D. Maksimovi ´c,Fundamentals of Power Electronics.
+Springer Cham, 2020.
+[20] U. Tietze, C. Schenk, and E. Gamm,Electronic Circuits: Handbook for
+Design and Application. Springer, 2008.
+[21] J. Hanson, P. Kuberry, B. Paskaleva, and P. Bochev, “Nonintrusive data-
+driven model order reduction for circuits based on hammerstein archi-
+tectures,”IEEE Transactions on Computer-Aided Design of Integrated
+Circuits and Systems, vol. 44, no. 6, pp. 2314–2327, 2025.
+[22] I. Cortes Garcia, S. Sch ¨ops, C. Strohm, and C. Tischendorf, “Generalized
+elements for a structural analysis of circuits,” inProgress in Differential-
+Algebraic Equations II, T. Reis, S. Grundel, and S. Sch ¨ops, Eds.
+Springer International Publishing, 2020, pp. 397–431.
+[23] S. Trenn and B. Unger, “Delay regularity of differential-algebraic
+equations,” in2019 IEEE 58th Conference on Decision and Control
+(CDC), 2019, pp. 989–994.
+[24] R. Riaza, “A projective-based formalism for symmetric modeling of
+electrical circuits,” inScientific Computing in Electrical Engineering,
+M. van Beurden, N. V . Budko, G. Ciuprina, W. Schilders, H. Bansal,
+and R. Barbulescu, Eds. Springer Nature Switzerland, 2024, pp. 11–22.
+[25] ——, “Setting up the state equations of switched circuits using homoge-
+neous models,”IEEE Transactions on Circuits and Systems I: Regular
+Papers, vol. 71, no. 4, pp. 1947–1960, 2024.
+APPENDIX
+Proof of Lemma 1.
+1) Letx̸=0, theny :=Px̸=0, sincePhas full column
+rank as it is part of a basis. Furthermore, we havey∈
+imPand sinceimP∩kerA ⊤ ={0}by Definition 3,
+it follows thatA ⊤y=A ⊤Px̸=0. IfA ⊤ ∈R b×n has
+full row rank, we further finddim(kerA ⊤) =n−b,
+which impliesP∈R n×b by Definition 3 and hence
+A⊤P∈R b×b.
+
+14
+2) This can be proved analogous to 1), by recognizing that
+Vplays the same role forAasPdoes forA ⊤.
+3) By the definition of the basis matrices we have
+
+
+A⊤
+1
+A⊤
+2
+...
+A⊤
+n
+
+ Q1 · · ·Q n−1 =
+
+
+0
+A⊤
+2 Q1
+...
+A⊤
+nQ1
+
+ Q2 · · ·Q n−1
+...
+=
+
+
+0
+...
+0
+A⊤
+nQ1 · · ·Q n−1
+
+ .(29)
+Now letx n−1 ̸=0, then it holds thatx k−1 :=Q kxk ̸=
+0for1≤k≤n−1, since allQ k have full column
+rank. This gives
+
+
+A⊤
+1
+A⊤
+2
+...
+A⊤
+n
+
+ Q1 · · ·Q n−1xn−1 =
+
+
+A⊤
+1
+A⊤
+2
+...
+A⊤
+n
+
+ x0 ̸=0,
+as[A 1,A 2, . . . ,An−1]⊤ has full column rank by as-
+sumption. But thenA ⊤
+nQ1 · · ·Q n−1 must also have full
+column rank by comparing with (29).
+4) This follows e.g. from [12][Remark 1] or [7][Lemma
+2.2].
+5) Forn= 2, the claim follows from
+det(A) = det
+A1 0
+•A 2
+
+= det(A1) det(A2).
+For arbitraryn∈N, it can be proved using induction
+by rewritingAin the following way
+A=
+
+
+A1 0· · ·0
+•A 2
+... ...
+... ... ... 0
+• · · · •A n
+
+
+=
+A′ 0
+•A n
+
+,
+where
+A′ =
+
+
+A1 0· · ·0
+•A 2
+... ...
+... ... ... 0
+• · · · •A n−1
+
+
+.
+Idoia Cortes Garciareceived her Bachelor in
+mathematics and Master in modelling for science
+and engineering from the Autonomous University
+of Barcelona. She obtained her Ph.D. in electri-
+cal engineering from the Technical University of
+Darmstadt in 2020. Since 2022 she is an assistant
+professor at the group of Dynamics and Control
+from the department of mechanical engineering at
+Eindhoven University of Technology. Her research
+interests include coupled multiphysical dynamical
+systems, differential algebraic equations, efficient
+time domain (co-)simulation methods and hybrid modelling approaches.
+Peter F. F ¨orsterreceived his B.Sc. and M.Sc.
+degrees in electrical engineering from Technical
+University of Darmstadt. Currently, he is a doctoral
+researcher at the centre for analysis, scientific com-
+puting and applications at Eindhoven University of
+Technology and in the computational electromag-
+netics group at Technical University of Darmstadt.
+His research interests include circuit simulation,
+differential-algebraic equations, machine learning
+and digital twins.
+Lennart Jansenreceived his M.Sc. degree in math-
+ematics from Universit ¨at zu K ¨oln and his Ph.D.
+degree in mathematics from Universit ¨at zu Berlin.
+Afterwards, he held a post-doc position at Heinrich-
+Heine-Universit¨at in D¨usseldorf before starting work
+in the industry. One of the main research topics he
+worked on in the industry was AI-based recommen-
+dations for design improvement in the automobile
+industry. He switched to the photovoltaic industry in
+2021 and currently works there on optimal control
+for combined electric-water-gas networks.
+Wil Schildersreceived the M.Sc. degree in math-
+ematics from Radboud University Nijmegen, Ni-
+jmegen, The Netherlands, in 1978, and the Ph.D.
+degree from the Trinity College Dublin, Dublin, Ire-
+land, in 1980. He has been working in the electronics
+industry with Philips Research Laboratories, Eind-
+hoven, The Netherlands, since 1980, and NXP, since
+2006, where he developed algorithms for simulating
+semiconductor devices, electronic circuits, organic
+light emitting diodes, and electromagnetic problems
+(TV tubes, interconnects, and magnetic resonance
+imaging). Since 1999, he has been a Part-Time Professor of numerical math-
+ematics for industry with the Technical University of Eindhoven, Eindhoven.
+He is currently the Managing Director of the Platform for Mathematics in
+The Netherlands. He is also the President of the European Consortium for
+Mathematics in Industry.
+Sebastian Sch¨opsreceived the M.Sc. degree in busi-
+ness mathematics and the joint Ph.D. degree from
+Bergische Universit ¨at Wuppertal and Katholieke
+Universiteit Leuven in mathematics and physics. He
+was appointed as a Professor of Computational Elec-
+tromagnetics at Technische Universit ¨at Darmstadt
+within the interdisciplinary center of computational
+engineering, in 2012. His current research interests
+include coupled multi-physical problems, bridging
+computer aided design and simulation, parallel al-
+gorithms for high performance computing, digital
+twins, uncertainty quantification, and machine learning.
