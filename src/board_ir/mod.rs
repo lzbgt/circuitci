@@ -1459,6 +1459,18 @@ pub struct AnalogModelFile {
     pub compiler_version: Option<String>,
     #[serde(default)]
     pub compiler_command: Option<String>,
+    #[serde(default)]
+    pub plugin_load_command: Option<String>,
+    #[serde(default)]
+    pub xyce_version: Option<String>,
+    #[serde(default)]
+    pub xyce_adms_template_revision: Option<String>,
+    #[serde(default)]
+    pub xyce_configure_options: Vec<String>,
+    #[serde(default)]
+    pub conformance_artifact: Option<String>,
+    #[serde(default)]
+    pub conformance_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

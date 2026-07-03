@@ -1360,16 +1360,23 @@ artifact is missing, or the compiled artifact hash is stale.
 `ANALOG_MODEL_COMPILER_BACKEND_UNSUPPORTED` is emitted when an OSDI shared
 object is paired with a backend that has no trusted OSDI loading contract, such
 as explicit `backend: xyce` or `backend: embedded_ngspice`.
+`ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED` is emitted when a
+`xyce_adms_plugin` entry has pinned source, plugin, and conformance artifacts
+but CircuitCI has not yet enabled a real-Xyce `-plugin` loader and conformance
+path.
 `ANALOG_MODEL_COMPILER_BUILD_FAILED` is emitted only when
 `CIRCUITCI_RUN_OPENVAF_BUILDS=1` opts into direct OpenVAF execution and the
 declared command fails. Stable measured keys include `model_file`,
 `source_path`, `compiler`, `compiler_version`, `compiler_command`,
 `compiler_available_on_path`, `artifact_format`, `requested_backend`,
-`research_evidence`, optional `stdout`/`stderr` prefixes for failed builds, and
-`sha256` for hash mismatches. Stable limit keys include
-`required_field`, `required_artifact`, `required_build_step`, `source_path`,
-`model_file`, `output_path`, `expected_sha256`, `supported_backend`, and
-`xyce_required_model_path`. These findings keep Verilog-A compact-model use
+`plugin_load_command`, `xyce_version`, `xyce_adms_template_revision`,
+`xyce_configure_options`, `conformance_artifact`, `research_evidence`,
+optional `stdout`/`stderr` prefixes for failed builds, and `sha256` for hash
+mismatches. Stable limit keys include `required_field`, `required_artifact`,
+`required_build_step`, `required_backend_adapter`, `required_conformance`,
+`required_configure_option`, `source_path`, `model_file`, `output_path`,
+`expected_sha256`, `supported_backend`, and `xyce_required_model_path`. These
+findings keep Verilog-A compact-model use
 fail-closed until the compiled OSDI artifact is tied to source path/hash,
 OpenVAF compiler identity/version, reproducible compiler command metadata, and
 a backend with a documented loading contract. For external ngspice transient

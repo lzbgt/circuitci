@@ -114,7 +114,14 @@ Required fields:
   such as `prebuilt_verified`, `rebuilt_missing_artifact`, or
   `rebuilt_hash_stale_artifact`. Report JSON, Markdown, and GUI artifact views
   also expose these records as `model_file_provenance[]` with scenario,
-  analysis, backend, and manifest-path context.
+  analysis, backend, and manifest-path context. Xyce/ADMS model plugins use a
+  separate fail-closed contract, `artifact_format: xyce_adms_plugin`, with
+  source/plugin/conformance SHA-256 pins, `compiler: xyce_adms`, a
+  `buildxyceplugin` command, `plugin_load_command` containing Xyce `-plugin`,
+  Xyce version, Xyce/ADMS template revision, and configure options including
+  `--enable-shared` and `--enable-xyce-shareable`. CircuitCI validates those
+  fields and artifacts but emits `ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED`
+  until a real-Xyce plugin loader and conformance fixture are enabled.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/
@@ -209,8 +216,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    only when they need full solver inputs or output discovery instead of
    inferring run state from backend-specific filenames alone.
    OpenVAF `*.osdi` artifacts are currently external-ngspice-only in CircuitCI;
-   Xyce compact-model support requires a separate Xyce/ADMS plugin artifact
-   contract and real-Xyce conformance before execution is enabled.
+   Xyce compact-model support uses the separate fail-closed
+   `xyce_adms_plugin` contract and still requires a real-Xyce plugin loader
+   plus conformance before execution is enabled.
    Opt-in real-Xyce conformance coverage is available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
    transient/AC/DC/noise,

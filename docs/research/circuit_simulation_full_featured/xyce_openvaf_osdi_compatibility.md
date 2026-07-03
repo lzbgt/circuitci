@@ -119,18 +119,27 @@ shareable Xyce build and loaded with `-plugin`.
 
 ## Future Xyce Work
 
-A future Xyce compact-model contract should not reuse
-`artifact_format: osdi_shared_object`. It should define a separate artifact
-format, for example `xyce_adms_plugin`, with at least:
+CircuitCI now reserves a separate Xyce compact-model artifact format,
+`artifact_format: xyce_adms_plugin`. It does not reuse
+`artifact_format: osdi_shared_object`.
+
+The contract is currently a fail-closed provenance and conformance boundary,
+not an execution adapter. A valid entry must declare:
 
 - Verilog-A source path/hash.
-- ADMS version and Xyce/ADMS template revision.
+- `compiler: xyce_adms`, compiler version, and a reproducible
+  `buildxyceplugin` command that references the declared source and plugin
+  output.
+- Xyce version and Xyce/ADMS template revision.
 - Xyce source/build identity and configure options, including
   `--enable-shared` and `--enable-xyce-shareable`.
-- Plugin build command and produced plugin hash.
-- Xyce command-line `-plugin` evidence.
-- Real-Xyce conformance deck proving the plugin is loaded and the model is
-  active.
+- Produced plugin path/hash.
+- Xyce command-line `-plugin` load command.
+- Retained real-Xyce conformance artifact path/hash proving the plugin was
+  loaded and the generated model was active.
 
-Until that contract exists, Xyce model extension remains documented as a
-research/backend-qualification target, not an executable OpenVAF/OSDI path.
+Even when all of those fields are valid, CircuitCI emits
+`ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED` until a real-Xyce plugin loader,
+solver manifest contract, and conformance fixture are implemented. This keeps
+Xyce model extension as a backend-qualification target while preserving the
+metadata needed for that future adapter.

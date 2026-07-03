@@ -3728,6 +3728,17 @@ ngspice wrappers load these artifacts with `pre_osdi`; generated Board IR
 netlists skip `.include` lines for OSDI binaries so they are never parsed as
 text model cards.
 
+For Xyce compact-model experiments, use a separate
+`artifact_format: xyce_adms_plugin` entry instead of reusing
+`osdi_shared_object`. Required provenance includes the Verilog-A source
+path/hash, plugin artifact hash, `compiler: xyce_adms`, compiler version,
+`buildxyceplugin` command, Xyce `-plugin` load command, Xyce version,
+Xyce/ADMS template revision, `--enable-shared` and
+`--enable-xyce-shareable` configure options, plus a retained conformance
+artifact/hash. CircuitCI validates those pins and emits
+`ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED`; it does not execute Xyce
+plugin loading until that backend has real-solver conformance coverage.
+
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the
 scenario must fail with a critical analog finding.

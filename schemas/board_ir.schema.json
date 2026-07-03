@@ -2807,15 +2807,30 @@
                       "type": "string",
                       "pattern": "^[0-9a-fA-F]{64}$"
                     },
-                    "artifact_format": { "enum": ["spice_include", "osdi_shared_object"] },
+                    "artifact_format": {
+                      "enum": ["spice_include", "osdi_shared_object", "xyce_adms_plugin"]
+                    },
                     "source_path": { "type": "string", "minLength": 1 },
                     "source_sha256": {
                       "type": "string",
                       "pattern": "^[0-9a-fA-F]{64}$"
                     },
-                    "compiler": { "enum": ["openvaf"] },
+                    "compiler": { "enum": ["openvaf", "xyce_adms"] },
                     "compiler_version": { "type": "string", "minLength": 1 },
-                    "compiler_command": { "type": "string", "minLength": 1 }
+                    "compiler_command": { "type": "string", "minLength": 1 },
+                    "plugin_load_command": { "type": "string", "minLength": 1 },
+                    "xyce_version": { "type": "string", "minLength": 1 },
+                    "xyce_adms_template_revision": { "type": "string", "minLength": 1 },
+                    "xyce_configure_options": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 },
+                      "uniqueItems": true
+                    },
+                    "conformance_artifact": { "type": "string", "minLength": 1 },
+                    "conformance_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{64}$"
+                    }
                   },
                   "additionalProperties": false
                 }

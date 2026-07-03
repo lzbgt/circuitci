@@ -118,6 +118,18 @@ commands in the generated wrapper deck and records the source, wrapper, OSDI
 artifact, and solver log as report artifacts. If ngspice was built without OSDI
 command support, the run fails closed with the wrapper/log artifacts preserved.
 
+Xyce compact-model plugins use a separate `analog.model_files[]` contract:
+`artifact_format: xyce_adms_plugin`, `source_path`, `source_sha256`,
+`compiler: xyce_adms`, `compiler_version`, a `buildxyceplugin`
+`compiler_command`, `plugin_load_command` containing `-plugin`,
+`xyce_version`, `xyce_adms_template_revision`, `xyce_configure_options`
+including `--enable-shared` and `--enable-xyce-shareable`,
+`conformance_artifact`, and `conformance_sha256`. CircuitCI verifies the
+source, plugin, and conformance artifact hashes and then fails closed with
+`ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED`; generated netlists still do
+not execute Xyce plugin loading until a real-Xyce adapter and conformance
+fixture are available.
+
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear
 derating metadata. `allow_pulse_ratings` only permits pulse-current waivers

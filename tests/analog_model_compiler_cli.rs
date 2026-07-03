@@ -73,6 +73,103 @@ fn write_osdi_files(dir: &std::path::Path) -> (String, String) {
     (sha256_hex(source), sha256_hex(artifact))
 }
 
+fn write_xyce_adms_plugin_files(dir: &std::path::Path) -> (String, String, String) {
+    let source = b"`include \"disciplines.vams\"\nmodule tiny_xyce_resistor(p, n); endmodule\n";
+    let plugin = b"not-a-real-xyce-plugin-but-stable-test-content\n";
+    let conformance = br#"{"solver":"xyce","plugin":"tiny_xyce_plugin.so","status":"planned"}"#;
+    fs::write(dir.join("tiny_xyce_resistor.va"), source).unwrap();
+    fs::write(dir.join("tiny_xyce_plugin.so"), plugin).unwrap();
+    fs::write(dir.join("xyce_plugin_conformance.json"), conformance).unwrap();
+    (
+        sha256_hex(source),
+        sha256_hex(plugin),
+        sha256_hex(conformance),
+    )
+}
+
+fn write_xyce_adms_plugin_project(
+    dir: &std::path::Path,
+    source_sha256: &str,
+    plugin_sha256: &str,
+    conformance_sha256: &str,
+    configure_options: &[&str],
+) -> std::path::PathBuf {
+    let repo = std::env::current_dir().unwrap();
+    let configure_options = configure_options
+        .iter()
+        .map(|option| format!("            - {option}\n"))
+        .collect::<String>();
+    let project = dir.join("xyce_plugin_project.yaml");
+    fs::write(
+        &project,
+        format!(
+            r#"project: {{ name: xyce_adms_plugin_contract, version: 0.1.0 }}
+libraries:
+  - {libs}
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins: {{ P: vin, N: gnd }}
+      spice: {{ primitive: dc_voltage_source, dc_v: 1.0 }}
+    R1:
+      model: generic.analog.resistor
+      pins: {{ A: vin, B: out }}
+      spice: {{ primitive: resistor, value_ohm: 1000 }}
+  nets:
+    vin: {{ kind: power, nominal_voltage: 1.0, powered: true }}
+    out: {{ kind: digital_or_analog }}
+    gnd: {{ kind: ground }}
+scenarios:
+  - name: xyce_adms_plugin_planning
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: xyce
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1]
+      model_files:
+        - path: tiny_xyce_plugin.so
+          sha256: {plugin_sha256}
+          artifact_format: xyce_adms_plugin
+          source_path: tiny_xyce_resistor.va
+          source_sha256: {source_sha256}
+          compiler: xyce_adms
+          compiler_version: xyce-7.8-adms-test
+          compiler_command: buildxyceplugin tiny_xyce_resistor.va tiny_xyce_plugin.so
+          plugin_load_command: Xyce -plugin tiny_xyce_plugin.so circuit.cir
+          xyce_version: 7.8-test
+          xyce_adms_template_revision: xyce-7.8-utils-ADMS-test
+          xyce_configure_options:
+{configure_options}          conformance_artifact: xyce_plugin_conformance.json
+          conformance_sha256: {conformance_sha256}
+      node_bindings:
+        - {{ node: vin, net: vin }}
+        - {{ node: out, net: out }}
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: vin, endpoint: {{ component: V1, pin: P }} }}
+        - {{ node: "0", endpoint: {{ component: V1, pin: N }} }}
+        - {{ node: vin, endpoint: {{ component: R1, pin: A }} }}
+        - {{ node: out, endpoint: {{ component: R1, pin: B }} }}
+      analysis:
+        type: tran
+        stop_time_us: 1.0
+        max_step_us: 0.5
+      stimuli: []
+      probes:
+        - {{ name: out, expression: V(out) }}
+      assertions: []
+"#,
+            libs = repo.join("libs/generic/analog").to_string_lossy(),
+        ),
+    )
+    .unwrap();
+    project
+}
+
 fn write_model_compiler_project(
     dir: &std::path::Path,
     source_sha256: Option<&str>,
@@ -511,6 +608,108 @@ fn openvaf_osdi_model_rejects_explicit_xyce_backend() {
         "external_ngspice_with_pre_osdi"
     );
     assert_eq!(report["model_file_provenance"].as_array().unwrap().len(), 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn xyce_adms_plugin_contract_is_planned_not_executed() {
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, plugin_sha, conformance_sha) =
+        write_xyce_adms_plugin_files(project_dir.path());
+    let project_path = write_xyce_adms_plugin_project(
+        project_dir.path(),
+        &source_sha,
+        &plugin_sha,
+        &conformance_sha,
+        &["--enable-shared", "--enable-xyce-shareable"],
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = common::run_validation(project_path.to_str().unwrap());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["id"] == "ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED")
+        .expect("missing Xyce/ADMS plugin planning finding");
+    assert_eq!(failure["measured"]["model_file"], "tiny_xyce_plugin.so");
+    assert_eq!(failure["measured"]["artifact_format"], "xyce_adms_plugin");
+    assert_eq!(failure["measured"]["compiler"], "xyce_adms");
+    assert_eq!(
+        failure["measured"]["plugin_load_command"],
+        "Xyce -plugin tiny_xyce_plugin.so circuit.cir"
+    );
+    assert_eq!(
+        failure["limit"]["required_backend_adapter"],
+        "xyce_adms_plugin_loader"
+    );
+    assert_eq!(
+        failure["limit"]["required_conformance"],
+        "real_xyce_plugin_load"
+    );
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact
+                .as_str()
+                .unwrap()
+                .ends_with("tiny_xyce_resistor.va"))
+    );
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("tiny_xyce_plugin.so"))
+    );
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact
+                .as_str()
+                .unwrap()
+                .ends_with("xyce_plugin_conformance.json"))
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn xyce_adms_plugin_contract_requires_shareable_xyce_build_options() {
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, plugin_sha, conformance_sha) =
+        write_xyce_adms_plugin_files(project_dir.path());
+    let project_path = write_xyce_adms_plugin_project(
+        project_dir.path(),
+        &source_sha,
+        &plugin_sha,
+        &conformance_sha,
+        &["--enable-shared"],
+    );
+
+    let report = common::run_validation(project_path.to_str().unwrap());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_MODEL_COMPILER_PROVENANCE_MISSING"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["required_field"],
+        "xyce_configure_options"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["required_configure_option"],
+        "--enable-xyce-shareable"
+    );
     assert_report_schema_valid(&report);
 }
 
