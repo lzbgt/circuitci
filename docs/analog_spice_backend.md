@@ -55,18 +55,20 @@ An `analog_transient` scenario owns a SPICE deck and waveform assertions.
 An `analog_ac` scenario owns a small-signal SPICE deck, Bode response exports,
 and AC assertions for frequency-domain design observation. An `analog_dc`
 scenario owns a SPICE deck, `.op` operating-point export, and DC bias
-assertions. An `analog_sparameter` scenario owns a frequency sweep plus
-single-port or multi-port reference-impedance definitions for Xyce
-S-parameter exports. An `analog_transfer_function` scenario owns a small-signal
-output/input source contract for `.TF` gain and resistance exports. An
-`analog_pole_zero` scenario owns a small-signal output/reference/input-source
-contract for `.PZ` pole and zero extraction. An `analog_sensitivity` scenario
-owns a DC or AC output-variable sensitivity contract with optional ngspice
-parameter filters for `.SENS` exports. An `analog_fourier` scenario owns a
-transient-backed `.FOUR` harmonic extraction contract for a bound output
-expression and fundamental frequency. An `analog_measure` scenario owns
-reviewed ngspice `.MEASURE` scalar extraction statements or portable structured
-measure templates for transient or AC results.
+assertions. An `analog_dc_sweep` scenario owns a swept independent source,
+normalized sweep-curve export, and min/max/mean/sample assertions over the
+curve. An `analog_sparameter` scenario owns a frequency sweep plus single-port
+or multi-port reference-impedance definitions for Xyce S-parameter exports. An
+`analog_transfer_function` scenario owns a small-signal output/input source
+contract for `.TF` gain and resistance exports. An `analog_pole_zero` scenario
+owns a small-signal output/reference/input-source contract for `.PZ` pole and
+zero extraction. An `analog_sensitivity` scenario owns a DC or AC
+output-variable sensitivity contract with optional ngspice parameter filters
+for `.SENS` exports. An `analog_fourier` scenario owns a transient-backed
+`.FOUR` harmonic extraction contract for a bound output expression and
+fundamental frequency. An `analog_measure` scenario owns reviewed ngspice
+`.MEASURE` scalar extraction statements or portable structured measure
+templates for transient or AC results.
 
 Required fields:
 
@@ -77,8 +79,10 @@ Required fields:
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/
   S-parameter settings with start/stop frequency and points per decade,
-  `type: op` for DC operating-point analysis, `s_parameter_ports` for
-  S-parameter port contracts, and `type: tf` with
+  `type: op` for DC operating-point analysis, `type: dc_sweep` with
+  `dc_sweep_source`, `dc_sweep_start`, `dc_sweep_stop`, `dc_sweep_step`, and
+  optional `dc_sweep_assertions[]`, `s_parameter_ports` for S-parameter port
+  contracts, and `type: tf` with
   `transfer_output_expression` plus `transfer_input_source` for transfer
   function contracts. Pole-zero contracts use `type: pz`,
   `pole_zero_output_node`, `pole_zero_reference_node`,
@@ -213,6 +217,26 @@ For a scenario with check `SPICE_DC_ANALYSIS`:
 7. Emit sweep worst-corner margin summaries for DC assertions, so bias and
    quiescent operating margins can be reviewed across tolerance, temperature,
    load, and model-section corners.
+
+For a scenario with check `SPICE_DC_SWEEP_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: dc_sweep`, a finite source sweep range, at least one
+   probe, and a generated-board source component when the deck is generated
+   from Board IR.
+3. Select external `ngspice`; Xyce and embedded ngspice fail closed with
+   planning evidence until equivalent output normalization is implemented.
+4. Run ngspice `.dc`, export raw sweep probe data, and normalize it to
+   `dc_sweep.csv` rows with `sweep_source`, `sweep_value`, `probe`, and
+   `value`.
+5. Optional `dc_sweep_assertions[]` evaluate `min`, `max`, `mean`, or `sample`
+   values from the normalized curve. Failed assertions emit critical
+   `SPICE_DC_SWEEP_ANALYSIS` findings with measured value, sweep point, limit,
+   relation, and artifact path.
+6. Swept input-corner and Monte Carlo summaries reuse the same worst-corner and
+   yield report machinery used by waveform, AC, operating-point, noise, and
+   measure assertions.
 
 For a scenario with check `SPICE_NOISE_ANALYSIS`:
 

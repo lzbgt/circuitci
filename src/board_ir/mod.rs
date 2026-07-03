@@ -1270,6 +1270,16 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub noise_input_source: Option<String>,
     #[serde(default)]
+    pub dc_sweep_source: Option<String>,
+    #[serde(default)]
+    pub dc_sweep_start: Option<f64>,
+    #[serde(default)]
+    pub dc_sweep_stop: Option<f64>,
+    #[serde(default)]
+    pub dc_sweep_step: Option<f64>,
+    #[serde(default)]
+    pub dc_sweep_assertions: Vec<AnalogDcSweepAssertion>,
+    #[serde(default)]
     pub s_parameter_ports: Vec<AnalogSParameterPort>,
     #[serde(default)]
     pub transfer_output_expression: Option<String>,
@@ -1354,6 +1364,30 @@ pub struct AnalogMeasureAssertion {
     pub unit: Option<String>,
     #[serde(default)]
     pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogDcSweepAssertion {
+    pub name: String,
+    pub probe: String,
+    pub aggregation: AnalogDcSweepAggregation,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub at_sweep_value: Option<f64>,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogDcSweepAggregation {
+    Min,
+    Max,
+    Mean,
+    Sample,
 }
 
 #[derive(Debug, Clone, Deserialize)]

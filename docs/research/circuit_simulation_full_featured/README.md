@@ -539,6 +539,12 @@ The GUI should not become the solver.
   `measure_assertions[]` so scalar simulation specs directly pass or fail
   validation, including shared worst-corner and Monte Carlo yield summaries
   across swept measure corners.
+- The first DC sweep path is an external-ngspice adapter with a Board
+  IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
+  fields, normalized `dc_sweep` curve rows, solver manifests, and
+  `dc_sweep_assertions[]` for min/max/mean/sample scalar specs. Xyce and
+  embedded ngspice remain fail-closed with planning evidence until equivalent
+  output normalization is implemented.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

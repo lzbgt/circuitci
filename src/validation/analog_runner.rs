@@ -1373,6 +1373,7 @@ pub(super) enum AnalogRuntimeFeature {
     Transient,
     Ac,
     Dc,
+    DcSweep,
     Noise,
     SParameter,
     TransferFunction,

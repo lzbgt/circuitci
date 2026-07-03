@@ -109,6 +109,15 @@ Current analog support:
   compact DC table with scenario, sweep, corner, probe, value, worst-corner
   marker, artifact label, Copy CSV/Markdown actions, and report-bundle export,
   so bias runs are inspectable and preservable without opening report files.
+- `analog_dc_sweep` scenarios with `SPICE_DC_SWEEP_ANALYSIS` for swept-source
+  DC transfer curves. The Board IR/schema can declare `analysis.type:
+  dc_sweep`, a swept independent source, start/stop/step values, probes, and
+  optional `dc_sweep_assertions[]` over `min`, `max`, `mean`, or a sampled
+  sweep point. External `ngspice` runs `.dc`, writes `dc_sweep_raw.csv`,
+  normalizes rows into `dc_sweep.csv`, and records the run in
+  `solver_manifest.json`. Xyce and embedded ngspice remain fail-closed with
+  planning evidence for this path. DC sweep assertions feed the shared
+  worst-corner and Monte Carlo yield summary machinery.
 - `analog_noise` scenarios with `SPICE_NOISE_ANALYSIS` for external-ngspice
   and explicit-Xyce small-signal noise observations. Noise runs write
   normalized `noise_spectrum.csv` artifacts with frequency, output noise
@@ -227,8 +236,8 @@ Current analog support:
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
-- Generated Board IR transient, AC/Bode, DC operating-point, and noise decks for
-  passives, independent
+- Generated Board IR transient, AC/Bode, DC operating-point, DC sweep, and
+  noise decks for passives, independent
   voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
   GUI run-setup creation can author generated AC/Bode observations with
   frequency limits and an initial voltage probe; generated AC sources emit a

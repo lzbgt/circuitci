@@ -2841,7 +2841,7 @@
                 "type": "object",
                 "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran", "ac", "op", "noise", "sparam", "tf", "pz", "sens", "fourier", "measure"] },
+                  "type": { "enum": ["tran", "ac", "op", "dc_sweep", "noise", "sparam", "tf", "pz", "sens", "fourier", "measure"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
                   "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
@@ -2850,6 +2850,39 @@
                   "noise_output_node": { "type": "string", "minLength": 1 },
                   "noise_reference_node": { "type": "string", "minLength": 1 },
                   "noise_input_source": { "type": "string", "minLength": 1 },
+                  "dc_sweep_source": { "type": "string", "minLength": 1 },
+                  "dc_sweep_start": { "type": "number" },
+                  "dc_sweep_stop": { "type": "number" },
+                  "dc_sweep_step": { "type": "number", "exclusiveMinimum": 0 },
+                  "dc_sweep_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "probe", "aggregation", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "probe": { "type": "string", "minLength": 1 },
+                        "aggregation": { "enum": ["min", "max", "mean", "sample"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "at_sweep_value": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "if": { "properties": { "aggregation": { "const": "sample" } } },
+                          "then": { "required": ["at_sweep_value"] },
+                          "else": { "not": { "required": ["at_sweep_value"] } }
+                        }
+                      ]
+                    }
+                  },
                   "transfer_output_expression": { "type": "string", "minLength": 1 },
                   "transfer_input_source": { "type": "string", "minLength": 1 },
                   "pole_zero_output_node": { "type": "string", "minLength": 1 },
@@ -2972,6 +3005,10 @@
                   {
                     "if": { "properties": { "type": { "const": "op" } } },
                     "then": { "not": { "anyOf": [{ "required": ["stop_time_us"] }, { "required": ["max_step_us"] }, { "required": ["start_frequency_hz"] }, { "required": ["stop_frequency_hz"] }, { "required": ["points_per_decade"] }] } }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "dc_sweep" } } },
+                    "then": { "required": ["dc_sweep_source", "dc_sweep_start", "dc_sweep_stop", "dc_sweep_step"] }
                   },
                   {
                     "if": { "properties": { "type": { "const": "noise" } } },

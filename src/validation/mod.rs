@@ -4,6 +4,8 @@ mod analog_backend_plan;
 mod analog_dc_assertions;
 mod analog_dc_runner;
 mod analog_dc_spice;
+mod analog_dc_sweep_runner;
+mod analog_dc_sweep_spice;
 mod analog_fourier_runner;
 mod analog_fourier_spice;
 mod analog_measure_runner;
@@ -134,6 +136,7 @@ pub(super) const USB_RETURN_PATH_VALID: &str = "USB_RETURN_PATH_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_AC_ANALYSIS: &str = "SPICE_AC_ANALYSIS";
 pub(super) const SPICE_DC_ANALYSIS: &str = "SPICE_DC_ANALYSIS";
+pub(super) const SPICE_DC_SWEEP_ANALYSIS: &str = "SPICE_DC_SWEEP_ANALYSIS";
 pub(super) const SPICE_NOISE_ANALYSIS: &str = "SPICE_NOISE_ANALYSIS";
 pub(super) const SPICE_S_PARAMETER_ANALYSIS: &str = "SPICE_S_PARAMETER_ANALYSIS";
 pub(super) const SPICE_TRANSFER_FUNCTION_ANALYSIS: &str = "SPICE_TRANSFER_FUNCTION_ANALYSIS";
@@ -173,6 +176,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_transient",
     "analog_ac",
     "analog_dc",
+    "analog_dc_sweep",
     "analog_noise",
     "analog_sparameter",
     "analog_transfer_function",
@@ -774,6 +778,20 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_DC_SWEEP_ANALYSIS if scenario.scenario_type == "analog_dc_sweep" => {
+                    let mut sinks = analog_dc_sweep_spice::AnalogDcSweepSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_dc_sweep_spice::validate_spice_dc_sweep_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 SPICE_NOISE_ANALYSIS if scenario.scenario_type == "analog_noise" => {
                     let mut sinks = analog_noise_spice::AnalogNoiseSinks {
                         findings: &mut findings,
@@ -1027,6 +1045,7 @@ where
                 | SPICE_TRANSIENT_ANALYSIS
                 | SPICE_AC_ANALYSIS
                 | SPICE_DC_ANALYSIS
+                | SPICE_DC_SWEEP_ANALYSIS
                 | SPICE_NOISE_ANALYSIS
                 | SPICE_S_PARAMETER_ANALYSIS
                 | SPICE_TRANSFER_FUNCTION_ANALYSIS
