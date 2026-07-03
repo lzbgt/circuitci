@@ -61,6 +61,8 @@ pub struct ValidationReport {
     pub artifacts: Vec<String>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
+    pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
+    pub model_package_bundle_installs: Vec<ModelPackageBundleInstallSummary>,
     pub limitations: Vec<Limitation>,
     pub suggested_next_actions: Vec<String>,
     pub reproduction: Reproduction,
@@ -107,6 +109,45 @@ pub struct ModelPackageConformanceCheck {
     pub solver: String,
     pub result: String,
     pub artifacts: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ModelPackageBundleVerificationSummary {
+    pub report: String,
+    pub result: String,
+    pub bundle_path: String,
+    pub package_name: Option<String>,
+    pub package_version: Option<String>,
+    pub manifest_path: String,
+    pub manifest_sha256_actual: Option<String>,
+    pub lock_path: Option<String>,
+    pub lock_sha256_actual: Option<String>,
+    pub registry_path: Option<String>,
+    pub registry_sha256_actual: Option<String>,
+    pub artifact_count: usize,
+    pub conformance_check_count: usize,
+    pub finding_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ModelPackageBundleInstallSummary {
+    pub report: String,
+    pub result: String,
+    pub source_bundle: String,
+    pub install_dir: String,
+    pub package_name: Option<String>,
+    pub package_version: Option<String>,
+    pub installed_registry_path: Option<String>,
+    pub installed_registry_sha256_actual: Option<String>,
+    pub model_package_registry_path: Option<String>,
+    pub model_package_registry_sha256: Option<String>,
+    pub model_package_registry_entry: Option<String>,
+    pub model_package_lock_path: Option<String>,
+    pub model_package_lock_sha256: Option<String>,
+    pub model_package_artifact_id: Option<String>,
+    pub artifact_count: usize,
+    pub conformance_check_count: usize,
+    pub finding_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -262,6 +303,9 @@ impl ValidationReport {
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
+        let model_package_bundle_verifications =
+            collect_model_package_bundle_verifications(&artifacts);
+        let model_package_bundle_installs = collect_model_package_bundle_installs(&artifacts);
         Self {
             schema_version: "0.1.0".to_string(),
             project,
@@ -275,6 +319,8 @@ impl ValidationReport {
             artifacts,
             model_file_provenance,
             model_package_conformance_checks,
+            model_package_bundle_verifications,
+            model_package_bundle_installs,
             limitations,
             suggested_next_actions,
             reproduction: Reproduction { command },
@@ -394,6 +440,92 @@ fn markdown_report(report: &ValidationReport) -> String {
                 text.push_str(&format!(
                     "  - Evidence: `{}`\n",
                     check.artifacts.join("`, `")
+                ));
+            }
+        }
+        text.push('\n');
+    }
+    text.push_str("## Model Package Bundle Verification\n\n");
+    if report.model_package_bundle_verifications.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for bundle in &report.model_package_bundle_verifications {
+            text.push_str(&format!(
+                "- `{}` `{}`: `{}` artifacts={} conformance_checks={} findings={}\n",
+                bundle
+                    .package_name
+                    .as_deref()
+                    .unwrap_or("<unknown-package>"),
+                bundle.package_version.as_deref().unwrap_or(""),
+                bundle.result,
+                bundle.artifact_count,
+                bundle.conformance_check_count,
+                bundle.finding_count
+            ));
+            text.push_str(&format!(
+                "  - Bundle: `{}` report `{}` manifest `{}` `{}`\n",
+                bundle.bundle_path,
+                bundle.report,
+                bundle.manifest_path,
+                bundle.manifest_sha256_actual.as_deref().unwrap_or("")
+            ));
+            if let Some(lock_path) = &bundle.lock_path {
+                text.push_str(&format!(
+                    "  - Lock: `{}` `{}`\n",
+                    lock_path,
+                    bundle.lock_sha256_actual.as_deref().unwrap_or("")
+                ));
+            }
+            if let Some(registry_path) = &bundle.registry_path {
+                text.push_str(&format!(
+                    "  - Registry: `{}` `{}`\n",
+                    registry_path,
+                    bundle.registry_sha256_actual.as_deref().unwrap_or("")
+                ));
+            }
+        }
+        text.push('\n');
+    }
+    text.push_str("## Model Package Bundle Install\n\n");
+    if report.model_package_bundle_installs.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for install in &report.model_package_bundle_installs {
+            text.push_str(&format!(
+                "- `{}` `{}`: `{}` artifacts={} conformance_checks={} findings={}\n",
+                install
+                    .package_name
+                    .as_deref()
+                    .unwrap_or("<unknown-package>"),
+                install.package_version.as_deref().unwrap_or(""),
+                install.result,
+                install.artifact_count,
+                install.conformance_check_count,
+                install.finding_count
+            ));
+            text.push_str(&format!(
+                "  - Source: `{}` installed to `{}` report `{}`\n",
+                install.source_bundle, install.install_dir, install.report
+            ));
+            if let Some(registry_path) = &install.installed_registry_path {
+                text.push_str(&format!(
+                    "  - Installed registry: `{}` `{}`\n",
+                    registry_path,
+                    install
+                        .installed_registry_sha256_actual
+                        .as_deref()
+                        .unwrap_or("")
+                ));
+            }
+            if let Some(entry) = &install.model_package_registry_entry {
+                text.push_str(&format!(
+                    "  - Scenario import: registry `{}` sha `{}` entry `{}` lock `{}` sha `{}` artifact `{}`\n",
+                    install.model_package_registry_path.as_deref().unwrap_or(""),
+                    install.model_package_registry_sha256.as_deref().unwrap_or(""),
+                    entry,
+                    install.model_package_lock_path.as_deref().unwrap_or(""),
+                    install.model_package_lock_sha256.as_deref().unwrap_or(""),
+                    install.model_package_artifact_id.as_deref().unwrap_or("")
                 ));
             }
         }
@@ -575,6 +707,102 @@ fn collect_model_package_conformance_checks(
     records.into_iter().collect()
 }
 
+fn collect_model_package_bundle_verifications(
+    artifacts: &[String],
+) -> Vec<ModelPackageBundleVerificationSummary> {
+    let mut records = BTreeSet::new();
+    for artifact in artifacts {
+        let Some(report) = read_json_artifact(artifact) else {
+            continue;
+        };
+        if string_at(&report, &["schema_version"])
+            != "circuitci.model_package_bundle_verification.v1"
+        {
+            continue;
+        }
+        records.insert(ModelPackageBundleVerificationSummary {
+            report: artifact.clone(),
+            result: string_at(&report, &["result"]),
+            bundle_path: string_at(&report, &["bundle_path"]),
+            package_name: optional_string_at(&report, &["package", "name"]),
+            package_version: optional_string_at(&report, &["package", "version"]),
+            manifest_path: string_at(&report, &["manifest", "path"]),
+            manifest_sha256_actual: optional_string_at(&report, &["manifest", "sha256_actual"]),
+            lock_path: optional_string_at(&report, &["lock", "path"]),
+            lock_sha256_actual: optional_string_at(&report, &["lock", "sha256_actual"]),
+            registry_path: optional_string_at(&report, &["registry", "path"]),
+            registry_sha256_actual: optional_string_at(&report, &["registry", "sha256_actual"]),
+            artifact_count: array_len_at(&report, &["artifacts"]),
+            conformance_check_count: array_len_at(&report, &["conformance_checks"]),
+            finding_count: array_len_at(&report, &["findings"]),
+        });
+    }
+    records.into_iter().collect()
+}
+
+fn collect_model_package_bundle_installs(
+    artifacts: &[String],
+) -> Vec<ModelPackageBundleInstallSummary> {
+    let mut records = BTreeSet::new();
+    for artifact in artifacts {
+        let Some(report) = read_json_artifact(artifact) else {
+            continue;
+        };
+        if string_at(&report, &["schema_version"]) != "circuitci.model_package_bundle_install.v1" {
+            continue;
+        }
+        records.insert(ModelPackageBundleInstallSummary {
+            report: artifact.clone(),
+            result: string_at(&report, &["result"]),
+            source_bundle: string_at(&report, &["source_bundle"]),
+            install_dir: string_at(&report, &["install_dir"]),
+            package_name: optional_string_at(&report, &["package", "name"]),
+            package_version: optional_string_at(&report, &["package", "version"]),
+            installed_registry_path: optional_string_at(&report, &["installed_registry", "path"]),
+            installed_registry_sha256_actual: optional_string_at(
+                &report,
+                &["installed_registry", "sha256_actual"],
+            ),
+            model_package_registry_path: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_registry_path"],
+            ),
+            model_package_registry_sha256: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_registry_sha256"],
+            ),
+            model_package_registry_entry: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_registry_entry"],
+            ),
+            model_package_lock_path: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_lock_path"],
+            ),
+            model_package_lock_sha256: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_lock_sha256"],
+            ),
+            model_package_artifact_id: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_artifact_id"],
+            ),
+            artifact_count: array_len_at(&report, &["artifacts"]),
+            conformance_check_count: array_len_at(&report, &["conformance_checks"]),
+            finding_count: array_len_at(&report, &["findings"]),
+        });
+    }
+    records.into_iter().collect()
+}
+
+fn read_json_artifact(artifact: &str) -> Option<Value> {
+    if !artifact.ends_with(".json") {
+        return None;
+    }
+    let text = fs::read_to_string(artifact).ok()?;
+    serde_json::from_str::<Value>(&text).ok()
+}
+
 fn string_at(value: &Value, path: &[&str]) -> String {
     let mut current = value;
     for key in path {
@@ -584,6 +812,17 @@ fn string_at(value: &Value, path: &[&str]) -> String {
         current = next;
     }
     current.as_str().unwrap_or_default().to_string()
+}
+
+fn array_len_at(value: &Value, path: &[&str]) -> usize {
+    let mut current = value;
+    for key in path {
+        let Some(next) = current.get(*key) else {
+            return 0;
+        };
+        current = next;
+    }
+    current.as_array().map_or(0, Vec::len)
 }
 
 fn optional_string_at(value: &Value, path: &[&str]) -> Option<String> {
@@ -627,6 +866,8 @@ mod tests {
     fn validation_report_projects_model_package_conformance_artifacts() {
         let dir = tempfile::tempdir().unwrap();
         let package_report = dir.path().join("model_package_verification.json");
+        let bundle_verification_report = dir.path().join("bundle_verification.json");
+        let bundle_install_report = dir.path().join("bundle_install.json");
         fs::write(
             &package_report,
             r#"{
@@ -658,13 +899,132 @@ mod tests {
 "#,
         )
         .unwrap();
+        fs::write(
+            &bundle_verification_report,
+            r#"{
+  "schema_version": "circuitci.model_package_bundle_verification.v1",
+  "result": "pass",
+  "bundle_path": "bundle",
+  "manifest": {
+    "path": "model_package_bundle_manifest.json",
+    "sha256_declared": "manifest-sha",
+    "sha256_actual": "manifest-sha",
+    "status": "verified"
+  },
+  "package": {
+    "name": "org.circuitci.test.model",
+    "version": "1.0.0"
+  },
+  "lock": {
+    "path": "package.lock.json",
+    "sha256_declared": "lock-sha",
+    "sha256_actual": "lock-sha",
+    "status": "verified"
+  },
+  "registry": {
+    "path": "compact_model_registry.json",
+    "sha256_declared": "registry-sha",
+    "sha256_actual": "registry-sha",
+    "status": "verified"
+  },
+  "verification_report": null,
+  "verification_markdown": null,
+  "readme": null,
+  "artifacts": [
+    {
+      "id": "runtime_osdi",
+      "path": "artifacts/runtime.osdi",
+      "artifact_format": "osdi_shared_object",
+      "compiler": "openvaf",
+      "sha256_declared": "runtime-sha",
+      "sha256_actual": "runtime-sha",
+      "status": "verified"
+    }
+  ],
+  "conformance_checks": [
+    {
+      "report_artifact_id": "conformance",
+      "report_path": "conformance.json",
+      "target_artifact_id": "runtime_osdi",
+      "target_artifact_sha256": "runtime-sha",
+      "check_name": "transient_smoke",
+      "analysis": "tran",
+      "solver": "ngspice",
+      "result": "pass",
+      "artifacts": ["solver_manifest.json"]
+    }
+  ],
+  "findings": []
+}
+"#,
+        )
+        .unwrap();
+        fs::write(
+            &bundle_install_report,
+            r#"{
+  "schema_version": "circuitci.model_package_bundle_install.v1",
+  "result": "pass",
+  "source_bundle": "bundle",
+  "install_dir": "installed_bundle",
+  "package": {
+    "name": "org.circuitci.test.model",
+    "version": "1.0.0"
+  },
+  "manifest": {
+    "path": "installed_bundle/model_package_bundle_manifest.json",
+    "sha256_declared": "manifest-sha",
+    "sha256_actual": "manifest-sha",
+    "status": "verified"
+  },
+  "lock": {
+    "path": "installed_bundle/package.lock.json",
+    "sha256_declared": "lock-sha",
+    "sha256_actual": "lock-sha",
+    "status": "verified"
+  },
+  "registry": null,
+  "installed_registry": {
+    "path": "shared/compact_model_registry.json",
+    "sha256_declared": "registry-sha",
+    "sha256_actual": "registry-sha",
+    "status": "verified"
+  },
+  "scenario_import": {
+    "model_package_registry_path": "shared/compact_model_registry.json",
+    "model_package_registry_sha256": "registry-sha",
+    "model_package_registry_entry": "bundle_fixture_runtime",
+    "model_package_lock_path": "installed_bundle/package.lock.json",
+    "model_package_lock_sha256": "lock-sha",
+    "model_package_artifact_id": "runtime_osdi"
+  },
+  "artifacts": [
+    {
+      "id": "runtime_osdi",
+      "path": "installed_bundle/artifacts/runtime.osdi",
+      "artifact_format": "osdi_shared_object",
+      "compiler": "openvaf",
+      "sha256_declared": "runtime-sha",
+      "sha256_actual": "runtime-sha",
+      "status": "verified"
+    }
+  ],
+  "conformance_checks": [],
+  "findings": []
+}
+"#,
+        )
+        .unwrap();
 
         let report = ValidationReport::from_parts(
             "project".to_string(),
             "profile".to_string(),
             Vec::new(),
             Vec::new(),
-            vec![package_report.to_string_lossy().into_owned()],
+            vec![
+                package_report.to_string_lossy().into_owned(),
+                bundle_verification_report.to_string_lossy().into_owned(),
+                bundle_install_report.to_string_lossy().into_owned(),
+            ],
             Vec::new(),
             "validate".to_string(),
         );
@@ -674,9 +1034,35 @@ mod tests {
         assert_eq!(check.check_name, "transient_smoke");
         assert_eq!(check.target_artifact_id, "runtime_osdi");
         assert_eq!(check.artifacts, vec!["solver_manifest.json"]);
+        assert_eq!(report.model_package_bundle_verifications.len(), 1);
+        let bundle = &report.model_package_bundle_verifications[0];
+        assert_eq!(bundle.result, "pass");
+        assert_eq!(bundle.bundle_path, "bundle");
+        assert_eq!(
+            bundle.package_name.as_deref(),
+            Some("org.circuitci.test.model")
+        );
+        assert_eq!(bundle.lock_path.as_deref(), Some("package.lock.json"));
+        assert_eq!(bundle.artifact_count, 1);
+        assert_eq!(bundle.conformance_check_count, 1);
+        assert_eq!(report.model_package_bundle_installs.len(), 1);
+        let install = &report.model_package_bundle_installs[0];
+        assert_eq!(install.result, "pass");
+        assert_eq!(install.install_dir, "installed_bundle");
+        assert_eq!(
+            install.model_package_registry_entry.as_deref(),
+            Some("bundle_fixture_runtime")
+        );
+        assert_eq!(
+            install.model_package_artifact_id.as_deref(),
+            Some("runtime_osdi")
+        );
         let markdown = markdown_report(&report);
         assert!(markdown.contains("## Model Package Conformance"));
         assert!(markdown.contains("`transient_smoke`"));
         assert!(markdown.contains("`runtime_osdi`"));
+        assert!(markdown.contains("## Model Package Bundle Verification"));
+        assert!(markdown.contains("## Model Package Bundle Install"));
+        assert!(markdown.contains("`bundle_fixture_runtime`"));
     }
 }

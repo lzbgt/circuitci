@@ -1431,6 +1431,14 @@ hashes, per-artifact hash status, projected `conformance_checks[]`, and stable
 summary. Normal validation reports project any retained package-verification
 JSON artifact into top-level `model_package_conformance_checks[]`, and the GUI
 Simulation report panel displays the same compact rows.
+Validation reports also project retained bundle verification and install JSON
+artifacts into `model_package_bundle_verifications[]` and
+`model_package_bundle_installs[]`. Verification rows expose the bundle path,
+package identity, manifest/lock/registry hashes, artifact count, conformance
+check count, and finding count. Install rows expose the source bundle,
+installed directory, installed registry hash, and scenario-import
+`model_package_*` pins so a reviewer can copy the exact registry/lock/artifact
+fields without opening the raw install JSON.
 When a lock includes an artifact with
 `artifact_format: model_conformance_report`, the verifier also validates that
 document against `schemas/model_conformance_report.schema.json` and requires it

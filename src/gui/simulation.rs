@@ -267,6 +267,88 @@ impl CircuitCiApp {
                             }
                         }
                     }
+                    ui.add_space(8.0);
+                    ui.label("Model package bundle verification");
+                    if report.model_package_bundle_verifications.is_empty() {
+                        ui.label("No package bundle verification reports were emitted.");
+                    } else {
+                        for bundle in &report.model_package_bundle_verifications {
+                            ui.monospace(format!(
+                                "{} {} result={} artifacts={} conformance_checks={} findings={}",
+                                bundle.package_name.as_deref().unwrap_or("<unknown-package>"),
+                                bundle.package_version.as_deref().unwrap_or(""),
+                                bundle.result,
+                                bundle.artifact_count,
+                                bundle.conformance_check_count,
+                                bundle.finding_count
+                            ));
+                            ui.monospace(format!(
+                                "bundle {} report {}",
+                                bundle.bundle_path, bundle.report
+                            ));
+                            ui.monospace(format!(
+                                "manifest {} {}",
+                                bundle.manifest_path,
+                                bundle.manifest_sha256_actual.as_deref().unwrap_or("")
+                            ));
+                            if let Some(lock_path) = &bundle.lock_path {
+                                ui.monospace(format!(
+                                    "lock {} {}",
+                                    lock_path,
+                                    bundle.lock_sha256_actual.as_deref().unwrap_or("")
+                                ));
+                            }
+                            if let Some(registry_path) = &bundle.registry_path {
+                                ui.monospace(format!(
+                                    "registry {} {}",
+                                    registry_path,
+                                    bundle.registry_sha256_actual.as_deref().unwrap_or("")
+                                ));
+                            }
+                        }
+                    }
+                    ui.add_space(8.0);
+                    ui.label("Model package bundle install");
+                    if report.model_package_bundle_installs.is_empty() {
+                        ui.label("No package bundle install reports were emitted.");
+                    } else {
+                        for install in &report.model_package_bundle_installs {
+                            ui.monospace(format!(
+                                "{} {} result={} artifacts={} conformance_checks={} findings={}",
+                                install.package_name.as_deref().unwrap_or("<unknown-package>"),
+                                install.package_version.as_deref().unwrap_or(""),
+                                install.result,
+                                install.artifact_count,
+                                install.conformance_check_count,
+                                install.finding_count
+                            ));
+                            ui.monospace(format!(
+                                "source {} install_dir {} report {}",
+                                install.source_bundle, install.install_dir, install.report
+                            ));
+                            if let Some(registry_path) = &install.installed_registry_path {
+                                ui.monospace(format!(
+                                    "installed_registry {} {}",
+                                    registry_path,
+                                    install
+                                        .installed_registry_sha256_actual
+                                        .as_deref()
+                                        .unwrap_or("")
+                                ));
+                            }
+                            if let Some(entry) = &install.model_package_registry_entry {
+                                ui.monospace(format!(
+                                    "scenario_import registry={} sha={} entry={} lock={} lock_sha={} artifact={}",
+                                    install.model_package_registry_path.as_deref().unwrap_or(""),
+                                    install.model_package_registry_sha256.as_deref().unwrap_or(""),
+                                    entry,
+                                    install.model_package_lock_path.as_deref().unwrap_or(""),
+                                    install.model_package_lock_sha256.as_deref().unwrap_or(""),
+                                    install.model_package_artifact_id.as_deref().unwrap_or("")
+                                ));
+                            }
+                        }
+                    }
                 });
             egui::CollapsingHeader::new("Findings")
                 .default_open(false)

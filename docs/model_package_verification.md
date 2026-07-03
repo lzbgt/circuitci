@@ -162,7 +162,10 @@ artifacts are present, and then runs the normal package verifier against the
 bundled lock/registry. The output uses
 `schemas/model_package_bundle_verification_report.schema.json`, includes the
 projected package conformance checks, and exits non-zero on any missing,
-tampered, or inconsistent bundle content.
+tampered, or inconsistent bundle content. When retained as a normal validation
+artifact, the report is projected into `model_package_bundle_verifications[]`
+and shown in Markdown/GUI report summaries with package identity, manifest,
+lock, registry, artifact, conformance, and finding counts.
 
 Install a verified bundle into a project-local or shared package area and emit
 scenario-ready registry pins:
@@ -184,7 +187,10 @@ a shared registry entry whose `lock_path` is relative to
 `model_package_lock_path`, `model_package_lock_sha256`, and
 `model_package_artifact_id`. Use `--registry-entry` and
 `--registry-artifact-id` to override the bundled registry entry when installing
-into a shared registry.
+into a shared registry. When retained as a normal validation artifact, the
+install report is projected into `model_package_bundle_installs[]` and shown in
+Markdown/GUI report summaries with installed registry hashes and scenario-ready
+registry/lock/artifact pins.
 
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.

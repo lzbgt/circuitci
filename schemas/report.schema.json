@@ -37,6 +37,14 @@
       "type": "array",
       "items": { "$ref": "#/$defs/model_package_conformance_check" }
     },
+    "model_package_bundle_verifications": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model_package_bundle_verification" }
+    },
+    "model_package_bundle_installs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model_package_bundle_install" }
+    },
     "limitations": { "type": "array", "items": { "$ref": "#/$defs/limitation" } },
     "suggested_next_actions": { "type": "array" },
     "reproduction": {
@@ -172,6 +180,84 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         }
+      },
+      "additionalProperties": false
+    },
+    "model_package_bundle_verification": {
+      "type": "object",
+      "required": [
+        "report",
+        "result",
+        "bundle_path",
+        "package_name",
+        "package_version",
+        "manifest_path",
+        "manifest_sha256_actual",
+        "lock_path",
+        "lock_sha256_actual",
+        "registry_path",
+        "registry_sha256_actual",
+        "artifact_count",
+        "conformance_check_count",
+        "finding_count"
+      ],
+      "properties": {
+        "report": { "type": "string", "minLength": 1 },
+        "result": { "type": "string" },
+        "bundle_path": { "type": "string" },
+        "package_name": { "type": ["string", "null"] },
+        "package_version": { "type": ["string", "null"] },
+        "manifest_path": { "type": "string" },
+        "manifest_sha256_actual": { "type": ["string", "null"] },
+        "lock_path": { "type": ["string", "null"] },
+        "lock_sha256_actual": { "type": ["string", "null"] },
+        "registry_path": { "type": ["string", "null"] },
+        "registry_sha256_actual": { "type": ["string", "null"] },
+        "artifact_count": { "type": "integer", "minimum": 0 },
+        "conformance_check_count": { "type": "integer", "minimum": 0 },
+        "finding_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "model_package_bundle_install": {
+      "type": "object",
+      "required": [
+        "report",
+        "result",
+        "source_bundle",
+        "install_dir",
+        "package_name",
+        "package_version",
+        "installed_registry_path",
+        "installed_registry_sha256_actual",
+        "model_package_registry_path",
+        "model_package_registry_sha256",
+        "model_package_registry_entry",
+        "model_package_lock_path",
+        "model_package_lock_sha256",
+        "model_package_artifact_id",
+        "artifact_count",
+        "conformance_check_count",
+        "finding_count"
+      ],
+      "properties": {
+        "report": { "type": "string", "minLength": 1 },
+        "result": { "type": "string" },
+        "source_bundle": { "type": "string" },
+        "install_dir": { "type": "string" },
+        "package_name": { "type": ["string", "null"] },
+        "package_version": { "type": ["string", "null"] },
+        "installed_registry_path": { "type": ["string", "null"] },
+        "installed_registry_sha256_actual": { "type": ["string", "null"] },
+        "model_package_registry_path": { "type": ["string", "null"] },
+        "model_package_registry_sha256": { "type": ["string", "null"] },
+        "model_package_registry_entry": { "type": ["string", "null"] },
+        "model_package_lock_path": { "type": ["string", "null"] },
+        "model_package_lock_sha256": { "type": ["string", "null"] },
+        "model_package_artifact_id": { "type": ["string", "null"] },
+        "artifact_count": { "type": "integer", "minimum": 0 },
+        "conformance_check_count": { "type": "integer", "minimum": 0 },
+        "finding_count": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     }

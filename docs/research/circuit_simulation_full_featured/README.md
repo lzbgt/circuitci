@@ -792,6 +792,12 @@ The GUI should not become the solver.
   bundle can be copied into a project or shared model-package directory,
   optionally emit a shared registry entry, and produce scenario-ready registry
   path/SHA/entry and lock/artifact pins without manual path editing.
+- Normal validation reports now project retained bundle verification/install
+  reports into `model_package_bundle_verifications[]` and
+  `model_package_bundle_installs[]`, with matching Markdown and GUI Scopes
+  artifact-panel summaries for bundle hashes, copied artifact counts,
+  conformance/finding counts, installed registry hashes, and scenario-ready
+  registry/lock/artifact pins.
 
 ## Risks
 
