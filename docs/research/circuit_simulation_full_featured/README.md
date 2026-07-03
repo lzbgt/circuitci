@@ -440,7 +440,7 @@ Normalize all solver outputs to CircuitCI artifacts:
 - `ac_bode.csv`
 - `noise_spectrum.csv`
 - `noise_total.csv`
-- `s_parameters.csv`
+- `s_parameters.csv` or Touchstone referenced by `solver_manifest.json`
 - `harmonic_balance.csv`
 - `pss_summary.json`
 - `measurements.json`

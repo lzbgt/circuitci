@@ -2841,7 +2841,7 @@
                 "type": "object",
                 "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran", "ac", "op", "noise"] },
+                  "type": { "enum": ["tran", "ac", "op", "noise", "sparam"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
                   "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
@@ -2849,7 +2849,23 @@
                   "points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 },
                   "noise_output_node": { "type": "string", "minLength": 1 },
                   "noise_reference_node": { "type": "string", "minLength": 1 },
-                  "noise_input_source": { "type": "string", "minLength": 1 }
+                  "noise_input_source": { "type": "string", "minLength": 1 },
+                  "s_parameter_ports": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "positive_node", "negative_node", "reference_impedance_ohm"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "positive_node": { "type": "string", "minLength": 1 },
+                        "negative_node": { "type": "string", "minLength": 1 },
+                        "reference_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
                 },
                 "allOf": [
                   {
@@ -2867,6 +2883,10 @@
                   {
                     "if": { "properties": { "type": { "const": "noise" } } },
                     "then": { "required": ["start_frequency_hz", "stop_frequency_hz", "points_per_decade", "noise_output_node", "noise_input_source"] }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "sparam" } } },
+                    "then": { "required": ["start_frequency_hz", "stop_frequency_hz", "points_per_decade", "s_parameter_ports"] }
                   }
                 ],
                 "additionalProperties": false

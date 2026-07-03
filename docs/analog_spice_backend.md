@@ -55,18 +55,21 @@ An `analog_transient` scenario owns a SPICE deck and waveform assertions.
 An `analog_ac` scenario owns a small-signal SPICE deck, Bode response exports,
 and AC assertions for frequency-domain design observation. An `analog_dc`
 scenario owns a SPICE deck, `.op` operating-point export, and DC bias
-assertions.
+assertions. An `analog_sparameter` scenario owns a frequency sweep plus
+single-port or multi-port reference-impedance definitions for future
+S-parameter exports.
 
 Required fields:
 
 - `backend`: `ngspice`, `xyce`, `embedded_ngspice`, or `auto`.
-- `netlist`: path to a SPICE-compatible transient deck.
+- `netlist`: path to a SPICE-compatible deck.
 - `model_files`: SPICE model-card or subcircuit files used by the deck.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
-- `analysis`: transient settings with stop time and maximum step, AC settings
-  with start/stop frequency and optional points per decade, or `type: op` for
-  DC operating-point analysis.
+- `analysis`: transient settings with stop time and maximum step, AC/noise/
+  S-parameter settings with start/stop frequency and points per decade,
+  `type: op` for DC operating-point analysis, and `s_parameter_ports` for
+  S-parameter port contracts.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -211,6 +214,21 @@ For a scenario with check `SPICE_NOISE_ANALYSIS`:
    using `threshold_v`.
 8. Preserve `noise_spectrum.csv` paths in the report `waveforms` list and
    preserve `noise_total.csv` as normal artifacts.
+
+For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: sparam`, finite positive `start_frequency_hz`,
+   `stop_frequency_hz` greater than the start frequency, `points_per_decade`
+   in `1..=1000`, and at least one `s_parameter_ports[]` entry.
+3. Each S-parameter port declares `name`, `positive_node`, `negative_node`,
+   and positive finite `reference_impedance_ohm`. Both nodes must be bound to
+   Board IR nets through `node_bindings`.
+4. The current runtime fails closed with `SPICE_S_PARAMETER_ANALYSIS`
+   planning evidence. Future adapters must emit a normalized `s_parameters`
+   artifact, such as `s_parameters.csv` or Touchstone plus a
+   `solver_manifest.json`, before this check can pass.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

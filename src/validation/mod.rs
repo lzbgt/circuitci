@@ -10,6 +10,7 @@ mod analog_noise_spice;
 mod analog_operating_limits;
 mod analog_runner;
 mod analog_soa;
+mod analog_sparameter_spice;
 mod analog_spice;
 mod analog_sweep_reports;
 mod analog_sweep_sampling;
@@ -123,6 +124,7 @@ pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_AC_ANALYSIS: &str = "SPICE_AC_ANALYSIS";
 pub(super) const SPICE_DC_ANALYSIS: &str = "SPICE_DC_ANALYSIS";
 pub(super) const SPICE_NOISE_ANALYSIS: &str = "SPICE_NOISE_ANALYSIS";
+pub(super) const SPICE_S_PARAMETER_ANALYSIS: &str = "SPICE_S_PARAMETER_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
@@ -156,6 +158,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_ac",
     "analog_dc",
     "analog_noise",
+    "analog_sparameter",
     "motor_drive",
     "load_budget",
     "model_quality",
@@ -765,6 +768,19 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_S_PARAMETER_ANALYSIS if scenario.scenario_type == "analog_sparameter" => {
+                    let mut sinks = analog_sparameter_spice::AnalogSParameterSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_sparameter_spice::validate_spice_sparameter_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
                 }
@@ -917,6 +933,7 @@ where
                 | SPICE_AC_ANALYSIS
                 | SPICE_DC_ANALYSIS
                 | SPICE_NOISE_ANALYSIS
+                | SPICE_S_PARAMETER_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_BRIDGE_SWITCHING_VALID

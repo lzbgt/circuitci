@@ -1374,6 +1374,7 @@ pub(super) enum AnalogRuntimeFeature {
     Ac,
     Dc,
     Noise,
+    SParameter,
 }
 
 impl AnalogRuntimeFeature {

@@ -1269,6 +1269,16 @@ pub struct AnalogTransientAnalysis {
     pub noise_reference_node: Option<String>,
     #[serde(default)]
     pub noise_input_source: Option<String>,
+    #[serde(default)]
+    pub s_parameter_ports: Vec<AnalogSParameterPort>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogSParameterPort {
+    pub name: String,
+    pub positive_node: String,
+    pub negative_node: String,
+    pub reference_impedance_ohm: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

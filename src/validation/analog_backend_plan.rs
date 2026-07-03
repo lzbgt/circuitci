@@ -50,13 +50,22 @@ pub(super) fn unsupported_backend_plan_finding(
         "required_adapter".to_string(),
         json!(required_adapter(plan.selected_backend)),
     );
-    finding.suggested_fixes.push(format!(
-        "Use {} for this analysis until the {} adapter emits {} artifacts and a {} manifest.",
-        plan.implemented_backend,
-        plan.selected_backend,
-        plan.required_normalized_outputs.join(", "),
-        ANALOG_SOLVER_MANIFEST_SCHEMA
-    ));
+    if plan.implemented_backend == "none_yet" {
+        finding.suggested_fixes.push(format!(
+            "Keep this scenario as planned evidence until the {} adapter emits {} artifacts and a {} manifest.",
+            plan.selected_backend,
+            plan.required_normalized_outputs.join(", "),
+            ANALOG_SOLVER_MANIFEST_SCHEMA
+        ));
+    } else {
+        finding.suggested_fixes.push(format!(
+            "Use {} for this analysis until the {} adapter emits {} artifacts and a {} manifest.",
+            plan.implemented_backend,
+            plan.selected_backend,
+            plan.required_normalized_outputs.join(", "),
+            ANALOG_SOLVER_MANIFEST_SCHEMA
+        ));
+    }
     finding
 }
 
