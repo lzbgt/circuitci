@@ -11,11 +11,22 @@ use std::path::{Path, PathBuf};
 
 pub const MODEL_PACKAGE_BUNDLE_VERIFICATION_SCHEMA: &str =
     "circuitci.model_package_bundle_verification.v1";
+pub const MODEL_PACKAGE_BUNDLE_INSTALL_SCHEMA: &str = "circuitci.model_package_bundle_install.v1";
 const MODEL_PACKAGE_BUNDLE_SCHEMA: &str = crate::model_package::MODEL_PACKAGE_BUNDLE_SCHEMA;
 
 #[derive(Debug, Clone)]
 pub struct ModelPackageBundleVerifyOptions {
     pub bundle: PathBuf,
+    pub output: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelPackageBundleInstallOptions {
+    pub bundle: PathBuf,
+    pub install_dir: PathBuf,
+    pub registry_output: Option<PathBuf>,
+    pub registry_entry: Option<String>,
+    pub registry_artifact_id: Option<String>,
     pub output: PathBuf,
 }
 
@@ -59,6 +70,33 @@ pub struct VerifiedBundleArtifact {
     pub sha256_declared: Option<String>,
     pub sha256_actual: Option<String>,
     pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageBundleInstallReport {
+    pub schema_version: String,
+    pub result: String,
+    pub source_bundle: String,
+    pub install_dir: String,
+    pub package: VerifiedBundlePackage,
+    pub manifest: VerifiedBundleFile,
+    pub lock: Option<VerifiedBundleFile>,
+    pub registry: Option<VerifiedBundleFile>,
+    pub installed_registry: Option<VerifiedBundleFile>,
+    pub scenario_import: Option<BundleScenarioImport>,
+    pub artifacts: Vec<VerifiedBundleArtifact>,
+    pub conformance_checks: Vec<VerifiedModelConformanceCheck>,
+    pub findings: Vec<ModelPackageFinding>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BundleScenarioImport {
+    pub model_package_registry_path: String,
+    pub model_package_registry_sha256: String,
+    pub model_package_registry_entry: String,
+    pub model_package_lock_path: String,
+    pub model_package_lock_sha256: String,
+    pub model_package_artifact_id: String,
 }
 
 pub fn verify_model_package_bundle(
@@ -194,6 +232,65 @@ pub fn verify_model_package_bundle(
     })
 }
 
+pub fn install_model_package_bundle(
+    options: &ModelPackageBundleInstallOptions,
+) -> Result<ModelPackageBundleInstallReport> {
+    validate_install_options(options)?;
+    let source_report = verify_model_package_bundle(&ModelPackageBundleVerifyOptions {
+        bundle: options.bundle.clone(),
+        output: options.output.clone(),
+    })?;
+    if source_report.result != "pass" {
+        anyhow::bail!(
+            "Source model package bundle verification failed for {}; install only verified bundles.",
+            options.bundle.display()
+        );
+    }
+    copy_bundle_directory(&options.bundle, &options.install_dir)?;
+    let mut installed_report = verify_model_package_bundle(&ModelPackageBundleVerifyOptions {
+        bundle: options.install_dir.clone(),
+        output: options.output.clone(),
+    })?;
+    let mut installed_registry = None;
+    if let Some(registry_output) = &options.registry_output {
+        installed_registry = Some(write_install_registry(
+            options,
+            registry_output,
+            &installed_report,
+        )?);
+        installed_report = verify_model_package_bundle(&ModelPackageBundleVerifyOptions {
+            bundle: options.install_dir.clone(),
+            output: options.output.clone(),
+        })?;
+    }
+    let scenario_import =
+        scenario_import_for_install(options, &installed_report, installed_registry.as_ref())?;
+    let result = if installed_report
+        .findings
+        .iter()
+        .any(|finding| finding.severity == "critical")
+    {
+        "fail"
+    } else {
+        "pass"
+    };
+    Ok(ModelPackageBundleInstallReport {
+        schema_version: MODEL_PACKAGE_BUNDLE_INSTALL_SCHEMA.to_string(),
+        result: result.to_string(),
+        source_bundle: options.bundle.to_string_lossy().to_string(),
+        install_dir: options.install_dir.to_string_lossy().to_string(),
+        package: installed_report.package,
+        manifest: installed_report.manifest,
+        lock: installed_report.lock,
+        registry: installed_report.registry,
+        installed_registry,
+        scenario_import,
+        artifacts: installed_report.artifacts,
+        conformance_checks: installed_report.conformance_checks,
+        findings: installed_report.findings,
+    })
+}
+
 pub fn write_model_package_bundle_verification_report(
     report: &ModelPackageBundleVerificationReport,
     output: &Path,
@@ -207,6 +304,230 @@ pub fn write_model_package_bundle_verification_report(
     std::fs::write(output, text)
         .with_context(|| format!("Failed to write bundle report {}", output.display()))?;
     Ok(())
+}
+
+pub fn write_model_package_bundle_install_report(
+    report: &ModelPackageBundleInstallReport,
+    output: &Path,
+) -> Result<()> {
+    if let Some(parent) = output.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create output directory {}", parent.display()))?;
+    }
+    let mut text = serde_json::to_string_pretty(report)?;
+    text.push('\n');
+    std::fs::write(output, text)
+        .with_context(|| format!("Failed to write bundle install report {}", output.display()))?;
+    Ok(())
+}
+
+fn validate_install_options(options: &ModelPackageBundleInstallOptions) -> Result<()> {
+    if !options.bundle.is_dir() {
+        anyhow::bail!(
+            "Model package bundle {} is missing.",
+            options.bundle.display()
+        );
+    }
+    if options.registry_output.is_none() {
+        if options.registry_entry.is_some() {
+            anyhow::bail!("--registry-entry requires --registry-output.");
+        }
+        if options.registry_artifact_id.is_some() {
+            anyhow::bail!("--registry-artifact-id requires --registry-output.");
+        }
+    }
+    if options.install_dir.exists()
+        && std::fs::read_dir(&options.install_dir)
+            .with_context(|| format!("Unable to read {}", options.install_dir.display()))?
+            .next()
+            .is_some()
+    {
+        anyhow::bail!(
+            "Install directory {} already exists and is not empty.",
+            options.install_dir.display()
+        );
+    }
+    let source = std::fs::canonicalize(&options.bundle)
+        .with_context(|| format!("Unable to resolve {}", options.bundle.display()))?;
+    let install_parent = options
+        .install_dir
+        .parent()
+        .unwrap_or_else(|| Path::new("."));
+    let resolved_parent = std::fs::canonicalize(install_parent)
+        .with_context(|| format!("Unable to resolve {}", install_parent.display()))?;
+    let install = resolved_parent.join(
+        options
+            .install_dir
+            .file_name()
+            .context("Install directory must have a final path component.")?,
+    );
+    if install == source || install.starts_with(&source) {
+        anyhow::bail!("Install directory must not be the source bundle or inside it.");
+    }
+    Ok(())
+}
+
+fn copy_bundle_directory(source: &Path, destination: &Path) -> Result<()> {
+    std::fs::create_dir_all(destination).with_context(|| {
+        format!(
+            "Failed to create install directory {}",
+            destination.display()
+        )
+    })?;
+    for entry in std::fs::read_dir(source)
+        .with_context(|| format!("Unable to read bundle directory {}", source.display()))?
+    {
+        let entry = entry?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            copy_bundle_directory(&source_path, &destination_path)?;
+        } else if file_type.is_file() {
+            std::fs::copy(&source_path, &destination_path).with_context(|| {
+                format!(
+                    "Failed to copy bundle file {} to {}",
+                    source_path.display(),
+                    destination_path.display()
+                )
+            })?;
+        }
+    }
+    Ok(())
+}
+
+fn write_install_registry(
+    options: &ModelPackageBundleInstallOptions,
+    registry_output: &Path,
+    report: &ModelPackageBundleVerificationReport,
+) -> Result<VerifiedBundleFile> {
+    let registry_parent = registry_output.parent().unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(registry_parent).with_context(|| {
+        format!(
+            "Failed to create model package registry directory {}",
+            registry_parent.display()
+        )
+    })?;
+    let lock = report
+        .lock
+        .as_ref()
+        .filter(|lock| lock.status == "verified")
+        .context("Installed bundle must contain a verified package.lock.json.")?;
+    let lock_sha = lock
+        .sha256_actual
+        .as_deref()
+        .context("Installed bundle lock SHA-256 is unavailable.")?;
+    let registry_seed = report
+        .registry
+        .as_ref()
+        .filter(|registry| registry.status == "verified")
+        .and_then(|registry| {
+            registry_entry_from_registry(Path::new(&registry.path))
+                .ok()
+                .flatten()
+        });
+    let entry_id = options
+        .registry_entry
+        .clone()
+        .or_else(|| registry_seed.as_ref().map(|entry| entry.id.clone()))
+        .or_else(|| options.registry_artifact_id.clone())
+        .or_else(|| report.artifacts.first().map(|artifact| artifact.id.clone()))
+        .context("Unable to choose registry entry id for installed bundle.")?;
+    let artifact_id = options
+        .registry_artifact_id
+        .clone()
+        .or_else(|| registry_seed.map(|entry| entry.artifact_id))
+        .or_else(|| report.artifacts.first().map(|artifact| artifact.id.clone()))
+        .context("Unable to choose registry artifact id for installed bundle.")?;
+    let lock_path = relative_path(registry_parent, Path::new(&lock.path))?;
+    let registry = serde_json::json!({
+        "schema_version": crate::model_package::MODEL_PACKAGE_REGISTRY_SCHEMA,
+        "packages": [{
+            "id": entry_id,
+            "package": {
+                "name": report.package.name.clone(),
+                "version": report.package.version.clone(),
+            },
+            "artifact_id": artifact_id,
+            "lock_path": lock_path,
+            "lock_sha256": lock_sha,
+        }],
+    });
+    write_json_value(registry_output, &registry)?;
+    Ok(verified_file(
+        registry_output,
+        None,
+        "MODEL_PACKAGE_BUNDLE_INSTALL_REGISTRY_UNAVAILABLE",
+        "MODEL_PACKAGE_BUNDLE_INSTALL_REGISTRY_HASH_MISMATCH",
+        &mut Vec::new(),
+    ))
+}
+
+fn scenario_import_for_install(
+    options: &ModelPackageBundleInstallOptions,
+    report: &ModelPackageBundleVerificationReport,
+    installed_registry: Option<&VerifiedBundleFile>,
+) -> Result<Option<BundleScenarioImport>> {
+    let registry = installed_registry.or(report.registry.as_ref());
+    let Some(registry) = registry.filter(|registry| registry.status == "verified") else {
+        return Ok(None);
+    };
+    let entry = registry_entry_from_registry(Path::new(&registry.path))?
+        .context("Installed bundle registry must contain a package entry.")?;
+    let lock = report
+        .lock
+        .as_ref()
+        .filter(|lock| lock.status == "verified")
+        .context("Installed bundle must contain a verified package.lock.json.")?;
+    let registry_path = relative_path(
+        options.output.parent().unwrap_or_else(|| Path::new(".")),
+        Path::new(&registry.path),
+    )?;
+    Ok(Some(BundleScenarioImport {
+        model_package_registry_path: registry_path,
+        model_package_registry_sha256: registry
+            .sha256_actual
+            .clone()
+            .context("Installed registry SHA-256 is unavailable.")?,
+        model_package_registry_entry: entry.id,
+        model_package_lock_path: lock.path.clone(),
+        model_package_lock_sha256: lock
+            .sha256_actual
+            .clone()
+            .context("Installed lock SHA-256 is unavailable.")?,
+        model_package_artifact_id: entry.artifact_id,
+    }))
+}
+
+#[derive(Debug, Clone)]
+struct RegistryEntrySummary {
+    id: String,
+    artifact_id: String,
+}
+
+fn registry_entry_from_registry(registry_path: &Path) -> Result<Option<RegistryEntrySummary>> {
+    let text = std::fs::read_to_string(registry_path)
+        .with_context(|| format!("Unable to read {}", registry_path.display()))?;
+    let registry: Value =
+        serde_json::from_str(&text).or_else(|_| serde_yaml_ng::from_str(&text))?;
+    let entries = registry
+        .get("packages")
+        .or_else(|| registry.get("model_packages"))
+        .or_else(|| registry.get("entries"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let Some(entry) = entries.first() else {
+        return Ok(None);
+    };
+    Ok(Some(RegistryEntrySummary {
+        id: string_field(entry, &["id"])
+            .or_else(|| string_field(entry, &["name"]))
+            .context("Registry entry must declare id.")?,
+        artifact_id: string_field(entry, &["artifact_id"])
+            .or_else(|| string_field(entry, &["model_package_artifact_id"]))
+            .context("Registry entry must declare artifact_id.")?,
+    }))
 }
 
 fn read_manifest(path: &Path, findings: &mut Vec<ModelPackageFinding>) -> Option<Value> {
@@ -733,6 +1054,17 @@ fn string_field(value: &Value, path: &[&str]) -> Option<String> {
     current.as_str().map(ToOwned::to_owned)
 }
 
+fn write_json_value(path: &Path, value: &Value) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+    }
+    let mut text = serde_json::to_string_pretty(value)?;
+    text.push('\n');
+    std::fs::write(path, text).with_context(|| format!("Failed to write {}", path.display()))?;
+    Ok(())
+}
+
 fn file_sha256_hex(path: &Path) -> Result<String> {
     let bytes =
         std::fs::read(path).with_context(|| format!("Unable to read {}", path.display()))?;
@@ -740,6 +1072,31 @@ fn file_sha256_hex(path: &Path) -> Result<String> {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect())
+}
+
+fn relative_path(base_dir: &Path, target: &Path) -> Result<String> {
+    let base = std::fs::canonicalize(base_dir)
+        .with_context(|| format!("Unable to resolve {}", base_dir.display()))?;
+    let target = std::fs::canonicalize(target)
+        .with_context(|| format!("Unable to resolve {}", target.display()))?;
+    let base_components = base.components().collect::<Vec<_>>();
+    let target_components = target.components().collect::<Vec<_>>();
+    let common = base_components
+        .iter()
+        .zip(target_components.iter())
+        .take_while(|(base, target)| base == target)
+        .count();
+    let mut path = PathBuf::new();
+    for _ in common..base_components.len() {
+        path.push("..");
+    }
+    for component in target_components.iter().skip(common) {
+        path.push(component.as_os_str());
+    }
+    if path.as_os_str().is_empty() {
+        path.push(".");
+    }
+    Ok(path.to_string_lossy().to_string())
 }
 
 fn finding(

@@ -3770,7 +3770,11 @@ README, and bundle manifest, and its registry can be referenced by scenarios
 without hand-editing artifact paths. Run `circuitci verify-model-package-bundle`
 on that directory before importing it; the verifier checks bundle file hashes,
 manifest consistency, copied artifacts, and the bundled lock/registry as one
-unit.
+unit. Use `circuitci install-model-package-bundle` to copy a verified bundle
+into a project or shared package directory and optionally write a shared
+registry entry; its install report includes the exact registry path, SHA-256,
+entry id, lock path, lock SHA-256, and artifact id to copy into
+`analog.model_files[]`.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

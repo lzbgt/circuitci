@@ -787,6 +787,11 @@ The GUI should not become the solver.
   README/package-verification files, copied artifact hashes, projected
   conformance checks, and the bundled lock/registry through the normal package
   verifier.
+- Added `circuitci install-model-package-bundle` and
+  `schemas/model_package_bundle_install_report.schema.json` so a verified
+  bundle can be copied into a project or shared model-package directory,
+  optionally emit a shared registry entry, and produce scenario-ready registry
+  path/SHA/entry and lock/artifact pins without manual path editing.
 
 ## Risks
 

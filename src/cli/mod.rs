@@ -58,6 +58,23 @@ enum Command {
         )]
         output: PathBuf,
     },
+    InstallModelPackageBundle {
+        bundle: PathBuf,
+        #[arg(long = "install-dir")]
+        install_dir: PathBuf,
+        #[arg(long = "registry-output")]
+        registry_output: Option<PathBuf>,
+        #[arg(long = "registry-entry")]
+        registry_entry: Option<String>,
+        #[arg(long = "registry-artifact-id")]
+        registry_artifact_id: Option<String>,
+        #[arg(
+            long,
+            short = 'o',
+            default_value = "out/model_package_bundle_install.json"
+        )]
+        output: PathBuf,
+    },
     ExportModelPackage {
         #[arg(long = "package-name")]
         package_name: String,
@@ -361,6 +378,21 @@ pub fn run() -> Result<()> {
         Some(Command::VerifyModelPackageBundle { bundle, output }) => {
             run_verify_model_package_bundle(bundle, output)
         }
+        Some(Command::InstallModelPackageBundle {
+            bundle,
+            install_dir,
+            registry_output,
+            registry_entry,
+            registry_artifact_id,
+            output,
+        }) => run_install_model_package_bundle(
+            bundle,
+            install_dir,
+            registry_output,
+            registry_entry,
+            registry_artifact_id,
+            output,
+        ),
         Some(Command::ExportModelPackage {
             package_name,
             package_version,
@@ -616,6 +648,52 @@ fn run_verify_model_package_bundle(bundle: PathBuf, output: PathBuf) -> Result<(
     if report.result != "pass" {
         bail!(
             "Model package bundle verification failed for {}; see {}",
+            bundle.display(),
+            output.display()
+        );
+    }
+    Ok(())
+}
+
+fn run_install_model_package_bundle(
+    bundle: PathBuf,
+    install_dir: PathBuf,
+    registry_output: Option<PathBuf>,
+    registry_entry: Option<String>,
+    registry_artifact_id: Option<String>,
+    output: PathBuf,
+) -> Result<()> {
+    let report = crate::model_package_bundle::install_model_package_bundle(
+        &crate::model_package_bundle::ModelPackageBundleInstallOptions {
+            bundle: bundle.clone(),
+            install_dir,
+            registry_output,
+            registry_entry,
+            registry_artifact_id,
+            output: output.clone(),
+        },
+    )?;
+    crate::model_package_bundle::write_model_package_bundle_install_report(&report, &output)?;
+    println!(
+        "CircuitCI installed model package bundle {}: artifacts={} conformance_checks={} findings={} -> {}",
+        report.install_dir,
+        report.artifacts.len(),
+        report.conformance_checks.len(),
+        report.findings.len(),
+        output.display()
+    );
+    if let Some(import) = &report.scenario_import {
+        println!(
+            "CircuitCI model package registry pin path={} sha256={} entry={} artifact={}",
+            import.model_package_registry_path,
+            import.model_package_registry_sha256,
+            import.model_package_registry_entry,
+            import.model_package_artifact_id
+        );
+    }
+    if report.result != "pass" {
+        bail!(
+            "Model package bundle install failed for {}; see {}",
             bundle.display(),
             output.display()
         );

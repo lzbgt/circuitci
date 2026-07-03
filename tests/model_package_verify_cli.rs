@@ -104,6 +104,22 @@ fn assert_model_package_bundle_verification_schema_valid(report: &Value) {
     );
 }
 
+fn assert_model_package_bundle_install_schema_valid(report: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/model_package_bundle_install_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(report)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "model package bundle install schema errors: {errors:#?}"
+    );
+}
+
 fn write_package_files(dir: &std::path::Path) -> (String, String) {
     let artifact = b"stable compact model artifact\n";
     let artifact_sha = sha256_hex(artifact);
@@ -665,6 +681,67 @@ fn export_model_package_bundle_writes_portable_import_fixture() {
         1
     );
     assert_model_package_bundle_verification_schema_valid(&bundle_verify_report);
+
+    let install_dir = dir.path().join("installed_bundle");
+    let shared_registry = dir.path().join("shared/compact_model_registry.json");
+    let install_report = dir.path().join("install_report.json");
+    let install_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "install-model-package-bundle",
+            bundle_dir.to_str().unwrap(),
+            "--install-dir",
+            install_dir.to_str().unwrap(),
+            "--registry-output",
+            shared_registry.to_str().unwrap(),
+            "--output",
+            install_report.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(install_status.success());
+    assert!(install_dir.join("package.lock.json").is_file());
+    assert!(install_dir.join("artifacts").is_dir());
+    assert!(shared_registry.is_file());
+    let install_value: Value =
+        serde_json::from_str(&fs::read_to_string(&install_report).unwrap()).unwrap();
+    assert_eq!(install_value["result"], "pass");
+    assert_eq!(
+        install_value["scenario_import"]["model_package_registry_entry"],
+        "bundle_fixture_runtime"
+    );
+    assert_eq!(
+        install_value["scenario_import"]["model_package_artifact_id"],
+        "runtime_osdi"
+    );
+    assert_model_package_bundle_install_schema_valid(&install_value);
+
+    let installed_bundle_verification = dir.path().join("installed_bundle_verification.json");
+    let installed_verify_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package-bundle",
+            install_dir.to_str().unwrap(),
+            "--output",
+            installed_bundle_verification.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(installed_verify_status.success());
+
+    let installed_package_report = dir.path().join("installed_package_verification.json");
+    let installed_package_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package",
+            install_dir.join("package.lock.json").to_str().unwrap(),
+            "--registry",
+            shared_registry.to_str().unwrap(),
+            "--registry-entry",
+            "bundle_fixture_runtime",
+            "--output",
+            installed_package_report.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(installed_package_status.success());
 }
 
 #[test]

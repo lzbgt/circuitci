@@ -1448,7 +1448,13 @@ reviewed before any scenario imports it. Bundle preflights use
 `schemas/model_package_bundle_verification_report.schema.json`, written by
 `circuitci verify-model-package-bundle`. That report records manifest, lock,
 registry, README, package-verification, copied-artifact hash status, projected
-conformance checks, and stable `MODEL_PACKAGE_BUNDLE_*` findings.
+conformance checks, and stable `MODEL_PACKAGE_BUNDLE_*` findings. Bundle
+install reports use `schemas/model_package_bundle_install_report.schema.json`,
+written by `circuitci install-model-package-bundle`. The install report records
+source and installed bundle paths, installed registry hash status when
+`--registry-output` is used, and a `scenario_import` object containing the
+registry path, registry SHA-256, registry entry, lock path, lock SHA-256, and
+artifact id needed in `analog.model_files[]`.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

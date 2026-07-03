@@ -164,6 +164,28 @@ bundled lock/registry. The output uses
 projected package conformance checks, and exits non-zero on any missing,
 tampered, or inconsistent bundle content.
 
+Install a verified bundle into a project-local or shared package area and emit
+scenario-ready registry pins:
+
+```bash
+circuitci install-model-package-bundle dist/tiny_resistor_bundle \
+  --install-dir third_party/models/tiny_resistor \
+  --registry-output third_party/models/compact_model_registry.json \
+  --output out/tiny_resistor_bundle_install.json
+```
+
+The installer verifies the source bundle, refuses a non-empty destination,
+copies the bundle directory, verifies the installed copy, and optionally writes
+a shared registry entry whose `lock_path` is relative to
+`--registry-output`. The install report uses
+`schemas/model_package_bundle_install_report.schema.json` and includes a
+`scenario_import` object with `model_package_registry_path`,
+`model_package_registry_sha256`, `model_package_registry_entry`,
+`model_package_lock_path`, `model_package_lock_sha256`, and
+`model_package_artifact_id`. Use `--registry-entry` and
+`--registry-artifact-id` to override the bundled registry entry when installing
+into a shared registry.
+
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a
