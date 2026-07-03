@@ -285,7 +285,10 @@ fn build_ngspice_dc_wrapper(
     Ok(text)
 }
 
-fn op_raw_to_operating_point_csv(raw: &Path, analog: &AnalogScenario) -> Result<String, String> {
+pub(super) fn op_raw_to_operating_point_csv(
+    raw: &Path,
+    analog: &AnalogScenario,
+) -> Result<String, String> {
     let text = fs::read_to_string(raw).map_err(|error| {
         format!(
             "Failed to read operating-point raw export {}: {error}",

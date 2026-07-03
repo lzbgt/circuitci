@@ -96,10 +96,11 @@ Current analog support:
   pinning for Bode corners. The GUI observation-check editor also offers
   low-pass, unity-gain, and loop-stability Bode check presets that write
   normal AC assertions.
-- `analog_dc` scenarios with `SPICE_DC_ANALYSIS` for external-ngspice
-  operating-point exports. DC runs write normalized `operating_point.csv`
-  artifacts with one column per declared probe, support generated-from-board
-  and file-backed decks, and evaluate `operating_point` assertions for bias,
+- `analog_dc` scenarios with `SPICE_DC_ANALYSIS` for external-ngspice and
+  explicit-Xyce operating-point exports. DC runs write normalized
+  `operating_point.csv` artifacts with one column per declared probe, support
+  generated-from-board and file-backed decks, and evaluate `operating_point`
+  assertions for bias,
   rail, and quiescent checks across the same run-input sweep corners used by
   transient and AC/Bode workflows. The GUI run-setup editor can author
   generated DC operating-point observations directly, and the check editor
@@ -133,10 +134,11 @@ Current analog support:
   overrides, raw outputs, and normalized outputs so future Xyce/RF adapters can
   target the same provenance contract.
 - Explicit `backend: xyce` is detected when `Xyce` or `xyce` is on `PATH`.
-  Transient and AC Xyce runs can export CSV-like solver data, normalize it into
-  the `transient_waveform` and `ac_bode` contracts, and write solver manifests.
-  Xyce DC and noise remain fail-closed with manifest-compatible
-  adapter-planning evidence; `backend: auto` does not select Xyce prematurely.
+  Transient, AC, and DC Xyce runs can export CSV-like solver data, normalize it
+  into the `transient_waveform`, `ac_bode`, and `operating_point` contracts,
+  and write solver manifests. Xyce noise remains fail-closed with
+  manifest-compatible adapter-planning evidence; `backend: auto` does not
+  select Xyce prematurely.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

@@ -168,12 +168,12 @@ For a scenario with check `SPICE_DC_ANALYSIS`:
 1. Resolve and bind the scenario netlist and model files the same way as
    transient and AC validation.
 2. Require `analysis.type: op` and at least one operating-point probe.
-3. Select external `ngspice`; DC export currently fails closed for embedded
-   ngspice and Xyce until equivalent export paths are implemented.
-   `backend: auto` does not select Xyce for this analysis until that adapter is
-   implemented.
+3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
+   still fails closed until an equivalent operating-point export path is
+   implemented. `backend: auto` does not select Xyce for this analysis until
+   Xyce coverage is broad enough to avoid surprising backend changes.
 4. Expand bounded run-input sweeps exactly like transient and AC validation.
-5. Run `.op`, export ngspice probe data, and normalize it to
+5. Run `.op`/`.OP`, export operating-point probe data, and normalize it to
    `operating_point.csv` with one column per declared probe.
 6. Evaluate `operating_point` assertions over the normalized CSV. Failed
    assertions emit critical `SPICE_DC_ANALYSIS` findings with measured value,
