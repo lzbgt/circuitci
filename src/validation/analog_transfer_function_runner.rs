@@ -359,41 +359,30 @@ fn csv_escape(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::transfer_function_raw_to_csv;
-    use crate::board_ir::{AnalogBackend, AnalogNetlistSource, BoardProject, Scenario};
+    use crate::board_ir::Scenario;
 
     #[test]
     fn transfer_function_raw_to_csv_extracts_ngspice_scalars() {
-        let mut scenario = Scenario::default();
-        scenario.name = "tf".to_string();
-        scenario.analog = Some(crate::board_ir::AnalogScenario {
-            backend: AnalogBackend::Ngspice,
-            netlist_source: AnalogNetlistSource::GeneratedFromBoard,
-            netlist: None,
-            generated: None,
-            model_files: Vec::new(),
-            node_bindings: Vec::new(),
-            pin_bindings: Vec::new(),
-            analysis: crate::board_ir::AnalogTransientAnalysis {
-                analysis_type: "tf".to_string(),
-                stop_time_us: 0.0,
-                max_step_us: 0.0,
-                start_frequency_hz: None,
-                stop_frequency_hz: None,
-                points_per_decade: None,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                s_parameter_ports: Vec::new(),
-                transfer_output_expression: Some("V(out)".to_string()),
-                transfer_input_source: Some("V1".to_string()),
-            },
-            operating_conditions: Default::default(),
-            stimuli: Vec::new(),
-            sweeps: Vec::new(),
-            probes: Vec::new(),
-            assertions: Vec::new(),
-        });
-        let _project = BoardProject::default();
+        let scenario: Scenario = serde_yaml_ng::from_str(
+            r#"
+name: tf
+type: analog_transfer_function
+analog:
+  backend: ngspice
+  netlist_source: generated_from_board
+  model_files: []
+  node_bindings: []
+  pin_bindings: []
+  analysis:
+    type: tf
+    transfer_output_expression: V(out)
+    transfer_input_source: V1
+  stimuli: []
+  probes: []
+  assertions: []
+"#,
+        )
+        .unwrap();
         let csv = transfer_function_raw_to_csv(
             "transfer_function = 5.000000e-001\noutput_impedance_at_v(out) = 5.000000e+002\nv1#input_impedance = 2.000000e+003\n",
             &scenario,

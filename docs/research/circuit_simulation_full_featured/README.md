@@ -507,8 +507,9 @@ The GUI should not become the solver.
 
 - Add `.TF`, `.PZ`, `.SENS`, `.FOUR`, and `.MEASURE` support where available.
 - The first `.TF` path is external-ngspice execution with normalized
-  `transfer_function_summary`; next extend conformance and add Xyce planning
-  or adapter support where the backend exposes equivalent output.
+  `transfer_function_summary` plus opt-in real-ngspice conformance coverage;
+  next add Xyce planning or adapter support where the backend exposes
+  equivalent output.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

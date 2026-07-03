@@ -251,7 +251,11 @@ For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
    `ngspice_tf.log`, `transfer_function_raw.txt`,
    `transfer_function_summary.csv`, and `solver_manifest.json`. The normalized
    summary contains the small-signal gain, input resistance, and output
-   resistance parsed from ngspice `.TF` output.
+   resistance parsed from ngspice `.TF` output. Opt-in real-ngspice
+   conformance coverage is available through
+   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
+   the test is skipped by default unless the variable is set and `ngspice` is
+   on `PATH`.
 5. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `transfer_function_summary`
    contract.

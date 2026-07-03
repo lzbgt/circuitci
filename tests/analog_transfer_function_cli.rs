@@ -1,9 +1,14 @@
 mod common;
 
-use common::{assert_report_schema_valid, assert_yaml_file_valid, run_validation_with_path};
+use common::{
+    assert_report_schema_valid, assert_yaml_file_valid, binary_available, run_validation_with_path,
+};
 use serde_json::Value;
 use std::fs;
 use std::process::Command;
+
+#[cfg(unix)]
+const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
@@ -92,6 +97,57 @@ scenarios:
 }
 
 #[cfg(unix)]
+fn real_ngspice_conformance_enabled() -> bool {
+    if std::env::var(REAL_NGSPICE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real-ngspice transfer-function conformance; set {REAL_NGSPICE_CONFORMANCE_ENV}=1"
+        );
+        return false;
+    }
+    if !binary_available("ngspice") {
+        eprintln!("skipping real-ngspice transfer-function conformance; ngspice is not on PATH");
+        return false;
+    }
+    true
+}
+
+fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
+    report["artifacts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with(suffix))
+        .unwrap_or_else(|| panic!("missing artifact with suffix {suffix}"))
+}
+
+fn transfer_function_summary_values(path: &str) -> (f64, f64, f64) {
+    let text = fs::read_to_string(path).unwrap();
+    let mut lines = text.lines();
+    let header: Vec<&str> = lines.next().unwrap().split(',').collect();
+    let values: Vec<&str> = lines.next().unwrap().split(',').collect();
+    let number_at = |name: &str| -> f64 {
+        let index = header
+            .iter()
+            .position(|field| *field == name)
+            .unwrap_or_else(|| panic!("missing transfer-function summary field {name}"));
+        values[index].parse::<f64>().unwrap()
+    };
+    (
+        number_at("transfer_function_gain"),
+        number_at("input_resistance_ohm"),
+        number_at("output_resistance_ohm"),
+    )
+}
+
+fn assert_close(actual: f64, expected: f64, tolerance: f64, name: &str) {
+    assert!(
+        (actual - expected).abs() <= tolerance,
+        "{name}: expected {expected}, got {actual}"
+    );
+}
+
+#[cfg(unix)]
 #[test]
 fn transfer_function_backend_normalizes_summary_and_manifest() {
     let fake_path = tempfile::tempdir().unwrap();
@@ -151,6 +207,59 @@ fn transfer_function_backend_normalizes_summary_and_manifest() {
         .filter_map(|artifact| artifact.as_str())
         .find(|artifact| artifact.ends_with("solver_manifest.json"))
         .unwrap();
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["backend"]["selected"], "ngspice");
+    assert_eq!(manifest["analysis"]["kind"], "transfer_function");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "transfer_function_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_transfer_function_conformance_when_enabled() {
+    if !real_ngspice_conformance_enabled() {
+        return;
+    }
+
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_transfer_function_project(project_dir.path(), "ngspice", "V1");
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let summary_path = artifact_path(&report, "transfer_function_summary.csv");
+    let (gain, input_resistance, output_resistance) =
+        transfer_function_summary_values(summary_path);
+    assert_close(gain, 0.5, 1e-9, "transfer_function_gain");
+    assert_close(input_resistance, 2000.0, 1e-6, "input_resistance_ohm");
+    assert_close(output_resistance, 500.0, 1e-6, "output_resistance_ohm");
+
+    let manifest_path = artifact_path(&report, "solver_manifest.json");
     let manifest: Value =
         serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
     assert_eq!(manifest["backend"]["selected"], "ngspice");

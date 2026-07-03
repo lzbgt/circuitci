@@ -142,8 +142,11 @@ Current analog support:
   `transfer_output_expression`, and `transfer_input_source`. External
   `ngspice` runs write `transfer_function_raw.txt`,
   `transfer_function_summary.csv`, and `solver_manifest.json`; the normalized
-  summary records gain, input resistance, and output resistance. Xyce and
-  embedded ngspice remain fail-closed with planning evidence for this path.
+  summary records gain, input resistance, and output resistance. Opt-in
+  real-ngspice conformance coverage is available through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
+  it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
+  fail-closed with planning evidence for this path.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep
