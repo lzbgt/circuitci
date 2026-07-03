@@ -42,6 +42,8 @@ as full USB PHY behavior, RF/antenna performance, complete PCB signal integrity,
 thermal sign-off, arbitrary KiCad DRC semantics, and vendor-silicon internals.
 See [docs/limitations.md](docs/limitations.md) and
 [docs/common_iot_board_readiness_gaps.md](docs/common_iot_board_readiness_gaps.md).
+For a concise engineering assessment of current practical value and boundaries,
+see [docs/project_status_assessment.md](docs/project_status_assessment.md).
 For the prioritized backlog that makes CircuitCI more useful to board-validation
 agents, see
 [docs/agent_validation_usefulness_backlog.md](docs/agent_validation_usefulness_backlog.md).
