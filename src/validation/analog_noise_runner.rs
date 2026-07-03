@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::analog_runner::{
-    ModelSectionOverride, NgspiceRunError, ParameterOverride, detect_nonconvergence, ngspice_error,
-    rewrite_include_line, run_solver_with_timeout, sweep_temperature_c,
+    ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
+    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
+    sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -212,6 +213,29 @@ where
             noise_total.display()
         ),
     );
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "noise",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[
+            ("ngspice_noise_spectrum_raw", &spectrum_raw),
+            ("ngspice_noise_total_raw", &total_raw),
+        ],
+        normalized_outputs: &[
+            ("noise_spectrum", &noise_spectrum),
+            ("noise_total", &noise_total),
+        ],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
     Ok(NgspiceNoiseRun {
         artifacts,
         noise_spectrum,

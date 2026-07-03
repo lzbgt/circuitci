@@ -702,6 +702,27 @@ fn analog_backend_project(project: &str, backend: &str) -> (tempfile::TempDir, s
     (dir, path)
 }
 
+fn run_validation_with_persisted_output(project: &str) -> (tempfile::TempDir, Value) {
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project,
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    (out_dir, report)
+}
+
 #[cfg(unix)]
 #[test]
 fn auto_backend_does_not_select_xyce_before_runtime_adapter_exists() {
@@ -748,6 +769,51 @@ fn explicit_xyce_backend_fails_closed_until_adapter_exists() {
         "ngspice_or_embedded_ngspice"
     );
     assert!(report["waveforms"].as_array().unwrap().is_empty());
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn analog_success_writes_solver_manifest_contract() {
+    let (_out_dir, report) =
+        run_validation_with_persisted_output("examples/good_mosfet_low_side_switch/project.yaml");
+    if report["result"] != "pass" {
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+        return;
+    }
+
+    let artifacts = report["artifacts"].as_array().unwrap();
+    let manifest_path = artifacts
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with("solver_manifest.json"))
+        .expect("passing analog run should report solver_manifest.json");
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
+
+    assert_eq!(
+        manifest["schema_version"],
+        "circuitci.analog_solver_manifest.v0.1"
+    );
+    assert_eq!(manifest["scenario"], "nds7002a_low_side_switch_turn_on");
+    assert_eq!(manifest["analysis"]["kind"], "transient");
+    assert_eq!(manifest["execution"]["success"], true);
+    assert!(
+        manifest["execution"]["command"]
+            .as_str()
+            .unwrap()
+            .contains("ngspice")
+    );
+    assert!(
+        manifest["inputs"]["source_netlist"]
+            .as_str()
+            .unwrap()
+            .ends_with("generated_board.cir")
+    );
+    let normalized = manifest["outputs"]["normalized"].as_array().unwrap();
+    assert!(normalized.iter().any(|entry| {
+        entry["kind"] == "transient_waveform"
+            && entry["path"].as_str().unwrap().ends_with("waveform.csv")
+    }));
     assert_report_schema_valid(&report);
 }
 

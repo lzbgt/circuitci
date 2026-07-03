@@ -127,6 +127,11 @@ Current analog support:
   worst-case, percentile margin rows, and CSV/Markdown copy actions, and are
   exported beside scope evidence when the loaded report contains sampled
   tolerance runs; bundle HTML preserves the same distribution strips.
+- Successful analog solver runs write a versioned `solver_manifest.json`
+  artifact beside normalized outputs. The manifest records backend selection,
+  solver command/status, source deck, wrapper deck, log, model files, sweep
+  overrides, raw outputs, and normalized outputs so future Xyce/RF adapters can
+  target the same provenance contract.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

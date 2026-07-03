@@ -108,7 +108,16 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    `SPICE_TRANSIENT_ANALYSIS` finding.
 8. Evaluate waveform assertions. Failed assertions emit critical
    `SPICE_TRANSIENT_ANALYSIS` findings with measured and limit data.
-9. For generated Board IR decks, append datasheet operating-limit probes for
+9. Successful solver runs write `solver_manifest.json` next to the run outputs.
+   The manifest records a versioned schema id, scenario and analysis kind,
+   requested and selected backend, solver command/status/stdout/stderr byte
+   counts, source netlist, wrapper deck, model files, sweep overrides, solver
+   log, raw outputs, and normalized outputs such as `waveform.csv`, `bode.csv`,
+   `operating_point.csv`, `noise_spectrum.csv`, and `noise_total.csv`. The
+   manifest is a backend-neutral contract for future Xyce and RF/HB adapters;
+   report consumers should use it for provenance and output discovery instead
+   of inferring run state from backend-specific filenames alone.
+10. For generated Board IR decks, append datasheet operating-limit probes for
    MOSFET, BJT, and diode voltage/current/power ratings. Exceeding a rating
    emits a critical `SPICE_OPERATING_LIMIT` finding with measured maximum
    transient stress and the effective datasheet limit. Scenario ambient
@@ -118,7 +127,7 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    absolute-maximum, derating, or pulse metadata for these generated
    semiconductor models also emits `SPICE_OPERATING_LIMIT` before solver
    execution.
-10. Passing physical analog acceptance requires no critical findings, no
+11. Passing physical analog acceptance requires no critical findings, no
    blocking analog limitations, and suite-required waveform/artifact evidence.
 
 For a scenario with check `SPICE_AC_ANALYSIS`:

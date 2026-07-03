@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::analog_runner::{
-    ModelSectionOverride, NgspiceRunError, ParameterOverride, detect_nonconvergence, ngspice_error,
-    rewrite_include_line, run_solver_with_timeout, sweep_temperature_c,
+    ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
+    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
+    sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -181,6 +182,23 @@ where
         "Exported analog operating point",
         format!("Wrote {}.", operating_point.to_string_lossy()),
     );
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "operating_point",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[("ngspice_operating_point_raw", &raw)],
+        normalized_outputs: &[("operating_point", &operating_point)],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
     Ok(NgspiceDcRun {
         artifacts,
         operating_point,

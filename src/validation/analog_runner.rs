@@ -15,7 +15,9 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::analog_util::{absolute_path, executable_on_path, normalize_path, safe_artifact_name};
+use super::analog_util::{
+    absolute_path, executable_on_path, normalize_artifact_path, normalize_path, safe_artifact_name,
+};
 
 #[derive(Debug, Clone)]
 pub(super) struct ParameterOverride {
@@ -237,6 +239,23 @@ where
         "Loaded analog waveform",
         format!("{} sample(s).", series.time_s.len()),
     );
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "transient",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[],
+        normalized_outputs: &[("transient_waveform", &waveform)],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
     Ok(NgspiceRun {
         artifacts,
         waveform,
@@ -385,6 +404,23 @@ where
         "Exported analog AC response",
         format!("Wrote {}.", bode.to_string_lossy()),
     );
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "ac",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[("ngspice_ac_raw", &raw)],
+        normalized_outputs: &[("ac_bode", &bode)],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
     Ok(NgspiceAcRun { artifacts, bode })
 }
 
@@ -1433,6 +1469,116 @@ pub(super) fn backend_name(backend: &AnalogBackend) -> &'static str {
         AnalogBackend::Xyce => "xyce",
         AnalogBackend::EmbeddedNgspice => "embedded_ngspice",
     }
+}
+
+pub(super) struct SolverManifestIo<'a> {
+    pub(super) run_dir: &'a Path,
+    pub(super) scenario: &'a Scenario,
+    pub(super) requested_backend: &'a AnalogBackend,
+    pub(super) selected_backend: &'a str,
+    pub(super) analysis_kind: &'a str,
+    pub(super) source_netlist: &'a Path,
+    pub(super) wrapper: &'a Path,
+    pub(super) log: &'a Path,
+    pub(super) output: &'a SolverOutput,
+    pub(super) parameter_overrides: &'a [ParameterOverride],
+    pub(super) model_section_overrides: &'a [ModelSectionOverride],
+    pub(super) raw_outputs: &'a [(&'a str, &'a Path)],
+    pub(super) normalized_outputs: &'a [(&'a str, &'a Path)],
+}
+
+pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf, String> {
+    let analog = io
+        .scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before solver manifest generation");
+    let manifest = io.run_dir.join("solver_manifest.json");
+    let parameter_overrides: Vec<_> = io
+        .parameter_overrides
+        .iter()
+        .map(|override_| {
+            json!({
+                "name": override_.name,
+                "value": override_.value,
+            })
+        })
+        .collect();
+    let model_section_overrides: Vec<_> = io
+        .model_section_overrides
+        .iter()
+        .map(|override_| {
+            json!({
+                "path": override_.path,
+                "section": override_.section,
+            })
+        })
+        .collect();
+    let raw_outputs = path_entries(io.raw_outputs);
+    let normalized_outputs = path_entries(io.normalized_outputs);
+    let model_files: Vec<_> = analog
+        .model_files
+        .iter()
+        .map(|model_file| {
+            json!({
+                "path": model_file.path,
+                "sha256": model_file.sha256,
+            })
+        })
+        .collect();
+    let value = json!({
+        "schema_version": "circuitci.analog_solver_manifest.v0.1",
+        "scenario": io.scenario.name,
+        "scenario_type": io.scenario.scenario_type,
+        "analysis": {
+            "kind": io.analysis_kind,
+            "type": analog.analysis.analysis_type,
+        },
+        "backend": {
+            "requested": backend_name(io.requested_backend),
+            "selected": io.selected_backend,
+        },
+        "execution": {
+            "command": io.output.command,
+            "status": io.output.status.to_string(),
+            "success": io.output.status.success(),
+            "stdout_bytes": io.output.stdout.len(),
+            "stderr_bytes": io.output.stderr.len(),
+        },
+        "inputs": {
+            "source_netlist": normalize_artifact_path(io.source_netlist),
+            "wrapper": normalize_artifact_path(io.wrapper),
+            "model_files": model_files,
+            "parameter_overrides": parameter_overrides,
+            "model_section_overrides": model_section_overrides,
+        },
+        "outputs": {
+            "log": normalize_artifact_path(io.log),
+            "raw": raw_outputs,
+            "normalized": normalized_outputs,
+        },
+    });
+    let text = serde_json::to_string_pretty(&value)
+        .map_err(|error| format!("Failed to serialize analog solver manifest: {error}"))?;
+    fs::write(&manifest, text).map_err(|error| {
+        format!(
+            "Failed to write analog solver manifest {}: {error}",
+            manifest.display()
+        )
+    })?;
+    Ok(manifest)
+}
+
+fn path_entries(entries: &[(&str, &Path)]) -> Vec<serde_json::Value> {
+    entries
+        .iter()
+        .map(|(kind, path)| {
+            json!({
+                "kind": kind,
+                "path": normalize_artifact_path(path),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
