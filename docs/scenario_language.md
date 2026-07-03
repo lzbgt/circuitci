@@ -3758,7 +3758,10 @@ artifact files, including repeatable `--package-artifact` specs when one lock
 must pin source, OSDI, Xyce plugin, and conformance artifacts together; use
 `--registry-artifact-id` to choose the artifact imported by registry-backed
 scenarios. Then use `circuitci verify-model-package` for an independent
-lock/registry preflight before referencing the package from a scenario.
+lock/registry preflight before referencing the package from a scenario. Shared
+registries can be produced with `circuitci merge-model-package-registry`, which
+rewrites imported lock paths relative to the merged registry and rejects
+conflicting duplicate entry ids.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

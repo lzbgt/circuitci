@@ -40,6 +40,22 @@ fn assert_model_package_lock_schema_valid(lock: &Value) {
     );
 }
 
+fn assert_model_package_registry_schema_valid(registry: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/model_package_registry.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(registry)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "model package registry schema errors: {errors:#?}"
+    );
+}
+
 fn write_package_files(dir: &std::path::Path) -> (String, String) {
     let artifact = b"stable compact model artifact\n";
     let artifact_sha = sha256_hex(artifact);
@@ -295,6 +311,170 @@ fn export_model_package_rejects_unknown_registry_artifact() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("--registry-artifact-id missing_runtime"));
+}
+
+#[test]
+fn merge_model_package_registry_imports_exported_entries() {
+    let dir = tempfile::tempdir().unwrap();
+    let pkg_a = dir.path().join("pkg_a");
+    let pkg_b = dir.path().join("pkg_b");
+    let shared = dir.path().join("shared");
+    fs::create_dir_all(&pkg_a).unwrap();
+    fs::create_dir_all(&pkg_b).unwrap();
+    fs::create_dir_all(&shared).unwrap();
+    fs::write(pkg_a.join("a.osdi"), b"package a osdi\n").unwrap();
+    fs::write(pkg_b.join("b.osdi"), b"package b osdi\n").unwrap();
+
+    for (dir, package, artifact, entry) in [
+        (
+            &pkg_a,
+            "org.circuitci.test.pkg_a",
+            "a.osdi",
+            "pkg_a_runtime",
+        ),
+        (
+            &pkg_b,
+            "org.circuitci.test.pkg_b",
+            "b.osdi",
+            "pkg_b_runtime",
+        ),
+    ] {
+        let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "export-model-package",
+                "--package-name",
+                package,
+                "--package-version",
+                "1.0.0",
+                "--artifact-id",
+                entry,
+                "--artifact",
+                dir.join(artifact).to_str().unwrap(),
+                "--artifact-format",
+                "osdi_shared_object",
+                "--compiler",
+                "openvaf",
+                "--output",
+                dir.join("package.lock.json").to_str().unwrap(),
+                "--registry-output",
+                dir.join("package_registry.json").to_str().unwrap(),
+                "--registry-entry",
+                entry,
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    let merged_registry = shared.join("compact_model_registry.json");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "merge-model-package-registry",
+            "--input",
+            pkg_b.join("package_registry.json").to_str().unwrap(),
+            "--input",
+            pkg_a.join("package_registry.json").to_str().unwrap(),
+            "--output",
+            merged_registry.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let registry: Value =
+        serde_json::from_str(&fs::read_to_string(&merged_registry).unwrap()).unwrap();
+    assert_model_package_registry_schema_valid(&registry);
+    let packages = registry["packages"].as_array().unwrap();
+    assert_eq!(packages.len(), 2);
+    assert_eq!(packages[0]["id"], "pkg_a_runtime");
+    assert_eq!(packages[0]["lock_path"], "../pkg_a/package.lock.json");
+    assert_eq!(packages[1]["id"], "pkg_b_runtime");
+    assert_eq!(packages[1]["lock_path"], "../pkg_b/package.lock.json");
+
+    let report_path = dir.path().join("shared_registry_verification.json");
+    let verify_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package",
+            pkg_a.join("package.lock.json").to_str().unwrap(),
+            "--registry",
+            merged_registry.to_str().unwrap(),
+            "--registry-entry",
+            "pkg_a_runtime",
+            "--output",
+            report_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(verify_status.success());
+}
+
+#[test]
+fn merge_model_package_registry_rejects_conflicting_duplicate_entries() {
+    let dir = tempfile::tempdir().unwrap();
+    let left = dir.path().join("left");
+    let right = dir.path().join("right");
+    fs::create_dir_all(&left).unwrap();
+    fs::create_dir_all(&right).unwrap();
+    fs::write(left.join("left.lock.json"), "{}").unwrap();
+    fs::write(right.join("right.lock.json"), "{}").unwrap();
+    let left_sha = sha256_hex(b"{}");
+    let right_sha = sha256_hex(b"{}");
+    fs::write(
+        left.join("registry.json"),
+        format!(
+            r#"{{
+  "schema_version": "circuitci.model_package_registry.v1",
+  "packages": [
+    {{
+      "id": "duplicate",
+      "package": {{ "name": "org.circuitci.left", "version": "1.0.0" }},
+      "artifact_id": "left_osdi",
+      "lock_path": "left.lock.json",
+      "lock_sha256": "{left_sha}"
+    }}
+  ]
+}}
+"#
+        ),
+    )
+    .unwrap();
+    fs::write(
+        right.join("registry.json"),
+        format!(
+            r#"{{
+  "schema_version": "circuitci.model_package_registry.v1",
+  "packages": [
+    {{
+      "id": "duplicate",
+      "package": {{ "name": "org.circuitci.right", "version": "1.0.0" }},
+      "artifact_id": "right_osdi",
+      "lock_path": "right.lock.json",
+      "lock_sha256": "{right_sha}"
+    }}
+  ]
+}}
+"#
+        ),
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "merge-model-package-registry",
+            "--input",
+            left.join("registry.json").to_str().unwrap(),
+            "--input",
+            right.join("registry.json").to_str().unwrap(),
+            "--output",
+            dir.path().join("merged.json").to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("duplicate"));
+    assert!(stderr.contains("conflicts"));
 }
 
 #[test]

@@ -738,6 +738,11 @@ The GUI should not become the solver.
   and retained conformance evidence. Registry export now supports an explicit
   `--registry-artifact-id` selector so shared package imports name the intended
   runtime artifact rather than relying on artifact order.
+- Added `circuitci merge-model-package-registry` and
+  `schemas/model_package_registry.schema.json` so exported compact-model
+  registry entries can be aggregated into a shared deterministic registry. The
+  command rewrites lock paths relative to the shared registry, deduplicates
+  identical entries, and rejects conflicting duplicate ids.
 
 ## Risks
 

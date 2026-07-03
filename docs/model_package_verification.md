@@ -46,6 +46,22 @@ The optional `compiler` value is per artifact. When a registry is emitted, use
 registry references; if omitted, the registry points to the first artifact in
 the exported lock.
 
+Shared registries can be produced from exported package registries without
+hand-editing JSON:
+
+```bash
+circuitci merge-model-package-registry \
+  --input vendor_a/compact_model_registry.json \
+  --input vendor_b/compact_model_registry.yaml \
+  --output compact_model_registry.json
+```
+
+`--base existing_registry.json` may be supplied to retain already-qualified
+entries. The merge command accepts JSON or YAML registries, rewrites every
+entry's `lock_path` relative to the output registry directory, emits
+deterministic JSON using `schemas/model_package_registry.schema.json`, drops
+identical duplicate entries, and fails when duplicate entry ids disagree.
+
 ```bash
 circuitci verify-model-package compact_model.lock.yaml \
   --registry compact_model_registry.yaml \
@@ -68,6 +84,8 @@ The verifier checks:
 - registry lock path and lock SHA-256 against the supplied lock file
 
 The package lock shape is defined by `schemas/model_package_lock.schema.json`.
+The package registry shape is defined by
+`schemas/model_package_registry.schema.json`.
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a

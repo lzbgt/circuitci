@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/model_package_registry.schema.json",
+  "title": "CircuitCI Compact Model Package Registry",
+  "type": "object",
+  "required": ["schema_version", "packages"],
+  "properties": {
+    "schema_version": { "const": "circuitci.model_package_registry.v1" },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "package",
+          "artifact_id",
+          "lock_path",
+          "lock_sha256"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "package": {
+            "type": "object",
+            "required": ["name", "version"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "version": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          },
+          "artifact_id": { "type": "string", "minLength": 1 },
+          "lock_path": { "type": "string", "minLength": 1 },
+          "lock_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

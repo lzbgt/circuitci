@@ -148,7 +148,10 @@ Required fields:
   and conformance-report artifacts, and use `--registry-artifact-id` to select
   the runtime artifact imported by registry-backed scenarios. Then use
   `circuitci verify-model-package` to validate the lock and optional registry
-  before adding the package to a scenario; verification output follows
+  before adding the package to a scenario. Use
+  `circuitci merge-model-package-registry` to aggregate exported package
+  registries into a shared deterministic registry while rewriting lock paths
+  relative to that shared registry; verification output follows
   `schemas/model_package_verification_report.schema.json`.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.

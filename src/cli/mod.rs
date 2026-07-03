@@ -73,6 +73,14 @@ enum Command {
         #[arg(long = "registry-artifact-id")]
         registry_artifact_id: Option<String>,
     },
+    MergeModelPackageRegistry {
+        #[arg(long)]
+        base: Option<PathBuf>,
+        #[arg(long = "input")]
+        inputs: Vec<PathBuf>,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
     RepairYaml {
         project: PathBuf,
         #[arg(long, default_value = "iot_basic_v0")]
@@ -333,6 +341,11 @@ pub fn run() -> Result<()> {
             registry_entry,
             registry_artifact_id,
         }),
+        Some(Command::MergeModelPackageRegistry {
+            base,
+            inputs,
+            output,
+        }) => run_merge_model_package_registry(base, inputs, output),
         Some(Command::RepairYaml {
             project,
             profile,
@@ -509,6 +522,29 @@ fn run_verify_model_package(
             output.display()
         );
     }
+    Ok(())
+}
+
+fn run_merge_model_package_registry(
+    base: Option<PathBuf>,
+    inputs: Vec<PathBuf>,
+    output: PathBuf,
+) -> Result<()> {
+    let summary = crate::model_package::merge_model_package_registries(
+        &crate::model_package::ModelPackageRegistryMergeOptions {
+            base,
+            inputs,
+            output,
+        },
+    )?;
+    println!(
+        "CircuitCI merged model package registry {} sha256={} entries={} input_registries={} deduplicated_entries={}",
+        summary.registry_path,
+        summary.registry_sha256,
+        summary.entries,
+        summary.input_registries,
+        summary.deduplicated_entries
+    );
     Ok(())
 }
 

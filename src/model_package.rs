@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 pub const MODEL_PACKAGE_VERIFICATION_SCHEMA: &str = "circuitci.model_package_verification.v1";
@@ -26,6 +26,13 @@ pub struct ModelPackageExportOptions {
     pub registry_output: Option<PathBuf>,
     pub registry_entry: Option<String>,
     pub registry_artifact_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelPackageRegistryMergeOptions {
+    pub base: Option<PathBuf>,
+    pub inputs: Vec<PathBuf>,
+    pub output: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +64,25 @@ pub struct ModelPackageExportArtifactSummary {
     pub artifact_sha256: String,
     pub artifact_format: String,
     pub compiler: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageRegistryMergeSummary {
+    pub registry_path: String,
+    pub registry_sha256: String,
+    pub entries: usize,
+    pub input_registries: usize,
+    pub deduplicated_entries: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct ModelPackageRegistryEntry {
+    id: String,
+    package_name: String,
+    package_version: String,
+    artifact_id: String,
+    lock_path: String,
+    lock_sha256: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -277,6 +303,159 @@ pub fn export_model_package_lock(
     })
 }
 
+pub fn merge_model_package_registries(
+    options: &ModelPackageRegistryMergeOptions,
+) -> Result<ModelPackageRegistryMergeSummary> {
+    validate_registry_merge_options(options)?;
+    let output_parent = options.output.parent().unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(output_parent).with_context(|| {
+        format!(
+            "Failed to create model package registry output directory {}",
+            output_parent.display()
+        )
+    })?;
+    let mut entries = BTreeMap::new();
+    let mut deduplicated_entries = 0usize;
+    let mut registry_paths = Vec::new();
+    if let Some(base) = &options.base {
+        registry_paths.push(base.clone());
+    }
+    registry_paths.extend(options.inputs.iter().cloned());
+    for registry in &registry_paths {
+        for entry in read_registry_entries_for_merge(registry, output_parent)? {
+            match entries.get(&entry.id) {
+                Some(existing) if existing == &entry => {
+                    deduplicated_entries += 1;
+                }
+                Some(_) => {
+                    anyhow::bail!(
+                        "Model package registry entry {} conflicts with an existing entry.",
+                        entry.id
+                    );
+                }
+                None => {
+                    entries.insert(entry.id.clone(), entry);
+                }
+            }
+        }
+    }
+    let registry_text = render_registry_entries_document(entries.values());
+    std::fs::write(&options.output, registry_text.as_bytes()).with_context(|| {
+        format!(
+            "Failed to write model package registry {}",
+            options.output.display()
+        )
+    })?;
+    Ok(ModelPackageRegistryMergeSummary {
+        registry_path: options.output.to_string_lossy().to_string(),
+        registry_sha256: file_sha256_hex(&options.output)?,
+        entries: entries.len(),
+        input_registries: registry_paths.len(),
+        deduplicated_entries,
+    })
+}
+
+fn validate_registry_merge_options(options: &ModelPackageRegistryMergeOptions) -> Result<()> {
+    if options.base.is_none() && options.inputs.is_empty() {
+        anyhow::bail!("merge-model-package-registry requires --base or at least one --input.");
+    }
+    for path in options.base.iter().chain(options.inputs.iter()) {
+        if !path.is_file() {
+            anyhow::bail!("Model package registry {} is missing.", path.display());
+        }
+    }
+    Ok(())
+}
+
+fn read_registry_entries_for_merge(
+    registry_path: &Path,
+    output_parent: &Path,
+) -> Result<Vec<ModelPackageRegistryEntry>> {
+    let text = std::fs::read_to_string(registry_path).with_context(|| {
+        format!(
+            "Unable to read model package registry {}",
+            registry_path.display()
+        )
+    })?;
+    let mut findings = Vec::new();
+    let value =
+        parse_model_package_document(&text, &mut findings, "MODEL_PACKAGE_REGISTRY_INVALID")
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Model package registry {} is not valid JSON or YAML.",
+                    registry_path.display()
+                )
+            })?;
+    let package_entries = value
+        .get("packages")
+        .or_else(|| value.get("model_packages"))
+        .or_else(|| value.get("entries"))
+        .and_then(Value::as_array)
+        .context("Model package registry must contain a packages array.")?;
+    let registry_parent = registry_path.parent().unwrap_or_else(|| Path::new("."));
+    package_entries
+        .iter()
+        .map(|entry| {
+            parse_registry_entry_for_merge(entry, registry_path, registry_parent, output_parent)
+        })
+        .collect()
+}
+
+fn parse_registry_entry_for_merge(
+    entry: &Value,
+    registry_path: &Path,
+    registry_parent: &Path,
+    output_parent: &Path,
+) -> Result<ModelPackageRegistryEntry> {
+    let id = required_registry_string(entry, &["id"], registry_path)?;
+    let package_name = required_registry_string(entry, &["package", "name"], registry_path)
+        .or_else(|_| required_registry_string(entry, &["package_name"], registry_path))
+        .or_else(|_| required_registry_string(entry, &["name"], registry_path))?;
+    let package_version = required_registry_string(entry, &["package", "version"], registry_path)
+        .or_else(|_| required_registry_string(entry, &["package_version"], registry_path))
+        .or_else(|_| required_registry_string(entry, &["version"], registry_path))?;
+    let artifact_id =
+        required_registry_string(entry, &["artifact_id"], registry_path).or_else(|_| {
+            required_registry_string(entry, &["model_package_artifact_id"], registry_path)
+        })?;
+    let lock_path =
+        required_registry_string(entry, &["lock_path"], registry_path).or_else(|_| {
+            required_registry_string(entry, &["model_package_lock_path"], registry_path)
+        })?;
+    let lock_sha256 =
+        required_registry_string(entry, &["lock_sha256"], registry_path).or_else(|_| {
+            required_registry_string(entry, &["model_package_lock_sha256"], registry_path)
+        })?;
+    let absolute_lock_path = registry_parent.join(&lock_path);
+    let output_lock_path = lock_relative_path(output_parent, &absolute_lock_path)?;
+    Ok(ModelPackageRegistryEntry {
+        id,
+        package_name,
+        package_version,
+        artifact_id,
+        lock_path: output_lock_path,
+        lock_sha256,
+    })
+}
+
+fn required_registry_string(entry: &Value, path: &[&str], registry_path: &Path) -> Result<String> {
+    let value = string_field(entry, path).with_context(|| {
+        format!(
+            "Model package registry {} entry is missing {}.",
+            registry_path.display(),
+            path.join(".")
+        )
+    })?;
+    if value.trim().is_empty() {
+        anyhow::bail!(
+            "Model package registry {} entry has empty {}.",
+            registry_path.display(),
+            path.join(".")
+        );
+    }
+    Ok(value)
+}
+
 fn validate_export_options(options: &ModelPackageExportOptions) -> Result<()> {
     for (field, value) in [
         ("package-name", options.package_name.as_str()),
@@ -390,6 +569,33 @@ fn render_registry_document(
         json_string(artifact_id),
         json_string(lock_path),
         json_string(lock_sha),
+    )
+}
+
+fn render_registry_entries_document<'a>(
+    entries: impl IntoIterator<Item = &'a ModelPackageRegistryEntry>,
+) -> String {
+    let rows = entries
+        .into_iter()
+        .map(render_registry_entry)
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!(
+        "{{\n  \"schema_version\": {},\n  \"packages\": [\n{}\n  ]\n}}\n",
+        json_string(MODEL_PACKAGE_REGISTRY_SCHEMA),
+        rows,
+    )
+}
+
+fn render_registry_entry(entry: &ModelPackageRegistryEntry) -> String {
+    format!(
+        "    {{\n      \"id\": {},\n      \"package\": {{\n        \"name\": {},\n        \"version\": {}\n      }},\n      \"artifact_id\": {},\n      \"lock_path\": {},\n      \"lock_sha256\": {}\n    }}",
+        json_string(&entry.id),
+        json_string(&entry.package_name),
+        json_string(&entry.package_version),
+        json_string(&entry.artifact_id),
+        json_string(&entry.lock_path),
+        json_string(&entry.lock_sha256),
     )
 }
 
@@ -802,10 +1008,23 @@ fn lock_relative_path(base_dir: &Path, target: &Path) -> Result<String> {
         .with_context(|| format!("Unable to resolve {}", base_dir.display()))?;
     let target = std::fs::canonicalize(target)
         .with_context(|| format!("Unable to resolve {}", target.display()))?;
-    let path = target
-        .strip_prefix(&base)
-        .map(Path::to_path_buf)
-        .unwrap_or(target);
+    let base_components = base.components().collect::<Vec<_>>();
+    let target_components = target.components().collect::<Vec<_>>();
+    let common = base_components
+        .iter()
+        .zip(target_components.iter())
+        .take_while(|(base, target)| base == target)
+        .count();
+    let mut path = PathBuf::new();
+    for _ in common..base_components.len() {
+        path.push("..");
+    }
+    for component in target_components.iter().skip(common) {
+        path.push(component.as_os_str());
+    }
+    if path.as_os_str().is_empty() {
+        path.push(".");
+    }
     Ok(path.to_string_lossy().to_string())
 }
 
