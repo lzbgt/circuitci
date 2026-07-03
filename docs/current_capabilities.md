@@ -150,10 +150,14 @@ Current analog support:
 - `analog_pole_zero` scenarios with `SPICE_POLE_ZERO_ANALYSIS` for `.PZ`
   small-signal pole/zero extraction contracts. The Board IR/schema can declare
   `analysis.type: pz`, output and reference nodes, an input source, and a mode
-  of `poles`, `zeros`, or `poles_and_zeros`. The validator checks bindings and
-  source provenance, then fails closed with planned `pole_zero_summary`
-  evidence until a backend adapter emits normalized output and a solver
-  manifest.
+  of `poles`, `zeros`, or `poles_and_zeros`. External `ngspice` runs write
+  `pole_zero_raw.txt`, `pole_zero_summary.csv`, and `solver_manifest.json`;
+  the normalized summary records each pole/zero as complex rad/s coordinates
+  plus derived frequency. Opt-in real-ngspice conformance coverage is
+  available through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`;
+  it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
+  fail-closed with planning evidence for this path.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

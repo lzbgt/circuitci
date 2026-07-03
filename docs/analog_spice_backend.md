@@ -274,8 +274,18 @@ For a scenario with check `SPICE_POLE_ZERO_ANALYSIS`:
    generated Board IR decks, `pole_zero_input_source` must name a generated
    board component.
 4. `pole_zero_mode` is one of `poles`, `zeros`, or `poles_and_zeros`.
-5. All backends currently fail closed with backend-planning evidence until an
-   adapter emits normalized `pole_zero_summary` evidence and a solver manifest.
+5. External `backend: ngspice` writes `circuitci_ngspice_pz.cir`,
+   `ngspice_pz.log`, `pole_zero_raw.txt`, `pole_zero_summary.csv`, and
+   `solver_manifest.json`. The wrapper uses the ngspice control-command form
+   `pz node1 node2 node3 node4 cur|vol pol|zer|pz`, omits the declared input
+   source element from the small-signal PZ deck, and normalizes printed roots
+   into complex rad/s plus derived frequency. Opt-in real-ngspice conformance
+   coverage is available through
+   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`; the
+   test is skipped by default unless the variable is set and `ngspice` is on
+   `PATH`.
+6. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+   until those adapters emit the same normalized `pole_zero_summary` contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

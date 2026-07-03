@@ -510,9 +510,10 @@ The GUI should not become the solver.
   `transfer_function_summary` plus opt-in real-ngspice conformance coverage;
   next add Xyce planning or adapter support where the backend exposes
   equivalent output.
-- The first `.PZ` path is a Board IR/schema contract with output/reference
-  nodes, input source, mode, and fail-closed `pole_zero_summary` backend
-  planning before enabling solver adapters.
+- The first `.PZ` path is an external-ngspice adapter with a Board IR/schema
+  contract for output/reference nodes, input source, mode, and normalized
+  `pole_zero_summary` plus opt-in real-ngspice conformance; next add
+  non-ngspice planning/adapters.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

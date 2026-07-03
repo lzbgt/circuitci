@@ -8,6 +8,7 @@ mod analog_noise_assertions;
 mod analog_noise_runner;
 mod analog_noise_spice;
 mod analog_operating_limits;
+mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
 mod analog_runner;
 mod analog_soa;
