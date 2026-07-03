@@ -483,6 +483,9 @@ fn normalize_measure_statement(statement: &str) -> String {
 }
 
 pub(super) fn measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
+    if template.operation == "delay" {
+        return measure_delay_statement("meas", mode, template);
+    }
     let mut statement = String::from("meas ");
     statement.push_str(mode);
     statement.push(' ');
@@ -519,6 +522,65 @@ pub(super) fn measure_template_statement(mode: &str, template: &AnalogMeasureTem
         }
     }
     statement
+}
+
+pub(super) fn measure_delay_statement(
+    command: &str,
+    mode: &str,
+    template: &AnalogMeasureTemplate,
+) -> String {
+    let mut statement = String::new();
+    statement.push_str(command);
+    statement.push(' ');
+    statement.push_str(mode);
+    statement.push(' ');
+    statement.push_str(&template.name);
+    statement.push_str(" TRIG ");
+    statement.push_str(
+        template
+            .trigger_expression
+            .as_deref()
+            .expect("measure delay trigger_expression was validated"),
+    );
+    statement.push_str(" VAL=");
+    statement.push_str(&format!(
+        "{:.12e}",
+        template
+            .trigger_value
+            .expect("measure delay trigger_value was validated")
+    ));
+    append_delay_selector(
+        &mut statement,
+        template.trigger_edge.as_deref(),
+        template.trigger_count,
+    );
+    statement.push_str(" TARG ");
+    statement.push_str(&template.expression);
+    statement.push_str(" VAL=");
+    statement.push_str(&format!(
+        "{:.12e}",
+        template
+            .target_value
+            .expect("measure delay target_value was validated")
+    ));
+    append_delay_selector(
+        &mut statement,
+        template.target_edge.as_deref(),
+        template.target_count,
+    );
+    statement
+}
+
+fn append_delay_selector(statement: &mut String, edge: Option<&str>, count: Option<u32>) {
+    let selector = match edge.unwrap_or("cross") {
+        "rise" => "RISE",
+        "fall" => "FALL",
+        _ => "CROSS",
+    };
+    statement.push(' ');
+    statement.push_str(selector);
+    statement.push('=');
+    statement.push_str(&count.unwrap_or(1).to_string());
 }
 
 fn parse_number(value: &str) -> Option<f64> {
@@ -607,6 +669,13 @@ analog:
             name: "avg_out".to_string(),
             operation: "avg".to_string(),
             expression: "v(out)".to_string(),
+            trigger_expression: None,
+            trigger_value: None,
+            target_value: None,
+            trigger_edge: None,
+            target_edge: None,
+            trigger_count: None,
+            target_count: None,
             from_us: Some(20.0),
             to_us: Some(100.0),
             at_us: None,
@@ -628,6 +697,33 @@ analog:
                 &template
             ),
             "meas tran avg_out AVG v(out) FROM=2.000000000000e-5 TO=1.000000000000e-4"
+        );
+    }
+
+    #[test]
+    fn measure_template_statement_formats_delay() {
+        let template = crate::board_ir::AnalogMeasureTemplate {
+            name: "prop_delay".to_string(),
+            operation: "delay".to_string(),
+            expression: "v(out)".to_string(),
+            trigger_expression: Some("v(vin)".to_string()),
+            trigger_value: Some(0.5),
+            target_value: Some(0.5),
+            trigger_edge: Some("rise".to_string()),
+            target_edge: Some("rise".to_string()),
+            trigger_count: Some(1),
+            target_count: Some(1),
+            from_us: None,
+            to_us: None,
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            measure_template_statement("tran", &template),
+            "meas tran prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
         );
     }
 }

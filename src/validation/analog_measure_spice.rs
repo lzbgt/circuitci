@@ -485,7 +485,7 @@ fn validate_measure_template(
 ) -> Result<(), String> {
     if !matches!(
         template.operation.as_str(),
-        "avg" | "max" | "min" | "rms" | "find"
+        "avg" | "max" | "min" | "rms" | "find" | "delay"
     ) {
         return Err(format!(
             "analog_measure template {} uses unsupported operation {}.",
@@ -493,6 +493,9 @@ fn validate_measure_template(
         ));
     }
     validate_expression_references(&template.expression, bound_nodes, scenario)?;
+    if template.operation == "delay" {
+        return validate_delay_template(mode, template, bound_nodes, scenario);
+    }
     if mode == "tran" {
         validate_optional_window_us(template)?;
         if template.from_hz.is_some() || template.to_hz.is_some() || template.at_hz.is_some() {
@@ -513,6 +516,98 @@ fn validate_measure_template(
     if template.operation == "find" && template.at_us.is_none() && template.at_hz.is_none() {
         return Err(format!(
             "analog_measure find template {} requires at_us or at_hz.",
+            template.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_delay_template(
+    mode: &str,
+    template: &AnalogMeasureTemplate,
+    bound_nodes: &BTreeSet<&str>,
+    scenario: &Scenario,
+) -> Result<(), String> {
+    if mode != "tran" {
+        return Err(format!(
+            "analog_measure delay template {} is only supported for transient mode.",
+            template.name
+        ));
+    }
+    let Some(trigger_expression) = nonempty(template.trigger_expression.as_deref()) else {
+        return Err(format!(
+            "analog_measure delay template {} requires trigger_expression.",
+            template.name
+        ));
+    };
+    validate_expression_references(trigger_expression, bound_nodes, scenario)?;
+    let Some(trigger_value) = template.trigger_value else {
+        return Err(format!(
+            "analog_measure delay template {} requires trigger_value.",
+            template.name
+        ));
+    };
+    if !trigger_value.is_finite() {
+        return Err(format!(
+            "analog_measure delay template {} requires finite trigger_value.",
+            template.name
+        ));
+    }
+    let Some(target_value) = template.target_value else {
+        return Err(format!(
+            "analog_measure delay template {} requires target_value.",
+            template.name
+        ));
+    };
+    if !target_value.is_finite() {
+        return Err(format!(
+            "analog_measure delay template {} requires finite target_value.",
+            template.name
+        ));
+    }
+    validate_delay_edge("trigger_edge", template.trigger_edge.as_deref(), template)?;
+    validate_delay_edge("target_edge", template.target_edge.as_deref(), template)?;
+    validate_delay_count("trigger_count", template.trigger_count, template)?;
+    validate_delay_count("target_count", template.target_count, template)?;
+    if template.from_us.is_some()
+        || template.to_us.is_some()
+        || template.at_us.is_some()
+        || template.from_hz.is_some()
+        || template.to_hz.is_some()
+        || template.at_hz.is_some()
+    {
+        return Err(format!(
+            "analog_measure delay template {} may not use at/from/to window fields.",
+            template.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_delay_edge(
+    field: &str,
+    edge: Option<&str>,
+    template: &AnalogMeasureTemplate,
+) -> Result<(), String> {
+    if let Some(edge) = edge
+        && !matches!(edge, "rise" | "fall" | "cross")
+    {
+        return Err(format!(
+            "analog_measure delay template {} requires {field} to be rise, fall, or cross.",
+            template.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_delay_count(
+    field: &str,
+    count: Option<u32>,
+    template: &AnalogMeasureTemplate,
+) -> Result<(), String> {
+    if let Some(0) = count {
+        return Err(format!(
+            "analog_measure delay template {} requires {field} >= 1.",
             template.name
         ));
     }

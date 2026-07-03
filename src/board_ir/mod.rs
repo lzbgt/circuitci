@@ -1315,6 +1315,20 @@ pub struct AnalogMeasureTemplate {
     pub operation: String,
     pub expression: String,
     #[serde(default)]
+    pub trigger_expression: Option<String>,
+    #[serde(default)]
+    pub trigger_value: Option<f64>,
+    #[serde(default)]
+    pub target_value: Option<f64>,
+    #[serde(default)]
+    pub trigger_edge: Option<String>,
+    #[serde(default)]
+    pub target_edge: Option<String>,
+    #[serde(default)]
+    pub trigger_count: Option<u32>,
+    #[serde(default)]
+    pub target_count: Option<u32>,
+    #[serde(default)]
     pub from_us: Option<f64>,
     #[serde(default)]
     pub to_us: Option<f64>,

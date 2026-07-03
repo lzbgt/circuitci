@@ -4,7 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use super::analog_measure_runner::{NgspiceMeasureRun, measure_raw_to_csv};
+use super::analog_measure_runner::{
+    NgspiceMeasureRun, measure_delay_statement, measure_raw_to_csv,
+};
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
     detect_nonconvergence, ngspice_error, rewrite_include_line, sweep_temperature_c,
@@ -398,8 +400,12 @@ fn build_xyce_measure_wrapper(
 }
 
 fn xyce_measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
+    let xyce_mode = mode.to_ascii_uppercase();
+    if template.operation == "delay" {
+        return measure_delay_statement(".MEASURE", &xyce_mode, template);
+    }
     let mut statement = String::from(".MEASURE ");
-    statement.push_str(&mode.to_ascii_uppercase());
+    statement.push_str(&xyce_mode);
     statement.push(' ');
     statement.push_str(&template.name);
     statement.push(' ');
@@ -455,6 +461,13 @@ mod tests {
             name: "avg_out".to_string(),
             operation: "avg".to_string(),
             expression: "v(out)".to_string(),
+            trigger_expression: None,
+            trigger_value: None,
+            target_value: None,
+            trigger_edge: None,
+            target_edge: None,
+            trigger_count: None,
+            target_count: None,
             from_us: Some(20.0),
             to_us: Some(100.0),
             at_us: None,
@@ -466,6 +479,33 @@ mod tests {
         assert_eq!(
             xyce_measure_template_statement("tran", &template),
             ".MEASURE TRAN avg_out AVG v(out) FROM=2.000000000000e-5 TO=1.000000000000e-4"
+        );
+    }
+
+    #[test]
+    fn xyce_measure_template_statement_formats_delay() {
+        let template = AnalogMeasureTemplate {
+            name: "prop_delay".to_string(),
+            operation: "delay".to_string(),
+            expression: "v(out)".to_string(),
+            trigger_expression: Some("v(vin)".to_string()),
+            trigger_value: Some(0.5),
+            target_value: Some(0.5),
+            trigger_edge: Some("rise".to_string()),
+            target_edge: Some("rise".to_string()),
+            trigger_count: Some(1),
+            target_count: Some(1),
+            from_us: None,
+            to_us: None,
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            xyce_measure_template_statement("tran", &template),
+            ".MEASURE TRAN prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
         );
     }
 }

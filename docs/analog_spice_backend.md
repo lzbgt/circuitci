@@ -65,8 +65,8 @@ owns a DC or AC output-variable sensitivity contract with optional ngspice
 parameter filters for `.SENS` exports. An `analog_fourier` scenario owns a
 transient-backed `.FOUR` harmonic extraction contract for a bound output
 expression and fundamental frequency. An `analog_measure` scenario owns
-reviewed ngspice `.MEASURE` scalar extraction statements for transient or AC
-results.
+reviewed ngspice `.MEASURE` scalar extraction statements or portable structured
+measure templates for transient or AC results.
 
 Required fields:
 
@@ -361,7 +361,10 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 3. Each raw statement must be a single-line ngspice `meas`/`.meas` command
    whose mode and result name match the declared metadata.
 4. Each template declares `name`, `operation` (`avg`, `max`, `min`, `rms`, or
-   `find`), `expression`, and optional time/frequency windows. CircuitCI renders
+   `find`), `expression`, and optional time/frequency windows. Transient
+   `operation: delay` templates declare `trigger_expression`, `trigger_value`,
+   `target_value`, and optional `trigger_edge`/`target_edge` plus crossing
+   counts; they render to SPICE `TRIG`/`TARG` measurements. CircuitCI renders
    templates into backend-specific measure commands: ngspice receives generated
    `meas` commands, while explicit Xyce receives generated `.MEASURE` commands.
 5. Voltage/current references in raw statements or templates must bind to

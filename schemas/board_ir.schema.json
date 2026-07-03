@@ -2890,8 +2890,15 @@
                       "required": ["name", "operation", "expression"],
                       "properties": {
                         "name": { "type": "string", "minLength": 1 },
-                        "operation": { "enum": ["avg", "max", "min", "rms", "find"] },
+                        "operation": { "enum": ["avg", "max", "min", "rms", "find", "delay"] },
                         "expression": { "type": "string", "minLength": 1 },
+                        "trigger_expression": { "type": "string", "minLength": 1 },
+                        "trigger_value": { "type": "number" },
+                        "target_value": { "type": "number" },
+                        "trigger_edge": { "enum": ["rise", "fall", "cross"] },
+                        "target_edge": { "enum": ["rise", "fall", "cross"] },
+                        "trigger_count": { "type": "integer", "minimum": 1 },
+                        "target_count": { "type": "integer", "minimum": 1 },
                         "from_us": { "type": "number", "minimum": 0 },
                         "to_us": { "type": "number", "exclusiveMinimum": 0 },
                         "at_us": { "type": "number", "minimum": 0 },
@@ -2899,7 +2906,13 @@
                         "to_hz": { "type": "number", "exclusiveMinimum": 0 },
                         "at_hz": { "type": "number", "exclusiveMinimum": 0 }
                       },
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "if": { "properties": { "operation": { "const": "delay" } } },
+                          "then": { "required": ["trigger_expression", "trigger_value", "target_value"] }
+                        }
+                      ]
                     }
                   },
                   "s_parameter_ports": {

@@ -350,6 +350,59 @@ fn measure_template_backend_generates_statement_and_normalizes_summary() {
 
 #[cfg(unix)]
 #[test]
+fn measure_delay_template_generates_trig_targ_statement() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'prop_delay = 1.23400e-06 targ= 2.00000e-06 trig= 7.66000e-07'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: prop_delay\n            operation: delay\n            expression: v(out)\n            trigger_expression: v(vin)\n            trigger_value: 0.5\n            target_value: 0.5\n            trigger_edge: rise\n            target_edge: rise\n            trigger_count: 1\n            target_count: 1\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("prop_delay,tran,1.234000000000e-6"));
+    let wrapper =
+        fs::read_to_string(artifact_path(&report, "circuitci_ngspice_measure.cir")).unwrap();
+    assert!(
+        wrapper.contains(
+            "meas tran prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
+        )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn measure_ac_mode_accepts_frequency_domain_statement() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable_with_body(
@@ -507,6 +560,54 @@ fn measure_xyce_template_backend_normalizes_summary_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn measure_xyce_delay_template_normalizes_summary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\n{ printf '%s\\n' 'INDEX prop_delay'; printf '%s\\n' '0 1.23400e-06'; } > circuitci_xyce_measure.mt0\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "xyce",
+        "tran",
+        "          - name: prop_delay\n            operation: delay\n            expression: v(out)\n            trigger_expression: v(vin)\n            trigger_value: 0.5\n            target_value: 0.5\n            trigger_edge: rise\n            target_edge: rise\n",
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("prop_delay,tran,1.234000000000e-6"));
+    let wrapper = fs::read_to_string(artifact_path(&report, "circuitci_xyce_measure.cir")).unwrap();
+    assert!(
+        wrapper.contains(
+            ".MEASURE TRAN prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
+        )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn real_xyce_measure_template_conformance_when_enabled() {
     if !real_xyce_measure_conformance_enabled() {
         return;
@@ -630,6 +731,32 @@ fn measure_template_rejects_unbound_expression_node() {
         "ngspice",
         "tran",
         "          - name: avg_out\n            operation: avg\n            expression: v(missing)\n            from_us: 20.0\n            to_us: 100.0\n",
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unbound node missing")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_delay_template_rejects_unbound_trigger_node() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: prop_delay\n            operation: delay\n            expression: v(out)\n            trigger_expression: v(missing)\n            trigger_value: 0.5\n            target_value: 0.5\n            trigger_edge: rise\n            target_edge: rise\n",
     );
 
     let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
