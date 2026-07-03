@@ -95,7 +95,10 @@ circuitci verify-model-package compact_model.lock.yaml \
 The command writes a JSON report using
 `schemas/model_package_verification_report.schema.json` and exits non-zero when
 any critical finding is present. It accepts JSON or YAML lock and registry
-documents.
+documents. The report includes `conformance_checks[]`, a compact projection of
+validated `model_conformance_report` rows with report artifact id/path, target
+artifact id/SHA-256, check name, analysis, solver, result, and referenced check
+artifacts.
 
 The verifier checks:
 
@@ -106,6 +109,7 @@ The verifier checks:
   `schemas/model_conformance_report.schema.json`
 - conformance report package identity, target artifact id, runtime artifact
   SHA-256, overall pass result, and per-check pass results
+- conformance check summaries for package-review dashboards
 - optional registry entry existence
 - registry package identity against the lock package identity
 - registry lock path and lock SHA-256 against the supplied lock file

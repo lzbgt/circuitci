@@ -422,6 +422,16 @@ fn export_model_conformance_report_generates_verifiable_package_evidence() {
     assert!(verify_status.success());
     let report: Value = serde_json::from_str(&fs::read_to_string(verify_report).unwrap()).unwrap();
     assert_eq!(report["result"], "pass");
+    let checks = report["conformance_checks"].as_array().unwrap();
+    assert_eq!(checks.len(), 1);
+    assert_eq!(checks[0]["report_artifact_id"], "generated_conformance");
+    assert_eq!(checks[0]["target_artifact_id"], "runtime_osdi");
+    assert_eq!(checks[0]["target_artifact_sha256"], runtime_sha);
+    assert_eq!(checks[0]["check_name"], "transient_smoke");
+    assert_eq!(checks[0]["analysis"], "tran");
+    assert_eq!(checks[0]["solver"], "ngspice");
+    assert_eq!(checks[0]["result"], "pass");
+    assert_eq!(checks[0]["artifacts"][0], "out/solver_manifest.json");
     assert_model_package_report_schema_valid(&report);
 }
 

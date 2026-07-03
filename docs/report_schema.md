@@ -1426,12 +1426,16 @@ include the same information in the "Model File Provenance" section.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry
-hashes, per-artifact hash status, and stable `MODEL_PACKAGE_*` finding ids.
+hashes, per-artifact hash status, projected `conformance_checks[]`, and stable
+`MODEL_PACKAGE_*` finding ids.
 When a lock includes an artifact with
 `artifact_format: model_conformance_report`, the verifier also validates that
 document against `schemas/model_conformance_report.schema.json` and requires it
 to bind to a package artifact id, runtime artifact SHA-256, matching package
-identity, an overall `pass` result, and passing check rows.
+identity, an overall `pass` result, and passing check rows. Each projected
+conformance check records the report artifact id/path, target artifact id and
+SHA-256, check name, analysis, optional solver, result, and referenced check
+artifacts.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

@@ -764,6 +764,10 @@ The GUI should not become the solver.
   `model_conformance_report` JSON. This closes the package-authoring loop:
   validate a compact-model scenario, generate evidence, export a multi-artifact
   lock, then verify the package without hand-authoring conformance JSON.
+- Added `verify-model-package` `conformance_checks[]` projection so package
+  reviewers can see qualified analyses, solvers, target artifact hashes, and
+  referenced evidence artifacts in the package verification report without
+  opening every retained conformance JSON file.
 
 ## Risks
 
