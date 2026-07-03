@@ -506,8 +506,8 @@ The GUI should not become the solver.
 ### Phase 2: Frequency-Domain Breadth
 
 - Add `.TF`, `.PZ`, `.SENS`, `.FOUR`, and `.MEASURE` support where available.
-- Extend the initial explicit-Xyce S-parameter path with real-solver
-  conformance fixtures and supported two-port test-bench generation.
+- Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
+  conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path

@@ -127,9 +127,11 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    report consumers should use it for provenance and output discovery instead
    of inferring run state from backend-specific filenames alone.
    Opt-in real-Xyce conformance coverage is available through
-   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli`; the
-   conformance test is skipped by default unless the variable is set and
-   `Xyce` or `xyce` is on `PATH`.
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
+   transient/AC/DC/noise and
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sparameter_cli` for
+   S-parameter; these tests are skipped by default unless the variable is set
+   and `Xyce` or `xyce` is on `PATH`.
 10. For generated Board IR decks, append datasheet operating-limit probes for
    MOSFET, BJT, and diode voltage/current/power ratings. Exceeding a rating
    emits a critical `SPICE_OPERATING_LIMIT` finding with measured maximum
