@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+
+<head>
+  <title>Ngspice circuit simulator - Verilog-A with OSDI/OpenVAF </title>
+  <link rel="stylesheet" type="text/css" href="ngstyle.css">
+  <meta name="generator" content="screem 0.12.2">
+  <meta name="author" content="Paolo Nenzi">
+  <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1">
+  <meta http-equiv="Content-Script-Type" content="text/javascript">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta name="description" content="Ngspice circuit simulator - OSDI/OpenVAF">
+  <meta name="keywords" content="spice, spice3,spice3f,spice3f5, circuit, EDA, simulator, electronics, semiconductor">
+</head>
+
+<body>
+  <DIV id="paper">
+    <DIV id="header">
+      <table border="0" align="center" cellspacing="1" cellpadding="1" width="100%">
+        <tr>
+          <td><img src="./images/nglogo.jpg" alt="NGSPICE"> </td>
+          <td><img src="./images/ngtext.jpg" alt="Mixed mode - mixed level circuit simulator - based on Berkeley's Spice3f5"></td>
+          <td>
+            <TABLE border="0">
+              <tr>
+                <td><a href="https://sourceforge.net/projects/ngspice"><img src="./images/ngsumD.jpg" alt="Summary" border="0"> </a></td>
+              </tr>
+            </TABLE>
+          </td>
+        </tr>
+      </table>
+    </DIV>
+
+    <DIV id="navcontainer">
+      <ul id="navlist">
+        <li><a href="./index.html">Home</a></li>
+        <li><A href="./screens.html">Screenshots</A></li>
+        <li><A href="./download.html">Download</A></li>
+        <li><A href="./docs.html">Documentation</A></li>
+        <li><a href="./extras.html">Extras/Options</a></li>
+        <li><A href="./contrib.html">Contributions</A></li>
+        <li id="active"><A href="#" id="current">Development</A></li>
+        <li><A href="./resources.html">Simulation Environments</A></li>
+        <li><A href="./quality.html">Quality</A></li>
+    </DIV>
+
+    <div id="left">
+      <div id="context">
+        <div id="contextcontent">
+          <p class="contextual title">Ngspice Development</p>
+          <div id="menucontainer">
+            <ul id="menulist">
+              <li><A href="./devel.html">Developers Info</A></li>
+              <li><A href="./bugrep.html">Bug Reports</A></li>
+              <li><A href="./gitaccess.html">Git Access</A></li>
+              <li><A href="./devdocs.html">Docs for developers</A></li>
+              <li><A href="./mlarch.html">Mailing List Archives</A></li>
+              <li><A href="./relinfo.html">Releases Info</A></li>
+              <li><A href="./roadmap.html">Roadmap</A></li>
+              <li><A href="./docwrite.html">Writing Docs</A></li>
+              <li>
+                <hr>
+              </li>
+              <li><A href="./applic.html#test">Tests</A></li>
+            </ul>
+            <p class="contextual title">OSDI/OpenVAF for ngspice</p>
+            <ul id="menulist">
+              <li id="active"><A href="./osdi.html" #id="current">What is OSDI/OpenVAF ?</A></li>
+              <li id="active"><A href="./osdi.html" #id="start">Getting started with OSDI/OpenVAF</A></li>
+            </ul>
+            <p class="contextual title">TCLspice</p>
+            <ul id="menulist">
+              <li><A href="./tclspice.html">What is TCLspice ?</A></li>
+              <li><A href="./tclusers.html">TCLspice users manual</A></li>
+              <li><A href="./tclexamples.html">TCLspice by examples</A></li>
+              <li><A href="./tclnotes.html">Designer's note</A></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div id="main">
+        <div id="maincontent">
+          <div id="current"></div>
+          <p class="header">Ngspice uses OSDI/OpenVAF for including Verilog-A compact device models</p>
+          <p class="justified">Since version 39 ngspice contains the
+            <a href="https://semimod.de/projects/">OSDI</a> interface. OSDI allows loading 
+            compiled Verilog-A compact device models at run-time. Advantages of this new
+            approach are:
+          </p>
+          <ul>
+            <li>All Verilog-A compact device models (from 
+              <a href="https://github.com/dwarning/VA-Models">VA-Models</a>, a collection of Verilog-A
+              models preared for ngspice, from <a href="https://si2.org/standard-models/">CMC</a>,
+              or from other sources) are now accessible by ngspice.</li>
+            <li>User-provided Verilog-A compact device models may be compiled, loaded and simulated as well.</li>
+            <li>Very fast model compilation with <a href="https://openvaf.semimod.de/">OpenVAF</a>
+              (around 2s, needed once per model, which then is usable for all subsequent simulations).</li>
+            <li>Very efficient model execution in ngspice, including parallel evaluation.</li>
+            <li>No code changes and re-compilation of ngspice required.</li>
+            <li>Multiple models within a single simulation run are loaded on the fly.</li>
+          </ul>
+          <div id="start"></div>
+          <p class="header">Getting started with OSDI/OpenVAF</p>
+          <p class="justified">Several steps are necessary to add Verilog-A models to ngspice. Here
+            you will find only a coarse to do list. A detailed description is available in the ngspice
+            manual, chapter 13 (available as <a href="./docs/ngspice-manual.pdf">pdf</a> or
+            <a href="./docs/ngspice-html-manual/manual.xhtml">html</a>).
+          <ul>
+            <li>Get a Verilog-A compact model: There is a github repository
+              <a href="https://github.com/dwarning/VA-Models">VA-Models</a> providing nearly all
+              of the publicly available Verilog-A compact models. The models are checked against the LRM 2.4.0
+              Verilog AMS standard. <a href="https://si2.org/standard-models/">CMC</a> is another
+              source. Or you may develop your own models!</li>
+            <li>Obtain suitable model parameters.</li>
+            <li>Obtain and install the OpenVAF compiler (Linux or MS Windows, no macOS for now).</li>
+            <li>Compile the model with OpenVAF, obtaining a shared model library *.osdi.</li>
+            <li>Load *.osdi into ngspice.</li>
+            <li>Create your netlist, adding device lines starting with N for the *.osdi models.</li>
+            <li>Run your simulation.</li>
+          </ul>
+          Steps 1 to 5 need to be done only once, if you want to set up a series of simulations.
+          Simulation speed has been proven to be similar (sometimes even faster) compared to
+          built-in C-coded models.
+          </p>
+          <br>
+          <br>
+          <div id="obsolete"></div>
+          <p class="header">ADMS is declared deprecated</p>
+          <p class="justified">ADMS is no longer part of the ngspice development project. Its usage
+            for integrating Verilog-A compact device models has been difficult. Its output often
+            has been buggy, and there is no active maintenance available.
+            It will be removed in a future ngspice release version.</p>
+
+        </div>
+      </div>
+    </div>
+    <div id=footer>
+      <table align="center" width="100%">
+        <tr>
+          <td align="left" width="25%"> <a href="http://sourceforge.net">
+              <img src="https://sourceforge.net/sflogo.php?group_id=38962&amp;type=1" width="88" height="31" border="0" alt="SourceForge.net Logo"></a></td>
+          <td align="center"> All text is available under the terms of the
+            <a class="internal" href="https://www.gnu.org/licenses/fdl-1.3.html">GNU Free Documentation
+              License</a>
+          </td>
+          <td align="right" width="25%"><img src="./images/spice.jpg" alt=""></td>
+        </tr>
+      </table>
+    </div>
+  </DIV>
+</body>
+
+</html>

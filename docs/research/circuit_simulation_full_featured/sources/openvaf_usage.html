@@ -1,0 +1,92 @@
+<!doctype html><html lang=en-US><head><meta charset=utf-8><meta content="ie=edge" http-equiv=x-ua-compatible><meta content="width=device-width,initial-scale=1,shrink-to-fit=no" name=viewport><link as=font href=https://openvaf.semimod.de/fonts/vendor/jost/jost-v4-latin-regular.woff2 rel=preload type=font/woff2><link as=font href=https://openvaf.semimod.de/fonts/vendor/jost/jost-v4-latin-700.woff2 rel=preload type=font/woff2><link href=https://openvaf.semimod.de/main.css rel=stylesheet><meta content="index, follow" name=robots><meta content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" name=googlebot><meta content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" name=bingbot><title>Usage | OpenVAF</title><meta content="Usage of OpenVAF and the associated Ngspice integration." name=description><link href=https://openvaf.semimod.de/docs/getting-started/usage/ rel=canonical><script type=application/ld+json>
+  {
+    "@context": "http://schema.org",
+    "@type": "BreadcrumbList",
+    
+      
+      
+        
+        
+        
+        
+        
+        
+        
+        
+          {
+            "@type": "ListItem",
+            "position":  1 ,
+            "name": "Home",
+            "item": "https://openvaf.semimod.de/"
+          },
+          
+          
+          {
+            "@type": "ListItem",
+            "position":  2 ,
+            "name": "Docs",
+            "item": "https://openvaf.semimod.de/docs/"
+          },
+        
+      
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+          
+          
+          {
+            "@type": "ListItem",
+            "position":  3 ,
+            "name": "Getting Started",
+            "item": "https://openvaf.semimod.de/docs/getting-started/"
+          },
+        
+      
+        
+        
+        
+        
+        
+        
+        
+        
+          
+          
+          {
+            "@type": "ListItem",
+            "position":  4 ,
+            "name": "Usage",
+            "item": "https://openvaf.semimod.de/docs/getting-started/usage/"
+          },
+        
+      
+    
+  }
+</script><meta content=#fff name=theme-color><link href=https://openvaf.semimod.de/apple-touch-icon.png rel=apple-touch-icon sizes=180x180><link href=https://openvaf.semimod.de/favicon-32x32.png rel=icon sizes=32x32 type=image/png><link href=https://openvaf.semimod.de/favicon-16x16.png rel=icon sizes=16x16 type=image/png><link href=https://openvaf.semimod.de/site.webmanifest rel=manifest><body class="docs single"><div class="header-bar fixed-top"></div><header class="navbar fixed-top navbar-expand-md navbar-light"><div class=container><input class="menu-btn order-0" id=menu-btn type=checkbox><label class="menu-icon d-md-none" for=menu-btn><span class=navicon></span></label><a class="navbar-brand order-1 order-md-0 me-auto" href=https://openvaf.semimod.de>OpenVAF</a><button aria-label="Toggle mode" class="btn btn-link order-2 order-md-4" id=mode type=button><span class=toggle-dark><svg class="feather feather-moon" viewbox="0 0 24 24" fill=none height=20 stroke=currentColor stroke-linecap=round stroke-linejoin=round stroke-width=2 width=20 xmlns=http://www.w3.org/2000/svg><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span> <span class=toggle-light><svg class="feather feather-sun" viewbox="0 0 24 24" fill=none height=20 stroke=currentColor stroke-linecap=round stroke-linejoin=round stroke-width=2 width=20 xmlns=http://www.w3.org/2000/svg><circle cx=12 cy=12 r=5></circle><line x1=12 x2=12 y1=1 y2=3></line><line x1=12 x2=12 y1=21 y2=23></line><line x1=4.22 x2=5.64 y1=4.22 y2=5.64></line><line x1=18.36 x2=19.78 y1=18.36 y2=19.78></line><line x1=1 x2=3 y1=12 y2=12></line><line x1=21 x2=23 y1=12 y2=12></line><line x1=4.22 x2=5.64 y1=19.78 y2=18.36></line><line x1=18.36 x2=19.78 y1=5.64 y2=4.22></line></svg></span></button><ul class="navbar-nav fork-me order-3 order-md-5"><li class=nav-item><a class=nav-link href=https://github.com/pascalkuthe/openvaf><svg class="feather feather-github" viewbox="0 0 24 24" fill=none height=20 stroke=currentColor stroke-linecap=round stroke-linejoin=round stroke-width=2 width=20 xmlns=http://www.w3.org/2000/svg><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg><span class="ms-2 visually-hidden">GitHub</span></a></ul><div class="collapse navbar-collapse order-4 order-md-1"><ul class="navbar-nav main-nav me-auto order-5 order-md-2"><li class="nav-item docs active"><a class=nav-link href=https://openvaf.semimod.de/docs/getting-started/introduction/>Docs</a><li class=nav-item><a class=nav-link href=https://openvaf.semimod.de/download/>Downloads</a><li class=nav-item><a class=nav-link href=https://openvaf.semimod.de/blog/>Blog</a></ul><div class="break order-6 d-md-none"></div><form class="navbar-form flex-grow-1 order-7 order-md-3"><input aria-label="Search docs..." class="form-control is-search" placeholder="Search docs..." autocomplete=off id=userinput type=search><div class="shadow bg-white rounded" id=suggestions></div></form></div></div></header><div class="wrap container" role=document><div class=content><div class="row flex-xl-nowrap"><div class="col-lg-5 col-xl-4 docs-sidebar"><nav aria-label="Main navigation" class=docs-links><h3>Getting Started</h3><ul class=list-unstyled><li><a class=docs-link href=https://openvaf.semimod.de/docs/getting-started/introduction/>Introduction</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/getting-started/installation/>Installation</a><li><a class="docs-link active" href=https://openvaf.semimod.de/docs/getting-started/usage/>Usage</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/getting-started/examples/>Examples</a></ul><h3>Details</h3><ul class=list-unstyled><li><a class=docs-link href=https://openvaf.semimod.de/docs/details/performance/>Performance</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/details/verilog-a-standard/>Verilog-A Standard Compliance</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/details/osdi/>OSDI - Simulator Interface</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/details/compiler-internals/>Compiler Internals</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/details/ui/>User Interface</a></ul><h3>Help</h3><ul class=list-unstyled><li><a class=docs-link href=https://openvaf.semimod.de/docs/help/faq/>FAQ</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/help/compact-models/>Available compact models</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/help/how-to-contribute/>Contributing and Support</a><li><a class=docs-link href=https://openvaf.semimod.de/docs/help/integration/>Integration Service</a></ul></nav></div><main class="docs-content col-lg-11 col-xl-9"><h1 id=verilog-a-compilation>Verilog-A Compilation</h1><p>Once OpenVAF is installed, compilation of Verilog-A models to an OSDI library suitable for circuit simulation is easy. Simply run<pre class=language-bash data-lang=bash style=background-color:#2b303b;color:#c0c5ce;><code class=language-bash data-lang=bash><span style=color:#bf616a;>openvaf </span><span>&LTfile>.va
+</span></code></pre><p>in a terminal and the compilation should complete quickly. OpenVAF offers options which are displayed when executing <code>openvaf --help</code>, but these won't usually be required.<p>If there are no errors in the Verilog-A source, a file called <code>&LTfile>.osdi</code> will be generated that can be used by circuit simulators that implement the <a href=../../details/osdi>OSDI interface</a>, such as Ngspice.<h1 id=ngspice-integration>Ngspice Integration</h1><h2 id=loading-osdi-files>Loading OSDI Files</h2><p>Once you have a compiled an OSDI file as described above, it can be loaded by Ngspice using a simple Ngspice simulator command.<pre class=language-bash data-lang=bash style=background-color:#2b303b;color:#c0c5ce;><code class=language-bash data-lang=bash><span style=color:#bf616a;>osdi </span><span>&LTpath>.osdi
+</span></code></pre><p>To load a model in a netlist, one must add <code>pre</code> to the <code>osdi</code> command for ensuring that the model is loaded before the netlist is resolved:<pre class=language-bash data-lang=bash style=background-color:#2b303b;color:#c0c5ce;><code class=language-bash data-lang=bash><span style=color:#bf616a;>.control
+</span><span style=color:#bf616a;>pre_osdi </span><span>&LTfile>.osdi
+</span><span style=color:#bf616a;>*other</span><span> control commands
+</span><span style=color:#bf616a;>.endc
+</span></code></pre><ul><li>The path to the file can be an absolute path like <code>/home/folder/example.osdi</code>.<li>The path can be a relative path like <code>folder/example.osdi</code>, it is then resolved in the netlist directory.<li>You can also omit the path and just write <code>example.osdi</code> if the file is located in the <code>lib/ngspice</code> directory. To activate this feature you must comment out <code>unset osdi_enabled</code> in <code>share/ngspice/scripts/spinit</code> . This method is recommended if you want to make this model permanently available to Ngspice.</ul><h2 id=using-verilog-a-modules>Using Verilog-A Modules</h2><p>Once an OSDI file has been loaded, Verilog-A modules can be initiated in a netlist as shown below. Note that the <code>N</code> prefix of the device name is important for ensuring correct behavior.<pre class=language-bash data-lang=bash style=background-color:#2b303b;color:#c0c5ce;><code class=language-bash data-lang=bash><span style=color:#bf616a;>.model </span><span>&LTmodel name> &LTVerilog-A module name> &LTmodel parameters>*
+</span><span>
+</span><span style=color:#bf616a;>N</span><span>&LTinstance name> &LTnodes>* &LTmodel name> &LTinstance parameters>*
+</span></code></pre><p>A minimal example netlist that creates a single instance of the HICUM/L2 model is shown below. Further examples can be found <a href=../examples>here</a>.<pre class=language-bash data-lang=bash style=background-color:#2b303b;color:#c0c5ce;><code class=language-bash data-lang=bash><span style=color:#bf616a;>OSDI</span><span> Example
+</span><span>
+</span><span style=color:#bf616a;>.model</span><span> hicum_model hicuml2va c10=1e-30
+</span><span>
+</span><span style=color:#bf616a;>N1</span><span> C B E S hicum_model
+</span><span>
+</span><span style=color:#bf616a;>.control
+</span><span style=color:#bf616a;>pre_osdi</span><span> hicumL2V3p0p0.osdi
+</span><span style=color:#bf616a;>.endc
+</span><span style=color:#bf616a;>.end
+</span></code></pre><div class="docs-navigation d-flex justify-content-between"><a href=https://openvaf.semimod.de/docs/getting-started/installation/> <div class="card my-1"><div class="card-body py-2">← Installation</div></div> </a><a class=ms-auto href=https://openvaf.semimod.de/docs/getting-started/examples/> <div class="card my-1"><div class="card-body py-2">Examples →</div></div> </a></div></main></div></div></div><footer class="footer text-muted"><div class=container><div class=row><div class="col-lg-8 order-last order-lg-first"><ul class=list-inline><li class=list-inline-item>Developed by <a href=https://www.semimod.de>SemiMod GmbH</a></ul></div><div class="col-lg-8 order-first order-lg-last text-lg-end"><ul class=list-inline><li class=list-inline-item><a href=https://openvaf.semimod.de/privacy-policy/>Privacy Policy</a></ul></div></div></div></footer><script defer src=https://openvaf.semimod.de/js/main.js></script><script defer src=https://openvaf.semimod.de/plugins/elasticlunr.min.js></script><script defer src=https://openvaf.semimod.de/search_index.en.js></script><script defer src=https://openvaf.semimod.de/js/search.js></script>

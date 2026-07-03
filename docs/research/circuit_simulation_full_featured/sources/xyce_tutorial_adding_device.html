@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="profile" href="https://gmpg.org/xfn/11">
+		<link rel="icon" type="image/png" href="https://xyce.sandia.gov/app/themes/thunderberg/favicon.png">
+		<link rel="apple-touch-icon" type="image/png" href="https://xyce.sandia.gov/app/themes/thunderberg/favicon.png">
+		<title>Tutorial: Adding a device to Xyce &#8211; Xyce</title>
+<meta name='robots' content='max-image-preview:large' />
+<meta name="dlm-version" content="5.0.22"><link rel="alternate" type="application/rss+xml" title="Xyce &raquo; Feed" href="https://xyce.sandia.gov/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Xyce &raquo; Comments Feed" href="https://xyce.sandia.gov/comments/feed/" />
+<link rel='stylesheet' id='sandia-core-index-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/core/index.css?ver=fbb750fd312778403036' media='all' />
+<link rel='stylesheet' id='sandia-publications-index-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/publications/index.css?ver=b851120a030bf2c8d304' media='all' />
+<link rel='stylesheet' id='thunderberg-style-css' href='https://xyce.sandia.gov/app/themes/thunderberg/build/public.css?ver=960ba08312dc6cfdd5c1' media='all' />
+<link rel='stylesheet' id='thunderberg-v4-css' href='https://xyce.sandia.gov/app/themes/thunderberg/build/thunderberg-v4.css?ver=eba547fe51712acd117b' media='all' />
+<link rel='stylesheet' id='index-css' href='https://xyce.sandia.gov/app/themes/emp-child/build/index.css?ver=26.7.3' media='all' />
+<link rel='stylesheet' id='sandia-core-public-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/core/public.css?ver=4ff3e56e84884ac8c575' media='all' />
+<link rel='stylesheet' id='wp-block-library-css' href='https://xyce.sandia.gov/wp-includes/css/dist/block-library/style.min.css?ver=6.4.7' media='all' />
+<link rel='stylesheet' id='snl-block-style-css' href='https://xyce.sandia.gov/app/themes/thunderberg/build/blocks.css?ver=fe45c8b50fb0163e98da' media='all' />
+<style id='snl-accordion-wrapper-style-inline-css'>
+.wp-block-snl-accordion-wrapper{max-width:1200px}.wp-block-snl-accordion-wrapper .accordion-toggle-links{margin-bottom:.5rem;text-align:right}.wp-block-snl-accordion-wrapper .accordion-toggle-link{background:none;border:0;color:#0d6efd;cursor:pointer;font:inherit;padding:0;text-decoration:underline}.wp-block-snl-accordion-wrapper .accordion-toggle-link:hover{text-decoration:none}.wp-block-snl-accordion-wrapper .accordion-toggle-separator{margin:0 .25rem}.wp-block-snl-accordion-wrapper .accordion-item{border-top:1px solid #dee2e6!important}.wp-block-snl-accordion-wrapper .accordion-item+.accordion-item{margin-top:-1px}
+</style>
+<link rel='stylesheet' id='public-css' href='https://xyce.sandia.gov/app/themes/emp-child/build/public.css?ver=26.7.3' media='all' />
+<style id='global-styles-inline-css'>
+body{--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--sandia-blue: #00add0;--wp--preset--color--medium-blue: #0076a9;--wp--preset--color--dark-blue: #003359;--wp--preset--color--purple: #830065;--wp--preset--color--red: #ad0000;--wp--preset--color--orange: #ff8800;--wp--preset--color--yellow: #ffc200;--wp--preset--color--green: #6cb312;--wp--preset--color--teal: #008e74;--wp--preset--color--blue-gray: #7d8ea0;--wp--preset--color--gray: #888888;--wp--preset--color--snl-blue: #00add0;--wp--preset--color--snl-blue-25: #f2fbfd;--wp--preset--color--snl-blue-50: #e6f7fa;--wp--preset--color--snl-blue-75: #d9f3f8;--wp--preset--color--snl-blue-100: #cceff6;--wp--preset--color--snl-blue-200: #99deec;--wp--preset--color--snl-blue-300: #66cee3;--wp--preset--color--snl-blue-400: #33bdd9;--wp--preset--color--snl-blue-600: #0093b1;--wp--preset--color--snl-blue-700: #007992;--wp--preset--color--snl-blue-800: #005f72;--wp--preset--color--snl-blue-900: #004553;--wp--preset--color--snl-medium-blue: #0076a9;--wp--preset--color--snl-medium-blue-25: #f2f8fb;--wp--preset--color--snl-medium-blue-50: #e6f1f6;--wp--preset--color--snl-medium-blue-75: #d9eaf2;--wp--preset--color--snl-medium-blue-100: #cce4ee;--wp--preset--color--snl-medium-blue-200: #99c8dd;--wp--preset--color--snl-medium-blue-300: #66adcb;--wp--preset--color--snl-medium-blue-400: #3391ba;--wp--preset--color--snl-medium-blue-600: #006490;--wp--preset--color--snl-medium-blue-700: #005376;--wp--preset--color--snl-medium-blue-800: #00415d;--wp--preset--color--snl-medium-blue-900: #002f44;--wp--preset--color--snl-dark-blue: #003359;--wp--preset--color--snl-dark-blue-25: #f2f5f7;--wp--preset--color--snl-dark-blue-50: #e6ebee;--wp--preset--color--snl-dark-blue-75: #d9e0e6;--wp--preset--color--snl-dark-blue-100: #ccd6de;--wp--preset--color--snl-dark-blue-200: #99adbd;--wp--preset--color--snl-dark-blue-300: #66859b;--wp--preset--color--snl-dark-blue-400: #335c7a;--wp--preset--color--snl-dark-blue-600: #002b4c;--wp--preset--color--snl-dark-blue-700: #00243e;--wp--preset--color--snl-dark-blue-800: #001c31;--wp--preset--color--snl-dark-blue-900: #001424;--wp--preset--color--snl-purple: #830065;--wp--preset--color--snl-purple-25: #faf2f8;--wp--preset--color--snl-purple-50: #f7e7f7;--wp--preset--color--snl-purple-75: #f0d9eb;--wp--preset--color--snl-purple-100: #ebcce4;--wp--preset--color--snl-purple-200: #d799c9;--wp--preset--color--snl-purple-300: #c266ad;--wp--preset--color--snl-purple-400: #ae3392;--wp--preset--color--snl-purple-600: #830065;--wp--preset--color--snl-purple-700: #6c0053;--wp--preset--color--snl-purple-800: #550041;--wp--preset--color--snl-purple-900: #3e0030;--wp--preset--color--snl-red: #ad0000;--wp--preset--color--snl-red-25: #fcf2f2;--wp--preset--color--snl-red-50: #fae6e6;--wp--preset--color--snl-red-75: #f7d9d9;--wp--preset--color--snl-red-100: #f5cccc;--wp--preset--color--snl-red-200: #eb9999;--wp--preset--color--snl-red-300: #e06666;--wp--preset--color--snl-red-400: #d63333;--wp--preset--color--snl-red-600: #ad0000;--wp--preset--color--snl-red-700: #8f0000;--wp--preset--color--snl-red-800: #700000;--wp--preset--color--snl-red-900: #520000;--wp--preset--color--snl-orange: #ff8800;--wp--preset--color--snl-orange-25: #fff9f2;--wp--preset--color--snl-orange-50: #fff0e6;--wp--preset--color--snl-orange-75: #ffedd9;--wp--preset--color--snl-orange-100: #ffe7cc;--wp--preset--color--snl-orange-200: #ffcf99;--wp--preset--color--snl-orange-300: #ffb866;--wp--preset--color--snl-orange-400: #ffa033;--wp--preset--color--snl-orange-600: #d97400;--wp--preset--color--snl-orange-700: #b35f00;--wp--preset--color--snl-orange-800: #8c4b00;--wp--preset--color--snl-orange-900: #663600;--wp--preset--color--snl-yellow: #ffc200;--wp--preset--color--snl-yellow-25: #fffcf2;--wp--preset--color--snl-yellow-50: #fff9e6;--wp--preset--color--snl-yellow-75: #fff6d9;--wp--preset--color--snl-yellow-100: #fff3cc;--wp--preset--color--snl-yellow-200: #ffe799;--wp--preset--color--snl-yellow-300: #ffda66;--wp--preset--color--snl-yellow-400: #ffce33;--wp--preset--color--snl-yellow-600: #d9a500;--wp--preset--color--snl-yellow-700: #b38800;--wp--preset--color--snl-yellow-800: #8c6b00;--wp--preset--color--snl-yellow-900: #664e00;--wp--preset--color--snl-green: #6cb312;--wp--preset--color--snl-green-25: #f8fbf3;--wp--preset--color--snl-green-50: #f0f7e7;--wp--preset--color--snl-green-75: #e9f4db;--wp--preset--color--snl-green-100: #e2f0d0;--wp--preset--color--snl-green-200: #c4e1a0;--wp--preset--color--snl-green-300: #a7d171;--wp--preset--color--snl-green-400: #89c241;--wp--preset--color--snl-green-600: #5c980f;--wp--preset--color--snl-green-700: #4c7d0d;--wp--preset--color--snl-green-800: #3b620a;--wp--preset--color--snl-green-900: #2b4807;--wp--preset--color--snl-teal: #008e74;--wp--preset--color--snl-teal-25: #f2f9f8;--wp--preset--color--snl-teal-50: #e6f4f1;--wp--preset--color--snl-teal-75: #d9eeea;--wp--preset--color--snl-teal-100: #cce8e3;--wp--preset--color--snl-teal-200: #99d2c7;--wp--preset--color--snl-teal-300: #66bbac;--wp--preset--color--snl-teal-400: #33a590;--wp--preset--color--snl-teal-600: #007963;--wp--preset--color--snl-teal-700: #006351;--wp--preset--color--snl-teal-800: #004e40;--wp--preset--color--snl-teal-900: #00392e;--wp--preset--color--snl-blue-grey: #7d8ea0;--wp--preset--color--snl-blue-grey-25: #f9f9fa;--wp--preset--color--snl-blue-grey-50: #f2f4f6;--wp--preset--color--snl-blue-grey-75: #eceef1;--wp--preset--color--snl-blue-grey-100: #e5e8ec;--wp--preset--color--snl-blue-grey-200: #cbd2d9;--wp--preset--color--snl-blue-grey-300: #b1bbc6;--wp--preset--color--snl-blue-grey-400: #97a5b3;--wp--preset--color--snl-blue-grey-600: #6a7988;--wp--preset--color--snl-blue-grey-700: #586370;--wp--preset--color--snl-blue-grey-800: #454e58;--wp--preset--color--snl-blue-grey-900: #323940;--wp--preset--color--snl-grey: #888888;--wp--preset--color--snl-grey-25: #f9f9f9;--wp--preset--color--snl-grey-50: #f3f3f3;--wp--preset--color--snl-grey-75: #ededed;--wp--preset--color--snl-grey-100: #e7e7e7;--wp--preset--color--snl-grey-200: #cfcfcf;--wp--preset--color--snl-grey-300: #b8b8b8;--wp--preset--color--snl-grey-400: #a0a0a0;--wp--preset--color--snl-grey-600: #6d6d6d;--wp--preset--color--snl-grey-700: #525252;--wp--preset--color--snl-grey-800: #363636;--wp--preset--color--snl-grey-900: #1b1b1b;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgba(252,185,0,1) 0%,rgba(255,105,0,1) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgba(255,105,0,1) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--font-size--13-px: 13px;--wp--preset--font-size--20-px: 20px;--wp--preset--font-size--24-px: 24px;--wp--preset--font-size--28-px: 28px;--wp--preset--font-size--30-px: 30px;--wp--preset--font-size--36-px: 36px;--wp--preset--font-size--42-px: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgba(255, 255, 255, 1), 6px 6px rgba(0, 0, 0, 1);--wp--preset--shadow--crisp: 6px 6px 0px rgba(0, 0, 0, 1);}body { margin: 0;--wp--style--global--content-size: 1200px;--wp--style--global--wide-size: 1200px; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}body .is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}body .is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}body .is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}body .is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){max-width: var(--wp--style--global--content-size);margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > .alignwide{max-width: var(--wp--style--global--wide-size);}body .is-layout-flex{display: flex;}body .is-layout-flex{flex-wrap: wrap;align-items: center;}body .is-layout-flex > *{margin: 0;}body .is-layout-grid{display: grid;}body .is-layout-grid > *{margin: 0;}body{padding-top: 0px;padding-right: 0px;padding-bottom: 0px;padding-left: 0px;}a:where(:not(.wp-element-button)){text-decoration: underline;}.wp-element-button, .wp-block-button__link{background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;line-height: inherit;padding: calc(0.667em + 2px) calc(1.333em + 2px);text-decoration: none;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-sandia-blue-color{color: var(--wp--preset--color--sandia-blue) !important;}.has-medium-blue-color{color: var(--wp--preset--color--medium-blue) !important;}.has-dark-blue-color{color: var(--wp--preset--color--dark-blue) !important;}.has-purple-color{color: var(--wp--preset--color--purple) !important;}.has-red-color{color: var(--wp--preset--color--red) !important;}.has-orange-color{color: var(--wp--preset--color--orange) !important;}.has-yellow-color{color: var(--wp--preset--color--yellow) !important;}.has-green-color{color: var(--wp--preset--color--green) !important;}.has-teal-color{color: var(--wp--preset--color--teal) !important;}.has-blue-gray-color{color: var(--wp--preset--color--blue-gray) !important;}.has-gray-color{color: var(--wp--preset--color--gray) !important;}.has-snl-blue-color{color: var(--wp--preset--color--snl-blue) !important;}.has-snl-blue-25-color{color: var(--wp--preset--color--snl-blue-25) !important;}.has-snl-blue-50-color{color: var(--wp--preset--color--snl-blue-50) !important;}.has-snl-blue-75-color{color: var(--wp--preset--color--snl-blue-75) !important;}.has-snl-blue-100-color{color: var(--wp--preset--color--snl-blue-100) !important;}.has-snl-blue-200-color{color: var(--wp--preset--color--snl-blue-200) !important;}.has-snl-blue-300-color{color: var(--wp--preset--color--snl-blue-300) !important;}.has-snl-blue-400-color{color: var(--wp--preset--color--snl-blue-400) !important;}.has-snl-blue-600-color{color: var(--wp--preset--color--snl-blue-600) !important;}.has-snl-blue-700-color{color: var(--wp--preset--color--snl-blue-700) !important;}.has-snl-blue-800-color{color: var(--wp--preset--color--snl-blue-800) !important;}.has-snl-blue-900-color{color: var(--wp--preset--color--snl-blue-900) !important;}.has-snl-medium-blue-color{color: var(--wp--preset--color--snl-medium-blue) !important;}.has-snl-medium-blue-25-color{color: var(--wp--preset--color--snl-medium-blue-25) !important;}.has-snl-medium-blue-50-color{color: var(--wp--preset--color--snl-medium-blue-50) !important;}.has-snl-medium-blue-75-color{color: var(--wp--preset--color--snl-medium-blue-75) !important;}.has-snl-medium-blue-100-color{color: var(--wp--preset--color--snl-medium-blue-100) !important;}.has-snl-medium-blue-200-color{color: var(--wp--preset--color--snl-medium-blue-200) !important;}.has-snl-medium-blue-300-color{color: var(--wp--preset--color--snl-medium-blue-300) !important;}.has-snl-medium-blue-400-color{color: var(--wp--preset--color--snl-medium-blue-400) !important;}.has-snl-medium-blue-600-color{color: var(--wp--preset--color--snl-medium-blue-600) !important;}.has-snl-medium-blue-700-color{color: var(--wp--preset--color--snl-medium-blue-700) !important;}.has-snl-medium-blue-800-color{color: var(--wp--preset--color--snl-medium-blue-800) !important;}.has-snl-medium-blue-900-color{color: var(--wp--preset--color--snl-medium-blue-900) !important;}.has-snl-dark-blue-color{color: var(--wp--preset--color--snl-dark-blue) !important;}.has-snl-dark-blue-25-color{color: var(--wp--preset--color--snl-dark-blue-25) !important;}.has-snl-dark-blue-50-color{color: var(--wp--preset--color--snl-dark-blue-50) !important;}.has-snl-dark-blue-75-color{color: var(--wp--preset--color--snl-dark-blue-75) !important;}.has-snl-dark-blue-100-color{color: var(--wp--preset--color--snl-dark-blue-100) !important;}.has-snl-dark-blue-200-color{color: var(--wp--preset--color--snl-dark-blue-200) !important;}.has-snl-dark-blue-300-color{color: var(--wp--preset--color--snl-dark-blue-300) !important;}.has-snl-dark-blue-400-color{color: var(--wp--preset--color--snl-dark-blue-400) !important;}.has-snl-dark-blue-600-color{color: var(--wp--preset--color--snl-dark-blue-600) !important;}.has-snl-dark-blue-700-color{color: var(--wp--preset--color--snl-dark-blue-700) !important;}.has-snl-dark-blue-800-color{color: var(--wp--preset--color--snl-dark-blue-800) !important;}.has-snl-dark-blue-900-color{color: var(--wp--preset--color--snl-dark-blue-900) !important;}.has-snl-purple-color{color: var(--wp--preset--color--snl-purple) !important;}.has-snl-purple-25-color{color: var(--wp--preset--color--snl-purple-25) !important;}.has-snl-purple-50-color{color: var(--wp--preset--color--snl-purple-50) !important;}.has-snl-purple-75-color{color: var(--wp--preset--color--snl-purple-75) !important;}.has-snl-purple-100-color{color: var(--wp--preset--color--snl-purple-100) !important;}.has-snl-purple-200-color{color: var(--wp--preset--color--snl-purple-200) !important;}.has-snl-purple-300-color{color: var(--wp--preset--color--snl-purple-300) !important;}.has-snl-purple-400-color{color: var(--wp--preset--color--snl-purple-400) !important;}.has-snl-purple-600-color{color: var(--wp--preset--color--snl-purple-600) !important;}.has-snl-purple-700-color{color: var(--wp--preset--color--snl-purple-700) !important;}.has-snl-purple-800-color{color: var(--wp--preset--color--snl-purple-800) !important;}.has-snl-purple-900-color{color: var(--wp--preset--color--snl-purple-900) !important;}.has-snl-red-color{color: var(--wp--preset--color--snl-red) !important;}.has-snl-red-25-color{color: var(--wp--preset--color--snl-red-25) !important;}.has-snl-red-50-color{color: var(--wp--preset--color--snl-red-50) !important;}.has-snl-red-75-color{color: var(--wp--preset--color--snl-red-75) !important;}.has-snl-red-100-color{color: var(--wp--preset--color--snl-red-100) !important;}.has-snl-red-200-color{color: var(--wp--preset--color--snl-red-200) !important;}.has-snl-red-300-color{color: var(--wp--preset--color--snl-red-300) !important;}.has-snl-red-400-color{color: var(--wp--preset--color--snl-red-400) !important;}.has-snl-red-600-color{color: var(--wp--preset--color--snl-red-600) !important;}.has-snl-red-700-color{color: var(--wp--preset--color--snl-red-700) !important;}.has-snl-red-800-color{color: var(--wp--preset--color--snl-red-800) !important;}.has-snl-red-900-color{color: var(--wp--preset--color--snl-red-900) !important;}.has-snl-orange-color{color: var(--wp--preset--color--snl-orange) !important;}.has-snl-orange-25-color{color: var(--wp--preset--color--snl-orange-25) !important;}.has-snl-orange-50-color{color: var(--wp--preset--color--snl-orange-50) !important;}.has-snl-orange-75-color{color: var(--wp--preset--color--snl-orange-75) !important;}.has-snl-orange-100-color{color: var(--wp--preset--color--snl-orange-100) !important;}.has-snl-orange-200-color{color: var(--wp--preset--color--snl-orange-200) !important;}.has-snl-orange-300-color{color: var(--wp--preset--color--snl-orange-300) !important;}.has-snl-orange-400-color{color: var(--wp--preset--color--snl-orange-400) !important;}.has-snl-orange-600-color{color: var(--wp--preset--color--snl-orange-600) !important;}.has-snl-orange-700-color{color: var(--wp--preset--color--snl-orange-700) !important;}.has-snl-orange-800-color{color: var(--wp--preset--color--snl-orange-800) !important;}.has-snl-orange-900-color{color: var(--wp--preset--color--snl-orange-900) !important;}.has-snl-yellow-color{color: var(--wp--preset--color--snl-yellow) !important;}.has-snl-yellow-25-color{color: var(--wp--preset--color--snl-yellow-25) !important;}.has-snl-yellow-50-color{color: var(--wp--preset--color--snl-yellow-50) !important;}.has-snl-yellow-75-color{color: var(--wp--preset--color--snl-yellow-75) !important;}.has-snl-yellow-100-color{color: var(--wp--preset--color--snl-yellow-100) !important;}.has-snl-yellow-200-color{color: var(--wp--preset--color--snl-yellow-200) !important;}.has-snl-yellow-300-color{color: var(--wp--preset--color--snl-yellow-300) !important;}.has-snl-yellow-400-color{color: var(--wp--preset--color--snl-yellow-400) !important;}.has-snl-yellow-600-color{color: var(--wp--preset--color--snl-yellow-600) !important;}.has-snl-yellow-700-color{color: var(--wp--preset--color--snl-yellow-700) !important;}.has-snl-yellow-800-color{color: var(--wp--preset--color--snl-yellow-800) !important;}.has-snl-yellow-900-color{color: var(--wp--preset--color--snl-yellow-900) !important;}.has-snl-green-color{color: var(--wp--preset--color--snl-green) !important;}.has-snl-green-25-color{color: var(--wp--preset--color--snl-green-25) !important;}.has-snl-green-50-color{color: var(--wp--preset--color--snl-green-50) !important;}.has-snl-green-75-color{color: var(--wp--preset--color--snl-green-75) !important;}.has-snl-green-100-color{color: var(--wp--preset--color--snl-green-100) !important;}.has-snl-green-200-color{color: var(--wp--preset--color--snl-green-200) !important;}.has-snl-green-300-color{color: var(--wp--preset--color--snl-green-300) !important;}.has-snl-green-400-color{color: var(--wp--preset--color--snl-green-400) !important;}.has-snl-green-600-color{color: var(--wp--preset--color--snl-green-600) !important;}.has-snl-green-700-color{color: var(--wp--preset--color--snl-green-700) !important;}.has-snl-green-800-color{color: var(--wp--preset--color--snl-green-800) !important;}.has-snl-green-900-color{color: var(--wp--preset--color--snl-green-900) !important;}.has-snl-teal-color{color: var(--wp--preset--color--snl-teal) !important;}.has-snl-teal-25-color{color: var(--wp--preset--color--snl-teal-25) !important;}.has-snl-teal-50-color{color: var(--wp--preset--color--snl-teal-50) !important;}.has-snl-teal-75-color{color: var(--wp--preset--color--snl-teal-75) !important;}.has-snl-teal-100-color{color: var(--wp--preset--color--snl-teal-100) !important;}.has-snl-teal-200-color{color: var(--wp--preset--color--snl-teal-200) !important;}.has-snl-teal-300-color{color: var(--wp--preset--color--snl-teal-300) !important;}.has-snl-teal-400-color{color: var(--wp--preset--color--snl-teal-400) !important;}.has-snl-teal-600-color{color: var(--wp--preset--color--snl-teal-600) !important;}.has-snl-teal-700-color{color: var(--wp--preset--color--snl-teal-700) !important;}.has-snl-teal-800-color{color: var(--wp--preset--color--snl-teal-800) !important;}.has-snl-teal-900-color{color: var(--wp--preset--color--snl-teal-900) !important;}.has-snl-blue-grey-color{color: var(--wp--preset--color--snl-blue-grey) !important;}.has-snl-blue-grey-25-color{color: var(--wp--preset--color--snl-blue-grey-25) !important;}.has-snl-blue-grey-50-color{color: var(--wp--preset--color--snl-blue-grey-50) !important;}.has-snl-blue-grey-75-color{color: var(--wp--preset--color--snl-blue-grey-75) !important;}.has-snl-blue-grey-100-color{color: var(--wp--preset--color--snl-blue-grey-100) !important;}.has-snl-blue-grey-200-color{color: var(--wp--preset--color--snl-blue-grey-200) !important;}.has-snl-blue-grey-300-color{color: var(--wp--preset--color--snl-blue-grey-300) !important;}.has-snl-blue-grey-400-color{color: var(--wp--preset--color--snl-blue-grey-400) !important;}.has-snl-blue-grey-600-color{color: var(--wp--preset--color--snl-blue-grey-600) !important;}.has-snl-blue-grey-700-color{color: var(--wp--preset--color--snl-blue-grey-700) !important;}.has-snl-blue-grey-800-color{color: var(--wp--preset--color--snl-blue-grey-800) !important;}.has-snl-blue-grey-900-color{color: var(--wp--preset--color--snl-blue-grey-900) !important;}.has-snl-grey-color{color: var(--wp--preset--color--snl-grey) !important;}.has-snl-grey-25-color{color: var(--wp--preset--color--snl-grey-25) !important;}.has-snl-grey-50-color{color: var(--wp--preset--color--snl-grey-50) !important;}.has-snl-grey-75-color{color: var(--wp--preset--color--snl-grey-75) !important;}.has-snl-grey-100-color{color: var(--wp--preset--color--snl-grey-100) !important;}.has-snl-grey-200-color{color: var(--wp--preset--color--snl-grey-200) !important;}.has-snl-grey-300-color{color: var(--wp--preset--color--snl-grey-300) !important;}.has-snl-grey-400-color{color: var(--wp--preset--color--snl-grey-400) !important;}.has-snl-grey-600-color{color: var(--wp--preset--color--snl-grey-600) !important;}.has-snl-grey-700-color{color: var(--wp--preset--color--snl-grey-700) !important;}.has-snl-grey-800-color{color: var(--wp--preset--color--snl-grey-800) !important;}.has-snl-grey-900-color{color: var(--wp--preset--color--snl-grey-900) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-sandia-blue-background-color{background-color: var(--wp--preset--color--sandia-blue) !important;}.has-medium-blue-background-color{background-color: var(--wp--preset--color--medium-blue) !important;}.has-dark-blue-background-color{background-color: var(--wp--preset--color--dark-blue) !important;}.has-purple-background-color{background-color: var(--wp--preset--color--purple) !important;}.has-red-background-color{background-color: var(--wp--preset--color--red) !important;}.has-orange-background-color{background-color: var(--wp--preset--color--orange) !important;}.has-yellow-background-color{background-color: var(--wp--preset--color--yellow) !important;}.has-green-background-color{background-color: var(--wp--preset--color--green) !important;}.has-teal-background-color{background-color: var(--wp--preset--color--teal) !important;}.has-blue-gray-background-color{background-color: var(--wp--preset--color--blue-gray) !important;}.has-gray-background-color{background-color: var(--wp--preset--color--gray) !important;}.has-snl-blue-background-color{background-color: var(--wp--preset--color--snl-blue) !important;}.has-snl-blue-25-background-color{background-color: var(--wp--preset--color--snl-blue-25) !important;}.has-snl-blue-50-background-color{background-color: var(--wp--preset--color--snl-blue-50) !important;}.has-snl-blue-75-background-color{background-color: var(--wp--preset--color--snl-blue-75) !important;}.has-snl-blue-100-background-color{background-color: var(--wp--preset--color--snl-blue-100) !important;}.has-snl-blue-200-background-color{background-color: var(--wp--preset--color--snl-blue-200) !important;}.has-snl-blue-300-background-color{background-color: var(--wp--preset--color--snl-blue-300) !important;}.has-snl-blue-400-background-color{background-color: var(--wp--preset--color--snl-blue-400) !important;}.has-snl-blue-600-background-color{background-color: var(--wp--preset--color--snl-blue-600) !important;}.has-snl-blue-700-background-color{background-color: var(--wp--preset--color--snl-blue-700) !important;}.has-snl-blue-800-background-color{background-color: var(--wp--preset--color--snl-blue-800) !important;}.has-snl-blue-900-background-color{background-color: var(--wp--preset--color--snl-blue-900) !important;}.has-snl-medium-blue-background-color{background-color: var(--wp--preset--color--snl-medium-blue) !important;}.has-snl-medium-blue-25-background-color{background-color: var(--wp--preset--color--snl-medium-blue-25) !important;}.has-snl-medium-blue-50-background-color{background-color: var(--wp--preset--color--snl-medium-blue-50) !important;}.has-snl-medium-blue-75-background-color{background-color: var(--wp--preset--color--snl-medium-blue-75) !important;}.has-snl-medium-blue-100-background-color{background-color: var(--wp--preset--color--snl-medium-blue-100) !important;}.has-snl-medium-blue-200-background-color{background-color: var(--wp--preset--color--snl-medium-blue-200) !important;}.has-snl-medium-blue-300-background-color{background-color: var(--wp--preset--color--snl-medium-blue-300) !important;}.has-snl-medium-blue-400-background-color{background-color: var(--wp--preset--color--snl-medium-blue-400) !important;}.has-snl-medium-blue-600-background-color{background-color: var(--wp--preset--color--snl-medium-blue-600) !important;}.has-snl-medium-blue-700-background-color{background-color: var(--wp--preset--color--snl-medium-blue-700) !important;}.has-snl-medium-blue-800-background-color{background-color: var(--wp--preset--color--snl-medium-blue-800) !important;}.has-snl-medium-blue-900-background-color{background-color: var(--wp--preset--color--snl-medium-blue-900) !important;}.has-snl-dark-blue-background-color{background-color: var(--wp--preset--color--snl-dark-blue) !important;}.has-snl-dark-blue-25-background-color{background-color: var(--wp--preset--color--snl-dark-blue-25) !important;}.has-snl-dark-blue-50-background-color{background-color: var(--wp--preset--color--snl-dark-blue-50) !important;}.has-snl-dark-blue-75-background-color{background-color: var(--wp--preset--color--snl-dark-blue-75) !important;}.has-snl-dark-blue-100-background-color{background-color: var(--wp--preset--color--snl-dark-blue-100) !important;}.has-snl-dark-blue-200-background-color{background-color: var(--wp--preset--color--snl-dark-blue-200) !important;}.has-snl-dark-blue-300-background-color{background-color: var(--wp--preset--color--snl-dark-blue-300) !important;}.has-snl-dark-blue-400-background-color{background-color: var(--wp--preset--color--snl-dark-blue-400) !important;}.has-snl-dark-blue-600-background-color{background-color: var(--wp--preset--color--snl-dark-blue-600) !important;}.has-snl-dark-blue-700-background-color{background-color: var(--wp--preset--color--snl-dark-blue-700) !important;}.has-snl-dark-blue-800-background-color{background-color: var(--wp--preset--color--snl-dark-blue-800) !important;}.has-snl-dark-blue-900-background-color{background-color: var(--wp--preset--color--snl-dark-blue-900) !important;}.has-snl-purple-background-color{background-color: var(--wp--preset--color--snl-purple) !important;}.has-snl-purple-25-background-color{background-color: var(--wp--preset--color--snl-purple-25) !important;}.has-snl-purple-50-background-color{background-color: var(--wp--preset--color--snl-purple-50) !important;}.has-snl-purple-75-background-color{background-color: var(--wp--preset--color--snl-purple-75) !important;}.has-snl-purple-100-background-color{background-color: var(--wp--preset--color--snl-purple-100) !important;}.has-snl-purple-200-background-color{background-color: var(--wp--preset--color--snl-purple-200) !important;}.has-snl-purple-300-background-color{background-color: var(--wp--preset--color--snl-purple-300) !important;}.has-snl-purple-400-background-color{background-color: var(--wp--preset--color--snl-purple-400) !important;}.has-snl-purple-600-background-color{background-color: var(--wp--preset--color--snl-purple-600) !important;}.has-snl-purple-700-background-color{background-color: var(--wp--preset--color--snl-purple-700) !important;}.has-snl-purple-800-background-color{background-color: var(--wp--preset--color--snl-purple-800) !important;}.has-snl-purple-900-background-color{background-color: var(--wp--preset--color--snl-purple-900) !important;}.has-snl-red-background-color{background-color: var(--wp--preset--color--snl-red) !important;}.has-snl-red-25-background-color{background-color: var(--wp--preset--color--snl-red-25) !important;}.has-snl-red-50-background-color{background-color: var(--wp--preset--color--snl-red-50) !important;}.has-snl-red-75-background-color{background-color: var(--wp--preset--color--snl-red-75) !important;}.has-snl-red-100-background-color{background-color: var(--wp--preset--color--snl-red-100) !important;}.has-snl-red-200-background-color{background-color: var(--wp--preset--color--snl-red-200) !important;}.has-snl-red-300-background-color{background-color: var(--wp--preset--color--snl-red-300) !important;}.has-snl-red-400-background-color{background-color: var(--wp--preset--color--snl-red-400) !important;}.has-snl-red-600-background-color{background-color: var(--wp--preset--color--snl-red-600) !important;}.has-snl-red-700-background-color{background-color: var(--wp--preset--color--snl-red-700) !important;}.has-snl-red-800-background-color{background-color: var(--wp--preset--color--snl-red-800) !important;}.has-snl-red-900-background-color{background-color: var(--wp--preset--color--snl-red-900) !important;}.has-snl-orange-background-color{background-color: var(--wp--preset--color--snl-orange) !important;}.has-snl-orange-25-background-color{background-color: var(--wp--preset--color--snl-orange-25) !important;}.has-snl-orange-50-background-color{background-color: var(--wp--preset--color--snl-orange-50) !important;}.has-snl-orange-75-background-color{background-color: var(--wp--preset--color--snl-orange-75) !important;}.has-snl-orange-100-background-color{background-color: var(--wp--preset--color--snl-orange-100) !important;}.has-snl-orange-200-background-color{background-color: var(--wp--preset--color--snl-orange-200) !important;}.has-snl-orange-300-background-color{background-color: var(--wp--preset--color--snl-orange-300) !important;}.has-snl-orange-400-background-color{background-color: var(--wp--preset--color--snl-orange-400) !important;}.has-snl-orange-600-background-color{background-color: var(--wp--preset--color--snl-orange-600) !important;}.has-snl-orange-700-background-color{background-color: var(--wp--preset--color--snl-orange-700) !important;}.has-snl-orange-800-background-color{background-color: var(--wp--preset--color--snl-orange-800) !important;}.has-snl-orange-900-background-color{background-color: var(--wp--preset--color--snl-orange-900) !important;}.has-snl-yellow-background-color{background-color: var(--wp--preset--color--snl-yellow) !important;}.has-snl-yellow-25-background-color{background-color: var(--wp--preset--color--snl-yellow-25) !important;}.has-snl-yellow-50-background-color{background-color: var(--wp--preset--color--snl-yellow-50) !important;}.has-snl-yellow-75-background-color{background-color: var(--wp--preset--color--snl-yellow-75) !important;}.has-snl-yellow-100-background-color{background-color: var(--wp--preset--color--snl-yellow-100) !important;}.has-snl-yellow-200-background-color{background-color: var(--wp--preset--color--snl-yellow-200) !important;}.has-snl-yellow-300-background-color{background-color: var(--wp--preset--color--snl-yellow-300) !important;}.has-snl-yellow-400-background-color{background-color: var(--wp--preset--color--snl-yellow-400) !important;}.has-snl-yellow-600-background-color{background-color: var(--wp--preset--color--snl-yellow-600) !important;}.has-snl-yellow-700-background-color{background-color: var(--wp--preset--color--snl-yellow-700) !important;}.has-snl-yellow-800-background-color{background-color: var(--wp--preset--color--snl-yellow-800) !important;}.has-snl-yellow-900-background-color{background-color: var(--wp--preset--color--snl-yellow-900) !important;}.has-snl-green-background-color{background-color: var(--wp--preset--color--snl-green) !important;}.has-snl-green-25-background-color{background-color: var(--wp--preset--color--snl-green-25) !important;}.has-snl-green-50-background-color{background-color: var(--wp--preset--color--snl-green-50) !important;}.has-snl-green-75-background-color{background-color: var(--wp--preset--color--snl-green-75) !important;}.has-snl-green-100-background-color{background-color: var(--wp--preset--color--snl-green-100) !important;}.has-snl-green-200-background-color{background-color: var(--wp--preset--color--snl-green-200) !important;}.has-snl-green-300-background-color{background-color: var(--wp--preset--color--snl-green-300) !important;}.has-snl-green-400-background-color{background-color: var(--wp--preset--color--snl-green-400) !important;}.has-snl-green-600-background-color{background-color: var(--wp--preset--color--snl-green-600) !important;}.has-snl-green-700-background-color{background-color: var(--wp--preset--color--snl-green-700) !important;}.has-snl-green-800-background-color{background-color: var(--wp--preset--color--snl-green-800) !important;}.has-snl-green-900-background-color{background-color: var(--wp--preset--color--snl-green-900) !important;}.has-snl-teal-background-color{background-color: var(--wp--preset--color--snl-teal) !important;}.has-snl-teal-25-background-color{background-color: var(--wp--preset--color--snl-teal-25) !important;}.has-snl-teal-50-background-color{background-color: var(--wp--preset--color--snl-teal-50) !important;}.has-snl-teal-75-background-color{background-color: var(--wp--preset--color--snl-teal-75) !important;}.has-snl-teal-100-background-color{background-color: var(--wp--preset--color--snl-teal-100) !important;}.has-snl-teal-200-background-color{background-color: var(--wp--preset--color--snl-teal-200) !important;}.has-snl-teal-300-background-color{background-color: var(--wp--preset--color--snl-teal-300) !important;}.has-snl-teal-400-background-color{background-color: var(--wp--preset--color--snl-teal-400) !important;}.has-snl-teal-600-background-color{background-color: var(--wp--preset--color--snl-teal-600) !important;}.has-snl-teal-700-background-color{background-color: var(--wp--preset--color--snl-teal-700) !important;}.has-snl-teal-800-background-color{background-color: var(--wp--preset--color--snl-teal-800) !important;}.has-snl-teal-900-background-color{background-color: var(--wp--preset--color--snl-teal-900) !important;}.has-snl-blue-grey-background-color{background-color: var(--wp--preset--color--snl-blue-grey) !important;}.has-snl-blue-grey-25-background-color{background-color: var(--wp--preset--color--snl-blue-grey-25) !important;}.has-snl-blue-grey-50-background-color{background-color: var(--wp--preset--color--snl-blue-grey-50) !important;}.has-snl-blue-grey-75-background-color{background-color: var(--wp--preset--color--snl-blue-grey-75) !important;}.has-snl-blue-grey-100-background-color{background-color: var(--wp--preset--color--snl-blue-grey-100) !important;}.has-snl-blue-grey-200-background-color{background-color: var(--wp--preset--color--snl-blue-grey-200) !important;}.has-snl-blue-grey-300-background-color{background-color: var(--wp--preset--color--snl-blue-grey-300) !important;}.has-snl-blue-grey-400-background-color{background-color: var(--wp--preset--color--snl-blue-grey-400) !important;}.has-snl-blue-grey-600-background-color{background-color: var(--wp--preset--color--snl-blue-grey-600) !important;}.has-snl-blue-grey-700-background-color{background-color: var(--wp--preset--color--snl-blue-grey-700) !important;}.has-snl-blue-grey-800-background-color{background-color: var(--wp--preset--color--snl-blue-grey-800) !important;}.has-snl-blue-grey-900-background-color{background-color: var(--wp--preset--color--snl-blue-grey-900) !important;}.has-snl-grey-background-color{background-color: var(--wp--preset--color--snl-grey) !important;}.has-snl-grey-25-background-color{background-color: var(--wp--preset--color--snl-grey-25) !important;}.has-snl-grey-50-background-color{background-color: var(--wp--preset--color--snl-grey-50) !important;}.has-snl-grey-75-background-color{background-color: var(--wp--preset--color--snl-grey-75) !important;}.has-snl-grey-100-background-color{background-color: var(--wp--preset--color--snl-grey-100) !important;}.has-snl-grey-200-background-color{background-color: var(--wp--preset--color--snl-grey-200) !important;}.has-snl-grey-300-background-color{background-color: var(--wp--preset--color--snl-grey-300) !important;}.has-snl-grey-400-background-color{background-color: var(--wp--preset--color--snl-grey-400) !important;}.has-snl-grey-600-background-color{background-color: var(--wp--preset--color--snl-grey-600) !important;}.has-snl-grey-700-background-color{background-color: var(--wp--preset--color--snl-grey-700) !important;}.has-snl-grey-800-background-color{background-color: var(--wp--preset--color--snl-grey-800) !important;}.has-snl-grey-900-background-color{background-color: var(--wp--preset--color--snl-grey-900) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-sandia-blue-border-color{border-color: var(--wp--preset--color--sandia-blue) !important;}.has-medium-blue-border-color{border-color: var(--wp--preset--color--medium-blue) !important;}.has-dark-blue-border-color{border-color: var(--wp--preset--color--dark-blue) !important;}.has-purple-border-color{border-color: var(--wp--preset--color--purple) !important;}.has-red-border-color{border-color: var(--wp--preset--color--red) !important;}.has-orange-border-color{border-color: var(--wp--preset--color--orange) !important;}.has-yellow-border-color{border-color: var(--wp--preset--color--yellow) !important;}.has-green-border-color{border-color: var(--wp--preset--color--green) !important;}.has-teal-border-color{border-color: var(--wp--preset--color--teal) !important;}.has-blue-gray-border-color{border-color: var(--wp--preset--color--blue-gray) !important;}.has-gray-border-color{border-color: var(--wp--preset--color--gray) !important;}.has-snl-blue-border-color{border-color: var(--wp--preset--color--snl-blue) !important;}.has-snl-blue-25-border-color{border-color: var(--wp--preset--color--snl-blue-25) !important;}.has-snl-blue-50-border-color{border-color: var(--wp--preset--color--snl-blue-50) !important;}.has-snl-blue-75-border-color{border-color: var(--wp--preset--color--snl-blue-75) !important;}.has-snl-blue-100-border-color{border-color: var(--wp--preset--color--snl-blue-100) !important;}.has-snl-blue-200-border-color{border-color: var(--wp--preset--color--snl-blue-200) !important;}.has-snl-blue-300-border-color{border-color: var(--wp--preset--color--snl-blue-300) !important;}.has-snl-blue-400-border-color{border-color: var(--wp--preset--color--snl-blue-400) !important;}.has-snl-blue-600-border-color{border-color: var(--wp--preset--color--snl-blue-600) !important;}.has-snl-blue-700-border-color{border-color: var(--wp--preset--color--snl-blue-700) !important;}.has-snl-blue-800-border-color{border-color: var(--wp--preset--color--snl-blue-800) !important;}.has-snl-blue-900-border-color{border-color: var(--wp--preset--color--snl-blue-900) !important;}.has-snl-medium-blue-border-color{border-color: var(--wp--preset--color--snl-medium-blue) !important;}.has-snl-medium-blue-25-border-color{border-color: var(--wp--preset--color--snl-medium-blue-25) !important;}.has-snl-medium-blue-50-border-color{border-color: var(--wp--preset--color--snl-medium-blue-50) !important;}.has-snl-medium-blue-75-border-color{border-color: var(--wp--preset--color--snl-medium-blue-75) !important;}.has-snl-medium-blue-100-border-color{border-color: var(--wp--preset--color--snl-medium-blue-100) !important;}.has-snl-medium-blue-200-border-color{border-color: var(--wp--preset--color--snl-medium-blue-200) !important;}.has-snl-medium-blue-300-border-color{border-color: var(--wp--preset--color--snl-medium-blue-300) !important;}.has-snl-medium-blue-400-border-color{border-color: var(--wp--preset--color--snl-medium-blue-400) !important;}.has-snl-medium-blue-600-border-color{border-color: var(--wp--preset--color--snl-medium-blue-600) !important;}.has-snl-medium-blue-700-border-color{border-color: var(--wp--preset--color--snl-medium-blue-700) !important;}.has-snl-medium-blue-800-border-color{border-color: var(--wp--preset--color--snl-medium-blue-800) !important;}.has-snl-medium-blue-900-border-color{border-color: var(--wp--preset--color--snl-medium-blue-900) !important;}.has-snl-dark-blue-border-color{border-color: var(--wp--preset--color--snl-dark-blue) !important;}.has-snl-dark-blue-25-border-color{border-color: var(--wp--preset--color--snl-dark-blue-25) !important;}.has-snl-dark-blue-50-border-color{border-color: var(--wp--preset--color--snl-dark-blue-50) !important;}.has-snl-dark-blue-75-border-color{border-color: var(--wp--preset--color--snl-dark-blue-75) !important;}.has-snl-dark-blue-100-border-color{border-color: var(--wp--preset--color--snl-dark-blue-100) !important;}.has-snl-dark-blue-200-border-color{border-color: var(--wp--preset--color--snl-dark-blue-200) !important;}.has-snl-dark-blue-300-border-color{border-color: var(--wp--preset--color--snl-dark-blue-300) !important;}.has-snl-dark-blue-400-border-color{border-color: var(--wp--preset--color--snl-dark-blue-400) !important;}.has-snl-dark-blue-600-border-color{border-color: var(--wp--preset--color--snl-dark-blue-600) !important;}.has-snl-dark-blue-700-border-color{border-color: var(--wp--preset--color--snl-dark-blue-700) !important;}.has-snl-dark-blue-800-border-color{border-color: var(--wp--preset--color--snl-dark-blue-800) !important;}.has-snl-dark-blue-900-border-color{border-color: var(--wp--preset--color--snl-dark-blue-900) !important;}.has-snl-purple-border-color{border-color: var(--wp--preset--color--snl-purple) !important;}.has-snl-purple-25-border-color{border-color: var(--wp--preset--color--snl-purple-25) !important;}.has-snl-purple-50-border-color{border-color: var(--wp--preset--color--snl-purple-50) !important;}.has-snl-purple-75-border-color{border-color: var(--wp--preset--color--snl-purple-75) !important;}.has-snl-purple-100-border-color{border-color: var(--wp--preset--color--snl-purple-100) !important;}.has-snl-purple-200-border-color{border-color: var(--wp--preset--color--snl-purple-200) !important;}.has-snl-purple-300-border-color{border-color: var(--wp--preset--color--snl-purple-300) !important;}.has-snl-purple-400-border-color{border-color: var(--wp--preset--color--snl-purple-400) !important;}.has-snl-purple-600-border-color{border-color: var(--wp--preset--color--snl-purple-600) !important;}.has-snl-purple-700-border-color{border-color: var(--wp--preset--color--snl-purple-700) !important;}.has-snl-purple-800-border-color{border-color: var(--wp--preset--color--snl-purple-800) !important;}.has-snl-purple-900-border-color{border-color: var(--wp--preset--color--snl-purple-900) !important;}.has-snl-red-border-color{border-color: var(--wp--preset--color--snl-red) !important;}.has-snl-red-25-border-color{border-color: var(--wp--preset--color--snl-red-25) !important;}.has-snl-red-50-border-color{border-color: var(--wp--preset--color--snl-red-50) !important;}.has-snl-red-75-border-color{border-color: var(--wp--preset--color--snl-red-75) !important;}.has-snl-red-100-border-color{border-color: var(--wp--preset--color--snl-red-100) !important;}.has-snl-red-200-border-color{border-color: var(--wp--preset--color--snl-red-200) !important;}.has-snl-red-300-border-color{border-color: var(--wp--preset--color--snl-red-300) !important;}.has-snl-red-400-border-color{border-color: var(--wp--preset--color--snl-red-400) !important;}.has-snl-red-600-border-color{border-color: var(--wp--preset--color--snl-red-600) !important;}.has-snl-red-700-border-color{border-color: var(--wp--preset--color--snl-red-700) !important;}.has-snl-red-800-border-color{border-color: var(--wp--preset--color--snl-red-800) !important;}.has-snl-red-900-border-color{border-color: var(--wp--preset--color--snl-red-900) !important;}.has-snl-orange-border-color{border-color: var(--wp--preset--color--snl-orange) !important;}.has-snl-orange-25-border-color{border-color: var(--wp--preset--color--snl-orange-25) !important;}.has-snl-orange-50-border-color{border-color: var(--wp--preset--color--snl-orange-50) !important;}.has-snl-orange-75-border-color{border-color: var(--wp--preset--color--snl-orange-75) !important;}.has-snl-orange-100-border-color{border-color: var(--wp--preset--color--snl-orange-100) !important;}.has-snl-orange-200-border-color{border-color: var(--wp--preset--color--snl-orange-200) !important;}.has-snl-orange-300-border-color{border-color: var(--wp--preset--color--snl-orange-300) !important;}.has-snl-orange-400-border-color{border-color: var(--wp--preset--color--snl-orange-400) !important;}.has-snl-orange-600-border-color{border-color: var(--wp--preset--color--snl-orange-600) !important;}.has-snl-orange-700-border-color{border-color: var(--wp--preset--color--snl-orange-700) !important;}.has-snl-orange-800-border-color{border-color: var(--wp--preset--color--snl-orange-800) !important;}.has-snl-orange-900-border-color{border-color: var(--wp--preset--color--snl-orange-900) !important;}.has-snl-yellow-border-color{border-color: var(--wp--preset--color--snl-yellow) !important;}.has-snl-yellow-25-border-color{border-color: var(--wp--preset--color--snl-yellow-25) !important;}.has-snl-yellow-50-border-color{border-color: var(--wp--preset--color--snl-yellow-50) !important;}.has-snl-yellow-75-border-color{border-color: var(--wp--preset--color--snl-yellow-75) !important;}.has-snl-yellow-100-border-color{border-color: var(--wp--preset--color--snl-yellow-100) !important;}.has-snl-yellow-200-border-color{border-color: var(--wp--preset--color--snl-yellow-200) !important;}.has-snl-yellow-300-border-color{border-color: var(--wp--preset--color--snl-yellow-300) !important;}.has-snl-yellow-400-border-color{border-color: var(--wp--preset--color--snl-yellow-400) !important;}.has-snl-yellow-600-border-color{border-color: var(--wp--preset--color--snl-yellow-600) !important;}.has-snl-yellow-700-border-color{border-color: var(--wp--preset--color--snl-yellow-700) !important;}.has-snl-yellow-800-border-color{border-color: var(--wp--preset--color--snl-yellow-800) !important;}.has-snl-yellow-900-border-color{border-color: var(--wp--preset--color--snl-yellow-900) !important;}.has-snl-green-border-color{border-color: var(--wp--preset--color--snl-green) !important;}.has-snl-green-25-border-color{border-color: var(--wp--preset--color--snl-green-25) !important;}.has-snl-green-50-border-color{border-color: var(--wp--preset--color--snl-green-50) !important;}.has-snl-green-75-border-color{border-color: var(--wp--preset--color--snl-green-75) !important;}.has-snl-green-100-border-color{border-color: var(--wp--preset--color--snl-green-100) !important;}.has-snl-green-200-border-color{border-color: var(--wp--preset--color--snl-green-200) !important;}.has-snl-green-300-border-color{border-color: var(--wp--preset--color--snl-green-300) !important;}.has-snl-green-400-border-color{border-color: var(--wp--preset--color--snl-green-400) !important;}.has-snl-green-600-border-color{border-color: var(--wp--preset--color--snl-green-600) !important;}.has-snl-green-700-border-color{border-color: var(--wp--preset--color--snl-green-700) !important;}.has-snl-green-800-border-color{border-color: var(--wp--preset--color--snl-green-800) !important;}.has-snl-green-900-border-color{border-color: var(--wp--preset--color--snl-green-900) !important;}.has-snl-teal-border-color{border-color: var(--wp--preset--color--snl-teal) !important;}.has-snl-teal-25-border-color{border-color: var(--wp--preset--color--snl-teal-25) !important;}.has-snl-teal-50-border-color{border-color: var(--wp--preset--color--snl-teal-50) !important;}.has-snl-teal-75-border-color{border-color: var(--wp--preset--color--snl-teal-75) !important;}.has-snl-teal-100-border-color{border-color: var(--wp--preset--color--snl-teal-100) !important;}.has-snl-teal-200-border-color{border-color: var(--wp--preset--color--snl-teal-200) !important;}.has-snl-teal-300-border-color{border-color: var(--wp--preset--color--snl-teal-300) !important;}.has-snl-teal-400-border-color{border-color: var(--wp--preset--color--snl-teal-400) !important;}.has-snl-teal-600-border-color{border-color: var(--wp--preset--color--snl-teal-600) !important;}.has-snl-teal-700-border-color{border-color: var(--wp--preset--color--snl-teal-700) !important;}.has-snl-teal-800-border-color{border-color: var(--wp--preset--color--snl-teal-800) !important;}.has-snl-teal-900-border-color{border-color: var(--wp--preset--color--snl-teal-900) !important;}.has-snl-blue-grey-border-color{border-color: var(--wp--preset--color--snl-blue-grey) !important;}.has-snl-blue-grey-25-border-color{border-color: var(--wp--preset--color--snl-blue-grey-25) !important;}.has-snl-blue-grey-50-border-color{border-color: var(--wp--preset--color--snl-blue-grey-50) !important;}.has-snl-blue-grey-75-border-color{border-color: var(--wp--preset--color--snl-blue-grey-75) !important;}.has-snl-blue-grey-100-border-color{border-color: var(--wp--preset--color--snl-blue-grey-100) !important;}.has-snl-blue-grey-200-border-color{border-color: var(--wp--preset--color--snl-blue-grey-200) !important;}.has-snl-blue-grey-300-border-color{border-color: var(--wp--preset--color--snl-blue-grey-300) !important;}.has-snl-blue-grey-400-border-color{border-color: var(--wp--preset--color--snl-blue-grey-400) !important;}.has-snl-blue-grey-600-border-color{border-color: var(--wp--preset--color--snl-blue-grey-600) !important;}.has-snl-blue-grey-700-border-color{border-color: var(--wp--preset--color--snl-blue-grey-700) !important;}.has-snl-blue-grey-800-border-color{border-color: var(--wp--preset--color--snl-blue-grey-800) !important;}.has-snl-blue-grey-900-border-color{border-color: var(--wp--preset--color--snl-blue-grey-900) !important;}.has-snl-grey-border-color{border-color: var(--wp--preset--color--snl-grey) !important;}.has-snl-grey-25-border-color{border-color: var(--wp--preset--color--snl-grey-25) !important;}.has-snl-grey-50-border-color{border-color: var(--wp--preset--color--snl-grey-50) !important;}.has-snl-grey-75-border-color{border-color: var(--wp--preset--color--snl-grey-75) !important;}.has-snl-grey-100-border-color{border-color: var(--wp--preset--color--snl-grey-100) !important;}.has-snl-grey-200-border-color{border-color: var(--wp--preset--color--snl-grey-200) !important;}.has-snl-grey-300-border-color{border-color: var(--wp--preset--color--snl-grey-300) !important;}.has-snl-grey-400-border-color{border-color: var(--wp--preset--color--snl-grey-400) !important;}.has-snl-grey-600-border-color{border-color: var(--wp--preset--color--snl-grey-600) !important;}.has-snl-grey-700-border-color{border-color: var(--wp--preset--color--snl-grey-700) !important;}.has-snl-grey-800-border-color{border-color: var(--wp--preset--color--snl-grey-800) !important;}.has-snl-grey-900-border-color{border-color: var(--wp--preset--color--snl-grey-900) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}.has-13-px-font-size{font-size: var(--wp--preset--font-size--13-px) !important;}.has-20-px-font-size{font-size: var(--wp--preset--font-size--20-px) !important;}.has-24-px-font-size{font-size: var(--wp--preset--font-size--24-px) !important;}.has-28-px-font-size{font-size: var(--wp--preset--font-size--28-px) !important;}.has-30-px-font-size{font-size: var(--wp--preset--font-size--30-px) !important;}.has-36-px-font-size{font-size: var(--wp--preset--font-size--36-px) !important;}.has-42-px-font-size{font-size: var(--wp--preset--font-size--42-px) !important;}
+.wp-block-navigation a:where(:not(.wp-element-button)){color: inherit;}
+:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}
+:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}
+.wp-block-pullquote{font-size: 1.5em;line-height: 1.6;}
+</style>
+<link rel='stylesheet' id='sandia-searchFramework-public-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/searchFramework/public.css?ver=ddcd9c4eaeb06b238ddb' media='all' />
+<link rel='stylesheet' id='sandia-publications-public-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/publications/public.css?ver=9b8b8dd9e6ca6c85b55d' media='all' />
+<link rel='stylesheet' id='sandia-gravityFormFixes-public-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/gravityFormFixes/public.css?ver=87c93206d3ee57d3b1dc' media='all' />
+<link rel='stylesheet' id='sandia-digitalMedia-public-css' href='https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/digitalMedia/public.css?ver=7f25cd8dee77c1407787' media='all' />
+<link rel='stylesheet' id='widgetopts-styles-css' href='https://xyce.sandia.gov/app/plugins/extended-widget-options/assets/css/widget-options.css?ver=5.1.6' media='all' />
+<link rel='stylesheet' id='thunderberg-v4-blocks-css' href='https://xyce.sandia.gov/app/themes/thunderberg/build/thunderberg-v4-blocks.css?ver=701f293e1231dc0fb2f7' media='all' />
+<link rel='stylesheet' id='snl-calendar-css' href='https://xyce.sandia.gov/app/plugins/snl-calendar/build/main.css?ver=cf3c8faa4dc8417a7ebc8bf85fcbed94' media='all' />
+<link rel='stylesheet' id='blocks-editor-frontend-css-css' href='https://xyce.sandia.gov/app/themes/thunderberg/inc/thunderberg-blocks/frontend-min.css?ver=2.0.6' media='all' />
+<script src="https://xyce.sandia.gov/app/themes/thunderberg/build/js/jquery.js?ver=0b877d99c90167ace83d" id="jquery-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script defer src="https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/publications/index.js?ver=b851120a030bf2c8d304" id="sandia-publications-index-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script src="https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/core/public.js?ver=4ff3e56e84884ac8c575" id="sandia-core-public-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script defer src="https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/searchFramework/public.js?ver=ddcd9c4eaeb06b238ddb" id="sandia-searchFramework-public-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script defer src="https://xyce.sandia.gov/app/mu-plugins/sandia-core-plugin/build/digitalMedia/public.js?ver=7f25cd8dee77c1407787" id="sandia-digitalMedia-public-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script defer src="https://xyce.sandia.gov/app/themes/thunderberg/build/js/thunderberg-v4.js?ver=eba547fe51712acd117b" id="thunderberg-v4-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script type="text/javascript" src="https://xyce.sandia.gov/app/themes/thunderberg/inc/thunderberg-blocks/snl-components/dist/emp-components/emp-components.js?ver=2.0.6" id="snlwp-component"></script><script type="text/javascript" nomodule src="https://xyce.sandia.gov/app/themes/thunderberg/inc/thunderberg-blocks/snl-components/dist/emp-components/emp-components.js?ver=2.0.6" id="snlwp-component-nomodule"></script><link rel="canonical" href="https://xyce.sandia.gov/documentation-tutorials/tutorial-adding-a-device-to-xyce/" />
+<link rel='shortlink' href='https://xyce.sandia.gov/?p=123' />
+<meta property="og:locale" content="en_US">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tutorial: Adding a device to Xyce"/>
+<meta property="og:description" content="Introduction This tutorial is intended as a brief introduction to adding a device model to the Xyce™ Parallel Electronic Simulator. NOTE:&nbsp;This document has largely been superseded by the&nbsp;Xyce/ADMS Users' Guide.&nbsp; It is being retained in the documentation section because it is not..."/>
+<meta property="og:url" content="https://xyce.sandia.gov/documentation-tutorials/tutorial-adding-a-device-to-xyce/"/>
+<meta property="og:site_name" content="Xyce">
+<meta property="og:image" content="https://xyce.sandia.gov/app/uploads/2020/11/cropped-SNL_thunderbird.png"/>
+<meta property="og:image:width" content="512"/>
+<meta property="og:image:height" content="512"/>
+<meta property="og:image:alt" content="cropped-SNL_thunderbird.png"/>
+<meta property="og:updated_time" content="2022-03-04T10:34:38-07:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:site" content="@SandiaLabs">
+<meta name="sandia_approved" content="SAND2021-13660W"><script async type="text/javascript" id="_fed_an_ua_tag" src="https://dap.digitalgov.gov/Universal-Federated-Analytics-Min.js?agency=DOE&subagency=sandia-national-laboratories" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script><meta http-equiv="last_modified" content="2022-03-04"><meta name="description" content="Introduction This tutorial is intended as a brief introduction to adding a device model to the Xyce™ Parallel Electronic Simulator. NOTE:&nbsp;This document has largely been superseded by the&nbsp;Xyce/ADMS Users&#8217; Guide.&nbsp; It is being retained in the documentation section because it is not strictly limited to adding device models through a Verilog-A process, but is not [&hellip;]"><meta name="keywords" content=""><meta name="subject" content="sci-engr"><style type="text/css">.broken_link, a.broken_link {
+	text-decoration: line-through;
+}</style>	</head>
+
+		<body class="page-template-default page page-id-123 page-child parent-pageid-99 emp show-icons">
+						
+		<header id="thunderberg-site-header">
+						
+			<!-- Skip to main content -->
+			<a href="#main-content" class="skip-link screen-reader-text">Skip to main content</a>
+
+							<div id="emp-top-level-banner" class="navbar py-0 emp-burger-icon">
+        <div class="container-fluid">
+            <a class="navbar-brand py-0 me-3" rel="noopener noreferrer" href="https://www.sandia.gov/">
+                <img src="https://xyce.sandia.gov/app/themes/thunderberg/assets/logos/sandia/stacked/white/sandia-logo-stacked-white-240x124.png" alt="Sandia National Laboratories" />
+            </a>
+            <div class="flex-fill d-lg-none"></div>
+                <nav id="emp-mega-menu" class="collapse navbar-collapse">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <p class="mb-1"><em>Exceptional service in the national interest</em></p>
+                    <hr class="mt-3 mb-4" />
+                </div>
+                                    <div class="d-none d-lg-block col-2">
+                        <a rel="noopener noreferrer" href="https://www.sandia.gov/about">
+                            <h2 class="h5 mt-1 mb-3">About Sandia</h2>
+                        </a>
+                        <ul class="list-unstyled mb-2">
+                                                            <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/history">History</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/leadership">Leadership</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/mission">Mission</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/environment">Environmental Responsibility</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/community">Community Involvement</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/social-media">Social Media</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/facts-figures">Facts & Figures</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/bofm">Board of Managers</a>
+                                </li>
+                                                        </ul>
+                    </div>
+                                        <div class="d-none d-lg-block col-2">
+                        <a rel="noopener noreferrer" href="https://www.sandia.gov/news">
+                            <h2 class="h5 mt-1 mb-3">News</h2>
+                        </a>
+                        <ul class="list-unstyled mb-2">
+                                                            <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://newsreleases.sandia.gov">News Releases</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/media-contacts">Media Contacts</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/labnews">Lab News</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/image-gallery">Image Gallery</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/publications">Publications</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/videos">Videos</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/alerts">Alert Messages</a>
+                                </li>
+                                                        </ul>
+                    </div>
+                                        <div class="d-none d-lg-block col-2">
+                        <a rel="noopener noreferrer" href="https://www.sandia.gov/research">
+                            <h2 class="h5 mt-1 mb-3">Research</h2>
+                        </a>
+                        <ul class="list-unstyled mb-2">
+                                                            <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/ldrd">Laboratory Directed R&D</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/missions">Programs</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/facilities">Facilities</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/rd-100-awards">R&D 100 Awards</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/publications/search">Publications</a>
+                                </li>
+                                                        </ul>
+                    </div>
+                                        <div class="d-none d-lg-block col-2">
+                        <a rel="noopener noreferrer" href="https://www.sandia.gov/working-with-sandia">
+                            <h2 class="h5 mt-1 mb-3">Partnerships</h2>
+                        </a>
+                        <ul class="list-unstyled mb-2">
+                                                            <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/technology-partnerships">Technology Partnerships</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://ip.sandia.gov">Licensing / Technology Transfer</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/technology-partnerships/work-with-sandia/universities/">Academic Programs</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/local-opportunities-economic-impact/">Local Opportunities & Economic Impact</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/prospective-suppliers">Prospective Suppliers</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/current-suppliers">Current Suppliers</a>
+                                </li>
+                                                        </ul>
+                    </div>
+                                        <div class="d-none d-lg-block col-2">
+                        <a rel="noopener noreferrer" href="https://www.sandia.gov/careers">
+                            <h2 class="h5 mt-1 mb-3">Careers</h2>
+                        </a>
+                        <ul class="list-unstyled mb-2">
+                                                            <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/jobs-app/">View All Jobs</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/students-and-postdocs/">Students & Postdocs</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/veterans">Veterans</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/career-opportunities">Career Disciplines</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/benefits-and-perks/">Benefits</a>
+                                </li>
+                                                                <li class="m-0">
+                                    <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/hiring-process/">Hiring Process</a>
+                                </li>
+                                                        </ul>
+                    </div>
+                                    <div class="accordion accordion-flush d-lg-none mb-4">
+                                                <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed p-0" type="button" data-bs-toggle="collapse" data-bs-target="#mega-menu-accordion-0" aria-expanded="false" aria-controls="mega-menu-accordion-0">
+                                        <a rel="noopener noreferrer" class="d-flex align-items-center" href="https://www.sandia.gov/about">
+                                            About Sandia                                        </a>
+                                    </button>
+                                </h2>
+                                <div id="mega-menu-accordion-0" class="accordion-collapse collapse">
+                                    <div class="accordion-body py-1">
+                                        <ul class="list-unstyled mb-2">
+                                                                                    <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/history">History</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/leadership">Leadership</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/mission">Mission</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/environment">Environmental Responsibility</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/community">Community Involvement</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/social-media">Social Media</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/facts-figures">Facts & Figures</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/about/bofm">Board of Managers</a>
+                                            </li>
+                                                                                </ul>
+                                    </div>
+                                </div>
+                            </div>
+                                                    <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed p-0" type="button" data-bs-toggle="collapse" data-bs-target="#mega-menu-accordion-1" aria-expanded="false" aria-controls="mega-menu-accordion-1">
+                                        <a rel="noopener noreferrer" class="d-flex align-items-center" href="https://www.sandia.gov/news">
+                                            News                                        </a>
+                                    </button>
+                                </h2>
+                                <div id="mega-menu-accordion-1" class="accordion-collapse collapse">
+                                    <div class="accordion-body py-1">
+                                        <ul class="list-unstyled mb-2">
+                                                                                    <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://newsreleases.sandia.gov">News Releases</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/media-contacts">Media Contacts</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/labnews">Lab News</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/image-gallery">Image Gallery</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/publications">Publications</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/news/videos">Videos</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/alerts">Alert Messages</a>
+                                            </li>
+                                                                                </ul>
+                                    </div>
+                                </div>
+                            </div>
+                                                    <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed p-0" type="button" data-bs-toggle="collapse" data-bs-target="#mega-menu-accordion-2" aria-expanded="false" aria-controls="mega-menu-accordion-2">
+                                        <a rel="noopener noreferrer" class="d-flex align-items-center" href="https://www.sandia.gov/research">
+                                            Research                                        </a>
+                                    </button>
+                                </h2>
+                                <div id="mega-menu-accordion-2" class="accordion-collapse collapse">
+                                    <div class="accordion-body py-1">
+                                        <ul class="list-unstyled mb-2">
+                                                                                    <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/ldrd">Laboratory Directed R&D</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/missions">Programs</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/facilities">Facilities</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/rd-100-awards">R&D 100 Awards</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/research/publications/search">Publications</a>
+                                            </li>
+                                                                                </ul>
+                                    </div>
+                                </div>
+                            </div>
+                                                    <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed p-0" type="button" data-bs-toggle="collapse" data-bs-target="#mega-menu-accordion-3" aria-expanded="false" aria-controls="mega-menu-accordion-3">
+                                        <a rel="noopener noreferrer" class="d-flex align-items-center" href="https://www.sandia.gov/working-with-sandia">
+                                            Partnerships                                        </a>
+                                    </button>
+                                </h2>
+                                <div id="mega-menu-accordion-3" class="accordion-collapse collapse">
+                                    <div class="accordion-body py-1">
+                                        <ul class="list-unstyled mb-2">
+                                                                                    <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/technology-partnerships">Technology Partnerships</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://ip.sandia.gov">Licensing / Technology Transfer</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/technology-partnerships/work-with-sandia/universities/">Academic Programs</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/local-opportunities-economic-impact/">Local Opportunities & Economic Impact</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/prospective-suppliers">Prospective Suppliers</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/working-with-sandia/current-suppliers">Current Suppliers</a>
+                                            </li>
+                                                                                </ul>
+                                    </div>
+                                </div>
+                            </div>
+                                                    <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed p-0" type="button" data-bs-toggle="collapse" data-bs-target="#mega-menu-accordion-4" aria-expanded="false" aria-controls="mega-menu-accordion-4">
+                                        <a rel="noopener noreferrer" class="d-flex align-items-center" href="https://www.sandia.gov/careers">
+                                            Careers                                        </a>
+                                    </button>
+                                </h2>
+                                <div id="mega-menu-accordion-4" class="accordion-collapse collapse">
+                                    <div class="accordion-body py-1">
+                                        <ul class="list-unstyled mb-2">
+                                                                                    <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/jobs-app/">View All Jobs</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/students-and-postdocs/">Students & Postdocs</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/veterans">Veterans</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/career-opportunities">Career Disciplines</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/benefits-and-perks/">Benefits</a>
+                                            </li>
+                                                                                        <li class="m-0">
+                                                <a rel="noopener noreferrer" class="py-2" href="https://www.sandia.gov/careers/career-possibilities/hiring-process/">Hiring Process</a>
+                                            </li>
+                                                                                </ul>
+                                    </div>
+                                </div>
+                            </div>
+                                        </div>
+                                <div class="col-12 col-lg-2">
+                    <ul class="list-unstyled mb-2">
+                                                    <li class="m-0">
+                                <a rel="noopener noreferrer" class="py-2 d-flex" href="https://www.sandia.gov/locations/">
+                                    <i class="fa-solid fa-location-dot emp-mega-menu-link-icon pt-1 pe-1"></i>
+                                    Locations/&#8203;Visiting                                </a>
+                            </li>
+                                                        <li class="m-0">
+                                <a rel="noopener noreferrer" class="py-2 d-flex" href="https://www.sandia.gov/contact-us/">
+                                    <i class="fa-solid fa-envelope emp-mega-menu-link-icon pt-1 pe-1"></i>
+                                    Contact Us                                </a>
+                            </li>
+                                                        <li class="m-0">
+                                <a rel="noopener noreferrer" class="py-2 d-flex" href="https://www.sandia.gov/resources/employees/">
+                                    <i class="fa-solid fa-handshake emp-mega-menu-link-icon pt-1 pe-1"></i>
+                                    Employee Resources                                </a>
+                            </li>
+                                                        <li class="m-0">
+                                <a rel="noopener noreferrer" class="py-2 d-flex" href="https://www.sandia.gov/security/">
+                                    <i class="fa-solid fa-shield-halved emp-mega-menu-link-icon pt-1 pe-1"></i>
+                                    Security Toolcart                                </a>
+                            </li>
+                                                </ul>
+                </div>
+                <div class="col-12 mb-2 ps-1">
+                    <div class="snl social-icons d-flex m-0 "><ul class="m-0 p-0 d-flex list-unstyled">            <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns facebookIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Facebook"
+                        title="Facebook"
+                        href="https://www.facebook.com/SandiaLabs">
+                        <span class="icon fa-brands fa-facebook-f"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns twitterIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Twitter X"
+                        title="Twitter X"
+                        href="https://www.twitter.com/SandiaLabs">
+                        <span class="icon snl-x-twitter"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns youtubeIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="YouTube"
+                        title="YouTube"
+                        href="https://www.youtube.com/SandiaLabs">
+                        <span class="icon fa-brands fa-youtube"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns flickrIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Flickr"
+                        title="Flickr"
+                        href="https://www.flickr.com/SandiaLabs">
+                        <span class="icon fa-brands fa-flickr"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns instagramIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Instagram"
+                        title="Instagram"
+                        href="https://www.instagram.com/SandiaLabs">
+                        <span class="icon fa-brands fa-instagram"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns linkedinIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="LinkedIn"
+                        title="LinkedIn"
+                        href="https://www.linkedin.com/company/sandia-national-laboratories">
+                        <span class="icon fa-brands fa-linkedin"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns rssIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="RSS"
+                        title="RSS"
+                        href="https://newsreleases.sandia.gov/feed">
+                        <span class="icon fa-solid fa-rss"></span>
+                                            </a>
+                            </li>
+        </ul></div>                </div>
+            </div>
+        </div>
+    </nav>
+    
+                <div id="emp-subsite-top-title" class="text-start flex-fill d-none d-lg-block">  
+                    <nav class="subsite-breadcrumbs" aria-label="Research area breadcrumbs">
+                <ol class="breadcrumb mb-0">
+                                            <li class="breadcrumb-item mb-0">
+                            <a rel="noopener noreferrer" class="pt-3 pe-2" href="https://www.sandia.gov/research">Research</a>
+                            </li>
+                                            <li class="breadcrumb-item mb-0">
+                            <a rel="noopener noreferrer" class="pt-3 pe-2" href="https://www.sandia.gov/research/area/computing-information-science-and-mathematics">Computing, Information Science, and Mathematics</a>
+                            </li>
+                                    </ol>
+            </nav>
+                <a rel="noopener noreferrer" class="h4 my-0 subsite-title" href="https://xyce.sandia.gov">Xyce</a>
+    </div>
+                <div id="emp-top-level-search-wrapper" class="d-flex flex-row">
+                <div id="emp-top-level-search" class="collapse collapse-horizontal navbar-collapse">
+                        <form action="https://search.usa.gov/search" id="emp-top-level-search-form" method="get">
+        <div class="input-group d-flex">
+            <input accesskey="s" aria-label="Search Sandia.gov field" class="form-control" name="query" placeholder="Search Sandia.gov" type="search" aria-describedby="submit-top-level-search-form">
+            <button class="btn btn-light" type="submit" aria-label="Submit search" id="submit-top-level-search-form">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </div>
+        
+        <input name="utf8" type="hidden" value="%E2%9C%93">
+        <input name="affiliate" type="hidden" value="sandia_labs">
+        <input name="commit" type="hidden" value="Search">
+    </form>
+                    </div>
+                <button id="emp-top-level-search-toggle" class="navbar-toggler ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#emp-top-level-search" aria-controls="emp-top-level-search" aria-expanded="false" aria-label="Toggle search form">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <button id="emp-mega-menu-toggler" class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#emp-mega-menu" aria-controls="emp-mega-menu" aria-expanded="false" aria-label="Toggle mega menu">
+                <div class="icon-container make-white">
+                    <span class="toggler-bar bar-top"></span>
+                    <span class="toggler-bar bar-mid"></span>
+                    <span class="toggler-bar bar-bot"></span>
+                </div>
+            </button>
+        </div>
+	</div>
+	
+						    <div id="emp-navbar" class="navbar navbar-expand-lg has-snl-blue-grey-50-background-color py-0 emp-burger-icon">
+        <div class="d-flex flex-nowrap align-items-center w-100">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#emp-navbar-mobile" aria-controls="emp-navbar-mobile" aria-expanded="false" aria-label="Toggle navigation">
+                <div class="icon-container d-lg-none">
+                    <span class="toggler-bar bar-top"></span>
+                    <span class="toggler-bar bar-mid"></span>
+                    <span class="toggler-bar bar-bot"></span>
+                </div>
+            </button>
+            <div class="text-start d-lg-none">
+                                    <div id="emp-subsite-mobile-breadcrumbs" class="row d-lg-none">
+                        <nav aria-label="Research area breadcrumbs">
+                            <ol class="breadcrumb my-0">
+                                                                    <li class="breadcrumb-item mb-0">
+                                        <a rel="noopener noreferrer" class="py-2 pe-2" href="https://www.sandia.gov/research">Research</a>
+                                        </li>
+                                                                    <li class="breadcrumb-item mb-0">
+                                        <a rel="noopener noreferrer" class="py-2 pe-2" href="https://www.sandia.gov/research/area/computing-information-science-and-mathematics">Computing, Information Science, and Mathematics</a>
+                                        </li>
+                                                            </ol>
+                        </nav>
+                    </div>
+                                <a id="emp-subsite-mobile-title" rel="noopener noreferrer" class="h4 d-inline-block my-0 py-2" href="https://xyce.sandia.gov">Xyce</a>
+            </div>
+            <nav id="emp-navbar-lg" class="flex-grow-1"><ul id="menu-menu-1" class="navbar-nav d-none d-lg-flex flex-row flex-wrap"><li class="nav-item mb-0"><a class="nav-link" href="https://xyce.sandia.gov/about-xyce/">About Xyce</a></li>
+<li class="nav-item mb-0"><a class="nav-link" href="https://xyce.sandia.gov/news/">News</a></li>
+<li class="nav-item mb-0 dropdown"><a class="nav-link dropdown-toggle" href="https://xyce.sandia.gov/downloads/" role="button" data-bs-toggle="dropdown" aria-expanded="false">Downloads</a><a class="emp-nav-keyboard-link screen-reader-text" href="https://xyce.sandia.gov/downloads/">Downloads</a><ul class="dropdown-menu"><li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/downloads/executables/">Executables</a></li>
+<li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/downloads/source-code/">Source Code</a></li>
+<li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/downloads/previous-releases/">Previous-Releases</a></li>
+</ul>
+</li>
+<li class="nav-item mb-0 dropdown"><a class="nav-link dropdown-toggle" href="https://xyce.sandia.gov/documentation-tutorials/" role="button" data-bs-toggle="dropdown" aria-expanded="false">Documentation &amp; Tutorials</a><a class="emp-nav-keyboard-link screen-reader-text" href="https://xyce.sandia.gov/documentation-tutorials/">Documentation &amp; Tutorials</a><ul class="dropdown-menu"><li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/documentation-tutorials/3rd-party-libraries/">3rd Party Libraries</a></li>
+<li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/documentation-tutorials/building-guide/">Building Guide</a></li>
+<li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/documentation-tutorials/frequently-asked-questions/">Frequently Asked Questions</a></li>
+<li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/documentation-tutorials/running-the-xyce-regression-suite/">Running the Xyce Regression Suite</a></li>
+<li><a class="dropdown-item py-2" href="https://xyce.sandia.gov/documentation-tutorials/xyce-adms-users-guide/">Xyce/ADMS Users Guide</a></li>
+</ul>
+</li>
+<li class="nav-item mb-0"><a class="nav-link" href="https://xyce.sandia.gov/the-team/">The Team</a></li>
+<li class="nav-item mb-0"><a class="nav-link" href="https://xyce.sandia.gov/contact-us/">Contact Us</a></li>
+<li class="nav-item mb-0"><a class="nav-link" href="https://xyce.sandia.gov/publications/">Publications</a></li>
+</ul></nav><div class="snl social-icons d-flex m-0 d-none d-lg-flex"><ul class="m-0 p-0 d-flex list-unstyled">            <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns facebookIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Facebook"
+                        title="Facebook"
+                        href="https://www.facebook.com/SandiaLabs">
+                        <span class="icon fa-brands fa-facebook-f"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns twitterIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Twitter X"
+                        title="Twitter X"
+                        href="https://www.twitter.com/SandiaLabs">
+                        <span class="icon snl-x-twitter"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns youtubeIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="YouTube"
+                        title="YouTube"
+                        href="https://www.youtube.com/SandiaLabs">
+                        <span class="icon fa-brands fa-youtube"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns flickrIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Flickr"
+                        title="Flickr"
+                        href="https://www.flickr.com/SandiaLabs">
+                        <span class="icon fa-brands fa-flickr"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns instagramIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Instagram"
+                        title="Instagram"
+                        href="https://www.instagram.com/SandiaLabs">
+                        <span class="icon fa-brands fa-instagram"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns linkedinIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="LinkedIn"
+                        title="LinkedIn"
+                        href="https://www.linkedin.com/company/sandia-national-laboratories">
+                        <span class="icon fa-brands fa-linkedin"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns rssIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="RSS"
+                        title="RSS"
+                        href="https://newsreleases.sandia.gov/feed">
+                        <span class="icon fa-solid fa-rss"></span>
+                                            </a>
+                            </li>
+        </ul></div>        </div>
+        <div id="emp-navbar-mobile" class="snl-sidebar collapse navbar-collapse px-0"><ul id="menu-menu-2" class="nav flex-column"><li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/about-xyce/" class="nav-link">About Xyce</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/news/" class="nav-link">News</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children nav-item"><div class="nav-item-wrapper"><button class="chevron-toggle collapsed" data-bs-toggle="collapse" data-bs-target="#submenu-1" aria-expanded="false" aria-label="Toggle submenu"><i class="fa-light fa-chevron-right"></i></button><a href="https://xyce.sandia.gov/downloads/" class="nav-link">Downloads</a></div>
+<div class="collapse submenu submenu-0" id="submenu-1">
+<ul class="nav flex-column">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/downloads/executables/" class="nav-link">Executables</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/downloads/source-code/" class="nav-link">Source Code</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/downloads/previous-releases/" class="nav-link">Previous-Releases</a></li>
+</ul>
+</div>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page current-page-ancestor menu-item-has-children nav-item"><div class="nav-item-wrapper"><button class="chevron-toggle" data-bs-toggle="collapse" data-bs-target="#submenu-2" aria-expanded="true" aria-label="Toggle submenu"><i class="fa-light fa-chevron-right"></i></button><a href="https://xyce.sandia.gov/documentation-tutorials/" class="nav-link">Documentation &amp; Tutorials</a></div>
+<div class="collapse submenu submenu-0 show" id="submenu-2">
+<ul class="nav flex-column">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/documentation-tutorials/3rd-party-libraries/" class="nav-link">3rd Party Libraries</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/documentation-tutorials/building-guide/" class="nav-link">Building Guide</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/documentation-tutorials/frequently-asked-questions/" class="nav-link">Frequently Asked Questions</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/documentation-tutorials/running-the-xyce-regression-suite/" class="nav-link">Running the Xyce Regression Suite</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/documentation-tutorials/xyce-adms-users-guide/" class="nav-link">Xyce/ADMS Users Guide</a></li>
+</ul>
+</div>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/the-team/" class="nav-link">The Team</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/contact-us/" class="nav-link">Contact Us</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page nav-item"><a href="https://xyce.sandia.gov/publications/" class="nav-link">Publications</a></li>
+</ul></div>	</div>
+    
+								</header>
+<span id="main-content"></span>
+
+<div id="main__wrapper" class="position-relative " aria-label="template-container" style="min-height: calc(100vh - 160px)">
+        
+    <div class="container-wrapper container-fluid global-container normal-width py-lg-5">
+        <div class="row">
+            <div class="col-lg-8 col-md-12" aria-label="main-content" role="main">
+                
+                <div class="entry-header ">
+                    <h1 class="entry-title mt-0">Tutorial: Adding a device to Xyce</h1>                </div>
+    
+                <style>
+	.post-thumbnail {
+		display: none !important;
+	}
+</style>
+<article id="post-123" class="post-123 page type-page status-publish hentry">
+
+	
+	<div class="entry-content">
+		
+<h2 class="wp-block-heading">Introduction</h2>
+
+
+
+<p>This tutorial is intended as a brief introduction to adding a device model to the Xyce™ Parallel Electronic Simulator.</p>
+
+
+
+<p><strong><span class="has-inline-color has-snl-ext-maroon-color">NOTE</span>:</strong>&nbsp;This document has largely been superseded by the&nbsp;<a href="https://xyce.sandia.gov/documentation-tutorials/xyce-adms-users-guide/">Xyce/ADMS Users&#8217; Guide</a>.&nbsp; It is being retained in the documentation section because it is not strictly limited to adding device models through a Verilog-A process, but is not regularly updated as Xyce development proceeds.</p>
+
+
+
+<h5 class="wp-block-heading">Target Audience</h5>
+
+
+
+<p>The target audience is compact model developers.&nbsp;</p>
+
+
+
+<h4 class="wp-block-heading">Prerequisites</h4>
+
+
+
+<p>You should be familiar with the&nbsp;<a href="https://xyce.sandia.gov/files/xyce/Xyce_Math_Formulation.pdf">Xyce Mathematical Formulation</a>&nbsp;before attempting to add a device model to Xyce. It is assumed that you already know how to build Xyce, and that you are comfortable using your operating system&#8217;s editors. It is assumed here that you are already a compact model developer and that you are only reading this to learn the specifics of how to get your model coded in Xyce.&nbsp;</p>
+
+
+
+<p>This document is a more in-depth discussion of the process of adding a compact model in Verilog-A to Xyce, explaining how to wire a device into Xyce permanently and also how to create a shared-library plugin.&nbsp; A separate document, the&nbsp;<a href="https://xyce.sandia.gov/documentation-tutorials/xyce-adms-users-guide/">Xyce/ADMS Users&#8217; Guide</a>, provides a simpler process that was introduced with Xyce 6.5, and documents the capabilities of the Xyce/ADMS Verilog compiler.&nbsp; It should be read first.</p>
+
+
+
+<h4 class="wp-block-heading">Overview</h4>
+
+
+
+<p>This tutorial will show an example of how to add a very simple device model to Xyce. The demonstration model will implement a two-terminal device that simulates a simple series RLC combination. The tutorial will show one approach to adding this device: implementation of the compact model in Verilog-A, converting this model to C++ code that can be used in Xyce by using ADMS with the Xyce/ADMS back-end, and adding the new model to Xyce.</p>
+
+
+
+<p>Direct implementation of the compact model in C++ and adding the new model to Xyce is more difficult, and requires a more thorough understanding of the Xyce code structure. This tutorial will not describe that technique. If you are interested in developing C++ compact models in Xyce, you should still review the Verilog-A method and look at the C++ source code it generates. Then consult the Doxygen documentation that can be generated in the doc/doxygen directory of the Xyce source tree. &nbsp; The &#8220;Circuit Device How To&#8230;&#8221; page in the Doxygen documentation describes the basic functions you must provide, and points you at the resistor and capacitor devices as sample implementations. The RLC device created through the Verilog-A translation process is another implementation example.</p>
+
+
+
+<p><strong>Note:</strong>&nbsp;The doxygen documentation is no longer provided in source tarballs, as it was determined that it inflated the download size and was of limited interest to most users, but may be generated if you have Doxygen and graphviz installed on your system.&nbsp; Simply type &#8220;doxygen Doxyfile&#8221; in the doc/doxygen directory, and it will produce files in the &#8220;html&#8221; subdirectory that may be browsed with a web browser (open html/index.html first).</p>
+
+
+
+<p>In either case, you must be building Xyce from source code in order to add models to it. Xyce does have a limited beta capability using shared-library &#8220;plug-ins&#8221; to add models at run time, but building these plug-ins still requires access to the full Xyce source code tree because the plugin capability is not enabled by default and is not present in any binary release of Xyce.</p>
+
+
+
+<h2 class="wp-block-heading">Adding a device to Xyce through Verilog-A</h2>
+
+
+
+<p>This section assumes you are already familiar with the Verilog-A language and are comfortable developing compact models in this language. This page does not include any Verilog-A instruction.</p>
+
+
+
+<p>In this tutorial, we will add a simple&nbsp;two-terminal device to Xyce that internally simulates a resistor, capacitor, and inductor in series. When we&#8217;re done, this device can be accessed in a netlist using the Xyce &#8220;Y device&#8221; extension:</p>
+
+
+
+<pre class="wp-block-preformatted">YRLC &lt;name&gt; &lt;node1&gt; &lt;node2&gt; R=&lt;resistance&gt; L=&lt;inductance&gt; C=&lt;capacitance&gt;</pre>
+
+
+
+<h4 class="wp-block-heading">Prerequisites</h4>
+
+
+
+<p>Before you can use Verilog-A, you must download and build the ADMS code generator. Download the ADMS source code from&nbsp;<a href="https://github.com/Qucs/ADMS">https://github.com/Qucs/ADMS</a>.&nbsp; This github site is the current repository for the actively maintained version of ADMS, which has already had patches proposed by the Xyce team applied to it.&nbsp; In prior releases we had recommended obtaining ADMS from an unmaintained sourceforge repository and applying patches to it, but that is no longer recommended.</p>
+
+
+
+<p>Build ADMS according to the instructions provided with it.</p>
+
+
+
+<h4 class="wp-block-heading">The Xyce/ADMS capability is a work in progress</h4>
+
+
+
+<p>The Xyce team has been using the ADMS procedure outlined in this tutorial for several years, and has used it to add several devices to Xyce, including the following models: VBIC 3T_et_cf, FBH HBT_X 2.1, PSP, EKV 3.0, EKV 2.6, and BSIM-CMG 107. Nevertheless, the back-end described here is very much a work in progress and all of the models mentioned have required a lot more work than the simple RLC model does. The RLC model described below can be imported into Xyce just by running ADMS, adding the generated code to the Xyce build process, and recompiling.</p>
+
+
+
+<p>Several issues add complexity to the task of getting a sophisticated Verilog-A model into Xyce:</p>
+
+
+
+<ul><li>Node collapse, where an internal node may be mapped away based on the value of a model parameter</li><li>Voltage limiting via &#8220;pnjlim&#8221; or other means</li><li>Setting initial junction drops (as is usually required for BJT and HBT models)</li><li>Complex use of analog functions</li></ul>
+
+
+
+<p>So far, the team has been able to improve the back-end to the point that it is not especially difficult to deal with these issues, but each one of them presents challenges to the back-end that almost always force us to do post-processing of the generated code before it will compile. If you are developing Verilog-A models that make use of these features, you may have to do some extra work (e.g., hand-editing or making patches) after ADMS is finished generating code.&nbsp; As an example, if you look in the utils/ADMS/examples/fbh_hbt-2.1, you will find three &#8220;.patch&#8221; files that post-process that device&#8217;s analog function template definitions so that they will compile, and add junction voltage initialization.</p>
+
+
+
+<h4 class="wp-block-heading">The RLC device in Verilog-A</h4>
+
+
+
+<p>The simplest implementation of the series RLC device is given below.</p>
+
+
+
+<pre class="wp-block-preformatted">`include "disciplines.vams"<br>`include "constants.vams"<br><br>`define attr(txt) (*txt*)<br><br>module rlc (p,n) `attr(xyceSpiceDeviceName="RLC" xyceLevelNumber="1");<br>&nbsp; electrical p,n;<br>&nbsp; inout p,n;<br>&nbsp; electrical internal1, internal2;<br><br>&nbsp; parameter real L=1e-3 from (0:inf) `attr(info="Inductance" type="instance");<br>&nbsp; parameter real R=1e3 from (0:inf) `attr(info="Resistance" type="instance");<br>&nbsp; parameter real C=1e-12 from (0:inf) `attr(info="Capacitance" type="instance");<br>&nbsp; real InductorCurrent;<br>&nbsp; real CapacitorCharge;<br><br>&nbsp; analog<br>&nbsp; begin<br><br>&nbsp;&nbsp;&nbsp; I(p,internal1)&lt;+ V(p,internal1)/R;<br><br>&nbsp;&nbsp;&nbsp; CapacitorCharge = V(internal1,internal2)*C;<br>&nbsp;&nbsp;&nbsp; I(internal1,internal2) &lt;+ ddt(CapacitorCharge);<br>&nbsp;&nbsp;&nbsp; <br>&nbsp;&nbsp;&nbsp; InductorCurrent=I(internal2,n);<br>&nbsp;&nbsp;&nbsp; V(internal2,n) &lt;+ L*ddt(InductorCurrent);<br><br>&nbsp; end<br>endmodule</pre>
+
+
+
+<p>This simple example is not the optimum implementation of the RLC, but demonstrates some basic requirements. The above Verilog-A code may be found in the &#8220;utils/ADMS/examples/rlc.va&#8221; file included in the Xyce source code distribution.</p>
+
+
+
+<p>In this example, the resistor, capacitor, and inductor are implemented exactly as they would be if they were stand-alone devices. A better example of how to implement this device, resulting in one fewer solution variable being required, is included in the Xyce source code as file &#8220;utils/ADMS/examples/rlc2.va&#8221;.</p>
+
+
+
+<h5 class="wp-block-heading">Things to note about the example</h5>
+
+
+
+<ul><li>The first two lines are required for ADMS to include some definitions we need.</li><li>The third line defines an &#8220;attr&#8221; macro that we use in the Xyce/ADMS back-end to tell Xyce how to use the device. This information cannot be encoded in Verilog-A directly and cannot be guessed. Some other simulators that use ADMS have information like this hard coded in their back-ends instead of using the technique here; but by doing it this way Xyce is able to import new Verilog-A models without having to edit the back-end code (unless the new model uses features not supported in the existing back-end).</li><li>The Verilog-A module declaration &#8220;module rlc(p,n);&#8221; has been augmented with a call to the &#8220;attr&#8221; macro. The xyceSpiceDeviceName=&#8221;RLC&#8221; attribute tells Xyce that when the model is compiled, it will be accessed as a device of type &#8220;YRLC&#8221;. The xyceLevelNumber=&#8221;1&#8243; is in this case not used, but it can be used to create multiple devices of the same type, selectable by having a model card with a &#8220;level&#8221; parameter to distinguish them. If these attributes are left out then the Xyce/ADMS back-end emits placeholder code with the comment &#8220;FIXME&#8221; in several places, and these can be hand-edited to add the appropriate information as a post-processing step. Using the attributes, however, is more convenient.</li><li>Each parameter declaration has been augmented with attributes using the &#8220;attr&#8221; macro. &#8220;info&#8221; is used for documentation of the parameter (Xyce can output a LaTeX table containing device parameters including this information). &#8220;type&#8221; can be &#8220;instance&#8221; or &#8220;model&#8221;, to declare that a parameter will occur either on an instance line or in a .model card. There are numerous other Xyce-specific attributes that can also be set. See the examples in the &#8220;utils/ADMS/examples&#8221; directory to see how they may be used in real devices such as the VBIC 3T_et_cf model or the FBH HBT_X model.</li></ul>
+
+
+
+<h4 class="wp-block-heading">Processing the Verilog-A with ADMS</h4>
+
+
+
+<p>Once your Verilog-A file is created, it is necessary to use the Xyce/ADMS back-end with ADMS to generate C++ code that can be used in Xyce. Assuming your RLC code is saved in a file called &#8220;rlc.va&#8221;, and that your Xyce source code tree is in $HOME/src/Xyce, this is accomplished by running &#8220;admsXml&#8221; (installed by ADMS) with command line arguments to point at the files in the Xyce/ADMS back-end.</p>
+
+
+
+<pre class="wp-block-preformatted">admsXml -x -e $HOME/src/Xyce/utils/ADMS/adms.implicit.xml \<br>              -e $HOME/src/Xyce/utils/ADMS/xyceVersion_nosac.xml \<br>              -e $HOME/src/Xyce/utils/ADMS/xyceBasicTemplates_nosac.xml \<br>              -e $HOME/src/Xyce/utils/ADMS/xyceAnalogFunction_nosac.xml \<br>              -e $HOME/src/Xyce/utils/ADMS/xyceHeaderFile_nosac.xml \<br>              -e $HOME/src/Xyce/utils/ADMS/xyceImplementationFile_nosac.xml \<br>              rlc.va</pre>
+
+
+
+<p>As when we built Xyce, we have used the shell &#8220;continuation character&#8221; to break this single command line into two lines. It is important that &#8220;\&#8221; be the last character on the line, that it be preceded by a space, and that no spaces follow it.</p>
+
+
+
+<p>The admsXml command line above will create a .C and a .h file ready to compile in to Xyce. The name of the files is based on the name of the device in the Verilog-A &#8220;module&#8221; line, and NOT the file name of the Verilog-A code itself. In the current implementation, the file name is constructed by appending &#8220;N_DEV_ADMS&#8221; to the module name. In the case of the RLC device, our output files are N_DEV_ADMSrlc.C and N_DEV_ADMSrlc.h.</p>
+
+
+
+<p>To use this code in Xyce, it will be necessary to add it to the build system of Xyce, add a call to the new device&#8217;s &#8220;registerDevice&#8221; method in an appropriate place, and recompile Xyce.&nbsp; These steps are discussed below.</p>
+
+
+
+<h4 class="wp-block-heading">&#8220;Wiring in&#8221; the ADMS-generated code</h4>
+
+
+
+<p>The ADMS command line given in the previous section created two C++ files, a header and an implementation file named &#8220;N_DEV_ADMSrlc.h&#8221; and &#8220;N_DEV_ADMSrlc.C&#8221;, respectively. Because the RLC device is so simple, the code produced by ADMS is ready to insert into Xyce with no further modification. All that is necessary is to add the two files to the Xyce build process and to add code to the device manager to get Xyce to recognize the new device.</p>
+
+
+
+<h5 class="wp-block-heading">Add the RLC device to the build system</h5>
+
+
+
+<p>There is already an &#8220;ADMS&#8221; subdirectory of the src/DeviceModelPKG directory that is used for adding new devices produced by ADMS. Copy N_DEV_ADMSrlc.h to the src/DeviceModelPKG/ADMS/include directory, and copy N_DEV_ADMSrlc.C to the src/DeviceModelPKG/ADMS/src directory.</p>
+
+
+
+<p>Edit the file &#8220;Makefile.am&#8221; in src/DeviceModelPKG/ADMS, and add the names of the two files to the &#8220;libADMS_la_SOURCES&#8221; variable, which should look something like this when you are done (the actual appearance will vary from release to release of Xyce, as this file is updated often &#8212; the point here is that you&#8217;ve added two lines to what already exists in the file):</p>
+
+
+
+<pre class="wp-block-preformatted">libADMS_la_SOURCES = \<br>&nbsp; $(srcdir)/src/N_DEV_RegisterADMSDevices.C \<br>&nbsp; $(srcdir)/src/N_DEV_ADMSHBT_X.C \<br>&nbsp; $(srcdir)/src/N_DEV_ADMSPSP103VA.C \<br>&nbsp; $(srcdir)/src/N_DEV_ADMSbsimcmg.C \<br>&nbsp; $(srcdir)/src/N_DEV_ADMSvbic.C \<br>&nbsp; $(srcdir)/src/N_DEV_ADMSrlc.C \<br>&nbsp; $(srcdir)/include/N_DEV_RegisterADMSDevices.h \<br>&nbsp; $(srcdir)/include/N_DEV_ADMSHBT_X.h \<br>&nbsp; $(srcdir)/include/N_DEV_ADMSPSP103VA.h \<br>&nbsp; $(srcdir)/include/N_DEV_ADMSbsimcmg.h \<br>&nbsp; $(srcdir)/include/N_DEV_ADMSrlc.h \<br>&nbsp; $(srcdir)/include/N_DEV_ADMSvbic.h</pre>
+
+
+
+<p>Remember to have no spaces after any &#8220;\&#8221; character above.</p>
+
+
+
+<h5 class="wp-block-heading">Register the new device</h5>
+
+
+
+<p>Edit the file &#8220;N_DEV_RegisterADMSDevices.C&#8221; in the src/DeviceModelPKG/ADMS/src directory. You will see a block of &#8220;#include&#8221; directives. Add your new device&#8217;s include file here so it will now read:</p>
+
+
+
+<pre class="wp-block-preformatted">#include &lt;N_DEV_ADMSHBT_X.h&gt;<br>#include &lt;N_DEV_ADMSPSP103VA.h&gt;<br>#include &lt;N_DEV_ADMSvbic.h&gt;<br>#include &lt;N_DEV_ADMSbsimcmg.h&gt;<br>#include &lt;N_DEV_ADMSrlc.h&gt;</pre>
+
+
+
+<p>Next, look a few lines down in the file and you&#8217;ll see a series of calls to &#8220;registerDevice();&#8221; Add your new device&#8217;s registerDevice call to this, so it reads:</p>
+
+
+
+<pre class="wp-block-preformatted">&nbsp; ADMSvbic::registerDevice();<br>&nbsp; ADMSHBT_X::registerDevice();<br>&nbsp; ADMSPSP103VA::registerDevice();<br>&nbsp; ADMSbsimcmg::registerDevice();<br>&nbsp; ADMSrlc::registerDevice();</pre>
+
+
+
+<p>Your device is now set up to be used. All that&#8217;s left is to update the build system so that the new device is compiled, and rebuild Xyce.</p>
+
+
+
+<h5 class="wp-block-heading">Updating the build system</h5>
+
+
+
+<p>To rebuild the Xyce build system, you need the following tools:</p>
+
+
+
+<ul><li><a href="http://www.gnu.org/software/autoconf" rel="noreferrer noopener" target="_blank">GNU Autoconf version 2.59 or later</a></li><li><a href="http://www.gnu.org/software/automake" rel="noreferrer noopener" target="_blank">GNU Automake version 1.11 or later</a></li><li><a href="http://www.gnu.org/software/libtool">GNU libtool</a>&nbsp;(any recent version should work)</li></ul>
+
+
+
+<p>If you don&#8217;t have these tools installed on your system, you must install them before proceeding. Most operating systems provide these tools in their package management systems, or you can build them from source using the links above.</p>
+
+
+
+<p>Once you have the autotools installed, you can execute the &#8220;bootstrap&#8221; script in the top level of the Xyce source tree:</p>
+
+
+
+<pre class="wp-block-preformatted">&nbsp; cd $HOME/src/Xyce<br>&nbsp; ./bootstrap</pre>
+
+
+
+<p>Xyce is now ready to be recompiled. You will need to change directories to your Xyce build directory and re-run the &#8220;configure&#8221; invocation you used when building Xyce originally. Once configure is done, a &#8220;make&#8221; in the build directory will compile your new device and wire it in to Xyce.</p>
+
+
+
+<p>You can check that the new device is there by running &#8220;src/Xyce -param | less&#8221; in the build directory. Xyce will respond by emitting the instance and model parameters recognized by all devices, and you can see your new device in there as &#8220;RLC level 1&#8221;.</p>
+
+
+
+<h4 class="wp-block-heading">Testing the Verilog-A imported device</h4>
+
+
+
+<p>The RLC device you just created and wired in to Xyce can now be run in a netlist.</p>
+
+
+
+<p>Because the SPICE netlist format recognizes device types by the first character on the line, there is a limited number of device types that can be supported using the normal netlist syntax. Xyce has opted to use the &#8220;Y&#8221; device as an extension mechanism. In this mechanism, rather than having a device&#8217;s type and name specified as the first word on the line, the device type is taken from the characters following &#8220;Y&#8221; up to the first space, and the device name is the second word on the line.</p>
+
+
+
+<p>By using the particular set of attributes on module declaration of the Verilog-A source, we have indicated that our new device will be known as a &#8220;YRLC&#8221; device. It will be used in a netlist using the following format:</p>
+
+
+
+<pre class="wp-block-preformatted">YRLC &lt;name&gt; &lt;node1&gt; &lt;node2&gt; R=&lt;resistance&gt; L=&lt;inductance&gt; C=&lt;capacitance&gt;</pre>
+
+
+
+<p>Compare this to how a resistor would be specified:</p>
+
+
+
+<pre class="wp-block-preformatted">R&lt;name&gt; &lt;node1&gt; &lt;node2&gt; &lt;resistance&gt;</pre>
+
+
+
+<p>A complete netlist that uses the new device is:</p>
+
+
+
+<pre class="wp-block-preformatted">Test of series RLC circuit<br><br>V1 1 0 SIN (5v 5v 20MEG) <br>Yrlc rlc1 1 0 R=1kohm L=1mH C=1pf<br><br>.tran 1n 4u<br>.print tran v(1) I(v1)<br>.end</pre>
+
+
+
+<p>This netlist will produce the same signals as the one given below, where the R, L, and C are discrete devices:</p>
+
+
+
+<pre class="wp-block-preformatted">Test of series RLC circuit<br><br>V1 1 0 SIN (5v 5v 20MEG) <br>R1 1 2 1Kohm<br>C1 2 3 1pF<br>L1 3 0 1mH<br><br>.tran 1n 4u<br>.print tran v(1) I(v1)<br>.end</pre>
+
+
+
+<h4 class="wp-block-heading">Alternate approach: run-time dynamic library plug-in</h4>
+
+
+
+<p>In Xyce the most established method of adding a Verilog-A model is the one we have described up to now. But starting with the 6.1 release we have begun to implement a way of loading new devices using dynamically loaded shared libraries, rather than wiring them in at compile time. This feature is experimental and currently works&nbsp;only on real Unix-like systems like Linux, FreeBSD, and Mac OS X. It does not yet work on Windows under Cygwin.</p>
+
+
+
+<p>If you want to try this method out, be sure to&nbsp;<strong>undo any changes you have made to Xyce to hard-wire the RLC device according to the directions above</strong>!</p>
+
+
+
+<p>To use this feature you must build the shared-library version of Xyce. Once the shared-library build of Xyce is complete, you can build your new device as a shared library.</p>
+
+
+
+<h5 class="wp-block-heading">Rebuild Xyce to use shared libraries</h5>
+
+
+
+<p>The first step to using dynamic plug-ins is to rebuild Xyce to support the feature. Add the following two lines to the &#8220;configure&#8221; command line you used to build Xyce originally:</p>
+
+
+
+<pre class="wp-block-preformatted">&nbsp;&nbsp; --enable-shared \<br>&nbsp;&nbsp; --enable-xyce-shareable \</pre>
+
+
+
+<p>Once configure is re-run with these additional arguments, recompile Xyce with &#8220;make clean &amp;&amp; make&#8221;. The result will be that Xyce will be linked against a shared-library &#8220;libxyce.so&#8221; (or libxyce.dylib on OS X), and the user plugin option will be available.</p>
+
+
+
+<h5 class="wp-block-heading">Create the demo plug-in.</h5>
+
+
+
+<p>In your Xyce source directory you will find that there is a &#8220;user_plugin&#8221; directory that just happens to contain exactly the &#8220;rlc.va&#8221; Verilog-A model we have used above, and in your build directory you will find user_plugin directory that contains a Makefile that is all ready to use. From the top level of the build directory, after building Xyce, simply type &#8220;make plugin&#8221;.</p>
+
+
+
+<p>The build system will run ADMS on the Verilog input, compile the code, and produce a &#8220;libADMSrlc.so&#8221; file in the user_plugin/.libs directory.</p>
+
+
+
+<p>You can then run &#8220;src/Xyce -plugin `pwd`/user_plugin/.libs/libADMSrlc.so -param&#8221; and see that the RLC device is present. If you omit the &#8220;-plugin&#8221; option and the shared library name, you will see the RLC device is not there.&nbsp; You can use Xyce with the &#8220;-plugin&#8221; option and shared library name to run the example netlist above, producing the same results.</p>
+
+
+
+<p>If you install the shared build of Xyce with &#8220;make install&#8221;, it will put the shared libraries into the lib directory associated with your install prefix. If you do so and want the plugin accessible, you should also do a &#8220;make install-plugin&#8221;, which will put the shared library of the plugin in the same place.&nbsp; Xyce will not automatically detect the presence of plugin libraries in its lib directory &#8212; you will always need to use the &#8220;-plugin&#8221; flag to tell Xyce which plugin to load.</p>
+
+
+
+<h5 class="wp-block-heading">Using a different device as a plugin</h5>
+
+
+
+<p>As shipped, the user_plugin directory is intended merely as a demonstration of how to create a shared library plugin. There are three essential components to this plugin directory:</p>
+
+
+
+<ul><li>A Makefile.am file that declares the name of the library to produce and the files needed to produce it.<ul><li>The relevant Makefile.am is the one in the &#8220;user_plugin&#8221; subdirectory of the Xyce source tree.</li><li>This Makefile.am also contains the ADMS command line to produce C++ from the verilog input.</li><li>If you ever edit this file, you will need to re-run the &#8220;bootstrap&#8221; script in the top-level of the Xyce source tree, as you had to do when wiring in the device by hand.</li><li>After running &#8220;bootstrap&#8221; you will also need to re-run &#8220;configure&#8221; in your build directory.</li></ul></li><li>A &#8220;N_ADMSrlc_bootstrap.C&#8221; file that declares a structure called &#8220;Bootstrap&#8221;, whose constructor calls the &#8220;registerDevice()&#8221; method of the new device<ul><li>When Xyce is started with the &#8220;-plugin&#8221; option, it will load the shared library and create this Bootstrap object. The constructor of the object will automatically register the device, just as we did by hand when we added the &#8220;registerDevice()&#8221; call to the N_DEV_RegisterADMSDevices.C file, above.</li></ul></li><li>The Verilog-A input file, rlc.va<ul><li>This file will be processed into C++ by ADMS.</li></ul></li></ul>
+
+
+
+<p>If you wanted to generate a plugin for a different device, you&#8217;d have to modify the Makefile.am file to compile your device instead. It is well commented and the files are named intuitively, so it should be reasonably easy to understand how to modify it. You would also need to produce a &#8220;bootstrap&#8221; file similar to the one provided for the RLC device.&nbsp;</p>
+
+
+
+<p>Some things to note about the user_plugin directory if you are planning to modify its contents for your own device:</p>
+
+
+
+<ul><li>The RLC device is very simple and is entirely contained in one file.&nbsp;<ul><li>If you are trying to build a more complex Verilog-A model, you might have to add additional options to the ADMS command line in user_plugin/Makefile.am</li><li>The most likely thing you would have to add to the ADMS command line is an option to let it find any files that your main &#8220;.va&#8221; file includes.&nbsp; For example, if your top-level Verilog file includes several files in the same directory,&nbsp; add &#8220;-I$(srcdir)&#8221; to the admsXml command line.</li></ul></li><li>You will have to create a bootstrap C++ file similar to the one in N_DEV_ADMSrlc_bootstrap.C, customized to reference your own model&#8217;s registerDevice method.&nbsp;<ul><li>The Xyce/ADMS back-end will create a class whose name is the concatenation of your &#8220;module&#8221; name and the letters &#8220;ADMS.&#8221;&nbsp; Our RLC model had a line &#8220;module rlc&#8221; at the beginning, and so its name is &#8220;ADMSrlc&#8221;</li><li>Your bootstrap file needs to include the .h file generated by ADMS, and must define a bootstrap struct whose constructor calls your registerDevice.<ul><li>The N_DEV_ADMSrlc_bootstrap.C file could be copied, replacing all the instances of &#8220;rlc&#8221; with the name that appears on your device&#8217;s module line.</li></ul></li></ul></li><li>You will need to rewrite the user_plugin/Makefile.am file in the Xyce source tree to refer to your own files instead of our demonstration files.&nbsp; Copying the existing Makefile.am, but changing &#8220;rlc&#8221; everywhere in that file to the module name of your device should be enough, unless you need to add a &#8220;-I&#8221; flag as described above.</li></ul>
+
+
+
+<p>While the user_plugin directory is set up to use a Verilog-A model and ADMS to convert the Verilog-A to C++, you can also use this technique if you are writing a device from scratch in C++. You will have to modify the Makefile.am accordingly.</p>
+
+
+
+<h4 class="wp-block-heading">Final notes</h4>
+
+
+
+<p>In this tutorial we have demonstrated how to create a simple model in Verilog-A, translate that model into C++ using ADMS, and build that C++ model into Xyce.</p>
+
+
+
+<p>If you intend to develop your own models, it is a worthwhile exercise to read through the C++ code that ADMS has produced and compare it to the code for other devices in Xyce, especially if you intend to develop models in C++ from scratch. The Doxygen documentation is no longer distributed in Xyce releases, but may be built (assuming you have Doxygen installed) by &#8220;cd&#8221;ing into the doc/doxygen directory of the Xyce source tree (say, $HOME/src/Xyce) and running&nbsp; the command &#8220;doxygen Doxyfile&#8221;.&nbsp; You may then view the file $HOME/src/Xyce/doc/doxygen/html/index.html in a web browser, and you should read the &#8220;Circuit Device How To&#8221; pages while studying the device C++ code.</p>
+	</div><!-- .entry-content -->
+
+	</article><!-- #post-123 -->
+            </div>
+            
+                        <div class="aside col-lg-4 col-md-12" aria-label="sidebar-area" role="complementary">
+                <aside id="secondary" class="widget-area mx-n3 mx-xl-0" tabindex="0" aria-label="sidebar-area">
+    <div id="text-2" class="widget widget_text"><h3 class="widget-title mt-0">News &#038; Publications</h3>			<div class="textwidget"><ul>
+<li><a href="https://xyce.sandia.gov/news/">Xyce 7.10 has been released!</a></li>
+<li><a href="https://xyce.sandia.gov/news/">View All News</a></li>
+<li><a href="https://xyce.sandia.gov/publications/">View All Publications</a></li>
+</ul>
+</div>
+		</div><div id="text-3" class="widget widget_text"><h3 class="widget-title mt-0">Contact Xyce</h3>			<div class="textwidget"><p>For more information or to provide feedback, please contact the <a href="https://xyce.sandia.gov/contact-us/">Xyce team</a>.</p>
+<p><strong>Web forum</strong><br />
+<a href="https://groups.google.com/g/xyce-users" target="_blank" rel="noopener">Xyce Users on Google Groups</a></p>
+<p><strong>Email</strong><br />
+<a href="mailto:xyce@sandia.gov">xyce@sandia.gov</a></p>
+<p><strong>Postal Address</strong><br />
+PO Box 5800, MS 1177<br />
+Albuquerque, NM 87185-1177</p>
+<p><strong>SANDIA USERS:</strong> Please use the contact information on the <a href="https://wp.sandia.gov/xyce/">Xyce Internal Homepage</a>.</p>
+</div>
+		</div></aside><!-- #secondary -->
+
+            </div>
+                    </div>
+    </div>
+</div>
+
+<footer 
+    class="snl-footer-menu snl__footer--main" 
+    style="background: linear-gradient(rgba(0, 0, 0, 0.1), rgb(0, 0, 0)), url('https://xyce.sandia.gov/app/themes/thunderberg/assets/img/tui4/footer-pattern-dark.png');"
+    aria-label="footer">
+    <div class="global-container">
+        <div class="link-container top-link-start navbar navbar-expand-lg pt-md-0">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link no-icon" href="https://www.sandia.gov/about"><span class="footer-top-link-title">About Sandia</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link no-icon" href="https://www.sandia.gov/news"><span class="footer-top-link-title">News</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link no-icon" href="https://www.sandia.gov/research"><span class="footer-top-link-title">Research</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link no-icon" href="https://www.sandia.gov/working-with-sandia"><span class="footer-top-link-title">Partnerships</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link no-icon" href="https://www.sandia.gov/careers"><span class="footer-top-link-title">Careers</span></a>
+                </li>
+            </ul>
+        </div>
+        <div class="row">
+            <div class="col-lg-9 col-12">
+                <p id="colophonCopyright">© 2026 National Technology and Engineering Solutions of Sandia, LLC. | <a class="no-icon" href="https://www.sandia.gov/contact-us/">Questions &amp; Comments</a> | <a class="no-icon" href="https://www.sandia.gov/privacy-and-security/">Privacy &amp; Security</a></p>
+                <p id="colophonLogos"><a href="https://energy.gov" rel="noopener noreferrer" target="_blank" class="me-3"><img alt="U.S. Department of Energy" longdesc="https://energy.gov" src="https://xyce.sandia.gov/app/themes/thunderberg/assets/img/tui4/doe_logo_white.png" width="140" height="37" style="margin-bottom: 16px;"></a>&nbsp;&nbsp;<a href="https://nnsa.energy.gov/" rel="noopener noreferrer" target="_blank" class="me-4"><img alt="National Nuclear Security Administration" longdesc="https://nnsa.gov" src="https://xyce.sandia.gov/app/themes/thunderberg/assets/img/tui4//nnsa_logo_white.png" width="116" height="37" style="margin-bottom: 16px;"></a>&nbsp;&nbsp;<a href="https://www.sandia.gov/" rel="noopener noreferrer" target="_blank"><img alt="Sandia National Laboratories" longdesc="https://sandia.gov" src="https://xyce.sandia.gov/app/themes/thunderberg/assets/img/tui4/sandia_logo_horizontal_white.png" width="230" height="35" style="margin-left: 3px; margin-bottom: 16px;"></a></p>
+                <p id="colophonLegal"><a class="no-icon" href="https://www.sandia.gov">Sandia National Laboratories</a> is a multimission laboratory managed and operated by National Technology and Engineering Solutions of Sandia, LLC., a wholly owned subsidiary of Honeywell International, Inc., for the U.S. Department of Energy’s National Nuclear Security Administration under contract DE-NA-0003525.</p>
+            </div>
+            <div class="col-lg-3 col-12 footer-sidenav">
+                <div class="row justify-content-between">
+                    <div class="link-container text-start">
+                        <ul>
+                            <li><a class="snl-links" href="https://www.sandia.gov/locations"><span class="svg-icons d-inline-block me-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!-- Font Awesome Pro 5.15.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></svg></span><span class="link-title">Locations/Visiting</span></a></li>
+                            <li><a class="snl-links" href="https://www.sandia.gov/contact-us"><span class="svg-icons d-inline-block me-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Pro 5.15.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M502.3 190.8c3.9-3.1 9.7-.2 9.7 4.7V400c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V195.6c0-5 5.7-7.8 9.7-4.7 22.4 17.4 52.1 39.5 154.1 113.6 21.1 15.4 56.7 47.8 92.2 47.6 35.7.3 72-32.8 92.3-47.6 102-74.1 131.6-96.3 154-113.7zM256 320c23.2.4 56.6-29.2 73.4-41.4 132.7-96.3 142.8-104.7 173.4-128.7 5.8-4.5 9.2-11.5 9.2-18.9v-19c0-26.5-21.5-48-48-48H48C21.5 64 0 85.5 0 112v19c0 7.4 3.4 14.3 9.2 18.9 30.6 23.9 40.7 32.4 173.4 128.7 16.8 12.2 50.2 41.8 73.4 41.4z"></path></svg></span><span class="link-title">Contact Us</span></a></li>
+                            <li><a class="snl-links" href="https://www.sandia.gov/resources/employees"><span class="svg-icons d-inline-block me-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!-- Font Awesome Pro 5.15.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M434.7 64h-85.9c-8 0-15.7 3-21.6 8.4l-98.3 90c-.1.1-.2.3-.3.4-16.6 15.6-16.3 40.5-2.1 56 12.7 13.9 39.4 17.6 56.1 2.7.1-.1.3-.1.4-.2l79.9-73.2c6.5-5.9 16.7-5.5 22.6 1 6 6.5 5.5 16.6-1 22.6l-26.1 23.9L504 313.8c2.9 2.4 5.5 5 7.9 7.7V128l-54.6-54.6c-5.9-6-14.1-9.4-22.6-9.4zM544 128.2v223.9c0 17.7 14.3 32 32 32h64V128.2h-96zm48 223.9c-8.8 0-16-7.2-16-16s7.2-16 16-16 16 7.2 16 16-7.2 16-16 16zM0 384h64c17.7 0 32-14.3 32-32V128.2H0V384zm48-63.9c8.8 0 16 7.2 16 16s-7.2 16-16 16-16-7.2-16-16c0-8.9 7.2-16 16-16zm435.9 18.6L334.6 217.5l-30 27.5c-29.7 27.1-75.2 24.5-101.7-4.4-26.9-29.4-24.8-74.9 4.4-101.7L289.1 64h-83.8c-8.5 0-16.6 3.4-22.6 9.4L128 128v223.9h18.3l90.5 81.9c27.4 22.3 67.7 18.1 90-9.3l.2-.2 17.9 15.5c15.9 13 39.4 10.5 52.3-5.4l31.4-38.6 5.4 4.4c13.7 11.1 33.9 9.1 45-4.7l9.5-11.7c11.2-13.8 9.1-33.9-4.6-45.1z"></path></svg></span><span class="link-title">Employee Resources</span></a></li>
+                            <li><a class="snl-links" href="https://www.sandia.gov/security"><span class="svg-icons d-inline-block me-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Pro 5.15.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M466.5 83.7l-192-80a48.15 48.15 0 0 0-36.9 0l-192 80C27.7 91.1 16 108.6 16 128c0 198.5 114.5 335.7 221.5 380.3 11.8 4.9 25.1 4.9 36.9 0C360.1 472.6 496 349.3 496 128c0-19.4-11.7-36.9-29.5-44.3zM256.1 446.3l-.1-381 175.9 73.3c-3.3 151.4-82.1 261.1-175.8 307.7z"></path></svg></span><span class="link-title">Security Toolcart</span></a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-left:-10px !important;">
+                    <div class="snl social-icons d-flex m-0 wp-block-snl-social-buttons"><ul class="m-0 p-0 d-flex list-unstyled">            <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns facebookIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Facebook"
+                        title="Facebook"
+                        href="https://www.facebook.com/SandiaLabs">
+                        <span class="icon fa-brands fa-facebook-f"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns twitterIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Twitter X"
+                        title="Twitter X"
+                        href="https://www.twitter.com/SandiaLabs">
+                        <span class="icon snl-x-twitter"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns youtubeIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="YouTube"
+                        title="YouTube"
+                        href="https://www.youtube.com/SandiaLabs">
+                        <span class="icon fa-brands fa-youtube"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns flickrIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Flickr"
+                        title="Flickr"
+                        href="https://www.flickr.com/SandiaLabs">
+                        <span class="icon fa-brands fa-flickr"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns instagramIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="Instagram"
+                        title="Instagram"
+                        href="https://www.instagram.com/SandiaLabs">
+                        <span class="icon fa-brands fa-instagram"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns linkedinIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="LinkedIn"
+                        title="LinkedIn"
+                        href="https://www.linkedin.com/company/sandia-national-laboratories">
+                        <span class="icon fa-brands fa-linkedin"></span>
+                                            </a>
+                            </li>
+                    <li class="icon-container">
+                                    <a class="text-decoration-none svg-icons snl-social-share-btns rssIcon"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label="RSS"
+                        title="RSS"
+                        href="https://newsreleases.sandia.gov/feed">
+                        <span class="icon fa-solid fa-rss"></span>
+                                            </a>
+                            </li>
+        </ul></div>                </div>
+                </div>
+                <div class="mt-3">
+                    <p>Learn about the Department of Energy's <a class="no-icon" href="https://doe.responsibledisclosure.com/hc/en-us" target="_blank">Vulnerability Disclosure Program</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer><script nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872">
+		(function($){
+			$(document).on(
+				'keydown',
+				'.gform_wrapper input:not([id^=gform_submit_button]):not([type=submit]):not([type=button]):not([type=image]):not(.submit-on-enter)',
+				function(e){
+					if (e.key === 'Enter' || e.keyCode === 13) {
+						e.preventDefault();
+						return false;
+					}
+				}
+			);
+		})(jQuery);
+</script>
+<script nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872">
+(function($){
+        $(function(){
+          $('input').not('[id^=gform_submit_button]').not('[id^=wp-block-search__]').not('.submit-on-enter').on('keypress', function(e){
+            if(e.keyCode == 13) {
+              e.preventDefault();
+              return false;
+            }
+          });
+        });
+      })(jQuery);
+</script>
+    <script type="text/javascript" >
+    document.addEventListener('DOMContentLoaded', function() {
+        const cardDropdowns = document.querySelectorAll('.snl-card .dropdown [data-bs-toggle="dropdown"], .tui-4-card .dropdown [data-bs-toggle="dropdown"]');
+        
+        cardDropdowns.forEach(function(toggle) {
+            const existingDropdown = bootstrap.Dropdown.getInstance(toggle);
+            if (existingDropdown) {
+                existingDropdown.dispose();
+            }
+            
+            new bootstrap.Dropdown(toggle, {
+                popperConfig: {
+                    strategy: 'fixed',
+                    placement: 'bottom-start',
+                    modifiers: [
+                        {
+                            name: 'flip',
+                            enabled: false,
+                        },
+                        {
+                            name: 'preventOverflow',
+                            enabled: false,
+                        }
+                    ]
+                }
+            });
+        });
+    });
+    </script>
+    <!-- UX Feedback ID missing from Customizer theme options --><!-- SITEIMPROVE Analytics tag--><script nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872">
+	
+        /* see: https://support.siteimprove.com/hc/en-gb/articles/206343703-Adding-Siteimprove-Analytics-tracking-code-to-your-website */
+		/*<![CDATA[*/
+		(function() {
+			var sz = document.createElement('script'); sz.type = 'text/javascript'; sz.async = true;
+			sz.src = '//siteimproveanalytics.com/js/siteanalyze_6025768.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(sz, s);
+		})();
+		/*]]>*/
+</script>
+<script defer src="https://xyce.sandia.gov/app/themes/emp-child/build/index.js?ver=fbb750fd312778403036" id="index-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script defer src="https://xyce.sandia.gov/app/themes/emp-child/build/public.js?ver=3d481fc864601e73c1e1" id="public-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script nonce='d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872' id='dlm-xhr-js-extra'>
+var dlmXHRtranslations = {"error":"An error occurred while trying to download the file. Please try again.","not_found":"Download does not exist.","no_file_path":"No file path defined.","no_file_paths":"No file paths defined.","filetype":"Download is not allowed for this file type.","file_access_denied":"Access denied to this file.","access_denied":"Access denied. You do not have permission to download this file.","security_error":"Something is wrong with the file path.","file_not_found":"File not found."};
+</script>
+<script id="dlm-xhr-js-before" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872">
+const dlmXHR = {"xhr_links":{"class":["download-link","download-button"]},"prevent_duplicates":true,"ajaxUrl":"https:\/\/xyce.sandia.gov\/wp-admin\/admin-ajax.php"}; dlmXHRinstance = {}; const dlmXHRGlobalLinks = "https://xyce.sandia.gov/download/"; const dlmNonXHRGlobalLinks = []; dlmXHRgif = "https://xyce.sandia.gov/wp-includes/images/spinner.gif"; const dlmXHRProgress = "1"
+</script>
+<script defer src="https://xyce.sandia.gov/app/plugins/download-monitor/assets/js/dlm-xhr.min.js?ver=5.0.22" id="dlm-xhr-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script id="dlm-xhr-js-after" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872">
+document.addEventListener("dlm-xhr-modal-data", function(event) { if ("undefined" !== typeof event.detail.headers["x-dlm-tc-required"]) { event.detail.data["action"] = "dlm_terms_conditions_modal"; event.detail.data["dlm_modal_response"] = "true"; }});
+document.addEventListener("dlm-xhr-modal-data", function(event) {if ("undefined" !== typeof event.detail.headers["x-dlm-members-locked"]) {event.detail.data["action"] = "dlm_members_conditions_modal";event.detail.data["dlm_modal_response"] = "true";event.detail.data["dlm_members_form_redirect"] = "https://xyce.sandia.gov/documentation-tutorials/tutorial-adding-a-device-to-xyce/";}});
+</script>
+<script nonce='d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872' id='jquery-widgetopts-js-extra'>
+var varWidgetOpts = {"shallNotFixed":"","margin_top":"0","disable_width":"0","disable_height":"0"};
+</script>
+<script src="https://xyce.sandia.gov/app/plugins/extended-widget-options/assets/js/jquery.widgetopts.min.js?ver=5.1.6" id="jquery-widgetopts-js" defer data-wp-strategy="defer" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<script nonce='d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872' id='thunderberg-public-js-js-extra'>
+var thunderbergExternalLinkSettings = {"openInNewWindow":""};
+</script>
+<script defer src="https://xyce.sandia.gov/app/themes/thunderberg/build/js/public.js?ver=960ba08312dc6cfdd5c1" id="thunderberg-public-js-js" nonce="d48294ab78c41b5dde6de8b507948b501ac075ee4b536863f9fe7eba0af17872"></script>
+<div class="topbutton"><a href="#top-of-page" class="d-flex flex-column"><span class="svg-icons"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!-- Font Awesome Pro 5.15.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M240.971 130.524l194.343 194.343c9.373 9.373 9.373 24.569 0 33.941l-22.667 22.667c-9.357 9.357-24.522 9.375-33.901.04L224 227.495 69.255 381.516c-9.379 9.335-24.544 9.317-33.901-.04l-22.667-22.667c-9.373-9.373-9.373-24.569 0-33.941L207.03 130.525c9.372-9.373 24.568-9.373 33.941-.001z"></path></svg></span>Top</a></div>
+</body>
+</html>

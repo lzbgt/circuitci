@@ -1357,22 +1357,29 @@ stale OpenVAF/OSDI source metadata.
 `ANALOG_MODEL_COMPILER_ARTIFACT_HASH_MISMATCH` reports are emitted when the
 declared OpenVAF command does not reference the pinned source/output, the OSDI
 artifact is missing, or the compiled artifact hash is stale.
+`ANALOG_MODEL_COMPILER_BACKEND_UNSUPPORTED` is emitted when an OSDI shared
+object is paired with a backend that has no trusted OSDI loading contract, such
+as explicit `backend: xyce` or `backend: embedded_ngspice`.
 `ANALOG_MODEL_COMPILER_BUILD_FAILED` is emitted only when
 `CIRCUITCI_RUN_OPENVAF_BUILDS=1` opts into direct OpenVAF execution and the
 declared command fails. Stable measured keys include `model_file`,
 `source_path`, `compiler`, `compiler_version`, `compiler_command`,
-`compiler_available_on_path`, optional `stdout`/`stderr` prefixes for failed
-builds, and `sha256` for hash mismatches. Stable limit keys include
+`compiler_available_on_path`, `artifact_format`, `requested_backend`,
+`research_evidence`, optional `stdout`/`stderr` prefixes for failed builds, and
+`sha256` for hash mismatches. Stable limit keys include
 `required_field`, `required_artifact`, `required_build_step`, `source_path`,
-`model_file`, `output_path`, and `expected_sha256`. These findings keep
-Verilog-A compact-model use fail-closed until the compiled OSDI artifact is tied
-to source path/hash, OpenVAF compiler identity/version, and reproducible
-compiler command metadata. For external ngspice transient runs that reach solver
-execution, OSDI artifacts are loaded through generated `pre_osdi` wrapper
-commands. If the runtime rejects those commands or cannot load the OSDI
-artifact, the normal `SPICE_TRANSIENT_ANALYSIS` finding preserves the wrapper
-and log artifacts and its message identifies OSDI model loading as the failing
-boundary. Successful solver manifests include
+`model_file`, `output_path`, `expected_sha256`, `supported_backend`, and
+`xyce_required_model_path`. These findings keep Verilog-A compact-model use
+fail-closed until the compiled OSDI artifact is tied to source path/hash,
+OpenVAF compiler identity/version, reproducible compiler command metadata, and
+a backend with a documented loading contract. For external ngspice transient
+runs that reach solver execution, OSDI artifacts are loaded through generated
+`pre_osdi` wrapper commands. If the runtime rejects those commands or cannot
+load the OSDI artifact, the normal `SPICE_TRANSIENT_ANALYSIS` finding preserves
+the wrapper and log artifacts and its message identifies OSDI model loading as
+the failing boundary. Xyce does not load OpenVAF `*.osdi` artifacts; its
+documented Verilog-A path is Xyce/ADMS-generated C++ linked into Xyce or loaded
+as a Xyce plugin from a shareable Xyce build. Successful solver manifests include
 `inputs.model_file_provenance[]` records for OpenVAF/OSDI artifacts. Stable
 fields include `model_file`, `artifact_format`, `source_path`,
 `source_sha256_declared`, `source_sha256_actual`,

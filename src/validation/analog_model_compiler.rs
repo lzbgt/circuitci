@@ -1,4 +1,4 @@
-use crate::board_ir::{AnalogModelFile, Scenario};
+use crate::board_ir::{AnalogBackend, AnalogModelFile, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -51,6 +51,12 @@ pub(super) fn validate_model_compiler_provenance(
                 "artifact_format",
                 "OpenVAF model provenance requires artifact_format: osdi_shared_object.",
             ));
+        }
+        if matches!(
+            analog.backend,
+            AnalogBackend::Xyce | AnalogBackend::EmbeddedNgspice
+        ) {
+            return Some(osdi_backend_unsupported(scenario, model_file));
         }
         if model_file.sha256.as_deref().is_none_or(str::is_empty) {
             return Some(model_compiler_metadata_missing(
@@ -576,6 +582,52 @@ fn model_compiler_metadata_missing(
     );
     finding.suggested_fixes.push(
         "Declare the compiled OSDI artifact, Verilog-A source, SHA-256 pins, OpenVAF version, and compiler command before using this compact model in simulation sign-off."
+            .to_string(),
+    );
+    finding
+}
+
+fn osdi_backend_unsupported(scenario: &Scenario, model_file: &AnalogModelFile) -> Finding {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before OSDI backend compatibility checks");
+    let backend = match analog.backend {
+        AnalogBackend::Xyce => "xyce",
+        AnalogBackend::EmbeddedNgspice => "embedded_ngspice",
+        AnalogBackend::Auto | AnalogBackend::Ngspice => "ngspice",
+    };
+    let mut finding = Finding::critical(
+        "ANALOG_MODEL_COMPILER_BACKEND_UNSUPPORTED",
+        &scenario.name,
+        format!(
+            "Compiled OSDI artifact {} is not a supported model-loading format for backend {backend}.",
+            model_file.path
+        ),
+    );
+    finding
+        .measured
+        .insert("model_file".to_string(), json!(model_file.path));
+    finding
+        .measured
+        .insert("artifact_format".to_string(), json!("osdi_shared_object"));
+    finding
+        .measured
+        .insert("requested_backend".to_string(), json!(backend));
+    finding.measured.insert(
+        "research_evidence".to_string(),
+        json!("docs/research/circuit_simulation_full_featured/xyce_openvaf_osdi_compatibility.md"),
+    );
+    finding.limit.insert(
+        "supported_backend".to_string(),
+        json!("external_ngspice_with_pre_osdi"),
+    );
+    finding.limit.insert(
+        "xyce_required_model_path".to_string(),
+        json!("Xyce/ADMS-generated C++ device linked into Xyce or loaded with -plugin from a shareable Xyce build"),
+    );
+    finding.suggested_fixes.push(
+        "Use backend: ngspice for OpenVAF/OSDI artifacts, or replace the model artifact with a separately qualified Xyce/ADMS plugin flow."
             .to_string(),
     );
     finding

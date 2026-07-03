@@ -484,6 +484,36 @@ fn openvaf_osdi_model_is_loaded_with_ngspice_pre_osdi() {
     assert_report_schema_valid(&report);
 }
 
+#[test]
+fn openvaf_osdi_model_rejects_explicit_xyce_backend() {
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+    let project = fs::read_to_string(&project_path)
+        .unwrap()
+        .replace("backend: ngspice", "backend: xyce");
+    fs::write(&project_path, project).unwrap();
+
+    let report = common::run_validation(project_path.to_str().unwrap());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["id"] == "ANALOG_MODEL_COMPILER_BACKEND_UNSUPPORTED")
+        .expect("missing backend compatibility finding");
+    assert_eq!(failure["measured"]["model_file"], "tiny_resistor.osdi");
+    assert_eq!(failure["measured"]["requested_backend"], "xyce");
+    assert_eq!(
+        failure["limit"]["supported_backend"],
+        "external_ngspice_with_pre_osdi"
+    );
+    assert_eq!(report["model_file_provenance"].as_array().unwrap().len(), 0);
+    assert_report_schema_valid(&report);
+}
+
 #[cfg(unix)]
 #[test]
 fn openvaf_osdi_rebuild_is_recorded_in_solver_manifest() {

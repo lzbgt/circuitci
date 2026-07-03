@@ -248,17 +248,29 @@ Sources saved:
 
 - `sources/openvaf_README.md`
 - `sources/openvaf_home.html`
+- `sources/openvaf_usage.html`
+- `sources/openvaf_osdi_details.html`
+- `sources/osdi_v0p3.pdf`
+- `sources/ngspice_osdi.html`
+- `sources/xyce_adms_users_guide.html`
+- `sources/xyce_tutorial_adding_device.html`
+- `xyce_openvaf_osdi_compatibility.md`
 
 Upstream:
 
 - <https://github.com/pascalkuthe/OpenVAF>
 - <https://openvaf.semimod.de/>
+- <https://ngspice.sourceforge.io/osdi.html>
+- <https://xyce.sandia.gov/documentation-tutorials/xyce-adms-users-guide/>
 
 Key facts:
 
 - OpenVAF compiles Verilog-A files for use in circuit simulators.
 - It can produce simulator-independent OSDI shared objects and targets compact
   model support.
+- OpenVAF/OSDI is an external-ngspice model-loading path in CircuitCI. Primary
+  Xyce docs describe Xyce/ADMS-generated C++ linked into Xyce or loaded with
+  Xyce `-plugin`, not OpenVAF `*.osdi` runtime loading.
 - The README states that some Verilog-A features remain unsupported, so model
   coverage must be tested and pinned.
 
@@ -266,6 +278,8 @@ CircuitCI implication:
 
 - Model availability is a bigger bottleneck than analysis command support.
   OpenVAF/OSDI support should be part of any serious "full simulation" roadmap.
+  Xyce compact-model support needs a separate Xyce/ADMS plugin artifact
+  contract before execution is enabled.
 
 ## arXiv Paper Findings
 
@@ -676,8 +690,14 @@ The GUI should not become the solver.
   validation report JSON/Markdown and the Scopes artifact drawer now surface
   `model_file_provenance[]` with scenario, analysis, backend, manifest path,
   rebuild mode, and declared/actual hash evidence.
-- Add backend compatibility tests for Xyce or other future Verilog-A/OSDI
-  loading paths only after primary documentation and runnable adapters exist.
+- Researched the Xyce/OpenVAF/OSDI compatibility boundary from primary sources
+  and saved the evidence in `xyce_openvaf_osdi_compatibility.md`. CircuitCI now
+  rejects explicit Xyce or embedded-ngspice backends for OpenVAF `*.osdi`
+  artifacts; future Xyce compact-model support needs a distinct Xyce/ADMS
+  plugin artifact contract and real-Xyce conformance.
+- Add a Xyce/ADMS plugin artifact contract only after a primary-source build
+  recipe, local artifact schema, and runnable Xyce plugin conformance path are
+  available.
 
 ## Risks
 

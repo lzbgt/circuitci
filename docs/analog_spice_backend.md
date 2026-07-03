@@ -101,7 +101,13 @@ Required fields:
   conformance uses
   `CIRCUITCI_RUN_REAL_NGSPICE_OSDI=1 cargo test --test analog_model_compiler_cli`;
   it skips unless `ngspice`, `openvaf`, and ngspice `pre_osdi` command support
-  are available on the host. Solver manifests include
+  are available on the host. Explicit `backend: xyce` with OSDI model artifacts
+  fails closed: primary Xyce documentation describes Verilog-A support through
+  Xyce/ADMS-generated C++ linked into Xyce or loaded as a Xyce `-plugin`, not
+  through OpenVAF `*.osdi` runtime loading. The evidence boundary is documented
+  in
+  `docs/research/circuit_simulation_full_featured/xyce_openvaf_osdi_compatibility.md`.
+  Solver manifests include
   `inputs.model_file_provenance[]` for OpenVAF/OSDI entries, recording declared
   and actual source/artifact hashes, compiler command/version, compiler
   availability, whether the OpenVAF build env was enabled, and `rebuild_mode`
@@ -202,6 +208,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    top-level `model_file_provenance[]` first and open the referenced manifest
    only when they need full solver inputs or output discovery instead of
    inferring run state from backend-specific filenames alone.
+   OpenVAF `*.osdi` artifacts are currently external-ngspice-only in CircuitCI;
+   Xyce compact-model support requires a separate Xyce/ADMS plugin artifact
+   contract and real-Xyce conformance before execution is enabled.
    Opt-in real-Xyce conformance coverage is available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
    transient/AC/DC/noise,
