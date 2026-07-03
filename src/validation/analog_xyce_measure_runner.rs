@@ -1,7 +1,7 @@
 use crate::board_ir::{AnalogMeasureTemplate, Scenario};
 use crate::library::BoundBoard;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::analog_measure_runner::{NgspiceMeasureRun, measure_raw_to_csv};
@@ -140,7 +140,18 @@ where
             artifacts,
         ));
     }
-    fs::write(&raw, &log_text).map_err(|error| {
+    let (measure_output_text, measure_output_artifacts) =
+        xyce_measure_output_text(&run_dir, &wrapper)
+            .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    for artifact in measure_output_artifacts {
+        artifacts.push(artifact);
+    }
+    let raw_text = if measure_output_text.trim().is_empty() {
+        log_text
+    } else {
+        format!("{log_text}\n\nXYCE_MEASURE_OUTPUT:\n{measure_output_text}")
+    };
+    fs::write(&raw, &raw_text).map_err(|error| {
         ngspice_error(
             format!(
                 "Failed to write Xyce measure raw output {}: {error}",
@@ -150,7 +161,7 @@ where
         )
     })?;
     artifacts.push(raw.clone());
-    let summary_csv = measure_raw_to_csv(&log_text, scenario)
+    let summary_csv = measure_raw_to_csv(&raw_text, scenario)
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&summary, summary_csv).map_err(|error| {
         ngspice_error(
@@ -180,6 +191,67 @@ where
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     artifacts.push(manifest);
     Ok(NgspiceMeasureRun { artifacts, summary })
+}
+
+fn xyce_measure_output_text(
+    run_dir: &Path,
+    wrapper: &Path,
+) -> Result<(String, Vec<PathBuf>), String> {
+    let Some(stem) = wrapper.file_stem().and_then(|stem| stem.to_str()) else {
+        return Ok((String::new(), Vec::new()));
+    };
+    let mut outputs = Vec::new();
+    let entries = fs::read_dir(run_dir).map_err(|error| {
+        format!(
+            "Failed to scan Xyce measure output directory {}: {error}",
+            run_dir.display()
+        )
+    })?;
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            format!(
+                "Failed to read Xyce measure output directory {}: {error}",
+                run_dir.display()
+            )
+        })?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if !file_name.starts_with(stem) {
+            continue;
+        }
+        let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+            continue;
+        };
+        if is_xyce_measure_extension(extension) {
+            outputs.push(path);
+        }
+    }
+    outputs.sort();
+    let mut text = String::new();
+    for output in &outputs {
+        text.push_str("* Xyce measure output: ");
+        text.push_str(&output.to_string_lossy());
+        text.push('\n');
+        text.push_str(&fs::read_to_string(output).map_err(|error| {
+            format!(
+                "Failed to read Xyce measure output {}: {error}",
+                output.display()
+            )
+        })?);
+        text.push('\n');
+    }
+    Ok((text, outputs))
+}
+
+fn is_xyce_measure_extension(extension: &str) -> bool {
+    let lower = extension.to_ascii_lowercase();
+    let mut chars = lower.chars();
+    matches!(chars.next(), Some('m')) && chars.any(|ch| ch.is_ascii_digit())
 }
 
 fn build_xyce_measure_wrapper(

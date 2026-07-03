@@ -528,10 +528,12 @@ The GUI should not become the solver.
   portable measure templates, bound output provenance checks, normalized
   `measure_summary`, solver manifests, and opt-in real-ngspice conformance.
   Explicit Xyce now supports the portable `measure_templates[]` subset and
-  emits the same `measure_summary`/manifest contract; raw
+  emits the same `measure_summary`/manifest contract. The adapter records Xyce
+  measure result files such as `.mt0` and includes opt-in real-Xyce template
+  conformance through
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli`; raw
   `measure_statements[]` remain ngspice-only because their syntax is
-  backend-specific. Next add opt-in real-Xyce conformance and richer portable
-  template operations.
+  backend-specific. Next add richer portable template operations.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

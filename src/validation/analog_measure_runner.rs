@@ -348,6 +348,7 @@ pub(super) fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<Strin
     let mode = analog.analysis.measure_mode.as_deref().unwrap_or("");
     let names = measure_names(scenario);
     let mut rows = Vec::new();
+    let mut found_names = BTreeSet::new();
     for line in log.lines() {
         let Some((name, rest)) = line.split_once('=') else {
             continue;
@@ -362,14 +363,24 @@ pub(super) fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<Strin
         let Some(value) = parse_number(rest.split_whitespace().next().unwrap_or("")) else {
             continue;
         };
-        rows.push((name.to_string(), value, line.trim().to_string()));
+        let normalized = name.to_ascii_lowercase();
+        if found_names.insert(normalized) {
+            rows.push((name.to_string(), value, line.trim().to_string()));
+        }
     }
     if rows.len() != names.len() {
-        let found: BTreeSet<String> = rows.iter().map(|row| row.0.to_ascii_lowercase()).collect();
+        for (name, value, raw_line) in measure_table_rows(log, &names) {
+            let normalized = name.to_ascii_lowercase();
+            if found_names.insert(normalized) {
+                rows.push((name, value, raw_line));
+            }
+        }
+    }
+    if rows.len() != names.len() {
         let missing: Vec<&str> = names
             .iter()
             .map(String::as_str)
-            .filter(|name| !found.contains(&name.to_ascii_lowercase()))
+            .filter(|name| !found_names.contains(&name.to_ascii_lowercase()))
             .collect();
         return Err(format!(
             ".MEASURE output did not contain scalar result(s) for {}.",
@@ -388,6 +399,58 @@ pub(super) fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<Strin
         csv.push('\n');
     }
     Ok(csv)
+}
+
+fn measure_table_rows(log: &str, names: &[String]) -> Vec<(String, f64, String)> {
+    let lines: Vec<&str> = log.lines().collect();
+    let mut rows = Vec::new();
+    for (index, line) in lines.iter().enumerate() {
+        let header_tokens = measure_tokens(line);
+        if header_tokens.is_empty() {
+            continue;
+        }
+        let matches: Vec<(&String, usize)> = names
+            .iter()
+            .filter_map(|name| {
+                header_tokens
+                    .iter()
+                    .position(|token| token.eq_ignore_ascii_case(name))
+                    .map(|position| (name, position))
+            })
+            .collect();
+        if matches.is_empty() {
+            continue;
+        }
+        let Some(value_line) = lines[index + 1..]
+            .iter()
+            .map(|candidate| candidate.trim())
+            .find(|candidate| !candidate.is_empty())
+        else {
+            continue;
+        };
+        let value_tokens = measure_tokens(value_line);
+        for (name, header_position) in matches {
+            let value_token = if value_tokens.len() == header_tokens.len() {
+                value_tokens.get(header_position)
+            } else if value_tokens.len() + 1 == header_tokens.len() && header_position > 0 {
+                value_tokens.get(header_position - 1)
+            } else {
+                value_tokens.get(header_position)
+            };
+            let Some(value_token) = value_token else {
+                continue;
+            };
+            let Some(value) = parse_number(value_token) else {
+                continue;
+            };
+            rows.push((
+                name.clone(),
+                value,
+                format!("{name} = {value_token} ({value_line})"),
+            ));
+        }
+    }
+    rows
 }
 
 fn measure_names(scenario: &Scenario) -> Vec<String> {
@@ -465,6 +528,12 @@ fn parse_number(value: &str) -> Option<f64> {
         .ok()
 }
 
+fn measure_tokens(line: &str) -> Vec<&str> {
+    line.split(|ch: char| ch.is_whitespace() || ch == ',')
+        .filter(|token| !token.is_empty())
+        .collect()
+}
+
 fn csv_escape(value: &str) -> String {
     if value.contains(',') || value.contains('"') || value.contains('\n') {
         format!("\"{}\"", value.replace('"', "\"\""))
@@ -511,6 +580,18 @@ analog:
     fn measure_raw_to_csv_extracts_declared_scalars() {
         let csv = measure_raw_to_csv(
             "avg_out = 5.10001e-01 from= 2.0e-05 to= 1.0e-04\nmax_out = 9.93663e-01 at= 9.51000e-05\n",
+            &scenario(),
+        )
+        .unwrap();
+
+        assert!(csv.contains("avg_out,tran,5.100010000000e-1"));
+        assert!(csv.contains("max_out,tran,9.936630000000e-1"));
+    }
+
+    #[test]
+    fn measure_raw_to_csv_extracts_xyce_table_scalars() {
+        let csv = measure_raw_to_csv(
+            "CircuitCI Xyce measure export\nINDEX avg_out max_out\n0 5.10001e-01 9.93663e-01\n",
             &scenario(),
         )
         .unwrap();

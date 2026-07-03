@@ -152,8 +152,10 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
    transient/AC/DC/noise and
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sparameter_cli` for
-   S-parameter; these tests are skipped by default unless the variable is set
-   and `Xyce` or `xyce` is on `PATH`.
+   S-parameter, plus
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli` for
+   structured measure templates; these tests are skipped by default unless the
+   variable is set and `Xyce` or `xyce` is on `PATH`.
 10. For generated Board IR decks, append datasheet operating-limit probes for
    MOSFET, BJT, and diode voltage/current/power ratings. Exceeding a rating
    emits a critical `SPICE_OPERATING_LIMIT` finding with measured maximum
@@ -373,8 +375,10 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 7. Explicit `backend: xyce` supports structured `measure_templates[]` and writes
    `circuitci_xyce_measure.cir`, `xyce_measure.log`, `measure_raw.txt`,
    `measure_summary.csv`, and `solver_manifest.json` using the same normalized
-   `measure_summary` contract. Raw `measure_statements[]` remain ngspice-only
-   and fail closed on Xyce because their syntax is backend-specific.
+   `measure_summary` contract. The adapter records Xyce measure result files
+   such as `.mt0` when the solver emits them, with stdout as a fallback for
+   compatible outputs. Raw `measure_statements[]` remain ngspice-only and fail
+   closed on Xyce because their syntax is backend-specific.
 8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on

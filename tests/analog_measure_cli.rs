@@ -11,6 +11,9 @@ use std::process::Command;
 const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
 
 #[cfg(unix)]
+const REAL_XYCE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE";
+
+#[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
     fake_executable_with_body(dir, name, "#!/bin/sh\nexit 99\n");
 }
@@ -217,6 +220,19 @@ fn real_ngspice_conformance_enabled() -> bool {
     }
     if !binary_available("ngspice") {
         eprintln!("skipping real-ngspice measure conformance; ngspice is not on PATH");
+        return false;
+    }
+    true
+}
+
+#[cfg(unix)]
+fn real_xyce_measure_conformance_enabled() -> bool {
+    if std::env::var(REAL_XYCE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!("skipping real-Xyce measure conformance; set {REAL_XYCE_CONFORMANCE_ENV}=1");
+        return false;
+    }
+    if !binary_available("Xyce") && !binary_available("xyce") {
+        eprintln!("skipping real-Xyce measure conformance; Xyce/xyce is not on PATH");
         return false;
     }
     true
@@ -432,7 +448,7 @@ fn measure_xyce_template_backend_normalizes_summary_and_manifest() {
     fake_executable_with_body(
         fake_path.path(),
         "Xyce",
-        "#!/bin/sh\nprintf '%s\\n' 'avg_out = 5.10001e-01 from= 2.00000e-05 to= 1.00000e-04'\nexit 0\n",
+        "#!/bin/sh\n{ printf '%s\\n' 'INDEX avg_out'; printf '%s\\n' '0 5.10001e-01'; } > circuitci_xyce_measure.mt0\nexit 0\n",
     );
     let project_dir = tempfile::tempdir().unwrap();
     let project_path = write_measure_template_project(
@@ -468,6 +484,7 @@ fn measure_xyce_template_backend_normalizes_summary_and_manifest() {
     assert_eq!(report["result"], "pass");
     let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
     assert!(summary.contains("avg_out,tran,5.100010000000e-1"));
+    assert!(artifact_path(&report, "circuitci_xyce_measure.mt0").ends_with(".mt0"));
     let wrapper = fs::read_to_string(artifact_path(&report, "circuitci_xyce_measure.cir")).unwrap();
     assert!(
         wrapper.contains(
@@ -479,6 +496,58 @@ fn measure_xyce_template_backend_normalizes_summary_and_manifest() {
     )
     .unwrap();
     assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "measure");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_measure_stdout");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "measure_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_xyce_measure_template_conformance_when_enabled() {
+    if !real_xyce_measure_conformance_enabled() {
+        return;
+    }
+
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "xyce",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("measurement,mode,value,raw_line"));
+    assert!(summary.contains("avg_out,tran,"));
+    let raw = fs::read_to_string(artifact_path(&report, "measure_raw.txt")).unwrap();
+    assert!(raw.contains("avg_out"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(manifest["backend"]["selected"] == "Xyce" || manifest["backend"]["selected"] == "xyce");
     assert_eq!(manifest["analysis"]["kind"], "measure");
     assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_measure_stdout");
     assert_eq!(

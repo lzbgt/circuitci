@@ -190,12 +190,15 @@ Current analog support:
   statements or templates; explicit `backend: xyce` runs structured templates
   only. Both write `measure_raw.txt`, `measure_summary.csv`, and
   `solver_manifest.json`; the normalized summary records measurement name,
-  mode, scalar value, and raw solver line. Raw `measure_statements[]` remain
+  mode, scalar value, and raw solver line. The Xyce path records measure result
+  files such as `.mt0` when emitted. Raw `measure_statements[]` remain
   ngspice-only and fail closed on Xyce. Opt-in real-ngspice conformance
   coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; it skips
-  unless `ngspice` is on `PATH`. Embedded ngspice remains fail-closed with
-  planning evidence for this path.
+  unless `ngspice` is on `PATH`. Opt-in real-Xyce template conformance uses
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli`; it skips
+  unless `Xyce` or `xyce` is on `PATH`. Embedded ngspice remains fail-closed
+  with planning evidence for this path.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep
@@ -210,7 +213,9 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise and
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sparameter_cli` for
-  S-parameter, both skipping unless `Xyce` or `xyce` is on `PATH`.
+  S-parameter, plus
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli` for
+  structured measure templates. They skip unless `Xyce` or `xyce` is on `PATH`.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
