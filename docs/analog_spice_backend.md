@@ -247,10 +247,14 @@ For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
    non-empty `transfer_input_source`.
 3. For generated Board IR decks, `transfer_input_source` must name a generated
    board component so `.TF` provenance is tied to an actual source instance.
-4. Current runtime support is intentionally fail-closed: detected backends emit
-   planning evidence requiring normalized `transfer_function_summary` output
-   with small-signal gain, input resistance, output resistance, and
-   `solver_manifest.json` provenance before this check can pass.
+4. External `backend: ngspice` writes `circuitci_ngspice_tf.cir`,
+   `ngspice_tf.log`, `transfer_function_raw.txt`,
+   `transfer_function_summary.csv`, and `solver_manifest.json`. The normalized
+   summary contains the small-signal gain, input resistance, and output
+   resistance parsed from ngspice `.TF` output.
+5. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+   until those adapters emit the same normalized `transfer_function_summary`
+   contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

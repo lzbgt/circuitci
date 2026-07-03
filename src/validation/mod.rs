@@ -14,6 +14,7 @@ mod analog_sparameter_spice;
 mod analog_spice;
 mod analog_sweep_reports;
 mod analog_sweep_sampling;
+mod analog_transfer_function_runner;
 mod analog_transfer_function_spice;
 mod analog_util;
 mod analog_waveform_measurements;
@@ -797,6 +798,7 @@ where
                         bound,
                         scenario,
                         &mut sinks,
+                        output,
                         &mut on_progress,
                         &should_cancel,
                     )
