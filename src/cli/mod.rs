@@ -49,6 +49,15 @@ enum Command {
         )]
         output: PathBuf,
     },
+    VerifyModelPackageBundle {
+        bundle: PathBuf,
+        #[arg(
+            long,
+            short = 'o',
+            default_value = "out/model_package_bundle_verification.json"
+        )]
+        output: PathBuf,
+    },
     ExportModelPackage {
         #[arg(long = "package-name")]
         package_name: String,
@@ -349,6 +358,9 @@ pub fn run() -> Result<()> {
             registry_entry,
             output,
         }) => run_verify_model_package(lock, registry, registry_entry, output),
+        Some(Command::VerifyModelPackageBundle { bundle, output }) => {
+            run_verify_model_package_bundle(bundle, output)
+        }
         Some(Command::ExportModelPackage {
             package_name,
             package_version,
@@ -579,6 +591,32 @@ fn run_verify_model_package(
         bail!(
             "Model package verification failed for {}; see {}",
             lock.display(),
+            output.display()
+        );
+    }
+    Ok(())
+}
+
+fn run_verify_model_package_bundle(bundle: PathBuf, output: PathBuf) -> Result<()> {
+    let report = crate::model_package_bundle::verify_model_package_bundle(
+        &crate::model_package_bundle::ModelPackageBundleVerifyOptions {
+            bundle: bundle.clone(),
+            output: output.clone(),
+        },
+    )?;
+    crate::model_package_bundle::write_model_package_bundle_verification_report(&report, &output)?;
+    println!(
+        "CircuitCI model package bundle verification {}: artifacts={} conformance_checks={} findings={} -> {}",
+        report.result,
+        report.artifacts.len(),
+        report.conformance_checks.len(),
+        report.findings.len(),
+        output.display()
+    );
+    if report.result != "pass" {
+        bail!(
+            "Model package bundle verification failed for {}; see {}",
+            bundle.display(),
             output.display()
         );
     }

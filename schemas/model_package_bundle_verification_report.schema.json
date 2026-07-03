@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/model_package_bundle_verification_report.schema.json",
+  "title": "CircuitCI Compact Model Package Bundle Verification Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "result",
+    "bundle_path",
+    "manifest",
+    "package",
+    "lock",
+    "registry",
+    "verification_report",
+    "verification_markdown",
+    "readme",
+    "artifacts",
+    "conformance_checks",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "circuitci.model_package_bundle_verification.v1"
+    },
+    "result": { "enum": ["pass", "fail"] },
+    "bundle_path": { "type": "string", "minLength": 1 },
+    "manifest": { "$ref": "#/$defs/verified_file" },
+    "package": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "lock": { "anyOf": [{ "$ref": "#/$defs/verified_file" }, { "type": "null" }] },
+    "registry": {
+      "anyOf": [{ "$ref": "#/$defs/verified_file" }, { "type": "null" }]
+    },
+    "verification_report": {
+      "anyOf": [{ "$ref": "#/$defs/verified_file" }, { "type": "null" }]
+    },
+    "verification_markdown": {
+      "anyOf": [{ "$ref": "#/$defs/verified_file" }, { "type": "null" }]
+    },
+    "readme": { "anyOf": [{ "$ref": "#/$defs/verified_file" }, { "type": "null" }] },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/verified_artifact" }
+    },
+    "conformance_checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/conformance_check" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "verified_file": {
+      "type": "object",
+      "required": ["path", "sha256_declared", "sha256_actual", "status"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256_declared": { "type": ["string", "null"] },
+        "sha256_actual": { "type": ["string", "null"] },
+        "status": { "enum": ["verified", "failed"] }
+      },
+      "additionalProperties": false
+    },
+    "verified_artifact": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "artifact_format",
+        "compiler",
+        "sha256_declared",
+        "sha256_actual",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "path": { "type": ["string", "null"] },
+        "artifact_format": { "type": ["string", "null"] },
+        "compiler": { "type": ["string", "null"] },
+        "sha256_declared": { "type": ["string", "null"] },
+        "sha256_actual": { "type": ["string", "null"] },
+        "status": { "enum": ["verified", "failed"] }
+      },
+      "additionalProperties": false
+    },
+    "conformance_check": {
+      "type": "object",
+      "required": [
+        "report_artifact_id",
+        "report_path",
+        "target_artifact_id",
+        "target_artifact_sha256",
+        "check_name",
+        "analysis",
+        "solver",
+        "result",
+        "artifacts"
+      ],
+      "properties": {
+        "report_artifact_id": { "type": "string", "minLength": 1 },
+        "report_path": { "type": "string", "minLength": 1 },
+        "target_artifact_id": { "type": ["string", "null"] },
+        "target_artifact_sha256": { "type": ["string", "null"] },
+        "check_name": { "type": ["string", "null"] },
+        "analysis": { "type": ["string", "null"] },
+        "solver": { "type": ["string", "null"] },
+        "result": { "type": ["string", "null"] },
+        "artifacts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "id",
+        "severity",
+        "message",
+        "package",
+        "artifact_id",
+        "path",
+        "expected_sha256",
+        "actual_sha256"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "severity": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "package": { "type": ["string", "null"] },
+        "artifact_id": { "type": ["string", "null"] },
+        "path": { "type": ["string", "null"] },
+        "expected_sha256": { "type": ["string", "null"] },
+        "actual_sha256": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

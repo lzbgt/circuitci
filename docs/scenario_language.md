@@ -3767,7 +3767,10 @@ conflicting duplicate entry ids. Use `circuitci export-model-package-bundle`
 when distributing a qualified package directory; the bundle includes a
 portable lock, optional registry, copied artifacts, verification JSON/Markdown,
 README, and bundle manifest, and its registry can be referenced by scenarios
-without hand-editing artifact paths.
+without hand-editing artifact paths. Run `circuitci verify-model-package-bundle`
+on that directory before importing it; the verifier checks bundle file hashes,
+manifest consistency, copied artifacts, and the bundled lock/registry as one
+unit.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

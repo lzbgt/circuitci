@@ -1444,7 +1444,11 @@ Portable compact-model package bundles use
 `circuitci export-model-package-bundle`. The manifest records the bundled lock
 and optional registry hashes, verification report paths, copied package
 artifacts, and projected conformance checks so a directory-level package can be
-reviewed before any scenario imports it.
+reviewed before any scenario imports it. Bundle preflights use
+`schemas/model_package_bundle_verification_report.schema.json`, written by
+`circuitci verify-model-package-bundle`. That report records manifest, lock,
+registry, README, package-verification, copied-artifact hash status, projected
+conformance checks, and stable `MODEL_PACKAGE_BUNDLE_*` findings.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

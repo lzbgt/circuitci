@@ -148,6 +148,22 @@ The bundled registry can be used directly by scenarios or by
 conformance evidence, and human-readable review material as one deterministic
 directory.
 
+Verify a portable bundle before importing or distributing it:
+
+```bash
+circuitci verify-model-package-bundle dist/tiny_resistor_bundle \
+  --output out/tiny_resistor_bundle_verification.json
+```
+
+The bundle verifier reads `model_package_bundle_manifest.json`, checks the
+manifest schema marker, validates the bundled lock and optional registry hashes,
+checks every copied artifact hash, confirms README and package-verification
+artifacts are present, and then runs the normal package verifier against the
+bundled lock/registry. The output uses
+`schemas/model_package_bundle_verification_report.schema.json`, includes the
+projected package conformance checks, and exits non-zero on any missing,
+tampered, or inconsistent bundle content.
+
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a

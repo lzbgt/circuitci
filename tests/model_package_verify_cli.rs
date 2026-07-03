@@ -88,6 +88,22 @@ fn assert_model_package_bundle_manifest_schema_valid(manifest: &Value) {
     );
 }
 
+fn assert_model_package_bundle_verification_schema_valid(report: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/model_package_bundle_verification_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(report)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "model package bundle verification schema errors: {errors:#?}"
+    );
+}
+
 fn write_package_files(dir: &std::path::Path) -> (String, String) {
     let artifact = b"stable compact model artifact\n";
     let artifact_sha = sha256_hex(artifact);
@@ -622,6 +638,102 @@ fn export_model_package_bundle_writes_portable_import_fixture() {
         1
     );
     assert_model_package_report_schema_valid(&reverify_report);
+
+    let bundle_verify = bundle_dir.join("bundle_verification.json");
+    let bundle_verify_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package-bundle",
+            bundle_dir.to_str().unwrap(),
+            "--output",
+            bundle_verify.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(bundle_verify_status.success());
+    let bundle_verify_report: Value =
+        serde_json::from_str(&fs::read_to_string(bundle_verify).unwrap()).unwrap();
+    assert_eq!(bundle_verify_report["result"], "pass");
+    assert_eq!(
+        bundle_verify_report["artifacts"].as_array().unwrap().len(),
+        2
+    );
+    assert_eq!(
+        bundle_verify_report["conformance_checks"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_model_package_bundle_verification_schema_valid(&bundle_verify_report);
+}
+
+#[test]
+fn verify_model_package_bundle_rejects_tampered_artifact() {
+    let dir = tempfile::tempdir().unwrap();
+    let artifact = b"bundle tamper target\n";
+    let artifact_sha = sha256_hex(artifact);
+    fs::write(dir.path().join("runtime.osdi"), artifact).unwrap();
+    fs::write(
+        dir.path().join("package.lock.json"),
+        format!(
+            r#"{{
+  "schema_version": "circuitci.model_package_lock.v1",
+  "package": {{
+    "name": "org.circuitci.test.bundle_tamper",
+    "version": "1.0.0"
+  }},
+  "artifacts": [
+    {{
+      "id": "runtime_osdi",
+      "path": "runtime.osdi",
+      "sha256": "{artifact_sha}",
+      "artifact_format": "osdi_shared_object",
+      "compiler": "openvaf"
+    }}
+  ]
+}}
+"#
+        ),
+    )
+    .unwrap();
+    let bundle_dir = dir.path().join("bundle");
+    let export_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "export-model-package-bundle",
+            dir.path().join("package.lock.json").to_str().unwrap(),
+            "--output",
+            bundle_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(export_status.success());
+    fs::write(
+        bundle_dir.join("artifacts/runtime_osdi__runtime.osdi"),
+        b"tampered\n",
+    )
+    .unwrap();
+
+    let output = bundle_dir.join("tampered_bundle_verification.json");
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package-bundle",
+            bundle_dir.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    let report: Value = serde_json::from_str(&fs::read_to_string(output).unwrap()).unwrap();
+    assert_eq!(report["result"], "fail");
+    assert!(
+        report["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|finding| finding["id"] == "MODEL_PACKAGE_BUNDLE_ARTIFACT_HASH_MISMATCH")
+    );
+    assert_model_package_bundle_verification_schema_valid(&report);
 }
 
 #[test]

@@ -780,6 +780,13 @@ The GUI should not become the solver.
   package verification JSON/Markdown, README, and bundle manifest. The bundled
   registry is immediately usable by `verify-model-package` and scenario
   package imports.
+- Added `circuitci verify-model-package-bundle` and
+  `schemas/model_package_bundle_verification_report.schema.json` so those
+  portable directories can be validated as one unit before import or
+  distribution. The verifier checks manifest, lock, optional registry,
+  README/package-verification files, copied artifact hashes, projected
+  conformance checks, and the bundled lock/registry through the normal package
+  verifier.
 
 ## Risks
 
