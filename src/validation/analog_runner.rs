@@ -1286,7 +1286,10 @@ pub(super) fn rewrite_include_line(line: &str, source_dir: &Path) -> String {
     format!("{indent}{directive} \"{}\"", absolute.to_string_lossy())
 }
 
-fn parse_waveform_csv(path: &Path, probe_count: usize) -> Result<WaveformSeries, String> {
+pub(super) fn parse_waveform_csv(
+    path: &Path,
+    probe_count: usize,
+) -> Result<WaveformSeries, String> {
     let text = fs::read_to_string(path)
         .map_err(|error| format!("Failed to read waveform export {}: {error}", path.display()))?;
     let mut time_s = Vec::new();
@@ -1352,7 +1355,7 @@ fn parse_waveform_csv(path: &Path, probe_count: usize) -> Result<WaveformSeries,
     })
 }
 
-fn parse_float(value: &str) -> Option<f64> {
+pub(super) fn parse_float(value: &str) -> Option<f64> {
     value
         .parse::<f64>()
         .ok()

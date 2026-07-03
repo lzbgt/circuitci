@@ -679,10 +679,15 @@ fn explicit_embedded_ngspice_does_not_fallback_when_configured_library_is_missin
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
+    fake_executable_with_body(dir, name, "#!/bin/sh\nexit 99\n");
+}
+
+#[cfg(unix)]
+fn fake_executable_with_body(dir: &std::path::Path, name: &str, body: &str) {
     use std::os::unix::fs::PermissionsExt;
 
     let path = dir.join(name);
-    fs::write(&path, "#!/bin/sh\nexit 99\n").unwrap();
+    fs::write(&path, body).unwrap();
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&path, permissions).unwrap();
@@ -723,9 +728,72 @@ fn run_validation_with_persisted_output(project: &str) -> (tempfile::TempDir, Va
     (out_dir, report)
 }
 
+fn write_xyce_rc_project(dir: &std::path::Path) -> std::path::PathBuf {
+    let repo = std::env::current_dir().unwrap();
+    let project = dir.join("project.yaml");
+    fs::write(
+        &project,
+        format!(
+            r#"project: {{ name: xyce_rc_smoke, version: 0.1.0 }}
+libraries:
+  - {libs}
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins: {{ P: vin, N: gnd }}
+      spice: {{ primitive: dc_voltage_source, dc_v: 3.3 }}
+    R1:
+      model: generic.analog.resistor
+      pins: {{ A: vin, B: out }}
+      spice: {{ primitive: resistor, value_ohm: 1000 }}
+    C1:
+      model: generic.analog.capacitor
+      pins: {{ A: out, B: gnd }}
+      spice: {{ primitive: capacitor, value_f: 0.000001 }}
+  nets:
+    vin: {{ kind: power, nominal_voltage: 3.3, powered: true }}
+    out: {{ kind: digital_or_analog }}
+    gnd: {{ kind: ground }}
+scenarios:
+  - name: xyce_rc_transient
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: xyce
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, C1]
+      model_files: []
+      node_bindings:
+        - {{ node: vin, net: vin }}
+        - {{ node: out, net: out }}
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: vin, endpoint: {{ component: V1, pin: P }} }}
+        - {{ node: "0", endpoint: {{ component: V1, pin: N }} }}
+        - {{ node: vin, endpoint: {{ component: R1, pin: A }} }}
+        - {{ node: out, endpoint: {{ component: R1, pin: B }} }}
+        - {{ node: out, endpoint: {{ component: C1, pin: A }} }}
+        - {{ node: "0", endpoint: {{ component: C1, pin: B }} }}
+      analysis: {{ type: tran, stop_time_us: 10, max_step_us: 1 }}
+      stimuli: []
+      probes:
+        - {{ name: out, expression: V(out) }}
+      assertions:
+        - {{ name: out_rises, probe: out, at_us: 5, relation: above, threshold_v: 0.5 }}
+"#,
+            libs = repo.join("libs/generic/analog").to_string_lossy()
+        ),
+    )
+    .unwrap();
+    project
+}
+
 #[cfg(unix)]
 #[test]
-fn auto_backend_does_not_select_xyce_before_runtime_adapter_exists() {
+fn auto_backend_does_not_select_xyce_before_full_normalization_coverage_exists() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "Xyce");
     let (_project_dir, project_path) =
@@ -750,7 +818,7 @@ fn auto_backend_does_not_select_xyce_before_runtime_adapter_exists() {
 
 #[cfg(unix)]
 #[test]
-fn explicit_xyce_backend_fails_closed_until_adapter_exists() {
+fn explicit_xyce_backend_launch_failure_reports_solver_artifacts() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "Xyce");
     let (_project_dir, project_path) =
@@ -765,26 +833,80 @@ fn explicit_xyce_backend_fails_closed_until_adapter_exists() {
         "Xyce"
     );
     assert_eq!(
-        report["failures"][0]["limit"]["implemented_backend"],
-        "ngspice_or_embedded_ngspice"
+        report["failures"][0]["limit"]["required_evidence"],
+        "xyce_transient_waveform_csv"
     );
+    let artifacts = report["artifacts"].as_array().unwrap();
     assert_eq!(
-        report["failures"][0]["measured"]["adapter_status"],
-        "planned_not_implemented"
+        artifacts
+            .iter()
+            .filter(|artifact| artifact.as_str().unwrap().ends_with("circuitci_xyce.cir"))
+            .count(),
+        1
     );
-    assert_eq!(
-        report["failures"][0]["measured"]["planned_manifest_schema"],
-        "circuitci.analog_solver_manifest.v0.1"
-    );
-    assert_eq!(
-        report["failures"][0]["measured"]["required_normalized_outputs"][0],
-        "transient_waveform"
-    );
-    assert_eq!(
-        report["failures"][0]["limit"]["required_adapter"],
-        "xyce_result_normalizer"
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("xyce.log"))
     );
     assert!(report["waveforms"].as_array().unwrap().is_empty());
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn explicit_xyce_backend_normalizes_transient_waveform_and_manifest() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'TIME,V(out)\\n0,0\\n5e-6,1.2\\n1e-5,1.3\\n' > waveform_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_xyce_rc_project(project_dir.path());
+
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let waveforms = report["waveforms"].as_array().unwrap();
+    assert_eq!(waveforms.len(), 1);
+    assert!(waveforms[0].as_str().unwrap().ends_with("waveform.csv"));
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("waveform_raw.csv"))
+    );
+    let manifest_path = artifacts
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with("solver_manifest.json"))
+        .unwrap();
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_transient_raw");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "transient_waveform"
+    );
     assert_report_schema_valid(&report);
 }
 

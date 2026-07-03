@@ -15,6 +15,7 @@ mod analog_sweep_reports;
 mod analog_sweep_sampling;
 mod analog_util;
 mod analog_waveform_measurements;
+mod analog_xyce_runner;
 mod backdrive;
 mod clock_source;
 mod common;

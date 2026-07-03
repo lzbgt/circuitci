@@ -94,13 +94,14 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
      actually execute and normalize for the requested analysis. In the current
      slice that means external ngspice for transient, AC, DC, and noise, plus
      embedded ngspice for transient only. Xyce is intentionally not selected by
-     `auto` until a dedicated Xyce adapter and output-normalization path lands.
-   - Explicit `backend: xyce` detects an `Xyce`/`xyce` executable and then
-     fails closed with adapter-planning evidence until the Xyce result
-     normalizer is implemented. That finding records the selected backend,
-     analysis kind, planned solver-manifest schema, and required normalized
-     output kinds, so Xyce integration has a stable target without pretending
-     unparsed solver output is verification evidence.
+     `auto` until coverage is complete enough to avoid surprising backend
+     changes.
+   - Explicit `backend: xyce` supports transient runs through a dedicated Xyce
+     wrapper that exports CSV-like transient data, normalizes it to the
+     `transient_waveform` contract, and writes the same `solver_manifest.json`
+     provenance as ngspice runs. Explicit Xyce AC, DC, and noise analyses still
+     fail closed with adapter-planning evidence until their result normalizers
+     land.
 3. If no required backend is available, emit a critical
    `ANALOG_BACKEND_UNAVAILABLE` finding.
 4. If the netlist or included model files are missing, emit a critical

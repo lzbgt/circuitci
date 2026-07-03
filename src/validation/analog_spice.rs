@@ -32,6 +32,7 @@ use super::analog_sweep_sampling::monte_carlo_component_value_samples;
 use super::analog_util::{
     component_value_parameter_name, file_sha256_hex, push_artifact, safe_artifact_name,
 };
+use super::analog_xyce_runner::{XyceTransientRunOptions, run_xyce_transient};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
 use super::{SPICE_AC_ANALYSIS, SPICE_TRANSIENT_ANALYSIS};
@@ -461,7 +462,7 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
         return;
     };
 
-    if !matches!(backend, "ngspice" | "embedded_ngspice") {
+    if !matches!(backend, "ngspice" | "embedded_ngspice" | "Xyce" | "xyce") {
         findings.push(unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
@@ -484,21 +485,40 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
         }
         on_progress("Running analog input corner", run_plan.progress_label());
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        match run_ngspice(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                operating_probe_expressions: &operating_expressions,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        ) {
+        let run_result = if matches!(backend, "Xyce" | "xyce") {
+            run_xyce_transient(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceTransientRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    operating_probe_expressions: &operating_expressions,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_ngspice(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    operating_probe_expressions: &operating_expressions,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
+        match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
                 on_progress(
@@ -551,13 +571,21 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
                     .insert("selected_backend".to_string(), json!(backend));
                 finding.limit.insert(
                     "required_evidence".to_string(),
-                    json!("ngspice_waveform_csv"),
+                    json!(if matches!(backend, "Xyce" | "xyce") {
+                        "xyce_transient_waveform_csv"
+                    } else {
+                        "ngspice_waveform_csv"
+                    }),
                 );
                 tag_corner_finding(&mut finding, &run_plan);
-                finding.suggested_fixes.push(
-                    "Inspect the generated ngspice wrapper deck and solver log artifacts."
-                        .to_string(),
-                );
+                let solver_name = if matches!(backend, "Xyce" | "xyce") {
+                    "Xyce"
+                } else {
+                    "ngspice"
+                };
+                finding.suggested_fixes.push(format!(
+                    "Inspect the generated {solver_name} wrapper deck and solver log artifacts."
+                ));
                 findings.push(finding);
             }
         }
