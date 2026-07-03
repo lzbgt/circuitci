@@ -144,14 +144,14 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
 2. Require `analysis.type: ac`, finite positive `start_frequency_hz`, finite
    `stop_frequency_hz` greater than the start frequency, and
    `points_per_decade` in `1..=1000` when provided.
-3. Select external `ngspice`; the first AC slice deliberately fails closed for
-   embedded ngspice and Xyce until equivalent export paths are implemented.
-   `backend: auto` does not select Xyce for this analysis until that adapter is
-   implemented.
+3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
+   still fails closed until an equivalent AC export path is implemented.
+   `backend: auto` does not select Xyce for this analysis until Xyce coverage
+   is broad enough to avoid surprising backend changes.
 4. Expand bounded run-input sweeps exactly like transient validation,
    including raw `.param`, generated component-value parameters, model-library
    sections, and `.temp` corners.
-5. Run `ac dec`, export ngspice complex probe data, and convert it to
+5. Run `ac dec`/`.AC DEC`, export complex probe data, and convert it to
    `bode.csv` with `frequency_hz`, per-probe magnitude in dB, phase in degrees,
    and linear magnitude columns.
 6. Evaluate AC/Bode assertions over `bode.csv`, including gain and phase at a

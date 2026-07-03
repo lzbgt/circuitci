@@ -1127,7 +1127,7 @@ fn build_ngspice_ac_wrapper(
     Ok(text)
 }
 
-fn ac_raw_to_bode_csv(
+pub(super) fn ac_raw_to_bode_csv(
     raw: &Path,
     analog: &crate::board_ir::AnalogScenario,
 ) -> Result<String, String> {

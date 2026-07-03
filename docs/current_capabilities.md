@@ -85,9 +85,9 @@ support arbitrary analog circuit simulation.
 Current analog support:
 
 - `analog_transient` scenarios with `SPICE_TRANSIENT_ANALYSIS`.
-- `analog_ac` scenarios with `SPICE_AC_ANALYSIS` for external-ngspice
-  small-signal Bode exports. AC runs write `bode.csv` artifacts with
-  frequency, per-probe magnitude in dB, phase in degrees, and linear
+- `analog_ac` scenarios with `SPICE_AC_ANALYSIS` for external-ngspice and
+  explicit-Xyce small-signal Bode exports. AC runs write `bode.csv` artifacts
+  with frequency, per-probe magnitude in dB, phase in degrees, and linear
   magnitude. AC assertions support gain and phase at a frequency, rising or
   falling gain-crossing frequency checks, and loop-stability phase/gain
   margin checks. The GUI Scopes loader treats
@@ -133,10 +133,10 @@ Current analog support:
   overrides, raw outputs, and normalized outputs so future Xyce/RF adapters can
   target the same provenance contract.
 - Explicit `backend: xyce` is detected when `Xyce` or `xyce` is on `PATH`.
-  Transient Xyce runs can export CSV-like waveforms, normalize them into the
-  `transient_waveform` contract, and write solver manifests. Xyce AC, DC, and
-  noise remain fail-closed with manifest-compatible adapter-planning evidence;
-  `backend: auto` does not select Xyce prematurely.
+  Transient and AC Xyce runs can export CSV-like solver data, normalize it into
+  the `transient_waveform` and `ac_bode` contracts, and write solver manifests.
+  Xyce DC and noise remain fail-closed with manifest-compatible
+  adapter-planning evidence; `backend: auto` does not select Xyce prematurely.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

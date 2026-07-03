@@ -32,7 +32,9 @@ use super::analog_sweep_sampling::monte_carlo_component_value_samples;
 use super::analog_util::{
     component_value_parameter_name, file_sha256_hex, push_artifact, safe_artifact_name,
 };
-use super::analog_xyce_runner::{XyceTransientRunOptions, run_xyce_transient};
+use super::analog_xyce_runner::{
+    XyceAcRunOptions, XyceTransientRunOptions, run_xyce_ac, run_xyce_transient,
+};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
 use super::{SPICE_AC_ANALYSIS, SPICE_TRANSIENT_ANALYSIS};
@@ -856,13 +858,13 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
         findings.push(finding);
         return;
     };
-    if backend != "ngspice" {
+    if !matches!(backend, "ngspice" | "Xyce" | "xyce") {
         findings.push(unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
                 check_id: SPICE_AC_ANALYSIS,
                 selected_backend: backend,
-                implemented_backend: "ngspice",
+                implemented_backend: "ngspice_or_xyce",
                 analysis_kind: "ac",
                 required_normalized_outputs: &["ac_bode"],
             },
@@ -878,20 +880,38 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
         }
         on_progress("Running analog AC input corner", run_plan.progress_label());
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        match run_ngspice_ac(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceAcRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        ) {
+        let run_result = if matches!(backend, "Xyce" | "xyce") {
+            run_xyce_ac(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceAcRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_ngspice_ac(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceAcRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
+        match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
                 for artifact in &run.artifacts {
@@ -920,14 +940,23 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
                 finding
                     .measured
                     .insert("selected_backend".to_string(), json!(backend));
-                finding
-                    .limit
-                    .insert("required_evidence".to_string(), json!("ngspice_bode_csv"));
-                tag_corner_finding(&mut finding, &run_plan);
-                finding.suggested_fixes.push(
-                    "Inspect the generated ngspice AC wrapper deck and solver log artifacts."
-                        .to_string(),
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!(if matches!(backend, "Xyce" | "xyce") {
+                        "xyce_ac_bode_csv"
+                    } else {
+                        "ngspice_bode_csv"
+                    }),
                 );
+                tag_corner_finding(&mut finding, &run_plan);
+                let solver_name = if matches!(backend, "Xyce" | "xyce") {
+                    "Xyce"
+                } else {
+                    "ngspice"
+                };
+                finding.suggested_fixes.push(format!(
+                    "Inspect the generated {solver_name} AC wrapper deck and solver log artifacts."
+                ));
                 findings.push(finding);
             }
         }
