@@ -655,9 +655,13 @@ analog library includes low-confidence behavioral subcircuits for:
 - `generic.analog.ideal_ldo_3v3`
 
 Each declares an explicit `pin_order` and points at
-`models/spice/generic/analog_behavioral.lib`. Generated Board IR scenarios must
-still list that file in `analog.model_files` with its SHA-256 hash, so reports
-show exactly which macro-model artifact was used. These models are useful for
+`models/spice/generic/analog_behavioral.lib`. They also reference the built-in
+compact-model package registry entry `generic_analog_behavioral_spice`, backed
+by `models/packages/generic/analog_behavioral.lock.json` and
+`models/packages/compact_model_registry.json`. Generated Board IR scenarios must
+still list that file in `analog.model_files` with its SHA-256 hash and package
+pins, so reports show exactly which reusable macro-model artifact was used.
+These models are useful for
 topology, waveform, sweep, and GUI workflow checks. They are not valid for
 vendor-part sign-off, op-amp stability/noise/slew/current analysis,
 comparator propagation-delay/hysteresis/open-drain sign-off, or regulator

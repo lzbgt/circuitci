@@ -153,6 +153,12 @@ Required fields:
   registries into a shared deterministic registry while rewriting lock paths
   relative to that shared registry; verification output follows
   `schemas/model_package_verification_report.schema.json`.
+- Generated scenarios that use the generic analog behavioral library preserve
+  the built-in registry-qualified package entry
+  `generic_analog_behavioral_spice` from
+  `models/packages/compact_model_registry.json`, so report
+  `model_file_provenance[]` shows the reusable package source rather than only
+  a copied include-file hash.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

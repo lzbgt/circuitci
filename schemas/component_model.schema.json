@@ -501,6 +501,20 @@
             "model_name": { "type": "string", "minLength": 1 },
             "model_type": { "enum": ["bjt_npn", "bjt_pnp", "mosfet_n", "mosfet_p", "diode", "subckt"] },
             "model_path": { "type": "string", "minLength": 1 },
+            "model_package_name": { "type": "string", "minLength": 1 },
+            "model_package_version": { "type": "string", "minLength": 1 },
+            "model_package_artifact_id": { "type": "string", "minLength": 1 },
+            "model_package_lock_path": { "type": "string", "minLength": 1 },
+            "model_package_lock_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            },
+            "model_package_registry_path": { "type": "string", "minLength": 1 },
+            "model_package_registry_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            },
+            "model_package_registry_entry": { "type": "string", "minLength": 1 },
             "provenance": {
               "enum": [
                 "datasheet_fit",

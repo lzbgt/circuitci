@@ -1,0 +1,17 @@
+{
+  "schema_version": "circuitci.model_package_lock.v1",
+  "package": {
+    "name": "org.circuitci.models.generic.analog_behavioral",
+    "version": "0.1.0",
+    "description": "Generic behavioral SPICE include models for generated analog workflow smoke tests.",
+    "license": "project-local"
+  },
+  "artifacts": [
+    {
+      "id": "generic_analog_behavioral_spice",
+      "path": "../../spice/generic/analog_behavioral.lib",
+      "sha256": "ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59",
+      "artifact_format": "spice_include"
+    }
+  ]
+}

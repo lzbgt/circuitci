@@ -386,6 +386,38 @@ board:
         model_files[0].sha256.as_deref(),
         Some("ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59")
     );
+    assert_eq!(
+        model_files[0].model_package_name.as_deref(),
+        Some("org.circuitci.models.generic.analog_behavioral")
+    );
+    assert_eq!(
+        model_files[0].model_package_version.as_deref(),
+        Some("0.1.0")
+    );
+    assert_eq!(
+        model_files[0].model_package_artifact_id.as_deref(),
+        Some("generic_analog_behavioral_spice")
+    );
+    assert_eq!(
+        model_files[0].model_package_lock_path.as_deref(),
+        Some("../../models/packages/generic/analog_behavioral.lock.json")
+    );
+    assert_eq!(
+        model_files[0].model_package_lock_sha256.as_deref(),
+        Some("f9be1c88d804e3cf137e17dc1f43b882ad91b56d0cb86fc59c341af371811e15")
+    );
+    assert_eq!(
+        model_files[0].model_package_registry_path.as_deref(),
+        Some("../../models/packages/compact_model_registry.json")
+    );
+    assert_eq!(
+        model_files[0].model_package_registry_sha256.as_deref(),
+        Some("a5aa86b9b531bfd10fb25921dd1a2b255a85aa12b2228f0524d449dfa4322a5f")
+    );
+    assert_eq!(
+        model_files[0].model_package_registry_entry.as_deref(),
+        Some("generic_analog_behavioral_spice")
+    );
 }
 
 #[test]

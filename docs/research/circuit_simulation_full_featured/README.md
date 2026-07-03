@@ -743,6 +743,11 @@ The GUI should not become the solver.
   registry entries can be aggregated into a shared deterministic registry. The
   command rewrites lock paths relative to the shared registry, deduplicates
   identical entries, and rejects conflicting duplicate ids.
+- Added built-in reusable compact-model package fixtures for the generic
+  analog behavioral SPICE include. Generated analog model-pack scenarios now
+  infer the shared registry entry `generic_analog_behavioral_spice` from the
+  component library and carry lock/registry pins into `analog.model_files[]`,
+  solver manifests, report JSON, Markdown reports, and GUI artifact views.
 
 ## Risks
 

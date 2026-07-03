@@ -23,6 +23,14 @@ simulation:
     model_type: subckt
     model_path: models/spice/generic/analog_behavioral.lib
     provenance: generic_behavioral
+    model_package_name: org.circuitci.models.generic.analog_behavioral
+    model_package_version: 0.1.0
+    model_package_artifact_id: generic_analog_behavioral_spice
+    model_package_lock_path: models/packages/generic/analog_behavioral.lock.json
+    model_package_lock_sha256: f9be1c88d804e3cf137e17dc1f43b882ad91b56d0cb86fc59c341af371811e15
+    model_package_registry_path: models/packages/compact_model_registry.json
+    model_package_registry_sha256: a5aa86b9b531bfd10fb25921dd1a2b255a85aa12b2228f0524d449dfa4322a5f
+    model_package_registry_entry: generic_analog_behavioral_spice
     pin_order: [INP, INN, VCC, VEE, OUT]
     valid_operating_notes:
       - Generic smooth-threshold comparator for preliminary threshold and timing observation checks.

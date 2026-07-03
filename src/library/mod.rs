@@ -537,6 +537,22 @@ pub struct SpiceModel {
     pub model_path: String,
     pub provenance: String,
     #[serde(default)]
+    pub model_package_name: Option<String>,
+    #[serde(default)]
+    pub model_package_version: Option<String>,
+    #[serde(default)]
+    pub model_package_artifact_id: Option<String>,
+    #[serde(default)]
+    pub model_package_lock_path: Option<String>,
+    #[serde(default)]
+    pub model_package_lock_sha256: Option<String>,
+    #[serde(default)]
+    pub model_package_registry_path: Option<String>,
+    #[serde(default)]
+    pub model_package_registry_sha256: Option<String>,
+    #[serde(default)]
+    pub model_package_registry_entry: Option<String>,
+    #[serde(default)]
     pub body_pin_policy: Option<String>,
     #[serde(default)]
     pub pin_order: Vec<String>,
@@ -965,6 +981,19 @@ board: {}
             assert_eq!(
                 spice.model_path,
                 "models/spice/generic/analog_behavioral.lib"
+            );
+            assert_eq!(
+                spice.model_package_name.as_deref(),
+                Some("org.circuitci.models.generic.analog_behavioral")
+            );
+            assert_eq!(spice.model_package_version.as_deref(), Some("0.1.0"));
+            assert_eq!(
+                spice.model_package_artifact_id.as_deref(),
+                Some("generic_analog_behavioral_spice")
+            );
+            assert_eq!(
+                spice.model_package_registry_entry.as_deref(),
+                Some("generic_analog_behavioral_spice")
             );
             assert_eq!(spice.pin_order, pin_order);
             assert_eq!(model.model_quality.confidence, "low");

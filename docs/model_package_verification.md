@@ -92,3 +92,10 @@ Scenario-level `analog.model_files[]` may inline lock metadata or import a
 registry entry with `model_package_registry_path`,
 `model_package_registry_sha256`, and `model_package_registry_entry`; the
 standalone verifier is the preflight for those reusable package artifacts.
+
+The repository ships a reusable generic behavioral SPICE package fixture:
+`models/packages/generic/analog_behavioral.lock.json` is imported by
+`models/packages/compact_model_registry.json` as
+`generic_analog_behavioral_spice`. Generic analog component models reference
+that registry entry, so generated analog scenarios preserve package provenance
+automatically instead of emitting only an ad hoc `model_path` and SHA-256.

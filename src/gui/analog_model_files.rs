@@ -7,6 +7,14 @@ use std::path::{Component, Path, PathBuf};
 pub(super) struct InferredAnalogModelFile {
     pub(super) path: String,
     pub(super) sha256: String,
+    model_package_name: Option<String>,
+    model_package_version: Option<String>,
+    model_package_artifact_id: Option<String>,
+    model_package_lock_path: Option<String>,
+    model_package_lock_sha256: Option<String>,
+    model_package_registry_path: Option<String>,
+    model_package_registry_sha256: Option<String>,
+    model_package_registry_entry: Option<String>,
     canonical_path: PathBuf,
 }
 
@@ -18,7 +26,7 @@ pub(super) fn model_file_values_for_generated_components(
     Ok(
         inferred_model_files_for_components(project_path, project, component_ids)?
             .into_iter()
-            .map(|entry| model_file_value(&entry.path, &entry.sha256))
+            .map(|entry| model_file_value(&entry))
             .collect(),
     )
 }
@@ -78,7 +86,7 @@ pub(super) fn add_missing_generated_model_files(
     let model_files = ensure_child_sequence_mut(analog_mapping, "model_files", "model files")?;
     for entry in missing {
         existing_paths.insert(entry.path.clone());
-        model_files.push(model_file_value(&entry.path, &entry.sha256));
+        model_files.push(model_file_value(&entry));
     }
     let updated =
         serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
@@ -126,26 +134,93 @@ fn inferred_model_files_for_components(
                 canonical_path.display()
             )
         })?;
+        let model_package_lock_path = optional_project_relative_existing_path(
+            project_path,
+            spice.model_package_lock_path.as_deref(),
+        )
+        .context("Failed to resolve compact-model package lock path.")?;
+        let model_package_registry_path = optional_project_relative_existing_path(
+            project_path,
+            spice.model_package_registry_path.as_deref(),
+        )
+        .context("Failed to resolve compact-model package registry path.")?;
         entries.push(InferredAnalogModelFile {
             path,
             sha256,
+            model_package_name: spice.model_package_name.clone(),
+            model_package_version: spice.model_package_version.clone(),
+            model_package_artifact_id: spice.model_package_artifact_id.clone(),
+            model_package_lock_path,
+            model_package_lock_sha256: spice.model_package_lock_sha256.clone(),
+            model_package_registry_path,
+            model_package_registry_sha256: spice.model_package_registry_sha256.clone(),
+            model_package_registry_entry: spice.model_package_registry_entry.clone(),
             canonical_path,
         });
     }
     Ok(entries)
 }
 
-fn model_file_value(path: &str, sha256: &str) -> serde_yaml_ng::Value {
+fn model_file_value(entry: &InferredAnalogModelFile) -> serde_yaml_ng::Value {
     let mut mapping = serde_yaml_ng::Mapping::new();
     mapping.insert(
         serde_yaml_ng::Value::String("path".to_string()),
-        serde_yaml_ng::Value::String(path.to_string()),
+        serde_yaml_ng::Value::String(entry.path.clone()),
     );
     mapping.insert(
         serde_yaml_ng::Value::String("sha256".to_string()),
-        serde_yaml_ng::Value::String(sha256.to_string()),
+        serde_yaml_ng::Value::String(entry.sha256.clone()),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_name",
+        entry.model_package_name.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_version",
+        entry.model_package_version.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_artifact_id",
+        entry.model_package_artifact_id.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_lock_path",
+        entry.model_package_lock_path.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_lock_sha256",
+        entry.model_package_lock_sha256.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_registry_path",
+        entry.model_package_registry_path.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_registry_sha256",
+        entry.model_package_registry_sha256.as_deref(),
+    );
+    insert_optional_string(
+        &mut mapping,
+        "model_package_registry_entry",
+        entry.model_package_registry_entry.as_deref(),
     );
     serde_yaml_ng::Value::Mapping(mapping)
+}
+
+fn insert_optional_string(mapping: &mut serde_yaml_ng::Mapping, name: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        mapping.insert(
+            serde_yaml_ng::Value::String(name.to_string()),
+            serde_yaml_ng::Value::String(value.to_string()),
+        );
+    }
 }
 
 fn resolve_model_path(project_path: &Path, model_path: &str) -> Result<PathBuf> {
@@ -230,6 +305,23 @@ fn relative_path(from_dir: &Path, to: &Path) -> Option<PathBuf> {
     } else {
         path
     })
+}
+
+fn optional_project_relative_existing_path(
+    project_path: &Path,
+    path: Option<&str>,
+) -> Result<Option<String>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let canonical_path = resolve_model_path(project_path, path)?;
+    let project_dir = canonical_project_dir(project_path)?;
+    Ok(Some(
+        relative_path(&project_dir, &canonical_path)
+            .unwrap_or(canonical_path)
+            .to_string_lossy()
+            .replace('\\', "/"),
+    ))
 }
 
 fn file_sha256_hex(path: &Path) -> Result<String> {
