@@ -90,7 +90,11 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    - `embedded_ngspice` means a mature ngspice-derived solver must be
      dynamically loaded, compiled, or linked into CircuitCI behind the analog
      adapter. It must not resolve to a partial in-house SPICE subset.
-   - `auto` chooses the first available configured backend.
+   - `auto` chooses the first available backend that this CircuitCI runtime can
+     actually execute and normalize for the requested analysis. In the current
+     slice that means external ngspice for transient, AC, DC, and noise, plus
+     embedded ngspice for transient only. Xyce is intentionally not selected by
+     `auto` until a dedicated Xyce adapter and output-normalization path lands.
 3. If no required backend is available, emit a critical
    `ANALOG_BACKEND_UNAVAILABLE` finding.
 4. If the netlist or included model files are missing, emit a critical
@@ -126,6 +130,8 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
    `points_per_decade` in `1..=1000` when provided.
 3. Select external `ngspice`; the first AC slice deliberately fails closed for
    embedded ngspice and Xyce until equivalent export paths are implemented.
+   `backend: auto` does not select Xyce for this analysis until that adapter is
+   implemented.
 4. Expand bounded run-input sweeps exactly like transient validation,
    including raw `.param`, generated component-value parameters, model-library
    sections, and `.temp` corners.
@@ -148,6 +154,8 @@ For a scenario with check `SPICE_DC_ANALYSIS`:
 2. Require `analysis.type: op` and at least one operating-point probe.
 3. Select external `ngspice`; DC export currently fails closed for embedded
    ngspice and Xyce until equivalent export paths are implemented.
+   `backend: auto` does not select Xyce for this analysis until that adapter is
+   implemented.
 4. Expand bounded run-input sweeps exactly like transient and AC validation.
 5. Run `.op`, export ngspice probe data, and normalize it to
    `operating_point.csv` with one column per declared probe.
@@ -168,6 +176,8 @@ For a scenario with check `SPICE_NOISE_ANALYSIS`:
    `noise_reference_node` creates a differential output expression.
 3. Select external `ngspice`; noise export currently fails closed for embedded
    ngspice and Xyce until equivalent export paths are implemented.
+   `backend: auto` does not select Xyce for this analysis until that adapter is
+   implemented.
 4. Expand bounded run-input sweeps exactly like transient, AC, and DC
    validation. Temperature corners still emit `.temp`; model-section and
    generated component-value corners still produce isolated run directories.

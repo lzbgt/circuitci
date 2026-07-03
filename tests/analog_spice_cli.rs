@@ -6,6 +6,7 @@ use common::{
     run_validation_with_path, run_validation_with_path_and_env,
 };
 use serde_json::Value;
+use std::fs;
 use std::process::Command;
 
 #[test]
@@ -673,6 +674,80 @@ fn explicit_embedded_ngspice_does_not_fallback_when_configured_library_is_missin
         report["failures"][0]["id"],
         "ANALOG_EMBEDDED_SOLVER_UNAVAILABLE"
     );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+fn fake_executable(dir: &std::path::Path, name: &str) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.join(name);
+    fs::write(&path, "#!/bin/sh\nexit 99\n").unwrap();
+    let mut permissions = fs::metadata(&path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&path, permissions).unwrap();
+}
+
+fn analog_backend_project(project: &str, backend: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let text = fs::read_to_string(project)
+        .unwrap()
+        .replace("backend: auto", &format!("backend: {backend}"))
+        .replace("../../libs", &repo.join("libs").to_string_lossy())
+        .replace("../../models", &repo.join("models").to_string_lossy());
+    let path = dir.path().join("project.yaml");
+    fs::write(&path, text).unwrap();
+    (dir, path)
+}
+
+#[cfg(unix)]
+#[test]
+fn auto_backend_does_not_select_xyce_before_runtime_adapter_exists() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let (_project_dir, project_path) =
+        analog_backend_project("examples/good_mosfet_low_side_switch/project.yaml", "auto");
+
+    let missing_library = fake_path.path().join("missing-libngspice.dylib");
+    let report = run_validation_with_path_and_env(
+        project_path.to_str().unwrap(),
+        fake_path.path(),
+        &[("CIRCUITCI_LIBNGSPICE", missing_library.to_str().unwrap())],
+    );
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    assert_eq!(
+        report["failures"][0]["measured"]["requested_backend"],
+        "auto"
+    );
+    assert!(report["waveforms"].as_array().unwrap().is_empty());
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn explicit_xyce_backend_fails_closed_until_adapter_exists() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let (_project_dir, project_path) =
+        analog_backend_project("examples/good_mosfet_low_side_switch/project.yaml", "xyce");
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["selected_backend"],
+        "Xyce"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["implemented_backend"],
+        "ngspice_or_embedded_ngspice"
+    );
+    assert!(report["waveforms"].as_array().unwrap().is_empty());
     assert_report_schema_valid(&report);
 }
 

@@ -13,8 +13,8 @@ use super::analog_noise_assertions::{
 };
 use super::analog_noise_runner::{NgspiceNoiseRunOptions, run_ngspice_noise};
 use super::analog_runner::{
-    BackendSelection, backend_name, embedded_solver_unavailable, external_backend_unavailable,
-    select_backend,
+    AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
+    external_backend_unavailable, select_backend_for_feature,
 };
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
@@ -334,7 +334,7 @@ pub(super) fn validate_spice_noise_with_progress<F, C>(
         "Selecting analog noise backend",
         format!("Requested backend {}.", backend_name(&analog.backend)),
     );
-    let selected = select_backend(&analog.backend);
+    let selected = select_backend_for_feature(&analog.backend, AnalogRuntimeFeature::Noise);
     let BackendSelection::Selected(backend) = selected else {
         let mut finding = match selected {
             BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),

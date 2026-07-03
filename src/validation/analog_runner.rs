@@ -1327,6 +1327,20 @@ pub(super) enum BackendSelection {
     EmbeddedUnavailable,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AnalogRuntimeFeature {
+    Transient,
+    Ac,
+    Dc,
+    Noise,
+}
+
+impl AnalogRuntimeFeature {
+    fn supports_embedded_ngspice(self) -> bool {
+        matches!(self, Self::Transient)
+    }
+}
+
 pub(super) fn external_backend_unavailable(
     scenario_name: &str,
     backend: &AnalogBackend,
@@ -1370,7 +1384,10 @@ pub(super) fn embedded_solver_unavailable(scenario_name: &str) -> Finding {
     finding
 }
 
-pub(super) fn select_backend(requested: &AnalogBackend) -> BackendSelection {
+pub(super) fn select_backend_for_feature(
+    requested: &AnalogBackend,
+    feature: AnalogRuntimeFeature,
+) -> BackendSelection {
     match requested {
         AnalogBackend::Ngspice => {
             if executable_on_path("ngspice") {
@@ -1391,18 +1408,16 @@ pub(super) fn select_backend(requested: &AnalogBackend) -> BackendSelection {
         AnalogBackend::Auto => {
             if executable_on_path("ngspice") {
                 BackendSelection::Selected("ngspice")
-            } else if executable_on_path("Xyce") {
-                BackendSelection::Selected("Xyce")
-            } else if executable_on_path("xyce") {
-                BackendSelection::Selected("xyce")
-            } else if embedded_ngspice_available() {
+            } else if feature.supports_embedded_ngspice() && embedded_ngspice_available() {
                 BackendSelection::Selected("embedded_ngspice")
             } else {
                 BackendSelection::Unavailable
             }
         }
         AnalogBackend::EmbeddedNgspice => {
-            if embedded_ngspice_available() {
+            if !feature.supports_embedded_ngspice() {
+                BackendSelection::EmbeddedUnavailable
+            } else if embedded_ngspice_available() {
                 BackendSelection::Selected("embedded_ngspice")
             } else {
                 BackendSelection::EmbeddedUnavailable

@@ -18,9 +18,9 @@ use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
 };
 use super::analog_runner::{
-    BackendSelection, ModelSectionOverride, NgspiceAcRunOptions, NgspiceRunOptions,
-    ParameterOverride, backend_name, embedded_solver_unavailable, external_backend_unavailable,
-    run_ngspice, run_ngspice_ac, select_backend,
+    AnalogRuntimeFeature, BackendSelection, ModelSectionOverride, NgspiceAcRunOptions,
+    NgspiceRunOptions, ParameterOverride, backend_name, embedded_solver_unavailable,
+    external_backend_unavailable, run_ngspice, run_ngspice_ac, select_backend_for_feature,
 };
 use super::analog_soa::evaluate_soa_limits;
 use super::analog_sweep_reports::{
@@ -443,7 +443,7 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
         "Selecting analog backend",
         format!("Requested backend {}.", backend_name(&analog.backend)),
     );
-    let selected = select_backend(&analog.backend);
+    let selected = select_backend_for_feature(&analog.backend, AnalogRuntimeFeature::Transient);
     let BackendSelection::Selected(backend) = selected else {
         let mut finding = match selected {
             BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),
@@ -816,7 +816,7 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
         "Selecting analog AC backend",
         format!("Requested backend {}.", backend_name(&analog.backend)),
     );
-    let selected = select_backend(&analog.backend);
+    let selected = select_backend_for_feature(&analog.backend, AnalogRuntimeFeature::Ac);
     let BackendSelection::Selected(backend) = selected else {
         let mut finding = match selected {
             BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),
