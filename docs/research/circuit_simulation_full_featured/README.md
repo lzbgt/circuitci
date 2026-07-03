@@ -369,6 +369,13 @@ Sources saved:
 
 - `sources/arxiv_2512.10373_qucs_phase_noise.pdf`
 - `sources/arxiv_2512.10373_qucs_phase_noise.txt`
+- `sources/arxiv_2512.10373_source.tar.gz`
+- `sources/arxiv_2512.10373_source_README.json`
+- `sources/arxiv_2603.07828_qucs_phase_noise_part2.pdf`
+- `sources/arxiv_2603.07828_qucs_phase_noise_part2.html`
+- `sources/arxiv_2603.07828_qucs_phase_noise_part2.txt`
+- `sources/arxiv_2603.07828_source.tar.gz`
+- `sources/arxiv_2603.07828_source_README.json`
 
 Upstream:
 
@@ -379,12 +386,20 @@ Key point:
 - The paper extends QUCS toward time-domain PSS for autonomous oscillator
   circuits and phase-noise simulation. It highlights PSS convergence, basin of
   attraction, frequency guess quality, and stiff circuit dynamics.
+- Part II documents a companion QUCS-COPEN PNOISE module that depends directly
+  on a referenced PSS module instance. GitHub repository searches saved under
+  `sources/github_search_*` found no public `QUCS-COPEN` or `psssolver qucs`
+  repositories, and the arXiv source archives contain TeX/figure sources rather
+  than reusable backend code.
 
 CircuitCI implication:
 
 - Oscillator/RF large-signal support is not just "run FFT after transient."
   It needs explicit PSS/HB contracts, convergence evidence, and careful
   limitations in reports.
+- QUCS-COPEN is a valuable theory/reference path for autonomous oscillator PSS
+  and PNOISE, but it is not a practical backend target until public source,
+  build instructions, output datasets, and conformance circuits exist.
 
 ### SPICE for power-grid transient analysis
 
@@ -610,7 +625,9 @@ The GUI should not become the solver.
   adapter target to enable immediately: Xyce 7.8 documents HB but not a
   separate PSS command; ngspice PSS is experimental/autonomous/build-gated and
   lacks a stable normalized output contract in this runtime; SPICE OPUS `ssse`
-  is documented but would require a new backend adapter and conformance suite.
+  is documented but would require a new backend adapter and conformance suite;
+  QUCS-COPEN papers document `psssolver`/`pnsolver`, but no public source
+  repository or adapter contract was found.
 
 ### Phase 5: Model Compiler Pipeline
 

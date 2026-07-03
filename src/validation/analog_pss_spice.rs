@@ -388,7 +388,8 @@ pub(super) fn validate_spice_pss_with_progress<F, C>(
         json!({
             "ngspice": "experimental_potential_autonomous_pss_only_requires_enable_pss_and_no_stable_normalized_output_contract",
             "xyce": "no_distinct_pss_command_in_xyce_7_8_docs_hb_only_for_current_runtime",
-            "spice_opus": "ssse_shooting_exists_but_no_circuitci_runtime_adapter_or_conformance_contract"
+            "spice_opus": "ssse_shooting_exists_but_no_circuitci_runtime_adapter_or_conformance_contract",
+            "qucs_copen": "papers_document_psssolver_pnsolver_but_no_public_source_repository_or_adapter_contract_found"
         }),
     );
     finding.limit.insert(

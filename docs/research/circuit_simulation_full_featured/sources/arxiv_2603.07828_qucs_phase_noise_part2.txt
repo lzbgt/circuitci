@@ -1,0 +1,1058 @@
+A N OVEL PHASE -N OISE MODULE FOR THE QUCS C IRCUIT
+SIMULATOR . P ART II : N OISE ANALYSIS .
+arXiv PREPRINT
+Torsten Djurhuus ∗
+Goethe-University Frankfurt
+t.djurhuus@physik.uni-frankfurt.de
+Viktor Krozer
+Goethe-University Frankfurt &
+Ferdinand-Braun-Institut, Leibniz
+Institut für Höchstfrequenztechnik
+krozer@physik.uni-frankfurt.de
+March 10, 2026
+ABSTRACT
+The paper documents the implementation of a novel phase-noise analysis module within the open-
+source QUCS circuit simulator environment. The underlying algorithm is based on a rigorous, uni-
+ﬁed time-domain methodology of (coupled) oscillator noise-response, recently proposed by the au-
+thors. The theoretical approach used to develop this model is entirely unconstrained by any empirical
+and/or phenomenological modelling techniques, such as e.g. LTI and LTV theory, and this differ-
+entiates it from all prior proposals on this topic. The paper introduces important, and previously
+unpublished, extensions to this framework, in the form of novel uniﬁed closed-form expressions for
+both the amplitude and phase-amplitude correlation response of a general coupled oscillating circuit
+perturbed by noise. The proposed theoretic framework translates into highly robust and efﬁcient nu-
+merical algorithms, exhibiting several new features and properties which all extend well beyond the
+scope of the noise analysis tools used in current open-source and/or commercial EDAs. The research
+discussed herein has many important scientiﬁc and industrial applications w.r .t.predicting, synthe-
+sizing and optimizing the performance of noise-perturbed free-running and coupled autonomous
+circuits operating under large-signal steady-state conditions. These timing circuits are ubiquitous
+in all modern communication and remote-sensing systems and the developed simulation tools will
+prove to have great impact in various areas of industrial circuit design. This paper represents second
+part of a two-part series with the ﬁrst part discussing the implementation of the underlying steady-
+state analysis module. The open-source simulator, discussed and developed herein, applies advanced
+state-of-the-art stochastic modelling techniques, in-order to produce noise simulation tools with ca-
+pabilities and scope which, in many areas, exceed what is found in the commercial EDAs currently
+on the market.
+Keywords circuits, phase-noise, circuit simulation, noise analysis, oscillators, coupled oscillators, numerical analysis,
+circuit analysis, autonomous circuits.
+1 Introduction
+Methods for analyzing, synthesizing and optimizing the stochastic response of non-linear circuits, operating under
+large-signal conditions and perturbed by noise, play a critical role in the design cycle of circuits with important appli-
+cations in e.g. communication and remote-sensing systems. Given the ever-increasing complexity and scale of modern
+circuit schematics, such work necessitates using an Electronic-Design-Automation (EDA) simulation program.
+The work herein considers the development and integration of a novel phase-noise (PNOISE) tool into the Quite Uni-
+versal Circuit Simulator ( QUCS) [1, 2], an open-source distribution published under the GNU General Public License
+∗The authors are with the Institute of Physics, Goethe University of Frankfurt am Main, Max-von- Laue-Strasse 1, 60438,
+Frankfurt am Main. (correspondence e-mail: t.djurhuus@physik.uni-frankfurt.de).
+arXiv:2603.07828v1  [eess.SY]  8 Mar 2026
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+(GPL). The resulting extended software package is built as a clone of the QUCS & QUCS-S [3–5] open-source software
+projects and is referred to as the QUCS-COPEN (working title) distribution/package/project etc. In [6], the implemen-
+tation of the QUCS-COPEN Periodic-Steady-State (PSS) simulator module was covered. The PNOISE tool, discussed
+herein, depends directly on the numerical output produced by this PSS module. For more details w.r .t.these topics 2,
+the reader is referred to [ 6, introduction].
+The numerical algorithm behind the QUCS-COPEN PNOISE module, implemented herein, is based on a novel theoreti-
+cal framework known as the Coupled Oscillator Phase-Macro-Model (COSC-PMM), recently proposed by the authors
+in [ 7]. The COSC-PMM framework is constructed using a novel, rigorous and uniﬁed time-domain methodology
+which involves techniques and ideas spanning various branches of mathematics, including differential geometry, topol-
+ogy, Floquet theory and nonlinear stochastic integration. It represents a direct extension of the established, and highly
+cited, single/free-running oscillator Phase Macro Model (PMM) [ 8–10]. As was documented in [ 7], the COSC-PMM
+includes the single oscillator PMM as a special case, and hence not only extends but also replaces this previously
+published model. The novel COSC-PMM framework represents the only ever published Linear-Response (LR) model
+description of coupled oscillator noise-response which does not rely on some form of empirical and/or phenomeno-
+logical modelling approach, such as e.g linear-time-invariant (LTI), linear-time-variant (LTV) theory, block-diagram
+models etc. All previously proposed models, ever published on this topic, can hence correctly, and without hyperbole,
+be characterized as incomplete. A prominent example hereof is the Conversion-Matrix (C-MA TRIX) methodology
+where the response is calculated using noise-folding/mixing techniques. This frequency-domain description models
+the large-signal oscillating circuit as an internally driven nonlinear mixer with the noise signals being fed into the linear
+RF port. By deﬁnition, this represents a LTV approach. The C-MA TRIX LTV methodology has long been favored by
+a majority of researches in the scientiﬁc community as a direct approach for developing robust numerical algorithms.
+As a result, most established commercial EDAs, such as e.g. Keysight-ADS© and Cadence SpectreRF ©, all apply this
+methodology in their implementation of large-signal noise analysis tools. Despite such proven use-cases it is, never-
+theless, a well-established fact [ 8, 9, 11] that these LTV C-MA TRIX models, applied to (coupled) oscillating systems
+perturbed by noise, are unable to fully capture the underlying stochastic response; a fact which manifests in an artiﬁcial
+singularity at the carrier (zero offset) in the calculated spectrum [ 8, 9, 11]. As this singularity is approached, numerical
+noise will accumulate in the calculated solution rendering the output of the algorithm dubious and unreliable. As such,
+this issue not only invalidates the calculated spectrum directly at the singularity, but also corrupts the solution in some
+open range of this point [ 11]. These types of fundamental and structural problems remain an inescapable realty when
+dealing with any empirical or phenomenological model as the underlying theoretic description, by deﬁnition, must be
+incomplete and lacking.
+As the only complete , non-phenomenological/empirical LR model of coupled oscillator noise-response, the COSC-
+PMM is not tainted by any of the problems or issues described above. The produced spectrum is correctly calculated
+at all offsets from the carrier, no artiﬁcial singularities are observed in the output and no numerical noise issues
+invalidates the computed result or plays any role in the performance of the method. The QUCS-COPEN package is the
+ﬁrst ever, to our knowledge, EDA project to include a PNOISE module based on the novel COSC-PMM methodology.
+Consequently, it is thus also the ﬁrst ever EDA project to include a PNOISE analysis module, applicable to coupled
+circuits, which is correct, in the strictest sense, meaning that it does not rely on any kind of LTV , LTI, block-diagram
+or other phenomenological/empirical modelling approach to calculate the spectrum.
+1.1 A Note on Alternative Open-Source Engines : qucsatorRF, GnuCap, ngspice & Xyce.
+The QUCS-S [3–5] software package ships with its own qucsator engine clone called qucsatorRF (see footnote 2)
+and both the QUCS [1, 2] and QUCS-S packages link to other non- QUCS, SPICE based, open-source simulator engines,
+including : GnuCap [12], ngspice [13] and Xyce [14]. All these external engines were discussed in [ 6] and the reader
+should consult this paper for details. From [ 6], only the ngspice packages supported any type of PSS analysis of
+autonomous simulation. Likewise, the ngspice manual also contains the only mention of large-signal noise analysis
+of autonomous circuits. Quoting the ngspice manual [13, sec. 1.2.8] : "Results of PSS are the basis of periodical large-
+signal analysis like PAC or PNoise". As was the case with the ngspice PSS module this noise analysis implementation
+is labelled experimental code (see discussion in [6]). Furthermore, neither the PAC or PNoise modules, as far as we can
+tell, are mentioned anywhere else in the ~750 page manual. Given these facts, one must conclude that these features
+have not yet been implemented or, at the very least, have not yet been properly tested or documented. Thus, a review
+of the current state of the available open-source simulator engines, w.r .t. available PNOISE tools, leads to only one
+conclusion : no credible alternative options exist for analysis of large-signal noise-response of autonomous circuits
+(clocks/oscillators), not to mention coupled circuits, in any of the major open-source simulator engines discussed here.
+2A very brief recap (for completeness) : the new QUCS-COPEN package is constructed from an extended version of the QUCS
+simulator engine, called qucsator, which is then linked with a Graphical-User-Interface (GUI) schematic capture application taken
+from the QUCS-S distribution and modiﬁed to suit the needs of the new QUCS-COPEN simulator.
+2
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+1.2 Outline of paper
+Below, various theoretical and practical aspects w.r .t. the COSC-PMM methodology and the implementation of the
+QUCS-COPEN PNOISE analysis tool, are discussed. Sections 2, 2.1 and 2.2 reviews the theory behind the COSC-
+PMM framework and the corresponding implemented numerical algorithm. In Section 2.3 the original COSC-PMM
+scheme, proposed in [ 7], which was limited to the phase-noise response, is extended to include expressions for both
+the amplitude and cross-correlation noise response components. These important additions are published herein for
+the ﬁrst time and will serve to further improve the scope of the COSC-PMM model framework. Sections 2.4 and 2.5
+cover the various practical issues involved w.r .t.the actual implementation & integration of the PNOISE tool into the
+QUCS-COPEN package3. In section 3, the newly implemented QUCS-COPEN noise analysis module will be demonstrated
+on a varied set of example oscillator circuits, both coupled and free-running. Then in section 3.2, the calculated
+results are validated through a comparison study with the commercial Keysight-ADS © simulator. Finally, section 4
+summarizes the obtained results and outlines future work & projects, currently in the pipeline w.r .t.to the QUCS-COPEN
+project.
+2 Background Theory & PNOISE Module Implementation.
+The noise-perturbed circuit equations (KCL/KVL) are written using a standard Modiﬁed-Nodal-Analysis (MNA) no-
+tation [16]4
+˙q(x(t)) +i(x(t)) +s(t) +B(x(t))(t) = 0 (1)
+where,x(t) : R → Rn, represents then-dimensional circuit state, vectorsq(x);i (x) : Rn → Rn, hold the reactive and
+resistive (KCL/KVL) contributions, respectively,s(t) : R → Rn contain the contributions of all independent sources
+in the circuit, B(·) : Rn → Rn×p is the noise modulation matrix [8–10] and (t) : R → Rp holdsp uncorrelated,
+zero-mean, unit-power white-noise sources.
+The topic of discussion here is noise-analysis of autonomous circuits operating under large-signal conditions, which
+implies the existence of a special asymptotic periodic solution to (noise-free) eq. ( 1),xs(t) : R → Rn, the so-called
+Periodic Steady State (PSS). This solution is assumed stable and periodic, xs(t0 +T0) −x(t0) = 0 , wheret0;T 0 ∈ R+
+are parameters representing some asymptotic time offset and the steady-state period, respectively. The limit-cycle, ,
+represents the unique 1-dimensional!-limit set (attractor) traced out by the asymptotic PSS solution. Thus, xs() ∈,
+for all  and, limt→∞ ∥x(t) −∥ = 0 , for any solution x(t) to eq. ( 1) inside the stable manifold ( i.e. the basin of
+attraction) of . The paper [ 6] (part-I of series) contains a review of the various proposed methods for deriving this
+solution numerically, including a detailed description of the speciﬁc methodology used to implement the QUCS-COPEN
+PSS analysis module.
+2.1 Deriving the Floquet Decomposition.
+Given the PSS, xs(t) : R → Rn, (see [ 6] for details), the circuit equations in eq. ( 1) can be linearized around this
+solution. The resulting MNA Linear-Response (LR) equations have the form
+d(C(t)x(t))=dt +G(t)x(t) = 0 (2)
+where,x(t) : R → Rn, is the LR state vector and C(t)=dq(s)=ds;G (t)=di(s)=ds|s=xs(t) : R → Rn×n, are two
+time-dependent, periodic Jacobian matrices governing the linearized dynamics, with i;q deﬁned above in eq. ( 1). The
+PSS is assumed stable and a solution to eq. ( 2) is then calculated by integrating these differential equations forward in
+time. As the system in eq. ( 2) is linear this solution can be expressed in-terms of the system State-Transition-Matrix
+(STM) Φ(t;s ) : R×R → Rn×n. Furthermore, with the time-dependence being periodic, this STM can be decomposed
+using Floquet theory [ 16]
+Φ(t;s ) =
+n∑
+i=1
+ui(t) exp(i[t −s])v⊤
+i (s)C(s) (3)
+3The text in sections 2.4 and 2.5 will, in places, contain brief discussion of C++ code [15] (the QUCS program language) including
+the use of some C++ notation and keywords.
+4The noise-free version of eq. ( 1) was analyzed in part-I [ 6] of this series. Hence, brief passages of text in this section, involving
+steady-state ( i.e. noise-free, PSS) topics, may constitute a repeat (to some degree) of the discussion in [ 6]. This approach was
+chosen in the interest of completion and readability.
+3
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+wherei ∈ C is the ith Floquet characteristic exponent ,ui(t);v i(t) : R → Cn are the ith,T0 periodic, Floquet and
+dual Floquet vectors, respectively, and the T0 periodic Jacobian matrix, C(t) : R → Rn×n, was deﬁned above in
+eq. (2). From eq. ( 3), the Monodromy Matrix (MM), ΦM ∈ Rn×n, is derived as
+ΦM ≡ Φ(T0; 0) =
+n∑
+i=1
+iui(T0)v⊤
+i (0)C(0) (4)
+where i = exp( iT0) is the ith Floquet characteristic multiplier . Given periodicity, ui(0) = ui(T0), and the
+orthogonality condition, v⊤
+i (t)C(t)uj(t) = ij [16], it follows from inspection of eq. ( 4) that ui(0) is an eigenvector
+of the MM with eigenvalue i, and in this way, the entire set, {ui(0)}n
+i=1, is derived. Using this set of eigenvectors
+as initial conditions, the system in eq. ( 2) is integrated forward in time to produce the complete set of time-periodic
+Floquet vectors {ui(t)}n
+i=1 [8, 9, 17]. This set spans the so-called tangent-bundle 5 along the limit-cycle base-space
+[7, 17]
+TγM = span{u1(t);u 2(t); · · ·;u n(t)} (5)
+The adjoint LR equations, corresponding to the system in eq. ( 1), are written [ 16]
+C ⊤(t)d(x(t))=dt −G⊤(t)x(t) = 0 (6)
+A solution to eq. ( 6), for a given initial condition, can be found by integrating this system backwards in time. This
+solution is then be expressed in-terms of the adjoint STM
+Ψ(t;s ) =
+n∑
+i=1
+vi(t) exp(−i[t −s])u⊤
+i (s)C ⊤(s) (7)
+and the corresponding adjoint MM is given as
+ΨM ≡ Ψ(−T0; 0) =
+n∑
+i=1
+ivi(−T0)u⊤
+i (0)C ⊤(0) (8)
+Repeating the arguments introduced above, vi(0) is an eigenvector of the adjoint MM in eq. ( 8) with eigenvalue i
+and the dual set, {vi(t)}n
+i=1, is calculated by integrating eq. ( 6), with this initial eigenvector-set, backwards in time.
+The dual Floquet vectors span the dual tangent bundle (see footnote 5) along the limit-cycle base-space
+T∗
+γM = span{v1(t);v 2(t); · · ·;v n(t)} (9)
+2.1.1 The Concept of a Floquet Mode & Floquet Mode Response.
+Herein the Floquet vector function, ui(t), is often referred to as the ith Floquet mode. Sometimes, the entire triplet of
+operators {ui(t);v i(t); i} is also referred to as such. The ith Floquet mode response,zi(t) : R → Cn, then represents
+the projected noise-driven LR dynamics along the ith Floquet mode, zi(t) = i(t)ui(t), where i : R → C is the
+ﬁrst-order noise-response along this vector. From eqs. ( 1) and (3) it follows that
+i(t) =
+∫ t
+−∞
+exp(i[ −t])v⊤
+i ()C()B(xs())()d (10)
+with noise operators, B; , deﬁned in eq. ( 1). Importantly, we will often also refer to the mode response, zi(t), as the
+ith mode for simplicity. This should not cause any confusion.
+5A tangent-space, TxM, on a k-dimensional sub-manifold, M, of Rn, at the point x, is an afﬁne copy of vector-space Rk with
+origin at x. A tangent-bundle along an embedded set, γ ∈ M, then simply refers to the disjoint union of these tangent-spaces along
+this base-space i.e. TγM = ∪x∈γTxM. This description also hold for the special case M = Rn (i.e. no sub-manifold) Likewise,
+a dual (co-variant) tangent-space, T∗
+xM, on the k-dimensional sub-manifold, M, of Rn, at the point x, is an afﬁne copy of dual
+vector-space Rk∗ with origin at x. Equivalently, a dual tangent-bundle is deﬁned as T∗
+γM = ∪x∈γT∗
+xM which again also holds for
+the special case M = Rn.
+4
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+2.1.2 The Special PSS Floquet Mode.
+It is a well-established fact [ 8–10, 17] that autonomous circuits, with a stable PSS, will produce a special single real
+Floquet mode with zero characteristic exponent. This special operator, traditionally represented by the ﬁrst mode
+{u1;v 1; 1 = 0 }, is special and unique as it is the only mode, assuming an asymptotically stable PSS, that has a
+Floquet characteristic exponent equal to zero 1 = 0 ⇒ 1 = 1 . It describes the LR dynamics projected onto the
+tangent-direction of the limit-cycle, , withu1(t) ∝ ˙xs(t) for allt. The dynamics in this direction are neutrally stable,
+i.e. no retracting force, which is characterized mathematically by a characteristic exponent with real part equal to zero.
+Let,(t) : R → R, describe the phase offset along  caused by the noise perturbations projected onto this set. From
+eq. (10), one can derive an expression for the phase increment
+(t + ) −(t) =
+∫ t+τ
+t
+v⊤
+i ()C()B(xs())()d (11)
+The increment in eq. ( 11) is bounded, however, it should be clear that the phase variable, (t), itself is not. In fact, it
+is a well established result [ 8–10, 17] that, asymptotically with time, this variable becomes normally distributed with
+power ⟨((t)−)2⟩ =ct where the positive scalar,c ∈ R+, is known as the phase diffusion constant, and represents
+the asymptotic mean value.
+2.2 The Novel COSC-PMM Modelling Framework.
+The model considers k free-running, asymptotically stable autonomous oscillator units coupled through some type of
+network. This circuit topology is referred to as a k-ensemble. It is assumed that the ensemble reaches a T0 ∈ R+
+periodic synchronized state, xs(t0) = xs(t0 +T0), i.e. the ensemble PSS. The concept of a unique phase-manifold,
+M, corresponding to a given k-ensemble conﬁguration, was ﬁrst discussed in the paper [ 7], recently published by
+the authors. It refers to a closed, k-dimensional, smooth sub-manifold embedded in n-dimensional state-space, Rn,
+and parameterized by a set of coordinates indexing the phase-state of the coupled circuit. Using various established
+results and ideas from topology and differential geometry, the existence of this unique manifold was proven for a
+synchronized circuit in [ 7]. The analysis further showed how the ensemble limit-cycle, , constitutes a 1-dimensional
+sub-manifold embedded in this space, i.e. ,→ M. Let TγM represent the tangent-bundle (see eq. ( 5) and footnote 5)
+along on M. A standard result of COSC-PMM theory, introduced in [ 7], then predicts the existence of exactly k
+unique Floquet modes spanning this bundle. As the numbering of Floquet modes is arbitrary we are free to choose
+these to be the ﬁrst k vectors in the set
+TγM = span{u1(t);u 2(t); · · ·;u k(t)} (12)
+with the remaining set ofn−k Floquet vectors spanning the amplitude bundle TγI [7]. From eq. (5), the tangent-bundle
+along is then decomposed into phase and amplitude sub-bundles as
+TγR = TγM ⊕ TγI (13)
+Let {i(t)}k
+i=1 denote the k Floquet modes 6 on TγM, which govern the LR noise-driven phase dynamics on M; i.e.
+the phase-modes. Likewise, { i(t)}n−k
+i=1 then refers to the set of n−k amplitude-modes (see footnote 6) governing
+the LR noise amplitude dynamics in directions not tangential to M. Referring to section 2.1.2, the ﬁrst phase-mode
+{u1;v 1; 1 = 0 }, requires special attention. As the response, (t) : R → R grows without bound this response
+cannot be linearized and must be included in the total phase of the various operators. For this purpose the effective
+time-variable(t) : R → R is introduced
+(t) = t +(t) (14)
+The remaining response is collected in the residual phase and amplitude actions Φδ; Ψδ : R → Rn,
+Φδ((t)) =
+k∑
+i=2
+i((t)); A δ((t)) =
+n−k∑
+i=1
+ i((t)) (15)
+6Note, that strictly speaking, operators ϕi(t) & ψi(t) represent mode responses characterizing noise driven phase/amplitude
+LR along the ith phase/amplitude Floquet mode ( i.e. corresponding Floquet vectors, see section 2.1.1). However, as explained in
+section 2.1.1, for simplicity, these operators will also be referred to herein as modes.
+5
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+where the residual phase LR action is seen to exclude the special ﬁrst mode (sum index starts at i = 2 ) for the exact
+reasons mentioned in section 2.1.2 and above in connection with eq. ( 14). Given this setup, an expression for the
+k-ensemble LR, on the phase-manifold M, and tangential to this space, can be written as
+xLR(t)|M,tangential =xLR(t)|Tγ M =xs((t)) + Φδ((t)) (16)
+Since the above relation is restricted to direction tangential M, it describes the phase-noise response of the coupled
+circuit. From eq. ( 16), an expression for the asymptotic system correlation matrix on M, Cs( ) : R → Cn×n, can
+be produced. The corresponding power spectral density, L(ν) : R → R, i.e. the PNOISE spectrum, around the
+th harmonic of the PSS carrier, then follows from Fourier transforming the th harmonic envelope of Cs( ). The
+procedure described here was carried out in [ 7, sec. 6] and following some rather lengthy and involved calculations,
+the following expression, slightly re-written, was derived
+L(ν)(!(ν)
+m ) = (1 −a(ν))(!2
+02c) − 2b(ν)!m
+(0:5!2
+02c)2 + (!(ν)
+m )2
++
+∑
+ρ
+k−1∑
+l=1
+Υ(ν)
+lρ
+[
+2|l+1,r| + (!2
+02c)
+]
++ 2∆(ν)
+lρ
+[
+!(ν)
+m +l+1,i
+]
+(
+|l+1,r| +
+(
+0:5!2
+02c
+)) 2
++
+(
+!(ν)
+m +l+1,i
+) 2 (17)
+with!0 = 2=T0 being the operating frequency of the synchronized ensemble, s = s,r +js,i ∈ C, is the sth
+characteristic Floquet exponent (real/imaginary parts) and !(ν)
+m =! −!0 is theth harmonic offset frequency. The
+real parameter,c ∈ R+, is known as the phase-diffusion constant [8,10,17] (see also section 2.1.2). All summations in
+eq. (17) without bounds operate in the interval (−∞; ∞). The operators a(ν);b (ν); Υ(ν)
+lρ ; ∆(ν)
+lρ introduced in eq. ( 17)
+are deﬁned through 7 a(ν) +jb(ν) = qΩ(ν) and Υ(ν)
+lρ +j∆(ν)
+lρ = qΘ(ν)
+lρ , where index q refers to the index of the
+observation-node i.e. the node where PNOISE is measured (see footnote 7). The two complex tensor operators Ω and
+Θlρ ∈ Cn×n, used in the above deﬁnitions, have the form (see [ 7, appendix D] for details)
+Ω(ν) =
+k∑
+m=2
+∑
+p
+U1,νΛ⊤
+1,0Λ∗
+m,ν−pU †
+m,p
+j!0(p −) −∗m
+(18)
+Θ(ν)
+lρ =
+U1,ρΛ⊤
+1,0Λ∗
+l+1,ρ−νU †
+l+1,ν
+j!0( −) −∗
+l+1 −1
++
+k∑
+i=2
+∑
+p
+Ui,pΛ⊤
+i,ρ−pΛ∗
+l+1,ρ−νU †
+l+1,ν
+j!0( −p) −∗
+l+1 −i
+(19)
+whereUi,j ∈ Cn is the jth harmonic of the ith Floquet vector ui(t) : R → Cn and Λi,j ∈ Cn is the jth harmonic
+of the ith Floquet lambda-vector, i(t) : R → Cn, where i(t) = v⊤
+i (t)B(xs(t)), with vi(t) : R → Cn being
+the ith Floquet phase-mode dual-vector (see section 2.1). Finally, B(xs(t)) : R → Rn×p is the noise modulation
+matrix, see [7–10] and eq. ( 1), which describes how p unit-power, zero-mean white-noise sources are injected into the
+n-dimensional state-space, the power of these sources and the manner in which the sources are modulated by the PSS.
+2.3 Expanding the COSC-PMM Framework : Adding Amplitude and Correlation Contributions.
+Using the deﬁnition of residual phase and amplitude response in eq. ( 15) the complete LR state-vector is written
+xLR(t)|M =xs((t)) + Φδ((t)) +Aδ((t)) (20)
+From eq. (20), the system correlation matrix, Cs( ) = lim t→∞
+⟨
+xLR(t)x†
+LR(t + )
+⟩
+, is decomposed as follows
+Cs( ) = CΦΦ( ) +CΦA( ) +CAA( ) (21)
+where,CΦΦ;C ΦA;C AA : R → Rn×n, represent the COSC-PMM asymptotic phase, cross-correlation and amplitude
+correlation matrices for the synchronized k-ensemble, respectively, with
+7Let M (ν) ∈ Cn×n be some square, complex matrix (within the COSC-PMM methodology) with superscript ν referring to the
+PSS harmonic index discussed in connection with eq. ( 17). Then let, qM (ν) = [ M (ν)]q,q /∥X [i]
+s,ν ∥2, where [Q]i,j denotes to the
+element at row i and column j of matrix Q and X [q]
+s,ν refers to the qth element of the PSS νth harmonic vector. Hence, qM (ν) is the
+qth diagonal matrix element, normalized by the νth harmonic power, of the qth PSS vector component.
+6
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+CΦΦ( ) = lim
+t→∞
+⟨[
+xs((t)) + Φδ((t))
+][
+xs((t + )) + Φδ((t + ))
+]†⟩
+(22)
+CΦA( ) = lim
+t→∞
+⟨
+xs((t))A†
+δ((t + ))
+⟩
++ lim
+t→∞
+⟨
+Φδ((t))A†
+δ((t + ))
+⟩
++
+⟨
+· · ·
+⟩†
+(23)
+CAA( ) = lim
+t→∞
+⟨
+Aδ((t))A†
+δ((t + ))
+⟩
+(24)
+Fourier transforming the qth diagonal component, of the th harmonic envelope, of eq. ( 22) produces an expression
+for thek-ensemble phase-noise spectrum, around the  harmonic and for the qth measurement node, which was done
+in [7] and with this result repeated in eqs. ( 17) to ( 19). Similarly, components of the correlation matrices in eqs. ( 23)
+and (24) can be transformed to produce the cross-correlation and amplitude spectra, R(ν); A(ν) : R → R.
+2.3.1 The COSC-PMM Amplitude Noise Spectrum.
+Inspecting eqs. ( 15) and ( 24), it follows that calculating the asymptotic amplitude correlation matrix, CAA( ) : R →
+Cn×n, involves evaluating terms of the type
+⟨
+ i(t) j(t + )
+⟩
+, where,  i : R → Cn, is the ith amplitude Floquet
+mode as deﬁned above in connection with eq. ( 15) (see also section 2.1.1 and footnote 6). The techniques used for
+calculating this type of ensemble average was thoroughly covered in [ 7]. Following the procedure laid out in appendix
+B of [ 7] an expression for the amplitude spectrum A(ν) : R → R, can be derived
+A(ν)(!(ν)
+m ) =
+∑
+ρ
+n−k∑
+l=1
+W (ν)
+lρ
+[
+2|l+k,r| + (!2
+02c)
+]
++ 2T (ν)
+lρ
+[
+!(ν)
+m +l+k,i
+]
+(
+|l+k,r| +
+(
+0:5!2
+02c
+)) 2
++
+(
+!(ν)
+m +l+k,i
+) 2 (25)
+whereW (ν)
+lρ +jT (ν)
+lρ = qΠ(ν)
+lρ (see footnote 7) and
+Π(ν)
+lρ =
+n∑
+i=k+1
+∑
+p
+Ui,pΛ⊤
+i,ρ−pΛ∗
+l+k,ρ−νU †
+l+k,ν
+j!0( −p) −∗
+l+k −i
+(26)
+2.3.2 The COSC-PMM Cross-Correlation Noise Spectrum
+The amplitude-phase cross-correlation matrix is written in eq. ( 23) with the various operators deﬁned in eqs. ( 15)
+and ( 20). It involves calculating terms of the type
+⟨
+xs(t +(t)) †
+i (t + )
+⟩
+and
+⟨
+ i(t)†
+j(t + )
+⟩
+where i; i
+represent theith residual phase and amplitude Floquet modes, respectively. Again, following the procedure laid out in
+appendix B of [ 7], which explains how to calculate both of these two types ensemble averages, an expression for the
+cross-correlation spectrum R(ν) : R → R, can be derived
+R(ν)(!(ν)
+m ) = −t(ν)(!2
+02c) + 2u(ν)!m
+(0:5!2
+02c)2 + (!(ν)
+m )2
++
+∑
+ρ
+n−1∑
+l=1
+E(ν)
+lρ
+[
+2|l+1,r| + (!2
+02c)
+]
++ 2Z (ν)
+lρ
+[
+!(ν)
+m +l+1,i
+]
+(
+|l+1,r| +
+(
+0:5!2
+02c
+)) 2
++
+(
+!(ν)
+m +l+1,i
+) 2 (27)
+where ,t(ν) +ju(ν) = qΨ(ν),E(ν)
+lρ +jZ (ν)
+lρ = qΞ(ν)
+lρ (see footnote 7) and
+Ψ(ν) =
+n∑
+m=k+1
+∑
+p
+U1,νΛ⊤
+1,0Λ∗
+m,ν−pU †
+m,p
+j!0(p −) −∗m
+(28)
+Ξ(ν)
+lρ =
+
+
+
+∑n
+i=k+1
+∑
+p
+Ui,pΛ⊤
+i,ρ−pΛ∗
+l+1,ρ−ν U †
+l+1,ν
+jω0(ν−p)−µ∗
+l+1−µi
+forl ≤k − 1
+U1,ρΛ⊤
+1,0Λ∗
+l+1,ρ−ν U †
+l+1,ν
+jω0(ν−ρ)−µ∗
+l+1−µ1
++ ∑k
+i=2
+∑
+p
+Ui,pΛ⊤
+i,ρ−pΛ∗
+l+1,ρ−ν U †
+l+1,ν
+jω0(ν−p)−µ∗
+l+1−µi
+forl>k − 1
+(29)
+2.3.3 The Reduced Single Oscillator Expressions.
+The equivalent spectral densities for a single/free-running oscillator are found from the above expressions by substitut-
+ingk = 1. The phase, amplitude and cross-correlation noise spectra deﬁned above in eqs. ( 17), (25) and ( 27) are then
+reduced to the following single/free-running oscillator expressions
+7
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+L(ν)(!(ν)
+m ) = !2
+02c
+(0:5!2
+02c)2 + (!(ν)
+m )2
+(30)
+A(ν)(!(ν)
+m ) =
+∑
+ρ
+n−1∑
+l=1
+W (ν)
+lρ
+[
+2|l+1,r| + (!2
+02c)
+]
++ 2T (ν)
+lρ
+[
+!(ν)
+m +l+1,i
+]
+(
+|l+1,r| +
+(
+0:5!2
+02c
+)) 2
++
+(
+!(ν)
+m +l+1,i
+) 2 (31)
+R(ν)(!(ν)
+m ) = −t(ν)(!2
+02c) + 2u(ν)!m
+(0:5!2
+02c)2 + (!(ν)
+m )2
++
+∑
+ρ
+n−1∑
+l=1
+E(ν)
+lρ
+[
+2|l+1,r| + (!2
+02c)
+]
++ 2Z (ν)
+lρ
+[
+!(ν)
+m +l+1,i
+]
+(
+|l+1,r| +
+(
+0:5!2
+02c
+)) 2
++
+(
+!(ν)
+m +l+1,i
+) 2 (32)
+where the various operators are deﬁned above in sections 2.3.1 and 2.3.2 withk = 1 . The results in eqs. ( 30) to ( 32)
+agree with the prior published results in [ 8–10]. Speciﬁcally, the reduced (single oscillator) PNOISE expression in
+eq. (30) represents simple Lorentzian functional characteristic of the offset frequency 8, a well-established result [ 8, 9].
+This outcome, once again, underscore the important fact, that the novel COSC-PMM framework not only extends the
+earlier published single oscillator PMM scheme but also entirely replaces it . A notable innovation, resulting from the
+COSC-PMM framework, has been the complete recalibration of how we approach time-domain macro-modelling of
+oscillator noise-response. It is now understood that the established PMM framework (see [ 8–10]), while representing
+an extremely impressive theoretical achievement, is indeed, without hyperbole, incomplete. The PMM represents a
+scope limited description which only covers a very minute subset of possible relevant circuits; namely the subset of
+free-running oscillators/clocks in the set of all oscillating circuits. The novel COSC-PMM methodology, on the other
+hand, is complete, and it replaces the old PMM description by extending the model domain to include the entire set of
+all possible oscillating autonomous networks.
+2.4 Implementing the QUCS-COPEN PNOISE Module.
+The QUCS-COPEN PNOISE module kernel algorithm is outlined in algorithm. 1. The module code is encapsulated
+within the new pnsolver C++ class which is part of the modiﬁed qucsator engine codebase (see [6] and footnote 2).
+The pnsolver C++ class inherits directly from the established nasolver class, which represent the base-class inter-
+face to all QUCS analysis classes. This new PNOISE module introduces a novel, previously absent, large-signal noise
+analysis utility to the qucsator/QUCS API.
+Each instance of the pnsolver analysis class is given a reference to a single corresponding psssolver instance/object
+which is assumed to produce the large-signal PSS solution required to calculate the noise-response (see sections 2.1
+and 2.2). The implementation of the psssolver object class was discussed in [ 6]. The psssolver reference object
+is identiﬁed through the string input parameter, PssSim, and the program fails to execute if no instance with this
+name exists in the schematic. The main routine, outlined in algorithm. 1, can be subdivided into three sub-procedures,
+referred to as SubProc. I-III.
+2.4.1 SubProc. I : the Floquet Decomposition.
+Starting on algorithm. 1 in algorithm. 1, this portion of the code is concerned with calculating the spectral Floquet
+operators {Ui,j; Λi.j}, introduced in section 2.2 and which are needed in-order to calculate the various noise operators
+in eqs. ( 17) to ( 19) and ( 25) to ( 29). In-order to achieve this goal the corresponding time-domain Floquet objects (see
+section 2.1),ui(t), andi(t) = v⊤
+i (t)B(xs(t)) are ﬁrst derived.
+First, the (adjoint) monodromy matrix (MM) is evaluated through a call to CalcMonodromy, with the switch ADJOINT
+controlling whether the standard or adjoint MM is derived using the formulae in eq. ( 4) or eq. ( 8), respectively9. The
+(dual) Floquet vectors, {ui0;v i0}, and Floquet exponents, {i}, are then derived from the eigen-decomposition (note
+thati = log(i)=T0, see section 2.1) of this (adjoint) MM using a standard QR Shur-shift algorithm routine, referred
+to in algorithm. 1 as CalcEigenSet.
+Some of the calculated Floquet modes are dampened to an extent where they do not contribute noticeably to the spectral
+output at any offset above the noise-ﬂoor including the modes spanning the null-space of the (potentially) singular C
+8Consider the spectrum around the ﬁrst harmonic, ν = 1 , with simpliﬁed notation L(ωm) ≡ L(1)(ω(1)
+m ). From eq. ( 30),
+L(ωm) ≈ (0.5ω2
+0c)/ω2
+m for ωm ≫ 0.5ω2
+0c which holds for most offsets of interest as c ≪ 1. Thus, for most offset of interest,
+10 log10(L(ωm)) ≈ 10 log10(0.5ω2
+0c) − 20 log10(ωm), i.e. a straight line on a semi-log plot, which drops 20dB/decade.
+9Note, that when integrating the (adjoint) LR equations in eqs. ( 2) and ( 6), for the purpose of deriving eqs. ( 4) and ( 8), the LR
+equations should be integrated using the same Linear-Multi-Step (LMS) setup as was used for calculating the PSS (see discussion
+in [6]). Also note that the adjoint equations must be integrated backwards in time [ 8, 16].
+8
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+Algorithm 1 QUCS-COPEN PNOISE Module Kernel.
+Parameters : Start, Stop, Type, N ▷ freq. swp range, type [ lin/log] & # points(/dec)
+Parameters : Nf, NoiseNodes, ▷ Nf : # harmonics, NoiseNodes : output node-names.
+Parameters : k, PssSim ▷ k : # osc. units, PssSim : PSS ref. obj. name.
+Input : xPSS(t) ▷ calculated PSS solution.
+Output Datasets : pnoise (Xpn), xcorr (Xcr), anoise (Xan) ▷ DS ﬁle ext. with X=[V/I], V olt./Current.
+Require: Start > 0, Stop > Start, N(Type=lin|log) ≥ 10|3, Nf ≥ 16
+Ensure: isNodeArray(noiseNodes) = true ▷ check : all input nodes exist in circ.
+Ensure: isNum(xPSS) and isPeriodic(xPSS) = true ▷ check : xPSS is valid PSS solution.
+Ensure: moduleExists(PssSim) = true ▷ check : reference PSS module exist in schematic.
+1: SubProc. I : Calculate Floquet Decomposition.
+2: ΦMM ← CalcMonodromy(T0; xPSS, ADJOINT=false) ▷ calc. standard monodromy from eq. ( 4).
+3: ΨMM ← CalcMonodromy(T0; xPSS, ADJOINT=true) ▷ calc. adjoint monodromy from eq. ( 8).
+4: {ui0, µi}n
+i=1 ← CalcEigenSet(ΦMM)
+5: {vi0, µi}n
+i=1 ← CalcEigenSet(ΨMM)
+6: B(t) ← NoiseMatrixSeries(xPSS)
+7: L ← NumberRelevantModes({µi}, T0) ▷ count # relevant Floquet modes.
+8: for j = 1 → L do
+9: uj(t) ← LrIntegrate(uj0, ADJOINT=false) ▷ integrate eq. (2) fwd in time with init. cond. uj0.
+10: vj(t) ← LrIntegrate(vj0, ADJOINT=true) ▷ integrate eq. (6) bwd in time with init. cond. vj0.
+11: λj(t) ← generateLambda(B(t), vj(t)) ▷ calculate : λj(t) = v⊤
+j (t)B(t)
+12: Uj ← VectorFFT(uj(t), Nf)
+13: Λj ← VectorFFT(λj(t), Nf)
+14: end for
+15: SubProc. II : Calculate Noise Operators.
+16: c ← CalcPhaseDiff(Λ1) ▷ calc. phase diff. const., see section 2.1.2.
+17: params ← struct(k, ν, c, T0, Nf, L, {Ui, µi, Λi})
+18: for ndName in noiseNodes do
+19: q ← NodeName2Index(ndName) ▷ q : state vec. index corresp. to ndName.
+20: qΩ(ν) ← CalcOmegaMatrix(q,params) ▷ eval. qth diagonal comp. of eq. ( 18)
+21: qΥ(ν) ← CalcUpsilonMatrix(q,params) ▷ eval. qth diagonal comp. of eq. ( 28)
+22: for ρ = −Nf → Nf do
+23: for l = 1 → k − 1 do
+24: qΘ(ν)
+lρ ← CalcThetaTensor(l, ρ, q, params) ▷ eq. (19) @ index (l, ρ), (qth diag. comp.).
+25: end for
+26: for l = 1 → L − k do
+27: qΠ(ν)
+lρ ← CalcPiTensor(l, ρ, q, params) ▷ eq. (26) @ index (l, ρ), (qth diag. comp.).
+28: end for
+29: for l = 1 → L do
+30: qΞ(ν)
+lρ ← CalcXiTensor(l, ρ, q, params) ▷ eq. (29) @ index (l, ρ), (qth diag. comp.).
+31: end for
+32: end for
+33: end for
+34: SubProc. III : Calculate Noise Spectra & Save Datasets.
+35: Fsweep ← GenerateSweep(Start, Stop, Type, N)
+36: params ← struct(k, ν, T0, Nf)
+37: for ndName in noiseNodes do
+38: q ← NodeName2Index(ndName)
+39: i ← 0
+40: for fm in Fsweep do
+41: pnoise[i] ← calcPnoise(q, fm, params, Ω(ν), Θ(ν)
+lρ ) ▷ eval. phase noise spectrum, see eq. ( 17)
+42: anoise[i] ← calcAnoise(q, fm, params, Π(ν)
+lρ ) ▷ eval. amp. noise spectrum, see eq. ( 25)
+43: xnoise[i] ← calcXnoise(q, fm, params, Υ(ν), Ξ(ν)
+lρ ) ▷ eval. xcorr noise spectrum, see eq. ( 27)
+44: i ← i + 1
+45: end for
+46: SaveDatasets(ndName, Fsweep, pnoise, anoise, xnoise) ▷ Store ndName datasets for print.
+47: end for
+9
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+Jacobian matrix (see eqs. ( 1) and ( 2)), which corresponds to modes with negative inﬁnite Floquet exponents (real
+part), i = 0 ⇒ ℜ{i} = −∞. Since these types of modes do not contribute to the visible part of the calculated
+spectrum (above the noise ﬂoor) is it only natural to neglect these contributions. Doing so will shrink the size of
+the effective Floquet set and thus signiﬁcantly improve the computational efﬁciency of the algorithm. From [ 18], the
+so-called, relevant modes, satisfy |ℜ{i}| ≪ !0 and for our purposes this translates into the rule ℜ{i} ≤ 10!0.
+On algorithm. 1 of algorithm. 1 the call to NumberRelevantModes counts these modes, according to the mentioned
+rule, thus allowing us to shrink the effective Floquet set to from n toL ≤n modes. Next, the noise-matrix, B(xs(t)),
+deﬁned in eq. ( 1), is then evaluated by probing the circuit noise source contributions along the PSS, xs(t). This is
+done in algorithm. 1 with a call to NoiseMatrixSeries.
+The time-series of the jth (dual) Floquet vector uj(t);v j(t) is derived by integrating the (adjoint) LR equations in
+eq. (2) and eq. ( 6), respectively with initial conditions, {uj0;v j0}, (backwards) forwards in time. These calculations
+are done with a call to LRintegrate with the switch ADJOINT controlling whether the standard LR equations in eq. ( 2)
+or the adjoint version in eq. ( 5) are invoked. Finally, the lambda-operators can be formed ( generateLambda on
+algorithm. 1) and the corresponding spectral operators, mentioned above, are evaluated by a call to a standard FFT
+library routine.
+2.4.2 SubProc. II + III : Calculate Noise Operators & Output Spectra.
+The second part of algorithm. 1 starts on algorithm. 1. It concerns the calculation of the noise operators deﬁned in
+sections 2.2 and 2.3. Expressions such as e.g. eqs. ( 18), ( 19) and ( 26) etc., all involve inﬁnite sums, represented
+in the equations as summations without limits. An example hereof could be the summation, ∑
+p, in eq. ( 28), with
+p ∈] − ∞; ∞[. The index variables, referenced in these inﬁnite sums, all label harmonics of Fourier transformed
+operators. Hence, as written in e.g. eqs. (18), (19) and ( 26), these expressions all assume inﬁnite harmonic contribu-
+tions. Obviously, for the algorithm considered here, the range of these sums must be capped. Thus, in algorithm. 1,
+all harmonic sums are restricted to the domain, [−Nf; Nf], where Nf is an input parameter (see parameter section of
+algorithm. 1).
+The main procedure involves several nested for loops with the outermost loop iterating over the set of observa-
+tion/measurement nodes provided by the input parameter string-list NoiseNodes. From the discussion in section 2.2,
+and in [7], the aim of the algorithm should be to calculate the auto-correlation spectrum of a given measurement node.
+Hence, for a measurement index, q, corresponding to a circuit node name in NoiseNodes, only the qth diagonal ele-
+ment of the noise-correlation spectrum needs to be calculated. This, in-turn, implies that only qth diagonal element
+of the various noise operators, discussed here and in section 2.2, must be calculated. For the matrices Ω(ν) and Ψ(ν),
+deﬁned in eqs. ( 18) and ( 28), this element is written qΩ(ν); qΨ(ν) with the notation explained in footnote 7. Similarly,
+the 3 tensors Θ(ν)
+lρ ; Π(ν)
+lρ ; Ξ(ν)
+lρ , deﬁned in eqs. ( 19), (26) and (29) are calculated for indices, l; , where harmonic index
+ runs from -Nf to Nf and the domain of index, l, depends on the speciﬁc operator being calculated.
+The last portion of the QUCS-COPEN PNOISE algorithm in algorithm. 1 start on algorithm. 1 and involves calculating
+the various COSC-PMM spectra deﬁned in eqs. ( 17), (25) and (27). To do so, the procedure employs the various noise-
+operators calculated in Proc. II. The spectra are calculated for each node in the array NoiseNodes and then stored
+to datasets, which are then printed according to internal qucsator procedures.
+2.5 The GUI Environment & Output Datasets.
+V arious details and issues w.r .t. the QUCS-COPEN GUI was discussed in [ 6]. Figure 1 displays the newly imple-
+mented PNOISE tool operating inside the QUCS-COPEN GUI application ( QUCS-S clone, see footnote 2) along with
+the required companion PSS module, which is referenced by the PNOISE input string parameter PssSim (see algo-
+rithm. 1). The ﬁgure shows the result of running a PSS+PNOISE simulation for some unspeciﬁed oscillator circuit.
+The PNOISE simulator outputs 3 datasets (DS) referenced by the corresponding ﬁle extensions : the phase-noise spec-
+trum {.Vpn,.Ipn}, the amplitude noise spectrum {.Van,.Ian}, and the phase-amplitude cross-correlation noise
+spectrum (not shown) {.Vxn,.Ixn}.
+3 Example Oscillator Circuits.
+Below, the QUCS-COPEN PNOISE module, plus the mandatory companion PSS solver, are applied to three different
+single/free-running oscillator circuits. Then, in section 3.2, a coupled oscillator network is considered. As far as the
+authors can tell, the tool demonstrated here, performing noise-response analysis of large-signal nonlinear (coupled)
+oscillating circuits, represents the ﬁrst successful implementation of its kind into the QUCS ecosystem. All the circuits
+10
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+PSS Spectrum Abs. (.Vpa, .Ipa)
+ANOISE  (.Van, .Ian)
+PNOISE Main Dock Selector
+PNOISE Analysis Unit
+PSS  (.Vp, .Ip)
+PNOISE  (.Vpn, .Ipn)
+Figure 1: The ﬁgure shows the QUCS-COPEN PSS+PNOISE simulation units integrated into the QUCS-S GUI environ-
+ment. Both the PNOISE and PSS reference modules are chosen from the main-dock and then placed on the schematic.
+The PNOISE & PSS modules are linked through the PNOISE parameter PssSim (see algorithm. 1). PSS & PNOISE
+datasets (unspeciﬁed circuit & output node), with ﬁle extensions, blue graph : PSS time-domain solution, ( .Vp, .Ip),
+red graph : PSS spectrum, absolute value, (.Vpa, .Ipa), which is plotted in dBm, orange graph : Phase noise spectrum,
+in dBc, (.Vpn, .Ipn) and brown graph : Amplitude noise spectrum, in dBc (.Van, .Ian).
+considered here, with just a few minor modiﬁcations ( e.g addition of external noise sources), were also discussed in [ 6]
+in the context of the QUCS-COPEN PSS module (steady-state analysis). For this reason, only very brief descriptions of
+these circuits will be given below. For further details, please refer to [ 6, sec. 3].
+The ﬁrst oscillator circuit, shown ﬁg. 2 and known throughout as OSC.#1, is a simple V an-der-Pol equivalent conﬁgu-
+ration, ﬁrst proposed in [ 7]. The PSS module calculates a solution with oscillation frequency f0 = 1=T0 = 896:6MHz
+and the ﬁgure plots the relevant PSS & PNOISE datasets (see ﬁg. 1 caption). Figure 3 displays the same simulation
+setup as in ﬁg. 2, but this time for a BJT Collpitts oscillator ﬁrst proposed in the paper [ 9]. Below this circuit is
+referred to as OSC.#2. Compared with the original oscillator design in [ 9], the circuit in ﬁg. 3 includes a few modiﬁ-
+cations (see [ 6] for details). Finally, ﬁg. 4 shows the PNOISE module applied to a MOSFET cross-coupled pair, LC
+tank oscillator, referred to herein as OSC.#3. The circuit is similar to the MOSFET oscillator proposed in [ 18, ﬁg.
+3] including identical device models with a few slight modiﬁcations (see [ 6] for details). The PSS simulator ﬁnds a
+solution oscillating at, f0 = 888:6MHz, and the PSS+PNOISE output datasets, introduced in ﬁg. 1, are plotted.
+3.1 Coupled Oscillator Example Circuit.
+As mentioned in sections 2.2 and 2.3.3, the COSC-PMM methodology, introduced in [ 7], both extends and replaces
+the earlier single-oscillator PMM framework, developed in [ 8–10]. The replacement claim was directly proven in
+section 2.3.3 and further investigated in the free-running oscillator examples discussed above. The new model extends
+the earlier framework by expanding the scope to include all oscillating conﬁgurations, including coupled systems. In
+this section the QUCS-COPEN PNOISE module is applied to a coupled circuit; an injection-locked oscillator (ILO)
+conﬁguration, referred to here COSC.#1.
+The schematic of the COSC.#1 ILO circuit is displayed in ﬁg. 5. It consists of two oscillator units, included in the
+schematic as sub-circuit components, of OSC.#1-type10 (see ﬁg. 2), coupled through a unilateral buffer ampliﬁer.
+The primary oscillator, PRM-OSC, injects its output signal, through the unilateral buffer ampliﬁer, into the secondary
+10Let CIR.#A represent some circuit. Then we say that that CIR.#B is of CIR.#A-type if CIR.#B has the same topology ( i.e.
+same set of components & connections), but possibly, different component values. .
+11
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+Figure 2: The QUCS-COPEN PNOISE calculator module applied to a simple V an-der-Pol(VDP)-type oscillator, pro-
+posed in [ 7, Fig. 3]. This circuit is referred to below as OSC.#1. All parameters (including the external noise source)
+are as in [ 7, Fig. 3] (primary osc. parameter set). The datasets introduced in ﬁg. 1 are plotted for the voltage node,
+vout. Refer to ﬁg. 1 caption for further details.
+oscillator, SEC-OSC. The circuit parameters of the two oscillator units are chosen as the primary/secondary values
+listed in [ 7, ﬁgure 3 caption]. The coupling buffer is linear with trans-conductance gm = 50:0S. The circuit in ﬁg. 5
+represents a 2-ensemble (see section 2.2), as it is constructed by coupling 2 independent free-running oscillator units
+which implies k = 2 . Here, the COSC-PMM model parameter, k, represents the number of oscillator units in the
+coupled ensemble (see sections 2.2 and 2.3 and algorithm. 1).
+Figure 5, plots the various relevant datasets corresponding to output nodes of both oscillators in the schematic. Con-
+sidering the PNOISE spectra (orange graphs), the PRM-OSC graph (dashed line) is seen to follow the standard free-
+running Lorentzian characteristic (see ﬁgs. 2 to 4 and footnote 8). This makes sense as, from the above description,
+the PRM-OSC circuit must be free-running. In contrast, assuming synchronization is achieved, the SEC-OSC oscil-
+lator circuit must be phase-locked, and hence also frequency-locked, to the PRM-OSC source. From established ILO
+noise-response theory (see e.g. [19, 20]) this implies a non-Lorentzian PNOISE spectral characteristic and inspecting
+the corresponding spectral graph in ﬁg. 5 (orange solid line) this is indeed the case. The QUCS-COPEN PNOISE mod-
+ule, implemented herein, applies the rigorous COSC-PMM methodology and is hence is able to correctly ( i.e. without
+using any empirical/phenomenological modelling tools) capture the noise-response of both free-running and coupled
+circuits. The open-source QUCS-COPEN simulator project is the ﬁrst ever, to our knowledge at-least, EDA program,
+either open-source or commercial, to come equipped with a noise analysis tool of this caliber.
+3.2 V eriﬁcation of the Obtained PSS Solutions & Convergence Tests.
+Deﬁne the measure, ∆L = ( LQC(1kHz) − LK-ADS(1kHz))=LQC(1kHz). Here, LQC(fm) and LK-ADS(fm) are the phase-
+noise spectra, at offset frequency fm in a 1 Hz bandwidth measured in dBc (see discussion in section 3) and evalu-
+ated using the novel QUCS-COPEN PNOISE tool (QC) and the commercial Keysight-ADS © pnmx simulator (K-ADS),
+respectively. Thus, ∆L records, for a given oscillator circuit, the relative deviation of phase-noise measurements
+evaluated @ fm = 1kHz , produced using these two very different EDA programs. This type of discrete frequency
+veriﬁcation scheme is valid when considering free-running oscillators due the special form of the PNOISE spectra
+produced by these circuits (see eq. ( 30), footnote 8, and ﬁgs. 2 to 4). Table 1 displays the calculated phase-noise
+values and the resulting absolute measure, |∆L|, for each of the three oscillators discussed above in section 3. The
+maximum recorded error is |∆L| ∼ 0:03%, or |∆L| ∼ 300ppm (parts-per-million). The results listed in table 1 serve
+to validate the developed QUCS-COPEN PNOISE tool.
+12
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+Figure 3: The QUCS-COPEN PNOISE module is applied to a BJT Colpitts oscillator taken from [ 9], referred to below
+as OSC.#2. All circuit parameters as in [ 9], with a few minor exceptions (see [ 6] for details). In this simulation the
+BJT device is noiseless except for internal resistor contributions. The PSS+PNOISE datasets, introduced in ﬁg. 1, are
+plotted for the BJT emitter node (called Vemit in schematic). See ﬁg. 1 for further details.
+Figure 4: The QUCS-COPEN PNOISE simulation tool applied to a MOSFET cross-coupled LC-tank oscillator, referred
+to below as OSC.#3, similar to the oscillator proposed in [ 18, ﬁg. 3] with minor modiﬁcations(see [ 6] for details). All
+parameters (including the external noise source) are as in [ 7, Fig. 3]. The PSS & PNOISE datasets, introduced in
+ﬁg. 1, are plotted for the right MOSFET right drain node Vm. See also ﬁg. 1 for further details.
+13
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+Figure 5: The QUCS-COPEN PNOISE module is applied to an injection-locked circuit (ILO) conﬁguration referred to
+as COSC.#1 (see text for details). Relevant datasets (see ﬁg. 1) are plotted for the output nodes of both the primary
+(dashed line plots) and secondary (solid line plots) oscillator nodes. In the schematic these nodes are referred to as
+Vprm and Vref, respectively. It is immediately observed that the calculated secondary oscillator (Vref) PNOISE spectrum
+(orange solid line plot ) does not follow the standard Lorentzian proﬁle (see footnote 8).
+QUCS-COPEN Keysight-ADS© |∆L|
+OSC.#1 −96.62355963dBc −96.62509613dBc 0.00159%
+OSC.#2 −106.8649804dBc −106.8350436dBc 0.02801%
+OSC.#3 −52.20484281dBc −52.21153470dBc 0.01281%
+Table 1: The table lists oscillator PNOISE spectra (around 1st harmonic), evaluated @ fm = 1kHz , calculated using
+the QUCS-COPEN package and the commercial Keysight-ADS © simulator for circuits : OSC.#1 = VDP circuit in ﬁg. 2,
+OSC.#2 = BJT circuit in ﬁg. 3 and OSC.#3 = MOSFET circuit in ﬁg. 4. The relative deviation between the calculated
+values are recorded by measure ∆L (see text in section 3.2).
+Figure 6 plots the PNOISE spectrum of two coupled oscillator conﬁgurations ( COSC.#2 & COSC.#3), calculated using
+the QUCS-COPEN PNOISE module and the Keysight-ADS © pnmx algorithm, for 3 sets of coupling parameters denoted
+C-SET #1-3 . The block diagrams describing the coupling topology of these two circuits are shown in ﬁg. 6.(a). Here,
+COSC.#2 includes 3 independent oscillator units (3-ensemble), of OSC.#1-type (see footnote 10), coupled bilaterally
+through resistive coupling. The speciﬁc component values chosen for this circuit are reported in [7, Fig. 7]. The second
+circuit in ﬁg. 6.(a) is an ILO, similar to COSC.#1 considered in ﬁg. 5, but with the secondary oscillator represented
+by a OSC.#3-type circuit (see footnote 10 and ﬁg. 4). Then in ﬁg. 6.(b) the PNOISE spectra these two coupled
+circuits are plotted for each of the parameter (coupling) sets C-SET #1-3 , which are identical to the 3 parameter sets
+reported in [7, Table 1]. Inspecting ﬁg. 6.(b), the calculated solution follows the reference produced by the commercial
+Keysight-ADS© pnmx algorithm for all offsets considered.
+14
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+•
+•
+•
+COSC.#2
+˜ ˜
+PRIMAR Y SECONDAR Y
+COSC.#3
+(a)
+102 103 104 105 106 107 108
+−160
+−140
+−120
+−100
+−80
+fm [Hz]
+L(fm) [dbC]
+102 103 104 105 106 107 108
+−160
+−140
+−120
+−100
+−80
+−200
+−190
+−180
+−170
+−160
+−150
+L(fm) [dbC]
+−200
+−190
+−180
+−170
+−160
+−150
+C-SET # 1 C-SET # 2 C-SET # 3 ADS pnmx (b)
+Figure 6: PNOISE spectra of coupled oscillator circuits calculated using the QUCS-COPEN PNOISE module and with
+the commercial Keysight-ADS© pnmx routine employed as a reference. (a) : the two coupled circuits considered here
+are COSC.#2 & COSC.#3 (see text for details). (b) : The PNOISE spectra are calculated for each of the coupled circuits
+in (a) with COSC.#2 (leftmost osc. node) drawn with dashed line & COSC.#3 (secondary osc. node) drawn with solid
+line. The spectra are calculated for 3 levels of coupling strength, as speciﬁed by the parameter sets C-SET #1-3 (see
+text for details) with the graph color codes shown in the ﬁgure.
+4 Conclusion & Future Work.
+The paper documents the development of a novel simulator analysis module aimed at calculating the response of noise-
+perturbed autonomous oscillating systems. The underlying algorithm is based on a state-of-the-art model proposed
+recently by the authors, and the solution was integrated into the newly established QUCS-COPEN EDA program; a
+clone of the open-source QUCS and QUCS-S projects. The developed QUCS-COPEN noise module is unique, emplying
+a novel, uniﬁed and rigorous time-domain methodology to construct a robust and efﬁcient algorithm uncorrupted by
+any phenomenological or empirical modelling techniques, and applicable to both free-running and coupled oscillat-
+ing systems. Such features distinguish the implemented simulator from all other open-source and commercial EDA
+packages currently available, wherein noise analysis is, almost exclusively, performed by algorithms developed using
+some type of LTI or LTV theoretic approach, such as e.g. a conversion-matrix method. The proposed QUCS-COPEN
+simulator project materially advances the state-of-the-art as it concerns the ﬁeld of EDA noise simulation, analysis,
+synthesis and optimization of coupled and free-running oscillating circuits. This class of circuits is ubiquitous in mod-
+ern communication and remote-sensing systems and the robust and efﬁcient numerical tools, developed herein, will
+turn out to have signiﬁcant impact in various areas of industrial circuit design. The implemented solution was validated
+through a comparison-study with the commercial Keysight-ADS © EDA simulator program. Future work will focus on
+improving the robustness and efﬁciency of the implemented QUCS-COPEN simulation tools.
+Acknowledgment
+The authors gratefully acknowledge partial ﬁnancial support by German Research Foundation (DFG) (grant no.
+KR1016/17-1).
+References
+[1] S. Jahn, M. Margraf, V . Habchi, and R. Jacob. Qucs technical papers. Technical report, 2007.
+[2] S. Jahn and J. C. Borrás. Getting started with qucs. Technical report, March 2007.
+[3] Mike Brinson and V adim Kuznetsov. Qucs equation-deﬁned and verilog-a rf device models for harmonic bal-
+ance circuit simulation. In 2015 22nd International Conference Mixed Design of Integrated Circuits & Systems
+(MIXDES), pages 192–197. IEEE, 2015.
+15
+
+A Novel PNoise Module for the QUCS Circ. Sim. Part II : Noise Analysis. arXiv PREPRINT
+[4] Mike Brinson and V adim Kuznetsov. Qucs-0.0. 19s: A new open-source circuit simulator and its application for
+hardware design. In 2016 International Siberian Conference on Control and Communications (SIBCON) , pages
+1–5. IEEE, 2016.
+[5] Mike Brinson and V adim Kuznetsov. Improvements in qucs-s equation-deﬁned modelling of semiconductor
+devices and ic’s. In 2017 MIXDES-24th International Conference" Mixed Design of Integrated Circuits and
+Systems, pages 137–142. IEEE, 2017.
+[6] Torsten Djurhuus and Viktor Krozer. A novel phase-noise module for the qucs circuit simulator. part i: the
+periodic steady-state. arXiv preprint arXiv:2512.10373, 2025.
+[7] Torsten Djurhuus and Viktor Krozer. A generalized model of coupled oscillator phase-noise response. Interna-
+tional journal of circuit theory and applications , 50(1):35–55, 2022.
+[8] A. Demir, A. Mehrotra, and J. Roychowdhury. Phase noise in oscillators: a unifying theory and numerical meth-
+ods for characterization. IEEE Transactions on Circuits and Systems I: Fundamental Theory and Applications ,
+47(5):655–674, 2000.
+[9] Franz X Kaertner. Analysis of white and f-  noise in oscillators. International Journal of Circuit Theory and
+Applications, 18(5):485–519, 1990.
+[10] Fabio L Traversa and Fabrizio Bonani. Oscillator noise: A nonlinear perturbative theory including orbital ﬂuctu-
+ations and phase-orbital correlation. IEEE Transactions on Circuits and Systems I: Regular Papers, 58(10):2485–
+2497, 2011.
+[11] Almudena Suarez. Analysis and design of autonomous microwave circuits . John Wiley & Sons, 2009.
+[12] GNU Project - the Free Software Foundation. GnuCap Manual , January 2024. Available at http://www.
+gnucap.org/dokuwiki/doku.php/gnucap:manual:introduction.
+[13] Paolo Nenzi Holger V ogt, Giles Atkinson. Ngspice User’s Manual V ersion 44plus , June 2025. Available at
+https://ngspice.sourceforge.io/docs/ngspice-manual.pdf.
+[14] Eric R. Keiter. Xyce™ Parallel Electronic Simulator User’s Guide . Sandia National Lab.(SNL-NM), Albu-
+querque, NM (United States), 2025. Available at https://xyce.sandia.gov/documentation-tutorials/.
+[15] Bjarne Stroustrup. The C++ programming language. Pearson Education, 2013.
+[16] Alper Demir. Phase noise in oscillators: Daes and colored noise sources. In Proceedings of the 1998 IEEE/ACM
+international conference on Computer-aided design , pages 170–177, 1998.
+[17] Torsten Djurhuus, Viktor Krozer, Jens Vidkjær, and Tom K Johansen. Oscillator phase noise: A geometrical
+approach. IEEE Transactions on Circuits and Systems I: Regular Papers , 56(7):1373–1382, 2008.
+[18] Paolo Maffezzoni, Federico Pepe, and Andrea Bonfanti. A uniﬁed method for the analysis of phase and amplitude
+noise in electrical oscillators. IEEE transactions on microwave theory and techniques , 61(9):3277–3284, 2013.
+[19] K Kurokawa. Some basic characteristics of broadband negative resistance oscillator circuits. Bell System Techni-
+cal Journal, 48(6):1937–1955, 1969.
+[20] Torsten Djurhuus and Viktor Krozer. A novel ﬁrst-principles model of injection-locked oscillator phase noise.
+arXiv preprint arXiv:2501.02675, 2025.
+16

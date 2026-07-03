@@ -15,6 +15,19 @@ Original sources are stored in
 - `sources/qucs_rf_simulation.html`
 - `sources/spiceopus_nutmeg.html`
 - `sources/spiceopus_release.html`
+- `sources/arxiv_2512.10373_source.tar.gz`
+- `sources/arxiv_2512.10373_source_README.json`
+- `sources/arxiv_2603.07828_qucs_phase_noise_part2.pdf`
+- `sources/arxiv_2603.07828_qucs_phase_noise_part2.html`
+- `sources/arxiv_2603.07828_qucs_phase_noise_part2.txt`
+- `sources/arxiv_2603.07828_source.tar.gz`
+- `sources/arxiv_2603.07828_source_README.json`
+- `sources/github_search_qucs_copen_repositories.json`
+- `sources/github_search_psssolver_qucs_repositories.json`
+- `sources/github_search_qucs_copen_code.json`
+- `sources/github_repo_qucs_qucs.json`
+- `sources/github_repo_ra3xdh_qucs_s.json`
+- `sources/github_repo_ra3xdh_qucsator_rf.json`
 
 ## Findings
 
@@ -40,6 +53,17 @@ Original sources are stored in
 - Qucs-S RF documentation maps steady-state shooting to SPICE OPUS `ssse` and
   HB to Xyce/QucsatorRF-style workflows, supporting the separation between HB
   spectrum evidence and oscillator PSS evidence.
+- The QUCS-COPEN Part I arXiv paper describes a new `psssolver` C++ class that
+  inherits from qucsator `trsolver`, produces stabilization transient, PSS
+  time-domain, and absolute-spectrum datasets, and validates oscillator
+  frequencies against Keysight ADS. The Part II paper describes a companion
+  `pnsolver` C++ class that depends on a referenced `psssolver` instance.
+- The arXiv source archives for Part I and Part II contain TeX and figure
+  sources only; they do not include reusable `psssolver` or `pnsolver` source
+  code. GitHub repository searches saved in this folder returned zero
+  repositories for `QUCS-COPEN` and `psssolver qucs`; unauthenticated GitHub
+  code search requires authentication and is saved only as an API limitation
+  artifact.
 
 ## Decision
 
@@ -56,6 +80,9 @@ true:
   fixtures;
 - another OSS backend exposes a documented PSS/shooting contract suitable for
   deterministic CI artifacts.
+- QUCS-COPEN source becomes publicly available with a license, build
+  instructions, versioned CLI/runtime invocation, output dataset contract, and
+  conformance circuits.
 
 Until then, `analog_pss` is valuable as machine-readable oscillator intent,
 frequency-guess, stabilization, convergence, and provenance evidence, but it
