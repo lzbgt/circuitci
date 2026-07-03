@@ -377,7 +377,7 @@ fn ensure_noise_input_source_has_ac(line: &str, input_source: &str) -> String {
     format!("{line} AC 1")
 }
 
-fn noise_spectrum_raw_to_csv(raw: &Path) -> Result<String, String> {
+pub(super) fn noise_spectrum_raw_to_csv(raw: &Path) -> Result<String, String> {
     let text = fs::read_to_string(raw).map_err(|error| {
         format!(
             "Failed to read noise spectrum raw export {}: {error}",
@@ -428,7 +428,7 @@ fn noise_spectrum_raw_to_csv(raw: &Path) -> Result<String, String> {
     Ok(csv)
 }
 
-fn noise_total_raw_to_csv(raw: &Path) -> Result<String, String> {
+pub(super) fn noise_total_raw_to_csv(raw: &Path) -> Result<String, String> {
     let text = fs::read_to_string(raw).map_err(|error| {
         format!(
             "Failed to read noise total raw export {}: {error}",

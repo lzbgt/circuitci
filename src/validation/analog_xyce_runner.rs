@@ -7,6 +7,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use super::analog_dc_runner::{NgspiceDcRun, op_raw_to_operating_point_csv};
+use super::analog_noise_runner::{
+    NgspiceNoiseRun, noise_spectrum_raw_to_csv, noise_total_raw_to_csv,
+};
 use super::analog_runner::{
     ModelSectionOverride, NgspiceAcRun, NgspiceRun, NgspiceRunError, ParameterOverride,
     SolverManifestIo, SolverOutput, SolverStatus, WaveformSeries, ac_raw_to_bode_csv,
@@ -43,6 +46,19 @@ where
 }
 
 pub(super) struct XyceDcRunOptions<'a, F, C>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    pub(super) output: &'a Path,
+    pub(super) run_subdir: Option<&'a str>,
+    pub(super) parameter_overrides: &'a [ParameterOverride],
+    pub(super) model_section_overrides: &'a [ModelSectionOverride],
+    pub(super) on_progress: F,
+    pub(super) should_cancel: C,
+}
+
+pub(super) struct XyceNoiseRunOptions<'a, F, C>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
@@ -509,6 +525,198 @@ where
     })
 }
 
+pub(super) fn run_xyce_noise<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    backend: &str,
+    source_netlist: &Path,
+    options: XyceNoiseRunOptions<'_, F, C>,
+) -> Result<NgspiceNoiseRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let XyceNoiseRunOptions {
+        output,
+        run_subdir,
+        parameter_overrides,
+        model_section_overrides,
+        mut on_progress,
+        should_cancel,
+    } = options;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before Xyce noise run");
+    let mut run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Some(run_subdir) = run_subdir {
+        run_dir = run_dir.join(safe_artifact_name(run_subdir));
+    }
+    fs::create_dir_all(&run_dir).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to create analog Xyce noise run directory {}: {error}",
+                run_dir.display()
+            ),
+            Vec::new(),
+        )
+    })?;
+    let mut artifacts = vec![source_netlist.to_path_buf()];
+    let wrapper = run_dir.join("circuitci_xyce_noise.cir");
+    let log = run_dir.join("xyce_noise.log");
+    let spectrum_raw = run_dir.join("noise_spectrum_raw.csv");
+    let total_raw = run_dir.join("noise_total_raw.csv");
+    let noise_spectrum = run_dir.join("noise_spectrum.csv");
+    let noise_total = run_dir.join("noise_total.csv");
+    on_progress(
+        "Writing analog Xyce noise wrapper deck",
+        format!("Writing {}.", wrapper.to_string_lossy()),
+    );
+    let wrapper_text = build_xyce_noise_wrapper(
+        bound,
+        scenario,
+        source_netlist,
+        Path::new("noise_spectrum_raw.csv"),
+        Path::new("noise_total_raw.csv"),
+        parameter_overrides,
+        model_section_overrides,
+    )
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    fs::write(&wrapper, wrapper_text).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce noise wrapper deck {}: {error}",
+                wrapper.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(wrapper.clone());
+
+    on_progress(
+        "Running analog Xyce noise backend",
+        format!(
+            "{} noise sweep for output node {}.",
+            backend,
+            analog
+                .analysis
+                .noise_output_node
+                .as_deref()
+                .unwrap_or("<missing>")
+        ),
+    );
+    let output = run_xyce_with_timeout(backend, &wrapper, Duration::from_secs(60), should_cancel)
+        .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    let mut log_text = String::new();
+    log_text.push_str("COMMAND: ");
+    log_text.push_str(&output.command);
+    log_text.push_str("\n\nSTDOUT:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stdout));
+    log_text.push_str("\n\nSTDERR:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stderr));
+    fs::write(&log, &log_text).map_err(|error| {
+        ngspice_error(
+            format!("Failed to write Xyce noise log {}: {error}", log.display()),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(log.clone());
+    if !output.status.success() {
+        return Err(ngspice_error(
+            format!("Xyce noise analysis exited with status {}.", output.status),
+            artifacts,
+        ));
+    }
+    if let Some(reason) = detect_nonconvergence(&log_text) {
+        return Err(ngspice_error(
+            format!("Xyce reported non-convergence or numerical failure: {reason}."),
+            artifacts,
+        ));
+    }
+    if !spectrum_raw.is_file() || !total_raw.is_file() {
+        return Err(ngspice_error(
+            format!(
+                "Xyce completed without producing noise exports {} and {}.",
+                spectrum_raw.display(),
+                total_raw.display()
+            ),
+            artifacts,
+        ));
+    }
+    artifacts.push(spectrum_raw.clone());
+    artifacts.push(total_raw.clone());
+
+    let spectrum_csv = noise_spectrum_raw_to_csv(&spectrum_raw).map_err(|message| {
+        ngspice_error(
+            format!(
+                "Failed to convert Xyce noise spectrum {}: {message}",
+                spectrum_raw.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    fs::write(&noise_spectrum, spectrum_csv).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce noise spectrum CSV {}: {error}",
+                noise_spectrum.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(noise_spectrum.clone());
+
+    let total_csv = noise_total_raw_to_csv(&total_raw).map_err(|message| {
+        ngspice_error(
+            format!(
+                "Failed to convert Xyce total noise {}: {message}",
+                total_raw.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    fs::write(&noise_total, total_csv).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce total noise CSV {}: {error}",
+                noise_total.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(noise_total.clone());
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "noise",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[
+            ("xyce_noise_spectrum_raw", &spectrum_raw),
+            ("xyce_noise_total_raw", &total_raw),
+        ],
+        normalized_outputs: &[
+            ("noise_spectrum", &noise_spectrum),
+            ("noise_total", &noise_total),
+        ],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
+    Ok(NgspiceNoiseRun {
+        artifacts,
+        noise_spectrum,
+        noise_total,
+    })
+}
+
 fn build_xyce_transient_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -791,6 +999,143 @@ fn build_xyce_dc_wrapper(
     }
     text.push_str("\n.END\n");
     Ok(text)
+}
+
+fn build_xyce_noise_wrapper(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    netlist: &Path,
+    spectrum_raw_output: &Path,
+    total_raw_output: &Path,
+    parameter_overrides: &[ParameterOverride],
+    model_section_overrides: &[ModelSectionOverride],
+) -> Result<String, String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before Xyce noise wrapper generation");
+    let source = fs::read_to_string(netlist).map_err(|error| {
+        format!(
+            "Failed to read SPICE netlist {}: {error}",
+            netlist.display()
+        )
+    })?;
+    let output_node = analog
+        .analysis
+        .noise_output_node
+        .as_deref()
+        .ok_or_else(|| "noise_output_node is required for noise analysis".to_string())?;
+    let input_source = analog
+        .analysis
+        .noise_input_source
+        .as_deref()
+        .ok_or_else(|| "noise_input_source is required for noise analysis".to_string())?;
+    let mut text = String::new();
+    text.push_str("* Generated by CircuitCI for Xyce noise. Do not edit by hand.\n");
+    text.push_str("* Source netlist: ");
+    text.push_str(&netlist.to_string_lossy());
+    text.push('\n');
+    let include_base = netlist.parent().unwrap_or(&bound.project.source_dir);
+    let mut in_control_block = false;
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        let directive = trimmed.to_ascii_lowercase();
+        let first_token = directive.split_whitespace().next().unwrap_or("");
+        if first_token == ".control" {
+            in_control_block = true;
+            continue;
+        }
+        if in_control_block {
+            if first_token == ".endc" {
+                in_control_block = false;
+            }
+            continue;
+        }
+        if matches!(
+            first_token,
+            ".end" | ".tran" | ".ac" | ".op" | ".noise" | ".print"
+        ) {
+            continue;
+        }
+        let rewritten = rewrite_include_line(line, include_base);
+        text.push_str(&ensure_noise_input_source_has_ac(&rewritten, input_source));
+        text.push('\n');
+    }
+    if !parameter_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep parameter overrides.\n");
+        for override_ in parameter_overrides {
+            text.push_str(".param ");
+            text.push_str(&override_.name);
+            text.push('=');
+            text.push_str(&format!("{:.12e}", override_.value));
+            text.push('\n');
+        }
+        if let Some(temperature_c) = sweep_temperature_c(parameter_overrides) {
+            text.push_str(".temp ");
+            text.push_str(&format!("{:.12e}", temperature_c));
+            text.push('\n');
+        }
+    }
+    if !model_section_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep model section overrides.\n");
+        for override_ in model_section_overrides {
+            let path = Path::new(&override_.path);
+            let absolute = if path.is_absolute() {
+                normalize_path(path)
+            } else {
+                absolute_path(&bound.project.source_dir.join(path))
+                    .unwrap_or_else(|_| normalize_path(&bound.project.source_dir.join(path)))
+            };
+            text.push_str(".lib \"");
+            text.push_str(&absolute.to_string_lossy());
+            text.push_str("\" ");
+            text.push_str(&override_.section);
+            text.push('\n');
+        }
+    }
+    let output_expr = if let Some(reference_node) = analog.analysis.noise_reference_node.as_deref()
+    {
+        format!("V({output_node},{reference_node})")
+    } else {
+        format!("V({output_node})")
+    };
+    let start_hz = analog
+        .analysis
+        .start_frequency_hz
+        .ok_or_else(|| "start_frequency_hz is required for noise analysis".to_string())?;
+    let stop_hz = analog
+        .analysis
+        .stop_frequency_hz
+        .ok_or_else(|| "stop_frequency_hz is required for noise analysis".to_string())?;
+    let points = analog.analysis.points_per_decade.unwrap_or(20);
+    text.push_str(&format!(
+        ".NOISE {output_expr} {input_source} DEC {points} {start_hz:.12e} {stop_hz:.12e}\n"
+    ));
+    text.push_str(".PRINT NOISE DELIMITER=COMMA FILE=\"");
+    text.push_str(&spectrum_raw_output.to_string_lossy());
+    text.push_str("\" ONOISE INOISE\n");
+    text.push_str(".PRINT NOISE DELIMITER=COMMA FILE=\"");
+    text.push_str(&total_raw_output.to_string_lossy());
+    text.push_str("\" ONOISE_TOTAL INOISE_TOTAL\n.END\n");
+    Ok(text)
+}
+
+fn ensure_noise_input_source_has_ac(line: &str, input_source: &str) -> String {
+    let trimmed = line.trim_start();
+    let Some(first_token) = trimmed.split_whitespace().next() else {
+        return line.to_string();
+    };
+    if !first_token.eq_ignore_ascii_case(input_source) {
+        return line.to_string();
+    }
+    if trimmed
+        .to_ascii_lowercase()
+        .split_whitespace()
+        .any(|token| token == "ac")
+    {
+        return line.to_string();
+    }
+    format!("{line} AC 1")
 }
 
 fn run_xyce_with_timeout(

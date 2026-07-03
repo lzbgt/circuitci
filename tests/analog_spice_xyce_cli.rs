@@ -230,9 +230,82 @@ scenarios:
     project
 }
 
+fn write_xyce_noise_divider_project(dir: &std::path::Path) -> std::path::PathBuf {
+    let repo = std::env::current_dir().unwrap();
+    let project = dir.join("project.yaml");
+    fs::write(
+        &project,
+        format!(
+            r#"project: {{ name: xyce_noise_smoke, version: 0.1.0 }}
+libraries:
+  - {libs}
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins: {{ P: vin, N: gnd }}
+      spice: {{ primitive: dc_voltage_source, dc_v: 5.0 }}
+    R1:
+      model: generic.analog.resistor
+      pins: {{ A: vin, B: midpoint }}
+      spice: {{ primitive: resistor, value_ohm: 10000 }}
+    R2:
+      model: generic.analog.resistor
+      pins: {{ A: midpoint, B: gnd }}
+      spice: {{ primitive: resistor, value_ohm: 10000 }}
+  nets:
+    vin: {{ kind: power, nominal_voltage: 5.0, powered: true }}
+    midpoint: {{ kind: digital_or_analog, nominal_voltage: 2.5 }}
+    gnd: {{ kind: ground }}
+scenarios:
+  - name: xyce_divider_noise
+    type: analog_noise
+    checks: [SPICE_NOISE_ANALYSIS]
+    analog:
+      backend: xyce
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, R2]
+      model_files: []
+      node_bindings:
+        - {{ node: vin, net: vin }}
+        - {{ node: midpoint, net: midpoint }}
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: vin, endpoint: {{ component: V1, pin: P }} }}
+        - {{ node: "0", endpoint: {{ component: V1, pin: N }} }}
+        - {{ node: vin, endpoint: {{ component: R1, pin: A }} }}
+        - {{ node: midpoint, endpoint: {{ component: R1, pin: B }} }}
+        - {{ node: midpoint, endpoint: {{ component: R2, pin: A }} }}
+        - {{ node: "0", endpoint: {{ component: R2, pin: B }} }}
+      analysis:
+        type: noise
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+        points_per_decade: 20
+        noise_output_node: midpoint
+        noise_input_source: V1
+      stimuli:
+        - {{ name: divider_noise_band, description: Fake Xyce fixture exports spectrum and integrated noise. }}
+      probes:
+        - {{ name: onoise, expression: V(midpoint) }}
+        - {{ name: inoise, expression: V(vin) }}
+      assertions:
+        - {{ name: output_density_1khz_below_10nv, probe: onoise, aggregation: output_noise_density_at_frequency, relation: below, at_hz: 1000.0, threshold_v_per_sqrt_hz: 1.0e-8 }}
+        - {{ name: output_rms_noise_below_3_5uv, probe: onoise, aggregation: integrated_output_noise, relation: below, threshold_v: 3.5e-6 }}
+        - {{ name: input_referred_rms_noise_below_7uv, probe: inoise, aggregation: integrated_input_noise, relation: below, threshold_v: 7.0e-6 }}
+"#,
+            libs = repo.join("libs/generic/analog").to_string_lossy()
+        ),
+    )
+    .unwrap();
+    project
+}
+
 #[cfg(unix)]
 #[test]
-fn auto_backend_does_not_select_xyce_before_full_normalization_coverage_exists() {
+fn auto_backend_keeps_xyce_explicit_until_conformance_enabled() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "Xyce");
     let (_project_dir, project_path) =
@@ -548,5 +621,115 @@ fn explicit_xyce_dc_backend_normalizes_operating_point_and_manifest() {
         manifest["outputs"]["normalized"][0]["kind"],
         "operating_point"
     );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn explicit_xyce_noise_backend_launch_failure_reports_solver_artifacts() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let (_project_dir, project_path) =
+        analog_backend_project("examples/good_noise_observation/project.yaml", "xyce");
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_NOISE_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["selected_backend"],
+        "Xyce"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["required_evidence"],
+        "xyce_noise_csv"
+    );
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(artifacts.iter().any(|artifact| {
+        artifact
+            .as_str()
+            .unwrap()
+            .ends_with("circuitci_xyce_noise.cir")
+    }));
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("xyce_noise.log"))
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn explicit_xyce_noise_backend_normalizes_spectrum_total_and_manifest() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'FREQ,ONOISE,INOISE\\n10,2e-9,4e-9\\n1000,3e-9,6e-9\\n100000,1e-9,2e-9\\n' > noise_spectrum_raw.csv\nprintf 'INDEX,ONOISE_TOTAL,INOISE_TOTAL\\n0,2e-7,4e-7\\n' > noise_total_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_xyce_noise_divider_project(project_dir.path());
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let waveforms = report["waveforms"].as_array().unwrap();
+    assert_eq!(waveforms.len(), 1);
+    assert!(
+        waveforms[0]
+            .as_str()
+            .unwrap()
+            .ends_with("noise_spectrum.csv")
+    );
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("noise_total.csv"))
+    );
+    let spectrum = fs::read_to_string(waveforms[0].as_str().unwrap()).unwrap();
+    assert!(spectrum.contains("frequency_hz,onoise_v_per_sqrt_hz,inoise_v_per_sqrt_hz"));
+    assert!(spectrum.contains("1.000000000000e3,3.000000000000e-9,6.000000000000e-9"));
+    let manifest_path = artifacts
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with("solver_manifest.json"))
+        .unwrap();
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "noise");
+    assert_eq!(
+        manifest["outputs"]["raw"][0]["kind"],
+        "xyce_noise_spectrum_raw"
+    );
+    assert_eq!(
+        manifest["outputs"]["raw"][1]["kind"],
+        "xyce_noise_total_raw"
+    );
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "noise_spectrum"
+    );
+    assert_eq!(manifest["outputs"]["normalized"][1]["kind"], "noise_total");
     assert_report_schema_valid(&report);
 }

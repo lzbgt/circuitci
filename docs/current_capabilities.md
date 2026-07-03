@@ -110,12 +110,12 @@ Current analog support:
   marker, artifact label, Copy CSV/Markdown actions, and report-bundle export,
   so bias runs are inspectable and preservable without opening report files.
 - `analog_noise` scenarios with `SPICE_NOISE_ANALYSIS` for external-ngspice
-  small-signal noise observations. Noise runs write normalized
-  `noise_spectrum.csv` artifacts with frequency, output noise density, and
-  input-referred noise density, plus `noise_total.csv` artifacts with
-  integrated RMS output and input-referred noise over the declared frequency
-  band. Noise assertions support output/input density at a frequency and
-  integrated output/input RMS noise checks. The GUI run-setup editor can author
+  and explicit-Xyce small-signal noise observations. Noise runs write
+  normalized `noise_spectrum.csv` artifacts with frequency, output noise
+  density, and input-referred noise density, plus `noise_total.csv` artifacts
+  with integrated RMS output and input-referred noise over the declared
+  frequency band. Noise assertions support output/input density at a frequency
+  and integrated output/input RMS noise checks. The GUI run-setup editor can author
   generated noise observations directly by choosing an output net, input source,
   and frequency band, and the check editor offers output and input-referred
   density/RMS noise presets. Scopes plots `noise_spectrum.csv` as
@@ -134,11 +134,11 @@ Current analog support:
   overrides, raw outputs, and normalized outputs so future Xyce/RF adapters can
   target the same provenance contract.
 - Explicit `backend: xyce` is detected when `Xyce` or `xyce` is on `PATH`.
-  Transient, AC, and DC Xyce runs can export CSV-like solver data, normalize it
-  into the `transient_waveform`, `ac_bode`, and `operating_point` contracts,
-  and write solver manifests. Xyce noise remains fail-closed with
-  manifest-compatible adapter-planning evidence; `backend: auto` does not
-  select Xyce prematurely.
+  Transient, AC, DC, and noise Xyce runs can export CSV-like solver data,
+  normalize it into the `transient_waveform`, `ac_bode`, `operating_point`,
+  `noise_spectrum`, and `noise_total` contracts, and write solver manifests.
+  `backend: auto` keeps Xyce explicit-only until real-Xyce conformance coverage
+  is enabled.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

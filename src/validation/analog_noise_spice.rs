@@ -25,6 +25,7 @@ use super::analog_sweep_reports::{
     tag_corner_finding, tag_corner_findings,
 };
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::analog_xyce_runner::{XyceNoiseRunOptions, run_xyce_noise};
 use super::common::validation_input_missing;
 
 pub(super) struct AnalogNoiseSinks<'a> {
@@ -351,13 +352,13 @@ pub(super) fn validate_spice_noise_with_progress<F, C>(
         findings.push(finding);
         return;
     };
-    if backend != "ngspice" {
+    if !matches!(backend, "ngspice" | "Xyce" | "xyce") {
         findings.push(unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
                 check_id: SPICE_NOISE_ANALYSIS,
                 selected_backend: backend,
-                implemented_backend: "ngspice",
+                implemented_backend: "ngspice_or_xyce",
                 analysis_kind: "noise",
                 required_normalized_outputs: &["noise_spectrum", "noise_total"],
             },
@@ -376,20 +377,38 @@ pub(super) fn validate_spice_noise_with_progress<F, C>(
             run_plan.progress_label(),
         );
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        match run_ngspice_noise(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceNoiseRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        ) {
+        let run_result = if matches!(backend, "Xyce" | "xyce") {
+            run_xyce_noise(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceNoiseRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_ngspice_noise(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceNoiseRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
+        match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
                 for artifact in &run.artifacts {
@@ -423,14 +442,23 @@ pub(super) fn validate_spice_noise_with_progress<F, C>(
                 finding
                     .measured
                     .insert("selected_backend".to_string(), json!(backend));
-                finding
-                    .limit
-                    .insert("required_evidence".to_string(), json!("ngspice_noise_csv"));
-                tag_corner_finding(&mut finding, &run_plan);
-                finding.suggested_fixes.push(
-                    "Inspect the generated ngspice noise wrapper deck and solver log artifacts."
-                        .to_string(),
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!(if matches!(backend, "Xyce" | "xyce") {
+                        "xyce_noise_csv"
+                    } else {
+                        "ngspice_noise_csv"
+                    }),
                 );
+                tag_corner_finding(&mut finding, &run_plan);
+                let solver_name = if matches!(backend, "Xyce" | "xyce") {
+                    "Xyce"
+                } else {
+                    "ngspice"
+                };
+                finding.suggested_fixes.push(format!(
+                    "Inspect the generated {solver_name} noise wrapper deck and solver log artifacts."
+                ));
                 findings.push(finding);
             }
         }

@@ -146,8 +146,8 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
    `points_per_decade` in `1..=1000` when provided.
 3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
    still fails closed until an equivalent AC export path is implemented.
-   `backend: auto` does not select Xyce for this analysis until Xyce coverage
-   is broad enough to avoid surprising backend changes.
+   `backend: auto` does not select Xyce for this analysis until real-Xyce
+   conformance coverage is enabled.
 4. Expand bounded run-input sweeps exactly like transient validation,
    including raw `.param`, generated component-value parameters, model-library
    sections, and `.temp` corners.
@@ -190,17 +190,17 @@ For a scenario with check `SPICE_NOISE_ANALYSIS`:
    `stop_frequency_hz` greater than the start frequency, `points_per_decade`
    in `1..=1000`, `noise_output_node`, and `noise_input_source`. Optional
    `noise_reference_node` creates a differential output expression.
-3. Select external `ngspice`; noise export currently fails closed for embedded
-   ngspice and Xyce until equivalent export paths are implemented.
-   `backend: auto` does not select Xyce for this analysis until that adapter is
-   implemented.
+3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
+   still fails closed until an equivalent noise export path is implemented.
+   `backend: auto` does not select Xyce for this analysis until real-Xyce
+   conformance coverage is enabled.
 4. Expand bounded run-input sweeps exactly like transient, AC, and DC
    validation. Temperature corners still emit `.temp`; model-section and
    generated component-value corners still produce isolated run directories.
-5. Run `.noise`, export the ngspice spectral-density plot, and normalize it to
+5. Run `.noise`/`.NOISE`, export the spectral-density plot, and normalize it to
    `noise_spectrum.csv` with `frequency_hz`,
    `onoise_v_per_sqrt_hz`, and `inoise_v_per_sqrt_hz`.
-6. Export the ngspice integrated-total plot to `noise_total.csv` with
+6. Export the integrated-total plot to `noise_total.csv` with
    `onoise_total_v` and `inoise_total_v`.
 7. Evaluate noise assertions over those artifacts. Supported checks are output
    or input-referred noise density at a frequency using
