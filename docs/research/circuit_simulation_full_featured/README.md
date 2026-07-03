@@ -728,6 +728,10 @@ The GUI should not become the solver.
   `schemas/model_package_verification_report.schema.json` so package authors
   can validate lock files, registry entries, and artifact hashes independently
   before scenarios depend on those compact-model packages.
+- Added `circuitci export-model-package` so qualified compact-model packages can
+  be generated deterministically from an artifact path, package identity,
+  artifact format, and optional compiler/registry entry instead of being
+  hand-authored before verification.
 
 ## Risks
 

@@ -141,8 +141,10 @@ Required fields:
   retained as report artifacts and projected into `solver_manifest.json` plus
   top-level `model_file_provenance[]` so reports can distinguish
   package-qualified compact models from one-off scenario files. Use
+  `circuitci export-model-package` to generate deterministic JSON locks and
+  optional registries from real artifact hashes, then
   `circuitci verify-model-package` to validate the lock and optional registry
-  before adding the package to a scenario; its output follows
+  before adding the package to a scenario; verification output follows
   `schemas/model_package_verification_report.schema.json`.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.

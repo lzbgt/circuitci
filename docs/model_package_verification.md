@@ -1,7 +1,26 @@
 # Compact Model Package Verification
 
-`circuitci verify-model-package` validates reusable compact-model package locks
-before a scenario references them.
+`circuitci export-model-package` creates reusable compact-model package locks
+from real artifact hashes, and `circuitci verify-model-package` validates those
+locks before a scenario references them.
+
+```bash
+circuitci export-model-package \
+  --package-name org.circuitci.test.tiny_resistor \
+  --package-version 1.0.0 \
+  --artifact-id tiny_resistor_osdi \
+  --artifact tiny_resistor.osdi \
+  --artifact-format osdi_shared_object \
+  --compiler openvaf \
+  --output compact_model.lock.json \
+  --registry-output compact_model_registry.json \
+  --registry-entry tiny_resistor_qualified_osdi
+```
+
+The export command writes deterministic JSON, hashes the artifact, writes a
+schema-compatible lock, and optionally writes a registry entry pointing to that
+lock. Its stdout includes the lock and registry SHA-256 values needed for
+scenario pins.
 
 ```bash
 circuitci verify-model-package compact_model.lock.yaml \

@@ -49,6 +49,26 @@ enum Command {
         )]
         output: PathBuf,
     },
+    ExportModelPackage {
+        #[arg(long = "package-name")]
+        package_name: String,
+        #[arg(long = "package-version")]
+        package_version: String,
+        #[arg(long = "artifact-id")]
+        artifact_id: String,
+        #[arg(long)]
+        artifact: PathBuf,
+        #[arg(long = "artifact-format")]
+        artifact_format: String,
+        #[arg(long)]
+        compiler: Option<String>,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long = "registry-output")]
+        registry_output: Option<PathBuf>,
+        #[arg(long = "registry-entry")]
+        registry_entry: Option<String>,
+    },
     RepairYaml {
         project: PathBuf,
         #[arg(long, default_value = "iot_basic_v0")]
@@ -284,6 +304,27 @@ pub fn run() -> Result<()> {
             registry_entry,
             output,
         }) => run_verify_model_package(lock, registry, registry_entry, output),
+        Some(Command::ExportModelPackage {
+            package_name,
+            package_version,
+            artifact_id,
+            artifact,
+            artifact_format,
+            compiler,
+            output,
+            registry_output,
+            registry_entry,
+        }) => run_export_model_package(CliModelPackageExportArgs {
+            package_name,
+            package_version,
+            artifact_id,
+            artifact,
+            artifact_format,
+            compiler,
+            output,
+            registry_output,
+            registry_entry,
+        }),
         Some(Command::RepairYaml {
             project,
             profile,
@@ -458,6 +499,48 @@ fn run_verify_model_package(
             "Model package verification failed for {}; see {}",
             lock.display(),
             output.display()
+        );
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+struct CliModelPackageExportArgs {
+    package_name: String,
+    package_version: String,
+    artifact_id: String,
+    artifact: PathBuf,
+    artifact_format: String,
+    compiler: Option<String>,
+    output: PathBuf,
+    registry_output: Option<PathBuf>,
+    registry_entry: Option<String>,
+}
+
+fn run_export_model_package(args: CliModelPackageExportArgs) -> Result<()> {
+    let summary = crate::model_package::export_model_package_lock(
+        &crate::model_package::ModelPackageExportOptions {
+            package_name: args.package_name,
+            package_version: args.package_version,
+            artifact_id: args.artifact_id,
+            artifact: args.artifact,
+            artifact_format: args.artifact_format,
+            compiler: args.compiler,
+            output: args.output,
+            registry_output: args.registry_output,
+            registry_entry: args.registry_entry,
+        },
+    )?;
+    println!(
+        "CircuitCI exported model package lock {} sha256={} artifact={} artifact_sha256={}",
+        summary.lock_path, summary.lock_sha256, summary.artifact_path, summary.artifact_sha256
+    );
+    if let (Some(registry_path), Some(registry_sha256)) = (
+        summary.registry_path.as_deref(),
+        summary.registry_sha256.as_deref(),
+    ) {
+        println!(
+            "CircuitCI exported model package registry {registry_path} sha256={registry_sha256}"
         );
     }
     Ok(())

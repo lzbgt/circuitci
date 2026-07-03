@@ -5,6 +5,8 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 pub const MODEL_PACKAGE_VERIFICATION_SCHEMA: &str = "circuitci.model_package_verification.v1";
+pub const MODEL_PACKAGE_LOCK_SCHEMA: &str = "circuitci.model_package_lock.v1";
+pub const MODEL_PACKAGE_REGISTRY_SCHEMA: &str = "circuitci.model_package_registry.v1";
 
 #[derive(Debug, Clone)]
 pub struct ModelPackageVerifyOptions {
@@ -12,6 +14,31 @@ pub struct ModelPackageVerifyOptions {
     pub registry: Option<PathBuf>,
     pub registry_entry: Option<String>,
     pub output: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelPackageExportOptions {
+    pub package_name: String,
+    pub package_version: String,
+    pub artifact_id: String,
+    pub artifact: PathBuf,
+    pub artifact_format: String,
+    pub compiler: Option<String>,
+    pub output: PathBuf,
+    pub registry_output: Option<PathBuf>,
+    pub registry_entry: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageExportSummary {
+    pub lock_path: String,
+    pub lock_sha256: String,
+    pub artifact_id: String,
+    pub artifact_path: String,
+    pub artifact_sha256: String,
+    pub registry_path: Option<String>,
+    pub registry_sha256: Option<String>,
+    pub registry_entry: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -157,6 +184,137 @@ pub fn write_model_package_verification_report(
     std::fs::write(output, text)
         .with_context(|| format!("Failed to write model package report {}", output.display()))?;
     Ok(())
+}
+
+pub fn export_model_package_lock(
+    options: &ModelPackageExportOptions,
+) -> Result<ModelPackageExportSummary> {
+    validate_export_options(options)?;
+    let artifact_sha = file_sha256_hex(&options.artifact)?;
+    let lock_parent = options.output.parent().unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(lock_parent).with_context(|| {
+        format!(
+            "Failed to create model package output directory {}",
+            lock_parent.display()
+        )
+    })?;
+    let artifact_path = lock_relative_path(lock_parent, &options.artifact)?;
+    let lock_text = render_lock_document(options, &artifact_path, &artifact_sha);
+    std::fs::write(&options.output, lock_text.as_bytes()).with_context(|| {
+        format!(
+            "Failed to write model package lock {}",
+            options.output.display()
+        )
+    })?;
+    let lock_sha = file_sha256_hex(&options.output)?;
+    let mut registry_path = None;
+    let mut registry_sha = None;
+    if let Some(output) = &options.registry_output {
+        let registry_parent = output.parent().unwrap_or_else(|| Path::new("."));
+        std::fs::create_dir_all(registry_parent).with_context(|| {
+            format!(
+                "Failed to create model package registry directory {}",
+                registry_parent.display()
+            )
+        })?;
+        let entry = options
+            .registry_entry
+            .as_deref()
+            .unwrap_or(options.artifact_id.as_str());
+        let lock_path = lock_relative_path(registry_parent, &options.output)?;
+        let registry_text = render_registry_document(options, entry, &lock_path, &lock_sha);
+        std::fs::write(output, registry_text.as_bytes()).with_context(|| {
+            format!(
+                "Failed to write model package registry {}",
+                output.display()
+            )
+        })?;
+        registry_sha = Some(file_sha256_hex(output)?);
+        registry_path = Some(output.to_string_lossy().to_string());
+    }
+    Ok(ModelPackageExportSummary {
+        lock_path: options.output.to_string_lossy().to_string(),
+        lock_sha256: lock_sha,
+        artifact_id: options.artifact_id.clone(),
+        artifact_path,
+        artifact_sha256: artifact_sha,
+        registry_path,
+        registry_sha256: registry_sha,
+        registry_entry: options.registry_entry.clone(),
+    })
+}
+
+fn validate_export_options(options: &ModelPackageExportOptions) -> Result<()> {
+    for (field, value) in [
+        ("package-name", options.package_name.as_str()),
+        ("package-version", options.package_version.as_str()),
+        ("artifact-id", options.artifact_id.as_str()),
+        ("artifact-format", options.artifact_format.as_str()),
+    ] {
+        if value.trim().is_empty() {
+            anyhow::bail!("--{field} must not be empty.");
+        }
+    }
+    if let Some(compiler) = options.compiler.as_deref()
+        && compiler.trim().is_empty()
+    {
+        anyhow::bail!("--compiler must not be empty when supplied.");
+    }
+    if options.registry_output.is_none() && options.registry_entry.is_some() {
+        anyhow::bail!("--registry-entry requires --registry-output.");
+    }
+    if !options.artifact.is_file() {
+        anyhow::bail!(
+            "Model package artifact {} is missing.",
+            options.artifact.display()
+        );
+    }
+    Ok(())
+}
+
+fn render_lock_document(
+    options: &ModelPackageExportOptions,
+    artifact_path: &str,
+    artifact_sha: &str,
+) -> String {
+    let compiler = options
+        .compiler
+        .as_deref()
+        .map(|compiler| format!(",\n      \"compiler\": {}", json_string(compiler)))
+        .unwrap_or_default();
+    format!(
+        "{{\n  \"schema_version\": {},\n  \"package\": {{\n    \"name\": {},\n    \"version\": {}\n  }},\n  \"artifacts\": [\n    {{\n      \"id\": {},\n      \"path\": {},\n      \"sha256\": {},\n      \"artifact_format\": {}{}\n    }}\n  ]\n}}\n",
+        json_string(MODEL_PACKAGE_LOCK_SCHEMA),
+        json_string(&options.package_name),
+        json_string(&options.package_version),
+        json_string(&options.artifact_id),
+        json_string(artifact_path),
+        json_string(artifact_sha),
+        json_string(&options.artifact_format),
+        compiler,
+    )
+}
+
+fn render_registry_document(
+    options: &ModelPackageExportOptions,
+    entry: &str,
+    lock_path: &str,
+    lock_sha: &str,
+) -> String {
+    format!(
+        "{{\n  \"schema_version\": {},\n  \"packages\": [\n    {{\n      \"id\": {},\n      \"package\": {{\n        \"name\": {},\n        \"version\": {}\n      }},\n      \"artifact_id\": {},\n      \"lock_path\": {},\n      \"lock_sha256\": {}\n    }}\n  ]\n}}\n",
+        json_string(MODEL_PACKAGE_REGISTRY_SCHEMA),
+        json_string(entry),
+        json_string(&options.package_name),
+        json_string(&options.package_version),
+        json_string(&options.artifact_id),
+        json_string(lock_path),
+        json_string(lock_sha),
+    )
+}
+
+fn json_string(value: &str) -> String {
+    serde_json::to_string(value).expect("string serialization cannot fail")
 }
 
 fn verify_lock_artifacts(
@@ -557,6 +715,18 @@ fn normalize_path(path: &Path) -> PathBuf {
         }
     }
     normalized
+}
+
+fn lock_relative_path(base_dir: &Path, target: &Path) -> Result<String> {
+    let base = std::fs::canonicalize(base_dir)
+        .with_context(|| format!("Unable to resolve {}", base_dir.display()))?;
+    let target = std::fs::canonicalize(target)
+        .with_context(|| format!("Unable to resolve {}", target.display()))?;
+    let path = target
+        .strip_prefix(&base)
+        .map(Path::to_path_buf)
+        .unwrap_or(target);
+    Ok(path.to_string_lossy().to_string())
 }
 
 fn finding(
