@@ -1447,6 +1447,18 @@ pub struct AnalogModelFile {
     pub path: String,
     #[serde(default)]
     pub sha256: Option<String>,
+    #[serde(default)]
+    pub artifact_format: Option<String>,
+    #[serde(default)]
+    pub source_path: Option<String>,
+    #[serde(default)]
+    pub source_sha256: Option<String>,
+    #[serde(default)]
+    pub compiler: Option<String>,
+    #[serde(default)]
+    pub compiler_version: Option<String>,
+    #[serde(default)]
+    pub compiler_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -84,7 +84,12 @@ Required fields:
 
 - `backend`: `ngspice`, `xyce`, `embedded_ngspice`, or `auto`.
 - `netlist`: path to a SPICE-compatible deck.
-- `model_files`: SPICE model-card or subcircuit files used by the deck.
+- `model_files`: SPICE model-card, subcircuit, or compiled OSDI files used by
+  the deck. Ordinary SPICE includes should be SHA-pinned. OpenVAF/OSDI compact
+  model artifacts additionally declare `artifact_format: osdi_shared_object`,
+  `source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and
+  `compiler_command` so the compiled shared object is tied to auditable
+  Verilog-A source and build provenance.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

@@ -3676,6 +3676,7 @@ scenarios:
       netlist: downloader_q2_q3.cir
       model_files:
         - path: models/downloader_common.lib
+          sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       node_bindings:
         - node: boot0
           net: boot0
@@ -3710,6 +3711,12 @@ scenarios:
           suggested_fixes:
             - Rework the BOOT0 driver so the measured waveform meets the declared threshold.
 ```
+
+Compiled Verilog-A compact models use the same `model_files` list with the
+compiled OSDI artifact as `path`. Add `artifact_format: osdi_shared_object`,
+`source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and
+`compiler_command`; validation fails closed before solver execution if any
+OpenVAF/OSDI provenance is missing or the Verilog-A source hash does not match.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

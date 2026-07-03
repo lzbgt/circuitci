@@ -1346,6 +1346,17 @@ include `model`, `model_source`, `model_confidence`, `missing_input`, and
 `missing_component`. Stable limit keys include `allowed_sources` and
 `min_confidence`.
 
+`ANALOG_MODEL_COMPILER_PROVENANCE_MISSING`,
+`ANALOG_MODEL_SOURCE_UNAVAILABLE`, and
+`ANALOG_MODEL_SOURCE_HASH_MISMATCH` reports are emitted by analog scenarios
+before solver execution when `analog.model_files[]` declares OpenVAF/OSDI
+compiled-model metadata. Stable measured keys include `model_file` and
+`sha256` for hash mismatches. Stable limit keys include `required_field`,
+`required_artifact`, `source_path`, `model_file`, and `expected_sha256`.
+These findings keep Verilog-A compact-model use fail-closed until the compiled
+OSDI artifact is tied to source path/hash, OpenVAF compiler identity/version,
+and reproducible compiler command metadata.
+
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include
 `load_component`, `load_current_A`, `switch_output_net`, `load_net`,

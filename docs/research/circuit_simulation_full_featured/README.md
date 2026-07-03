@@ -639,7 +639,14 @@ The GUI should not become the solver.
 
 ### Phase 5: Model Compiler Pipeline
 
-- Add OpenVAF/OSDI artifact metadata and build/check commands.
+- Added the first OpenVAF/OSDI artifact metadata gate. Analog `model_files[]`
+  entries for compiled Verilog-A compact models can now declare
+  `artifact_format: osdi_shared_object`, compiled artifact SHA, Verilog-A
+  `source_path`/`source_sha256`, `compiler: openvaf`, compiler version, and
+  compiler command. CircuitCI validates source availability and source hash
+  before solver planning and fails closed when provenance is incomplete.
+- Add executable OpenVAF build/check commands that can produce the declared
+  OSDI artifact from the pinned Verilog-A source.
 - Add model compatibility tests per backend.
 - Add artifact hashes and generated-model provenance to reports.
 

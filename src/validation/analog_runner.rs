@@ -1538,6 +1538,12 @@ pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf,
             json!({
                 "path": model_file.path,
                 "sha256": model_file.sha256,
+                "artifact_format": model_file.artifact_format,
+                "source_path": model_file.source_path,
+                "source_sha256": model_file.source_sha256,
+                "compiler": model_file.compiler,
+                "compiler_version": model_file.compiler_version,
+                "compiler_command": model_file.compiler_command,
             })
         })
         .collect();

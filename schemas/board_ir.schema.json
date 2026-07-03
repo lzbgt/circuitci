@@ -2806,7 +2806,16 @@
                     "sha256": {
                       "type": "string",
                       "pattern": "^[0-9a-fA-F]{64}$"
-                    }
+                    },
+                    "artifact_format": { "enum": ["spice_include", "osdi_shared_object"] },
+                    "source_path": { "type": "string", "minLength": 1 },
+                    "source_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{64}$"
+                    },
+                    "compiler": { "enum": ["openvaf"] },
+                    "compiler_version": { "type": "string", "minLength": 1 },
+                    "compiler_command": { "type": "string", "minLength": 1 }
                   },
                   "additionalProperties": false
                 }

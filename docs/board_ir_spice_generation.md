@@ -98,6 +98,15 @@ SHA-256 pins when the files can be resolved from the project directory or an
 ancestor. Hand-authored YAML and CLI validation still fail closed if required
 model files are missing or unpinned.
 
+Compiled Verilog-A compact models should be declared as OpenVAF/OSDI artifacts
+instead of opaque binary blobs. An `analog.model_files[]` entry for a compiled
+OSDI shared object uses the compiled artifact path as `path`, pins it with
+`sha256`, declares `artifact_format: osdi_shared_object`, and records
+`source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and a
+reproducible `compiler_command`. CircuitCI validates the source file and source
+hash before solver planning, adds the Verilog-A source to report artifacts, and
+fails closed if any compiler provenance field is missing.
+
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear
 derating metadata. `allow_pulse_ratings` only permits pulse-current waivers
@@ -136,7 +145,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
    declare `default_value` for observation defaults that are still visible in
    component-model metadata.
 9. Require every generated semiconductor or subcircuit model file to appear in
-   `analog.model_files` with a SHA-256 pin.
+   `analog.model_files` with a SHA-256 pin. If the model file is a compiled
+   OpenVAF/OSDI artifact, also require source path/hash, compiler identity,
+   compiler version, and compiler command provenance.
 10. Resolve model metadata paths from the Board IR project directory and its
     ancestors so CLI launch location does not change the physical model.
 11. Prepare generated source decks before solver backend selection so Board IR,
@@ -385,6 +396,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   closed when the model does not explicitly allow body-to-source tying.
 - `examples/bad_mosfet_model_missing_sha` proves generated device models must
   be SHA-pinned in `analog.model_files`.
+- OpenVAF/OSDI analog model compiler fixtures prove compiled Verilog-A compact
+  model artifacts must carry source and compiler provenance before any analog
+  analysis can use them as physical evidence.
 - `examples/bad_mosfet_missing_operating_ratings` proves generated MOSFET/BJT
   semiconductor models must carry usable absolute-maximum ratings before their
   simulations can be accepted as physical evidence.
