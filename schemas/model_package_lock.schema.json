@@ -31,7 +31,13 @@
             "pattern": "^[0-9a-fA-F]{64}$"
           },
           "artifact_format": {
-            "enum": ["spice_include", "osdi_shared_object", "xyce_adms_plugin"]
+            "enum": [
+              "spice_include",
+              "verilog_a_source",
+              "osdi_shared_object",
+              "xyce_adms_plugin",
+              "model_conformance_report"
+            ]
           },
           "compiler": { "enum": ["openvaf", "xyce_adms"] },
           "source_path": { "type": "string", "minLength": 1 },

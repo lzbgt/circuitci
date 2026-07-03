@@ -3754,7 +3754,10 @@ emit `ANALOG_MODEL_PACKAGE_LOCK_*` or `ANALOG_MODEL_PACKAGE_REGISTRY_*` findings
 before solver execution; valid locks and registries are retained as artifacts
 and surfaced in `model_file_provenance[]`. Use
 `circuitci export-model-package` to generate deterministic locks from verified
-artifact files, then `circuitci verify-model-package` for an independent
+artifact files, including repeatable `--package-artifact` specs when one lock
+must pin source, OSDI, Xyce plugin, and conformance artifacts together; use
+`--registry-artifact-id` to choose the artifact imported by registry-backed
+scenarios. Then use `circuitci verify-model-package` for an independent
 lock/registry preflight before referencing the package from a scenario.
 
 This scenario type is the physical analog path. If no SPICE-class backend is

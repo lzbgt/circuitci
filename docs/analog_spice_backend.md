@@ -142,7 +142,11 @@ Required fields:
   top-level `model_file_provenance[]` so reports can distinguish
   package-qualified compact models from one-off scenario files. Use
   `circuitci export-model-package` to generate deterministic JSON locks and
-  optional registries from real artifact hashes, then
+  optional registries from real artifact hashes; repeat
+  `--package-artifact id=...,path=...,artifact_format=...[,compiler=...]` when
+  one package must pin paired Verilog-A source, OpenVAF/OSDI, Xyce/ADMS plugin,
+  and conformance-report artifacts, and use `--registry-artifact-id` to select
+  the runtime artifact imported by registry-backed scenarios. Then use
   `circuitci verify-model-package` to validate the lock and optional registry
   before adding the package to a scenario; verification output follows
   `schemas/model_package_verification_report.schema.json`.

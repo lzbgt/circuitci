@@ -732,6 +732,12 @@ The GUI should not become the solver.
   be generated deterministically from an artifact path, package identity,
   artifact format, and optional compiler/registry entry instead of being
   hand-authored before verification.
+- Extended `circuitci export-model-package` with repeatable
+  `--package-artifact` specs so one lock can qualify a full compact-model
+  artifact set: Verilog-A source, OpenVAF/OSDI runtime object, Xyce/ADMS plugin,
+  and retained conformance evidence. Registry export now supports an explicit
+  `--registry-artifact-id` selector so shared package imports name the intended
+  runtime artifact rather than relying on artifact order.
 
 ## Risks
 

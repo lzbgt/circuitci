@@ -54,12 +54,14 @@ enum Command {
         package_name: String,
         #[arg(long = "package-version")]
         package_version: String,
+        #[arg(long = "package-artifact")]
+        package_artifacts: Vec<String>,
         #[arg(long = "artifact-id")]
-        artifact_id: String,
+        artifact_id: Option<String>,
         #[arg(long)]
-        artifact: PathBuf,
+        artifact: Option<PathBuf>,
         #[arg(long = "artifact-format")]
-        artifact_format: String,
+        artifact_format: Option<String>,
         #[arg(long)]
         compiler: Option<String>,
         #[arg(long, short = 'o')]
@@ -68,6 +70,8 @@ enum Command {
         registry_output: Option<PathBuf>,
         #[arg(long = "registry-entry")]
         registry_entry: Option<String>,
+        #[arg(long = "registry-artifact-id")]
+        registry_artifact_id: Option<String>,
     },
     RepairYaml {
         project: PathBuf,
@@ -307,6 +311,7 @@ pub fn run() -> Result<()> {
         Some(Command::ExportModelPackage {
             package_name,
             package_version,
+            package_artifacts,
             artifact_id,
             artifact,
             artifact_format,
@@ -314,9 +319,11 @@ pub fn run() -> Result<()> {
             output,
             registry_output,
             registry_entry,
+            registry_artifact_id,
         }) => run_export_model_package(CliModelPackageExportArgs {
             package_name,
             package_version,
+            package_artifacts,
             artifact_id,
             artifact,
             artifact_format,
@@ -324,6 +331,7 @@ pub fn run() -> Result<()> {
             output,
             registry_output,
             registry_entry,
+            registry_artifact_id,
         }),
         Some(Command::RepairYaml {
             project,
@@ -508,27 +516,28 @@ fn run_verify_model_package(
 struct CliModelPackageExportArgs {
     package_name: String,
     package_version: String,
-    artifact_id: String,
-    artifact: PathBuf,
-    artifact_format: String,
+    package_artifacts: Vec<String>,
+    artifact_id: Option<String>,
+    artifact: Option<PathBuf>,
+    artifact_format: Option<String>,
     compiler: Option<String>,
     output: PathBuf,
     registry_output: Option<PathBuf>,
     registry_entry: Option<String>,
+    registry_artifact_id: Option<String>,
 }
 
 fn run_export_model_package(args: CliModelPackageExportArgs) -> Result<()> {
+    let artifacts = export_model_package_artifacts(&args)?;
     let summary = crate::model_package::export_model_package_lock(
         &crate::model_package::ModelPackageExportOptions {
             package_name: args.package_name,
             package_version: args.package_version,
-            artifact_id: args.artifact_id,
-            artifact: args.artifact,
-            artifact_format: args.artifact_format,
-            compiler: args.compiler,
+            artifacts,
             output: args.output,
             registry_output: args.registry_output,
             registry_entry: args.registry_entry,
+            registry_artifact_id: args.registry_artifact_id,
         },
     )?;
     println!(
@@ -544,6 +553,90 @@ fn run_export_model_package(args: CliModelPackageExportArgs) -> Result<()> {
         );
     }
     Ok(())
+}
+
+fn export_model_package_artifacts(
+    args: &CliModelPackageExportArgs,
+) -> Result<Vec<crate::model_package::ModelPackageExportArtifactInput>> {
+    if !args.package_artifacts.is_empty() {
+        if args.artifact_id.is_some() || args.artifact.is_some() || args.artifact_format.is_some() {
+            bail!(
+                "--package-artifact cannot be combined with --artifact-id, --artifact, or --artifact-format."
+            );
+        }
+        if args.compiler.is_some() {
+            bail!(
+                "--compiler cannot be combined with --package-artifact; include compiler= in each artifact spec."
+            );
+        }
+        return args
+            .package_artifacts
+            .iter()
+            .map(|spec| parse_model_package_artifact_spec(spec))
+            .collect();
+    }
+    Ok(vec![
+        crate::model_package::ModelPackageExportArtifactInput {
+            id: args
+                .artifact_id
+                .clone()
+                .context("--artifact-id is required when --package-artifact is not supplied.")?,
+            artifact: args
+                .artifact
+                .clone()
+                .context("--artifact is required when --package-artifact is not supplied.")?,
+            artifact_format: args.artifact_format.clone().context(
+                "--artifact-format is required when --package-artifact is not supplied.",
+            )?,
+            compiler: args.compiler.clone(),
+        },
+    ])
+}
+
+fn parse_model_package_artifact_spec(
+    spec: &str,
+) -> Result<crate::model_package::ModelPackageExportArtifactInput> {
+    let mut id = None;
+    let mut artifact = None;
+    let mut artifact_format = None;
+    let mut compiler = None;
+    let mut seen = std::collections::BTreeSet::new();
+    for piece in spec.split(',') {
+        let (raw_key, raw_value) = piece.split_once('=').with_context(|| {
+            format!("Invalid --package-artifact segment {piece:?}; expected key=value.")
+        })?;
+        let key = raw_key.trim();
+        let value = raw_value.trim();
+        if key.is_empty() || value.is_empty() {
+            bail!(
+                "Invalid --package-artifact segment {piece:?}; keys and values must be non-empty."
+            );
+        }
+        let canonical_key = match key {
+            "id" => "id",
+            "path" | "artifact" => "path",
+            "artifact_format" | "format" => "artifact_format",
+            "compiler" => "compiler",
+            _ => bail!("Unknown --package-artifact key {key:?}."),
+        };
+        if !seen.insert(canonical_key) {
+            bail!("Duplicate --package-artifact key {canonical_key:?}.");
+        }
+        match canonical_key {
+            "id" => id = Some(value.to_string()),
+            "path" => artifact = Some(PathBuf::from(value)),
+            "artifact_format" => artifact_format = Some(value.to_string()),
+            "compiler" => compiler = Some(value.to_string()),
+            _ => unreachable!(),
+        }
+    }
+    Ok(crate::model_package::ModelPackageExportArtifactInput {
+        id: id.context("--package-artifact requires id=<artifact-id>.")?,
+        artifact: artifact.context("--package-artifact requires path=<artifact-path>.")?,
+        artifact_format: artifact_format
+            .context("--package-artifact requires artifact_format=<format>.")?,
+        compiler,
+    })
 }
 
 fn run_repair_yaml(

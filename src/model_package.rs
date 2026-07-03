@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 pub const MODEL_PACKAGE_VERIFICATION_SCHEMA: &str = "circuitci.model_package_verification.v1";
@@ -20,13 +21,19 @@ pub struct ModelPackageVerifyOptions {
 pub struct ModelPackageExportOptions {
     pub package_name: String,
     pub package_version: String,
-    pub artifact_id: String,
-    pub artifact: PathBuf,
-    pub artifact_format: String,
-    pub compiler: Option<String>,
+    pub artifacts: Vec<ModelPackageExportArtifactInput>,
     pub output: PathBuf,
     pub registry_output: Option<PathBuf>,
     pub registry_entry: Option<String>,
+    pub registry_artifact_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelPackageExportArtifactInput {
+    pub id: String,
+    pub artifact: PathBuf,
+    pub artifact_format: String,
+    pub compiler: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -36,9 +43,20 @@ pub struct ModelPackageExportSummary {
     pub artifact_id: String,
     pub artifact_path: String,
     pub artifact_sha256: String,
+    pub artifacts: Vec<ModelPackageExportArtifactSummary>,
     pub registry_path: Option<String>,
     pub registry_sha256: Option<String>,
     pub registry_entry: Option<String>,
+    pub registry_artifact_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageExportArtifactSummary {
+    pub id: String,
+    pub artifact_path: String,
+    pub artifact_sha256: String,
+    pub artifact_format: String,
+    pub compiler: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -190,7 +208,6 @@ pub fn export_model_package_lock(
     options: &ModelPackageExportOptions,
 ) -> Result<ModelPackageExportSummary> {
     validate_export_options(options)?;
-    let artifact_sha = file_sha256_hex(&options.artifact)?;
     let lock_parent = options.output.parent().unwrap_or_else(|| Path::new("."));
     std::fs::create_dir_all(lock_parent).with_context(|| {
         format!(
@@ -198,8 +215,21 @@ pub fn export_model_package_lock(
             lock_parent.display()
         )
     })?;
-    let artifact_path = lock_relative_path(lock_parent, &options.artifact)?;
-    let lock_text = render_lock_document(options, &artifact_path, &artifact_sha);
+    let artifacts = options
+        .artifacts
+        .iter()
+        .map(|artifact| {
+            Ok(ModelPackageExportArtifactSummary {
+                id: artifact.id.clone(),
+                artifact_path: lock_relative_path(lock_parent, &artifact.artifact)?,
+                artifact_sha256: file_sha256_hex(&artifact.artifact)?,
+                artifact_format: artifact.artifact_format.clone(),
+                compiler: artifact.compiler.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let primary = primary_registry_artifact(options, &artifacts)?;
+    let lock_text = render_lock_document(options, &artifacts);
     std::fs::write(&options.output, lock_text.as_bytes()).with_context(|| {
         format!(
             "Failed to write model package lock {}",
@@ -220,9 +250,10 @@ pub fn export_model_package_lock(
         let entry = options
             .registry_entry
             .as_deref()
-            .unwrap_or(options.artifact_id.as_str());
+            .unwrap_or(primary.id.as_str());
         let lock_path = lock_relative_path(registry_parent, &options.output)?;
-        let registry_text = render_registry_document(options, entry, &lock_path, &lock_sha);
+        let registry_text =
+            render_registry_document(options, entry, &primary.id, &lock_path, &lock_sha);
         std::fs::write(output, registry_text.as_bytes()).with_context(|| {
             format!(
                 "Failed to write model package registry {}",
@@ -235,12 +266,14 @@ pub fn export_model_package_lock(
     Ok(ModelPackageExportSummary {
         lock_path: options.output.to_string_lossy().to_string(),
         lock_sha256: lock_sha,
-        artifact_id: options.artifact_id.clone(),
-        artifact_path,
-        artifact_sha256: artifact_sha,
+        artifact_id: primary.id.clone(),
+        artifact_path: primary.artifact_path.clone(),
+        artifact_sha256: primary.artifact_sha256.clone(),
+        artifacts,
         registry_path,
         registry_sha256: registry_sha,
         registry_entry: options.registry_entry.clone(),
+        registry_artifact_id: options.registry_artifact_id.clone(),
     })
 }
 
@@ -248,49 +281,95 @@ fn validate_export_options(options: &ModelPackageExportOptions) -> Result<()> {
     for (field, value) in [
         ("package-name", options.package_name.as_str()),
         ("package-version", options.package_version.as_str()),
-        ("artifact-id", options.artifact_id.as_str()),
-        ("artifact-format", options.artifact_format.as_str()),
     ] {
         if value.trim().is_empty() {
             anyhow::bail!("--{field} must not be empty.");
         }
     }
-    if let Some(compiler) = options.compiler.as_deref()
-        && compiler.trim().is_empty()
-    {
-        anyhow::bail!("--compiler must not be empty when supplied.");
-    }
     if options.registry_output.is_none() && options.registry_entry.is_some() {
         anyhow::bail!("--registry-entry requires --registry-output.");
     }
-    if !options.artifact.is_file() {
-        anyhow::bail!(
-            "Model package artifact {} is missing.",
-            options.artifact.display()
-        );
+    if options.registry_output.is_none() && options.registry_artifact_id.is_some() {
+        anyhow::bail!("--registry-artifact-id requires --registry-output.");
+    }
+    if options.artifacts.is_empty() {
+        anyhow::bail!("Model package export requires at least one artifact.");
+    }
+    let mut ids = BTreeSet::new();
+    for artifact in &options.artifacts {
+        for (field, value) in [
+            ("artifact id", artifact.id.as_str()),
+            ("artifact format", artifact.artifact_format.as_str()),
+        ] {
+            if value.trim().is_empty() {
+                anyhow::bail!("Model package {field} must not be empty.");
+            }
+        }
+        if let Some(compiler) = artifact.compiler.as_deref()
+            && compiler.trim().is_empty()
+        {
+            anyhow::bail!("Model package artifact compiler must not be empty when supplied.");
+        }
+        if !ids.insert(artifact.id.as_str()) {
+            anyhow::bail!("Duplicate model package artifact id {}.", artifact.id);
+        }
+        if !artifact.artifact.is_file() {
+            anyhow::bail!(
+                "Model package artifact {} is missing.",
+                artifact.artifact.display()
+            );
+        }
     }
     Ok(())
 }
 
+fn primary_registry_artifact<'a>(
+    options: &ModelPackageExportOptions,
+    artifacts: &'a [ModelPackageExportArtifactSummary],
+) -> Result<&'a ModelPackageExportArtifactSummary> {
+    if let Some(artifact_id) = options.registry_artifact_id.as_deref() {
+        return artifacts
+            .iter()
+            .find(|artifact| artifact.id == artifact_id)
+            .with_context(|| {
+                format!("--registry-artifact-id {artifact_id} does not match an exported artifact.")
+            });
+    }
+    artifacts
+        .first()
+        .context("Model package export requires at least one artifact.")
+}
+
 fn render_lock_document(
     options: &ModelPackageExportOptions,
-    artifact_path: &str,
-    artifact_sha: &str,
+    artifacts: &[ModelPackageExportArtifactSummary],
 ) -> String {
-    let compiler = options
+    let artifact_rows = artifacts
+        .iter()
+        .map(render_lock_artifact)
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!(
+        "{{\n  \"schema_version\": {},\n  \"package\": {{\n    \"name\": {},\n    \"version\": {}\n  }},\n  \"artifacts\": [\n{}\n  ]\n}}\n",
+        json_string(MODEL_PACKAGE_LOCK_SCHEMA),
+        json_string(&options.package_name),
+        json_string(&options.package_version),
+        artifact_rows,
+    )
+}
+
+fn render_lock_artifact(artifact: &ModelPackageExportArtifactSummary) -> String {
+    let compiler = artifact
         .compiler
         .as_deref()
         .map(|compiler| format!(",\n      \"compiler\": {}", json_string(compiler)))
         .unwrap_or_default();
     format!(
-        "{{\n  \"schema_version\": {},\n  \"package\": {{\n    \"name\": {},\n    \"version\": {}\n  }},\n  \"artifacts\": [\n    {{\n      \"id\": {},\n      \"path\": {},\n      \"sha256\": {},\n      \"artifact_format\": {}{}\n    }}\n  ]\n}}\n",
-        json_string(MODEL_PACKAGE_LOCK_SCHEMA),
-        json_string(&options.package_name),
-        json_string(&options.package_version),
-        json_string(&options.artifact_id),
-        json_string(artifact_path),
-        json_string(artifact_sha),
-        json_string(&options.artifact_format),
+        "    {{\n      \"id\": {},\n      \"path\": {},\n      \"sha256\": {},\n      \"artifact_format\": {}{}\n    }}",
+        json_string(&artifact.id),
+        json_string(&artifact.artifact_path),
+        json_string(&artifact.artifact_sha256),
+        json_string(&artifact.artifact_format),
         compiler,
     )
 }
@@ -298,6 +377,7 @@ fn render_lock_document(
 fn render_registry_document(
     options: &ModelPackageExportOptions,
     entry: &str,
+    artifact_id: &str,
     lock_path: &str,
     lock_sha: &str,
 ) -> String {
@@ -307,7 +387,7 @@ fn render_registry_document(
         json_string(entry),
         json_string(&options.package_name),
         json_string(&options.package_version),
-        json_string(&options.artifact_id),
+        json_string(artifact_id),
         json_string(lock_path),
         json_string(lock_sha),
     )

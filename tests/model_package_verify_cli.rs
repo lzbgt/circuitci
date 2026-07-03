@@ -171,6 +171,133 @@ fn export_model_package_generates_verifiable_lock_and_registry() {
 }
 
 #[test]
+fn export_model_package_supports_multiple_artifacts() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = b"`include \"disciplines.vams\"\nmodule tiny(p,n); inout p,n; endmodule\n";
+    let osdi = b"compiled ngspice osdi fixture\n";
+    let xyce_plugin = b"compiled xyce plugin fixture\n";
+    let conformance = b"{\"result\":\"pass\",\"solver\":\"fixture\"}\n";
+    fs::write(dir.path().join("tiny.va"), source).unwrap();
+    fs::write(dir.path().join("tiny.osdi"), osdi).unwrap();
+    fs::write(dir.path().join("tiny_xyce_plugin.so"), xyce_plugin).unwrap();
+    fs::write(dir.path().join("tiny_conformance.json"), conformance).unwrap();
+    let lock = dir.path().join("multi_artifact_model.lock.json");
+    let registry = dir.path().join("multi_artifact_registry.json");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .arg("export-model-package")
+        .args([
+            "--package-name",
+            "org.circuitci.test.multi_artifact_model",
+            "--package-version",
+            "2.0.0",
+            "--package-artifact",
+            &format!(
+                "id=tiny_source,path={},artifact_format=verilog_a_source",
+                dir.path().join("tiny.va").display()
+            ),
+            "--package-artifact",
+            &format!(
+                "id=tiny_osdi,path={},artifact_format=osdi_shared_object,compiler=openvaf",
+                dir.path().join("tiny.osdi").display()
+            ),
+            "--package-artifact",
+            &format!(
+                "id=tiny_xyce_plugin,path={},artifact_format=xyce_adms_plugin,compiler=xyce_adms",
+                dir.path().join("tiny_xyce_plugin.so").display()
+            ),
+            "--package-artifact",
+            &format!(
+                "id=tiny_conformance,path={},artifact_format=model_conformance_report",
+                dir.path().join("tiny_conformance.json").display()
+            ),
+            "--output",
+            lock.to_str().unwrap(),
+            "--registry-output",
+            registry.to_str().unwrap(),
+            "--registry-entry",
+            "tiny_multi_artifact_qualified",
+            "--registry-artifact-id",
+            "tiny_osdi",
+        ])
+        .status()
+        .unwrap();
+
+    assert!(status.success());
+    let lock_value: Value = serde_json::from_str(&fs::read_to_string(&lock).unwrap()).unwrap();
+    assert_model_package_lock_schema_valid(&lock_value);
+    let artifacts = lock_value["artifacts"].as_array().unwrap();
+    assert_eq!(artifacts.len(), 4);
+    assert_eq!(artifacts[0]["id"], "tiny_source");
+    assert_eq!(artifacts[0]["path"], "tiny.va");
+    assert_eq!(artifacts[0]["sha256"], sha256_hex(source));
+    assert_eq!(artifacts[1]["id"], "tiny_osdi");
+    assert_eq!(artifacts[1]["compiler"], "openvaf");
+    assert_eq!(artifacts[2]["id"], "tiny_xyce_plugin");
+    assert_eq!(artifacts[2]["compiler"], "xyce_adms");
+    assert_eq!(artifacts[3]["id"], "tiny_conformance");
+    let registry_value: Value =
+        serde_json::from_str(&fs::read_to_string(&registry).unwrap()).unwrap();
+    assert_eq!(registry_value["packages"][0]["artifact_id"], "tiny_osdi");
+
+    let report_path = dir.path().join("multi_artifact_verification.json");
+    let verify_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package",
+            lock.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--registry-entry",
+            "tiny_multi_artifact_qualified",
+            "--output",
+            report_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(verify_status.success());
+    let report: Value = serde_json::from_str(&fs::read_to_string(report_path).unwrap()).unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["artifacts"].as_array().unwrap().len(), 4);
+    assert_model_package_report_schema_valid(&report);
+}
+
+#[test]
+fn export_model_package_rejects_unknown_registry_artifact() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("tiny.va"), b"module tiny; endmodule\n").unwrap();
+    let lock = dir.path().join("bad_registry_artifact.lock.json");
+    let registry = dir.path().join("bad_registry_artifact_registry.json");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .arg("export-model-package")
+        .args([
+            "--package-name",
+            "org.circuitci.test.bad_registry_artifact",
+            "--package-version",
+            "1.0.0",
+            "--package-artifact",
+            &format!(
+                "id=tiny_source,path={},artifact_format=verilog_a_source",
+                dir.path().join("tiny.va").display()
+            ),
+            "--output",
+            lock.to_str().unwrap(),
+            "--registry-output",
+            registry.to_str().unwrap(),
+            "--registry-entry",
+            "bad_registry_artifact",
+            "--registry-artifact-id",
+            "missing_runtime",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--registry-artifact-id missing_runtime"));
+}
+
+#[test]
 fn verify_model_package_fails_for_artifact_hash_mismatch_but_writes_report() {
     let dir = tempfile::tempdir().unwrap();
     write_package_files(dir.path());
