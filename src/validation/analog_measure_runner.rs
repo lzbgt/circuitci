@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
-    sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, push_ngspice_osdi_load_commands, rewrite_include_line,
+    run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -289,6 +289,7 @@ fn build_ngspice_measure_wrapper(
         }
     }
     text.push_str(".control\n");
+    push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
     if mode == "tran" {
         text.push_str("tran ");
         text.push_str(&format!(

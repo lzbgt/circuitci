@@ -1366,7 +1366,12 @@ builds, and `sha256` for hash mismatches. Stable limit keys include
 `model_file`, `output_path`, and `expected_sha256`. These findings keep
 Verilog-A compact-model use fail-closed until the compiled OSDI artifact is tied
 to source path/hash, OpenVAF compiler identity/version, and reproducible
-compiler command metadata.
+compiler command metadata. For external ngspice transient runs that reach solver
+execution, OSDI artifacts are loaded through generated `pre_osdi` wrapper
+commands. If the runtime rejects those commands or cannot load the OSDI
+artifact, the normal `SPICE_TRANSIENT_ANALYSIS` finding preserves the wrapper
+and log artifacts and its message identifies OSDI model loading as the failing
+boundary.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

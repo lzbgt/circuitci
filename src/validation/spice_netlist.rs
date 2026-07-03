@@ -42,6 +42,9 @@ pub(super) fn generate_board_netlist(
     text.push_str(&bound.project.project.name);
     text.push('\n');
     for model_file in &analog.model_files {
+        if model_file.artifact_format.as_deref() == Some("osdi_shared_object") {
+            continue;
+        }
         let path =
             absolute_path(&bound.project.source_dir.join(&model_file.path)).map_err(|error| {
                 format!("Failed to resolve model file {}: {error}", model_file.path)

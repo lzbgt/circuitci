@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
-    sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, push_ngspice_osdi_load_commands, rewrite_include_line,
+    run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -296,7 +296,9 @@ fn build_ngspice_fourier_wrapper(
     }
     let requested_harmonics = analog.analysis.fourier_harmonics.unwrap_or(10);
     let nfreqs = requested_harmonics.saturating_add(1);
-    text.push_str(".control\nset nfreqs=");
+    text.push_str(".control\n");
+    push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
+    text.push_str("set nfreqs=");
     text.push_str(&nfreqs.to_string());
     text.push_str("\ntran ");
     text.push_str(&format!(

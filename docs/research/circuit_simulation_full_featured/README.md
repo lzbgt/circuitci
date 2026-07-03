@@ -656,7 +656,12 @@ The GUI should not become the solver.
   command directly from the project directory, rejects shell metacharacters in
   the command contract, and rechecks the produced OSDI artifact hash before
   solver planning continues.
-- Add model compatibility tests per backend.
+- Added the first backend compatibility check for OpenVAF/OSDI models:
+  generated Board IR netlists skip `.include` lines for OSDI binaries, external
+  ngspice wrappers emit `pre_osdi` load commands, and runtimes that reject OSDI
+  loading fail closed with wrapper/log evidence.
+- Add real-ngspice OSDI conformance coverage using a small OpenVAF-compatible
+  Verilog-A fixture on hosts where ngspice is built with OSDI support.
 - Add artifact hashes and generated-model provenance to reports.
 
 ## Risks

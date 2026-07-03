@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
-    sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, push_ngspice_osdi_load_commands, rewrite_include_line,
+    run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -284,12 +284,30 @@ fn build_ngspice_transfer_function_wrapper(
             text.push('\n');
         }
     }
+    push_ngspice_osdi_control_block(&mut text, bound, scenario)?;
     text.push_str(".tf ");
     text.push_str(output_expression);
     text.push(' ');
     text.push_str(input_source);
     text.push_str("\n.end\n");
     Ok(text)
+}
+
+fn push_ngspice_osdi_control_block(
+    text: &mut String,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+) -> Result<(), String> {
+    let before = text.len();
+    push_ngspice_osdi_load_commands(text, bound, scenario)?;
+    if text.len() == before {
+        return Ok(());
+    }
+    let commands = text.split_off(before);
+    text.push_str(".control\n");
+    text.push_str(&commands);
+    text.push_str(".endc\n");
+    Ok(())
 }
 
 fn transfer_function_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> {

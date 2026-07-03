@@ -7,13 +7,19 @@ use common::{
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs;
+use std::process::Command;
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
+    fake_executable_with_body(dir, name, "#!/bin/sh\nexit 99\n");
+}
+
+#[cfg(unix)]
+fn fake_executable_with_body(dir: &std::path::Path, name: &str, body: &str) {
     use std::os::unix::fs::PermissionsExt;
 
     let path = dir.join(name);
-    fs::write(&path, "#!/bin/sh\nexit 99\n").unwrap();
+    fs::write(&path, body).unwrap();
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&path, permissions).unwrap();
@@ -171,6 +177,112 @@ scenarios:
     project
 }
 
+fn write_model_compiler_transient_project(
+    dir: &std::path::Path,
+    source_sha256: &str,
+    artifact_sha256: &str,
+) -> std::path::PathBuf {
+    let repo = std::env::current_dir().unwrap();
+    let project = dir.join("project.yaml");
+    fs::write(
+        &project,
+        format!(
+            r#"project: {{ name: model_compiler_osdi_load, version: 0.1.0 }}
+libraries:
+  - {libs}
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins: {{ P: vin, N: gnd }}
+      spice: {{ primitive: dc_voltage_source, dc_v: 1.0 }}
+    R1:
+      model: generic.analog.resistor
+      pins: {{ A: vin, B: out }}
+      spice: {{ primitive: resistor, value_ohm: 1000 }}
+  nets:
+    vin: {{ kind: power, nominal_voltage: 1.0, powered: true }}
+    out: {{ kind: digital_or_analog }}
+    gnd: {{ kind: ground }}
+scenarios:
+  - name: model_compiler_transient
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: ngspice
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1]
+      model_files:
+        - path: tiny_resistor.osdi
+          sha256: {artifact_sha256}
+          artifact_format: osdi_shared_object
+          source_path: tiny_resistor.va
+          source_sha256: {source_sha256}
+          compiler: openvaf
+          compiler_version: 23.5.0-test
+          compiler_command: openvaf tiny_resistor.va -o tiny_resistor.osdi
+      node_bindings:
+        - {{ node: vin, net: vin }}
+        - {{ node: out, net: out }}
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: vin, endpoint: {{ component: V1, pin: P }} }}
+        - {{ node: "0", endpoint: {{ component: V1, pin: N }} }}
+        - {{ node: vin, endpoint: {{ component: R1, pin: A }} }}
+        - {{ node: out, endpoint: {{ component: R1, pin: B }} }}
+      analysis:
+        type: tran
+        stop_time_us: 2.0
+        max_step_us: 1.0
+      stimuli: []
+      probes:
+        - {{ name: out, expression: V(out) }}
+      assertions:
+        - {{ name: out_above_threshold, probe: out, at_us: 1.0, relation: above, threshold_v: 0.4 }}
+"#,
+            libs = repo.join("libs/generic/analog").to_string_lossy(),
+        ),
+    )
+    .unwrap();
+    project
+}
+
+fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
+    report["artifacts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with(suffix))
+        .unwrap_or_else(|| panic!("missing artifact ending with {suffix}"))
+}
+
+fn run_validation_with_path_retaining_output(
+    project: &str,
+    path: &std::path::Path,
+) -> (tempfile::TempDir, Value) {
+    let out_dir = tempfile::tempdir().unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project,
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    (out_dir, report)
+}
+
 #[cfg(unix)]
 #[test]
 fn openvaf_osdi_model_provenance_is_schema_valid_and_reaches_analysis_planning() {
@@ -203,6 +315,68 @@ fn openvaf_osdi_model_provenance_is_schema_valid_and_reaches_analysis_planning()
         artifacts
             .iter()
             .any(|artifact| artifact.as_str().unwrap().ends_with("tiny_resistor.osdi"))
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_is_loaded_with_ngspice_pre_osdi() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'time v(out)\\n0.0 0.5\\n0.000001 0.5\\n' > waveform.csv\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+
+    let (_out_dir, report) =
+        run_validation_with_path_retaining_output(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass", "{report:#}");
+    let wrapper = fs::read_to_string(artifact_path(&report, "circuitci_ngspice.cir")).unwrap();
+    assert!(wrapper.contains("pre_osdi \""));
+    assert!(wrapper.contains("tiny_resistor.osdi"));
+    assert!(!wrapper.contains(".include \""));
+    let generated = fs::read_to_string(artifact_path(&report, "generated_board.cir")).unwrap();
+    assert!(!generated.contains("tiny_resistor.osdi"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        manifest["inputs"]["model_files"][0]["artifact_format"],
+        "osdi_shared_object"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_reports_ngspice_without_osdi_support() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\necho 'Error: no such command pre_osdi' >&2\nexit 1\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("OSDI model loading failed")
     );
     assert_report_schema_valid(&report);
 }

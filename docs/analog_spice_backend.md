@@ -94,7 +94,10 @@ Required fields:
   missing or hash-stale compiled artifacts fail closed with a rebuild plan
   unless CI opts into direct OpenVAF execution with
   `CIRCUITCI_RUN_OPENVAF_BUILDS=1`, after which the produced artifact hash must
-  match the declared pin before the backend can run.
+  match the declared pin before the backend can run. External ngspice wrappers
+  load OSDI artifacts with `pre_osdi` inside `.control`; generated netlists do
+  not `.include` the binary artifact. A runtime that rejects `pre_osdi` fails
+  closed and preserves the wrapper/log artifacts.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

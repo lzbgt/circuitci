@@ -202,6 +202,15 @@ where
     })?;
     artifacts.push(log.clone());
     if !output.status.success() {
+        if let Some(reason) = detect_osdi_load_failure(&log_text) {
+            return Err(ngspice_error(
+                format!(
+                    "ngspice OSDI model loading failed ({reason}); see {}.",
+                    log.display()
+                ),
+                artifacts,
+            ));
+        }
         return Err(ngspice_error(
             format!(
                 "ngspice transient analysis exited with status {}.",
@@ -933,6 +942,34 @@ pub(super) fn detect_nonconvergence(log: &str) -> Option<&'static str> {
     None
 }
 
+fn detect_osdi_load_failure(log: &str) -> Option<&'static str> {
+    let lower = log.to_ascii_lowercase();
+    if !lower.contains("osdi") && !lower.contains("pre_osdi") {
+        return None;
+    }
+    for (pattern, reason) in [
+        (
+            "no such command",
+            "ngspice runtime does not recognize the OSDI load command",
+        ),
+        (
+            "unknown command",
+            "ngspice runtime does not recognize the OSDI load command",
+        ),
+        (
+            "undefined command",
+            "ngspice runtime does not recognize the OSDI load command",
+        ),
+        ("cannot load", "ngspice could not load the OSDI artifact"),
+        ("failed to load", "ngspice could not load the OSDI artifact"),
+    ] {
+        if lower.contains(pattern) {
+            return Some(reason);
+        }
+    }
+    None
+}
+
 fn build_ngspice_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -1017,6 +1054,7 @@ fn build_ngspice_wrapper(
         ""
     };
     text.push_str(".control\n");
+    push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
     text.push_str("set wr_vecnames\n");
     text.push_str("set wr_singlescale\n");
     text.push_str(&format!("tran {:.12e} {:.12e}{uic}\n", step_s, stop_s));
@@ -1111,6 +1149,7 @@ fn build_ngspice_ac_wrapper(
         }
     }
     text.push_str(".control\n");
+    push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
     text.push_str("set wr_vecnames\n");
     text.push_str("set wr_singlescale\n");
     text.push_str(&format!(
@@ -1284,6 +1323,30 @@ pub(super) fn rewrite_include_line(line: &str, source_dir: &Path) -> String {
     let indent_len = line.len() - trimmed.len();
     let indent = &line[..indent_len];
     format!("{indent}{directive} \"{}\"", absolute.to_string_lossy())
+}
+
+pub(super) fn push_ngspice_osdi_load_commands(
+    text: &mut String,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+) -> Result<(), String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before ngspice OSDI prelude generation");
+    for model_file in &analog.model_files {
+        if model_file.artifact_format.as_deref() != Some("osdi_shared_object") {
+            continue;
+        }
+        let path =
+            absolute_path(&bound.project.source_dir.join(&model_file.path)).map_err(|error| {
+                format!("Failed to resolve OSDI model {}: {error}", model_file.path)
+            })?;
+        text.push_str("pre_osdi \"");
+        text.push_str(&path.to_string_lossy());
+        text.push_str("\"\n");
+    }
+    Ok(())
 }
 
 pub(super) fn parse_waveform_csv(

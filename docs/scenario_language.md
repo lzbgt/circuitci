@@ -3723,7 +3723,10 @@ and whether `openvaf` is currently available on `PATH`, so CI can rebuild the
 artifact from pinned source before rerunning simulation. Set
 `CIRCUITCI_RUN_OPENVAF_BUILDS=1` to let validation run the declared `openvaf`
 command directly from the project directory and require the produced artifact
-to match the declared SHA-256 before solver planning continues.
+to match the declared SHA-256 before solver planning continues. External
+ngspice wrappers load these artifacts with `pre_osdi`; generated Board IR
+netlists skip `.include` lines for OSDI binaries so they are never parsed as
+text model cards.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

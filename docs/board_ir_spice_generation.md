@@ -112,6 +112,11 @@ its hash is stale. CI may opt into controlled rebuilds with
 `CIRCUITCI_RUN_OPENVAF_BUILDS=1`; in that mode CircuitCI executes the declared
 `openvaf` command directly from the project directory, never through a shell,
 then revalidates the compiled artifact hash before allowing solver planning.
+Generated Board IR netlists do not `.include` compiled OSDI binaries as text.
+When an external ngspice backend is selected, CircuitCI emits `pre_osdi`
+commands in the generated wrapper deck and records the source, wrapper, OSDI
+artifact, and solver log as report artifacts. If ngspice was built without OSDI
+command support, the run fails closed with the wrapper/log artifacts preserved.
 
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear

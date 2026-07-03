@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
-    sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, push_ngspice_osdi_load_commands, rewrite_include_line,
+    run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -290,7 +290,9 @@ fn build_ngspice_sensitivity_wrapper(
             text.push('\n');
         }
     }
-    text.push_str(".control\nsens ");
+    text.push_str(".control\n");
+    push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
+    text.push_str("sens ");
     text.push_str(output_expression);
     for filter in &analog.analysis.sensitivity_filters {
         text.push(' ');
