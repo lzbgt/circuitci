@@ -514,9 +514,10 @@ The GUI should not become the solver.
   contract for output/reference nodes, input source, mode, and normalized
   `pole_zero_summary` plus opt-in real-ngspice conformance; next add
   non-ngspice planning/adapters.
-- The first `.SENS` path is a Board IR/schema contract for DC or AC output
-  sensitivity, optional filters, and fail-closed `sensitivity_summary` backend
-  planning before enabling solver adapters.
+- The first `.SENS` path is an external-ngspice adapter with a Board IR/schema
+  contract for DC or AC output sensitivity, optional filters, normalized
+  `sensitivity_summary`, solver manifests, and opt-in real-ngspice conformance;
+  next add non-ngspice planning/adapters.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

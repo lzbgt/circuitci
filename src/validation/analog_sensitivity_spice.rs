@@ -12,9 +12,11 @@ use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
     external_backend_unavailable, select_backend_for_feature,
 };
+use super::analog_sensitivity_runner::{NgspiceSensitivityRunOptions, run_ngspice_sensitivity};
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
+use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 
@@ -214,10 +216,13 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
             return;
         }
     }
-    if let Err(message) = analog_run_plans(analog) {
-        validation_input_missing(findings, scenario, message);
-        return;
-    }
+    let run_plans = match analog_run_plans(analog) {
+        Ok(run_plans) => run_plans,
+        Err(message) => {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    };
 
     let run_dir = output
         .join("analog")
@@ -233,8 +238,11 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
         ));
         return;
     }
-    match prepare_source_netlist(bound, scenario, &run_dir) {
-        Ok(source_netlist) => push_artifact(artifacts, &source_netlist),
+    let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => {
+            push_artifact(artifacts, &source_netlist);
+            source_netlist
+        }
         Err(message) => {
             let mut finding =
                 Finding::critical(SPICE_SENSITIVITY_ANALYSIS, &scenario.name, message);
@@ -244,7 +252,7 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
             findings.push(finding);
             return;
         }
-    }
+    };
 
     on_progress(
         "Planning analog sensitivity backend",
@@ -267,43 +275,102 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
         return;
     };
 
-    let mut finding = unsupported_backend_plan_finding(
-        scenario,
-        UnsupportedBackendPlan {
-            check_id: SPICE_SENSITIVITY_ANALYSIS,
-            selected_backend: backend,
-            implemented_backend: "none_yet",
-            analysis_kind: "sensitivity",
-            required_normalized_outputs: &["sensitivity_summary"],
-        },
-    );
-    finding
-        .measured
-        .insert("output_expression".to_string(), json!(output_expression));
-    finding.measured.insert("mode".to_string(), json!(mode));
-    finding.measured.insert(
-        "filters".to_string(),
-        json!(analog.analysis.sensitivity_filters),
-    );
-    if mode == "ac" {
-        finding.measured.insert(
-            "frequency_start_hz".to_string(),
-            json!(analog.analysis.start_frequency_hz),
+    if backend != "ngspice" {
+        let mut finding = unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_SENSITIVITY_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice",
+                analysis_kind: "sensitivity",
+                required_normalized_outputs: &["sensitivity_summary"],
+            },
         );
+        finding
+            .measured
+            .insert("output_expression".to_string(), json!(output_expression));
+        finding.measured.insert("mode".to_string(), json!(mode));
         finding.measured.insert(
-            "frequency_stop_hz".to_string(),
-            json!(analog.analysis.stop_frequency_hz),
+            "filters".to_string(),
+            json!(analog.analysis.sensitivity_filters),
         );
-        finding.measured.insert(
-            "points_per_decade".to_string(),
-            json!(analog.analysis.points_per_decade),
+        if mode == "ac" {
+            finding.measured.insert(
+                "frequency_start_hz".to_string(),
+                json!(analog.analysis.start_frequency_hz),
+            );
+            finding.measured.insert(
+                "frequency_stop_hz".to_string(),
+                json!(analog.analysis.stop_frequency_hz),
+            );
+            finding.measured.insert(
+                "points_per_decade".to_string(),
+                json!(analog.analysis.points_per_decade),
+            );
+        }
+        finding.limit.insert(
+            "required_evidence".to_string(),
+            json!("sensitivity_summary_csv_or_json"),
         );
+        findings.push(finding);
+        return;
     }
-    finding.limit.insert(
-        "required_evidence".to_string(),
-        json!("sensitivity_summary_csv_or_json"),
-    );
-    findings.push(finding);
+
+    for run_plan in run_plans {
+        if should_cancel() {
+            push_canceled_finding(findings, scenario);
+            return;
+        }
+        on_progress(
+            "Running analog sensitivity input corner",
+            run_plan.progress_label(),
+        );
+        let parameter_overrides = run_plan.parameter_overrides_for_solver();
+        let run_result = run_ngspice_sensitivity(
+            bound,
+            scenario,
+            backend,
+            &source_netlist,
+            NgspiceSensitivityRunOptions {
+                output,
+                run_subdir: run_plan.run_subdir.as_deref(),
+                parameter_overrides: &parameter_overrides,
+                model_section_overrides: &run_plan.model_section_overrides,
+                on_progress: &mut on_progress,
+                should_cancel: &should_cancel,
+            },
+        );
+        match run_result {
+            Ok(run) => {
+                let finding_start = findings.len();
+                for artifact in &run.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                push_artifact(artifacts, &run.summary);
+                tag_corner_findings(findings, finding_start, &run_plan, false);
+            }
+            Err(error) => {
+                for artifact in &error.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                let mut finding =
+                    Finding::critical(SPICE_SENSITIVITY_ANALYSIS, &scenario.name, error.message);
+                finding
+                    .measured
+                    .insert("selected_backend".to_string(), json!(backend));
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!("ngspice_sensitivity_summary_csv"),
+                );
+                tag_corner_finding(&mut finding, &run_plan);
+                finding.suggested_fixes.push(
+                    "Inspect the generated ngspice .SENS wrapper deck and solver log artifacts."
+                        .to_string(),
+                );
+                findings.push(finding);
+            }
+        }
+    }
 }
 
 fn validate_output_expression(

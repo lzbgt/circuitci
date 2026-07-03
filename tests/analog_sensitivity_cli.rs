@@ -1,15 +1,26 @@
 mod common;
 
-use common::{assert_report_schema_valid, assert_yaml_file_valid, run_validation_with_path};
+use common::{
+    assert_report_schema_valid, assert_yaml_file_valid, binary_available, run_validation_with_path,
+};
 use serde_json::Value;
 use std::fs;
+use std::process::Command;
+
+#[cfg(unix)]
+const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
+    fake_executable_with_body(dir, name, "#!/bin/sh\nexit 99\n");
+}
+
+#[cfg(unix)]
+fn fake_executable_with_body(dir: &std::path::Path, name: &str, body: &str) {
     use std::os::unix::fs::PermissionsExt;
 
     let path = dir.join(name);
-    fs::write(&path, "#!/bin/sh\nexit 99\n").unwrap();
+    fs::write(&path, body).unwrap();
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&path, permissions).unwrap();
@@ -96,16 +107,249 @@ scenarios:
 }
 
 #[cfg(unix)]
+fn real_ngspice_conformance_enabled() -> bool {
+    if std::env::var(REAL_NGSPICE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real-ngspice sensitivity conformance; set {REAL_NGSPICE_CONFORMANCE_ENV}=1"
+        );
+        return false;
+    }
+    if !binary_available("ngspice") {
+        eprintln!("skipping real-ngspice sensitivity conformance; ngspice is not on PATH");
+        return false;
+    }
+    true
+}
+
+fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
+    report["artifacts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with(suffix))
+        .unwrap_or_else(|| panic!("missing artifact with suffix {suffix}"))
+}
+
+fn assert_sensitivity_summary_has_dc_rows(path: &str) {
+    let text = fs::read_to_string(path).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(
+        lines.next().unwrap_or(""),
+        "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude"
+    );
+    assert!(
+        lines.any(|line| line.contains("V(out),dc,")),
+        "{path} did not contain a DC sensitivity row"
+    );
+}
+
+fn assert_sensitivity_summary_has_ac_rows(path: &str) {
+    let text = fs::read_to_string(path).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(
+        lines.next().unwrap_or(""),
+        "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude"
+    );
+    assert!(
+        lines.any(|line| line.contains("V(out),ac,")),
+        "{path} did not contain an AC sensitivity row"
+    );
+}
+
+#[cfg(unix)]
 #[test]
-fn sensitivity_contract_is_schema_valid_and_fails_closed_with_planning_evidence() {
+fn sensitivity_backend_normalizes_summary_and_manifest() {
     let fake_path = tempfile::tempdir().unwrap();
-    fake_executable(fake_path.path(), "ngspice");
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'r1 = -2.50000e-04\\nr2 = 2.499998e-04\\n'\nexit 0\n",
+    );
     let project_dir = tempfile::tempdir().unwrap();
     let project_path = write_sensitivity_project(project_dir.path(), "ngspice", "V(out)", "dc");
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
     assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let summary_path = artifact_path(&report, "sensitivity_summary.csv");
+    let summary = fs::read_to_string(summary_path).unwrap();
+    assert!(summary.contains(
+        "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude"
+    ));
+    assert!(summary.contains("V(out),dc,r1,,-2.500000000000e-4,0.000000000000e0"));
+    assert!(summary.contains("V(out),dc,r2,,2.499998000000e-4,0.000000000000e0"));
+    assert!(artifact_path(&report, "sensitivity_raw.txt").ends_with("sensitivity_raw.txt"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["selected"], "ngspice");
+    assert_eq!(manifest["analysis"]["kind"], "sensitivity");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "sensitivity_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_sensitivity_conformance_when_enabled() {
+    if !real_ngspice_conformance_enabled() {
+        return;
+    }
+
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project(project_dir.path(), "ngspice", "V(out)", "dc");
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_sensitivity_summary_has_dc_rows(artifact_path(&report, "sensitivity_summary.csv"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "sensitivity_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_ac_sensitivity_conformance_when_enabled() {
+    if !real_ngspice_conformance_enabled() {
+        return;
+    }
+
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project(project_dir.path(), "ngspice", "V(out)", "ac");
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_sensitivity_summary_has_ac_rows(artifact_path(&report, "sensitivity_summary.csv"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "sensitivity_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn ac_sensitivity_backend_reports_frequency_rows() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'Index   frequency       r1\\n0 1.000000e+02 -2.50000e-04, 1.000000e-06\\nIndex   frequency       r2\\n0 1.000000e+02 2.499998e-04, -0.000000e+00\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project(project_dir.path(), "ngspice", "V(out)", "ac");
+
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "sensitivity_summary.csv")).unwrap();
+    assert!(summary.contains("V(out),ac,r1,1.000000000000e2,-2.500000000000e-4"));
+    assert!(summary.contains("V(out),ac,r2,1.000000000000e2,2.499998000000e-4"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sensitivity_xyce_backend_fails_closed_with_planning_evidence() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project(project_dir.path(), "xyce", "V(out)", "dc");
 
     let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
 
@@ -131,33 +375,43 @@ fn sensitivity_contract_is_schema_valid_and_fails_closed_with_planning_evidence(
     );
     assert_eq!(
         report["failures"][0]["limit"]["implemented_backend"],
-        "none_yet"
+        "ngspice"
     );
     assert_report_schema_valid(&report);
 }
 
 #[cfg(unix)]
 #[test]
-fn ac_sensitivity_contract_requires_and_reports_frequency_bounds() {
+fn sensitivity_backend_launch_failure_reports_solver_artifacts() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "ngspice");
     let project_dir = tempfile::tempdir().unwrap();
-    let project_path = write_sensitivity_project(project_dir.path(), "ngspice", "V(out)", "ac");
+    let project_path = write_sensitivity_project(project_dir.path(), "ngspice", "V(out)", "dc");
 
     let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
 
     assert_eq!(report["result"], "fail");
     assert_eq!(report["failures"][0]["id"], "SPICE_SENSITIVITY_ANALYSIS");
-    assert_eq!(report["failures"][0]["measured"]["mode"], "ac");
     assert_eq!(
-        report["failures"][0]["measured"]["frequency_start_hz"],
-        100.0
+        report["failures"][0]["measured"]["selected_backend"],
+        "ngspice"
     );
     assert_eq!(
-        report["failures"][0]["measured"]["frequency_stop_hz"],
-        100000.0
+        report["failures"][0]["limit"]["required_evidence"],
+        "ngspice_sensitivity_summary_csv"
     );
-    assert_eq!(report["failures"][0]["measured"]["points_per_decade"], 20);
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(artifacts.iter().any(|artifact| {
+        artifact
+            .as_str()
+            .unwrap()
+            .ends_with("circuitci_ngspice_sens.cir")
+    }));
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("ngspice_sens.log"))
+    );
     assert_report_schema_valid(&report);
 }
 

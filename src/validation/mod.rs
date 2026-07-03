@@ -11,6 +11,7 @@ mod analog_operating_limits;
 mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
 mod analog_runner;
+mod analog_sensitivity_runner;
 mod analog_sensitivity_spice;
 mod analog_soa;
 mod analog_sparameter_spice;

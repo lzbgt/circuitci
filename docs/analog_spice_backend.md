@@ -62,7 +62,7 @@ output/input source contract for `.TF` gain and resistance exports. An
 `analog_pole_zero` scenario owns a small-signal output/reference/input-source
 contract for `.PZ` pole and zero extraction. An `analog_sensitivity` scenario
 owns a DC or AC output-variable sensitivity contract with optional ngspice
-parameter filters for future `.SENS` exports.
+parameter filters for `.SENS` exports.
 
 Required fields:
 
@@ -302,9 +302,17 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
    `sensitivity_filters[]` map to ngspice SENS filters.
 4. AC mode requires `start_frequency_hz`, `stop_frequency_hz`, and
    `points_per_decade`, matching the AC sweep fields used elsewhere.
-5. All backends currently fail closed with backend-planning evidence until an
-   adapter emits normalized `sensitivity_summary` evidence and a solver
-   manifest.
+5. External `ngspice` writes `sensitivity_raw.txt`,
+   `sensitivity_summary.csv`, and `solver_manifest.json`. DC sensitivity rows
+   normalize scalar parameter derivatives; AC sensitivity rows normalize
+   per-frequency complex sensitivity values plus magnitude.
+6. Opt-in real-ngspice conformance coverage is available through
+   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
+   the test is skipped by default unless the variable is set and `ngspice` is
+   on `PATH`.
+7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+   until those adapters emit the same normalized `sensitivity_summary`
+   contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical
