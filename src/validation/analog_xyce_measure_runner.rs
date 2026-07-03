@@ -1,18 +1,19 @@
 use crate::board_ir::{AnalogMeasureTemplate, Scenario};
 use crate::library::BoundBoard;
-use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 
+use super::analog_measure_runner::{NgspiceMeasureRun, measure_raw_to_csv};
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, rewrite_include_line, run_solver_with_timeout,
-    sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, rewrite_include_line, sweep_temperature_c,
+    write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
+use super::analog_xyce_runner::run_xyce_with_timeout;
 
-pub(super) struct NgspiceMeasureRunOptions<'a, F, C>
+pub(super) struct XyceMeasureRunOptions<'a, F, C>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
@@ -25,23 +26,18 @@ where
     pub(super) should_cancel: C,
 }
 
-pub(super) struct NgspiceMeasureRun {
-    pub(super) artifacts: Vec<PathBuf>,
-    pub(super) summary: PathBuf,
-}
-
-pub(super) fn run_ngspice_measure<F, C>(
+pub(super) fn run_xyce_measure<F, C>(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     backend: &str,
     source_netlist: &Path,
-    options: NgspiceMeasureRunOptions<'_, F, C>,
+    options: XyceMeasureRunOptions<'_, F, C>,
 ) -> Result<NgspiceMeasureRun, NgspiceRunError>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
 {
-    let NgspiceMeasureRunOptions {
+    let XyceMeasureRunOptions {
         output,
         run_subdir,
         parameter_overrides,
@@ -52,7 +48,7 @@ where
     let analog = scenario
         .analog
         .as_ref()
-        .expect("analog was validated before measure run");
+        .expect("analog was validated before Xyce measure run");
     let mut run_dir = output
         .join("analog")
         .join(safe_artifact_name(&scenario.name));
@@ -62,23 +58,23 @@ where
     fs::create_dir_all(&run_dir).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to create analog measure run directory {}: {error}",
+                "Failed to create analog Xyce measure run directory {}: {error}",
                 run_dir.display()
             ),
             Vec::new(),
         )
     })?;
     let mut artifacts = vec![source_netlist.to_path_buf()];
-    let wrapper = run_dir.join("circuitci_ngspice_measure.cir");
-    let log = run_dir.join("ngspice_measure.log");
+    let wrapper = run_dir.join("circuitci_xyce_measure.cir");
+    let log = run_dir.join("xyce_measure.log");
     let raw = run_dir.join("measure_raw.txt");
     let summary = run_dir.join("measure_summary.csv");
 
     on_progress(
-        "Writing analog measure wrapper deck",
+        "Writing analog Xyce measure wrapper deck",
         format!("Writing {}.", wrapper.to_string_lossy()),
     );
-    let wrapper_text = build_ngspice_measure_wrapper(
+    let wrapper_text = build_xyce_measure_wrapper(
         bound,
         scenario,
         source_netlist,
@@ -89,7 +85,7 @@ where
     fs::write(&wrapper, wrapper_text).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to write ngspice measure wrapper deck {}: {error}",
+                "Failed to write Xyce measure wrapper deck {}: {error}",
                 wrapper.display()
             ),
             artifacts.clone(),
@@ -98,26 +94,20 @@ where
     artifacts.push(wrapper.clone());
 
     on_progress(
-        "Running analog measure backend",
+        "Running analog Xyce measure backend",
         format!(
-            "{} .MEASURE {} with {} measurement(s).",
+            "{} .MEASURE {} with {} template(s).",
             backend,
             analog
                 .analysis
                 .measure_mode
                 .as_deref()
                 .unwrap_or("<missing>"),
-            analog.analysis.measure_statements.len() + analog.analysis.measure_templates.len()
+            analog.analysis.measure_templates.len()
         ),
     );
-    let output = run_solver_with_timeout(
-        backend,
-        &wrapper,
-        Duration::from_secs(60),
-        None,
-        should_cancel,
-    )
-    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    let output = run_xyce_with_timeout(backend, &wrapper, Duration::from_secs(60), should_cancel)
+        .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     let mut log_text = String::new();
     log_text.push_str("COMMAND: ");
     log_text.push_str(&output.command);
@@ -128,7 +118,7 @@ where
     fs::write(&log, &log_text).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to write ngspice measure log {}: {error}",
+                "Failed to write Xyce measure log {}: {error}",
                 log.display()
             ),
             artifacts.clone(),
@@ -138,7 +128,7 @@ where
     if !output.status.success() {
         return Err(ngspice_error(
             format!(
-                "ngspice measure analysis exited with status {}.",
+                "Xyce measure analysis exited with status {}.",
                 output.status
             ),
             artifacts,
@@ -146,14 +136,14 @@ where
     }
     if let Some(reason) = detect_nonconvergence(&log_text) {
         return Err(ngspice_error(
-            format!("ngspice reported non-convergence or numerical failure: {reason}."),
+            format!("Xyce reported non-convergence or numerical failure: {reason}."),
             artifacts,
         ));
     }
     fs::write(&raw, &log_text).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to write ngspice measure raw output {}: {error}",
+                "Failed to write Xyce measure raw output {}: {error}",
                 raw.display()
             ),
             artifacts.clone(),
@@ -165,7 +155,7 @@ where
     fs::write(&summary, summary_csv).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to write measure summary CSV {}: {error}",
+                "Failed to write Xyce measure summary CSV {}: {error}",
                 summary.display()
             ),
             artifacts.clone(),
@@ -184,7 +174,7 @@ where
         output: &output,
         parameter_overrides,
         model_section_overrides,
-        raw_outputs: &[("ngspice_measure_stdout", &raw)],
+        raw_outputs: &[("xyce_measure_stdout", &raw)],
         normalized_outputs: &[("measure_summary", &summary)],
     })
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
@@ -192,7 +182,7 @@ where
     Ok(NgspiceMeasureRun { artifacts, summary })
 }
 
-fn build_ngspice_measure_wrapper(
+fn build_xyce_measure_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     netlist: &Path,
@@ -202,12 +192,12 @@ fn build_ngspice_measure_wrapper(
     let analog = scenario
         .analog
         .as_ref()
-        .expect("analog was validated before measure wrapper generation");
+        .expect("analog was validated before Xyce measure wrapper generation");
     let mode = analog
         .analysis
         .measure_mode
         .as_deref()
-        .ok_or_else(|| "measure_mode is required for .MEASURE analysis.".to_string())?;
+        .ok_or_else(|| "measure_mode is required for Xyce measure analysis.".to_string())?;
     let source = fs::read_to_string(netlist).map_err(|error| {
         format!(
             "Failed to read SPICE netlist {}: {error}",
@@ -215,7 +205,7 @@ fn build_ngspice_measure_wrapper(
         )
     })?;
     let mut text = String::new();
-    text.push_str("* Generated by CircuitCI for ngspice .MEASURE. Do not edit by hand.\n");
+    text.push_str("* Generated by CircuitCI for Xyce .MEASURE. Do not edit by hand.\n");
     text.push_str("* Source netlist: ");
     text.push_str(&netlist.to_string_lossy());
     text.push('\n');
@@ -288,9 +278,8 @@ fn build_ngspice_measure_wrapper(
             text.push('\n');
         }
     }
-    text.push_str(".control\n");
     if mode == "tran" {
-        text.push_str("tran ");
+        text.push_str(".TRAN ");
         text.push_str(&format!(
             "{:.12e}",
             analog.analysis.max_step_us / 1_000_000.0
@@ -302,7 +291,7 @@ fn build_ngspice_measure_wrapper(
         ));
         text.push('\n');
     } else {
-        text.push_str("ac dec ");
+        text.push_str(".AC DEC ");
         text.push_str(
             &analog
                 .analysis
@@ -328,100 +317,17 @@ fn build_ngspice_measure_wrapper(
         ));
         text.push('\n');
     }
-    for statement in &analog.analysis.measure_statements {
-        text.push_str(&normalize_measure_statement(&statement.statement));
-        text.push('\n');
-    }
     for template in &analog.analysis.measure_templates {
-        text.push_str(&measure_template_statement(mode, template));
+        text.push_str(&xyce_measure_template_statement(mode, template));
         text.push('\n');
     }
-    text.push_str("quit\n.endc\n.end\n");
+    text.push_str(".END\n");
     Ok(text)
 }
 
-pub(super) fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> {
-    let analog = scenario
-        .analog
-        .as_ref()
-        .expect("analog was validated before measure parsing");
-    let mode = analog.analysis.measure_mode.as_deref().unwrap_or("");
-    let names = measure_names(scenario);
-    let mut rows = Vec::new();
-    for line in log.lines() {
-        let Some((name, rest)) = line.split_once('=') else {
-            continue;
-        };
-        let name = name.trim();
-        if !names
-            .iter()
-            .any(|expected| expected.eq_ignore_ascii_case(name))
-        {
-            continue;
-        }
-        let Some(value) = parse_number(rest.split_whitespace().next().unwrap_or("")) else {
-            continue;
-        };
-        rows.push((name.to_string(), value, line.trim().to_string()));
-    }
-    if rows.len() != names.len() {
-        let found: BTreeSet<String> = rows.iter().map(|row| row.0.to_ascii_lowercase()).collect();
-        let missing: Vec<&str> = names
-            .iter()
-            .map(String::as_str)
-            .filter(|name| !found.contains(&name.to_ascii_lowercase()))
-            .collect();
-        return Err(format!(
-            ".MEASURE output did not contain scalar result(s) for {}.",
-            missing.join(", ")
-        ));
-    }
-    let mut csv = String::from("measurement,mode,value,raw_line\n");
-    for (name, value, raw_line) in rows {
-        csv.push_str(&csv_escape(&name));
-        csv.push(',');
-        csv.push_str(&csv_escape(mode));
-        csv.push(',');
-        csv.push_str(&format!("{value:.12e}"));
-        csv.push(',');
-        csv.push_str(&csv_escape(&raw_line));
-        csv.push('\n');
-    }
-    Ok(csv)
-}
-
-fn measure_names(scenario: &Scenario) -> Vec<String> {
-    let analog = scenario
-        .analog
-        .as_ref()
-        .expect("analog was validated before measure-name expansion");
-    analog
-        .analysis
-        .measure_statements
-        .iter()
-        .map(|statement| statement.name.clone())
-        .chain(
-            analog
-                .analysis
-                .measure_templates
-                .iter()
-                .map(|template| template.name.clone()),
-        )
-        .collect()
-}
-
-fn normalize_measure_statement(statement: &str) -> String {
-    let trimmed = statement.trim();
-    if let Some(rest) = trimmed.strip_prefix('.') {
-        rest.trim_start().to_string()
-    } else {
-        trimmed.to_string()
-    }
-}
-
-pub(super) fn measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
-    let mut statement = String::from("meas ");
-    statement.push_str(mode);
+fn xyce_measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
+    let mut statement = String::from(".MEASURE ");
+    statement.push_str(&mode.to_ascii_uppercase());
     statement.push(' ');
     statement.push_str(&template.name);
     statement.push(' ');
@@ -429,100 +335,51 @@ pub(super) fn measure_template_statement(mode: &str, template: &AnalogMeasureTem
     statement.push(' ');
     statement.push_str(&template.expression);
     if mode == "tran" {
-        if let Some(at_us) = template.at_us {
-            statement.push_str(" AT=");
-            statement.push_str(&format!("{:.12e}", at_us / 1_000_000.0));
-        }
-        if let Some(from_us) = template.from_us {
-            statement.push_str(" FROM=");
-            statement.push_str(&format!("{:.12e}", from_us / 1_000_000.0));
-        }
-        if let Some(to_us) = template.to_us {
-            statement.push_str(" TO=");
-            statement.push_str(&format!("{:.12e}", to_us / 1_000_000.0));
-        }
+        append_measure_window_us(&mut statement, template);
     } else {
-        if let Some(at_hz) = template.at_hz {
-            statement.push_str(" AT=");
-            statement.push_str(&format!("{at_hz:.12e}"));
-        }
-        if let Some(from_hz) = template.from_hz {
-            statement.push_str(" FROM=");
-            statement.push_str(&format!("{from_hz:.12e}"));
-        }
-        if let Some(to_hz) = template.to_hz {
-            statement.push_str(" TO=");
-            statement.push_str(&format!("{to_hz:.12e}"));
-        }
+        append_measure_window_hz(&mut statement, template);
     }
     statement
 }
 
-fn parse_number(value: &str) -> Option<f64> {
-    value
-        .trim_matches(|ch: char| ch == ',' || ch == ';')
-        .parse()
-        .ok()
+fn append_measure_window_us(statement: &mut String, template: &AnalogMeasureTemplate) {
+    if let Some(at_us) = template.at_us {
+        statement.push_str(" AT=");
+        statement.push_str(&format!("{:.12e}", at_us / 1_000_000.0));
+    }
+    if let Some(from_us) = template.from_us {
+        statement.push_str(" FROM=");
+        statement.push_str(&format!("{:.12e}", from_us / 1_000_000.0));
+    }
+    if let Some(to_us) = template.to_us {
+        statement.push_str(" TO=");
+        statement.push_str(&format!("{:.12e}", to_us / 1_000_000.0));
+    }
 }
 
-fn csv_escape(value: &str) -> String {
-    if value.contains(',') || value.contains('"') || value.contains('\n') {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else {
-        value.to_string()
+fn append_measure_window_hz(statement: &mut String, template: &AnalogMeasureTemplate) {
+    if let Some(at_hz) = template.at_hz {
+        statement.push_str(" AT=");
+        statement.push_str(&format!("{at_hz:.12e}"));
+    }
+    if let Some(from_hz) = template.from_hz {
+        statement.push_str(" FROM=");
+        statement.push_str(&format!("{from_hz:.12e}"));
+    }
+    if let Some(to_hz) = template.to_hz {
+        statement.push_str(" TO=");
+        statement.push_str(&format!("{to_hz:.12e}"));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{measure_raw_to_csv, measure_template_statement};
-    use crate::board_ir::Scenario;
-
-    fn scenario() -> Scenario {
-        serde_yaml_ng::from_str(
-            r#"
-name: measure
-type: analog_measure
-analog:
-  backend: ngspice
-  netlist_source: generated_from_board
-  model_files: []
-  node_bindings: []
-  pin_bindings: []
-  analysis:
-    type: measure
-    measure_mode: tran
-    stop_time_us: 100.0
-    max_step_us: 0.1
-    measure_statements:
-      - name: avg_out
-        statement: meas tran avg_out AVG v(out) FROM=20u TO=100u
-      - name: max_out
-        statement: meas tran max_out MAX v(out) FROM=0 TO=100u
-  stimuli: []
-  probes: []
-  assertions: []
-"#,
-        )
-        .unwrap()
-    }
+    use super::xyce_measure_template_statement;
+    use crate::board_ir::AnalogMeasureTemplate;
 
     #[test]
-    fn measure_raw_to_csv_extracts_declared_scalars() {
-        let csv = measure_raw_to_csv(
-            "avg_out = 5.10001e-01 from= 2.0e-05 to= 1.0e-04\nmax_out = 9.93663e-01 at= 9.51000e-05\n",
-            &scenario(),
-        )
-        .unwrap();
-
-        assert!(csv.contains("avg_out,tran,5.100010000000e-1"));
-        assert!(csv.contains("max_out,tran,9.936630000000e-1"));
-    }
-
-    #[test]
-    fn measure_template_statement_formats_transient_window() {
-        let scenario = scenario();
-        let template = crate::board_ir::AnalogMeasureTemplate {
+    fn xyce_measure_template_statement_formats_transient_window() {
+        let template = AnalogMeasureTemplate {
             name: "avg_out".to_string(),
             operation: "avg".to_string(),
             expression: "v(out)".to_string(),
@@ -535,18 +392,8 @@ analog:
         };
 
         assert_eq!(
-            measure_template_statement(
-                scenario
-                    .analog
-                    .as_ref()
-                    .unwrap()
-                    .analysis
-                    .measure_mode
-                    .as_deref()
-                    .unwrap(),
-                &template
-            ),
-            "meas tran avg_out AVG v(out) FROM=2.000000000000e-5 TO=1.000000000000e-4"
+            xyce_measure_template_statement("tran", &template),
+            ".MEASURE TRAN avg_out AVG v(out) FROM=2.000000000000e-5 TO=1.000000000000e-4"
         );
     }
 }

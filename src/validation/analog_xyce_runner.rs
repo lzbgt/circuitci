@@ -1429,7 +1429,7 @@ fn ensure_noise_input_source_has_ac(line: &str, input_source: &str) -> String {
     format!("{line} AC 1")
 }
 
-fn run_xyce_with_timeout(
+pub(super) fn run_xyce_with_timeout(
     backend: &str,
     wrapper: &Path,
     timeout: Duration,

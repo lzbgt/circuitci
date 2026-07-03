@@ -18,6 +18,7 @@ use super::analog_spice::{
 };
 use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::analog_xyce_measure_runner::{XyceMeasureRunOptions, run_xyce_measure};
 use super::common::validation_input_missing;
 
 pub(super) struct AnalogMeasureSinks<'a> {
@@ -333,7 +334,7 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
         return;
     };
 
-    if backend != "ngspice" {
+    if backend != "ngspice" && !is_xyce_backend(backend) {
         let mut finding = unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
@@ -360,6 +361,35 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
         findings.push(finding);
         return;
     }
+    if is_xyce_backend(backend) && !analog.analysis.measure_statements.is_empty() {
+        let mut finding = unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_MEASURE_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice_or_xyce_templates",
+                analysis_kind: "measure",
+                required_normalized_outputs: &["measure_summary"],
+            },
+        );
+        finding
+            .measured
+            .insert("measure_mode".to_string(), json!(mode));
+        finding.measured.insert(
+            "raw_measure_statements".to_string(),
+            json!(analog.analysis.measure_statements.len()),
+        );
+        finding.limit.insert(
+            "required_evidence".to_string(),
+            json!("measure_templates_or_ngspice_raw_measure_summary"),
+        );
+        finding.suggested_fixes.push(
+            "Use measure_templates[] for portable Xyce scalar extraction, or run raw measure_statements[] with backend: ngspice."
+                .to_string(),
+        );
+        findings.push(finding);
+        return;
+    }
 
     for run_plan in run_plans {
         if should_cancel() {
@@ -371,20 +401,37 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             run_plan.progress_label(),
         );
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        let run_result = run_ngspice_measure(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceMeasureRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        );
+        let run_result = if backend == "ngspice" {
+            run_ngspice_measure(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceMeasureRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_xyce_measure(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceMeasureRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
         match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
@@ -405,17 +452,29 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
                     .insert("selected_backend".to_string(), json!(backend));
                 finding.limit.insert(
                     "required_evidence".to_string(),
-                    json!("ngspice_measure_summary_csv"),
+                    json!(if backend == "ngspice" {
+                        "ngspice_measure_summary_csv"
+                    } else {
+                        "xyce_measure_summary_csv"
+                    }),
                 );
                 tag_corner_finding(&mut finding, &run_plan);
-                finding.suggested_fixes.push(
-                    "Inspect the generated ngspice .MEASURE wrapper deck and solver log artifacts."
-                        .to_string(),
-                );
+                finding.suggested_fixes.push(format!(
+                    "Inspect the generated {} .MEASURE wrapper deck and solver log artifacts.",
+                    if backend == "ngspice" {
+                        "ngspice"
+                    } else {
+                        "Xyce"
+                    }
+                ));
                 findings.push(finding);
             }
         }
     }
+}
+
+fn is_xyce_backend(backend: &str) -> bool {
+    backend.eq_ignore_ascii_case("xyce")
 }
 
 fn validate_measure_template(

@@ -360,8 +360,8 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    whose mode and result name match the declared metadata.
 4. Each template declares `name`, `operation` (`avg`, `max`, `min`, `rms`, or
    `find`), `expression`, and optional time/frequency windows. CircuitCI renders
-   templates into backend-specific measure commands; for ngspice today that is
-   a generated `meas` command.
+   templates into backend-specific measure commands: ngspice receives generated
+   `meas` commands, while explicit Xyce receives generated `.MEASURE` commands.
 5. Voltage/current references in raw statements or templates must bind to
    declared scenario nodes/components. Transient mode requires positive finite
    `stop_time_us` and `max_step_us`. AC mode requires valid start/stop
@@ -370,12 +370,18 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    `ngspice_measure.log`, `measure_raw.txt`, `measure_summary.csv`, and
    `solver_manifest.json`. The normalized summary records measurement name,
    mode, scalar value, and raw solver line.
-7. Opt-in real-ngspice conformance coverage is available through
+7. Explicit `backend: xyce` supports structured `measure_templates[]` and writes
+   `circuitci_xyce_measure.cir`, `xyce_measure.log`, `measure_raw.txt`,
+   `measure_summary.csv`, and `solver_manifest.json` using the same normalized
+   `measure_summary` contract. Raw `measure_statements[]` remain ngspice-only
+   and fail closed on Xyce because their syntax is backend-specific.
+8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`.
-8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
-   until those adapters emit the same normalized `measure_summary` contract.
+9. Embedded ngspice remains fail-closed with backend-planning evidence until it
+   emits the same normalized `measure_summary` contract. `backend: auto` remains
+   conservative and does not select Xyce for measure runs.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

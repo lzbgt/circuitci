@@ -26,6 +26,7 @@ mod analog_transfer_function_runner;
 mod analog_transfer_function_spice;
 mod analog_util;
 mod analog_waveform_measurements;
+mod analog_xyce_measure_runner;
 mod analog_xyce_runner;
 mod backdrive;
 mod clock_source;
