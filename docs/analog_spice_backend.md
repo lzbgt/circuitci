@@ -56,7 +56,7 @@ An `analog_ac` scenario owns a small-signal SPICE deck, Bode response exports,
 and AC assertions for frequency-domain design observation. An `analog_dc`
 scenario owns a SPICE deck, `.op` operating-point export, and DC bias
 assertions. An `analog_sparameter` scenario owns a frequency sweep plus
-single-port or multi-port reference-impedance definitions for future
+single-port or multi-port reference-impedance definitions for Xyce
 S-parameter exports.
 
 Required fields:
@@ -225,10 +225,14 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
 3. Each S-parameter port declares `name`, `positive_node`, `negative_node`,
    and positive finite `reference_impedance_ohm`. Both nodes must be bound to
    Board IR nets through `node_bindings`.
-4. The current runtime fails closed with `SPICE_S_PARAMETER_ANALYSIS`
-   planning evidence. Future adapters must emit a normalized `s_parameters`
-   artifact, such as `s_parameters.csv` or Touchstone plus a
-   `solver_manifest.json`, before this check can pass.
+4. Explicit `backend: xyce` generates Xyce port devices, runs `.AC` plus
+   `.LIN SPARCALC=1`, captures Touchstone RI output, and normalizes it to
+   `s_parameters.csv` with magnitude, phase, and linear magnitude columns.
+   The raw Touchstone file and normalized CSV are recorded in
+   `solver_manifest.json`.
+5. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
+   this check and fail closed with backend-planning evidence until those
+   adapters emit the same normalized `s_parameters` contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

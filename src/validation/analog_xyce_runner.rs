@@ -1,7 +1,7 @@
 use crate::board_ir::Scenario;
 use crate::library::BoundBoard;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -69,6 +69,24 @@ where
     pub(super) model_section_overrides: &'a [ModelSectionOverride],
     pub(super) on_progress: F,
     pub(super) should_cancel: C,
+}
+
+pub(super) struct XyceSParameterRunOptions<'a, F, C>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    pub(super) output: &'a Path,
+    pub(super) run_subdir: Option<&'a str>,
+    pub(super) parameter_overrides: &'a [ParameterOverride],
+    pub(super) model_section_overrides: &'a [ModelSectionOverride],
+    pub(super) on_progress: F,
+    pub(super) should_cancel: C,
+}
+
+pub(super) struct XyceSParameterRun {
+    pub(super) artifacts: Vec<PathBuf>,
+    pub(super) s_parameters: PathBuf,
 }
 
 pub(super) fn run_xyce_transient<F, C>(
@@ -717,6 +735,172 @@ where
     })
 }
 
+pub(super) fn run_xyce_sparameter<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    backend: &str,
+    source_netlist: &Path,
+    options: XyceSParameterRunOptions<'_, F, C>,
+) -> Result<XyceSParameterRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let XyceSParameterRunOptions {
+        output,
+        run_subdir,
+        parameter_overrides,
+        model_section_overrides,
+        mut on_progress,
+        should_cancel,
+    } = options;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before Xyce S-parameter run");
+    let mut run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Some(run_subdir) = run_subdir {
+        run_dir = run_dir.join(safe_artifact_name(run_subdir));
+    }
+    fs::create_dir_all(&run_dir).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to create analog Xyce S-parameter run directory {}: {error}",
+                run_dir.display()
+            ),
+            Vec::new(),
+        )
+    })?;
+    let mut artifacts = vec![source_netlist.to_path_buf()];
+    let wrapper = run_dir.join("circuitci_xyce_sparameter.cir");
+    let log = run_dir.join("xyce_sparameter.log");
+    let raw_name = format!(
+        "s_parameters_raw.s{}p",
+        analog.analysis.s_parameter_ports.len()
+    );
+    let raw = run_dir.join(&raw_name);
+    let s_parameters = run_dir.join("s_parameters.csv");
+    on_progress(
+        "Writing analog Xyce S-parameter wrapper deck",
+        format!("Writing {}.", wrapper.to_string_lossy()),
+    );
+    let wrapper_text = build_xyce_sparameter_wrapper(
+        bound,
+        scenario,
+        source_netlist,
+        Path::new(&raw_name),
+        parameter_overrides,
+        model_section_overrides,
+    )
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    fs::write(&wrapper, wrapper_text).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce S-parameter wrapper deck {}: {error}",
+                wrapper.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(wrapper.clone());
+
+    on_progress(
+        "Running analog Xyce S-parameter backend",
+        format!(
+            "{} S-parameter sweep for {} port(s).",
+            backend,
+            analog.analysis.s_parameter_ports.len()
+        ),
+    );
+    let output = run_xyce_with_timeout(backend, &wrapper, Duration::from_secs(60), should_cancel)
+        .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    let mut log_text = String::new();
+    log_text.push_str("COMMAND: ");
+    log_text.push_str(&output.command);
+    log_text.push_str("\n\nSTDOUT:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stdout));
+    log_text.push_str("\n\nSTDERR:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stderr));
+    fs::write(&log, &log_text).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce S-parameter log {}: {error}",
+                log.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(log.clone());
+    if !output.status.success() {
+        return Err(ngspice_error(
+            format!(
+                "Xyce S-parameter analysis exited with status {}.",
+                output.status
+            ),
+            artifacts,
+        ));
+    }
+    if let Some(reason) = detect_nonconvergence(&log_text) {
+        return Err(ngspice_error(
+            format!("Xyce reported non-convergence or numerical failure: {reason}."),
+            artifacts,
+        ));
+    }
+    if !raw.is_file() {
+        return Err(ngspice_error(
+            format!(
+                "Xyce completed without producing S-parameter export {}.",
+                raw.display()
+            ),
+            artifacts,
+        ));
+    }
+    artifacts.push(raw.clone());
+    let s_csv = touchstone_to_sparameter_csv(&raw, analog.analysis.s_parameter_ports.len())
+        .map_err(|message| {
+            ngspice_error(
+                format!(
+                    "Failed to convert Xyce S-parameter export {}: {message}",
+                    raw.display()
+                ),
+                artifacts.clone(),
+            )
+        })?;
+    fs::write(&s_parameters, s_csv).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce S-parameter CSV {}: {error}",
+                s_parameters.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(s_parameters.clone());
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "s_parameter",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[("xyce_s_parameters_touchstone", &raw)],
+        normalized_outputs: &[("s_parameters", &s_parameters)],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
+    Ok(XyceSParameterRun {
+        artifacts,
+        s_parameters,
+    })
+}
+
 fn build_xyce_transient_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -1120,6 +1304,113 @@ fn build_xyce_noise_wrapper(
     Ok(text)
 }
 
+fn build_xyce_sparameter_wrapper(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    netlist: &Path,
+    raw_output: &Path,
+    parameter_overrides: &[ParameterOverride],
+    model_section_overrides: &[ModelSectionOverride],
+) -> Result<String, String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before Xyce S-parameter wrapper generation");
+    let source = fs::read_to_string(netlist).map_err(|error| {
+        format!(
+            "Failed to read SPICE netlist {}: {error}",
+            netlist.display()
+        )
+    })?;
+    let start_hz = analog.analysis.start_frequency_hz.ok_or_else(|| {
+        "analog.analysis.start_frequency_hz is required for S-parameter analysis.".to_string()
+    })?;
+    let stop_hz = analog.analysis.stop_frequency_hz.ok_or_else(|| {
+        "analog.analysis.stop_frequency_hz is required for S-parameter analysis.".to_string()
+    })?;
+    let points_per_decade = analog.analysis.points_per_decade.unwrap_or(20);
+    let mut text = String::new();
+    text.push_str("* Generated by CircuitCI for Xyce S-parameter. Do not edit by hand.\n");
+    text.push_str("* Source netlist: ");
+    text.push_str(&netlist.to_string_lossy());
+    text.push('\n');
+    let include_base = netlist.parent().unwrap_or(&bound.project.source_dir);
+    let mut in_control_block = false;
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        let directive = trimmed.to_ascii_lowercase();
+        let first_token = directive.split_whitespace().next().unwrap_or("");
+        if first_token == ".control" {
+            in_control_block = true;
+            continue;
+        }
+        if in_control_block {
+            if first_token == ".endc" {
+                in_control_block = false;
+            }
+            continue;
+        }
+        if matches!(
+            first_token,
+            ".end" | ".tran" | ".ac" | ".op" | ".noise" | ".lin" | ".print"
+        ) {
+            continue;
+        }
+        text.push_str(&rewrite_include_line(line, include_base));
+        text.push('\n');
+    }
+    if !parameter_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep parameter overrides.\n");
+        for override_ in parameter_overrides {
+            text.push_str(".param ");
+            text.push_str(&override_.name);
+            text.push('=');
+            text.push_str(&format!("{:.12e}", override_.value));
+            text.push('\n');
+        }
+        if let Some(temperature_c) = sweep_temperature_c(parameter_overrides) {
+            text.push_str(".temp ");
+            text.push_str(&format!("{:.12e}", temperature_c));
+            text.push('\n');
+        }
+    }
+    if !model_section_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep model section overrides.\n");
+        for override_ in model_section_overrides {
+            let path = Path::new(&override_.path);
+            let absolute = if path.is_absolute() {
+                normalize_path(path)
+            } else {
+                absolute_path(&bound.project.source_dir.join(path))
+                    .unwrap_or_else(|_| normalize_path(&bound.project.source_dir.join(path)))
+            };
+            text.push_str(".lib \"");
+            text.push_str(&absolute.to_string_lossy());
+            text.push_str("\" ");
+            text.push_str(&override_.section);
+            text.push('\n');
+        }
+    }
+    for (index, port) in analog.analysis.s_parameter_ports.iter().enumerate() {
+        text.push_str(&format!(
+            "P{} {} {} port={} z0={:.12e}\n",
+            index + 1,
+            port.positive_node,
+            port.negative_node,
+            index + 1,
+            port.reference_impedance_ohm
+        ));
+    }
+    text.push_str(&format!(
+        ".AC DEC {} {:.12e} {:.12e}\n",
+        points_per_decade, start_hz, stop_hz
+    ));
+    text.push_str(".LIN FORMAT=TOUCHSTONE DATAFORMAT=RI SPARCALC=1 FILE=\"");
+    text.push_str(&raw_output.to_string_lossy());
+    text.push_str("\"\n.END\n");
+    Ok(text)
+}
+
 fn ensure_noise_input_source_has_ac(line: &str, input_source: &str) -> String {
     let trimmed = line.trim_start();
     let Some(first_token) = trimmed.split_whitespace().next() else {
@@ -1293,9 +1584,133 @@ fn split_xyce_row(line: &str) -> Vec<&str> {
         .collect()
 }
 
+fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String, String> {
+    if port_count == 0 {
+        return Err("S-parameter export requires at least one port.".to_string());
+    }
+    let text = fs::read_to_string(raw).map_err(|error| {
+        format!(
+            "Failed to read Xyce Touchstone export {}: {error}",
+            raw.display()
+        )
+    })?;
+    let expected_values = port_count * port_count * 2;
+    let pairs = touchstone_pairs(port_count);
+    let mut frequency_scale = 1.0;
+    let mut data_format = "ri".to_string();
+    let mut numbers = Vec::new();
+    for line in text.lines() {
+        let content = line.split('!').next().unwrap_or("").trim();
+        if content.is_empty() {
+            continue;
+        }
+        if let Some(option) = content.strip_prefix('#') {
+            let tokens: Vec<_> = option.split_whitespace().collect();
+            if let Some(unit) = tokens.first() {
+                frequency_scale = match unit.to_ascii_lowercase().as_str() {
+                    "hz" => 1.0,
+                    "khz" => 1.0e3,
+                    "mhz" => 1.0e6,
+                    "ghz" => 1.0e9,
+                    other => {
+                        return Err(format!(
+                            "Unsupported Touchstone frequency unit {other}; expected Hz, kHz, MHz, or GHz."
+                        ));
+                    }
+                };
+            }
+            for token in tokens {
+                let lower = token.to_ascii_lowercase();
+                if matches!(lower.as_str(), "ri" | "ma" | "db") {
+                    data_format = lower;
+                }
+            }
+            continue;
+        }
+        numbers.extend(split_xyce_row(content).into_iter().filter_map(parse_float));
+    }
+    let row_width = 1 + expected_values;
+    if numbers.len() < row_width {
+        return Err(format!(
+            "Touchstone export has {} numeric value(s), expected at least {} for {} port(s).",
+            numbers.len(),
+            row_width,
+            port_count
+        ));
+    }
+    if numbers.len() % row_width != 0 {
+        return Err(format!(
+            "Touchstone export has {} numeric value(s), which is not an integer number of {}-column S-parameter row(s).",
+            numbers.len(),
+            row_width
+        ));
+    }
+
+    let mut output = String::from("frequency_hz");
+    for (row, column) in &pairs {
+        output.push_str(&format!(
+            ",s{row}{column}_mag_db,s{row}{column}_phase_deg,s{row}{column}_mag_linear"
+        ));
+    }
+    output.push('\n');
+    for chunk in numbers.chunks(row_width) {
+        let frequency_hz = chunk[0] * frequency_scale;
+        output.push_str(&format!("{frequency_hz:.12e}"));
+        for (index, _) in pairs.iter().enumerate() {
+            let first = chunk[1 + index * 2];
+            let second = chunk[1 + index * 2 + 1];
+            let (mag_linear, phase_deg, mag_db) = match data_format.as_str() {
+                "ri" => {
+                    let mag = first.hypot(second);
+                    let phase = second.atan2(first).to_degrees();
+                    let db = if mag > 0.0 {
+                        20.0 * mag.log10()
+                    } else {
+                        -300.0
+                    };
+                    (mag, phase, db)
+                }
+                "ma" => {
+                    let mag = first;
+                    let db = if mag > 0.0 {
+                        20.0 * mag.log10()
+                    } else {
+                        -300.0
+                    };
+                    (mag, second, db)
+                }
+                "db" => (10.0_f64.powf(first / 20.0), second, first),
+                other => {
+                    return Err(format!(
+                        "Unsupported Touchstone data format {other}; expected RI, MA, or DB."
+                    ));
+                }
+            };
+            output.push_str(&format!(
+                ",{mag_db:.12e},{phase_deg:.12e},{mag_linear:.12e}"
+            ));
+        }
+        output.push('\n');
+    }
+    Ok(output)
+}
+
+fn touchstone_pairs(port_count: usize) -> Vec<(usize, usize)> {
+    if port_count == 2 {
+        return vec![(1, 1), (2, 1), (1, 2), (2, 2)];
+    }
+    let mut pairs = Vec::with_capacity(port_count * port_count);
+    for row in 1..=port_count {
+        for column in 1..=port_count {
+            pairs.push((row, column));
+        }
+    }
+    pairs
+}
+
 #[cfg(test)]
 mod tests {
-    use super::xyce_transient_raw_to_waveform_csv;
+    use super::{touchstone_to_sparameter_csv, xyce_transient_raw_to_waveform_csv};
 
     #[test]
     fn xyce_transient_raw_csv_normalizes_to_waveform_csv() {
@@ -1313,5 +1728,22 @@ mod tests {
                 .unwrap()
                 .contains("5.000000000000e-6")
         );
+    }
+
+    #[test]
+    fn touchstone_to_sparameter_csv_normalizes_two_port_ri() {
+        let dir = tempfile::tempdir().unwrap();
+        let raw = dir.path().join("s_parameters_raw.s2p");
+        std::fs::write(
+            &raw,
+            "# Hz S RI R 50\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\n",
+        )
+        .unwrap();
+
+        let csv = touchstone_to_sparameter_csv(&raw, 2).unwrap();
+
+        assert!(csv.starts_with("frequency_hz,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db"));
+        assert!(csv.contains("1.000000000000e6,-6.020599913280e0"));
+        assert!(csv.contains("6.020599913280e0,0.000000000000e0,2.000000000000e0"));
     }
 }

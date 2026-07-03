@@ -772,11 +772,13 @@ where
                     let mut sinks = analog_sparameter_spice::AnalogSParameterSinks {
                         findings: &mut findings,
                         artifacts: &mut artifacts,
+                        waveforms: &mut waveforms,
                     };
                     analog_sparameter_spice::validate_spice_sparameter_with_progress(
                         bound,
                         scenario,
                         &mut sinks,
+                        output,
                         &mut on_progress,
                         &should_cancel,
                     )

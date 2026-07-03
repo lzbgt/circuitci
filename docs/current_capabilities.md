@@ -128,13 +128,14 @@ Current analog support:
   worst-case, percentile margin rows, and CSV/Markdown copy actions, and are
   exported beside scope evidence when the loaded report contains sampled
   tolerance runs; bundle HTML preserves the same distribution strips.
-- `analog_sparameter` scenarios with `SPICE_S_PARAMETER_ANALYSIS` for planned
-  S-parameter simulation contracts. The Board IR/schema can declare
-  `analysis.type: sparam`, frequency bounds, points per decade, and explicit
-  port nodes/reference impedances. The runtime validates that contract and then
-  fails closed with backend-planning evidence until a real adapter emits
-  normalized `s_parameters` evidence such as `s_parameters.csv` or Touchstone
-  plus `solver_manifest.json`.
+- `analog_sparameter` scenarios with `SPICE_S_PARAMETER_ANALYSIS` for
+  frequency-domain S-parameter simulation contracts. The Board IR/schema can
+  declare `analysis.type: sparam`, frequency bounds, points per decade, and
+  explicit port nodes/reference impedances. Explicit `backend: xyce` generates
+  Xyce port devices, runs `.AC` plus `.LIN SPARCALC=1`, captures Touchstone RI
+  output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
+  provenance. `backend: auto` does not select Xyce for this path until real
+  solver conformance coverage is enabled.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

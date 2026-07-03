@@ -440,7 +440,8 @@ Normalize all solver outputs to CircuitCI artifacts:
 - `ac_bode.csv`
 - `noise_spectrum.csv`
 - `noise_total.csv`
-- `s_parameters.csv` or Touchstone referenced by `solver_manifest.json`
+- `s_parameters.csv` normalized from Touchstone and referenced by
+  `solver_manifest.json`
 - `harmonic_balance.csv`
 - `pss_summary.json`
 - `measurements.json`
@@ -505,7 +506,8 @@ The GUI should not become the solver.
 ### Phase 2: Frequency-Domain Breadth
 
 - Add `.TF`, `.PZ`, `.SENS`, `.FOUR`, and `.MEASURE` support where available.
-- Add S-parameter test-bench generation for supported two-port circuits.
+- Extend the initial explicit-Xyce S-parameter path with real-solver
+  conformance fixtures and supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path
