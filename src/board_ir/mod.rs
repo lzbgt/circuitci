@@ -1283,6 +1283,12 @@ pub struct AnalogTransientAnalysis {
     pub pole_zero_input_source: Option<String>,
     #[serde(default)]
     pub pole_zero_mode: Option<String>,
+    #[serde(default)]
+    pub sensitivity_output_expression: Option<String>,
+    #[serde(default)]
+    pub sensitivity_mode: Option<String>,
+    #[serde(default)]
+    pub sensitivity_filters: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

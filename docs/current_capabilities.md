@@ -158,6 +158,13 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.
+- `analog_sensitivity` scenarios with `SPICE_SENSITIVITY_ANALYSIS` for
+  ngspice-style `.SENS` sensitivity contracts. The Board IR/schema can declare
+  `analysis.type: sens`, `sensitivity_output_expression`, `sensitivity_mode`
+  (`dc` or `ac`), optional `sensitivity_filters[]`, and AC frequency bounds.
+  The validator checks bound `V(...)`/`I(...)` output provenance, then fails
+  closed with planned `sensitivity_summary` evidence until a backend adapter
+  emits normalized output and a solver manifest.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

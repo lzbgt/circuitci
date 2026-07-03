@@ -11,6 +11,7 @@ mod analog_operating_limits;
 mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
 mod analog_runner;
+mod analog_sensitivity_spice;
 mod analog_soa;
 mod analog_sparameter_spice;
 mod analog_spice;
@@ -131,6 +132,7 @@ pub(super) const SPICE_NOISE_ANALYSIS: &str = "SPICE_NOISE_ANALYSIS";
 pub(super) const SPICE_S_PARAMETER_ANALYSIS: &str = "SPICE_S_PARAMETER_ANALYSIS";
 pub(super) const SPICE_TRANSFER_FUNCTION_ANALYSIS: &str = "SPICE_TRANSFER_FUNCTION_ANALYSIS";
 pub(super) const SPICE_POLE_ZERO_ANALYSIS: &str = "SPICE_POLE_ZERO_ANALYSIS";
+pub(super) const SPICE_SENSITIVITY_ANALYSIS: &str = "SPICE_SENSITIVITY_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
@@ -167,6 +169,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_sparameter",
     "analog_transfer_function",
     "analog_pole_zero",
+    "analog_sensitivity",
     "motor_drive",
     "load_budget",
     "model_quality",
@@ -821,6 +824,20 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_SENSITIVITY_ANALYSIS if scenario.scenario_type == "analog_sensitivity" => {
+                    let mut sinks = analog_sensitivity_spice::AnalogSensitivitySinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_sensitivity_spice::validate_spice_sensitivity_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
                 }
@@ -976,6 +993,7 @@ where
                 | SPICE_S_PARAMETER_ANALYSIS
                 | SPICE_TRANSFER_FUNCTION_ANALYSIS
                 | SPICE_POLE_ZERO_ANALYSIS
+                | SPICE_SENSITIVITY_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_BRIDGE_SWITCHING_VALID

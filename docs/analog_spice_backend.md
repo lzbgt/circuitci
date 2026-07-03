@@ -60,7 +60,9 @@ single-port or multi-port reference-impedance definitions for Xyce
 S-parameter exports. An `analog_transfer_function` scenario owns a small-signal
 output/input source contract for `.TF` gain and resistance exports. An
 `analog_pole_zero` scenario owns a small-signal output/reference/input-source
-contract for future `.PZ` pole and zero extraction.
+contract for `.PZ` pole and zero extraction. An `analog_sensitivity` scenario
+owns a DC or AC output-variable sensitivity contract with optional ngspice
+parameter filters for future `.SENS` exports.
 
 Required fields:
 
@@ -76,7 +78,9 @@ Required fields:
   `transfer_output_expression` plus `transfer_input_source` for transfer
   function contracts. Pole-zero contracts use `type: pz`,
   `pole_zero_output_node`, `pole_zero_reference_node`,
-  `pole_zero_input_source`, and `pole_zero_mode`.
+  `pole_zero_input_source`, and `pole_zero_mode`. Sensitivity contracts use
+  `type: sens`, `sensitivity_output_expression`, `sensitivity_mode`, optional
+  `sensitivity_filters`, and AC frequency fields when `sensitivity_mode: ac`.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -286,6 +290,21 @@ For a scenario with check `SPICE_POLE_ZERO_ANALYSIS`:
    `PATH`.
 6. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `pole_zero_summary` contract.
+
+For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: sens`, non-empty `sensitivity_output_expression`,
+   and `sensitivity_mode` set to `dc` or `ac`.
+3. `sensitivity_output_expression` must be a bound `V(node)`,
+   `V(node,reference)`, or `I(source)` expression. Optional
+   `sensitivity_filters[]` map to ngspice SENS filters.
+4. AC mode requires `start_frequency_hz`, `stop_frequency_hz`, and
+   `points_per_decade`, matching the AC sweep fields used elsewhere.
+5. All backends currently fail closed with backend-planning evidence until an
+   adapter emits normalized `sensitivity_summary` evidence and a solver
+   manifest.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical
