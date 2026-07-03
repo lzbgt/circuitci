@@ -219,7 +219,11 @@ Current analog support:
   provenance. This path intentionally fails closed today: it records
   manifest-compatible planning evidence for future `pss_waveform`,
   `pss_spectrum`, and `pss_convergence` artifacts, but no backend is allowed to
-  pass PSS or oscillator sign-off until those normalized outputs exist.
+  pass PSS or oscillator sign-off until those normalized outputs exist. The
+  planning finding records the current source-backed backend boundary: Xyce HB
+  is not treated as PSS, ngspice PSS remains experimental/build-gated without a
+  trusted normalized artifact contract here, and SPICE OPUS `ssse` needs a
+  dedicated adapter plus conformance before use.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

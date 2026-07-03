@@ -68,6 +68,7 @@ Sources saved:
 - `sources/ngspice_ANALYSES`
 - `sources/ngspice_DEVICES`
 - `sources/ngspice_manual.xhtml`
+- `pss_backend_evidence.md` records the PSS-specific backend decision.
 
 Upstream:
 
@@ -80,6 +81,9 @@ Key facts:
 - It supports major classic SPICE analyses: noise, operating point, DC sweep,
   pole-zero, distortion, AC, sensitivity, transfer function, transient, and
   experimental PSS.
+- The PSS path is experimental, autonomous-circuit focused, and build-gated by
+  `--enable-pss`; CircuitCI should keep it fail-closed until stable normalized
+  outputs and real-solver conformance exist.
 - The manual describes DC, AC, and transient as core analysis modes, with DC
   operating point used before transient and small-signal AC linearization.
 - It has broad compact-device history and Verilog-A/XSPICE-related model
@@ -103,6 +107,7 @@ Sources saved:
 - `sources/Xyce_Users_Guide_7.8.txt`
 - `sources/Xyce_Reference_Guide_7.8.pdf`
 - `sources/Xyce_Reference_Guide_7.8.txt`
+- `pss_backend_evidence.md` records why Xyce HB is not treated as PSS.
 
 Upstream:
 
@@ -115,6 +120,8 @@ Key facts:
   simulator.
 - It supports DC, transient, AC, small-signal noise, harmonic balance,
   sensitivity, uncertainty/random sampling, `.FOUR`, and `.MEASURE`.
+- Xyce 7.8 documents HB and HB time/frequency-domain print artifacts, but the
+  saved guides do not document a separate `.PSS` command.
 - Xyce was designed from scratch for parallel simulation using MPI and
   Trilinos-style solver infrastructure.
 - It supports canonical SPICE compact models and custom models through its
@@ -135,6 +142,8 @@ Sources saved:
 - `sources/qucs_s_home.html`
 - `sources/qucs_rf_simulation.html`
 - `sources/qucsator_rf_README.md`
+- `sources/spiceopus_nutmeg.html`
+- `sources/spiceopus_release.html`
 
 Upstream:
 
@@ -151,6 +160,9 @@ Key facts:
 - The RF documentation explains that HB solves nonlinear steady state in the
   frequency domain using truncated Fourier representations, and that HB can be
   more efficient than transient when long settling time dominates.
+- The same RF documentation and the saved SPICE OPUS primary pages document
+  SPICE OPUS `ssse` transient-domain shooting, but CircuitCI has no SPICE OPUS
+  backend or conformance path yet.
 - QucsatorRF targets RF and microwave circuit simulation.
 
 CircuitCI implication:
@@ -594,6 +606,11 @@ The GUI should not become the solver.
   evidence for future `pss_waveform`, `pss_spectrum`, and `pss_convergence`
   normalized outputs, and intentionally fails closed until a trusted backend
   adapter emits those artifacts.
+- Primary-source review in `pss_backend_evidence.md` found no trustworthy
+  adapter target to enable immediately: Xyce 7.8 documents HB but not a
+  separate PSS command; ngspice PSS is experimental/autonomous/build-gated and
+  lacks a stable normalized output contract in this runtime; SPICE OPUS `ssse`
+  is documented but would require a new backend adapter and conformance suite.
 
 ### Phase 5: Model Compiler Pipeline
 

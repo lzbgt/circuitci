@@ -383,16 +383,28 @@ pub(super) fn validate_spice_pss_with_progress<F, C>(
         "max_iterations".to_string(),
         json!(analog.analysis.pss_max_iterations),
     );
+    finding.measured.insert(
+        "backend_research_status".to_string(),
+        json!({
+            "ngspice": "experimental_potential_autonomous_pss_only_requires_enable_pss_and_no_stable_normalized_output_contract",
+            "xyce": "no_distinct_pss_command_in_xyce_7_8_docs_hb_only_for_current_runtime",
+            "spice_opus": "ssse_shooting_exists_but_no_circuitci_runtime_adapter_or_conformance_contract"
+        }),
+    );
     finding.limit.insert(
         "required_evidence".to_string(),
         json!("pss_waveform_pss_spectrum_pss_convergence"),
     );
     finding.limit.insert(
         "current_limitation".to_string(),
-        json!("CircuitCI records PSS/oscillator intent and convergence requirements but has no trusted PSS solver adapter yet."),
+        json!("CircuitCI records PSS/oscillator intent and convergence requirements but has no trusted PSS solver adapter or normalized output contract yet."),
+    );
+    finding.limit.insert(
+        "trusted_backend_status".to_string(),
+        json!("none_available"),
     );
     finding.suggested_fixes.push(
-        "Keep oscillator sign-off blocked until a backend emits normalized PSS waveform, spectrum, convergence, and solver-manifest artifacts."
+        "Keep oscillator sign-off blocked until a backend emits normalized PSS waveform, spectrum, convergence, and solver-manifest artifacts with real-solver conformance coverage."
             .to_string(),
     );
     findings.push(finding);

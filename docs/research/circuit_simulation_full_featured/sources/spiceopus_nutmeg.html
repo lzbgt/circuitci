@@ -1,0 +1,1227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <meta name="description" content="SPICE OPUS -- A SPICE engine for OPtimization UtilitieS" />
+  <meta name="keywords" content="analog circuit simulation, spice, opus, analog circuit optimization" />
+  <meta name="author" content="Faculty of Electircal Engineering, Ljubljana, Slovenia / Template design: G. Wolfgang" />
+  <link rel="stylesheet" type="text/css" media="screen,projection" href="./css/style_screen.css" />
+  <link rel="stylesheet" type="text/css" media="print" href="./css/style_print.css" />
+  <title>SPICE OPUS</title>
+</head>
+
+<body>
+<div class="bg-head"><div class="page-container-2">
+
+     <!-- Navigation Level 1 -->
+     <div class="nav1-container">
+      <div class="nav1">
+      <ul>
+            <li><a href="index.html">Home</a></li>
+             <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    </div>
+    <a href="index.html"><div class="site-name"></div></a>
+
+    <!-- Site slogan -->
+    <div class="site-slogan-container">
+    <div class="site-slogan">
+           <p class="readmore">&rsaquo;&rsaquo;&rsaquo;&nbsp;<a href="img/screen-pll.png">Screenshot</a></p>
+        <p class="title">THE SLIDE RULE OF SILICON DESIGN</p>
+          <p class="subtitle">Free Analog Circuit Simulation</p>
+      </div>
+    </div>
+
+    <!-- Header banner -->
+    <div class="img-header"></div>
+
+    <!-- Navigation Level 2 -->
+    <div class="nav2">
+      <ul>
+        <li><a href="index.html" class="selected">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="release.html">Release</a></li>
+        <li><a href="http://www.spiceopus.si/download/download.html">Download</a></li>
+        <li><a href="documentation.html">Documentation</a></li>
+        <li><a href="links.html">Links</a></li>
+    <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+
+    <!-- Buffer after header -->
+    <div class="buffer"></div>
+
+    <!-- NAVIGATION -->
+    <!-- Navigation Level 3 -->
+    <div class="nav3">
+      <ul>
+        <li class="title">Menu</li>
+        <li class="group"><a href="index.html"class="selected">About</a></li>
+        <li class="group"><a href="license.html">License</a></li>
+        <li class="group"><a href="release.html">Release</a></li>
+        <li class="group"><a href="http://www.spiceopus.si/download/download.html">Download</a></li>
+           <li><a href="http://www.spiceopus.si/download/downloadl.html">Linux</a></li>
+           <li><a href="http://www.spiceopus.si/download/downloadw.html">Windows</a></li>
+        <li class="group"><a href="documentation.html">Documentation</a></li>
+        <li class="group"><a href="links.html">Links</a></li>
+    <li class="group"><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+
+    <!--   CONTENT -->
+    <div class="content2">
+
+      <!-- Page title -->
+      <div class="content2-pagetitle">NUTMEG Improvements</div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="plot"></a>
+          <i>plot</i> command uses the same syntax as in the original Berkeley version of Spice.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Since version 2.01 plots with multiple scales can be created:
+          <p class="showcode">plot v1 v2 vs vscl1 v3 v4 vs vscl2 v5 v6
+          <p>
+          The above plot command would display vectors v1 and v2 against vscl1, v3 and v4 against vscl2
+          and v5 and v6 against the default plot scale. In case vs options are ommited, the vectors are
+          plotted against the default scale of the active plot. Colors for the plot window can be set by
+          setting colorn variables. Example:
+          <p class="showcode">set color0 = r255g255b255 <p>... set background color to white
+          <p class="showcode">set color1 = r000g000b000 <p>... set grid and text color to black
+          <p class="showcode">set color2 = r000g255b000 <p>... set the first vector color to green
+          <p class="showcode">set color3 = r255g000b000 <p>... set the second vector color to red
+          <p class="showcode">plot v(1) v(2) <p>... the result is graph with the white background and black grid; 'v(1)' is green and 'v(2)' is red
+          <p class="showcode">unset color2 <p>... unset the first vector color; the default will be used; also 'color3' variable will be ignored now
+          <p>Default plot type can be set using the plottype variable. Available types are: normal, point and comb.
+          <p class="showcode">set plottype = normal
+          <p>Default line width can be 0, 1 or 2. Set it with:
+          <p class="showcode">set linewidth = 1
+          <p>Default plot window width and height in pixels:
+          <p class="showcode">set plotwinwidth = 360<br>
+          set plotwinheight = 360
+          <p>If you want to show the info frame (coordinates) in plot windows use:
+          <p class="showcode">set plotwininfo
+          <p>Default vector identification mode is now manual identification. Manual identification can
+          be initiated by right-clicking in the plot window. To make automatic identification the default
+          (as in version 2.0 and below), enter:
+          <p class="showcode">set plotautoident
+          <p>Note that all of these settings are valid only for plot windows opened after these setting have
+          been chosen by the appropriate set/unset commands.
+          </p></div>
+        </div>
+      </div>
+
+       <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="spec"></a>
+          The <i>spec</i> command to generate a Fourier transform vector was added.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Written by <a href="mailto:tonyp@mpce.mq.edu.au">Anthony Parker</a>, Macquarie University.
+          <p>General Form
+          <p class="showcode">spec start_frequency stop_frequency frequency_step vector
+          <p>Calculates a new vector containing the Fourier transform of the input vector. This
+          vector should be the output of a transient analysis. This command takes note of the
+          following shell variables which can be set using the set command:
+          <table class="table">
+          <tr valign="top">
+          <th>Variable</th><th>Type</th><th>Description</th></tr>
+          <tr valign="top">
+          <td>
+          <strong>specwindow</strong></td>
+          <td>String</td>
+          <td>Specifies the windowing function. Possible values are:<br>
+          <strong>none</strong><br>
+          <strong>hanning</strong> or
+          <strong>cosine</strong><br>
+          <strong>rectangular</strong><br>
+          <strong>hamming</strong><br>
+          <strong>triangle</strong> or
+          <strong>bartlet</strong><br>
+          <strong>blackman</strong><br>
+          <strong>gaussian</strong><br>
+          If this variable is not defined, the
+          <strong>hanning</strong> window is used.</td></tr>
+          <tr valign="top">
+          <td>
+          <strong>specwindoworder</strong></td>
+          <td>Number</td>
+          <td>Specifies the window order for the
+          <strong>gaussian</strong> window only.</td></tr></table>
+          <p>Note that the time axis of the input vector should be linearised first by using the
+          linearize command because Spice does not produce a linear time axis for transient
+          analyses. After using the spec command, the spectrum can be displayed by plotting the
+          magnitude of the resultant vector. For instance, after a transient analysis resulting
+          in transient vector v(1), the spectrum can be plotted with the following commands:
+          <p class="showcode">linearize 1us<br>
+          spec 10Hz 100kHz 5kHz v(1)<br>
+          plot mag(v(1))<br>
+          </p></div>
+        </div>
+      </div>
+
+       <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="dc"></a>
+          New DC analysis syntax
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          DC analysis syntax in one dimension is now:
+          <p class="showcode">dc [middle middle_val] parameter1 start1 stop1 [dec|oct|lin] step1
+          <p>and in two dimensions:
+          <p class="showcode">dc parameter1 start1 stop1 [dec|oct|lin] step1<br>
+          [parameter2 start2 stop2 [dec|oct|lin] step2]
+          <p>Middle value works only in one dimensional dc sweep, in two dimensional sweep it is ignored.
+          If middle_val is given and it is between start1 and stop1 then dc analysis is performed in
+          two steps. First dc analysis from middle_val to start1 is performed in backward direction.
+          Then dc analysis from middle_val to stop1 is performed. The results are concatenated together.
+          This approach is useful if the nodesets for the middle_val are given. In this case the speed and
+          convergence are better.
+          Parameter can be specified in the following manner. Instance parameters:
+          <p class="showcode">@inst[param]<p>... example is '@r1[resistance]'
+          <p class="showcode">@inst <p>... '@r1' would mean r1 default parameter (resistance)
+          <p class="showcode">inst  <p>... 'r1' would mean r1 resistance, 'v1' would mean v1 dc voltage
+          <p class="showcode">@inst[param][i] <p>... i-th component of vector parameter param of instance inst.
+          Model parameters:
+          <p class="showcode">@@mod[param] <p>   ... example is '@@rm[tc1]' ... tc1 parameter for model rm
+          <p class="showcode">@@mod  <p>         ... '@@rm' would mean default parameter for model rm
+                    (in case rm is a resistance model this would be rsh)
+          <p class="showcode">@@mod[param][i] <p>... i-th component of vector parameter param of model mod.
+          Temperatures:
+          <p class="showcode">@@@temp  <p>... circuit global temperature in degrees celsius
+          <p class="showcode">@@@tnom  <p>... global nominal temperature in degrees celsius for instance and model parameter recalculation
+          <p class="showcode">@@@tempk <p>... circuit global temperature in Kelvins
+          <p class="showcode">@@@tnomk <p>... global nominal temperature in Kelvins for instance and model parameter recalculation.
+          In case dec/oct/lin is ommited, step is the linear step size. In case dec/oct is used, step is the
+          number of points per decade/octave. In case lin is used, step is the number of points in
+          range between start and stop (for 10, 11 points are evaluated including start and stop point). Examples:
+          <p class="showcode">dc @r1[resistance] 1m 1meg dec 10 <p> ... sweep resistance for instance r1 from 1m to 1meg, 10 points per decade
+          <p class="showcode">dc @@rm[rsh] 50 90 lin 100  <p>      ... sweep rsh for model rm from 50 to 90 with 100 equidistant steps
+          <p class="showcode">dc @@@temp -20 50 0.01 <p>           ... sweep global temperature from -20 to 50 (degrees celsius), step is 0.01
+          </p></div>
+        </div>
+      </div>
+
+       <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="lhslet"></a>
+          Improved let syntax.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Left hand side can now be specified using the following syntax:
+          <p class="showcode">let plot.vector[index1]...[indexn] = expression
+          <p>Examples:
+          <p class="showcode">let dc2.a[3] = 5  <p>    ... vector a in plot dc2, assign 5 to 4th e lement
+          <p class="showcode">let dc2.a = vector(5) <p>... assign a vector with elements 0..4 to vector 'a' in plot 'dc2'
+          An arbitrary expression can be used for index. If plot name is ommited, the referenced vector is
+          created or modified in current plot. Instance/model parameters can be altered using the let command:
+          <p class="showcode">let @r1[resistance] = 5000 <p>... set parameter resistance for instance 'r1' to 5000
+          <p class="showcode">let @@rm[tc1] = 0.05    <p>   ... set model parameter 'tc1' for model 'rm' to 0.05.
+          The syntax for parameters is the same as with the dc analysis.
+          Index into a vector parameter can be an arbitrary expression:
+          <p class="showcode">let @v1[coeffs][2*1] = 0.01 <p>... set 3rd element of parameter 'coeffs' for instance 'v1' to 0.01.
+          In special case of assigning vector to a scalar (one component of another vector) vector will
+          be assigned to subsequent indices from the specified element. The vector on the left hand side
+          will not be resized. For instance:
+          <p class="showcode">let a = vector(5)<p> ... assign a = (0; 1; 2; 3; 4)
+          <p class="showcode">let b = vector(2)<p> ... assign b = (0; 1)
+          <p class="showcode">let a[2] = b    <p>  ... assign a = (0; 1; 0; 1; 4)
+          <p class="showcode">let b = vector(6) <p>... assign b = (0; 1; 2; 3; 4; 5)
+          <p class="showcode">let a[1] = b   <p>   ... assign a = (0; 0; 1; 2; 3)
+          To construct a vector from its components
+          <p class="showcode">let a=(10;20;30)<br>
+          let b=(12;22;32;a;a*2;90)
+          <p>b would now be a vector with the following elements: 12 22 32 10 20 30 20 40 60 90.
+          </p></div>
+        </div>
+      </div>
+
+       <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="subinst"></a>
+          Extended syntax for subcircuit instances.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          A particular device parameter in all instances of a specified subcircuit type can
+          be accessed by the following syntax:
+          <p class="showcode">@inst:@subckt[param]
+          <p>Examples. Loaded circuit netlist is:
+          <p class="showcode">  ...<br>
+          x1 ... amp ...<br>
+          x2 ... amp ...<br>
+          ...<br>
+          .subckt amp ...<br>
+          ...<br>
+          m1 ... w= ...<br>
+          ...<br>
+          .ends<br>
+          ...<br>
+          <p>Command explanations:
+          <p class="showcode">let @m1:@amp[w] = 1u <p>... set width parameter of transistor m1 to 1um in all ž
+          instances of subcircuit amp (@m1:x1[w] = @m1:x2[w] = 1um)
+          <p class="showcode">let a = @m1:@amp[w]  <p>... assign scalar a to width parameter of the m1 transistor
+          in the first instance of subcircuit amp (a = @m1:x1[w])
+          </p></div>
+        </div>
+      </div>
+
+       <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="expr"></a>
+          Extended syntax for vectors in expressions.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The extended syntax for vectors in expressions now is:
+          <p class="showcode">let c=dc1.a*2  <p>  ... take vector a in plot dc1 and mutiply it by
+          2, assign the result to vector c in current plot
+          <p class="showcode">let c=dc1.a[2]*2 <p> ... vector a in plot dc1, take 3rd element,
+          mutiply by 2 and assign the result to vector c in current plot
+          <p class="showcode">let c=a[2][3]*2  <p> ... a is a 2D vector, indices into this vector
+          are 2 and 3. Another example:
+          <p class="showcode">let c=@r1[p][3]  <p> ... This will take the 4th element from
+          vector @r1[p]. Assigning into a vector element for an instance/model parameter:
+          <p class="showcode">let @r1[p][3]=0.05
+          <p>Of course such vectors can be referenced in other plots too:
+          <p class="showcode">let a=dc1.@r1[p]
+          <p>Note again the use of braces in the above example when accessing a vector element:
+          <p class="showcode">let a=(dc1.@r1[p])[3]
+          <p>Instance/model parameters can be used in expressions. Some examples:
+          <p class="showcode">let c=@r1[resistance]<br>
+          let c=@@rm[tc1]<br>
+          let c=@v1[coeffs]<p>      ... assign coeffs vector parameter value of instance v1 to c
+          <p class="showcode">let c=@v1[coeffs][2*1] <p> ... assign coeffs vector parameter's 3rd
+          element (from instance v1) to vector c
+          </p></div>
+        </div>
+      </div>
+
+       <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="siminfo"></a>
+          Display simulator information (analyses, devices, (user defined) nodes).
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <p class="showcode">siminfo [analyses] [devices] [nodes] [all]<p>
+          Code models are marked with '++'
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="cmload"></a>
+          Load code models and user defined nodes from a .cm file.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <p class="showcode">cmload filename.cm
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="nameplot"></a>
+          New command <i>nameplot</i> renames the current plot.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The following command sequence performs an op analysis and names
+          the plot with the results firstop:
+          <p class="showcode">op<br>
+          nameplot firstop
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="nextprev"></a>
+          Keywords <i>next</i> and <i>previous</i> when using setplot.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Keywords next and previous when using setplot set the current
+          plot to the next/previous plot. Examples:
+          <p class="showcode">setplot next<br>
+          setplot previous
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          Functions <i>min()</i> and <i>max()</i>
+          <a name="minmaxsum"></a>
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Functions min() and max() return the smallest/largest component of a vector.
+          For complex vectors the smallest/largest component is determined by comparing
+          the absolute value of the components. Function sum() returns the sum of the components
+          of a vector. Examples:
+          <p class="showcode">* Real vector<br>
+          let a=(1;2;3;4)<br>
+          * Complex vector<br>
+          let b=((0,-1);(2,1);(0,0))<br><br>
+          * min() example<br>
+          * c <- 1<br>
+          let c=min(a)<br>
+          * c <- (0,0)<br>
+          let c=min(b)<br><br>
+          * max() example<br>
+          * c <- 4<br>
+          let c=max(a)<br>
+          * c <- (2,1)<br>
+          let c=max(b)<br><br>
+          * sum() example<br>
+          * c <- 10<br>
+          let c=sum(a)<br>
+          * c <- (2,0)<br>
+          let c=sum(b) <br>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="badcktfree"></a>
+          Variable <i>badcktfree</i>
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Variable badcktfree forces the simulator to release a circuit
+          if any errors are found in the circuit. It is usually
+          set in the spinit file.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="badcktstop"></a>
+          Variable <i>badcktstop</i>
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Variable badcktstop prevents the simulator from running the
+          script in the .control block if any errors are found in the
+          circuit. It is usually set in the spinit file.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="lib"></a>
+          Netlist parsing completely rewritten.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Improved error reporting. Added .lib clause. Example:
+          File lib1.lib:
+          <p class="showcode">.lib section1<br>
+          r1 1 2 1<br>
+          r2 2 3 1<br>
+          .endl<br>
+          .lib section2<br>
+          r1 1 0 1<br>
+          r2 3 0 1<br>
+          .endl<br>
+          <p>File netlist:
+          <p class="showcode">Test netlist<br>
+          * Include section1 from lib1.lib<br>
+          .lib 'lib1.lib' section1<br>
+          * Include section2 from lib1.lib<br>
+          .lib 'lib1.lib' section2<br>
+          .end <br>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="letfix"></a>
+          Let now allows vector length to be modified.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Example:
+          <p class="showcode">let a=(1;2;3)<br>
+          let a=(1;2)<br>
+          let a=(2;3;4;5)<br>
+          * a now contains (2;3;4;5) <br>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          To create a plot and name it use <i>setplot new</i> and then <i>nameplot</i>.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The first vector you create in that plot becomes the default scale.
+          <p class="showcode">setplot new<br>
+          nameplot plot10<br>
+          let a=(2;4;5;9)<br>
+          let b=(1;2;3;4)<br>
+          * a is the default scale for plot10 <br>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="vecsclsel"></a>
+          Vector operator <i>[|low,high]</i>.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Vector operator [|low,high] selects a range from a vector that
+          corresponds to the range low <= default_scale_value <= high on
+          the default scale. Example:
+          <p class="showcode">setplot new<br>
+          nameplot plot10<br>
+          let a=(2;4;5;9)<br>
+          let b=(1;2;3;4)<br>
+          * Select values for b for which the scale value is<br>
+          * between 2.5 and 5.5<br>
+          let x1=b[|2.5,5.5]<br>
+          * Select values for b for which the scale value is<br>
+          * between 4 and 5<br>
+          let x2=b[|4,5]<br>
+          * Both x1 and x2 contain now (2;3)
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="plottag"></a>
+          Graph tagging.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          A graph is automatically tagged as plotn if no tag is specified (iplotn for the plots
+          generated by iplot commands). n is automatically set by Nutmeg and is unique for a plot
+          in a SpiceOpus session. The plot tag is displayed in the title bar of the graph as
+          tag: graph_name To create and tag a graph, use plot create tag vectors:
+          <p class="showcode">* Create a graph, tag it plota and display<br>
+          * vectors a and b vs default scale<br>
+          plot create plota a b
+          <p>In case a graph with the given tag exists, the new graph is tagged with it. This makes
+          it impossible to refer to the older graph. To append some more data to a graph, use plot
+          append tag vectors:
+          <p class="showcode">* Appends vector c to graph tagged plota<br>
+          plot append plota c
+          <p>To append without autoscaling and repainting the graph, use plot quickappend tag vectors:
+          <p class="showcode">* Quickappends vector c to graph tagged plota<br>
+          plot quickappend plota c
+          <p>After the last quickappend call autoscale on the updated graph by typing plot autoscale tag:
+          <p class="showcode">* Autoscales graph tagged plota<br>
+          plot autoscale plota
+          <p>In case there are scaling and graph type commands in the plot append clause, they are applied
+          to the graph. If the graph doesn't exist (the user has closed it), the graph is recreated and
+          tagged with the given tag. A graph can be closed with plot destroy tag:
+          <p class="showcode">* Close graph plota<br>
+          plot destroy plota
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="rounding"></a>
+          Function <i>floor()</i>.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Nutmeg function floor() returns an integer vector with largest components not exceeding the components
+          of the operand. ceil() returns an integer vector with smallest components not below components of the
+          operand. round() rounds the vector components to the nearest integer. In case the operand is complex,
+          these functions operate on real and imaginary parts independently.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="realindex"></a>
+          Vector operator <i>[%index]</i>
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Vector operator [%index] returns an element with the corresponding index from the vector if the
+          index is integer. If the index is real, linear interpolation is used to calculate the return
+          value. Example:
+          <p class="showcode">setplot new<br>
+          nameplot plot10<br>
+          let a=(2;4;5;9)<br>
+          let b=(1;2;3;4)<br>
+          * x1 becomes 4<br>
+          let x1=a[%1]<br>
+          * x2 becomes 2.5 (in the middle between components<br>
+          * b[1] (2) and b[2] (3))<br>
+          let x2=b[%1.5]
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="cursor"></a>
+          Cursor commands.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Nutmeg command cursor manipulates cursors. A cursor is a vector of length one (vector component) that
+          represents a real index into a vector. To initialize a cursor, create a vector:
+          <p class="showcode">* Creates two cursors, cleft and cright<br>
+          let cleft=0<br>
+          let cright=0
+          <p>To move a cursor to the left edge of a vector, use:
+          <p class="showcode">* Moves cleft to the left edge and cright to the right edge of vector 'time'<br>
+          cursor cleft left time<br>
+          cursor cright right time
+          <p>To move a cursor to a certain level on a vector, use:
+          <p class="showcode">* Moves cleft towards right until it reaches level 0.5 on vector pulse<br>
+          cursor cleft right pulse 0.5<br>
+          * Moves cright towards left until it reaches level 0.5 on vector pulse<br>
+          cursor cright left pulse 0.5
+          <p>Cursors are real indices into vectors. Since time is the scale for vector pulse, the time
+          difference between cleft and cright is the pulse width (if vector pulse contains only one pulse
+          with bottom level zero and top level one). Pulse width can be obtained by:
+          <p class="showcode">* See explanation of the [%index] vector operator<br>
+          let pulsewidth=time[%cright]-time[%cleft]
+          <p>To put it in short: the syntax for the cursor command is:
+          <p class="showcode">* Initialize a cursor<br>
+          cursor vec_el left|right<br>
+          * Move a cursor<br>
+          cursor vec_el left|right vector_expression level_expression<br>
+          <p>The cursor position is stored in vec_el (either a real vector of length one or a real
+          vector element of the form vector_name[element_index]).
+          The following example measures the rise time of a signal named pulse using time for scale:
+          <p class="showcode">* Create scalar c1 and c2 (cursors)<br>
+          let c1=0<br>
+          let c2=0<br>
+          * Get the bottom and the top level of the pulse<br>
+          let bottom=min(pulse)<br>
+          let top=max(pulse)<br>
+          * Move c1 and c2 to the left edge of vector pulse<br>
+          cursor c1 left pulse<br>
+          cursor c2 left pulse<br>
+          * Move c1 to 10% level between bottom and top<br>
+          cursor c1 right pulse bottom+0.1*(top-bottom)<br>
+          * Move c2 to 90% level between bottom and top<br>
+          cursor c2 right pulse bottom+0.9*(top-bottom)<br>
+          * Calculate difference between c1 and c2 using time for scale<br>
+          let trise=time[%c2]-time[%c1]<br>
+          * Display result<br>
+          echo Rise time {trise}<br>
+          <p>One can specify at which crossing of the signal the cursor should stop.
+          <p class="showcode">* This will stop at 4th crossing of 0.5 in v(10) when moving towards right<br>
+          cursor c right v(10) 0.5 4<br>
+          <p>Finally only crossings of patricular type can be counted.
+          <p class="showcode">* This considers only crossings where v(10) is rising<br>
+          cursor c right v(10) 0.5 4 rising<br>
+          * This considers only crossings where v(10) is falling<br>
+          cursor c right v(10) 0.5 4 falling<br>
+          * This considers all crossings<br>
+          cursor c right v(10) 0.5 4 any<br>
+          <p>If the number of intercepts is left out, it is assumed to be one. If the type
+          of crossing is left out all crossings are cosidered (just like with any).
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="vsrcisrcwfm"></a>
+          Transient waveforms for independent voltage and current sources can be changed.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          For the purpouse of the explanation consider the following netlist:
+          <p class="showcode">Transient source netlist<br>
+          v1 1 0 dc 0 pulse 0 1V 1ms 1us 1us 2ms 4ms<br>
+          r1 1 0 1<br>
+          <p>To change the pulse width for v1 from 2ms to 3ms, type:
+          <p class="showcode">let @v1[coeffs][5]=3m<br>
+          * This would also do the trick. Note that the following<br>
+          * assignment changes the type of the source to PULSE no matter<br>
+          * what the current type is whereas the previous assignment (using<br>
+          * the coeffs parameter) changes only the 6th parameter to 3m no<br>
+          * matter what type of transient source is currently set for v1.<br>
+          let @v1[pulse][5]=3m<br>
+          <p>To change the transient waveform for v1 from pulse to sin with parameters 0 1 1kHz, type:
+          <p class="showcode">let @v1[sine][5]=(0;1;1k)<br>
+          * or<br>
+          let @v1[sin][5]=(0;1;1k)<br>
+          <p>The same goes for the independent current sources.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="nodeset_ic"></a>
+          First iteration voltages for finding dc or initial transient solution can be set by nodeset command.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Similarly the initial conditions for transient analysis can be set by ic command. Both commands have the same syntax:
+          <p class="showcode">nodeset [delete | &ltplot_name> |  <br>
+               v(&ltnode_name_1>) = [value_1] [v(&ltnode_name_2>) = [value_2] <br>
+               [v(&ltnode_name_3>) = [&ltvalue_3>] ... ]]]  <br>
+          <p>and
+          <p class="showcode">ic [delete | &ltplot_name> |    <br>
+               v(&ltnode_name_1>) = [value_1] [v(&ltnode_name_2>) = [value_2]  <br>
+               [v(&ltnode_name_3>) = [&ltvalue_3>] ... ]]]<br>
+          <p>Examples
+          <p>Without any arguments commands nodeset and ic list defined nodesets or initial
+          conditions, respectively.
+          <p class="showcode">nodeset
+          <p>Nodesets:
+          <p class="showcode">v(1)    = 1.000000e+001 <br>
+          v(3:x1) = 5.000000e-001
+          <p>or
+          <p class="showcode">ic
+          <p>Initial conditions:
+          <p class="showcode">v(2)    = 3.000000e+000         <br>
+          v(6:x1) = 1.000000e-001
+          <p>If one wants to delete nodeset for node 1 (or initial condition for node 6:x1), and at
+          the same time set additional nodeset for node 4 to 3V (or initial condition for node
+          7:x2 to 2V), then one has to issue:
+          <p class="showcode">nodeset v(1)= v(4)=3V
+          <p>or
+          <p class="showcode">ic v(6:x1)= v(7:x2)=2V
+          <p>All nodeset voltages (or initial conditions) can be set to an arbitrary analysis results. Commands:
+          <p class="showcode">nodeset op1
+          <p>and
+          <p class="showcode">ic tran3
+          <p>set all nodeset voltages to values of vectors in op1 plot (results of operating point
+          analysis) and all initial conditions to final values of vectors in tran3 plot (results of
+          transient analysis).
+          All nodeset or initial conditions can be removed by:
+          <p class="showcode">nodeset delete
+          <p>or
+          <p class="showcode">ic delete
+          <p>commands respectively.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="phunwrap"></a>
+          Nutmeg function unwrap().
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The function unwraps the phase vector (a real vector of phase angles).
+          It uses the current units setting (degrees or radians).
+          <p class="showcode">
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="arithsub"></a>
+          Arithmetic substitution
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Arithmetic substitution enables you to replace the expression in the curly
+          braces by its value prior to the execution of the Nutmeg command. All valid
+          nutmeg functions and operators may be used in the expression. Avoid spaces.
+          Expansion rules depend on the type of the result (real, complex, scalar, vector)
+          The expansion rules are as follows
+          <p>{expression} -> result<br>
+          real scalar -> value<br>
+          complex scalar -> (rvalue,ivalue)<br>
+          real vector -> (value1;value2;...)<br>
+          complex vector -> ((rvalue1,ivalue1);(rvalue2,ivalue2);...)<br>
+          <p>Example: set the voltage source DC parameter for sources V1, V2, ..., V20 to 0.
+          <p class="showcode">let counter=1<br>
+          while counter le 20<br>
+          let @v{counter}[dc]=0<br>
+          let counter=counter+1<br>
+          endwhile
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="integrate"></a>
+          Function <i>integrate()</i>.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Function integrate() calculates new vector which is defined integral of the argument
+          on its scale. For instance if v(3) is a time depended voltage (its scale is time),
+          then vector integ_v3 obtained by integ_v3 = integrate(v(3)) represents:
+          <p><img src="./img/integrate.gif">
+          <p>Before the integration takes place the original vector is approximated by a
+          polynomial. The degree of polynomial approximation can be set with polydegree variable.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="scktreparse"></a>
+          Parametrised subcircuit parsing.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          By default parameterised subcircuits are reparsed every time an arbitrary subcircuit parameter is changed.
+          This is not convenient in cases when one wants to change more subcircuit parameters one after another.
+          In this case the subcircuit shall be parsed after every parameter change instead only at the end.
+          To avoid such situations (which typically arise in optimisation loops) manual subcircuit reparsing
+          can be invoked by setting manualscktreparse  variable. If the variable is set then subcircuit
+          is reparsed only when required by scktreparse command. The syntax of the command is:
+          <p class="showcode">scktreparse [&ltsckt_name_1> &ltsckt_name_2> ...] [<@sckt_mod_name_1> <@sckt_mod_name_2> ...]
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="area"></a>
+          Function <i>area()</i>.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Function area() will return total area of the specified circuit in future. At the moment
+          only MOSFET devices are taken into account. Therefore currently area occupied by MOSFETs
+          is returned. The function takes one argument which represents circuit number. The circuit
+          number can be obtained by setcirc command. If circuit number is zero then area of current
+          circuit is calculated.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="copyplot"></a>
+          Command <i>copyplot</i>
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Command copyplot copies data from source to destination plot. If destination plot does
+          not exist it is created. The syntax is:
+          <p class="showcode">copyplot &ltsource_plot_name> &ltdestination_plot_name>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="pathalter"></a>
+          SpiceOpus names items in subcircuits from bottom to top.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          SpiceOpus names items in subcircuits from bottom to top (e.g. node1:sckt1:sckt2).
+          That is different from some other Spices which use top to bottom naming (e.g. sckt2:sckt1:node1).
+          This fact is noted in the header of the output raw file by line Sckt. naming: from bottom to top.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="scktparams"></a>
+          The <i>scktparams</i> command
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          All current subcircuit parameter values can be saved or restored by scktparams command. A parameterset
+          (set of subcircuit parameters) is saved by get and restored by set subcommand. A particular parameterset
+          can be printed by print subcommand or removed by remove subcommand. If parameterset_name is not
+          given with print or remove subcommands then list of available parametersets is printed or all
+          parametersets of the subcircuit are removed, respectively. The syntax of the command is:
+          <p class="showcode">scktparams &ltsckt_name|@sckt_mod_name> get|set|print|remove [parameterset_name]
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="plotstack"></a>
+          Plot stack.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          To push a reference to a plot onto the plot stack, use pushplot <name>. To pop a plot from
+          the plot stack, use popplot. You can refer to the plot on the top of the stack with __topstack.
+          Similarly you can refer to the newest plot using __topplot. __topstack and __topplot can be
+          used in expressions, on the left side of the '=' in let command, with the destroy command,
+          and with the setplot command.
+          <p>Plots pushed onto the stack cannot be destroyed. They must be popped first.
+          destroy all clears the plot stack and deletes all plots with the exception of the constants plot (const).
+          To display the contents of the plot stack, use plotstack.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="file_handling"></a>
+          Manipulating files.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Commands for copying, moving/renaming and deleting files are:
+          <p class="showcode">copy source_filename destination_filename<br>
+          move from_filename to_filename<br>
+          remove filename1 [filename2 ...]
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="timer"></a>
+          The <i>timer(x)</i> function
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The timer(x) function returns the difference between the CPU time in seconds
+          and x. And clock(x) function returns the difference between absolute time
+          in seconds and x. CPU time means time spent for SpiceOpus application.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="destroyto"></a>
+          The <i>destroyto</i> command.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The command destroyto removes all plots created after the plot passed by an argument. Its syntax is:
+          <p class="showcode">destroyto plot_name
+          <p>If current plot was removed by destroyto command then plot in argument becomes current one.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="script"></a>
+          Command script implements procedures in Nutmeg.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          The syntax is:
+          <p class="showcode">script argument [script_name [command_line]]
+          <p>The second item, argument, can be add, delete, list or run.
+          <ul class="noindent">
+          <li>add adds new line (Nutmeg command) to the script (procedure). It needs script_name
+          and command_line arguments. Lines are always added at the end, after the last one.
+          <li>delete without script_name deletes all scripts. If script_name is specified then only
+          that script is deleted. command_line argument is not needed.
+          <li>list without script_name lists names of currently available scripts. If script_name is
+          specified then commands in that script are listed. command_line argument is not needed.
+          <li>run executes commands in specified script. It needs script_name argument.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="test"></a>
+          The <i>test</i> command.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Command test will be used for obtaining various file properties (size, date of creation and
+          modification etc.) in future. At this moment only checking of file existence can be performed.
+          The syntax of the command is:
+          <p class="showcode">test exist &ltfilename> &ltvectorname>
+          <p>The command creates new vector in the current plot. Is value is one if file exists and
+          zero otherwise.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="backup"></a>
+          The <i>backup</i> command.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Various internal data can be saved to file and read back by backup command. The last argument
+          specifies sort of internal data to be saved or retrieved. The syntax of the command is:
+          <p class="showcode">backup read|write &ltfilename> optimize_initial_values|random_generator_state|initial_guess_data
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="netlist"></a>
+          The <i>netlist</i> command.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Command netlist will be used for obtaining various netlist information in future. At this moment only extracting
+          models and instances from the netlist can be performed. The syntax of the command is:
+          <p class="showcode">netlist list (model &ltmodel_type> | instance &ltmodel_name>) &ltvar> &ltscalar>
+          <p>Available model_types are listed here. If the third field is model then the result is list of defined models
+          of specified type. Otherwise (the third field is instance) the result is list of instances of specified model.
+          List of model/instance names is stored into global variable var, while its length is written into scalar,
+          which is member of current plot.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="random"></a>
+          Nutmeg variables <i>rndinit, gausstruncate</i> and functions <i>rndunif  (x), rndgauss  (x)</i>.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Nutmeg variables rndinit, gausstruncate and functions rndunif  (x), rndgauss  (x) were implemented
+          to handle random real numbers. The argument of both functions is complex vector x. For rndunif  (x)
+          function argument is x = ((delta1, mean1); (delta2, mean2); ...), and for rndgauss  (x) function argument
+          is x = ((sigma1, mean1); (sigma2, mean2); ...). If argument x is real vector then all meanx values are
+          zero by default. Both functions return real vector of real random values. i-th component of vector
+          returned by rndunif() function is uniformly distributed real random number on open interval
+          (meani - deltai, meani + deltai). And on the other hand i-th component of vector returned by rndgauss()
+          function is normally distributed real random number with standard deviation sigmai and mean value meani.
+          <p>Nutmeg variable rndinit resets random generator. It has to be a negative integer, which is used as seed.
+          Its default value is -1. Variable gausstruncate sets so-called gauss truncation. i-th component returned by
+          rndgauss() function is always inside open interval (meani - gausstruncate * sigmai, meani + gausstruncate * sigmai).
+          If that is not the case then obtained random number is skipped and another is generated. The default value
+          of gausstruncate variable is 1e300, which in practice means no truncation.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="ssse"></a>
+          The <i>ssse</i> command.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Steady state response analysis in transient domain is available by ssse command. The shooting method
+          with extrapolation is used. Syntax of ssse analysis is as follows:
+          <p class="showcode">ssse v(<posnode>[,<negnode>]) [<level> [<step> [<skip> [<periods>]]]] [history]<br>
+          <> ... user defined value<br>
+          [] ... optional field
+          <p>Above v(<posnode>[,<negnode>]) represents observed response, for which steady state is calculated; at
+          response = level circuit status is collected for shooting method (default value: 0); step specifies base for
+          variable timestep (same as the first argument in transient analysis) (default value: 1); skip determines time
+          skipped before we start to sample the response (default value: 0) and periods gives number of periods taken
+          into account for sampling (default value: 2).
+          <p>The analysis is performed by a sequence of transient analyses. New initial conditions are calculated after
+          each transient run and are used in the next. This goes on until convergence (steady state response) is reached
+          or we run out of maximum number of transient iterations. The iteration limit is given by itl2 option. Convergence
+          is defined with absolute and relative tolerances given by products of sssetol* vntol or sssetol* abstol and
+          sssetol* reltol options. The convergence is reached when the difference between right hand side values at the
+          beginning and right hand side values at the end of the last period is inside tolerances.
+          <p>By default only the last transient run results (steady state response) are saved in plot as final results
+          of ssse analysis. If history flag is set then all transient iterations performed during the steady state
+          analysis are saved into subsequent plots.
+          <p>Note: It turned out that steady state analysis in transient domain by shooting with extrapolation is in
+          some cases numerically unstable. If that happens reducing timestep or changing integration method, order
+          and transient oscillation detection sometimes help.
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="dollar"></a>
+          Syntax <i>$var_name</i> replacement.
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          Syntax $var_name is obsolete. To reach the variable use $(var_name) instead.
+          <p class="showcode">* Print value of 'aaa' variable<br>
+          echo aaa = $(aaa)<br>
+          aaa = value_of_aaa
+          <p>To check if the variable exists use $(?var_name). If the variable exists one is returned, otherwise zero.
+          <p class="showcode">* Create 'aaa' variable<br>
+          set aaa = value<br>
+          * Variable 'aaa' exists, therefore one dimensional vector ccc is one<br>
+          let ccc = $(?aaa)<br>
+          * Variable 'bbb' does not exist, therefore one dimensional vector ddd is zero<br>
+          let ddd = $(?bbb)<br>
+          <p>Variable can have more than one component. To find out how many components the variable
+          has use $(#var_name) syntax. Number of components is returned.
+          <p class="showcode">* Create an ordinary variable 'aaa' and variable 'bbb' with four components<br>
+          set aaa = valuea<br>
+          set bbb = ( valueb1 valueb2 valueb3 valueb4 )<br>
+          * Variable 'aaa' has one component, therefore one dimensional vector ccc is one<br>
+          let ccc = $(#aaa)<br>
+          * Variable 'bbb' has four components, therefore one dimensional vector ddd is four<br>
+          let ddd = $(#bbb)<br>
+          <p>To get only one component of the variable use $(var_name[index]) syntax. index is zero based.
+          If index exceeds number of components then empty space is returned.
+          <p class="showcode">* Create variable 'aaa' with four components<br>
+          set aaa = ( value1 value2 value3 value4 )<br>
+          * Print non-existing fifth component of 'aaa' variable<br>
+          echo aaa[4] = $(aaa[4])<br>
+          aaa[4] =<br>
+          * Print fourth component of 'aaa' variable<br>
+          echo aaa[3] = $(aaa[3])<br>
+           aaa[3] = value4<br>
+          <p>SpiceOpus prompts for a value, string, piece of Nutmeg code without ({}, $, aliases etc.)
+          substitutions etc. when $(-) syntax is used.
+          <p class="showcode">* Prompt the user to enter the value of 'aaa' vector<br>
+          let aaa = $(-)<br>
+            (1; 2; 3)  <br>
+          * 'aaa' is now three dimensional vector<br>
+          </p></div>
+        </div>
+      </div>
+
+
+      <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size2">
+          <a name="unwraptol"></a>
+          <i>unwraptol</i> variable
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          This variable sets the tolerance for the <i>unwrap()</i>
+          NUTMEG function. If it is not set the defailt value of 5 is
+          used. <i>unwrap()</i> treats any phase jump in excess of
+          (1-<i>unwraptol</i>/100)x360 degrees as a phase wraparound and
+          corrects the phase correspondingly. Use <i>unwraptol</i> values
+          above 50 for postprocessing of simulation results obtained from
+          circuits comprising long transmission lines or any other
+          element that causes the phase to vary rapidly with frequency.
+          </p></div>
+        </div>
+      </div>
+
+
+
+     </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+       <p><b>Copyright &copy; 2008 <a href="http://www.fe.uni-lj.si/eng">Faculty of Electrical Engineering</a>, Ljubljana, Slovenia | All Rights Reserved</b></p>
+       <p>Page Design <a href="mailto:gw@actamail.com">G. Wolfgang</a> | Page content <a href="http://www.fe.uni-lj.si/research/chairs_and_laboratories/laboratories/2008081915513509/">EDA Group</a></p>
+    </div>
+  </div>
+
+
+ <script type="text/javascript">
+   var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+   document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+ </script>
+ <script type="text/javascript">
+   try
+   {
+     var pageTracker = _gat._getTracker("UA-8305434-3");
+     pageTracker._trackPageview();
+   } catch(err)
+   {
+   }
+ </script>
+
+
+</body>
+</html>

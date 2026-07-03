@@ -441,7 +441,13 @@ For a scenario with check `SPICE_PSS_ANALYSIS`:
    validation. It emits backend-planning evidence with planned normalized
    outputs `pss_waveform`, `pss_spectrum`, and `pss_convergence`, and records
    the manifest schema expected from a future solver adapter.
-6. CircuitCI must not present PSS or oscillator sign-off as passing until a
+6. The backend-planning finding records the current primary-source assessment:
+   Xyce 7.8 has HB but no separate documented `.PSS` command; ngspice PSS is
+   experimental, autonomous-focused, build-gated by `--enable-pss`, and lacks a
+   trusted normalized output contract in this runtime; SPICE OPUS `ssse`
+   shooting is documented but has no CircuitCI backend adapter or conformance
+   suite.
+7. CircuitCI must not present PSS or oscillator sign-off as passing until a
    trusted backend emits the normalized waveform, spectrum, convergence, raw
    solver output, and solver-manifest artifacts.
 

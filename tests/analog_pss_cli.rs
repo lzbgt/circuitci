@@ -148,6 +148,14 @@ fn pss_contract_is_schema_valid_and_fails_closed_with_planning_evidence() {
         report["failures"][0]["limit"]["implemented_backend"],
         "none_yet"
     );
+    assert_eq!(
+        report["failures"][0]["limit"]["trusted_backend_status"],
+        "none_available"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["backend_research_status"]["xyce"],
+        "no_distinct_pss_command_in_xyce_7_8_docs_hb_only_for_current_runtime"
+    );
     assert_report_schema_valid(&report);
 }
 

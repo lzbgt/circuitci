@@ -1,0 +1,915 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <meta name="description" content="SPICE OPUS -- A SPICE engine for OPtimization UtilitieS" />
+  <meta name="keywords" content="analog circuit simulation, spice, opus, analog circuit optimization" />
+  <meta name="author" content="Faculty of Electircal Engineering, Ljubljana, Slovenia / Template design: G. Wolfgang" />
+  <link rel="stylesheet" type="text/css" media="screen,projection" href="./css/style_screen.css" />
+  <link rel="stylesheet" type="text/css" media="print" href="./css/style_print.css" />
+  <title>SPICE OPUS</title>
+</head>
+
+<body>
+<div class="bg-head"><div class="page-container-2">
+
+     <!-- Navigation Level 1 -->
+     <div class="nav1-container">
+      <div class="nav1">
+      <ul>
+            <li><a href="index.html">Home</a></li>
+             <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    </div>
+    <a href="index.html"><div class="site-name"></div></a>
+
+    <!-- Site slogan -->
+    <div class="site-slogan-container">
+    <div class="site-slogan">
+           <p class="readmore">&rsaquo;&rsaquo;&rsaquo;&nbsp;<a href="img/screen-pll.png">Screenshot</a></p>
+        <p class="title">THE SLIDE RULE OF SILICON DESIGN</p>
+          <p class="subtitle">Free Analog Circuit Simulation</p>
+      </div>
+    </div>
+
+    <!-- Header banner -->
+    <div class="img-header"></div>
+
+    <!-- Navigation Level 2 -->
+    <div class="nav2">
+      <ul>
+        <li><a href="index.html" class="selected">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="release.html">Release</a></li>
+        <li><a href="http://www.spiceopus.si/download/download.html">Download</a></li>
+        <li><a href="documentation.html">Documentation</a></li>
+        <li><a href="links.html">Links</a></li>
+    <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+
+    <!-- Buffer after header -->
+    <div class="buffer"></div>
+
+    <!-- NAVIGATION -->
+    <!-- Navigation Level 3 -->
+    <div class="nav3">
+      <ul>
+        <li class="title">Menu</li>
+        <li class="group"><a href="index.html"class="selected">About</a></li>
+        <li class="group"><a href="license.html">License</a></li>
+        <li class="group"><a href="release.html">Release</a></li>
+        <li class="group"><a href="http://www.spiceopus.si/download/download.html">Download</a></li>
+           <li><a href="http://www.spiceopus.si/download/downloadl.html">Linux</a></li>
+           <li><a href="http://www.spiceopus.si/download/downloadw.html">Windows</a></li>
+        <li class="group"><a href="documentation.html">Documentation</a></li>
+        <li class="group"><a href="links.html">Links</a></li>
+    <li class="group"><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+
+    <!--   CONTENT -->
+    <div class="content2">
+
+      <!-- Page title -->
+      <div class="content2-pagetitle">Release History</div>
+
+          <!-- Text container -->
+          <div class="content2-container line-box">
+           <div class="content2-container-1col">
+            <p class="content-title-noshade-size3">Version 3.0 (date built: in progress)</p>
+            <div class="content-txtbox-noshade">
+             <p>
+              <ul class="noindent">
+               <li>OSDI v0.3 support (Verilog-A models built with OpenVAF compiler).</li>
+               <li>Improved data structures for faster loading of large files.</li>
+               <li>Minor convergence improvements.</li>
+               <li>New types of GMIN stepping selected via the gmintype option.</li>
+               <li>Bugfix in UFSOI model.</li>
+               <li>.mparam clause for defining subcircuit parameters which makes it possible
+                   to define modifiable toplevel subcircuit parameters.</li>
+               <li>Added hash tables for fast access to nodes, devices, instances, models, and instance/model parameters.</li>
+               <li>Nonlinear controlled source (B): renamed output parameters i and v (device current and voltage) to idev and vdev due to name conflict with input parameters i and v (expressions for current and voltage).</li>
+               <li>BJT: renamed output parameters ic, ib, ie, and is to icdev, ibdev, iedev, and isdev due to name conflict between input parameter ic (initial conditions) and output parameter ic (collector current).</li>
+              </ul></p></div></div></div>
+
+          <!-- Text container -->
+          <div class="content2-container line-box">
+           <div class="content2-container-1col">
+            <p class="content-title-noshade-size3">Version 2.33 (date built: 30. April 2021)</p>
+            <div class="content-txtbox-noshade">
+             <p>
+              <ul class="noindent">
+               <li>CMake-based build system.</li>
+               <li>Qt5-based interface.</li>
+               </ul></p></div></div></div>
+
+          <!-- Text container -->
+          <div class="content2-container line-box">
+           <div class="content2-container-1col">
+            <p class="content-title-noshade-size3">Version 2.32 (date built: 17. October 2017)</p>
+            <div class="content-txtbox-noshade">
+             <p>
+              <ul class="noindent">
+               <li>Maintenance build for supporting new version of Debian.</li>
+               <li>Dropping 32-bit binary support.</li>
+               </ul></p></div></div></div>
+
+          <!-- Text container -->
+          <div class="content2-container line-box">
+           <div class="content2-container-1col">
+            <p class="content-title-noshade-size3">Version 2.31 (date built: 8. October 2015)</p>
+            <div class="content-txtbox-noshade">
+             <p>
+              <ul class="noindent">
+               <li>NaN bug fixed in BSIM3SOI version 1.3 (level = 55) MOSFET
+                model.</li></ul></p></div></div></div>
+
+                <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.3 (date built: 11. June 2009)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li><a href="nutmeg.html#unwraptol">unwraptol</a> variable added.
+          <li>Automatic model selection <a href="netlist.html#binning">(binning)</a> for bsim4 MOSFET device model.
+          <li>BSIM4 MOSFET device model version bsim4v4.5.0 was added and set as default version.
+          It is specified as level=54 in .model statement. Level 60 is therefore cancelled.
+          <li>Parameter smooth added into voltage-controlled and current-controlled switch
+          models (sw and csw). If smooth is one then commutations from ron to roff and vice versa
+          are continuous. The default value for the parameter smooth is zero, which means original
+          step behaviour of the switch models.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.25 (date built: 5. Dec 2006)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Steady state response analysis in transient domain was implemented as <a href="nutmeg.html#ssse">ssse</a> command. Shooting method
+          with extrapolation is used.
+          <li>Option integdebug added. When specified messages about trapezoidal integration method behaviour are printed.
+          <li>Commands spec and fourier are consistent now. In previous versions the phase was calculated differently.
+          <li>Syntax of Nutmeg linearize command supplemented. The linearising step has to be given. New syntax is:
+          <p class="showcode">linearize step
+          <li>Nutmeg syntax for working with variables <a href="nutmeg.html#dollar">($ usage)</a> improved.
+          <li>Read only variable workdir added. It contains absolute path to the current working directory.
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.24 (date built: 5. Jan 2006)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Non-linear capacitances are introduced and therefore capacitance syntax is extended. If capacitance
+          expression is given then ctype parameter determines capacitance charge calculation. If capacitance
+          expression is a self-referential function (only voltage v(positive_node, negative_node) across the
+          capacitor, whose capacitance is determined, is used as function argument) then set ctype = 1. Default
+          value of ctype parameter is zero, which ensures proper charge calculation in case of non-self-referential
+          capacitance expression. New syntax is:
+          <p class="showcode">
+           c&lt;name&gt; &lt;positive_node&gt; &lt;negative_node&gt;<br>
+           {[&lt;model_name&gt;] [[c[apacitance]=]{[&lt;value&gt;] [&lt;expression&gt;]}]}<br>
+           [ctype=&lt;value&gt;] [ic=&lt;value&gt;] [l=&lt;value&gt;]<br>
+           [w=&lt;value&gt;] [m=&lt;value&gt;]<br>
+           &lt;&gt; ... user defined field<br>
+           [] ... optional field<br>
+           {} ... at least one filed must be specified
+          <li>Variable fullgarbagecollect added. When it is defined (by set command) deleting of internal temporary
+          vectors takes place in all plots rather than just in current plot. Note that optimize command automatically sets
+          this variable when enter into optimisation loop and restores its state at leave.
+          <li>Syntax <a href="nutmeg.html#subinst">@inst:@subckt[param]</a> added for accessing all instances of a specified subcircuit type.
+          <li>nolift property added to independent voltage and current source models. The default value is zero. If nolift
+          property is set then particular independent source remains unaffected by ramptime option and source stepping/lifting
+          convergence aids. It behaves as defined by its transient definition in time domain (ramptime option and source lifting).
+          In dc domain it is constant dc source as defined in its dc definition (source stepping). New syntax for independent v
+          oltage source is (the same goes for independent current source):
+          <p class="showcode">
+          v&lt;name&gt; &lt;positive_node&gt; &lt;negative_node&gt;<br>
+          [dc_definition] [ac_definition]<br>
+          [transient_definition] distorsion_definition<br>
+          [nolift=&lt;value&gt;] [m=&lt;value&gt;]<br>
+          dc_definition = [dc= | dc] &lt;value&gt;<br>
+          ac_definition = {ac[mag]= | ac[mag]}<br>
+          &lt;value&gt; [[acphase= | acphase] &lt;value&gt;] <br>
+          transient_definition = {pulse &lt;u1&gt; &lt;u2&gt; [&lt;td&gt;<br>
+          [&lt;tr&gt; [&lt;tf&gt; [&lt;tpw&gt; [&lt;tper&gt;]]]]] |<br>
+          sin[e] &lt;u0&gt; &lt;ua&gt; [&lt;f&gt; [&lt;td&gt; [&lt;kd&gt;]]] |<br>
+          exp &lt;u1&gt; &lt;u2&gt; [&lt;d1&gt; [&lt;t1&gt;
+          [&lt;td2&gt; [&lt;t2&gt;]]]] |<br>
+          pwl &lt;t1&gt; &lt;u1&gt; [&lt;t2&gt; &lt;u2&gt;[ ... ]] |<br>
+          sffm &lt;u0&gt; &lt;ua&gt; [&lt;f&gt; [&lt;mi&gt;[&lt;fs&gt;]]]}<br>
+          distorsion_definition = [{distof1= | distof1} &lt;value&gt;<br>
+          [&lt;value&gt;]][{distof2= | distof2} &lt;value&gt;
+          [&lt;value&gt;]]<br>
+          &lt;&gt; ... user defined field<br>
+          [] ... optional field<br>
+          {} ... at least one filed must be specified
+          <li>Nutmeg variables <a href="nutmeg.html#random">rndinit, gausstruncate</a> and functions
+          <a href="nutmeg.html#random">rndunif(), rndgauss()</a> added for generating random
+          real numbers.
+          <li>Option scale implemented for capacitor model (wscaled = w * scale and lscaled = l * scale).
+          <li>Nutmeg command <a href="nutmeg.html#netlist">netlist</a> added for obtaining various netlist information.
+          <li>Simulated annealing optimisation method was implemented.
+          <li>Circuit reparsing <a href="netlist.html#nb3_selecting">(netclass rebuild command)</a> is done only if active
+          (selected) and currently parsed netclasses do not match. Otherwise reparsing is skipped. To force netclass
+          rebuild regardless netclass matching set <a href="netlist.html#nb3_selecting">forcerebuild</a>
+          variable. Also a Nutmeg command netclass <a href="netlist.html#nb3_selecting">uptodate</a> was added to explicitly
+          obtain the information if reparsing is needed or not.
+          <li>Options xmu, xmumult and trapratio were added. They are all used only in second order trapezoidal integration
+          algorithm, which can generate numerical oscillations. Option xmu provides smooth transition from the second order
+          (xmu = 0.5) back to the first order (xmu = 0) (Euler) algorithm. The default value is 0.5. If numerical oscillations
+          are detected then multiplying with xmumult (default value is 0.8) decreases xmu. The level of detection of numerical
+          oscillations can be set by trapratio option (default value is 10).
+          <li>Option resmin added. It specifies minimum resistance value for resistors. This is needed in some cases when
+          extremely small resistance numerically overcomes all other terms in both nodal equations for terminal nodes, which could
+          further lead to non-accurate solutions. The resmin value for resistance is enforced when resistance / multiply factor < resmin.
+          <li>Nutmeg command <a href="nutmeg.html#backup">backup</a> added for saving and retrieving various internal data structures.
+          <li>Nutmeg command <a href="nutmeg.html#test">test</a> added for obtaining file properties.
+          <li>Current explosion model parameter expli implemented for non-geometric (level = 1) and geometric (level = 3)
+          diode model. The id(vd) exponential PN junction characteristic above the explosion current (id > expli) becomes
+          linear, with the slope determined at the explosion point. This speeds up simulation and improves convergence. The
+          default value equals to 1e15 [A/area]. If explosion point is in reverse bias (vd < 0) then linearisation is not
+          performed.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.22 (date built: 2. November 2004)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Variable quiet implemented. If it is set then warning and note messages are not printed (currently does not
+          work for all messages yet).
+          <li>Model parameters noiflag (enable flicker and thermal noise level selector), flklev (flicker noise level) and
+          thmlev (thermal noise level) added for bsim3v3 (level = 53) MOSFET model. They implement some additional non-Berkeley
+          flicker and thermal noise equations, which are used only if nlev parameter is not specified. Non-Berkeley flicker
+          noise equations are used if flklev is given and noiflag is not explicitly set to zero. Same goes for thermal noise.
+          Non-Berkeley thermal noise equations are used if thmlev is given and noiflag is not explicitly set to zero. As mentioned
+          before all three parameters are ignored in case nlev is specified. Parameter flklev can have values 0, 1, 2 or 3, parameter
+          thmlev 0, 1 or 2 and parameter noiflag 0 or 1.
+          <li>Model parameters nds and vnds are used to calculate current of reverse biased drain-bulk and source-bulk diodes in
+          bsim3v3 (level = 53) MOSFET model.
+          <li>Area calculation method implemented for bsim3v3 (level = 53) MOSFET model. Model parameters acm, calcacm,
+          ldif, hdif, rlev, alev, diolev and dcaplev added for this purpose.
+          <li>Model parameters tlev and tlevc added for bsim3v3 (level = 53) MOSFET model. They implement some additional
+          non-Berkeley temperature dependencies of energy gap, bulk diode saturation currents and capacitances, surface
+          potential and threshold voltage. Additional model parameters were also needed for this purpose:
+          <p class="showcode">
+          eg   (1.16 for tlev=2, 1.11 otherwise)   energy gap for pn junction diode<br>
+          gap1   (7.02e-4)   first bandgap correction factor<br>
+          gap2   (1108)   second bandgap correction factor<br>
+          phi   (0.576036)   surface potential<br>
+          pta (alias for tpb)   (0)   temperature coefficient of pb<br>
+          ptp (alias for tpbsw)   (0)   temperature coefficient of pbsw<br>
+          ptc   (0)   fermi potential phi temperature coefficient<br>
+          cta (alias for tcj)   (0)   temperature coefficient of cj<br>
+          ctp (alias for tcjsw)   (0)   temperature coefficient of cjsw<br>
+          tcv   (0)   threshold voltage temperature coefficient
+          <li>Model parameter fc (forward-bias depletion capacitance coefficient for bulk diodes) added for bsim3v3
+          (level = 53) MOSFET model.
+          <li>Model parameter vfbflag added for bsim3v3 (level = 53) MOSFET model. It selects threshold voltage equation
+          when capmod = 0.
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.21 (date built: 6. May 2004)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Procedures were introduced into Nutmeg language by <a href="nutmeg.html#script">script</a> command.
+          <li>Command <a href="nutmeg.html#destroyto">destroyto</a> was added for removing all plots created after plot
+          passed to the command as an argument.
+          <li>Iteration count and dvdt timestep algorithms added. Relevant options lvltim, rmax, rmin, ft, fs, itl3,
+          slopetol, absvar, relvar, relq, ltereltol, lteabstol and newtrunc added.
+          Option lvltim selects timestep control algorithm. Iteration count is selected when lvltim = 0, dvdt
+          when lvltim = 1 (default) and Berkeley's implementation of local truncation error when lvltim = 2.
+          when local truncation error method (lvltim = 2) is used.
+          Options rmax and rmin multiplied by user given timestep define the largest and the smallest allowed timesteps.
+          Options fs and ft define fraction by which timestep is multiplied in first iteration and in case of non-convergence.
+          Option itl3 is used in iteration count timestep algorithm. If less than itl3 iterations are needed for calculating a
+          particular time point then timestep is doubled.
+          Options slopetol, absvar and relvar are used in dvdt timestep algorithm and define maximum slope change and absolute and
+          relative solution change. Options relq, ltereltol, lteabstol and newtrunc are used in local truncation error timestep
+          algorithm. They define relative charge tolerance, relative and absolute current tolerance and usage of simplified
+          algorithm for local truncation error calculation.
+          <li>Option nopredictor added. It defines if predictor corrector algorithm is used or not.
+          <li>Option noconviter added. It skips convergence double checking in Newton-Raphson algorithm. By default this
+          option is not set and convergence is double checked. This means that additional iterations are performed to check
+          if the resulting solution is stable.
+          <li>Option dcap added. It defines depletion capacitance equations for nongeometric and geometric junction
+          diodes (levels 1 and 3) and bipolar junction transistors. At the moment only default depletion capacitance equations
+          are implemented (dcap = 1).
+          <li>Option gmindc added. It defines minimum conductance placed in parallel with all pn junctions in dc domain.
+          <li>Model parameters nlev (non-Berkeley noise equation selector) and gdsnoi (channel thermal noise coefficient)
+          added for bsim3v3 (level = 53) MOSFET model. Parameter nlev can have values 0, 1, 2 or 3. If it is specified then
+          non-Berkeley noise model is used for calculating flicker and channel thermal noise otherwise Berkeley model (default)
+          is used. Parameter gdsnoi is used only when nlev = 3.
+          <li>Instance properties idrain, idraincplx, igate, igatecplx, isource, isourcecplx, ibulk and ibulkcplx added for
+          bsim3v3 MOSFET model (level=53). Terminal currents of MOSFET device are stored there. A terminal current is considered
+          as positive if it flows into the device. The device properties always hold only their last values. If one wants for
+          instance to save drain current of the device m1 for all points of dc analysis then save command should be used (e.g. save
+          @m1[idrain]). The drain current values at all calculated points will be saved as a vector in the results plot. The properties
+          with cplx suffix are complex numbers. They hold complex values of terminal currents for ac analysis. For other analyses
+          their imaginary part is zero. On the other hand the properties without cplx suffix are real numbers. For ac analysis
+          they hold absolute values of terminal currents.
+          <li><a href="nutmeg.html#timer">timer() and clock()</a> functions added for measuring CPU and absolute time.
+          <li>Options nofloatnodescheck and noautoconv added. If nofloatnodescheck option is defined then circuit topology
+          check for floating nodes during circuit setup is skipped. Floating nodes have no pass to ground in dc domain. For
+          instance nodes connected only to capacitances are floating. If noautoconv option is defined then automatic option
+          setting for achieving convergence during operation point calculation is not performed. Both options are not defined
+          by default. Circuit topology check and automatic option setting can take some time. Therefore both options are
+          automatically switched on during the optimisation.
+          <li>Instance parameter check added to bsim3v3 MOSFET model (level=53). If its value is 1 then instance parameter
+          check is performed. To skip instance parameter check define check=0. Instance parameter check is skipped
+          regardless to check parameter if model parameter check=0. Default value for instance and model check parameters
+          for all instances and models is set by definstcheck and defmodcheck options, respectively. The default value
+          for both options is zero.
+          <li>cshunt option added. If it is greater than zero then cshunt capacitances from each node to ground are added
+          into the circuit. The default value is zero.
+          <li>Cmin stepping added to convergence aids. First source lifting without cmin capacitances is performed.
+          If no convergence is reached then cmin capacitances are added from each node to ground and source lifting
+          is performed again. If still no convergence is reached then i*cmin capacitances are added and source lifting
+          is performed in the following steps. i means step number. Cmin stepping can be controlled by noinitsrcl, cmin
+          and cminsteps options. If noinitsrcl is defined then initial source lifting without cmin capacitances is skipped.
+          cmin and cminsteps define the value of capacitances and number of steps, respectively. noinitsrcl is not defined
+          by default and default values for cmin and cminsteps are 1e-12 and 10.
+          <li>Solution limiting added into convergence aids for operating point analysis. It means that only changes inside
+          tolerances are allowed in each iteration. Solution limiting is used when we know that starting point for numerical
+          iterations is near final solution but still no convergence is achieved. Such cases arise in gmin and source stepping
+          when the step becomes small and at the end of source lifting if operating point analysis does not converge in normal
+          way. Solution limiting can be controlled by sollim and sollimiter options. sollim defines allowed change and
+          sollimiter defines number of iterations when numerical iterations are done in solution limiting mode. The default
+          value for both options is 10. Allowed change of right hand side component value is determined by:
+          <p class="showcode">
+          if(abs(new - old) > tolerance) new = old +/- tolerance / sollim<br>
+          sollimiter * itl1
+          <li>File handling Nutmeg commands <a href="nutmeg.html#file_handling"> copy, move and remove</a> added.
+          <li>Options matrixcheck and voltagelimit implemented. If matrixcheck option is set then the matrix and right hand
+          side entries are checked and corrected (limited) in each iteration after every circuit load. The matrixcheck option
+          helps to discover and solve convergence problems when infinite or indeterminate values appear in the matrix or
+          right hand side. It is not set by default. The voltagelimit option specifies the highest allowed model (vds, pn
+          junction etc. voltages) voltage during the iterations. It has to be greater than zero otherwise it is ignored.
+          Its default value is 1e30.
+          <li>Options nsfactor and nssteps added for soft nodesetting. The nodesets are added into the matrix with the
+          nsfactor and are then gradually omitted in nssteps successful iterations. The default values are nsfactor=1e10
+          and nssteps=1.
+          <li>Options opdebug, gminpriority, srcspriority and srclpriority added. Option opdebug turns message printing
+          about convergence aids on during the operation point analysis. The option is not set by default. Priority
+          options defines an order in which the convergence aid algorithms will be called. The default values are:
+          gminpriority=1, srcspriority=2 and srclpriority=3.
+          <li><a href="nutmeg.html#plotstack">Plot stack</a>. Added the pushplot, popplot, and plotstack commands. Added __topstack and __topplot plot identifiers.
+          <li>Some additional diode model parameters mostly dealing with periphery (sidewall) effects were implemented.
+          Default values are in braces.
+          <p class="showcode">
+          jsw   (0)   sidewall saturation current per unit junction periphery<br>
+          cj (alias for cjo)   (0)   zero-bias junction capacitance per unit junction bottomwall area<br>
+          cjsw   (0)   zero-bias junction capacitance per unit junction periphery<br>
+          php   (vj)   periphery junction contact potential<br>
+          mjsw   (0.33)   periphery junction grading coefficient<br>
+          fcs   (0.5)   coefficient for the forward-bias depletion periphery capacitance formula
+          <li>Instance parameter pj (junction periphery) was implemented for diode. It is scaled in geometric
+          (level=3) junction diode model (pjscaled = pj * scale). The default value for pj parameter is zero.
+          <li>Extended syntax for inductance instances. New syntax is:
+          <p class="showcode">
+          l&lt;name&gt; &lt;positive_node&gt; &lt;negative_node&gt; [l=|inductance=]&lt;value&gt; [ic=&lt;value&gt;] [m=&lt;value&gt;]<br>
+          &lt;&gt; ... user defined field<br>
+          [] ... optional field
+          <li>Options defpd, defps, defnrd and defnrs added to define default values for MOSFET drain and source
+          perimeter and drain and source number of squares. The default value for all four options is zero. Options
+          are taken into account for MOSFET levels 1 (mos1), 2 (mos2), 3 (mos3), 6 (mos6), 44 (ekv) and 53 (bsim3v3).
+          <li><a href="nutmeg.html#dc">Middle</a> option added to dc analysis.
+          <li>Altering a subcircuit parameter for all instances of a subcircuit. See the <a href="netlist.html#8">@@ syntax</a> for subcircuits.
+          <li>Nutmeg command <a href="nutmeg.html#cursor">cursor</a> enhanced with multiple crossing capability and slope type.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.20 (date built: 15. May 2003)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Command line option -c added. Under Linux it starts SpiceOpus in console mode. Under Windows SpiceOpus
+          window is not opened and it runs as a hidden application that can be seen only in the task manager. When this
+          option is given, plotting, GUI functions, and the command line history using the cursor up/down keys are disabled.
+          <li>Command line option -pl &lt;path&gt; added. It overrides the library directory setting read from OPUSHOME environment
+          variable (library directory = OPUSHOME/lib), or, if OPUSHOME is not specified, SPICE_LIB_DIR variable (library
+          directory = SPICE_LIB_DIR). Note that scripts subdirectory in library directory contains spinit spice init script
+          file, which is sourced at startup.
+          <li>Command line option -pe &lt;path&gt; added. It overrides the executable directory setting read from OPUSHOME
+          environment variable (executable directory = OPUSHOME/bin), or, if OPUSHOME is not specified, SPICE_EXEC_DIR
+          variable (executable directory = SPICE_EXEC_DIR).
+          <li>Command line option -pk &lt;name&gt; added (non-light version only). It overrides the lock file name setting read
+          from SPICE_LOCK_NAME environment variable (lock file name = SPICE_LOCK_NAME). If SPICE_LOCK_NAME is not specified
+          then the default name lock is used. The lock file is searched in the following directories: current directory,
+          library directory, scripts subdirectory in library directory and executable directory.
+          <li>Command line option -gf &lt;number&gt; added. It overrides the SpiceOpus default font size for the terminal window (10).
+          <li>Option pziter added to set number of iterations in pole-zero analysis.
+          <li>Abbreviation .inc for .include is now accepted. If the filename in .include line is embraced with single
+          quotes then the quotes are ignored. Aliases .macro and .eom for .subckt and .ends are also accepted. .protect and
+          .unprotect directives known in other Spices are ignored since they are irrelevant in SpiceOpus. Inline comments
+          beginning with character $ are allowed in non-command lines. The text after the $, including $ character, is considered
+          as a comment.
+          <li>Option scale implemented for resistor, geometric junction diode and bsim3v3 MOSFET models.<br>
+          Resistor model:<br>
+             &nbsp;&nbsp;&nbsp;&nbsp;<em>w<SUB>scaled</SUB></em> = <em>w</em> * <em>scale</em>,
+             <em>l<SUB>scaled</SUB></em> = <em>l</em> * <em>scale</em><br>
+          Geometric junction diode model:<br>
+             &nbsp;&nbsp;&nbsp;&nbsp;<em>area<SUB>scaled</SUB></em> = <em>area</em> * <em>scale</em><sup>2</sup><br>
+          MOSFET model (only bsim3v3):<br>
+             &nbsp;&nbsp;&nbsp;&nbsp;<em>w<SUB>scaled</SUB></em> = <em>w</em> * <em>scale</em>,
+             <em>l<SUB>scaled</SUB></em> = <em>l</em> * <em>scale</em><br>
+             &nbsp;&nbsp;&nbsp;&nbsp;<em>pd<SUB>scaled</SUB></em> = <em>pd</em> * <em>scale</em>,
+             <em>ps<SUB>scaled</SUB></em> = <em>ps</em> * <em>scale</em><br>
+             &nbsp;&nbsp;&nbsp;&nbsp;<em>ad<SUB>scaled</SUB></em> = <em>ad</em> * <em>scale</em><sup>2</sup>,
+             <em>as<SUB>scaled</SUB></em> = <em>as</em> * <em>scale</em><sup>2</sup>.<br>
+          Note that option scale is not implemented for other models yet.
+          <li>The gmin implementation across the bulk diodes for MOS1, MOS2, MOS3, MOS6 and bsim3v3 MOSFET models fixed.
+          <li>Nutmeg commands <a href="nutmeg.html#copyplot">copyplot</a>,
+          <a href="nutmeg.html#copyplot">scktreparse</a> and <a href="nutmeg.html#scktparams">scktparams</a> added.
+          <li>Source lifting and improved source and gmin stepping algorithms implemented to aid convergence.
+          <li>Option discrete_space added to optimize options command to make optimisation parameter space discrete. Grid
+          for each optimisation parameter is defined by incremental step. It is given by increment value in parameter
+          declaration, that is in optimize parameter command. Therefore also increment item was added to optimize parameter command.
+          <li>Model parameter check added to bsim3v3 MOSFET model (level=53). The default value is 1, which means that
+          model parameter check is performed. To skip model parameter check define check=0.
+          <li>Keyword delete added to <a href="nutmeg.html#nodeset_ic">nodeset</a> and ic commands for removing all nodesets and initial conditions.
+          <li>Geometric junction diode model added as level=3. Diode's length and width can be specified with instance
+          parameters w and l. Area is then calculated by area = w * l.
+          <li>UFET and UFSOI (University of Florida) MOSFET models added as level=7 and 58.
+          <li>HFET model developed by Micheal Shur and <a href="mailto:trond@aimspice.com">Trond Ytterdal</a> was added. It is specified as level=2 in .model
+          statement for MESFET device.
+          <li>STAG (Southampton Thermal Analogue) partially depleted SOI MOSFET model added as level=57. Versions
+          2.1 and 2.6 are available and can be selected through version model parameter.
+          <li>Bug when writing and loading output raw files in binary mode was fixed.
+          <li>Prefix x added as a synonym for meg = 1e6.
+          <li>Instance parameter m (number of devices in parallel) added for all available device models and all
+          available levels of a particular model included in SpiceOpus. Default value is always: m=1.
+          <li>Different versions of bsim4 MOSFET device model was added for compatibility reasons. It is specified
+          as level=60 in .model statement. Level 8 is therefore cancelled. Different versions (4.0, 4.1, 4.2 or 4.2.1)
+          can be chosen with version flag in .model statement. The default version is 4.2.1 which means bsim4v4.2.1 model.
+          <li>Different versions of bsim3 version 3 MOSFET device model was added for compatibility reasons. It is
+          specified as level=53 in .model statement. Level 7 is therefore cancelled. Different versions (3.0, 3.1,
+          3.2, 3.2.2, 3.2.3 or 3.2.4) can be chosen with version flag in .model statement. The default version is
+          3.2.4 which means bsim3v3.2.4 model.
+          <li>Different versions of bsim3soi version 2 MOSFET device model were added for compatibility reasons.
+          They are specified as level=56 in .model statement. Levels 9, 10 and 11 are therefore cancelled. Different modes
+          (partially, dynamically and fully depleted mode) are available and can be selected by soimod model parameter.
+          soimod equals 1, 2 or 3 for partially, dynamically and fully depleted mode respectively. Versions 2.0 and 2.1 are
+          available for dynamically and fully depleted modes. For partially depleted mode versions 2.0, 2.0.1, 2.1, 2.2,
+          2.2.1, 2.2.2 and 2.2.3 are included. A particular version can be chosen by version model parameter. The default
+          value for soimod = 2, and the default version is 2.1 for dynamically and fully depleted modes and 2.2.3 for
+          partially depleted mode.
+          <li>Automatic model selection <a href="netlist.html#binning">(binning)</a> for bsim3v3 MOSFET device model.
+          <li>Graphical user interface gui command added. Its syntax is gui <command>. Therefore the exact knowledge
+          of syntax for a particular Nutmeg command is no longer needed. For now gui is available only with commands show and optimize.
+          <li>To modify vectors in const plot from another plot, user has to give complete vector name. Example: let const.vector_name = ....
+          <li>Option centering added to the optimisation options. It enables optimisation procedure considering parameter
+          tolerances. Therefore abstol and reltol items were added to optimize parameter command.
+          <li>Procedure cost_profile added as an optimisation method. The procedure enables a view into cost function
+          behaviour at the current circuit parameter values.
+          <li>The bsim3soi version 1 MOSFET device model was added for compatibility reasons. It is specified as
+          level=55 in .model statement. Different versions (1.0, 1.1, 1.2 or 1.3) can be chosen with version flag in
+          .model statement. The default version is 1.3 which means bsim3soiv1.3 model.
+          <li>Added <a href="nutmeg.html#area">area()</a> and <a href="nutmeg.html#integrate">integrate()</a> functions.
+          <li>Extended syntax for resistance and capacitance instances. For resistances it introduces temperature
+          coefficients tc1 and tc2 as instance parameters which overwrite temperature coefficients given in
+          resistance model. New syntax is:
+          <p class="showcode">
+          r&lt;name&gt; &lt;positive_node&gt; &lt;negative_node&gt; {[&lt;model_name&gt;]<br>
+          [[r[esistance]=]&lt;value&gt;]}<br>
+          [[tc[1]=]&lt;value&gt;] [[tc2=]&lt;value&gt;] [l=&lt;value&gt;]<br>
+          [w=&lt;value&gt;] [temp=&lt;value&gt;] [m=&lt;value&gt;]
+          <li>Some additional parameters were implemented into the following models (default values are in braces):
+          <p class="showcode">
+          resistance model<br>
+             res   (0)   default resistance<br><br>
+          diode model<br>
+             mj (alias for m)   (0.5)   area junction grading coefficient<br><br>
+          MOS1 model<br>
+             wd   (0)   lateral diffusion into channel width from bulk<br>
+             xl   (0)   length bias accounts for masking and etching effects<br>
+             xw   (0)   width bias accounts for masking and etching effects<br>
+             delvto (alias for delvt0)   (0)   zero-bias treshold voltage shift<br>
+             n   (1)   emission coefficient<br>
+             bex   (-1.5)   low field mobility temperature exponent<br><br>
+          MOS2 model<br>
+             wd   (0)   lateral diffusion into channel width from bulk<br>
+             xl   (0)   length bias accounts for masking and etching effects<br>
+             xw   (0)   width bias accounts for masking and etching effects<br>
+             delvto (alias for delvt0)   (0)   zero-bias treshold voltage shift<br>
+             n   (1)   emission coefficient<br>
+             utra   (0)   transverse field coefficient<br>
+             bex   (-1.5)   low field mobility temperature exponent<br><br>
+          MOS3 model<br>
+             wd   (0)   lateral diffusion into channel width from bulk<br>
+             xl   (0)   length bias accounts for masking and etching effects<br>
+             xw   (0)   width bias accounts for masking and etching effects<br>
+             delvto (alias for delvt0)   (0)   zero-bias treshold voltage shift<br>
+             n   (1)   emission coefficient<br>
+             bex   (-1.5)   low field mobility temperature exponent<br><br>
+          bsim3v2 model<br>
+             ld (alias for dl)   (0)   channel length reduction in meters<br>
+             wd (alias for dw)   (0)   channel width reduction in meters<br>
+             php (alias for pbsw)   (1)   source drain side junction capacitance built in potential<br>
+             xl   (0)   channel length reduction in meters due to masking and etching effects<br>
+             xw   (0)   channel width reduction in meters due to masking and etching effects<br>
+             lmlt   (1)   length shrink factor<br>
+             wmlt   (1)   diffusion layer and width shrink factor<br>
+             rs   (0)   source ohmic resistance<br>
+             rsc   (0)   additional source resistance due to contact resistance<br>
+             rd   (0)   drain ohmic resistance<br>
+             rdc   (0)   additional drain resistance due to contact resistance<br>
+             jsw   (0)   sidewall bulk junction saturation current<br>
+             is   (1e-14)   bulk junction saturation current<br>
+             n   (1)   emission coefficient<br>
+             cbd   (0)   zero bias bulk-drain junction capacitance<br>
+             cbs   (0)   zero bias bulk-source junction capacitance<br>
+             tt   (0)   transit time<br><br>
+          bsim3v3 model<br>
+             npeak (alias for nch)   (1.7e17)   channel doping concentration<br>
+             n (alias for nj)   (1)   source/drain junction emission coefficient<br>
+             php (alias for pbsw)   (1)   source/drain sidewall junction capacitance built in potential<br>
+             ld (alias for lint)   (0)   length reduction parameter<br>
+             wd (alias for wint)   (0)   width reduction parameter<br>
+             xl   (0)   channel length reduction in meters due to masking and etching effects<br>
+             xw   (0)   channel width reduction in meters due to masking and etching effects<br>
+             lmlt   (1)   length shrink factor<br>
+             wmlt   (1)   diffusion layer and width shrink factor<br>
+             del   (0)   channel length reduction<br>
+             rs   (0)   source ohmic resistance<br>
+             rsc   (0)   additional source resistance due to contact resistance<br>
+             rd   (0)   drain ohmic resistance<br>
+             rdc   (0)   additional drain resistance due to contact resistance<br>
+             is   (1e-14)   bulk junction saturation current<br>
+             cbd   (0)   zero bias bulk-drain junction capacitance<br>
+             cbs   (0)   zero bias bulk-source junction capacitance<br>
+             tt   (0)   transit time
+          <li>Variable nopolyfitcheck added. If the variable is set then checking Gauss-Jordan elimination results
+          is skipped when calculating the interpolating polynomial. Fitting curves which generates very large polynomial
+          coefficients lead to numerical errors and interpolation therefore fails. To get at least inaccurate results
+          nopolyfitcheck can be used.
+          <li>subs option added into BJT model for modelling lateral transistor geometry. subs = 1 defines vertical
+          transistor and subs = -1 defines lateral transistor respectively. For npn transistors vertical geometry is
+          default, while lateral geometry is default for pnp transistors. Vertical and lateral geometry differ in
+          connection of parasite substrate capacitance to collector (vertical - there is Csc) or base
+          (lateral - there is Cbs).
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.10 (date built: 4. October 2001)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>nmirror option added into constrained simplex optimisation method. Option defines number of points mirrored in each iteration.
+          <li>stop_cost option added into optimisation procedure. Option can be set/unset with optimize options command.
+          The optimisation procedure is stopped if cost function value is lower than stop_cost value.
+          <li>Instance parameter m (number of devices in parallel) added for bsim3v3 MOSFET model (level=7). Default value: m=1.
+          <li>The bsim3 version 2 MOSFET device model was added for compatibility reasons. It is specified as level=47 in .model statement.
+          <li>bsim4 device model (level=8) upgraded to version 4.2.0.
+          <li>Changed syntax for optimize parameter command.
+          <li>Fixed a bug when the expression given for the voltage of non-linear dependent source is constant. In this case non-linear
+          dependent source becomes an independent voltage source.
+          <li>Normal (gaussian) distribution of parameter values added for random search (Monte Carlo optimisation method).
+          <li>Added the nodeset and ic commands for dynamically setting nodesets and initial conditions.
+          <li>Instance parameter m (number of parallel instances) added for resistors, capacitances, inductances, diodes,
+          bipolar transistors, JFETs (level=1), MESFETs and MOSFETs (level=1). It defines number of devices in parallel. Default value: m=1.
+          <li>Allocated memory control. Exact number of allocated bytes can be obtained by rusage command.
+          <li>Syntax $&vector_name[index1,index2] fixed. Syntax $& is now obsolete. Use {vector_name[index1,index2]} instead.
+          <li>Temperature dependency added for JFET level=1 model (parameters bex and betatce).
+          <li>Generation recombination noise source added for JFET level=1 model (parameters kgr, tau and ea).
+          <li>Smarter autoscale for plot, better labeling.
+          <li>Nutmeg function <a href="nutmeg.html#phunwrap">unwrap()</a> added for phase unwrapping.
+          <li>Added <a href="nutmeg.html#arithsub">arithmetic substitution</a> to Nutmeg (by using {expression}).
+          <li>Closed leaks asociated with temporary storage and vector or parse tree parameters in Spice3 devices.
+          <li>Rewrite of <a href="netlist.html#1">subcircuit</a> expansion and error messaging for the netlist parser.
+          <li>Added subcircuit parameter passing.
+          <li>Improved Nutmeg <a href="netlist.html#7">listing</a> function, provides many information on subcircuits.
+          <li>Added plot command keywords <a href="nutmeg.html#plottag">quickappend</a> (doesn't autoscale at append) and
+          <a href="nutmeg.html#plottag">autoscale</a> (manual triggering of autoscale).
+          <li>Memory leak tracking added. To turn it on, type set memtrack. All allocations are tracked starting from the
+          moment you turn it on. If memory tracking is on and you leave the program by typing quit, the unreleased memory
+          information is dumped into a file named memdump.dbg in the current working directory. Send this file to the developers
+          if your spice seems to leak memory (if after doing unalias *, undefine *, destroy all, optimize reset and delcirc
+          all, calling rusage shows that more than 200k-300k memory is allocated). Note that in memory tracking mode SpiceOpus
+          runs about 2x slower and the actual memory consumption increases dramatically due to internal memory tracker
+          structures. Memory allocated by the memory tracker for its internal purposes is not tracked. When the memory
+          tracker is off, it doesn't have an impact on performance.
+          <li>The simulator is now up to 50% faster and Nutmeg runs up to 25% faster.
+          <li>Smarter file lookup for .include and .lib.
+          <li>Added the .netclass and .endn keywords to the netlist parser. By means of netclasses failure mode analysis
+          and cornerpoint analysis can be performed.
+          <li>Added the <a href="netlist.html#nb3">netclass</a> command to Nutmeg for selecting the type of netlist.
+          <li>Subcircuit parameters can be accessed by using @name[param]. Subcircuit parameters can also be
+          altered (let). The alter command doesn't work on subcircuit parameters.
+          <li>Closed leaks in the netlist parse tree parser (B sources).
+          <li>Added the optimize setparams command for setting the parameter values back to the values stored in the
+          optimizer after a netclass rebuild is called.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.03 (date built: 12. October 2000)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Fixed interpolate() function.
+          <li>Fixed crash when destroy all was called after multiple source commands.
+          <li>Added the <a href="nutmeg.html#nameplot">nameplot</a> command for renaming a plot.
+          <li>Added the support for keywords <a href="nutmeg.html#nameplot">next and previous</a> for the setplot command.
+          <li>Added <a href="nutmeg.html#minmaxsum">min(), max() and sum()</a> functions to Nutmeg.
+          <li>Fixed analysis clause in optimize. Loops (while, ...) now work with optimize.
+          <li>optimize parameter has two new options now: log and lin. log sets logarithmic scale for a parameter.
+          It is reccomended for parameters with wide ranges (let's say 1e-6 to 1e2). In most cases it improves
+          convergence of the optimisation algorithm. lin sets linear scale as in older versions.
+          <li>Elitism was added to the genetic optimisation algorithm (optimize method ... elitism ...).
+          <li><a href="nutmeg.html#badcktfree">'set badcktfree'</a> now makes the simulator release the circuit if it contains any errors.
+          <li><a href="nutmeg.html#badcktstop">'set badcktstop'</a> prevents the simulator from running the commands in the .control block on loading the
+          circuit if the circuit contains any errors.
+          <li>Fixed DC sweep so it doesn't give convergence problem messages when LIN, DEC and OCT sweep is used.
+          <li>Plot name matching in expressions (plot.vector) now looks for an exact match and not prefix match (i.e. dc doesn't match dc1).
+          <li>Fixed the way plots get enumerated. Previously two tran and two ac analyses produced plots tran1, tran2, ac2 and ac3.
+          Now plots tran1, tran2, ac1, ac2 are produced. Actually the largest number found after plot name plus 1 is used as the postfix number.
+          <li>Complete rewrite of the file sourcing. Added <a href="nutmeg.html#lib">.lib</a> clause support (HSpice). Added hierarchical
+          error reporting during parse.
+          <li>Complete revision of the digital.cm library. Worst crashes fixed. Added examples that demonstrate the use of the digital.cm code models.
+          <li>'-o filename' option now logs terminal window activity to a file specified by user and displays it in the terminal window
+          at the same time. Logging can be temporarily disabled by selecting Edit/Logging from the menu.
+          <li>Added menu option Control/Stop Execution that stops the current simulation and Nutmeg script.
+          <li>Fixed signal handling. On segmentation violation and other fatal signals SpiceOpus now displays an error message
+          and waits for the user to press any key before the program is terminated. This way the user has time to examine the
+          output before the window is closed.
+          <li>Fixed binary operations when for complex scalar right operand the result was wrong if left operand was a vector.
+          <li><a href="nutmeg.html#letfix">'let' command</a> now releases the previous vector and creates a new vector if the assignement is not made into some
+          elements of the vector. This way let behaves like in all other normal programming languages.
+          <li>Added the <a href="nutmeg.html#vecsclsel">vector[|low, high]</a> operator (operator [| ]). This operation selects the
+          elements from the vector for
+          which the value of the scale is between low and high.
+          <li>Added <a href="nutmeg.html#plottag">graph tagging</a>. Tagging is achieved with commands 'plot create ...',
+          'plot append ' and 'plot destroy ' commands.
+          When the usual 'plot' command is used or if an iplot is created, graphs are tagged automatically (for plot with 'plotn'
+          and for iplot with 'iplotn').
+          <li>Smarter refresh with 'plot append ...'.
+          <li>Added functions <a href="nutmeg.html#rounding">floor(), ceil() and round()</a> to Nutmeg.
+          <li>Added 'optimize reset' command for cleaning up optimize settings.
+          <li>Fixed x^y operation for B source, e.g. 2^v(1) previously didn't work. Now even v(1)^v(2) works.
+          <li>Added the <a href="nutmeg.html#realindex">vector[%real_index]</a> operator. It selects the point from the vector for which the index is equal to
+          real_index (used with cursors). If real_index is not an integer number, the value is calculated using linear interpolation.
+          <li>Added the <a href="nutmeg.html#cursor">'cursor'</a> command that can be used for manipulating digital oscilloscope style
+          cursors for various waveform measurements.
+          <li>Parameters function and order for <a href="nutmeg.html#vsrcisrcwfm">independent voltage and current sources</a>
+          are now read-only. To change the order of a transient source, simply assign a vector to the coeffs parameter
+          (let @vsrc[coeffs]=(1;9;0.1)). To change the type of the transient source, use sin (or sine), pulse, exp. pwl or sffm as parameter
+          name instead of coeffs (to make a pulse source sinusoidal, type let @vsrc[sin]=(1;2;50)).
+          <li>Eliminated the need for a CR in the last line of the source.
+          <li>Fixed problems with the define command.
+          <li>Parameters AF and KF are now showed correctly for JFET.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.02 (date built: 27. June 2000)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Fixed edit behaviour for Windows. edit command starts an editor asynchronously. The spice circuit file must
+          be sourced manually to simulate the changes. The same was done in Linux although we are still having problems
+          with spice3 binary creating a zombie every time the editor is invoked. Fortunately all zombies die after the main
+          Spice window is closed.
+          <li>Fixed the crash when using let @... or let @@....
+          <li>Added support for simulator parameters in let (e.g. let @@@temp=15 is equivalent to set temp=15). This is now
+          obsolete. All simulator parameters can be set by set command (e.g. set sim_opt_name = value) where an arbitrary
+          Nutmeg expression wrapped into curly braces {} can also be used instead of value.
+          <li>Fixed parser so that refering to vector range now works (e.g. a[2,8]).
+          <li>Fixed crash when Spice2 style nodenames (e.g. (2,3)) in subcircuits caused the simulator to crash due to
+          wrong subcircuit expansion. The origin of the crash was in releasing code model structures. Subcircuit expansion
+          sucks bigtime. We must rewrite it sometime. Anyway to make such circuits work, simply remove parenthesis
+          and commas around node names.
+          <li>Fixed crash caused by an attempt to access a vector after loading of first circuit failed.
+          <li>Fixed crash during analysis when a current source was left dangling.
+          <li>Fixed crash in UNIX version when loading a DOS CR-LF .cir file.
+          <li>Fixed skipping leading spaces and tabs. Long netlist lines (>255 chars) don't crash the simulator now.
+          <li>Old subcircuit expansion was completely removed. set oldsubcktexpand has no effect now.
+          <li>Added support for global nodes in subcircuits (HSpice style). A global node is not considered to be an internal
+          subcircuit node when it appears in subcircuit definition thus it is not expanded with subcircuit name. An example of
+          a global node is node 0 (ground node). To make a node global use the .global option:
+          <p class="showcode">.global node1 node2 ...
+          <li>Fixed a bug when stop frequency lower than start frequency for ac analysis resulted in zero length vectors.
+          <li>Fixed a bug when start and stop frequency were the same for ac analysis, Spice would enter an infinite loop.
+          <li>Note that Nutmeg is case sensitive. In case you want to be sure, write everything in lowercase.
+          <li>Fixed CM vector parameter defaulting. s_xfer code models should work now without int_ic parameter given.
+          <li>Fixed convergence problems with s_xfer code model when using uic with transient analysis.
+          <li>Fixed d_state code model so it doesn't crash if the state file is not found.
+          <li>In case a circuit contains errors, the .control block is not executed. If the badcktfree variable is set,
+          the circuit is immediately removed from memory after errors are found.
+          <li>Added the ; operator. Now a vector can be constructed in Nutmeg from its components (e.g. let
+          a=(1;2;3;c) concatenates 1, 2, 3 and c).
+          <li>Added icstep option. See more in a brief explanation of how <a href="initial_conditions.html">initial conditions</a> work.
+          <li>Fixed simulator options method (possible values: trap or gear) and maxord (1..6). Gear algorithm now really
+          works. Trapeziodal algorithm supports only orders 1 and 2. Anything more (or less) results in 2 (or 1). Gear
+          algorithm supports orders from 1 to 6.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.01 (date built: 16. May 2000)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Enhanced plot syntax so multiple 'vs' options can be supplied.
+          <li>Added variables for controlling the plot window (plotwinwidth, plotwinheight, plotwininfo, plotautoident).
+          <li>Added support for manual vector identification in plot window. This is now the default. Use 'set plotautoident'
+          to restore vesion 2.0 behaviour.
+          <li>Fixed a bug in TF analysis. Vector names for results are now input_impedance, output_impedance and transfer_function.
+          <li>Fixed poly sources so they really work now. Spice2 syntax is now completely supported.
+          <li>Added bsim4 device model (level=8), version 4.0.0.
+          <li>Updated bsim3soi device model to 2.1 (DD, FD) and 2.2 (PD) (now levels 9-11).
+          <li>Fixed bsim3v3.2.2 problem when bsim3v3.2.2 models were giving incorrect results in simulations following
+          the first simulation of a circuit.
+          <li>Fixed 2-dimensional DC sweep that was broken by the general DC sweep enhancements.
+          <li>Added support for Solaris i386 and SPARC platforms.
+          <li>Released sources for code model libraries (.cm) along with makefiles.
+          <li>Added suffixes for constants in B sources (mili, micro, ...).
+          <li>If a circuit contains errors, structures that were created by loading the circuit are released.
+          <li>Turned on DEVdelete and DEVmDelete capability in the source so the information about models and instances
+          can be released from memory.
+          <li>Added MOS6delete and MOS6mDelete functions.
+          <li>Added DEVunsetup driver function for bsim3v3.2.2.
+          <li>Added releasing of internal G, body and charge nodes for bsim4 in bsim4unsetup.
+          <li>Added releasing of internal debug nodes for bsim3soi DD, FD and PD models in unsetup function. TODO:
+          releasing body and temperature nodes.
+          <li>bsim2 model temperature defaulting is fixed. It used to default to 27 degrees Celsius no matter what the circuit temperature was set to. TEMP parameter now defaults to circuit temperature. Since this parameter is stored in degrees Celsius (normally temperatures are stored in Kelvin) the value is converted by subtracting CONSTCtoK from the CKTnomTemp.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 2.00 (date built: 7. April 2000)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li><a href="nutmeg.html#dc">DC sweep</a> of an arbitrary instance/model parameter, global temperature or nominal temperature in lin or log fashion.
+          <li><a href="nutmeg.html#lhslet">Improved</a> let command now supports instance/model parameters. Vector parameter components are also supported.
+          <li><a href="nutmeg.html#expr">Instance/model</a> parameters can be used in arbitrary expressions.
+          <li><a href="reports.html#ss4">Improved print command</a> can print vector data without a header and index column (easier exporting of data).
+          <li><a href="xspice.html">XSpice extesions</a> added (code modelling, improved convergence control, poly sources, mixed-mode simulation).
+          <li>An error in the state resolution table for digital nodes was fixed. The original table in the Georgia-Tech
+          version of XSpice is asymmetric. This is of course a total nonsense. You can take a look at the fixed table and
+          send us your comments. We fixed it to our best knowledge and by studying carefully the original XSpice manuals.
+          <li>Templates for building your own code models in C.
+          <li><a href="nutmeg.html#siminfo">siminfo command</a> for checking the simulator status.
+          <li><a href="nutmeg.html#cmload">cmload command</a> for loading XSpice code models and user defined nodes from dll files (.cm files).
+          <li>Printing support for SpiceOpus terminal window and plot windows.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 1.20 (date built: 17. December 1999)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>parameters coeffs (coefficients of time-depended value), distof1 and distof2 for independent sources can be
+          changed with alter command and viewed with show command.
+          <li>indexing of vector components.
+          <li>Calling extern executable in backquotes. Extern executable generates a sequence of Nutmeg commands on standard output.
+          The commands are read and performed. The last character output from the executable has to be EOF.
+          <li>The bsim3 version 3.2.2 MOSFET model was added. It is specified as level=7 in .model statement.
+          <li>The bsim3soi MOSFET model was added. Dynamic depletion bsim3soi model version 2.0 is specified as level=8 in .model
+          statement. Fully depleted bsim3soi model version 2.0 is specified as level=9 in .model statement. And Partially depleted
+          bsim3soi model version 2.0.1 is specified as level=10 in .model statement.
+          <li>The <a href="nutmeg.html#spec">spec command</a> written by <a href="mailto:tonyp@mpce.mq.edu.au">Anthony Parker</a>, Macquarie University, was added.
+          <li>The PS FET model developed by <a href="mailto:tonyp@mpce.mq.edu.au">Anthony Parker</a> and
+          <a href="mailto:daves@mpce.mq.edu.au">David Skellern</a> was added.
+          It is specified as level=2 in .model statement for JFET device.
+          <li>repeat loop inside some other loop.
+          <li>Complete rewrite of the <a href="nutmeg.html#plot">plot and iplot</a> commands.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+        <!-- Text container -->
+      <div class="content2-container line-box">
+        <div class="content2-container-1col">
+          <p class="content-title-noshade-size3">
+          Version 1.00 (date built: 18. October 1999)
+          </p>
+          <div class="content-txtbox-noshade"><p>
+          <ul class="noindent">
+          <li>Berkeley's 3f4 patch was applied (the unofficial Spice 3f5 patch).
+          <li>The original source code was slightly modified. Those modifications enabled the use of new standard C libraries
+          which came with the compiler.
+          <li>SpiceOpus was ported to the Windows 95/98/NT operating systems and to the Linux operating system.
+          <li>The graphical part of the program was rewritten for Windows 95/98/NT and for Linux operating systems.
+          <li>A significant number of memory leaks were tracked down and fixed. There were lots of cases where it was not clear
+          who owned a piece of dynamically allocated data and so the original code would not free up the data by default.
+          Some instability was also caused in cases when several structures point to the same dynamically allocated pieces of data.
+          <li>cd command without HOME variable.
+          <li>The $&vector_name syntax used when a vector is referenced as a variable. Syntax $& is now obsolete. Use {vector_name} instead.
+          <li>alter command when syntax @device[parameter] is used and when it is used to change a model parameter
+          (alter #modelname parameter = expression).
+          <li>Dereferencing NULL pointers, use of uninitialised pointers and multiple freeing of the same part of memory.
+          <li>Binary mode in write and load commands.
+          <li>Time in rusage command.
+          <li>The temperature of the circuit set by temp variable.
+          <li>The save command.
+          <li>Saving of branch currents through voltage sources in resulting plots.
+          <li>Showing capacitance values for cgs, cgd and cgb with show command for level=1 MOSFETs.
+          <lui>Timestep too small error in transient analysis. The original Berkeley source code stops the analysis,
+          when the time delta is less than 10-9 * maximum stepsize.
+          <li> The new optimize command was added.
+          </ul>
+          </p></div>
+        </div>
+      </div>
+
+
+
+
+     </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+       <p><b>Copyright &copy; 2008 <a href="http://www.fe.uni-lj.si/eng">Faculty of Electrical Engineering</a>, Ljubljana, Slovenia | All Rights Reserved</b></p>
+       <p>Page Design <a href="mailto:gw@actamail.com">G. Wolfgang</a> | Page content <a href="http://www.fe.uni-lj.si/research/chairs_and_laboratories/laboratories/2008081915513509/">EDA Group</a></p>
+    </div>
+  </div>
+
+
+ <script type="text/javascript">
+   var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+   document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+ </script>
+ <script type="text/javascript">
+   try
+   {
+     var pageTracker = _gat._getTracker("UA-8305434-3");
+     pageTracker._trackPageview();
+   } catch(err)
+   {
+   }
+ </script>
+
+
+</body>
+</html>
