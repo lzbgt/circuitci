@@ -1,4 +1,4 @@
-use crate::board_ir::Scenario;
+use crate::board_ir::{AnalogMeasureTemplate, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -223,11 +223,12 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             return;
         }
     }
-    if analog.analysis.measure_statements.is_empty() {
+    if analog.analysis.measure_statements.is_empty() && analog.analysis.measure_templates.is_empty()
+    {
         validation_input_missing(
             findings,
             scenario,
-            "analog_measure requires at least one measure statement.",
+            "analog_measure requires at least one measure statement or template.",
         );
         return;
     }
@@ -252,6 +253,24 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
         if let Err(message) =
             validate_measure_statement(mode, name, &statement.statement, &bound_nodes, scenario)
         {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    }
+    for template in &analog.analysis.measure_templates {
+        let Some(name) = nonempty(Some(&template.name)) else {
+            validation_input_missing(findings, scenario, "analog_measure template name is empty.");
+            return;
+        };
+        if !names.insert(name.to_ascii_lowercase()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("analog_measure duplicate measurement name {name}."),
+            );
+            return;
+        }
+        if let Err(message) = validate_measure_template(mode, template, &bound_nodes, scenario) {
             validation_input_missing(findings, scenario, message);
             return;
         }
@@ -330,7 +349,9 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             .insert("measure_mode".to_string(), json!(mode));
         finding.measured.insert(
             "measurements".to_string(),
-            json!(analog.analysis.measure_statements.len()),
+            json!(
+                analog.analysis.measure_statements.len() + analog.analysis.measure_templates.len()
+            ),
         );
         finding.limit.insert(
             "required_evidence".to_string(),
@@ -395,6 +416,120 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             }
         }
     }
+}
+
+fn validate_measure_template(
+    mode: &str,
+    template: &AnalogMeasureTemplate,
+    bound_nodes: &BTreeSet<&str>,
+    scenario: &Scenario,
+) -> Result<(), String> {
+    if !matches!(
+        template.operation.as_str(),
+        "avg" | "max" | "min" | "rms" | "find"
+    ) {
+        return Err(format!(
+            "analog_measure template {} uses unsupported operation {}.",
+            template.name, template.operation
+        ));
+    }
+    validate_expression_references(&template.expression, bound_nodes, scenario)?;
+    if mode == "tran" {
+        validate_optional_window_us(template)?;
+        if template.from_hz.is_some() || template.to_hz.is_some() || template.at_hz.is_some() {
+            return Err(format!(
+                "analog_measure transient template {} may not use frequency window fields.",
+                template.name
+            ));
+        }
+    } else {
+        validate_optional_window_hz(template)?;
+        if template.from_us.is_some() || template.to_us.is_some() || template.at_us.is_some() {
+            return Err(format!(
+                "analog_measure AC template {} may not use time window fields.",
+                template.name
+            ));
+        }
+    }
+    if template.operation == "find" && template.at_us.is_none() && template.at_hz.is_none() {
+        return Err(format!(
+            "analog_measure find template {} requires at_us or at_hz.",
+            template.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_optional_window_us(template: &AnalogMeasureTemplate) -> Result<(), String> {
+    if let Some(value) = template.from_us
+        && (!value.is_finite() || value < 0.0)
+    {
+        return Err(format!(
+            "analog_measure template {} requires finite non-negative from_us.",
+            template.name
+        ));
+    }
+    if let Some(value) = template.to_us
+        && (!value.is_finite() || value <= 0.0)
+    {
+        return Err(format!(
+            "analog_measure template {} requires positive finite to_us.",
+            template.name
+        ));
+    }
+    if let Some(value) = template.at_us
+        && (!value.is_finite() || value < 0.0)
+    {
+        return Err(format!(
+            "analog_measure template {} requires finite non-negative at_us.",
+            template.name
+        ));
+    }
+    if let (Some(from_us), Some(to_us)) = (template.from_us, template.to_us)
+        && from_us >= to_us
+    {
+        return Err(format!(
+            "analog_measure template {} requires from_us < to_us.",
+            template.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_optional_window_hz(template: &AnalogMeasureTemplate) -> Result<(), String> {
+    if let Some(value) = template.from_hz
+        && (!value.is_finite() || value <= 0.0)
+    {
+        return Err(format!(
+            "analog_measure template {} requires positive finite from_hz.",
+            template.name
+        ));
+    }
+    if let Some(value) = template.to_hz
+        && (!value.is_finite() || value <= 0.0)
+    {
+        return Err(format!(
+            "analog_measure template {} requires positive finite to_hz.",
+            template.name
+        ));
+    }
+    if let Some(value) = template.at_hz
+        && (!value.is_finite() || value <= 0.0)
+    {
+        return Err(format!(
+            "analog_measure template {} requires positive finite at_hz.",
+            template.name
+        ));
+    }
+    if let (Some(from_hz), Some(to_hz)) = (template.from_hz, template.to_hz)
+        && from_hz >= to_hz
+    {
+        return Err(format!(
+            "analog_measure template {} requires from_hz < to_hz.",
+            template.name
+        ));
+    }
+    Ok(())
 }
 
 fn validate_measure_statement(

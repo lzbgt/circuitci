@@ -112,6 +112,91 @@ scenarios:
     project
 }
 
+fn write_measure_template_project(
+    dir: &std::path::Path,
+    backend: &str,
+    mode: &str,
+    template_yaml: &str,
+) -> std::path::PathBuf {
+    let repo = std::env::current_dir().unwrap();
+    let analysis_extra = if mode == "tran" {
+        "        stop_time_us: 100.0\n        max_step_us: 0.1\n".to_string()
+    } else {
+        "        start_frequency_hz: 10.0\n        stop_frequency_hz: 100000.0\n        points_per_decade: 10\n".to_string()
+    };
+    let project = dir.join("project.yaml");
+    fs::write(
+        &project,
+        format!(
+            r#"project: {{ name: measure_template_contract, version: 0.1.0 }}
+libraries:
+  - {libs}
+board:
+  components:
+    V1:
+      model: generic.analog.pulse_voltage_source
+      pins: {{ P: vin, N: gnd }}
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0.0
+          pulsed_v: 1.0
+          delay_us: 0.0
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 5.0
+          period_us: 10.0
+    R1:
+      model: generic.analog.resistor
+      pins: {{ A: vin, B: out }}
+      spice: {{ primitive: resistor, value_ohm: 1000 }}
+    C1:
+      model: generic.analog.capacitor
+      pins: {{ A: out, B: gnd }}
+      spice: {{ primitive: capacitor, value_f: 0.000001 }}
+  nets:
+    vin: {{ kind: power, nominal_voltage: 1.0, powered: true }}
+    out: {{ kind: digital_or_analog }}
+    gnd: {{ kind: ground }}
+scenarios:
+  - name: rc_measure_template
+    type: analog_measure
+    checks: [SPICE_MEASURE_ANALYSIS]
+    analog:
+      backend: {backend}
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1, C1]
+      model_files: []
+      node_bindings:
+        - {{ node: vin, net: vin }}
+        - {{ node: out, net: out }}
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: vin, endpoint: {{ component: V1, pin: P }} }}
+        - {{ node: "0", endpoint: {{ component: V1, pin: N }} }}
+        - {{ node: vin, endpoint: {{ component: R1, pin: A }} }}
+        - {{ node: out, endpoint: {{ component: R1, pin: B }} }}
+        - {{ node: out, endpoint: {{ component: C1, pin: A }} }}
+        - {{ node: "0", endpoint: {{ component: C1, pin: B }} }}
+      analysis:
+        type: measure
+        measure_mode: {mode}
+{analysis_extra}        measure_templates:
+{template_yaml}
+      stimuli: []
+      probes:
+        - {{ name: out_measure, expression: V(out) }}
+      assertions: []
+"#,
+            libs = repo.join("libs/generic/analog").to_string_lossy()
+        ),
+    )
+    .unwrap();
+    project
+}
+
 fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
     report["artifacts"]
         .as_array()
@@ -191,6 +276,58 @@ fn measure_backend_normalizes_summary_and_manifest() {
     assert_eq!(
         manifest["outputs"]["normalized"][0]["kind"],
         "measure_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_template_backend_generates_statement_and_normalizes_summary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'avg_out = 5.10001e-01 from= 2.00000e-05 to= 1.00000e-04'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("avg_out,tran,5.100010000000e-1"));
+    let wrapper =
+        fs::read_to_string(artifact_path(&report, "circuitci_ngspice_measure.cir")).unwrap();
+    assert!(
+        wrapper
+            .contains("meas tran avg_out AVG v(out) FROM=2.000000000000e-5 TO=1.000000000000e-4")
     );
     assert_report_schema_valid(&report);
 }
@@ -306,6 +443,58 @@ fn measure_rejects_unbound_statement_node() {
             .as_str()
             .unwrap()
             .contains("unbound node missing")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_template_rejects_unbound_expression_node() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(missing)\n            from_us: 20.0\n            to_us: 100.0\n",
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unbound node missing")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_template_requires_find_location() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: find_out\n            operation: find\n            expression: v(out)\n",
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires at_us or at_hz")
     );
     assert_report_schema_valid(&report);
 }

@@ -524,10 +524,10 @@ The GUI should not become the solver.
   `fourier_summary`, solver manifests, and opt-in real-ngspice conformance;
   next add non-ngspice planning/adapters.
 - The first `.MEASURE` path is an external-ngspice adapter with a Board
-  IR/schema contract for reviewed transient/AC scalar extraction statements,
-  bound output provenance checks, normalized `measure_summary`, solver
-  manifests, and opt-in real-ngspice conformance; next add non-ngspice
-  planning/adapters and richer statement templates.
+  IR/schema contract for reviewed transient/AC scalar extraction statements or
+  portable measure templates, bound output provenance checks, normalized
+  `measure_summary`, solver manifests, and opt-in real-ngspice conformance;
+  next add non-ngspice planning/adapters and richer template operations.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

@@ -2881,6 +2881,27 @@
                       "additionalProperties": false
                     }
                   },
+                  "measure_templates": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "operation", "expression"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "operation": { "enum": ["avg", "max", "min", "rms", "find"] },
+                        "expression": { "type": "string", "minLength": 1 },
+                        "from_us": { "type": "number", "minimum": 0 },
+                        "to_us": { "type": "number", "exclusiveMinimum": 0 },
+                        "at_us": { "type": "number", "minimum": 0 },
+                        "from_hz": { "type": "number", "exclusiveMinimum": 0 },
+                        "to_hz": { "type": "number", "exclusiveMinimum": 0 },
+                        "at_hz": { "type": "number", "exclusiveMinimum": 0 }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "s_parameter_ports": {
                     "type": "array",
                     "minItems": 1,
@@ -2937,7 +2958,13 @@
                   },
                   {
                     "if": { "properties": { "type": { "const": "measure" } } },
-                    "then": { "required": ["measure_mode", "measure_statements"] }
+                    "then": {
+                      "required": ["measure_mode"],
+                      "anyOf": [
+                        { "required": ["measure_statements"] },
+                        { "required": ["measure_templates"] }
+                      ]
+                    }
                   }
                 ],
                 "additionalProperties": false

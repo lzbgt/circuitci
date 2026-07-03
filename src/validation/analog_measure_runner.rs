@@ -1,4 +1,4 @@
-use crate::board_ir::Scenario;
+use crate::board_ir::{AnalogMeasureTemplate, Scenario};
 use crate::library::BoundBoard;
 use std::collections::BTreeSet;
 use std::fs;
@@ -332,6 +332,10 @@ fn build_ngspice_measure_wrapper(
         text.push_str(&normalize_measure_statement(&statement.statement));
         text.push('\n');
     }
+    for template in &analog.analysis.measure_templates {
+        text.push_str(&measure_template_statement(mode, template));
+        text.push('\n');
+    }
     text.push_str("quit\n.endc\n.end\n");
     Ok(text)
 }
@@ -342,12 +346,7 @@ fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> 
         .as_ref()
         .expect("analog was validated before measure parsing");
     let mode = analog.analysis.measure_mode.as_deref().unwrap_or("");
-    let names: BTreeSet<&str> = analog
-        .analysis
-        .measure_statements
-        .iter()
-        .map(|statement| statement.name.as_str())
-        .collect();
+    let names = measure_names(scenario);
     let mut rows = Vec::new();
     for line in log.lines() {
         let Some((name, rest)) = line.split_once('=') else {
@@ -369,7 +368,7 @@ fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> 
         let found: BTreeSet<String> = rows.iter().map(|row| row.0.to_ascii_lowercase()).collect();
         let missing: Vec<&str> = names
             .iter()
-            .copied()
+            .map(String::as_str)
             .filter(|name| !found.contains(&name.to_ascii_lowercase()))
             .collect();
         return Err(format!(
@@ -391,6 +390,26 @@ fn measure_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> 
     Ok(csv)
 }
 
+fn measure_names(scenario: &Scenario) -> Vec<String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before measure-name expansion");
+    analog
+        .analysis
+        .measure_statements
+        .iter()
+        .map(|statement| statement.name.clone())
+        .chain(
+            analog
+                .analysis
+                .measure_templates
+                .iter()
+                .map(|template| template.name.clone()),
+        )
+        .collect()
+}
+
 fn normalize_measure_statement(statement: &str) -> String {
     let trimmed = statement.trim();
     if let Some(rest) = trimmed.strip_prefix('.') {
@@ -398,6 +417,45 @@ fn normalize_measure_statement(statement: &str) -> String {
     } else {
         trimmed.to_string()
     }
+}
+
+fn measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
+    let mut statement = String::from("meas ");
+    statement.push_str(mode);
+    statement.push(' ');
+    statement.push_str(&template.name);
+    statement.push(' ');
+    statement.push_str(&template.operation.to_ascii_uppercase());
+    statement.push(' ');
+    statement.push_str(&template.expression);
+    if mode == "tran" {
+        if let Some(at_us) = template.at_us {
+            statement.push_str(" AT=");
+            statement.push_str(&format!("{:.12e}", at_us / 1_000_000.0));
+        }
+        if let Some(from_us) = template.from_us {
+            statement.push_str(" FROM=");
+            statement.push_str(&format!("{:.12e}", from_us / 1_000_000.0));
+        }
+        if let Some(to_us) = template.to_us {
+            statement.push_str(" TO=");
+            statement.push_str(&format!("{:.12e}", to_us / 1_000_000.0));
+        }
+    } else {
+        if let Some(at_hz) = template.at_hz {
+            statement.push_str(" AT=");
+            statement.push_str(&format!("{at_hz:.12e}"));
+        }
+        if let Some(from_hz) = template.from_hz {
+            statement.push_str(" FROM=");
+            statement.push_str(&format!("{from_hz:.12e}"));
+        }
+        if let Some(to_hz) = template.to_hz {
+            statement.push_str(" TO=");
+            statement.push_str(&format!("{to_hz:.12e}"));
+        }
+    }
+    statement
 }
 
 fn parse_number(value: &str) -> Option<f64> {
@@ -417,7 +475,7 @@ fn csv_escape(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::measure_raw_to_csv;
+    use super::{measure_raw_to_csv, measure_template_statement};
     use crate::board_ir::Scenario;
 
     fn scenario() -> Scenario {
@@ -459,5 +517,36 @@ analog:
 
         assert!(csv.contains("avg_out,tran,5.100010000000e-1"));
         assert!(csv.contains("max_out,tran,9.936630000000e-1"));
+    }
+
+    #[test]
+    fn measure_template_statement_formats_transient_window() {
+        let scenario = scenario();
+        let template = crate::board_ir::AnalogMeasureTemplate {
+            name: "avg_out".to_string(),
+            operation: "avg".to_string(),
+            expression: "v(out)".to_string(),
+            from_us: Some(20.0),
+            to_us: Some(100.0),
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            measure_template_statement(
+                scenario
+                    .analog
+                    .as_ref()
+                    .unwrap()
+                    .analysis
+                    .measure_mode
+                    .as_deref()
+                    .unwrap(),
+                &template
+            ),
+            "meas tran avg_out AVG v(out) FROM=2.000000000000e-5 TO=1.000000000000e-4"
+        );
     }
 }

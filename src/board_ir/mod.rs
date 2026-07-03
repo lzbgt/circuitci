@@ -1299,12 +1299,33 @@ pub struct AnalogTransientAnalysis {
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,
+    #[serde(default)]
+    pub measure_templates: Vec<AnalogMeasureTemplate>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnalogMeasureStatement {
     pub name: String,
     pub statement: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogMeasureTemplate {
+    pub name: String,
+    pub operation: String,
+    pub expression: String,
+    #[serde(default)]
+    pub from_us: Option<f64>,
+    #[serde(default)]
+    pub to_us: Option<f64>,
+    #[serde(default)]
+    pub at_us: Option<f64>,
+    #[serde(default)]
+    pub from_hz: Option<f64>,
+    #[serde(default)]
+    pub to_hz: Option<f64>,
+    #[serde(default)]
+    pub at_hz: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

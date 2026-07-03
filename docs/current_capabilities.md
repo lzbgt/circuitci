@@ -184,11 +184,12 @@ Current analog support:
   with planning evidence for this path.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for ngspice
   `.MEASURE` scalar extraction from transient or AC runs. The Board IR/schema
-  can declare `analysis.type: measure`, `measure_mode`, and reviewed
-  `measure_statements[]`. External `ngspice` runs write `measure_raw.txt`,
-  `measure_summary.csv`, and `solver_manifest.json`; the normalized summary
-  records measurement name, mode, scalar value, and raw solver line. Opt-in
-  real-ngspice conformance coverage is available through
+  can declare `analysis.type: measure`, `measure_mode`, reviewed raw
+  `measure_statements[]`, or portable `measure_templates[]` with operation,
+  expression, and time/frequency windows. External `ngspice` runs write
+  `measure_raw.txt`, `measure_summary.csv`, and `solver_manifest.json`; the
+  normalized summary records measurement name, mode, scalar value, and raw
+  solver line. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; it skips
   unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
   with planning evidence for this path.

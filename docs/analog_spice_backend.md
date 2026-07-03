@@ -88,10 +88,10 @@ Required fields:
   Fourier contracts use `type: fourier`, transient `stop_time_us` and
   `max_step_us`, `fourier_fundamental_frequency_hz`,
   `fourier_output_expression`, and optional `fourier_harmonics`. Measurement
-  contracts use `type: measure`, `measure_mode: tran|ac`, and
-  `measure_statements[]`; transient measure mode uses `stop_time_us` and
-  `max_step_us`, while AC measure mode uses start/stop frequency and points per
-  decade.
+  contracts use `type: measure`, `measure_mode: tran|ac`, and either reviewed
+  raw `measure_statements[]` or portable `measure_templates[]`; transient
+  measure mode uses `stop_time_us` and `max_step_us`, while AC measure mode
+  uses start/stop frequency and points per decade.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -354,21 +354,27 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 1. Resolve and bind the scenario netlist and model files the same way as other
    analog validations.
 2. Require `analysis.type: measure`, `measure_mode: tran|ac`, and at least one
-   named `measure_statements[]` item.
-3. Each statement must be a single-line ngspice `meas`/`.meas` command whose
-   mode and result name match the declared metadata. Voltage/current references
-   in the statement must bind to declared scenario nodes/components.
-4. Transient mode requires positive finite `stop_time_us` and `max_step_us`.
-   AC mode requires valid start/stop frequency and points per decade.
-5. External `ngspice` writes `circuitci_ngspice_measure.cir`,
+   named raw `measure_statements[]` item or structured `measure_templates[]`
+   item.
+3. Each raw statement must be a single-line ngspice `meas`/`.meas` command
+   whose mode and result name match the declared metadata.
+4. Each template declares `name`, `operation` (`avg`, `max`, `min`, `rms`, or
+   `find`), `expression`, and optional time/frequency windows. CircuitCI renders
+   templates into backend-specific measure commands; for ngspice today that is
+   a generated `meas` command.
+5. Voltage/current references in raw statements or templates must bind to
+   declared scenario nodes/components. Transient mode requires positive finite
+   `stop_time_us` and `max_step_us`. AC mode requires valid start/stop
+   frequency and points per decade.
+6. External `ngspice` writes `circuitci_ngspice_measure.cir`,
    `ngspice_measure.log`, `measure_raw.txt`, `measure_summary.csv`, and
    `solver_manifest.json`. The normalized summary records measurement name,
    mode, scalar value, and raw solver line.
-6. Opt-in real-ngspice conformance coverage is available through
+7. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`.
-7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `measure_summary` contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
