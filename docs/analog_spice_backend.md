@@ -97,7 +97,11 @@ Required fields:
   match the declared pin before the backend can run. External ngspice wrappers
   load OSDI artifacts with `pre_osdi` inside `.control`; generated netlists do
   not `.include` the binary artifact. A runtime that rejects `pre_osdi` fails
-  closed and preserves the wrapper/log artifacts.
+  closed and preserves the wrapper/log artifacts. Opt-in real ngspice/OpenVAF
+  conformance uses
+  `CIRCUITCI_RUN_REAL_NGSPICE_OSDI=1 cargo test --test analog_model_compiler_cli`;
+  it skips unless `ngspice`, `openvaf`, and ngspice `pre_osdi` command support
+  are available on the host.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

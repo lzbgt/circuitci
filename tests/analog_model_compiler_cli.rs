@@ -1,13 +1,16 @@
 mod common;
 
 use common::{
-    assert_report_schema_valid, assert_yaml_file_valid, run_validation_with_path,
+    assert_report_schema_valid, assert_yaml_file_valid, binary_available, run_validation_with_path,
     run_validation_with_path_and_env,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::process::Command;
+
+#[cfg(unix)]
+const REAL_NGSPICE_OSDI_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE_OSDI";
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
@@ -283,6 +286,101 @@ fn run_validation_with_path_retaining_output(
     (out_dir, report)
 }
 
+fn run_validation_retaining_output_with_env(
+    project: &str,
+    envs: &[(&str, &str)],
+) -> (tempfile::TempDir, Value) {
+    let out_dir = tempfile::tempdir().unwrap();
+    let mut command = Command::new(env!("CARGO_BIN_EXE_circuitci"));
+    command.args([
+        "validate",
+        project,
+        "--profile",
+        "iot_basic_v0",
+        "--output",
+        out_dir.path().to_str().unwrap(),
+    ]);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let status = command.status().unwrap();
+    assert!(status.success());
+    let report =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    (out_dir, report)
+}
+
+#[cfg(unix)]
+fn real_ngspice_osdi_conformance_enabled() -> bool {
+    if std::env::var(REAL_NGSPICE_OSDI_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real-ngspice OSDI conformance; set {REAL_NGSPICE_OSDI_CONFORMANCE_ENV}=1"
+        );
+        return false;
+    }
+    if !binary_available("ngspice") {
+        eprintln!("skipping real-ngspice OSDI conformance; ngspice is not on PATH");
+        return false;
+    }
+    if !binary_available("openvaf") {
+        eprintln!("skipping real-ngspice OSDI conformance; openvaf is not on PATH");
+        return false;
+    }
+    if !ngspice_has_pre_osdi_command() {
+        eprintln!("skipping real-ngspice OSDI conformance; ngspice does not accept pre_osdi");
+        return false;
+    }
+    true
+}
+
+#[cfg(unix)]
+fn ngspice_has_pre_osdi_command() -> bool {
+    let dir = tempfile::tempdir().unwrap();
+    let deck = dir.path().join("probe.cir");
+    fs::write(
+        &deck,
+        ".control\npre_osdi \"missing-osdi-probe.osdi\"\nquit\n.endc\n.end\n",
+    )
+    .unwrap();
+    let output = Command::new("ngspice")
+        .arg("-b")
+        .arg(deck.file_name().unwrap())
+        .current_dir(dir.path())
+        .output();
+    let Ok(output) = output else {
+        return false;
+    };
+    let log = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
+    .to_ascii_lowercase();
+    !(log.contains("no such command")
+        || log.contains("unknown command")
+        || log.contains("undefined command"))
+}
+
+#[cfg(unix)]
+fn write_real_openvaf_fixture(dir: &std::path::Path) -> (String, String) {
+    let source = b"`include \"disciplines.vams\"\nmodule tiny_resistor(p, n);\n  inout p, n;\n  electrical p, n;\n  parameter real r = 1000.0 from (0:inf);\n  analog begin\n    I(p, n) <+ V(p, n) / r;\n  end\nendmodule\n";
+    fs::write(dir.join("tiny_resistor.va"), source).unwrap();
+    let output = Command::new("openvaf")
+        .args(["tiny_resistor.va", "-o", "tiny_resistor.osdi"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "openvaf fixture compile failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let artifact = fs::read(dir.join("tiny_resistor.osdi")).unwrap();
+    (sha256_hex(source), sha256_hex(&artifact))
+}
+
 #[cfg(unix)]
 #[test]
 fn openvaf_osdi_model_provenance_is_schema_valid_and_reaches_analysis_planning() {
@@ -377,6 +475,40 @@ fn openvaf_osdi_model_reports_ngspice_without_osdi_support() {
             .as_str()
             .unwrap()
             .contains("OSDI model loading failed")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_osdi_conformance_compiles_and_loads_openvaf_fixture() {
+    if !real_ngspice_osdi_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_real_openvaf_fixture(project_dir.path());
+    fs::remove_file(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+
+    let (_out_dir, report) = run_validation_retaining_output_with_env(
+        project_path.to_str().unwrap(),
+        &[("CIRCUITCI_RUN_OPENVAF_BUILDS", "1")],
+    );
+
+    assert_eq!(report["result"], "pass", "{report:#}");
+    let rebuilt = fs::read(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    assert_eq!(sha256_hex(&rebuilt), artifact_sha);
+    let wrapper = fs::read_to_string(artifact_path(&report, "circuitci_ngspice.cir")).unwrap();
+    assert!(wrapper.contains("pre_osdi \""));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["selected"], "ngspice");
+    assert_eq!(
+        manifest["inputs"]["model_files"][0]["artifact_format"],
+        "osdi_shared_object"
     );
     assert_report_schema_valid(&report);
 }

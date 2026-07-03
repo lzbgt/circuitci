@@ -660,8 +660,13 @@ The GUI should not become the solver.
   generated Board IR netlists skip `.include` lines for OSDI binaries, external
   ngspice wrappers emit `pre_osdi` load commands, and runtimes that reject OSDI
   loading fail closed with wrapper/log evidence.
-- Add real-ngspice OSDI conformance coverage using a small OpenVAF-compatible
-  Verilog-A fixture on hosts where ngspice is built with OSDI support.
+- Added opt-in real-ngspice OSDI conformance coverage using a small
+  OpenVAF-compatible Verilog-A fixture. The command is
+  `CIRCUITCI_RUN_REAL_NGSPICE_OSDI=1 cargo test --test analog_model_compiler_cli`;
+  it compiles the fixture with OpenVAF to establish the expected artifact hash,
+  deletes the artifact, lets CircuitCI rebuild it through the declared
+  `compiler_command`, and verifies ngspice `pre_osdi` loading, normalized
+  transient output, and solver manifest model-file provenance.
 - Add artifact hashes and generated-model provenance to reports.
 
 ## Risks
