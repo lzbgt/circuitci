@@ -1427,7 +1427,10 @@ Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry
 hashes, per-artifact hash status, projected `conformance_checks[]`, and stable
-`MODEL_PACKAGE_*` finding ids.
+`MODEL_PACKAGE_*` finding ids. The command also writes a sibling Markdown
+summary. Normal validation reports project any retained package-verification
+JSON artifact into top-level `model_package_conformance_checks[]`, and the GUI
+Simulation report panel displays the same compact rows.
 When a lock includes an artifact with
 `artifact_format: model_conformance_report`, the verifier also validates that
 document against `schemas/model_conformance_report.schema.json` and requires it

@@ -420,7 +420,7 @@ fn export_model_conformance_report_generates_verifiable_package_evidence() {
         .status()
         .unwrap();
     assert!(verify_status.success());
-    let report: Value = serde_json::from_str(&fs::read_to_string(verify_report).unwrap()).unwrap();
+    let report: Value = serde_json::from_str(&fs::read_to_string(&verify_report).unwrap()).unwrap();
     assert_eq!(report["result"], "pass");
     let checks = report["conformance_checks"].as_array().unwrap();
     assert_eq!(checks.len(), 1);
@@ -432,6 +432,10 @@ fn export_model_conformance_report_generates_verifiable_package_evidence() {
     assert_eq!(checks[0]["solver"], "ngspice");
     assert_eq!(checks[0]["result"], "pass");
     assert_eq!(checks[0]["artifacts"][0], "out/solver_manifest.json");
+    let markdown = fs::read_to_string(verify_report.with_extension("md")).unwrap();
+    assert!(markdown.contains("## Conformance Checks"));
+    assert!(markdown.contains("`transient_smoke`"));
+    assert!(markdown.contains("`runtime_osdi`"));
     assert_model_package_report_schema_valid(&report);
 }
 

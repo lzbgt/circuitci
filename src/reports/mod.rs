@@ -60,6 +60,7 @@ pub struct ValidationReport {
     pub waveforms: Vec<String>,
     pub artifacts: Vec<String>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
+    pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub limitations: Vec<Limitation>,
     pub suggested_next_actions: Vec<String>,
     pub reproduction: Reproduction,
@@ -93,6 +94,19 @@ pub struct ModelFileProvenance {
     pub build_env_enabled: Option<bool>,
     pub rebuild_mode: String,
     pub produced_by_circuitci: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ModelPackageConformanceCheck {
+    pub report: String,
+    pub report_artifact_id: String,
+    pub target_artifact_id: String,
+    pub target_artifact_sha256: String,
+    pub check_name: String,
+    pub analysis: String,
+    pub solver: String,
+    pub result: String,
+    pub artifacts: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -247,6 +261,7 @@ impl ValidationReport {
             .collect();
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
         let model_file_provenance = collect_model_file_provenance(&artifacts);
+        let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         Self {
             schema_version: "0.1.0".to_string(),
             project,
@@ -259,6 +274,7 @@ impl ValidationReport {
             waveforms,
             artifacts,
             model_file_provenance,
+            model_package_conformance_checks,
             limitations,
             suggested_next_actions,
             reproduction: Reproduction { command },
@@ -352,6 +368,33 @@ fn markdown_report(report: &ValidationReport) -> String {
                             .unwrap_or("")
                     ));
                 }
+            }
+        }
+        text.push('\n');
+    }
+    text.push_str("## Model Package Conformance\n\n");
+    if report.model_package_conformance_checks.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for check in &report.model_package_conformance_checks {
+            text.push_str(&format!(
+                "- `{}` `{}` via `{}`: `{}` target `{}` `{}`\n",
+                check.check_name,
+                check.analysis,
+                check.solver,
+                check.result,
+                check.target_artifact_id,
+                check.target_artifact_sha256
+            ));
+            text.push_str(&format!(
+                "  - Report: `{}` artifact `{}`\n",
+                check.report, check.report_artifact_id
+            ));
+            if !check.artifacts.is_empty() {
+                text.push_str(&format!(
+                    "  - Evidence: `{}`\n",
+                    check.artifacts.join("`, `")
+                ));
             }
         }
         text.push('\n');
@@ -492,6 +535,46 @@ fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenanc
     records.into_iter().collect()
 }
 
+fn collect_model_package_conformance_checks(
+    artifacts: &[String],
+) -> Vec<ModelPackageConformanceCheck> {
+    let mut records = BTreeSet::new();
+    for artifact in artifacts {
+        if !artifact.ends_with(".json") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        let Ok(report) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
+        if string_at(&report, &["schema_version"]) != "circuitci.model_package_verification.v1" {
+            continue;
+        }
+        let Some(checks) = report.get("conformance_checks").and_then(Value::as_array) else {
+            continue;
+        };
+        for check in checks {
+            let record = ModelPackageConformanceCheck {
+                report: artifact.clone(),
+                report_artifact_id: string_at(check, &["report_artifact_id"]),
+                target_artifact_id: string_at(check, &["target_artifact_id"]),
+                target_artifact_sha256: string_at(check, &["target_artifact_sha256"]),
+                check_name: string_at(check, &["check_name"]),
+                analysis: string_at(check, &["analysis"]),
+                solver: string_at(check, &["solver"]),
+                result: string_at(check, &["result"]),
+                artifacts: string_array_at(check, &["artifacts"]),
+            };
+            if !record.report_artifact_id.is_empty() || !record.check_name.is_empty() {
+                records.insert(record);
+            }
+        }
+    }
+    records.into_iter().collect()
+}
+
 fn string_at(value: &Value, path: &[&str]) -> String {
     let mut current = value;
     for key in path {
@@ -508,10 +591,92 @@ fn optional_string_at(value: &Value, path: &[&str]) -> Option<String> {
     if text.is_empty() { None } else { Some(text) }
 }
 
+fn string_array_at(value: &Value, path: &[&str]) -> Vec<String> {
+    let mut current = value;
+    for key in path {
+        let Some(next) = current.get(*key) else {
+            return Vec::new();
+        };
+        current = next;
+    }
+    current
+        .as_array()
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_str)
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn bool_at(value: &Value, path: &[&str]) -> Option<bool> {
     let mut current = value;
     for key in path {
         current = current.get(*key)?;
     }
     current.as_bool()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validation_report_projects_model_package_conformance_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let package_report = dir.path().join("model_package_verification.json");
+        fs::write(
+            &package_report,
+            r#"{
+  "schema_version": "circuitci.model_package_verification.v1",
+  "result": "pass",
+  "lock": {
+    "path": "package.lock.json",
+    "sha256": "lock-sha",
+    "package_name": "org.circuitci.test.model",
+    "package_version": "1.0.0"
+  },
+  "registry": null,
+  "artifacts": [],
+  "conformance_checks": [
+    {
+      "report_artifact_id": "conformance",
+      "report_path": "conformance.json",
+      "target_artifact_id": "runtime_osdi",
+      "target_artifact_sha256": "runtime-sha",
+      "check_name": "transient_smoke",
+      "analysis": "tran",
+      "solver": "ngspice",
+      "result": "pass",
+      "artifacts": ["solver_manifest.json"]
+    }
+  ],
+  "findings": []
+}
+"#,
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![package_report.to_string_lossy().into_owned()],
+            Vec::new(),
+            "validate".to_string(),
+        );
+
+        assert_eq!(report.model_package_conformance_checks.len(), 1);
+        let check = &report.model_package_conformance_checks[0];
+        assert_eq!(check.check_name, "transient_smoke");
+        assert_eq!(check.target_artifact_id, "runtime_osdi");
+        assert_eq!(check.artifacts, vec!["solver_manifest.json"]);
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## Model Package Conformance"));
+        assert!(markdown.contains("`transient_smoke`"));
+        assert!(markdown.contains("`runtime_osdi`"));
+    }
 }

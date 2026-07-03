@@ -275,7 +275,86 @@ pub fn write_model_package_verification_report(
     let text = serde_json::to_string_pretty(report)?;
     std::fs::write(output, text)
         .with_context(|| format!("Failed to write model package report {}", output.display()))?;
+    let markdown = model_package_verification_markdown(report);
+    std::fs::write(output.with_extension("md"), markdown).with_context(|| {
+        format!(
+            "Failed to write model package markdown report {}",
+            output.with_extension("md").display()
+        )
+    })?;
     Ok(())
+}
+
+fn model_package_verification_markdown(report: &ModelPackageVerificationReport) -> String {
+    let mut text = String::new();
+    text.push_str("# CircuitCI Model Package Verification\n\n");
+    text.push_str("## Summary\n\n");
+    text.push_str(&format!(
+        "- Result: `{}`\n- Package: `{}` `{}`\n- Artifacts: {}\n- Conformance checks: {}\n- Findings: {}\n\n",
+        report.result,
+        report.lock.package_name.as_deref().unwrap_or(""),
+        report.lock.package_version.as_deref().unwrap_or(""),
+        report.artifacts.len(),
+        report.conformance_checks.len(),
+        report.findings.len()
+    ));
+    text.push_str("## Artifacts\n\n");
+    if report.artifacts.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for artifact in &report.artifacts {
+            text.push_str(&format!(
+                "- `{}` [{}] status `{}` sha `{}`\n",
+                artifact.id,
+                artifact.artifact_format.as_deref().unwrap_or(""),
+                artifact.status,
+                artifact.sha256_actual.as_deref().unwrap_or("")
+            ));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Conformance Checks\n\n");
+    if report.conformance_checks.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for check in &report.conformance_checks {
+            text.push_str(&format!(
+                "- `{}` `{}` via `{}`: `{}` target `{}` `{}`\n",
+                check.check_name.as_deref().unwrap_or(""),
+                check.analysis.as_deref().unwrap_or(""),
+                check.solver.as_deref().unwrap_or(""),
+                check.result.as_deref().unwrap_or(""),
+                check.target_artifact_id.as_deref().unwrap_or(""),
+                check.target_artifact_sha256.as_deref().unwrap_or("")
+            ));
+            text.push_str(&format!(
+                "  - Report: `{}` `{}`\n",
+                check.report_artifact_id, check.report_path
+            ));
+            if !check.artifacts.is_empty() {
+                text.push_str(&format!(
+                    "  - Evidence: `{}`\n",
+                    check.artifacts.join("`, `")
+                ));
+            }
+        }
+        text.push('\n');
+    }
+    text.push_str("## Findings\n\n");
+    if report.findings.is_empty() {
+        text.push_str("None.\n");
+    } else {
+        for finding in &report.findings {
+            text.push_str(&format!(
+                "- `{}` [{}] artifact `{}`: {}\n",
+                finding.id,
+                finding.severity,
+                finding.artifact_id.as_deref().unwrap_or(""),
+                finding.message
+            ));
+        }
+    }
+    text
 }
 
 pub fn export_model_package_lock(

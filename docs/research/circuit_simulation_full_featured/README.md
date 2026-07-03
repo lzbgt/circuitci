@@ -768,6 +768,11 @@ The GUI should not become the solver.
   reviewers can see qualified analyses, solvers, target artifact hashes, and
   referenced evidence artifacts in the package verification report without
   opening every retained conformance JSON file.
+- Added package conformance surfacing outside raw JSON: `verify-model-package`
+  now writes a sibling Markdown report, normal validation reports project
+  retained package-verification artifacts into
+  `model_package_conformance_checks[]`, and the GUI Simulation report panel
+  displays those compact qualification rows.
 
 ## Risks
 

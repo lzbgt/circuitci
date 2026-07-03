@@ -243,6 +243,30 @@ impl CircuitCiApp {
                             }
                         }
                     }
+                    ui.add_space(8.0);
+                    ui.label("Model package conformance");
+                    if report.model_package_conformance_checks.is_empty() {
+                        ui.label("No package conformance checks were emitted.");
+                    } else {
+                        for check in &report.model_package_conformance_checks {
+                            ui.monospace(format!(
+                                "{} [{}] solver={} result={} target={} {}",
+                                check.check_name,
+                                check.analysis,
+                                check.solver,
+                                check.result,
+                                check.target_artifact_id,
+                                check.target_artifact_sha256
+                            ));
+                            ui.monospace(format!(
+                                "report {} artifact={}",
+                                check.report, check.report_artifact_id
+                            ));
+                            if !check.artifacts.is_empty() {
+                                ui.monospace(format!("evidence {}", check.artifacts.join(", ")));
+                            }
+                        }
+                    }
                 });
             egui::CollapsingHeader::new("Findings")
                 .default_open(false)

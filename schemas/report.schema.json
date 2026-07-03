@@ -33,6 +33,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
     },
+    "model_package_conformance_checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model_package_conformance_check" }
+    },
     "limitations": { "type": "array", "items": { "$ref": "#/$defs/limitation" } },
     "suggested_next_actions": { "type": "array" },
     "reproduction": {
@@ -139,6 +143,35 @@
         "build_env_enabled": { "type": ["boolean", "null"] },
         "rebuild_mode": { "type": "string" },
         "produced_by_circuitci": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "model_package_conformance_check": {
+      "type": "object",
+      "required": [
+        "report",
+        "report_artifact_id",
+        "target_artifact_id",
+        "target_artifact_sha256",
+        "check_name",
+        "analysis",
+        "solver",
+        "result",
+        "artifacts"
+      ],
+      "properties": {
+        "report": { "type": "string" },
+        "report_artifact_id": { "type": "string" },
+        "target_artifact_id": { "type": "string" },
+        "target_artifact_sha256": { "type": "string" },
+        "check_name": { "type": "string" },
+        "analysis": { "type": "string" },
+        "solver": { "type": "string" },
+        "result": { "type": "string" },
+        "artifacts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
       },
       "additionalProperties": false
     }
