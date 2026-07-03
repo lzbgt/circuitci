@@ -360,13 +360,16 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    item.
 3. Each raw statement must be a single-line ngspice `meas`/`.meas` command
    whose mode and result name match the declared metadata.
-4. Each template declares `name`, `operation` (`avg`, `max`, `min`, `rms`, or
-   `find`), `expression`, and optional time/frequency windows. Transient
-   `operation: delay` templates declare `trigger_expression`, `trigger_value`,
-   `target_value`, and optional `trigger_edge`/`target_edge` plus crossing
-   counts; they render to SPICE `TRIG`/`TARG` measurements. CircuitCI renders
-   templates into backend-specific measure commands: ngspice receives generated
-   `meas` commands, while explicit Xyce receives generated `.MEASURE` commands.
+4. Each template declares `name`, `operation`, `expression`, and operation
+   fields. Simple operations are `avg`, `max`, `min`, `rms`, and `find` with
+   optional time/frequency windows. Transient timing operations include
+   `delay`, `slew`, and `threshold_time`: `delay` compares trigger and target
+   expressions, `slew` compares two thresholds on the same expression, and
+   `threshold_time` records one crossing time. They render to SPICE
+   `TRIG`/`TARG` or `WHEN` measurements with optional edge selectors and
+   crossing counts. CircuitCI renders templates into backend-specific measure
+   commands: ngspice receives generated `meas` commands, while explicit Xyce
+   receives generated `.MEASURE` commands.
 5. Voltage/current references in raw statements or templates must bind to
    declared scenario nodes/components. Transient mode requires positive finite
    `stop_time_us` and `max_step_us`. AC mode requires valid start/stop

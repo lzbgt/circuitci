@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use super::analog_measure_runner::{
     NgspiceMeasureRun, measure_delay_statement, measure_raw_to_csv,
+    measure_threshold_time_statement,
 };
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
@@ -401,8 +402,11 @@ fn build_xyce_measure_wrapper(
 
 fn xyce_measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
     let xyce_mode = mode.to_ascii_uppercase();
-    if template.operation == "delay" {
+    if matches!(template.operation.as_str(), "delay" | "slew") {
         return measure_delay_statement(".MEASURE", &xyce_mode, template);
+    }
+    if template.operation == "threshold_time" {
+        return measure_threshold_time_statement(".MEASURE", &xyce_mode, template);
     }
     let mut statement = String::from(".MEASURE ");
     statement.push_str(&xyce_mode);
@@ -506,6 +510,60 @@ mod tests {
         assert_eq!(
             xyce_measure_template_statement("tran", &template),
             ".MEASURE TRAN prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
+        );
+    }
+
+    #[test]
+    fn xyce_measure_template_statement_formats_slew() {
+        let template = AnalogMeasureTemplate {
+            name: "out_slew".to_string(),
+            operation: "slew".to_string(),
+            expression: "v(out)".to_string(),
+            trigger_expression: None,
+            trigger_value: Some(0.2),
+            target_value: Some(0.8),
+            trigger_edge: Some("rise".to_string()),
+            target_edge: Some("rise".to_string()),
+            trigger_count: Some(1),
+            target_count: Some(1),
+            from_us: None,
+            to_us: None,
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            xyce_measure_template_statement("tran", &template),
+            ".MEASURE TRAN out_slew TRIG v(out) VAL=2.000000000000e-1 RISE=1 TARG v(out) VAL=8.000000000000e-1 RISE=1"
+        );
+    }
+
+    #[test]
+    fn xyce_measure_template_statement_formats_threshold_time() {
+        let template = AnalogMeasureTemplate {
+            name: "out_rise_time".to_string(),
+            operation: "threshold_time".to_string(),
+            expression: "v(out)".to_string(),
+            trigger_expression: None,
+            trigger_value: None,
+            target_value: Some(0.5),
+            trigger_edge: None,
+            target_edge: Some("rise".to_string()),
+            trigger_count: None,
+            target_count: Some(1),
+            from_us: Some(1.0),
+            to_us: Some(20.0),
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            xyce_measure_template_statement("tran", &template),
+            ".MEASURE TRAN out_rise_time WHEN v(out)=5.000000000000e-1 FROM=1.000000000000e-6 TO=2.000000000000e-5 RISE=1"
         );
     }
 }

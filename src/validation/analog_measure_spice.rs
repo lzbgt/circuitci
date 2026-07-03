@@ -485,7 +485,7 @@ fn validate_measure_template(
 ) -> Result<(), String> {
     if !matches!(
         template.operation.as_str(),
-        "avg" | "max" | "min" | "rms" | "find" | "delay"
+        "avg" | "max" | "min" | "rms" | "find" | "delay" | "slew" | "threshold_time"
     ) {
         return Err(format!(
             "analog_measure template {} uses unsupported operation {}.",
@@ -493,8 +493,11 @@ fn validate_measure_template(
         ));
     }
     validate_expression_references(&template.expression, bound_nodes, scenario)?;
-    if template.operation == "delay" {
+    if matches!(template.operation.as_str(), "delay" | "slew") {
         return validate_delay_template(mode, template, bound_nodes, scenario);
+    }
+    if template.operation == "threshold_time" {
+        return validate_threshold_time_template(mode, template);
     }
     if mode == "tran" {
         validate_optional_window_us(template)?;
@@ -530,45 +533,54 @@ fn validate_delay_template(
 ) -> Result<(), String> {
     if mode != "tran" {
         return Err(format!(
-            "analog_measure delay template {} is only supported for transient mode.",
+            "analog_measure {} template {} is only supported for transient mode.",
+            template.operation, template.name
+        ));
+    }
+    if template.operation == "delay" {
+        let Some(trigger_expression) = nonempty(template.trigger_expression.as_deref()) else {
+            return Err(format!(
+                "analog_measure delay template {} requires trigger_expression.",
+                template.name
+            ));
+        };
+        validate_expression_references(trigger_expression, bound_nodes, scenario)?;
+    } else if let Some(trigger_expression) = nonempty(template.trigger_expression.as_deref())
+        && trigger_expression != template.expression
+    {
+        return Err(format!(
+            "analog_measure slew template {} uses expression for both trigger and target; use operation: delay for two expressions.",
             template.name
         ));
     }
-    let Some(trigger_expression) = nonempty(template.trigger_expression.as_deref()) else {
-        return Err(format!(
-            "analog_measure delay template {} requires trigger_expression.",
-            template.name
-        ));
-    };
-    validate_expression_references(trigger_expression, bound_nodes, scenario)?;
     let Some(trigger_value) = template.trigger_value else {
         return Err(format!(
-            "analog_measure delay template {} requires trigger_value.",
-            template.name
+            "analog_measure {} template {} requires trigger_value.",
+            template.operation, template.name
         ));
     };
     if !trigger_value.is_finite() {
         return Err(format!(
-            "analog_measure delay template {} requires finite trigger_value.",
-            template.name
+            "analog_measure {} template {} requires finite trigger_value.",
+            template.operation, template.name
         ));
     }
     let Some(target_value) = template.target_value else {
         return Err(format!(
-            "analog_measure delay template {} requires target_value.",
-            template.name
+            "analog_measure {} template {} requires target_value.",
+            template.operation, template.name
         ));
     };
     if !target_value.is_finite() {
         return Err(format!(
-            "analog_measure delay template {} requires finite target_value.",
-            template.name
+            "analog_measure {} template {} requires finite target_value.",
+            template.operation, template.name
         ));
     }
-    validate_delay_edge("trigger_edge", template.trigger_edge.as_deref(), template)?;
-    validate_delay_edge("target_edge", template.target_edge.as_deref(), template)?;
-    validate_delay_count("trigger_count", template.trigger_count, template)?;
-    validate_delay_count("target_count", template.target_count, template)?;
+    validate_measure_edge("trigger_edge", template.trigger_edge.as_deref(), template)?;
+    validate_measure_edge("target_edge", template.target_edge.as_deref(), template)?;
+    validate_measure_count("trigger_count", template.trigger_count, template)?;
+    validate_measure_count("target_count", template.target_count, template)?;
     if template.from_us.is_some()
         || template.to_us.is_some()
         || template.at_us.is_some()
@@ -577,14 +589,64 @@ fn validate_delay_template(
         || template.at_hz.is_some()
     {
         return Err(format!(
-            "analog_measure delay template {} may not use at/from/to window fields.",
+            "analog_measure {} template {} may not use at/from/to window fields.",
+            template.operation, template.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_threshold_time_template(
+    mode: &str,
+    template: &AnalogMeasureTemplate,
+) -> Result<(), String> {
+    if mode != "tran" {
+        return Err(format!(
+            "analog_measure threshold_time template {} is only supported for transient mode.",
+            template.name
+        ));
+    }
+    let Some(target_value) = template.target_value else {
+        return Err(format!(
+            "analog_measure threshold_time template {} requires target_value.",
+            template.name
+        ));
+    };
+    if !target_value.is_finite() {
+        return Err(format!(
+            "analog_measure threshold_time template {} requires finite target_value.",
+            template.name
+        ));
+    }
+    validate_measure_edge("target_edge", template.target_edge.as_deref(), template)?;
+    validate_measure_count("target_count", template.target_count, template)?;
+    validate_optional_window_us(template)?;
+    if template.at_us.is_some() {
+        return Err(format!(
+            "analog_measure threshold_time template {} may not use at_us.",
+            template.name
+        ));
+    }
+    if template.from_hz.is_some() || template.to_hz.is_some() || template.at_hz.is_some() {
+        return Err(format!(
+            "analog_measure threshold_time template {} may not use frequency window fields.",
+            template.name
+        ));
+    }
+    if template.trigger_expression.is_some()
+        || template.trigger_value.is_some()
+        || template.trigger_edge.is_some()
+        || template.trigger_count.is_some()
+    {
+        return Err(format!(
+            "analog_measure threshold_time template {} may not use trigger fields.",
             template.name
         ));
     }
     Ok(())
 }
 
-fn validate_delay_edge(
+fn validate_measure_edge(
     field: &str,
     edge: Option<&str>,
     template: &AnalogMeasureTemplate,
@@ -593,22 +655,22 @@ fn validate_delay_edge(
         && !matches!(edge, "rise" | "fall" | "cross")
     {
         return Err(format!(
-            "analog_measure delay template {} requires {field} to be rise, fall, or cross.",
-            template.name
+            "analog_measure {} template {} requires {field} to be rise, fall, or cross.",
+            template.operation, template.name
         ));
     }
     Ok(())
 }
 
-fn validate_delay_count(
+fn validate_measure_count(
     field: &str,
     count: Option<u32>,
     template: &AnalogMeasureTemplate,
 ) -> Result<(), String> {
     if let Some(0) = count {
         return Err(format!(
-            "analog_measure delay template {} requires {field} >= 1.",
-            template.name
+            "analog_measure {} template {} requires {field} >= 1.",
+            template.operation, template.name
         ));
     }
     Ok(())

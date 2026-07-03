@@ -186,8 +186,9 @@ Current analog support:
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw
   `measure_statements[]`, or portable `measure_templates[]` with operation,
-  expression, time/frequency windows, or transient `delay` trigger/target
-  crossing fields. External `ngspice` runs raw statements or templates; explicit
+  expression, time/frequency windows, transient `delay`/`slew`
+  trigger-target measurements, or transient `threshold_time` crossing
+  measurements. External `ngspice` runs raw statements or templates; explicit
   `backend: xyce` runs structured templates only. Both write
   `measure_raw.txt`, `measure_summary.csv`, and `solver_manifest.json`; the
   normalized summary records measurement name, mode, scalar value, and raw

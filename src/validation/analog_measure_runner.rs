@@ -483,8 +483,11 @@ fn normalize_measure_statement(statement: &str) -> String {
 }
 
 pub(super) fn measure_template_statement(mode: &str, template: &AnalogMeasureTemplate) -> String {
-    if template.operation == "delay" {
+    if matches!(template.operation.as_str(), "delay" | "slew") {
         return measure_delay_statement("meas", mode, template);
+    }
+    if template.operation == "threshold_time" {
+        return measure_threshold_time_statement("meas", mode, template);
     }
     let mut statement = String::from("meas ");
     statement.push_str(mode);
@@ -540,7 +543,7 @@ pub(super) fn measure_delay_statement(
         template
             .trigger_expression
             .as_deref()
-            .expect("measure delay trigger_expression was validated"),
+            .unwrap_or(&template.expression),
     );
     statement.push_str(" VAL=");
     statement.push_str(&format!(
@@ -563,6 +566,42 @@ pub(super) fn measure_delay_statement(
             .target_value
             .expect("measure delay target_value was validated")
     ));
+    append_delay_selector(
+        &mut statement,
+        template.target_edge.as_deref(),
+        template.target_count,
+    );
+    statement
+}
+
+pub(super) fn measure_threshold_time_statement(
+    command: &str,
+    mode: &str,
+    template: &AnalogMeasureTemplate,
+) -> String {
+    let mut statement = String::new();
+    statement.push_str(command);
+    statement.push(' ');
+    statement.push_str(mode);
+    statement.push(' ');
+    statement.push_str(&template.name);
+    statement.push_str(" WHEN ");
+    statement.push_str(&template.expression);
+    statement.push('=');
+    statement.push_str(&format!(
+        "{:.12e}",
+        template
+            .target_value
+            .expect("measure threshold_time target_value was validated")
+    ));
+    if let Some(from_us) = template.from_us {
+        statement.push_str(" FROM=");
+        statement.push_str(&format!("{:.12e}", from_us / 1_000_000.0));
+    }
+    if let Some(to_us) = template.to_us {
+        statement.push_str(" TO=");
+        statement.push_str(&format!("{:.12e}", to_us / 1_000_000.0));
+    }
     append_delay_selector(
         &mut statement,
         template.target_edge.as_deref(),
@@ -724,6 +763,60 @@ analog:
         assert_eq!(
             measure_template_statement("tran", &template),
             "meas tran prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
+        );
+    }
+
+    #[test]
+    fn measure_template_statement_formats_slew() {
+        let template = crate::board_ir::AnalogMeasureTemplate {
+            name: "out_slew".to_string(),
+            operation: "slew".to_string(),
+            expression: "v(out)".to_string(),
+            trigger_expression: None,
+            trigger_value: Some(0.2),
+            target_value: Some(0.8),
+            trigger_edge: Some("rise".to_string()),
+            target_edge: Some("rise".to_string()),
+            trigger_count: Some(1),
+            target_count: Some(1),
+            from_us: None,
+            to_us: None,
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            measure_template_statement("tran", &template),
+            "meas tran out_slew TRIG v(out) VAL=2.000000000000e-1 RISE=1 TARG v(out) VAL=8.000000000000e-1 RISE=1"
+        );
+    }
+
+    #[test]
+    fn measure_template_statement_formats_threshold_time() {
+        let template = crate::board_ir::AnalogMeasureTemplate {
+            name: "out_rise_time".to_string(),
+            operation: "threshold_time".to_string(),
+            expression: "v(out)".to_string(),
+            trigger_expression: None,
+            trigger_value: None,
+            target_value: Some(0.5),
+            trigger_edge: None,
+            target_edge: Some("rise".to_string()),
+            trigger_count: None,
+            target_count: Some(1),
+            from_us: Some(1.0),
+            to_us: Some(20.0),
+            at_us: None,
+            from_hz: None,
+            to_hz: None,
+            at_hz: None,
+        };
+
+        assert_eq!(
+            measure_template_statement("tran", &template),
+            "meas tran out_rise_time WHEN v(out)=5.000000000000e-1 FROM=1.000000000000e-6 TO=2.000000000000e-5 RISE=1"
         );
     }
 }

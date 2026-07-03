@@ -403,6 +403,65 @@ fn measure_delay_template_generates_trig_targ_statement() {
 
 #[cfg(unix)]
 #[test]
+fn measure_slew_and_threshold_templates_generate_portable_statements() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'out_slew = 8.00000e-07 targ= 1.80000e-06 trig= 1.00000e-06' 'out_rise_time = 1.50000e-06'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: out_slew\n            operation: slew\n            expression: v(out)\n            trigger_value: 0.2\n            target_value: 0.8\n            trigger_edge: rise\n            target_edge: rise\n          - name: out_rise_time\n            operation: threshold_time\n            expression: v(out)\n            target_value: 0.5\n            target_edge: rise\n            target_count: 1\n            from_us: 1.0\n            to_us: 20.0\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("out_slew,tran,8.000000000000e-7"));
+    assert!(summary.contains("out_rise_time,tran,1.500000000000e-6"));
+    let wrapper =
+        fs::read_to_string(artifact_path(&report, "circuitci_ngspice_measure.cir")).unwrap();
+    assert!(
+        wrapper.contains(
+            "meas tran out_slew TRIG v(out) VAL=2.000000000000e-1 RISE=1 TARG v(out) VAL=8.000000000000e-1 RISE=1"
+        )
+    );
+    assert!(
+        wrapper.contains(
+            "meas tran out_rise_time WHEN v(out)=5.000000000000e-1 FROM=1.000000000000e-6 TO=2.000000000000e-5 RISE=1"
+        )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn measure_ac_mode_accepts_frequency_domain_statement() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable_with_body(
@@ -601,6 +660,60 @@ fn measure_xyce_delay_template_normalizes_summary() {
     assert!(
         wrapper.contains(
             ".MEASURE TRAN prop_delay TRIG v(vin) VAL=5.000000000000e-1 RISE=1 TARG v(out) VAL=5.000000000000e-1 RISE=1"
+        )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_xyce_slew_and_threshold_templates_normalize_summary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\n{ printf '%s\\n' 'INDEX out_slew out_rise_time'; printf '%s\\n' '0 8.00000e-07 1.50000e-06'; } > circuitci_xyce_measure.mt0\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "xyce",
+        "tran",
+        "          - name: out_slew\n            operation: slew\n            expression: v(out)\n            trigger_value: 0.2\n            target_value: 0.8\n            trigger_edge: rise\n            target_edge: rise\n          - name: out_rise_time\n            operation: threshold_time\n            expression: v(out)\n            target_value: 0.5\n            target_edge: rise\n            target_count: 1\n            from_us: 1.0\n            to_us: 20.0\n",
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("out_slew,tran,8.000000000000e-7"));
+    assert!(summary.contains("out_rise_time,tran,1.500000000000e-6"));
+    let wrapper = fs::read_to_string(artifact_path(&report, "circuitci_xyce_measure.cir")).unwrap();
+    assert!(
+        wrapper.contains(
+            ".MEASURE TRAN out_slew TRIG v(out) VAL=2.000000000000e-1 RISE=1 TARG v(out) VAL=8.000000000000e-1 RISE=1"
+        )
+    );
+    assert!(
+        wrapper.contains(
+            ".MEASURE TRAN out_rise_time WHEN v(out)=5.000000000000e-1 FROM=1.000000000000e-6 TO=2.000000000000e-5 RISE=1"
         )
     );
     assert_report_schema_valid(&report);

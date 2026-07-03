@@ -2890,7 +2890,7 @@
                       "required": ["name", "operation", "expression"],
                       "properties": {
                         "name": { "type": "string", "minLength": 1 },
-                        "operation": { "enum": ["avg", "max", "min", "rms", "find", "delay"] },
+                        "operation": { "enum": ["avg", "max", "min", "rms", "find", "delay", "slew", "threshold_time"] },
                         "expression": { "type": "string", "minLength": 1 },
                         "trigger_expression": { "type": "string", "minLength": 1 },
                         "trigger_value": { "type": "number" },
@@ -2911,6 +2911,14 @@
                         {
                           "if": { "properties": { "operation": { "const": "delay" } } },
                           "then": { "required": ["trigger_expression", "trigger_value", "target_value"] }
+                        },
+                        {
+                          "if": { "properties": { "operation": { "const": "slew" } } },
+                          "then": { "required": ["trigger_value", "target_value"] }
+                        },
+                        {
+                          "if": { "properties": { "operation": { "const": "threshold_time" } } },
+                          "then": { "required": ["target_value"] }
                         }
                       ]
                     }

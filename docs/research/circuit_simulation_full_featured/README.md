@@ -534,8 +534,8 @@ The GUI should not become the solver.
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli`; raw
   `measure_statements[]` remain ngspice-only because their syntax is
   backend-specific. Portable templates now include simple scalar operations and
-  transient threshold delay through SPICE `TRIG`/`TARG`; next add portable
-  slew/window threshold templates and measured-value assertion binding.
+  transient threshold delay/slew/window crossing time through SPICE
+  `TRIG`/`TARG` and `WHEN`; next add measured-value assertion binding.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.
