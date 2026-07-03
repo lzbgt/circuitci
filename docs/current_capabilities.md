@@ -136,6 +136,13 @@ Current analog support:
   output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
   provenance. `backend: auto` does not select Xyce for this path until real
   solver conformance coverage is enabled.
+- `analog_transfer_function` scenarios with
+  `SPICE_TRANSFER_FUNCTION_ANALYSIS` for planned `.TF` small-signal transfer
+  contracts. The Board IR/schema can declare `analysis.type: tf`,
+  `transfer_output_expression`, and `transfer_input_source`. The runtime
+  validates bindings/model evidence and fails closed with normalized
+  `transfer_function_summary` planning evidence until a solver adapter emits
+  gain, input resistance, output resistance, and manifest provenance.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

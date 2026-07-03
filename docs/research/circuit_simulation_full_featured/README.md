@@ -506,6 +506,9 @@ The GUI should not become the solver.
 ### Phase 2: Frequency-Domain Breadth
 
 - Add `.TF`, `.PZ`, `.SENS`, `.FOUR`, and `.MEASURE` support where available.
+- Start with fail-closed `.TF` contracts that normalize to
+  `transfer_function_summary`, then wire backend adapters once output parsing
+  and conformance fixtures exist.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

@@ -1271,6 +1271,10 @@ pub struct AnalogTransientAnalysis {
     pub noise_input_source: Option<String>,
     #[serde(default)]
     pub s_parameter_ports: Vec<AnalogSParameterPort>,
+    #[serde(default)]
+    pub transfer_output_expression: Option<String>,
+    #[serde(default)]
+    pub transfer_input_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

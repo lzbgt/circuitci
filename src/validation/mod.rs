@@ -14,6 +14,7 @@ mod analog_sparameter_spice;
 mod analog_spice;
 mod analog_sweep_reports;
 mod analog_sweep_sampling;
+mod analog_transfer_function_spice;
 mod analog_util;
 mod analog_waveform_measurements;
 mod analog_xyce_runner;
@@ -125,6 +126,7 @@ pub(super) const SPICE_AC_ANALYSIS: &str = "SPICE_AC_ANALYSIS";
 pub(super) const SPICE_DC_ANALYSIS: &str = "SPICE_DC_ANALYSIS";
 pub(super) const SPICE_NOISE_ANALYSIS: &str = "SPICE_NOISE_ANALYSIS";
 pub(super) const SPICE_S_PARAMETER_ANALYSIS: &str = "SPICE_S_PARAMETER_ANALYSIS";
+pub(super) const SPICE_TRANSFER_FUNCTION_ANALYSIS: &str = "SPICE_TRANSFER_FUNCTION_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
@@ -159,6 +161,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_dc",
     "analog_noise",
     "analog_sparameter",
+    "analog_transfer_function",
     "motor_drive",
     "load_budget",
     "model_quality",
@@ -783,6 +786,21 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_TRANSFER_FUNCTION_ANALYSIS
+                    if scenario.scenario_type == "analog_transfer_function" =>
+                {
+                    let mut sinks = analog_transfer_function_spice::AnalogTransferFunctionSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_transfer_function_spice::validate_spice_transfer_function_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
                 }
@@ -936,6 +954,7 @@ where
                 | SPICE_DC_ANALYSIS
                 | SPICE_NOISE_ANALYSIS
                 | SPICE_S_PARAMETER_ANALYSIS
+                | SPICE_TRANSFER_FUNCTION_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_BRIDGE_SWITCHING_VALID

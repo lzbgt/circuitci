@@ -57,7 +57,8 @@ and AC assertions for frequency-domain design observation. An `analog_dc`
 scenario owns a SPICE deck, `.op` operating-point export, and DC bias
 assertions. An `analog_sparameter` scenario owns a frequency sweep plus
 single-port or multi-port reference-impedance definitions for Xyce
-S-parameter exports.
+S-parameter exports. An `analog_transfer_function` scenario owns a small-signal
+output/input source contract for future `.TF` gain and resistance exports.
 
 Required fields:
 
@@ -68,8 +69,10 @@ Required fields:
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/
   S-parameter settings with start/stop frequency and points per decade,
-  `type: op` for DC operating-point analysis, and `s_parameter_ports` for
-  S-parameter port contracts.
+  `type: op` for DC operating-point analysis, `s_parameter_ports` for
+  S-parameter port contracts, and `type: tf` with
+  `transfer_output_expression` plus `transfer_input_source` for transfer
+  function contracts.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -235,6 +238,19 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
 5. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
    this check and fail closed with backend-planning evidence until those
    adapters emit the same normalized `s_parameters` contract.
+
+For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: tf`, non-empty `transfer_output_expression`, and
+   non-empty `transfer_input_source`.
+3. For generated Board IR decks, `transfer_input_source` must name a generated
+   board component so `.TF` provenance is tied to an actual source instance.
+4. Current runtime support is intentionally fail-closed: detected backends emit
+   planning evidence requiring normalized `transfer_function_summary` output
+   with small-signal gain, input resistance, output resistance, and
+   `solver_manifest.json` provenance before this check can pass.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical
