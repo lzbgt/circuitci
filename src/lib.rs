@@ -10,6 +10,7 @@ pub mod model_package;
 pub mod model_package_bundle;
 pub mod power_mux_selection;
 pub mod repair_yaml;
+pub(crate) mod repair_yaml_bundle_install;
 pub mod reports;
 pub mod scenario_suggestions;
 pub mod suite;

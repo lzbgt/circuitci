@@ -798,6 +798,12 @@ The GUI should not become the solver.
   artifact-panel summaries for bundle hashes, copied artifact counts,
   conformance/finding counts, installed registry hashes, and scenario-ready
   registry/lock/artifact pins.
+- Added `repair-yaml --finding bundle-install-package-metadata
+  --bundle-install-report <report.json>` so a passing bundle install report can
+  add missing scenario-ready registry/lock/artifact pins to matched
+  `analog.model_files[]` entries in a copied project. The migration matches by
+  package artifact id or installed runtime artifact path and blocks on existing
+  conflicting package metadata.
 
 ## Risks
 

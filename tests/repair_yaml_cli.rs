@@ -1296,6 +1296,182 @@ scenarios:
     );
 }
 
+#[test]
+fn repair_yaml_imports_bundle_install_package_metadata() {
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project.yaml");
+    let installed = temp.path().join("installed_bundle");
+    let artifacts = installed.join("artifacts");
+    let shared = temp.path().join("shared");
+    std::fs::create_dir_all(&artifacts).unwrap();
+    std::fs::create_dir_all(&shared).unwrap();
+    std::fs::write(artifacts.join("runtime.osdi"), "runtime artifact\n").unwrap();
+    std::fs::write(installed.join("package.lock.json"), "{}\n").unwrap();
+    std::fs::write(shared.join("compact_model_registry.json"), "{}\n").unwrap();
+    let lock_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let registry_sha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    std::fs::write(
+        &project,
+        r#"
+project:
+  name: bundle_install_metadata_import
+  version: 0.1.0
+
+board:
+  components: {}
+  nets: {}
+
+scenarios:
+  - name: package_import
+    type: analog_transient
+    checks: []
+    analog:
+      backend: ngspice
+      netlist_source: file
+      model_files:
+        - path: installed_bundle/artifacts/runtime.osdi
+          artifact_format: osdi_shared_object
+          model_package_artifact_id: runtime_osdi
+      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: transient
+        stop_time_us: 1.0
+        max_step_us: 0.1
+      stimuli: []
+      probes: []
+      assertions: []
+"#,
+    )
+    .unwrap();
+    let install_report = temp.path().join("bundle_install_report.json");
+    std::fs::write(
+        &install_report,
+        format!(
+            r#"{{
+  "schema_version": "circuitci.model_package_bundle_install.v1",
+  "result": "pass",
+  "source_bundle": "bundle",
+  "install_dir": "installed_bundle",
+  "package": {{
+    "name": "org.circuitci.models.bundle.test",
+    "version": "1.2.3"
+  }},
+  "manifest": {{
+    "path": "installed_bundle/model_package_bundle_manifest.json",
+    "sha256_declared": null,
+    "sha256_actual": null,
+    "status": "verified"
+  }},
+  "lock": {{
+    "path": "installed_bundle/package.lock.json",
+    "sha256_declared": "{lock_sha}",
+    "sha256_actual": "{lock_sha}",
+    "status": "verified"
+  }},
+  "registry": null,
+  "installed_registry": {{
+    "path": "shared/compact_model_registry.json",
+    "sha256_declared": "{registry_sha}",
+    "sha256_actual": "{registry_sha}",
+    "status": "verified"
+  }},
+  "scenario_import": {{
+    "model_package_registry_path": "shared/compact_model_registry.json",
+    "model_package_registry_sha256": "{registry_sha}",
+    "model_package_registry_entry": "bundle_runtime",
+    "model_package_lock_path": "installed_bundle/package.lock.json",
+    "model_package_lock_sha256": "{lock_sha}",
+    "model_package_artifact_id": "runtime_osdi"
+  }},
+  "artifacts": [
+    {{
+      "id": "runtime_osdi",
+      "path": "installed_bundle/artifacts/runtime.osdi",
+      "artifact_format": "osdi_shared_object",
+      "compiler": "openvaf",
+      "sha256_declared": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sha256_actual": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "status": "verified"
+    }}
+  ],
+  "conformance_checks": [],
+  "findings": []
+}}
+"#
+        ),
+    )
+    .unwrap();
+
+    let output = temp.path().join("repair");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--finding",
+            "bundle-install-package-metadata",
+            "--bundle-install-report",
+            install_report.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("repair_report.json")).unwrap())
+            .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "pass");
+    assert_eq!(repair_report["finding"], "BUNDLE_INSTALL_PACKAGE_METADATA");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["blocked"], 0);
+    assert_eq!(
+        repair_report["proposals"][0]["edits"][0]["path"],
+        "/scenarios/0/analog/model_files/0/model_package_name"
+    );
+
+    let repaired_project = output.join("repaired/project.yaml");
+    let repaired_yaml = std::fs::read_to_string(repaired_project).unwrap();
+    let repaired: circuitci::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&repaired_yaml).unwrap();
+    let model_file = &repaired.scenarios[0].analog.as_ref().unwrap().model_files[0];
+    let expected_lock = std::fs::canonicalize(installed.join("package.lock.json")).unwrap();
+    let expected_registry =
+        std::fs::canonicalize(shared.join("compact_model_registry.json")).unwrap();
+    assert_eq!(
+        model_file.model_package_name.as_deref(),
+        Some("org.circuitci.models.bundle.test")
+    );
+    assert_eq!(model_file.model_package_version.as_deref(), Some("1.2.3"));
+    assert_eq!(
+        model_file.model_package_artifact_id.as_deref(),
+        Some("runtime_osdi")
+    );
+    assert_eq!(
+        model_file.model_package_lock_path.as_deref(),
+        Some(expected_lock.to_str().unwrap())
+    );
+    assert_eq!(
+        model_file.model_package_lock_sha256.as_deref(),
+        Some(lock_sha)
+    );
+    assert_eq!(
+        model_file.model_package_registry_path.as_deref(),
+        Some(expected_registry.to_str().unwrap())
+    );
+    assert_eq!(
+        model_file.model_package_registry_sha256.as_deref(),
+        Some(registry_sha)
+    );
+    assert_eq!(
+        model_file.model_package_registry_entry.as_deref(),
+        Some("bundle_runtime")
+    );
+}
+
 fn assert_repair_report_schema_valid(report: &Value) {
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/repair_report.schema.json")).unwrap();

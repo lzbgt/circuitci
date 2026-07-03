@@ -1,5 +1,6 @@
 use crate::board_ir::{BoardProject, NetKind, load_project};
 use crate::library::{PortKind, load_library};
+use crate::repair_yaml_bundle_install::load_bundle_install_package_metadata;
 use crate::reports::{Finding, ValidationReport};
 use crate::suite::validate_and_write_project_report;
 use anyhow::{Context, Result, bail};
@@ -15,6 +16,7 @@ pub enum BoardYamlRepairFindingKind {
     PinNotDeclared,
     RequiredPinFloating,
     AnalogModelPackageMetadata,
+    BundleInstallPackageMetadata,
 }
 
 #[derive(Debug, Clone)]
@@ -26,6 +28,7 @@ pub struct BoardYamlRepairOptions {
     pub dry_run: bool,
     pub apply_report: Option<PathBuf>,
     pub proposal_ids: Vec<String>,
+    pub bundle_install_report: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -157,6 +160,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         }
         BoardYamlRepairFindingKind::AnalogModelPackageMetadata => {
             analog_model_package_metadata_proposals(&options.project, &project, &library)?
+        }
+        BoardYamlRepairFindingKind::BundleInstallPackageMetadata => {
+            bundle_install_package_metadata_proposals(&options.project, &project, &options)?
         }
     };
     let finding_id = options.finding.finding_id();
@@ -890,6 +896,157 @@ fn analog_model_package_metadata_proposals(
     Ok(proposals)
 }
 
+fn bundle_install_package_metadata_proposals(
+    project_path: &Path,
+    project: &BoardProject,
+    options: &BoardYamlRepairOptions,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let Some(report_path) = &options.bundle_install_report else {
+        bail!(
+            "--bundle-install-report is required with --finding bundle-install-package-metadata."
+        );
+    };
+    let expected = load_bundle_install_package_metadata(report_path)?;
+    let mut proposals = Vec::new();
+    for (scenario_index, scenario) in project.scenarios.iter().enumerate() {
+        let Some(analog) = scenario.analog.as_ref() else {
+            continue;
+        };
+        for (model_file_index, model_file) in analog.model_files.iter().enumerate() {
+            let artifact_id_matches = model_file
+                .model_package_artifact_id
+                .as_deref()
+                .is_some_and(|id| id == expected.model_package_artifact_id);
+            let model_path_matches =
+                canonicalize_project_relative_path(project_path, &model_file.path)?
+                    .is_some_and(|path| expected.runtime_artifact_paths.contains(&path));
+            if !artifact_id_matches && !model_path_matches {
+                continue;
+            }
+            let yaml_path =
+                format!("/scenarios/{scenario_index}/analog/model_files/{model_file_index}");
+            let mut edits = Vec::new();
+            let mut conflicts = Vec::new();
+            let reason = "Bundle install report scenario_import pins can qualify this analog model file with reusable package metadata.";
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_name",
+                model_file.model_package_name.as_deref(),
+                expected.model_package_name.as_deref(),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_version",
+                model_file.model_package_version.as_deref(),
+                expected.model_package_version.as_deref(),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_artifact_id",
+                model_file.model_package_artifact_id.as_deref(),
+                Some(expected.model_package_artifact_id.as_str()),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_lock_path",
+                model_file.model_package_lock_path.as_deref(),
+                Some(expected.model_package_lock_path.as_str()),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_lock_sha256",
+                model_file.model_package_lock_sha256.as_deref(),
+                Some(expected.model_package_lock_sha256.as_str()),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_registry_path",
+                model_file.model_package_registry_path.as_deref(),
+                Some(expected.model_package_registry_path.as_str()),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_registry_sha256",
+                model_file.model_package_registry_sha256.as_deref(),
+                Some(expected.model_package_registry_sha256.as_str()),
+                reason,
+            );
+            collect_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_registry_entry",
+                model_file.model_package_registry_entry.as_deref(),
+                Some(expected.model_package_registry_entry.as_str()),
+                reason,
+            );
+            if conflicts.is_empty() && edits.is_empty() {
+                continue;
+            }
+            let proposal_id = format!("bundle_install_package_metadata_{}", proposals.len() + 1);
+            if conflicts.is_empty() {
+                proposals.push(BoardYamlRepairProposal {
+                    id: proposal_id,
+                    finding_id: BoardYamlRepairFindingKind::BundleInstallPackageMetadata
+                        .finding_id()
+                        .to_string(),
+                    status: "proposed".to_string(),
+                    reason_code: None,
+                    description: format!(
+                        "Add package registry pins from bundle install report {} to analog model file {} in scenario {}.",
+                        report_path.display(),
+                        model_file.path,
+                        scenario.name
+                    ),
+                    yaml_path,
+                    affected_pins: vec![scenario.name.clone()],
+                    edits,
+                });
+            } else {
+                proposals.push(BoardYamlRepairProposal {
+                    id: proposal_id,
+                    finding_id: BoardYamlRepairFindingKind::BundleInstallPackageMetadata
+                        .finding_id()
+                        .to_string(),
+                    status: "blocked".to_string(),
+                    reason_code: Some("bundle_install_package_metadata_conflict".to_string()),
+                    description: format!(
+                        "Not changing analog model file {} in scenario {} because existing package fields conflict with bundle install report {}: {}.",
+                        model_file.path,
+                        scenario.name,
+                        report_path.display(),
+                        conflicts.join(", ")
+                    ),
+                    yaml_path,
+                    affected_pins: vec![scenario.name.clone()],
+                    edits: Vec::new(),
+                });
+            }
+        }
+    }
+    Ok(proposals)
+}
+
 #[derive(Debug)]
 struct AnalogPackageModelMetadata {
     canonical_model_path: PathBuf,
@@ -966,6 +1123,28 @@ fn collect_package_metadata_edit(
     current: Option<&str>,
     expected: Option<&str>,
 ) {
+    collect_metadata_edit(
+        edits,
+        conflicts,
+        yaml_path,
+        field,
+        current,
+        expected,
+        &format!(
+            "Generated analog model file can import package metadata from component-library simulation.spice.{field}."
+        ),
+    );
+}
+
+fn collect_metadata_edit(
+    edits: &mut Vec<BoardYamlRepairEdit>,
+    conflicts: &mut Vec<String>,
+    yaml_path: &str,
+    field: &str,
+    current: Option<&str>,
+    expected: Option<&str>,
+    reason: &str,
+) {
     let Some(expected) = expected else {
         return;
     };
@@ -977,9 +1156,7 @@ fn collect_package_metadata_edit(
             path: format!("{yaml_path}/{field}"),
             from: serde_json::Value::Null,
             to: serde_json::Value::String(expected.to_string()),
-            reason: format!(
-                "Generated analog model file can import package metadata from component-library simulation.spice.{field}."
-            ),
+            reason: reason.to_string(),
         }),
     }
 }
@@ -1605,6 +1782,9 @@ fn repair_reproduction_command(options: &BoardYamlRepairOptions) -> String {
     for proposal_id in &options.proposal_ids {
         command.push_str(&format!(" --proposal-id {proposal_id}"));
     }
+    if let Some(report) = &options.bundle_install_report {
+        command.push_str(&format!(" --bundle-install-report {}", report.display()));
+    }
     command
 }
 
@@ -1703,6 +1883,7 @@ impl BoardYamlRepairFindingKind {
             Self::PinNotDeclared => "PIN_NOT_DECLARED",
             Self::RequiredPinFloating => "REQUIRED_PIN_FLOATING",
             Self::AnalogModelPackageMetadata => "ANALOG_MODEL_PACKAGE_METADATA",
+            Self::BundleInstallPackageMetadata => "BUNDLE_INSTALL_PACKAGE_METADATA",
         }
     }
 
@@ -1713,11 +1894,15 @@ impl BoardYamlRepairFindingKind {
             Self::PinNotDeclared => "pin-not-declared",
             Self::RequiredPinFloating => "required-pin-floating",
             Self::AnalogModelPackageMetadata => "analog-model-package-metadata",
+            Self::BundleInstallPackageMetadata => "bundle-install-package-metadata",
         }
     }
 
     fn requires_matching_validation_finding(self) -> bool {
-        !matches!(self, Self::AnalogModelPackageMetadata)
+        !matches!(
+            self,
+            Self::AnalogModelPackageMetadata | Self::BundleInstallPackageMetadata
+        )
     }
 }
 

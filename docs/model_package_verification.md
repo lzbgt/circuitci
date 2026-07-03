@@ -191,6 +191,20 @@ into a shared registry. When retained as a normal validation artifact, the
 install report is projected into `model_package_bundle_installs[]` and shown in
 Markdown/GUI report summaries with installed registry hashes and scenario-ready
 registry/lock/artifact pins.
+To apply those pins to an existing project copy without manual YAML editing,
+run:
+
+```bash
+circuitci repair-yaml path/to/project.yaml \
+  --finding bundle-install-package-metadata \
+  --bundle-install-report out/tiny_resistor_bundle_install.json \
+  --output out/tiny_resistor_bundle_import
+```
+
+The repair matches `analog.model_files[]` entries by
+`model_package_artifact_id` or by the installed runtime artifact path, adds only
+missing package fields, blocks on conflicting existing metadata, writes a
+repaired project copy, and validates that copy.
 
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.

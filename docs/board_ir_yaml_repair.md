@@ -30,6 +30,13 @@ Supported repair classes:
   existing package field disagrees with the library metadata, the proposal is
   blocked with `reason_code: package_metadata_conflict` instead of overwriting
   provenance.
+- `bundle-install-package-metadata`: imports scenario-ready pins from a passing
+  `install-model-package-bundle` report. It requires `--bundle-install-report`,
+  matches analog model files by `model_package_artifact_id` or installed runtime
+  artifact path, and adds missing package name/version, registry path/SHA/entry,
+  lock path/SHA, and artifact id fields. Existing conflicting package fields
+  block the proposal with
+  `reason_code: bundle_install_package_metadata_conflict`.
 
 Example:
 
@@ -38,6 +45,16 @@ circuitci repair-yaml path/to/project.yaml \
   --finding net-not-found \
   --profile iot_basic_v0 \
   --output out/repair
+```
+
+Import package pins from a bundle install report:
+
+```sh
+circuitci repair-yaml path/to/project.yaml \
+  --finding bundle-install-package-metadata \
+  --bundle-install-report out/tiny_resistor_bundle_install.json \
+  --profile iot_basic_v0 \
+  --output out/repair_bundle_import
 ```
 
 Use `--dry-run` to stop after original validation and proposal generation:
@@ -95,7 +112,9 @@ dry-run report. `--proposal-id` is valid only with `--apply-report`; requested
 ids must be unique, present in the dry-run report, and still in `status:
 proposed`. Non-selected proposed edits are written back as `status: skipped` in
 the apply report, and unresolved same-class findings remain visible in
-`proof.repaired_matching_findings`.
+`proof.repaired_matching_findings`. `--bundle-install-report` is valid only
+with `--finding bundle-install-package-metadata`; relative report paths are
+resolved from the install report location before the copied project is written.
 
 `repair_report.json` follows `schemas/repair_report.schema.json`. Its
 `proposals[].edits[]` entries carry the YAML path, operation, previous value,

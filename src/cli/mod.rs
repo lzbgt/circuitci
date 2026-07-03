@@ -150,6 +150,8 @@ enum Command {
         apply_report: Option<PathBuf>,
         #[arg(long = "proposal-id")]
         proposal_ids: Vec<String>,
+        #[arg(long = "bundle-install-report")]
+        bundle_install_report: Option<PathBuf>,
     },
     SuggestScenarios {
         project: PathBuf,
@@ -327,6 +329,7 @@ enum RepairYamlFinding {
     PinNotDeclared,
     RequiredPinFloating,
     AnalogModelPackageMetadata,
+    BundleInstallPackageMetadata,
 }
 
 impl RepairYamlFinding {
@@ -338,6 +341,9 @@ impl RepairYamlFinding {
             Self::RequiredPinFloating => BoardYamlRepairFindingKind::RequiredPinFloating,
             Self::AnalogModelPackageMetadata => {
                 BoardYamlRepairFindingKind::AnalogModelPackageMetadata
+            }
+            Self::BundleInstallPackageMetadata => {
+                BoardYamlRepairFindingKind::BundleInstallPackageMetadata
             }
         }
     }
@@ -458,7 +464,8 @@ pub fn run() -> Result<()> {
             dry_run,
             apply_report,
             proposal_ids,
-        }) => run_repair_yaml(
+            bundle_install_report,
+        }) => run_repair_yaml(CliRepairYamlArgs {
             project,
             profile,
             output,
@@ -466,7 +473,8 @@ pub fn run() -> Result<()> {
             dry_run,
             apply_report,
             proposal_ids,
-        ),
+            bundle_install_report,
+        }),
         Some(Command::SuggestScenarios {
             project,
             profile,
@@ -912,29 +920,29 @@ fn parse_model_package_artifact_spec(
     })
 }
 
-fn run_repair_yaml(
-    project: PathBuf,
-    profile: String,
-    output: PathBuf,
-    finding: RepairYamlFinding,
-    dry_run: bool,
-    apply_report: Option<PathBuf>,
-    proposal_ids: Vec<String>,
-) -> Result<()> {
-    if dry_run && apply_report.is_some() {
+fn run_repair_yaml(args: CliRepairYamlArgs) -> Result<()> {
+    if args.dry_run && args.apply_report.is_some() {
         anyhow::bail!("--dry-run and --apply-report cannot be used together.");
     }
-    if !proposal_ids.is_empty() && apply_report.is_none() {
+    if !args.proposal_ids.is_empty() && args.apply_report.is_none() {
         anyhow::bail!("--proposal-id can only be used with --apply-report.");
     }
+    if args.bundle_install_report.is_some()
+        && args.finding.as_repair_kind() != BoardYamlRepairFindingKind::BundleInstallPackageMetadata
+    {
+        anyhow::bail!(
+            "--bundle-install-report can only be used with --finding bundle-install-package-metadata."
+        );
+    }
     let report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
-        project,
-        profile,
-        output: output.clone(),
-        finding: finding.as_repair_kind(),
-        dry_run,
-        apply_report,
-        proposal_ids,
+        project: args.project,
+        profile: args.profile,
+        output: args.output.clone(),
+        finding: args.finding.as_repair_kind(),
+        dry_run: args.dry_run,
+        apply_report: args.apply_report,
+        proposal_ids: args.proposal_ids,
+        bundle_install_report: args.bundle_install_report,
     })?;
     println!(
         "CircuitCI YAML repair {}: {} mode={} (proposed={}, selected={}, applied={}, blocked={}, skipped={}, original_matching_criticals={}, repaired_matching_criticals={}, new_criticals={}) -> {}",
@@ -949,9 +957,20 @@ fn run_repair_yaml(
         report.summary.original_matching_criticals,
         report.summary.repaired_matching_criticals,
         report.summary.new_criticals,
-        output.join("repair_report.json").display()
+        args.output.join("repair_report.json").display()
     );
     Ok(())
+}
+
+struct CliRepairYamlArgs {
+    project: PathBuf,
+    profile: String,
+    output: PathBuf,
+    finding: RepairYamlFinding,
+    dry_run: bool,
+    apply_report: Option<PathBuf>,
+    proposal_ids: Vec<String>,
+    bundle_install_report: Option<PathBuf>,
 }
 
 fn run_suggest_scenarios(
