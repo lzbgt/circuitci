@@ -651,8 +651,11 @@ The GUI should not become the solver.
   when the artifact is missing or hash-stale, the failure carries the declared
   compiler command, output path, and `openvaf` availability on `PATH` so CI can
   rebuild from pinned Verilog-A source before rerunning simulation.
-- Add an opt-in OpenVAF execution path that can produce the declared OSDI
-  artifact from pinned source under controlled CI settings.
+- Added an opt-in OpenVAF execution path gated by
+  `CIRCUITCI_RUN_OPENVAF_BUILDS=1`. CircuitCI executes the declared `openvaf`
+  command directly from the project directory, rejects shell metacharacters in
+  the command contract, and rechecks the produced OSDI artifact hash before
+  solver planning continues.
 - Add model compatibility tests per backend.
 - Add artifact hashes and generated-model provenance to reports.
 

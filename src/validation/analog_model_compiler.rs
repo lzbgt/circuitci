@@ -3,8 +3,11 @@ use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 use std::path::Path;
+use std::process::Command;
 
 use super::analog_util::{executable_on_path, file_sha256_hex, push_artifact};
+
+const OPENVAF_BUILD_ENV: &str = "CIRCUITCI_RUN_OPENVAF_BUILDS";
 
 pub(super) fn validate_model_compiler_provenance(
     bound: &BoundBoard<'_>,
@@ -148,6 +151,12 @@ pub(super) fn validate_model_compiler_provenance(
         push_artifact(artifacts, &source);
 
         let artifact = bound.project.source_dir.join(&model_file.path);
+        if !artifact.is_file() && openvaf_builds_enabled() {
+            match run_openvaf_build(bound, scenario, model_file, source_path, compiler_command) {
+                Ok(()) => {}
+                Err(finding) => return Some(*finding),
+            }
+        }
         if !artifact.is_file() {
             let mut finding = Finding::critical(
                 "ANALOG_MODEL_COMPILER_ARTIFACT_UNAVAILABLE",
@@ -174,24 +183,59 @@ pub(super) fn validate_model_compiler_provenance(
         match file_sha256_hex(&artifact) {
             Ok(actual) if actual.eq_ignore_ascii_case(expected_artifact_sha) => {}
             Ok(actual) => {
-                let mut finding = Finding::critical(
-                    "ANALOG_MODEL_COMPILER_ARTIFACT_HASH_MISMATCH",
-                    &scenario.name,
-                    format!(
-                        "Compiled OSDI artifact {} does not match the declared SHA-256.",
-                        artifact.display()
-                    ),
-                );
-                finding.measured.insert("sha256".to_string(), json!(actual));
-                finding
-                    .limit
-                    .insert("expected_sha256".to_string(), json!(expected_artifact_sha));
-                insert_model_compiler_plan(&mut finding, model_file, source_path, compiler_command);
-                finding.suggested_fixes.push(
-                    "Re-run the declared OpenVAF compiler command from the pinned Verilog-A source, or update the compiled artifact and SHA-256 pin together."
-                        .to_string(),
-                );
-                return Some(finding);
+                if openvaf_builds_enabled() {
+                    if let Err(finding) = run_openvaf_build(
+                        bound,
+                        scenario,
+                        model_file,
+                        source_path,
+                        compiler_command,
+                    ) {
+                        return Some(*finding);
+                    }
+                    match file_sha256_hex(&artifact) {
+                        Ok(rebuilt) if rebuilt.eq_ignore_ascii_case(expected_artifact_sha) => {}
+                        Ok(rebuilt) => {
+                            return Some(artifact_hash_mismatch_finding(
+                                scenario,
+                                model_file,
+                                source_path,
+                                compiler_command,
+                                &artifact,
+                                expected_artifact_sha,
+                                &rebuilt,
+                            ));
+                        }
+                        Err(message) => {
+                            let mut finding = Finding::critical(
+                                "ANALOG_MODEL_COMPILER_ARTIFACT_UNAVAILABLE",
+                                &scenario.name,
+                                message,
+                            );
+                            insert_model_compiler_plan(
+                                &mut finding,
+                                model_file,
+                                source_path,
+                                compiler_command,
+                            );
+                            finding.limit.insert(
+                                "required_artifact".to_string(),
+                                json!("osdi_shared_object"),
+                            );
+                            return Some(finding);
+                        }
+                    }
+                } else {
+                    return Some(artifact_hash_mismatch_finding(
+                        scenario,
+                        model_file,
+                        source_path,
+                        compiler_command,
+                        &artifact,
+                        expected_artifact_sha,
+                        &actual,
+                    ));
+                }
             }
             Err(message) => {
                 let mut finding = Finding::critical(
@@ -211,16 +255,103 @@ pub(super) fn validate_model_compiler_provenance(
     None
 }
 
+fn run_openvaf_build(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    source_path: &str,
+    compiler_command: &str,
+) -> Result<(), Box<Finding>> {
+    let tokens = split_compiler_command(compiler_command).map_err(|message| {
+        let mut finding = Finding::critical(
+            "ANALOG_MODEL_COMPILER_COMMAND_MISMATCH",
+            &scenario.name,
+            message,
+        );
+        insert_model_compiler_plan(&mut finding, model_file, source_path, compiler_command);
+        Box::new(finding)
+    })?;
+    let Some((program, args)) = tokens.split_first() else {
+        let mut finding = Finding::critical(
+            "ANALOG_MODEL_COMPILER_COMMAND_MISMATCH",
+            &scenario.name,
+            "OpenVAF compiler_command is empty.",
+        );
+        insert_model_compiler_plan(&mut finding, model_file, source_path, compiler_command);
+        return Err(Box::new(finding));
+    };
+    let output = Command::new(program)
+        .args(args)
+        .current_dir(&bound.project.source_dir)
+        .output()
+        .map_err(|error| {
+            let mut finding = Finding::critical(
+                "ANALOG_MODEL_COMPILER_BUILD_FAILED",
+                &scenario.name,
+                format!("Failed to run OpenVAF compiler command: {error}"),
+            );
+            insert_model_compiler_plan(&mut finding, model_file, source_path, compiler_command);
+            Box::new(finding)
+        })?;
+    if !output.status.success() {
+        let mut finding = Finding::critical(
+            "ANALOG_MODEL_COMPILER_BUILD_FAILED",
+            &scenario.name,
+            format!(
+                "OpenVAF compiler command exited with status {}.",
+                output.status
+            ),
+        );
+        insert_model_compiler_plan(&mut finding, model_file, source_path, compiler_command);
+        finding
+            .measured
+            .insert("stdout".to_string(), json!(lossy_prefix(&output.stdout)));
+        finding
+            .measured
+            .insert("stderr".to_string(), json!(lossy_prefix(&output.stderr)));
+        return Err(Box::new(finding));
+    }
+    Ok(())
+}
+
+fn artifact_hash_mismatch_finding(
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    source_path: &str,
+    compiler_command: &str,
+    artifact: &Path,
+    expected_artifact_sha: &str,
+    actual: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        "ANALOG_MODEL_COMPILER_ARTIFACT_HASH_MISMATCH",
+        &scenario.name,
+        format!(
+            "Compiled OSDI artifact {} does not match the declared SHA-256.",
+            artifact.display()
+        ),
+    );
+    finding.measured.insert("sha256".to_string(), json!(actual));
+    finding
+        .limit
+        .insert("expected_sha256".to_string(), json!(expected_artifact_sha));
+    insert_model_compiler_plan(&mut finding, model_file, source_path, compiler_command);
+    finding.suggested_fixes.push(
+        "Re-run the declared OpenVAF compiler command from the pinned Verilog-A source, or update the compiled artifact and SHA-256 pin together."
+            .to_string(),
+    );
+    finding
+}
+
 fn validate_openvaf_compiler_command(
     model_file: &AnalogModelFile,
     compiler_command: &str,
 ) -> Option<String> {
-    let binary = compiler_command
-        .split_whitespace()
-        .next()
-        .unwrap_or_default()
-        .trim_matches('"')
-        .trim_matches('\'');
+    let tokens = match split_compiler_command(compiler_command) {
+        Ok(tokens) => tokens,
+        Err(message) => return Some(message),
+    };
+    let binary = tokens.first().map(String::as_str).unwrap_or_default();
     let binary_name = Path::new(binary)
         .file_name()
         .and_then(|name| name.to_str())
@@ -246,6 +377,35 @@ fn validate_openvaf_compiler_command(
         ));
     }
     None
+}
+
+fn split_compiler_command(command: &str) -> Result<Vec<String>, String> {
+    if command.contains(['|', ';', '&', '>', '<', '`', '$', '\n', '\r']) {
+        return Err(
+            "OpenVAF compiler_command may not contain shell metacharacters; CircuitCI executes openvaf directly, not through a shell."
+                .to_string(),
+        );
+    }
+    let tokens: Vec<_> = command
+        .split_whitespace()
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .map(ToOwned::to_owned)
+        .collect();
+    if tokens.is_empty() {
+        return Err("OpenVAF compiler_command is empty.".to_string());
+    }
+    Ok(tokens)
+}
+
+fn openvaf_builds_enabled() -> bool {
+    std::env::var(OPENVAF_BUILD_ENV)
+        .is_ok_and(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+}
+
+fn lossy_prefix(bytes: &[u8]) -> String {
+    let text = String::from_utf8_lossy(bytes);
+    text.chars().take(2048).collect()
 }
 
 fn insert_model_compiler_plan(

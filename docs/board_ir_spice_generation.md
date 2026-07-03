@@ -108,7 +108,10 @@ hash before solver planning, adds the Verilog-A source to report artifacts, and
 fails closed if any compiler provenance field is missing. It also checks that
 the compiler command invokes `openvaf`, references the declared source and OSDI
 output path, and reports a build plan when the compiled artifact is missing or
-its hash is stale.
+its hash is stale. CI may opt into controlled rebuilds with
+`CIRCUITCI_RUN_OPENVAF_BUILDS=1`; in that mode CircuitCI executes the declared
+`openvaf` command directly from the project directory, never through a shell,
+then revalidates the compiled artifact hash before allowing solver planning.
 
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear

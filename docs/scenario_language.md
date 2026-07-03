@@ -3720,7 +3720,10 @@ OpenVAF/OSDI provenance is missing, the Verilog-A source hash does not match,
 the command does not reference the declared source/output, or the compiled OSDI
 artifact is missing or hash-stale. The failure includes the declared command
 and whether `openvaf` is currently available on `PATH`, so CI can rebuild the
-artifact from pinned source before rerunning simulation.
+artifact from pinned source before rerunning simulation. Set
+`CIRCUITCI_RUN_OPENVAF_BUILDS=1` to let validation run the declared `openvaf`
+command directly from the project directory and require the produced artifact
+to match the declared SHA-256 before solver planning continues.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

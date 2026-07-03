@@ -1355,14 +1355,18 @@ stale OpenVAF/OSDI source metadata.
 `ANALOG_MODEL_COMPILER_ARTIFACT_UNAVAILABLE`, and
 `ANALOG_MODEL_COMPILER_ARTIFACT_HASH_MISMATCH` reports are emitted when the
 declared OpenVAF command does not reference the pinned source/output, the OSDI
-artifact is missing, or the compiled artifact hash is stale. Stable measured
-keys include `model_file`, `source_path`, `compiler`, `compiler_version`,
-`compiler_command`, `compiler_available_on_path`, and `sha256` for hash
-mismatches. Stable limit keys include `required_field`, `required_artifact`,
-`required_build_step`, `source_path`, `model_file`, `output_path`, and
-`expected_sha256`. These findings keep Verilog-A compact-model use fail-closed
-until the compiled OSDI artifact is tied to source path/hash, OpenVAF compiler
-identity/version, and reproducible compiler command metadata.
+artifact is missing, or the compiled artifact hash is stale.
+`ANALOG_MODEL_COMPILER_BUILD_FAILED` is emitted only when
+`CIRCUITCI_RUN_OPENVAF_BUILDS=1` opts into direct OpenVAF execution and the
+declared command fails. Stable measured keys include `model_file`,
+`source_path`, `compiler`, `compiler_version`, `compiler_command`,
+`compiler_available_on_path`, optional `stdout`/`stderr` prefixes for failed
+builds, and `sha256` for hash mismatches. Stable limit keys include
+`required_field`, `required_artifact`, `required_build_step`, `source_path`,
+`model_file`, `output_path`, and `expected_sha256`. These findings keep
+Verilog-A compact-model use fail-closed until the compiled OSDI artifact is tied
+to source path/hash, OpenVAF compiler identity/version, and reproducible
+compiler command metadata.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

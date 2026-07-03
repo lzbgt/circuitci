@@ -1,6 +1,9 @@
 mod common;
 
-use common::{assert_report_schema_valid, assert_yaml_file_valid, run_validation_with_path};
+use common::{
+    assert_report_schema_valid, assert_yaml_file_valid, run_validation_with_path,
+    run_validation_with_path_and_env,
+};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -11,6 +14,36 @@ fn fake_executable(dir: &std::path::Path, name: &str) {
 
     let path = dir.join(name);
     fs::write(&path, "#!/bin/sh\nexit 99\n").unwrap();
+    let mut permissions = fs::metadata(&path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&path, permissions).unwrap();
+}
+
+#[cfg(unix)]
+fn fake_openvaf_builder(dir: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.join("openvaf");
+    fs::write(
+        &path,
+        "#!/bin/sh\nprintf 'not-a-real-osdi-binary-but-stable-test-content\\n' > tiny_resistor.osdi\n",
+    )
+    .unwrap();
+    let mut permissions = fs::metadata(&path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&path, permissions).unwrap();
+}
+
+#[cfg(unix)]
+fn fake_openvaf_failure(dir: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.join("openvaf");
+    fs::write(
+        &path,
+        "#!/bin/sh\necho 'openvaf compile failed' >&2\nexit 7\n",
+    )
+    .unwrap();
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&path, permissions).unwrap();
@@ -318,6 +351,114 @@ fn openvaf_osdi_model_reports_build_plan_when_artifact_hash_is_stale() {
     assert_eq!(
         report["failures"][0]["limit"]["output_path"],
         "tiny_resistor.osdi"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_can_rebuild_missing_artifact_when_opted_in() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    fake_openvaf_builder(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    fs::remove_file(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    let project_path = write_model_compiler_project(
+        project_dir.path(),
+        Some(&source_sha),
+        Some(&artifact_sha),
+        Some("openvaf"),
+    );
+
+    let report = run_validation_with_path_and_env(
+        project_path.to_str().unwrap(),
+        fake_path.path(),
+        &[("CIRCUITCI_RUN_OPENVAF_BUILDS", "1")],
+    );
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_PSS_ANALYSIS");
+    let rebuilt = fs::read(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    assert_eq!(sha256_hex(&rebuilt), artifact_sha);
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("tiny_resistor.osdi"))
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_can_rebuild_hash_stale_artifact_when_opted_in() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    fake_openvaf_builder(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    fs::write(
+        project_dir.path().join("tiny_resistor.osdi"),
+        b"stale artifact\n",
+    )
+    .unwrap();
+    let project_path = write_model_compiler_project(
+        project_dir.path(),
+        Some(&source_sha),
+        Some(&artifact_sha),
+        Some("openvaf"),
+    );
+
+    let report = run_validation_with_path_and_env(
+        project_path.to_str().unwrap(),
+        fake_path.path(),
+        &[("CIRCUITCI_RUN_OPENVAF_BUILDS", "1")],
+    );
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_PSS_ANALYSIS");
+    let rebuilt = fs::read(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    assert_eq!(sha256_hex(&rebuilt), artifact_sha);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_reports_failed_opt_in_compiler_execution() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    fake_openvaf_failure(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    fs::remove_file(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    let project_path = write_model_compiler_project(
+        project_dir.path(),
+        Some(&source_sha),
+        Some(&artifact_sha),
+        Some("openvaf"),
+    );
+
+    let report = run_validation_with_path_and_env(
+        project_path.to_str().unwrap(),
+        fake_path.path(),
+        &[("CIRCUITCI_RUN_OPENVAF_BUILDS", "1")],
+    );
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_MODEL_COMPILER_BUILD_FAILED"
+    );
+    assert!(
+        report["failures"][0]["measured"]["stderr"]
+            .as_str()
+            .unwrap()
+            .contains("openvaf compile failed")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["compiler_available_on_path"],
+        true
     );
 }
 
