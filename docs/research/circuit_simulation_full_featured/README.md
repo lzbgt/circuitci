@@ -550,6 +550,14 @@ The GUI should not become the solver.
   skips unless the requested solver is on `PATH`. Embedded ngspice remains
   fail-closed with planning evidence until equivalent output normalization is
   implemented.
+- The first harmonic-balance path is a fail-closed Board IR/schema contract for
+  `analysis.type: hb`, declared periodic drive sources, a fundamental
+  frequency, bound output expression, optional harmonic count, planned
+  normalized `hb_spectrum` evidence, and solver-manifest metadata. This keeps
+  HB distinct from transient `.FOUR` extraction: Fourier analysis measures a
+  transient waveform after integration, while HB should eventually solve the
+  periodic steady-state frequency-domain problem directly, most likely through
+  an explicit Xyce adapter and conformance fixtures.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

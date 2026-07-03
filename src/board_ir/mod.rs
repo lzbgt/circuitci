@@ -1306,6 +1306,14 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub fourier_harmonics: Option<u32>,
     #[serde(default)]
+    pub hb_fundamental_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub hb_output_expression: Option<String>,
+    #[serde(default)]
+    pub hb_harmonics: Option<u32>,
+    #[serde(default)]
+    pub hb_drive_sources: Vec<String>,
+    #[serde(default)]
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,

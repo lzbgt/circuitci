@@ -195,6 +195,14 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
   unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
   with planning evidence for this path.
+- `analog_harmonic_balance` scenarios with
+  `SPICE_HARMONIC_BALANCE_ANALYSIS` for periodic steady-state spectrum
+  contracts. The Board IR/schema can declare `analysis.type: hb`,
+  `hb_fundamental_frequency_hz`, a bound `hb_output_expression`, optional
+  `hb_harmonics`, and `hb_drive_sources[]` tied to generated source
+  components when the deck is generated from Board IR. No backend adapter is
+  enabled yet; validation fail-closes with backend-planning evidence, preferred
+  backend `xyce`, and required normalized output `hb_spectrum`.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw
