@@ -1314,6 +1314,24 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub hb_drive_sources: Vec<String>,
     #[serde(default)]
+    pub pss_mode: Option<String>,
+    #[serde(default)]
+    pub pss_frequency_guess_hz: Option<f64>,
+    #[serde(default)]
+    pub pss_stabilization_time_us: Option<f64>,
+    #[serde(default)]
+    pub pss_periods: Option<u32>,
+    #[serde(default)]
+    pub pss_output_expression: Option<String>,
+    #[serde(default)]
+    pub pss_drive_sources: Vec<String>,
+    #[serde(default)]
+    pub pss_residual_tolerance: Option<f64>,
+    #[serde(default)]
+    pub pss_state_error_tolerance: Option<f64>,
+    #[serde(default)]
+    pub pss_max_iterations: Option<u32>,
+    #[serde(default)]
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,

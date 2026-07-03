@@ -69,6 +69,9 @@ for `.SENS` exports. An `analog_fourier` scenario owns a transient-backed
 fundamental frequency. An `analog_harmonic_balance` scenario owns a periodic
 steady-state harmonic-balance contract for drive sources, a fundamental
 frequency, a bound output expression, and normalized spectrum evidence. An
+`analog_pss` scenario owns periodic steady-state or oscillator evidence
+requirements: mode, frequency guess, stabilization interval, output expression,
+drive-source provenance when driven, and convergence metadata. An
 `analog_measure` scenario owns reviewed ngspice `.MEASURE` scalar extraction
 statements or portable structured measure templates for transient or AC
 results.
@@ -94,7 +97,13 @@ Required fields:
   `sensitivity_filters`, and AC frequency fields when `sensitivity_mode: ac`.
   Fourier contracts use `type: fourier`, transient `stop_time_us` and
   `max_step_us`, `fourier_fundamental_frequency_hz`,
-  `fourier_output_expression`, and optional `fourier_harmonics`. Measurement
+  `fourier_output_expression`, and optional `fourier_harmonics`. PSS contracts
+  use `type: pss`, `pss_frequency_guess_hz`,
+  `pss_stabilization_time_us`, `pss_output_expression`, optional
+  `pss_mode: driven|autonomous`, optional `pss_periods`,
+  `pss_drive_sources[]` for driven generated-source provenance, and optional
+  `pss_residual_tolerance`, `pss_state_error_tolerance`, and
+  `pss_max_iterations`. Measurement
   contracts use `type: measure`, `measure_mode: tran|ac`, and either reviewed
   raw `measure_statements[]` or portable `measure_templates[]`; transient
   measure mode uses `stop_time_us` and `max_step_us`, while AC measure mode
@@ -410,6 +419,31 @@ For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:
 8. `backend: auto`, `ngspice`, and `embedded_ngspice` remain fail-closed with
    backend-planning evidence until those adapters emit the same normalized
    `hb_spectrum` contract.
+
+For a scenario with check `SPICE_PSS_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: pss`, a positive finite
+   `pss_frequency_guess_hz`, positive finite `pss_stabilization_time_us`, and a
+   bound `pss_output_expression`.
+3. `pss_mode` defaults to `driven` and may be `driven` or `autonomous`.
+   Driven mode requires at least one `pss_drive_sources[]` entry. For generated
+   Board IR decks, each drive source must name a generated board component so
+   the periodic excitation has source provenance. Autonomous mode may omit
+   drive sources for oscillator evidence planning.
+4. `pss_output_expression` must be a bound `V(node)`, `V(node,reference)`, or
+   `I(source)` expression. Optional `pss_periods` must be in `1..=4096`;
+   optional `pss_residual_tolerance` and `pss_state_error_tolerance` must be
+   positive finite values; optional `pss_max_iterations` must be in
+   `1..=10000`.
+5. The current implementation intentionally fails closed after contract
+   validation. It emits backend-planning evidence with planned normalized
+   outputs `pss_waveform`, `pss_spectrum`, and `pss_convergence`, and records
+   the manifest schema expected from a future solver adapter.
+6. CircuitCI must not present PSS or oscillator sign-off as passing until a
+   trusted backend emits the normalized waveform, spectrum, convergence, raw
+   solver output, and solver-manifest artifacts.
 
 For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 

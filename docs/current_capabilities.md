@@ -210,6 +210,16 @@ Current analog support:
   analog_harmonic_balance_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
   `backend: auto`, `ngspice`, and embedded ngspice remain fail-closed with
   planning evidence until they emit the same normalized output contract.
+- `analog_pss` scenarios with `SPICE_PSS_ANALYSIS` for periodic steady-state
+  and oscillator evidence planning. The Board IR/schema can declare
+  `analysis.type: pss`, `pss_mode: driven|autonomous`,
+  `pss_frequency_guess_hz`, `pss_stabilization_time_us`, a bound
+  `pss_output_expression`, optional `pss_periods`, optional convergence
+  thresholds, and `pss_drive_sources[]` for driven generated-source
+  provenance. This path intentionally fails closed today: it records
+  manifest-compatible planning evidence for future `pss_waveform`,
+  `pss_spectrum`, and `pss_convergence` artifacts, but no backend is allowed to
+  pass PSS or oscillator sign-off until those normalized outputs exist.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

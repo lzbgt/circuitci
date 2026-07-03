@@ -18,6 +18,7 @@ mod analog_noise_spice;
 mod analog_operating_limits;
 mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
+mod analog_pss_spice;
 mod analog_runner;
 mod analog_sensitivity_runner;
 mod analog_sensitivity_spice;
@@ -147,6 +148,7 @@ pub(super) const SPICE_POLE_ZERO_ANALYSIS: &str = "SPICE_POLE_ZERO_ANALYSIS";
 pub(super) const SPICE_SENSITIVITY_ANALYSIS: &str = "SPICE_SENSITIVITY_ANALYSIS";
 pub(super) const SPICE_FOURIER_ANALYSIS: &str = "SPICE_FOURIER_ANALYSIS";
 pub(super) const SPICE_HARMONIC_BALANCE_ANALYSIS: &str = "SPICE_HARMONIC_BALANCE_ANALYSIS";
+pub(super) const SPICE_PSS_ANALYSIS: &str = "SPICE_PSS_ANALYSIS";
 pub(super) const SPICE_MEASURE_ANALYSIS: &str = "SPICE_MEASURE_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
@@ -188,6 +190,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_sensitivity",
     "analog_fourier",
     "analog_harmonic_balance",
+    "analog_pss",
     "analog_measure",
     "motor_drive",
     "load_budget",
@@ -901,6 +904,20 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_PSS_ANALYSIS if scenario.scenario_type == "analog_pss" => {
+                    let mut sinks = analog_pss_spice::AnalogPssSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_pss_spice::validate_spice_pss_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 SPICE_MEASURE_ANALYSIS if scenario.scenario_type == "analog_measure" => {
                     let mut sinks = analog_measure_spice::AnalogMeasureSinks {
                         findings: &mut findings,
@@ -1074,6 +1091,7 @@ where
                 | SPICE_SENSITIVITY_ANALYSIS
                 | SPICE_FOURIER_ANALYSIS
                 | SPICE_HARMONIC_BALANCE_ANALYSIS
+                | SPICE_PSS_ANALYSIS
                 | SPICE_MEASURE_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID

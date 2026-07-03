@@ -585,6 +585,15 @@ The GUI should not become the solver.
 - Add PSS contracts only after HB and result normalization are stable.
 - Require convergence metadata, frequency guess, stabilization interval,
   residual/error thresholds, and explicit limitations.
+- Added the first fail-closed Board IR/schema contract for
+  `analysis.type: pss` and `SPICE_PSS_ANALYSIS`. Scenarios declare
+  `pss_mode: driven|autonomous`, `pss_frequency_guess_hz`,
+  `pss_stabilization_time_us`, a bound `pss_output_expression`, optional
+  periods/iteration limits, optional residual and state-error tolerances, and
+  driven-source provenance. The validator records manifest-compatible planning
+  evidence for future `pss_waveform`, `pss_spectrum`, and `pss_convergence`
+  normalized outputs, and intentionally fails closed until a trusted backend
+  adapter emits those artifacts.
 
 ### Phase 5: Model Compiler Pipeline
 

@@ -1381,6 +1381,7 @@ pub(super) enum AnalogRuntimeFeature {
     Sensitivity,
     Fourier,
     HarmonicBalance,
+    PeriodicSteadyState,
     Measure,
 }
 

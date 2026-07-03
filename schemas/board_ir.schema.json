@@ -2841,7 +2841,7 @@
                 "type": "object",
                 "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran", "ac", "op", "dc_sweep", "noise", "sparam", "tf", "pz", "sens", "fourier", "hb", "measure"] },
+                  "type": { "enum": ["tran", "ac", "op", "dc_sweep", "noise", "sparam", "tf", "pz", "sens", "fourier", "hb", "pss", "measure"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
                   "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
@@ -2909,6 +2909,20 @@
                     "items": { "type": "string", "minLength": 1 },
                     "uniqueItems": true
                   },
+                  "pss_mode": { "enum": ["driven", "autonomous"] },
+                  "pss_frequency_guess_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "pss_stabilization_time_us": { "type": "number", "exclusiveMinimum": 0 },
+                  "pss_periods": { "type": "integer", "minimum": 1, "maximum": 4096 },
+                  "pss_output_expression": { "type": "string", "minLength": 1 },
+                  "pss_drive_sources": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1 },
+                    "uniqueItems": true
+                  },
+                  "pss_residual_tolerance": { "type": "number", "exclusiveMinimum": 0 },
+                  "pss_state_error_tolerance": { "type": "number", "exclusiveMinimum": 0 },
+                  "pss_max_iterations": { "type": "integer", "minimum": 1, "maximum": 10000 },
                   "measure_mode": { "enum": ["tran", "ac"] },
                   "measure_statements": {
                     "type": "array",
@@ -3047,6 +3061,10 @@
                   {
                     "if": { "properties": { "type": { "const": "hb" } } },
                     "then": { "required": ["hb_fundamental_frequency_hz", "hb_output_expression", "hb_drive_sources"] }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "pss" } } },
+                    "then": { "required": ["pss_frequency_guess_hz", "pss_stabilization_time_us", "pss_output_expression"] }
                   },
                   {
                     "if": { "properties": { "type": { "const": "measure" } } },
