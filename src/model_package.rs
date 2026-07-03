@@ -37,6 +37,19 @@ pub struct ModelPackageRegistryMergeOptions {
 }
 
 #[derive(Debug, Clone)]
+pub struct ModelConformanceReportExportOptions {
+    pub validation_report: PathBuf,
+    pub package_name: String,
+    pub package_version: String,
+    pub artifact_id: String,
+    pub runtime_artifact: PathBuf,
+    pub check_name: String,
+    pub analysis: String,
+    pub solver: Option<String>,
+    pub output: PathBuf,
+}
+
+#[derive(Debug, Clone)]
 pub struct ModelPackageExportArtifactInput {
     pub id: String,
     pub artifact: PathBuf,
@@ -74,6 +87,17 @@ pub struct ModelPackageRegistryMergeSummary {
     pub entries: usize,
     pub input_registries: usize,
     pub deduplicated_entries: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelConformanceReportExportSummary {
+    pub output: String,
+    pub sha256: String,
+    pub result: String,
+    pub package_name: String,
+    pub package_version: String,
+    pub artifact_id: String,
+    pub runtime_artifact_sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -360,6 +384,130 @@ pub fn merge_model_package_registries(
         input_registries: registry_paths.len(),
         deduplicated_entries,
     })
+}
+
+pub fn export_model_conformance_report(
+    options: &ModelConformanceReportExportOptions,
+) -> Result<ModelConformanceReportExportSummary> {
+    validate_conformance_export_options(options)?;
+    let runtime_sha = file_sha256_hex(&options.runtime_artifact)?;
+    let report_text = std::fs::read_to_string(&options.validation_report).with_context(|| {
+        format!(
+            "Unable to read validation report {}",
+            options.validation_report.display()
+        )
+    })?;
+    let report: Value = serde_json::from_str(&report_text).with_context(|| {
+        format!(
+            "Validation report {} is not valid JSON.",
+            options.validation_report.display()
+        )
+    })?;
+    let report_result = string_field(&report, &["result"])
+        .with_context(|| "Validation report must declare result.".to_string())?;
+    let critical_failures = report
+        .get("failures")
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len);
+    let result = if report_result == "pass" && critical_failures == 0 {
+        "pass"
+    } else {
+        "fail"
+    };
+    let mut check = serde_json::Map::new();
+    check.insert(
+        "name".to_string(),
+        Value::String(options.check_name.clone()),
+    );
+    check.insert(
+        "analysis".to_string(),
+        Value::String(options.analysis.clone()),
+    );
+    if let Some(solver) = options.solver.as_deref() {
+        check.insert("solver".to_string(), Value::String(solver.to_string()));
+    }
+    check.insert("result".to_string(), Value::String(result.to_string()));
+    if let Some(artifacts) = report.get("artifacts").and_then(Value::as_array) {
+        let artifact_values = artifacts
+            .iter()
+            .filter_map(Value::as_str)
+            .map(|artifact| Value::String(artifact.to_string()))
+            .collect::<Vec<_>>();
+        if !artifact_values.is_empty() {
+            check.insert("artifacts".to_string(), Value::Array(artifact_values));
+        }
+    }
+    let conformance = serde_json::json!({
+        "schema_version": MODEL_CONFORMANCE_REPORT_SCHEMA,
+        "package": {
+            "name": options.package_name,
+            "version": options.package_version,
+        },
+        "artifact_id": options.artifact_id,
+        "runtime_artifact_sha256": runtime_sha,
+        "result": result,
+        "checks": [Value::Object(check)],
+        "source": options.validation_report.to_string_lossy(),
+    });
+    if let Some(parent) = options.output.parent() {
+        std::fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "Failed to create conformance report output directory {}",
+                parent.display()
+            )
+        })?;
+    }
+    let mut text = serde_json::to_string_pretty(&conformance)?;
+    text.push('\n');
+    std::fs::write(&options.output, text).with_context(|| {
+        format!(
+            "Failed to write model conformance report {}",
+            options.output.display()
+        )
+    })?;
+    Ok(ModelConformanceReportExportSummary {
+        output: options.output.to_string_lossy().to_string(),
+        sha256: file_sha256_hex(&options.output)?,
+        result: result.to_string(),
+        package_name: options.package_name.clone(),
+        package_version: options.package_version.clone(),
+        artifact_id: options.artifact_id.clone(),
+        runtime_artifact_sha256: runtime_sha,
+    })
+}
+
+fn validate_conformance_export_options(
+    options: &ModelConformanceReportExportOptions,
+) -> Result<()> {
+    for (field, value) in [
+        ("package-name", options.package_name.as_str()),
+        ("package-version", options.package_version.as_str()),
+        ("artifact-id", options.artifact_id.as_str()),
+        ("check-name", options.check_name.as_str()),
+        ("analysis", options.analysis.as_str()),
+    ] {
+        if value.trim().is_empty() {
+            anyhow::bail!("--{field} must not be empty.");
+        }
+    }
+    if let Some(solver) = options.solver.as_deref()
+        && solver.trim().is_empty()
+    {
+        anyhow::bail!("--solver must not be empty when supplied.");
+    }
+    if !options.validation_report.is_file() {
+        anyhow::bail!(
+            "Validation report {} is missing.",
+            options.validation_report.display()
+        );
+    }
+    if !options.runtime_artifact.is_file() {
+        anyhow::bail!(
+            "Runtime artifact {} is missing.",
+            options.runtime_artifact.display()
+        );
+    }
+    Ok(())
 }
 
 fn validate_registry_merge_options(options: &ModelPackageRegistryMergeOptions) -> Result<()> {

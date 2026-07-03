@@ -46,6 +46,29 @@ The optional `compiler` value is per artifact. When a registry is emitted, use
 registry references; if omitted, the registry points to the first artifact in
 the exported lock.
 
+Conformance reports can be generated deterministically from a CircuitCI
+`report.json` instead of hand-authored:
+
+```bash
+circuitci export-model-conformance-report \
+  --report out/model_check/report.json \
+  --package-name org.circuitci.test.tiny_resistor \
+  --package-version 1.0.0 \
+  --artifact-id tiny_ngspice \
+  --runtime-artifact tiny_resistor.osdi \
+  --check-name transient_smoke \
+  --analysis tran \
+  --solver ngspice \
+  --output tiny_resistor_conformance.json
+```
+
+The command hashes `--runtime-artifact`, reads the validation result from the
+report, copies report artifact paths into the check row, and writes
+`schemas/model_conformance_report.schema.json` JSON with no timestamp field so
+identical inputs produce identical output. A failing validation report produces
+a failing conformance report; package verification then rejects it when the
+report is included as `artifact_format=model_conformance_report`.
+
 Shared registries can be produced from exported package registries without
 hand-editing JSON:
 

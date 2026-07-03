@@ -759,6 +759,11 @@ The GUI should not become the solver.
   reusable compact-model packages now prove pass/fail behavioral qualification
   against a named runtime artifact SHA-256 instead of only pinning opaque
   conformance files by hash.
+- Added `circuitci export-model-conformance-report`, which turns a CircuitCI
+  validation `report.json` plus a hashed runtime artifact into deterministic
+  `model_conformance_report` JSON. This closes the package-authoring loop:
+  validate a compact-model scenario, generate evidence, export a multi-artifact
+  lock, then verify the package without hand-authoring conformance JSON.
 
 ## Risks
 

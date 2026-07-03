@@ -73,6 +73,26 @@ enum Command {
         #[arg(long = "registry-artifact-id")]
         registry_artifact_id: Option<String>,
     },
+    ExportModelConformanceReport {
+        #[arg(long)]
+        report: PathBuf,
+        #[arg(long = "package-name")]
+        package_name: String,
+        #[arg(long = "package-version")]
+        package_version: String,
+        #[arg(long = "artifact-id")]
+        artifact_id: String,
+        #[arg(long = "runtime-artifact")]
+        runtime_artifact: PathBuf,
+        #[arg(long = "check-name")]
+        check_name: String,
+        #[arg(long)]
+        analysis: String,
+        #[arg(long)]
+        solver: Option<String>,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
     MergeModelPackageRegistry {
         #[arg(long)]
         base: Option<PathBuf>,
@@ -345,6 +365,27 @@ pub fn run() -> Result<()> {
             registry_entry,
             registry_artifact_id,
         }),
+        Some(Command::ExportModelConformanceReport {
+            report,
+            package_name,
+            package_version,
+            artifact_id,
+            runtime_artifact,
+            check_name,
+            analysis,
+            solver,
+            output,
+        }) => run_export_model_conformance_report(
+            report,
+            package_name,
+            package_version,
+            artifact_id,
+            runtime_artifact,
+            check_name,
+            analysis,
+            solver,
+            output,
+        ),
         Some(Command::MergeModelPackageRegistry {
             base,
             inputs,
@@ -592,6 +633,42 @@ fn run_export_model_package(args: CliModelPackageExportArgs) -> Result<()> {
             "CircuitCI exported model package registry {registry_path} sha256={registry_sha256}"
         );
     }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_export_model_conformance_report(
+    report: PathBuf,
+    package_name: String,
+    package_version: String,
+    artifact_id: String,
+    runtime_artifact: PathBuf,
+    check_name: String,
+    analysis: String,
+    solver: Option<String>,
+    output: PathBuf,
+) -> Result<()> {
+    let summary = crate::model_package::export_model_conformance_report(
+        &crate::model_package::ModelConformanceReportExportOptions {
+            validation_report: report,
+            package_name,
+            package_version,
+            artifact_id,
+            runtime_artifact,
+            check_name,
+            analysis,
+            solver,
+            output,
+        },
+    )?;
+    println!(
+        "CircuitCI exported model conformance report {} sha256={} result={} artifact={} artifact_sha256={}",
+        summary.output,
+        summary.sha256,
+        summary.result,
+        summary.artifact_id,
+        summary.runtime_artifact_sha256
+    );
     Ok(())
 }
 

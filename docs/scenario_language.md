@@ -3757,7 +3757,9 @@ and surfaced in `model_file_provenance[]`. Use
 artifact files, including repeatable `--package-artifact` specs when one lock
 must pin source, OSDI, Xyce plugin, and conformance artifacts together; use
 `--registry-artifact-id` to choose the artifact imported by registry-backed
-scenarios. Then use `circuitci verify-model-package` for an independent
+scenarios. Use `circuitci export-model-conformance-report` to derive the
+schema-backed conformance artifact from a CircuitCI `report.json` and a hashed
+runtime artifact. Then use `circuitci verify-model-package` for an independent
 lock/registry preflight before referencing the package from a scenario. Shared
 registries can be produced with `circuitci merge-model-package-registry`, which
 rewrites imported lock paths relative to the merged registry and rejects

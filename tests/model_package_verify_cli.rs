@@ -325,6 +325,107 @@ fn export_model_package_supports_multiple_artifacts() {
 }
 
 #[test]
+fn export_model_conformance_report_generates_verifiable_package_evidence() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = b"qualified runtime artifact\n";
+    let runtime_sha = sha256_hex(runtime);
+    fs::write(dir.path().join("runtime.osdi"), runtime).unwrap();
+    fs::write(
+        dir.path().join("report.json"),
+        r#"{
+  "schema_version": "0.1.0",
+  "project": "compact-model-conformance",
+  "profile": "model_package",
+  "result": "pass",
+  "summary": { "critical": 0, "warning": 0, "info": 0 },
+  "failures": [],
+  "warnings": [],
+  "infos": [],
+  "artifacts": ["out/solver_manifest.json"]
+}
+"#,
+    )
+    .unwrap();
+    let conformance = dir.path().join("conformance.json");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "export-model-conformance-report",
+            "--report",
+            dir.path().join("report.json").to_str().unwrap(),
+            "--package-name",
+            "org.circuitci.test.generated_conformance",
+            "--package-version",
+            "1.0.0",
+            "--artifact-id",
+            "runtime_osdi",
+            "--runtime-artifact",
+            dir.path().join("runtime.osdi").to_str().unwrap(),
+            "--check-name",
+            "transient_smoke",
+            "--analysis",
+            "tran",
+            "--solver",
+            "ngspice",
+            "--output",
+            conformance.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let conformance_value: Value =
+        serde_json::from_str(&fs::read_to_string(&conformance).unwrap()).unwrap();
+    assert_model_conformance_report_schema_valid(&conformance_value);
+    assert_eq!(conformance_value["result"], "pass");
+    assert_eq!(conformance_value["runtime_artifact_sha256"], runtime_sha);
+    assert_eq!(
+        conformance_value["checks"][0]["artifacts"][0],
+        "out/solver_manifest.json"
+    );
+
+    let lock = dir.path().join("generated_conformance.lock.json");
+    let export_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .arg("export-model-package")
+        .args([
+            "--package-name",
+            "org.circuitci.test.generated_conformance",
+            "--package-version",
+            "1.0.0",
+            "--package-artifact",
+            &format!(
+                "id=runtime_osdi,path={},artifact_format=osdi_shared_object,compiler=openvaf",
+                dir.path().join("runtime.osdi").display()
+            ),
+            "--package-artifact",
+            &format!(
+                "id=generated_conformance,path={},artifact_format=model_conformance_report",
+                conformance.display()
+            ),
+            "--output",
+            lock.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(export_status.success());
+
+    let verify_report = dir.path().join("verification.json");
+    let verify_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package",
+            lock.to_str().unwrap(),
+            "--output",
+            verify_report.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(verify_status.success());
+    let report: Value = serde_json::from_str(&fs::read_to_string(verify_report).unwrap()).unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_model_package_report_schema_valid(&report);
+}
+
+#[test]
 fn verify_model_package_fails_for_failed_conformance_report() {
     let dir = tempfile::tempdir().unwrap();
     let artifact = b"qualified model runtime\n";
