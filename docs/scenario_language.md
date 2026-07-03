@@ -3742,11 +3742,17 @@ plugin loading until that backend has real-solver conformance coverage.
 Package-qualified compact models add `model_package_name`,
 `model_package_version`, `model_package_artifact_id`,
 `model_package_lock_path`, and `model_package_lock_sha256` to the same
-`model_files` entry. The package lock may be JSON or YAML and must contain the
-matching package identity plus an artifact row whose id, path, SHA-256,
-artifact format, and compiler match the scenario. Lock failures emit
-`ANALOG_MODEL_PACKAGE_LOCK_*` findings before solver execution; valid locks are
-retained as artifacts and surfaced in `model_file_provenance[]`.
+`model_files` entry. The package lock may be JSON or YAML, follows
+`schemas/model_package_lock.schema.json`, and must contain the matching package
+identity plus an artifact row whose id, path, SHA-256, artifact format, and
+compiler match the scenario. To share package pins across scenarios, use
+`model_package_registry_path`, `model_package_registry_sha256`, and
+`model_package_registry_entry`; the pinned registry entry supplies the package
+identity, artifact id, lock path, and lock SHA-256. Explicit scenario fields are
+allowed as assertions but must match the registry. Lock and registry failures
+emit `ANALOG_MODEL_PACKAGE_LOCK_*` or `ANALOG_MODEL_PACKAGE_REGISTRY_*` findings
+before solver execution; valid locks and registries are retained as artifacts
+and surfaced in `model_file_provenance[]`.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

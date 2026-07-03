@@ -1614,6 +1614,9 @@ pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf,
                 "model_package_artifact_id": model_file.model_package_artifact_id,
                 "model_package_lock_path": model_file.model_package_lock_path,
                 "model_package_lock_sha256": model_file.model_package_lock_sha256,
+                "model_package_registry_path": model_file.model_package_registry_path,
+                "model_package_registry_sha256": model_file.model_package_registry_sha256,
+                "model_package_registry_entry": model_file.model_package_registry_entry,
             })
         })
         .collect();

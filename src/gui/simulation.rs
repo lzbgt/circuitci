@@ -228,6 +228,18 @@ impl CircuitCiApp {
                                         .unwrap_or(""),
                                     provenance.model_package_lock_path.as_deref().unwrap_or("")
                                 ));
+                                if let Some(registry_path) =
+                                    &provenance.model_package_registry_path
+                                {
+                                    ui.monospace(format!(
+                                        "registry {} entry={}",
+                                        registry_path,
+                                        provenance
+                                            .model_package_registry_entry
+                                            .as_deref()
+                                            .unwrap_or("")
+                                    ));
+                                }
                             }
                         }
                     }

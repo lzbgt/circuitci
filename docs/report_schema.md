@@ -1372,6 +1372,14 @@ path.
 compact-model package metadata is incomplete, the JSON/YAML lock file is
 missing or stale, or the lock does not contain the exact package/artifact row
 declared by `analog.model_files[]`.
+`ANALOG_MODEL_PACKAGE_REGISTRY_MISSING`,
+`ANALOG_MODEL_PACKAGE_REGISTRY_UNAVAILABLE`,
+`ANALOG_MODEL_PACKAGE_REGISTRY_HASH_MISMATCH`,
+`ANALOG_MODEL_PACKAGE_REGISTRY_INVALID`, and
+`ANALOG_MODEL_PACKAGE_REGISTRY_ENTRY_MISMATCH` are emitted when a reusable
+compact-model package registry is partially declared, missing, stale,
+malformed, lacks the selected entry, or conflicts with explicit scenario
+metadata.
 `ANALOG_MODEL_COMPILER_BUILD_FAILED` is emitted only when
 `CIRCUITCI_RUN_OPENVAF_BUILDS=1` opts into direct OpenVAF execution and the
 declared command fails. Stable measured keys include `model_file`,
@@ -1380,7 +1388,9 @@ declared command fails. Stable measured keys include `model_file`,
 `plugin_load_command`, `xyce_version`, `xyce_adms_template_revision`,
 `xyce_configure_options`, `conformance_artifact`, `model_package_name`,
 `model_package_version`, `model_package_artifact_id`,
-`model_package_lock_path`, `model_package_lock_sha256`, `research_evidence`,
+`model_package_lock_path`, `model_package_lock_sha256`,
+`model_package_registry_path`, `model_package_registry_sha256`,
+`model_package_registry_entry`, `research_evidence`,
 optional `stdout`/`stderr` prefixes for failed builds, and `sha256` for hash
 mismatches. Stable limit keys include `required_field`, `required_artifact`,
 `required_build_step`, `required_backend_adapter`, `required_conformance`,
@@ -1406,7 +1416,9 @@ fields include `model_file`, `artifact_format`, `source_path`,
 `build_env_enabled`, `rebuild_mode`, `produced_by_circuitci`, and optional
 package-lock fields `model_package_name`, `model_package_version`,
 `model_package_artifact_id`, `model_package_lock_path`, and
-`model_package_lock_sha256`. Reports also project those records into top-level
+`model_package_lock_sha256`, plus optional registry fields
+`model_package_registry_path`, `model_package_registry_sha256`, and
+`model_package_registry_entry`. Reports also project those records into top-level
 `model_file_provenance[]` entries with the solver `scenario`, `analysis`,
 `backend`, and `manifest` path, so report consumers can inspect compiled-model
 provenance without opening `solver_manifest.json` first. Markdown reports

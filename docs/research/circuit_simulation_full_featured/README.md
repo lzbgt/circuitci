@@ -717,6 +717,13 @@ The GUI should not become the solver.
   verifies the JSON/YAML lock package identity and artifact row against the
   scenario, retains the lock as an artifact, and projects package fields into
   solver manifests and report-level `model_file_provenance[]`.
+- Added `schemas/model_package_lock.schema.json` plus pinned package registry
+  imports. `analog.model_files[]` may now use
+  `model_package_registry_path`, `model_package_registry_sha256`, and
+  `model_package_registry_entry` to import package identity and lock pointers
+  from a reusable registry. Registry files are hash-pinned, retained as report
+  artifacts, and fail closed when entries are missing or conflict with explicit
+  scenario metadata.
 
 ## Risks
 

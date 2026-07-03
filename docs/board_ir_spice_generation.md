@@ -133,11 +133,16 @@ fixture are available.
 Both OpenVAF/OSDI and Xyce/ADMS compact-model artifacts may also reference a
 reusable package lock with `model_package_name`, `model_package_version`,
 `model_package_artifact_id`, `model_package_lock_path`, and
-`model_package_lock_sha256`. The lock file can be JSON or YAML. It must match
-the declared package name/version and contain an artifact row whose id, path,
-SHA-256, artifact format, and compiler match the `model_files[]` entry. CircuitCI
-adds the lock file to report artifacts and projects valid package metadata into
-solver manifests and report-level `model_file_provenance[]`.
+`model_package_lock_sha256`. The lock file can be JSON or YAML and follows
+`schemas/model_package_lock.schema.json`. To avoid repeating the lock pointer
+in every scenario, `model_files[]` may instead reference a pinned registry entry
+with `model_package_registry_path`, `model_package_registry_sha256`, and
+`model_package_registry_entry`; the registry entry supplies the package identity,
+artifact id, lock path, and lock SHA-256. CircuitCI rejects partial registries,
+stale registry hashes, missing entries, and registry values that conflict with
+explicit scenario metadata. Valid lock and registry files are added to report
+artifacts and projected into solver manifests plus report-level
+`model_file_provenance[]`.
 
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear

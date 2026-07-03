@@ -27,6 +27,9 @@ struct ModelCompilerManifestRecord {
     model_package_artifact_id: Option<String>,
     model_package_lock_path: Option<String>,
     model_package_lock_sha256: Option<String>,
+    model_package_registry_path: Option<String>,
+    model_package_registry_sha256: Option<String>,
+    model_package_registry_entry: Option<String>,
     compiler_available_on_path: bool,
     build_env_enabled: bool,
     rebuild_mode: &'static str,
@@ -227,6 +230,8 @@ pub(super) fn validate_model_compiler_provenance(
             .expect("model compiler provenance requires sha256");
         match file_sha256_hex(&artifact) {
             Ok(actual) if actual.eq_ignore_ascii_case(expected_artifact_sha) => {
+                let package_context =
+                    model_package_context_for_manifest(bound, scenario, model_file);
                 record_model_compiler_manifest(ModelCompilerManifestRecord {
                     scenario: scenario.name.clone(),
                     model_file: model_file.path.clone(),
@@ -238,11 +243,30 @@ pub(super) fn validate_model_compiler_provenance(
                     compiler: "openvaf".to_string(),
                     compiler_version: model_file.compiler_version.clone(),
                     compiler_command: compiler_command.to_string(),
-                    model_package_name: model_file.model_package_name.clone(),
-                    model_package_version: model_file.model_package_version.clone(),
-                    model_package_artifact_id: model_file.model_package_artifact_id.clone(),
-                    model_package_lock_path: model_file.model_package_lock_path.clone(),
-                    model_package_lock_sha256: model_file.model_package_lock_sha256.clone(),
+                    model_package_name: package_context
+                        .as_ref()
+                        .map(|context| context.package_name.clone()),
+                    model_package_version: package_context
+                        .as_ref()
+                        .map(|context| context.package_version.clone()),
+                    model_package_artifact_id: package_context
+                        .as_ref()
+                        .map(|context| context.artifact_id.clone()),
+                    model_package_lock_path: package_context
+                        .as_ref()
+                        .map(|context| context.lock_path.clone()),
+                    model_package_lock_sha256: package_context
+                        .as_ref()
+                        .map(|context| context.lock_sha256.clone()),
+                    model_package_registry_path: package_context
+                        .as_ref()
+                        .and_then(|context| context.registry_path.clone()),
+                    model_package_registry_sha256: package_context
+                        .as_ref()
+                        .and_then(|context| context.registry_sha256.clone()),
+                    model_package_registry_entry: package_context
+                        .as_ref()
+                        .and_then(|context| context.registry_entry.clone()),
                     compiler_available_on_path: executable_on_path("openvaf"),
                     build_env_enabled: openvaf_builds_enabled(),
                     rebuild_mode,
@@ -262,6 +286,8 @@ pub(super) fn validate_model_compiler_provenance(
                     rebuild_mode = "rebuilt_hash_stale_artifact";
                     match file_sha256_hex(&artifact) {
                         Ok(rebuilt) if rebuilt.eq_ignore_ascii_case(expected_artifact_sha) => {
+                            let package_context =
+                                model_package_context_for_manifest(bound, scenario, model_file);
                             record_model_compiler_manifest(ModelCompilerManifestRecord {
                                 scenario: scenario.name.clone(),
                                 model_file: model_file.path.clone(),
@@ -273,15 +299,30 @@ pub(super) fn validate_model_compiler_provenance(
                                 compiler: "openvaf".to_string(),
                                 compiler_version: model_file.compiler_version.clone(),
                                 compiler_command: compiler_command.to_string(),
-                                model_package_name: model_file.model_package_name.clone(),
-                                model_package_version: model_file.model_package_version.clone(),
-                                model_package_artifact_id: model_file
-                                    .model_package_artifact_id
-                                    .clone(),
-                                model_package_lock_path: model_file.model_package_lock_path.clone(),
-                                model_package_lock_sha256: model_file
-                                    .model_package_lock_sha256
-                                    .clone(),
+                                model_package_name: package_context
+                                    .as_ref()
+                                    .map(|context| context.package_name.clone()),
+                                model_package_version: package_context
+                                    .as_ref()
+                                    .map(|context| context.package_version.clone()),
+                                model_package_artifact_id: package_context
+                                    .as_ref()
+                                    .map(|context| context.artifact_id.clone()),
+                                model_package_lock_path: package_context
+                                    .as_ref()
+                                    .map(|context| context.lock_path.clone()),
+                                model_package_lock_sha256: package_context
+                                    .as_ref()
+                                    .map(|context| context.lock_sha256.clone()),
+                                model_package_registry_path: package_context
+                                    .as_ref()
+                                    .and_then(|context| context.registry_path.clone()),
+                                model_package_registry_sha256: package_context
+                                    .as_ref()
+                                    .and_then(|context| context.registry_sha256.clone()),
+                                model_package_registry_entry: package_context
+                                    .as_ref()
+                                    .and_then(|context| context.registry_entry.clone()),
                                 compiler_available_on_path: executable_on_path("openvaf"),
                                 build_env_enabled: openvaf_builds_enabled(),
                                 rebuild_mode,
@@ -370,6 +411,9 @@ pub(super) fn solver_manifest_model_file_provenance(scenario: &Scenario) -> Vec<
                 "model_package_artifact_id": &record.model_package_artifact_id,
                 "model_package_lock_path": &record.model_package_lock_path,
                 "model_package_lock_sha256": &record.model_package_lock_sha256,
+                "model_package_registry_path": &record.model_package_registry_path,
+                "model_package_registry_sha256": &record.model_package_registry_sha256,
+                "model_package_registry_entry": &record.model_package_registry_entry,
                 "compiler_available_on_path": record.compiler_available_on_path,
                 "build_env_enabled": record.build_env_enabled,
                 "rebuild_mode": record.rebuild_mode,
@@ -406,58 +450,16 @@ fn validate_model_package_lock(
     if !model_file_requires_package_lock(model_file) {
         return None;
     }
-    let Some(package_name) = nonempty(model_file.model_package_name.as_deref()) else {
-        return Some(model_package_lock_missing(
-            scenario,
-            model_file,
-            "model_package_name",
-            "Model package lock metadata requires model_package_name.",
-        ));
+    let context = match resolve_model_package_lock_context(bound, scenario, model_file, artifacts) {
+        Ok(context) => context,
+        Err(finding) => return Some(*finding),
     };
-    let Some(package_version) = nonempty(model_file.model_package_version.as_deref()) else {
-        return Some(model_package_lock_missing(
-            scenario,
-            model_file,
-            "model_package_version",
-            "Model package lock metadata requires model_package_version.",
-        ));
-    };
-    let Some(artifact_id) = nonempty(model_file.model_package_artifact_id.as_deref()) else {
-        return Some(model_package_lock_missing(
-            scenario,
-            model_file,
-            "model_package_artifact_id",
-            "Model package lock metadata requires model_package_artifact_id.",
-        ));
-    };
-    let Some(lock_path) = nonempty(model_file.model_package_lock_path.as_deref()) else {
-        return Some(model_package_lock_missing(
-            scenario,
-            model_file,
-            "model_package_lock_path",
-            "Model package lock metadata requires model_package_lock_path.",
-        ));
-    };
-    let Some(lock_sha256) = nonempty(model_file.model_package_lock_sha256.as_deref()) else {
-        return Some(model_package_lock_missing(
-            scenario,
-            model_file,
-            "model_package_lock_sha256",
-            "Model package lock metadata requires model_package_lock_sha256.",
-        ));
-    };
-    let context = ModelPackageLockContext {
-        package_name,
-        package_version,
-        artifact_id,
-        lock_path,
-    };
-    let lock = bound.project.source_dir.join(lock_path);
+    let lock = bound.project.source_dir.join(&context.lock_path);
     if let Some(finding) = validate_pinned_file(
         scenario,
         model_file,
         &lock,
-        lock_sha256,
+        &context.lock_sha256,
         "model_package_lock",
         "ANALOG_MODEL_PACKAGE_LOCK_UNAVAILABLE",
         "ANALOG_MODEL_PACKAGE_LOCK_HASH_MISMATCH",
@@ -475,14 +477,7 @@ fn validate_model_package_lock(
                     lock.display()
                 ),
             );
-            insert_model_package_context(
-                &mut finding,
-                model_file,
-                context.package_name,
-                context.package_version,
-                context.artifact_id,
-                context.lock_path,
-            );
+            insert_model_package_context(&mut finding, model_file, &context);
             return Some(finding);
         }
     };
@@ -491,14 +486,7 @@ fn validate_model_package_lock(
         Err(message) => {
             let mut finding =
                 Finding::critical("ANALOG_MODEL_PACKAGE_LOCK_INVALID", &scenario.name, message);
-            insert_model_package_context(
-                &mut finding,
-                model_file,
-                context.package_name,
-                context.package_version,
-                context.artifact_id,
-                context.lock_path,
-            );
+            insert_model_package_context(&mut finding, model_file, &context);
             return Some(finding);
         }
     };
@@ -506,7 +494,7 @@ fn validate_model_package_lock(
         .or_else(|| string_field(&lock_value, &["package_name"]))
         .or_else(|| string_field(&lock_value, &["name"]))
         .as_deref()
-        != Some(package_name)
+        != Some(context.package_name.as_str())
     {
         return Some(model_package_lock_mismatch(
             scenario,
@@ -520,7 +508,7 @@ fn validate_model_package_lock(
         .or_else(|| string_field(&lock_value, &["package_version"]))
         .or_else(|| string_field(&lock_value, &["version"]))
         .as_deref()
-        != Some(package_version)
+        != Some(context.package_version.as_str())
     {
         return Some(model_package_lock_mismatch(
             scenario,
@@ -530,7 +518,7 @@ fn validate_model_package_lock(
             "Model package lock package version does not match the scenario metadata.",
         ));
     }
-    let Some(artifact) = model_package_artifact(&lock_value, artifact_id) else {
+    let Some(artifact) = model_package_artifact(&lock_value, &context.artifact_id) else {
         return Some(model_package_lock_mismatch(
             scenario,
             model_file,
@@ -585,17 +573,265 @@ fn validate_model_package_lock(
     None
 }
 
+fn resolve_model_package_lock_context(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    artifacts: &mut Vec<String>,
+) -> Result<ModelPackageLockContext, Box<Finding>> {
+    let registry_context = if model_file_requires_package_registry(model_file) {
+        Some(resolve_model_package_registry_context(
+            bound, scenario, model_file, artifacts,
+        )?)
+    } else {
+        None
+    };
+    let package_name = resolve_package_field(
+        scenario,
+        model_file,
+        registry_context.as_ref(),
+        model_file.model_package_name.as_deref(),
+        |context| Some(context.package_name.as_str()),
+        "model_package_name",
+    )?;
+    let package_version = resolve_package_field(
+        scenario,
+        model_file,
+        registry_context.as_ref(),
+        model_file.model_package_version.as_deref(),
+        |context| Some(context.package_version.as_str()),
+        "model_package_version",
+    )?;
+    let artifact_id = resolve_package_field(
+        scenario,
+        model_file,
+        registry_context.as_ref(),
+        model_file.model_package_artifact_id.as_deref(),
+        |context| Some(context.artifact_id.as_str()),
+        "model_package_artifact_id",
+    )?;
+    let lock_path = resolve_package_field(
+        scenario,
+        model_file,
+        registry_context.as_ref(),
+        model_file.model_package_lock_path.as_deref(),
+        |context| Some(context.lock_path.as_str()),
+        "model_package_lock_path",
+    )?;
+    let lock_sha256 = resolve_package_field(
+        scenario,
+        model_file,
+        registry_context.as_ref(),
+        model_file.model_package_lock_sha256.as_deref(),
+        |context| Some(context.lock_sha256.as_str()),
+        "model_package_lock_sha256",
+    )?;
+    Ok(ModelPackageLockContext {
+        package_name,
+        package_version,
+        artifact_id,
+        lock_path,
+        lock_sha256,
+        registry_path: model_file.model_package_registry_path.clone(),
+        registry_sha256: model_file.model_package_registry_sha256.clone(),
+        registry_entry: model_file.model_package_registry_entry.clone(),
+    })
+}
+
+fn model_package_context_for_manifest(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+) -> Option<ModelPackageLockContext> {
+    if !model_file_requires_package_lock(model_file) {
+        return None;
+    }
+    let mut artifacts = Vec::new();
+    resolve_model_package_lock_context(bound, scenario, model_file, &mut artifacts).ok()
+}
+
+fn resolve_package_field(
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    registry_context: Option<&ModelPackageLockContext>,
+    direct: Option<&str>,
+    registry: impl FnOnce(&ModelPackageLockContext) -> Option<&str>,
+    field: &str,
+) -> Result<String, Box<Finding>> {
+    let direct = nonempty(direct);
+    let registry = registry_context.and_then(registry);
+    match (direct, registry) {
+        (Some(direct), Some(registry)) if direct != registry => {
+            Err(Box::new(model_package_registry_entry_mismatch(
+                scenario,
+                model_file,
+                field,
+                direct,
+                registry,
+                "Model package registry entry disagrees with explicitly declared package metadata.",
+            )))
+        }
+        (Some(value), _) | (None, Some(value)) => Ok(value.to_string()),
+        (None, None) => Err(Box::new(model_package_lock_missing(
+            scenario,
+            model_file,
+            field,
+            "Model package lock metadata requires either a direct field or a pinned model package registry entry.",
+        ))),
+    }
+}
+
+fn resolve_model_package_registry_context(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    artifacts: &mut Vec<String>,
+) -> Result<ModelPackageLockContext, Box<Finding>> {
+    let Some(registry_path) = nonempty(model_file.model_package_registry_path.as_deref()) else {
+        return Err(Box::new(model_package_registry_missing(
+            scenario,
+            model_file,
+            "model_package_registry_path",
+        )));
+    };
+    let Some(registry_sha256) = nonempty(model_file.model_package_registry_sha256.as_deref())
+    else {
+        return Err(Box::new(model_package_registry_missing(
+            scenario,
+            model_file,
+            "model_package_registry_sha256",
+        )));
+    };
+    let Some(registry_entry) = nonempty(model_file.model_package_registry_entry.as_deref()) else {
+        return Err(Box::new(model_package_registry_missing(
+            scenario,
+            model_file,
+            "model_package_registry_entry",
+        )));
+    };
+    let registry = bound.project.source_dir.join(registry_path);
+    if let Some(mut finding) = validate_pinned_file(
+        scenario,
+        model_file,
+        &registry,
+        registry_sha256,
+        "model_package_registry",
+        "ANALOG_MODEL_PACKAGE_REGISTRY_UNAVAILABLE",
+        "ANALOG_MODEL_PACKAGE_REGISTRY_HASH_MISMATCH",
+    ) {
+        finding.limit.insert(
+            "model_package_registry_path".to_string(),
+            json!(registry_path),
+        );
+        return Err(Box::new(finding));
+    }
+    let registry_text = std::fs::read_to_string(&registry).map_err(|error| {
+        let mut finding = Finding::critical(
+            "ANALOG_MODEL_PACKAGE_REGISTRY_UNAVAILABLE",
+            &scenario.name,
+            format!(
+                "Unable to read model package registry {}: {error}",
+                registry.display()
+            ),
+        );
+        insert_optional_model_package_measured(&mut finding, model_file);
+        Box::new(finding)
+    })?;
+    let registry_value = parse_model_package_lock(&registry_text).map_err(|message| {
+        let mut finding = Finding::critical(
+            "ANALOG_MODEL_PACKAGE_REGISTRY_INVALID",
+            &scenario.name,
+            message,
+        );
+        insert_optional_model_package_measured(&mut finding, model_file);
+        Box::new(finding)
+    })?;
+    let Some(entry) = model_package_registry_entry(&registry_value, registry_entry) else {
+        return Err(Box::new(model_package_registry_entry_mismatch(
+            scenario,
+            model_file,
+            "model_package_registry_entry",
+            registry_entry,
+            "<missing>",
+            "Model package registry does not contain the declared entry.",
+        )));
+    };
+    let package_name = string_field(entry, &["package", "name"])
+        .or_else(|| string_field(entry, &["package_name"]))
+        .or_else(|| string_field(entry, &["name"]))
+        .ok_or_else(|| {
+            Box::new(model_package_registry_missing(
+                scenario,
+                model_file,
+                "package_name",
+            ))
+        })?;
+    let package_version = string_field(entry, &["package", "version"])
+        .or_else(|| string_field(entry, &["package_version"]))
+        .or_else(|| string_field(entry, &["version"]))
+        .ok_or_else(|| {
+            Box::new(model_package_registry_missing(
+                scenario,
+                model_file,
+                "package_version",
+            ))
+        })?;
+    let artifact_id = string_field(entry, &["artifact_id"])
+        .or_else(|| string_field(entry, &["artifact", "id"]))
+        .ok_or_else(|| {
+            Box::new(model_package_registry_missing(
+                scenario,
+                model_file,
+                "artifact_id",
+            ))
+        })?;
+    let lock_path = string_field(entry, &["lock_path"])
+        .or_else(|| string_field(entry, &["model_package_lock_path"]))
+        .ok_or_else(|| {
+            Box::new(model_package_registry_missing(
+                scenario,
+                model_file,
+                "lock_path",
+            ))
+        })?;
+    let lock_sha256 = string_field(entry, &["lock_sha256"])
+        .or_else(|| string_field(entry, &["model_package_lock_sha256"]))
+        .ok_or_else(|| {
+            Box::new(model_package_registry_missing(
+                scenario,
+                model_file,
+                "lock_sha256",
+            ))
+        })?;
+    push_artifact(artifacts, &registry);
+    Ok(ModelPackageLockContext {
+        package_name,
+        package_version,
+        artifact_id,
+        lock_path,
+        lock_sha256,
+        registry_path: Some(registry_path.to_string()),
+        registry_sha256: Some(registry_sha256.to_string()),
+        registry_entry: Some(registry_entry.to_string()),
+    })
+}
+
 fn parse_model_package_lock(text: &str) -> Result<Value, String> {
     serde_json::from_str::<Value>(text)
         .or_else(|_| serde_yaml_ng::from_str::<Value>(text))
         .map_err(|error| format!("Model package lock is not valid JSON or YAML: {error}"))
 }
 
-struct ModelPackageLockContext<'a> {
-    package_name: &'a str,
-    package_version: &'a str,
-    artifact_id: &'a str,
-    lock_path: &'a str,
+#[derive(Clone)]
+struct ModelPackageLockContext {
+    package_name: String,
+    package_version: String,
+    artifact_id: String,
+    lock_path: String,
+    lock_sha256: String,
+    registry_path: Option<String>,
+    registry_sha256: Option<String>,
+    registry_entry: Option<String>,
 }
 
 fn model_package_artifact<'a>(lock: &'a Value, artifact_id: &str) -> Option<&'a Value> {
@@ -608,6 +844,20 @@ fn model_package_artifact<'a>(lock: &'a Value, artifact_id: &str) -> Option<&'a 
             .or_else(|| string_field(artifact, &["name"]))
             .as_deref()
             == Some(artifact_id)
+    })
+}
+
+fn model_package_registry_entry<'a>(registry: &'a Value, entry_id: &str) -> Option<&'a Value> {
+    let entries = registry
+        .get("packages")
+        .or_else(|| registry.get("model_packages"))
+        .or_else(|| registry.get("entries"))
+        .and_then(Value::as_array)?;
+    entries.iter().find(|entry| {
+        string_field(entry, &["id"])
+            .or_else(|| string_field(entry, &["name"]))
+            .as_deref()
+            == Some(entry_id)
     })
 }
 
@@ -1223,6 +1473,13 @@ fn model_file_requires_package_lock(model_file: &AnalogModelFile) -> bool {
         || model_file.model_package_artifact_id.is_some()
         || model_file.model_package_lock_path.is_some()
         || model_file.model_package_lock_sha256.is_some()
+        || model_file_requires_package_registry(model_file)
+}
+
+fn model_file_requires_package_registry(model_file: &AnalogModelFile) -> bool {
+    model_file.model_package_registry_path.is_some()
+        || model_file.model_package_registry_sha256.is_some()
+        || model_file.model_package_registry_entry.is_some()
 }
 
 fn insert_optional_model_package_measured(finding: &mut Finding, model_file: &AnalogModelFile) {
@@ -1246,6 +1503,18 @@ fn insert_optional_model_package_measured(finding: &mut Finding, model_file: &An
         finding.measured.insert(
             "model_package_lock_sha256".to_string(),
             json!(model_file.model_package_lock_sha256),
+        );
+        finding.measured.insert(
+            "model_package_registry_path".to_string(),
+            json!(model_file.model_package_registry_path),
+        );
+        finding.measured.insert(
+            "model_package_registry_sha256".to_string(),
+            json!(model_file.model_package_registry_sha256),
+        );
+        finding.measured.insert(
+            "model_package_registry_entry".to_string(),
+            json!(model_file.model_package_registry_entry),
         );
     }
 }
@@ -1306,7 +1575,7 @@ fn model_package_lock_missing(
 fn model_package_lock_mismatch(
     scenario: &Scenario,
     model_file: &AnalogModelFile,
-    context: &ModelPackageLockContext<'_>,
+    context: &ModelPackageLockContext,
     mismatch: &str,
     message: &str,
 ) -> Finding {
@@ -1315,14 +1584,7 @@ fn model_package_lock_mismatch(
         &scenario.name,
         message,
     );
-    insert_model_package_context(
-        &mut finding,
-        model_file,
-        context.package_name,
-        context.package_version,
-        context.artifact_id,
-        context.lock_path,
-    );
+    insert_model_package_context(&mut finding, model_file, context);
     finding
         .limit
         .insert("mismatch".to_string(), json!(mismatch));
@@ -1333,13 +1595,75 @@ fn model_package_lock_mismatch(
     finding
 }
 
+fn model_package_registry_missing(
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    field: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        "ANALOG_MODEL_PACKAGE_REGISTRY_MISSING",
+        &scenario.name,
+        "Model package registry imports require a complete pinned registry entry.",
+    );
+    finding
+        .measured
+        .insert("model_file".to_string(), json!(model_file.path));
+    insert_optional_model_package_measured(&mut finding, model_file);
+    finding
+        .limit
+        .insert("required_field".to_string(), json!(field));
+    finding.limit.insert(
+        "required_artifact".to_string(),
+        json!("model_package_registry"),
+    );
+    finding.suggested_fixes.push(
+        "Declare model_package_registry_path, model_package_registry_sha256, and model_package_registry_entry, or inline the package lock fields directly."
+            .to_string(),
+    );
+    finding
+}
+
+fn model_package_registry_entry_mismatch(
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    mismatch: &str,
+    declared: &str,
+    registry: &str,
+    message: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        "ANALOG_MODEL_PACKAGE_REGISTRY_ENTRY_MISMATCH",
+        &scenario.name,
+        message,
+    );
+    finding
+        .measured
+        .insert("model_file".to_string(), json!(model_file.path));
+    insert_optional_model_package_measured(&mut finding, model_file);
+    finding
+        .measured
+        .insert("declared_value".to_string(), json!(declared));
+    finding
+        .measured
+        .insert("registry_value".to_string(), json!(registry));
+    finding
+        .limit
+        .insert("mismatch".to_string(), json!(mismatch));
+    finding.limit.insert(
+        "required_artifact".to_string(),
+        json!("model_package_registry"),
+    );
+    finding.suggested_fixes.push(
+        "Update the scenario package metadata to match the pinned registry entry, or re-qualify and repin the registry."
+            .to_string(),
+    );
+    finding
+}
+
 fn insert_model_package_context(
     finding: &mut Finding,
     model_file: &AnalogModelFile,
-    package_name: &str,
-    package_version: &str,
-    artifact_id: &str,
-    lock_path: &str,
+    context: &ModelPackageLockContext,
 ) {
     finding
         .measured
@@ -1348,18 +1672,38 @@ fn insert_model_package_context(
         "artifact_format".to_string(),
         json!(model_file.artifact_format),
     );
-    finding
-        .measured
-        .insert("model_package_name".to_string(), json!(package_name));
-    finding
-        .measured
-        .insert("model_package_version".to_string(), json!(package_version));
-    finding
-        .measured
-        .insert("model_package_artifact_id".to_string(), json!(artifact_id));
-    finding
-        .measured
-        .insert("model_package_lock_path".to_string(), json!(lock_path));
+    finding.measured.insert(
+        "model_package_name".to_string(),
+        json!(context.package_name),
+    );
+    finding.measured.insert(
+        "model_package_version".to_string(),
+        json!(context.package_version),
+    );
+    finding.measured.insert(
+        "model_package_artifact_id".to_string(),
+        json!(context.artifact_id),
+    );
+    finding.measured.insert(
+        "model_package_lock_path".to_string(),
+        json!(context.lock_path),
+    );
+    finding.measured.insert(
+        "model_package_lock_sha256".to_string(),
+        json!(context.lock_sha256),
+    );
+    finding.measured.insert(
+        "model_package_registry_path".to_string(),
+        json!(context.registry_path),
+    );
+    finding.measured.insert(
+        "model_package_registry_sha256".to_string(),
+        json!(context.registry_sha256),
+    );
+    finding.measured.insert(
+        "model_package_registry_entry".to_string(),
+        json!(context.registry_entry),
+    );
     finding
         .limit
         .insert("required_artifact".to_string(), json!("model_package_lock"));

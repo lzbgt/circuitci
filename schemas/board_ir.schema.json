@@ -2838,6 +2838,15 @@
                     "model_package_lock_sha256": {
                       "type": "string",
                       "pattern": "^[0-9a-fA-F]{64}$"
+                    },
+                    "model_package_registry_path": { "type": "string", "minLength": 1 },
+                    "model_package_registry_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{64}$"
+                    },
+                    "model_package_registry_entry": {
+                      "type": "string",
+                      "minLength": 1
                     }
                   },
                   "additionalProperties": false

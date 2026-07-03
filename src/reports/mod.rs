@@ -86,6 +86,9 @@ pub struct ModelFileProvenance {
     pub model_package_artifact_id: Option<String>,
     pub model_package_lock_path: Option<String>,
     pub model_package_lock_sha256: Option<String>,
+    pub model_package_registry_path: Option<String>,
+    pub model_package_registry_sha256: Option<String>,
+    pub model_package_registry_entry: Option<String>,
     pub compiler_available_on_path: Option<bool>,
     pub build_env_enabled: Option<bool>,
     pub rebuild_mode: String,
@@ -339,6 +342,16 @@ fn markdown_report(report: &ValidationReport) -> String {
                         .unwrap_or(""),
                     provenance.model_package_lock_path.as_deref().unwrap_or("")
                 ));
+                if let Some(registry_path) = &provenance.model_package_registry_path {
+                    text.push_str(&format!(
+                        "  - Registry: `{}` entry `{}`\n",
+                        registry_path,
+                        provenance
+                            .model_package_registry_entry
+                            .as_deref()
+                            .unwrap_or("")
+                    ));
+                }
             }
         }
         text.push('\n');
@@ -453,6 +466,18 @@ fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenanc
                 model_package_lock_sha256: optional_string_at(
                     entry,
                     &["model_package_lock_sha256"],
+                ),
+                model_package_registry_path: optional_string_at(
+                    entry,
+                    &["model_package_registry_path"],
+                ),
+                model_package_registry_sha256: optional_string_at(
+                    entry,
+                    &["model_package_registry_sha256"],
+                ),
+                model_package_registry_entry: optional_string_at(
+                    entry,
+                    &["model_package_registry_entry"],
                 ),
                 compiler_available_on_path: bool_at(entry, &["compiler_available_on_path"]),
                 build_env_enabled: bool_at(entry, &["build_env_enabled"]),

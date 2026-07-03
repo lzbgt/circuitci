@@ -1481,6 +1481,12 @@ pub struct AnalogModelFile {
     pub model_package_lock_path: Option<String>,
     #[serde(default)]
     pub model_package_lock_sha256: Option<String>,
+    #[serde(default)]
+    pub model_package_registry_path: Option<String>,
+    #[serde(default)]
+    pub model_package_registry_sha256: Option<String>,
+    #[serde(default)]
+    pub model_package_registry_entry: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
