@@ -12,8 +12,8 @@ use super::{
     deferred_waveform_matching_probe_requests, deferred_waveform_remaining_probe_requests,
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
-    parse_waveform_csv_text, select_deferred_waveform_column_picks, waveform_footprint_csv,
-    waveform_footprint_largest_unload_targets, waveform_footprint_rows,
+    parse_hb_spectrum_csv_text, parse_waveform_csv_text, select_deferred_waveform_column_picks,
+    waveform_footprint_csv, waveform_footprint_largest_unload_targets, waveform_footprint_rows,
     waveform_footprint_rows_with_diagnostics, waveform_footprint_source_summaries,
     waveform_footprint_summary_csv, waveform_footprint_summary_markdown,
     waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
@@ -152,6 +152,35 @@ fn waveform_loader_reads_noise_spectrum_as_frequency_density_traces() {
     assert_eq!(waveform.probes[1].label, "input noise density");
     assert_eq!(waveform.probes[0].values, vec![2.0e-9, 3.0e-9]);
     assert_eq!(super::probe_unit(&waveform.probes[0].label), "V/sqrt(Hz)");
+}
+
+#[test]
+fn waveform_loader_reads_harmonic_balance_spectrum_as_frequency_traces() {
+    let waveform = parse_hb_spectrum_csv_text(
+        "output_expression,fundamental_frequency_hz,harmonic,frequency_hz,real,imaginary,magnitude,phase_deg\nV(out,0),1e5,0,0,0.5,0,0.5,0\nV(out,0),1e5,1,1e5,0.3,-0.4,0.5,-53.1301023542\nV(out,0),1e5,-1,-1e5,0.3,0.4,0.5,53.1301023542\n",
+        "hb_spectrum.csv",
+    )
+    .unwrap();
+
+    assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveform.time_s, vec![0.0, 0.1]);
+    assert_eq!(
+        waveform
+            .probes
+            .iter()
+            .map(|probe| probe.label.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "V(out,0) magnitude",
+            "V(out,0) phase deg",
+            "V(out,0) real",
+            "V(out,0) imaginary",
+        ]
+    );
+    assert_eq!(waveform.probes[0].values, vec![0.5, 0.5]);
+    assert_eq!(waveform.probes[1].values, vec![0.0, -53.1301023542]);
+    assert_eq!(super::probe_unit(&waveform.probes[0].label), "V");
+    assert_eq!(super::probe_unit(&waveform.probes[1].label), "deg");
 }
 
 #[test]
@@ -456,6 +485,38 @@ fn failed_selected_deferred_waveform_load_preserves_deferred_placeholder() {
             && diagnostic.probe_preview == vec!["p(load)".to_string()]
             && diagnostic.detail.contains("Selected probe column")
     }));
+}
+
+#[test]
+fn report_loader_includes_harmonic_balance_spectrum_artifacts() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let spectrum_path = temp_dir.path().join("hb_spectrum.csv");
+    std::fs::write(
+        &spectrum_path,
+        "output_expression,fundamental_frequency_hz,harmonic,frequency_hz,real,imaginary,magnitude,phase_deg\nV(out),1e5,0,0,0.5,0,0.5,0\nV(out),1e5,1,1e5,0.3,-0.4,0.5,-53.13\n",
+    )
+    .unwrap();
+    let report = crate::reports::ValidationReport::from_parts(
+        "project".to_string(),
+        "default".to_string(),
+        Vec::new(),
+        Vec::new(),
+        vec![spectrum_path.to_string_lossy().into_owned()],
+        Vec::new(),
+        "validate".to_string(),
+    );
+
+    let (waveforms, diagnostics) =
+        load_report_waveforms_with_progress_and_cancel(&report, |_, _| {}, || false, false)
+            .unwrap();
+
+    assert_eq!(waveforms.len(), 1);
+    assert_eq!(waveforms[0].x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveforms[0].probes[0].label, "V(out) magnitude");
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0].loaded);
+    assert_eq!(diagnostics[0].samples, 2);
+    assert_eq!(diagnostics[0].probes, 4);
 }
 
 #[test]

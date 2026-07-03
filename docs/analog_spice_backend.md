@@ -401,10 +401,13 @@ For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:
    `.PRINT HB_FD FORMAT=CSV` based on the Xyce 7.8 Reference Guide. The
    normalized spectrum records signed harmonic index, frequency, complex
    output value, magnitude, and phase.
-6. Opt-in real-solver conformance is available with
+6. The GUI Scopes loader recognizes `hb_spectrum.csv` artifacts and converts
+   non-negative harmonic rows into frequency-axis traces for magnitude, phase,
+   real, and imaginary output values.
+7. Opt-in real-solver conformance is available with
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
    it skips unless `Xyce` or `xyce` is on `PATH`.
-7. `backend: auto`, `ngspice`, and `embedded_ngspice` remain fail-closed with
+8. `backend: auto`, `ngspice`, and `embedded_ngspice` remain fail-closed with
    backend-planning evidence until those adapters emit the same normalized
    `hb_spectrum` contract.
 

@@ -562,6 +562,9 @@ The GUI should not become the solver.
   complex spectrum rows. This keeps HB distinct from transient `.FOUR`
   extraction: Fourier analysis measures a transient waveform after integration,
   while HB solves the periodic steady-state frequency-domain problem directly.
+  GUI Scopes now recognizes `hb_spectrum.csv` artifacts and adapts the
+  non-negative harmonic rows into magnitude, phase, real, and imaginary
+  frequency-axis traces.
   Opt-in real-Xyce HB conformance is covered by
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
   the test skips unless `Xyce` or `xyce` is on `PATH`.
@@ -573,7 +576,8 @@ The GUI should not become the solver.
 
 - Add Xyce backend execution.
 - Add `.HB` Board IR contract.
-- Add HB artifact parser and GUI spectrum view.
+- Add HB artifact parser and GUI spectrum view. Done; Scopes loads
+  `hb_spectrum.csv` as frequency-domain spectrum traces.
 - Keep HB optional and fail-closed when Xyce is unavailable.
 
 ### Phase 4: PSS / Oscillator Evidence

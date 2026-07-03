@@ -17,8 +17,9 @@ where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
 {
+    let waveform_paths = report_waveform_paths(report);
     load_waveform_paths_with_progress_and_cancel(
-        &report.waveforms,
+        &waveform_paths,
         on_progress,
         should_cancel,
         defer_large_waveforms,
@@ -163,6 +164,16 @@ where
     Ok((waveforms, diagnostics))
 }
 
+fn report_waveform_paths(report: &ValidationReport) -> Vec<String> {
+    let mut paths = report.waveforms.clone();
+    for artifact in &report.artifacts {
+        if is_hb_spectrum_path(artifact) && !paths.iter().any(|path| path == artifact) {
+            paths.push(artifact.clone());
+        }
+    }
+    paths
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::gui) struct WaveformLoadRequest {
     path: String,
@@ -218,6 +229,12 @@ where
     C: Fn() -> bool,
 {
     use std::io::BufRead;
+
+    if selected_probe_labels.is_empty() && is_hb_spectrum_path(label) {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("Failed to read HB spectrum CSV {}.", path.display()))?;
+        return parse_hb_spectrum_csv_rows(&text, label);
+    }
 
     let file = std::fs::File::open(path)
         .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
@@ -280,6 +297,154 @@ pub(super) fn parse_waveform_csv_text(text: &str, label: &str) -> Result<Wavefor
         builder.ingest_line(line_index, line)?;
     }
     builder.finish(label)
+}
+
+#[cfg(test)]
+pub(super) fn parse_hb_spectrum_csv_text(text: &str, label: &str) -> Result<WaveformView> {
+    parse_hb_spectrum_csv_rows(text, label)
+}
+
+fn is_hb_spectrum_path(path: &str) -> bool {
+    path.ends_with("/hb_spectrum.csv") || path == "hb_spectrum.csv"
+}
+
+fn parse_hb_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let header = lines.next().context("HB spectrum CSV has no header row.")?;
+    let header = split_waveform_fields(header);
+    if header
+        != [
+            "output_expression",
+            "fundamental_frequency_hz",
+            "harmonic",
+            "frequency_hz",
+            "real",
+            "imaginary",
+            "magnitude",
+            "phase_deg",
+        ]
+    {
+        anyhow::bail!(
+            "HB spectrum CSV header must be output_expression,fundamental_frequency_hz,harmonic,frequency_hz,real,imaginary,magnitude,phase_deg."
+        );
+    }
+
+    let mut rows = Vec::new();
+    for (line_index, line) in lines.enumerate() {
+        let fields = split_waveform_fields(line);
+        if fields.len() < 8 {
+            anyhow::bail!(
+                "HB spectrum row {} has {} fields, expected at least 8.",
+                line_index + 2,
+                fields.len()
+            );
+        }
+        let numeric_offset = fields.len() - 7;
+        let expression = fields[..numeric_offset].join(",");
+        let frequency_hz = parse_waveform_float(fields[numeric_offset + 2]).with_context(|| {
+            format!("HB spectrum row {} has invalid frequency.", line_index + 2)
+        })?;
+        if frequency_hz < 0.0 {
+            continue;
+        }
+        let real = parse_waveform_float(fields[numeric_offset + 3]).with_context(|| {
+            format!("HB spectrum row {} has invalid real value.", line_index + 2)
+        })?;
+        let imaginary = parse_waveform_float(fields[numeric_offset + 4]).with_context(|| {
+            format!(
+                "HB spectrum row {} has invalid imaginary value.",
+                line_index + 2
+            )
+        })?;
+        let magnitude = parse_waveform_float(fields[numeric_offset + 5]).with_context(|| {
+            format!(
+                "HB spectrum row {} has invalid magnitude value.",
+                line_index + 2
+            )
+        })?;
+        let phase_deg = parse_waveform_float(fields[numeric_offset + 6]).with_context(|| {
+            format!(
+                "HB spectrum row {} has invalid phase value.",
+                line_index + 2
+            )
+        })?;
+        rows.push((
+            frequency_hz,
+            expression,
+            real,
+            imaginary,
+            magnitude,
+            phase_deg,
+        ));
+    }
+
+    if rows.is_empty() {
+        anyhow::bail!("HB spectrum CSV has no non-negative frequency rows.");
+    }
+    rows.sort_by(|left, right| left.0.total_cmp(&right.0));
+    let expression = rows[0].1.clone();
+    if rows
+        .iter()
+        .any(|(_, row_expression, ..)| row_expression != &expression)
+    {
+        anyhow::bail!("HB spectrum CSV must contain one output expression per artifact.");
+    }
+    let mut time_s = Vec::with_capacity(rows.len());
+    let mut real_values = Vec::with_capacity(rows.len());
+    let mut imaginary_values = Vec::with_capacity(rows.len());
+    let mut magnitude_values = Vec::with_capacity(rows.len());
+    let mut phase_values = Vec::with_capacity(rows.len());
+    let mut previous_frequency = None;
+    for (frequency_hz, _, real, imaginary, magnitude, phase_deg) in rows {
+        if previous_frequency.is_some_and(|previous| frequency_hz <= previous) {
+            anyhow::bail!(
+                "HB spectrum CSV has duplicate or non-increasing non-negative frequency {frequency_hz}."
+            );
+        }
+        previous_frequency = Some(frequency_hz);
+        time_s.push(WaveformXAxis::FrequencyHz.storage_from_csv_value(frequency_hz));
+        real_values.push(real);
+        imaginary_values.push(imaginary);
+        magnitude_values.push(magnitude);
+        phase_values.push(phase_deg);
+    }
+
+    Ok(WaveformView {
+        label: label.to_string(),
+        path: label.to_string(),
+        x_axis: WaveformXAxis::FrequencyHz,
+        time_s,
+        probes: vec![
+            WaveformProbe {
+                label: format!("{expression} magnitude"),
+                values: magnitude_values,
+                derived: false,
+                expression: Some(expression.clone()),
+                promoted_quantity: waveform_probe_quantity_from_label(&expression),
+            },
+            WaveformProbe {
+                label: format!("{expression} phase deg"),
+                values: phase_values,
+                derived: false,
+                expression: Some(expression.clone()),
+                promoted_quantity: None,
+            },
+            WaveformProbe {
+                label: format!("{expression} real"),
+                values: real_values,
+                derived: false,
+                expression: Some(expression.clone()),
+                promoted_quantity: waveform_probe_quantity_from_label(&expression),
+            },
+            WaveformProbe {
+                label: format!("{expression} imaginary"),
+                values: imaginary_values,
+                derived: false,
+                expression: Some(expression),
+                promoted_quantity: None,
+            },
+        ],
+    })
 }
 
 #[derive(Default)]

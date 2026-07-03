@@ -68,7 +68,9 @@ pub(super) use waveform_io::{
     load_waveform_requests_with_progress_and_cancel,
 };
 #[cfg(test)]
-use waveform_io::{load_waveform_csv_with_progress_and_cancel, parse_waveform_csv_text};
+use waveform_io::{
+    load_waveform_csv_with_progress_and_cancel, parse_hb_spectrum_csv_text, parse_waveform_csv_text,
+};
 use waveform_load::waveform_load_forget_loaded_view;
 #[cfg(test)]
 use waveform_load::waveform_load_preflight;
