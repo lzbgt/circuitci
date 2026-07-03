@@ -395,11 +395,15 @@ For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:
    excitation is tied to source provenance.
 4. Optional `hb_harmonics` must be in `1..=1024`; omitted harmonic count
    defaults to ten harmonics in planning evidence.
-5. No backend adapter is enabled yet. The validator fails closed with
-   `planned_not_implemented` evidence, preferred backend `xyce`, required
-   normalized output `hb_spectrum`, and solver-manifest schema metadata. This
-   preserves a durable contract for future Xyce harmonic-balance execution
-   without treating transient Fourier extraction as equivalent to HB.
+5. Explicit `backend: xyce` writes `circuitci_xyce_hb.cir`, `xyce_hb.log`,
+   `hb_spectrum_raw.csv`, `hb_spectrum.csv`, and `solver_manifest.json`. The
+   wrapper uses `.HB <fundamental>`, `.OPTIONS HBINT NUMFREQ=<harmonics>`, and
+   `.PRINT HB_FD FORMAT=CSV` based on the Xyce 7.8 Reference Guide. The
+   normalized spectrum records signed harmonic index, frequency, complex
+   output value, magnitude, and phase.
+6. `backend: auto`, `ngspice`, and `embedded_ngspice` remain fail-closed with
+   backend-planning evidence until those adapters emit the same normalized
+   `hb_spectrum` contract.
 
 For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 

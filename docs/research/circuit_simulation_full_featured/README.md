@@ -101,6 +101,8 @@ Sources saved:
 - `sources/xyce_INSTALL.md`
 - `sources/Xyce_Users_Guide_7.8.pdf`
 - `sources/Xyce_Users_Guide_7.8.txt`
+- `sources/Xyce_Reference_Guide_7.8.pdf`
+- `sources/Xyce_Reference_Guide_7.8.txt`
 
 Upstream:
 
@@ -550,14 +552,16 @@ The GUI should not become the solver.
   skips unless the requested solver is on `PATH`. Embedded ngspice remains
   fail-closed with planning evidence until equivalent output normalization is
   implemented.
-- The first harmonic-balance path is a fail-closed Board IR/schema contract for
-  `analysis.type: hb`, declared periodic drive sources, a fundamental
-  frequency, bound output expression, optional harmonic count, planned
-  normalized `hb_spectrum` evidence, and solver-manifest metadata. This keeps
-  HB distinct from transient `.FOUR` extraction: Fourier analysis measures a
-  transient waveform after integration, while HB should eventually solve the
-  periodic steady-state frequency-domain problem directly, most likely through
-  an explicit Xyce adapter and conformance fixtures.
+- The first harmonic-balance path is an explicit-Xyce adapter plus Board
+  IR/schema contract for `analysis.type: hb`, declared periodic drive sources,
+  a fundamental frequency, bound output expression, optional harmonic count,
+  normalized `hb_spectrum` evidence, and solver-manifest metadata. The saved
+  Xyce 7.8 Reference Guide documents `.HB <fundamental frequencies>`,
+  `.OPTIONS HBINT NUMFREQ=...`, and `.PRINT HB_FD FORMAT=CSV`; CircuitCI uses
+  those commands to write `hb_spectrum_raw.csv` and normalize signed harmonic
+  complex spectrum rows. This keeps HB distinct from transient `.FOUR`
+  extraction: Fourier analysis measures a transient waveform after integration,
+  while HB solves the periodic steady-state frequency-domain problem directly.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

@@ -200,9 +200,12 @@ Current analog support:
   contracts. The Board IR/schema can declare `analysis.type: hb`,
   `hb_fundamental_frequency_hz`, a bound `hb_output_expression`, optional
   `hb_harmonics`, and `hb_drive_sources[]` tied to generated source
-  components when the deck is generated from Board IR. No backend adapter is
-  enabled yet; validation fail-closes with backend-planning evidence, preferred
-  backend `xyce`, and required normalized output `hb_spectrum`.
+  components when the deck is generated from Board IR. Explicit `backend:
+  xyce` runs `.HB`, emits `hb_spectrum_raw.csv`, normalizes signed harmonic
+  complex spectrum rows into `hb_spectrum.csv`, and records the run in
+  `solver_manifest.json`. `backend: auto`, `ngspice`, and embedded ngspice
+  remain fail-closed with planning evidence until they emit the same
+  normalized output contract.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

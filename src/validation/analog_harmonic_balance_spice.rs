@@ -16,6 +16,7 @@ use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::analog_xyce_hb_runner::{XyceHarmonicBalanceRunOptions, run_xyce_harmonic_balance};
 use super::common::validation_input_missing;
 
 pub(super) struct AnalogHarmonicBalanceSinks<'a> {
@@ -227,10 +228,13 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
         }
     }
 
-    if let Err(message) = analog_run_plans(analog) {
-        validation_input_missing(findings, scenario, message);
-        return;
-    }
+    let run_plans = match analog_run_plans(analog) {
+        Ok(run_plans) => run_plans,
+        Err(message) => {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    };
 
     let run_dir = output
         .join("analog")
@@ -246,8 +250,11 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
         ));
         return;
     }
-    match prepare_source_netlist(bound, scenario, &run_dir) {
-        Ok(source_netlist) => push_artifact(artifacts, &source_netlist),
+    let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => {
+            push_artifact(artifacts, &source_netlist);
+            source_netlist
+        }
         Err(message) => {
             let mut finding =
                 Finding::critical(SPICE_HARMONIC_BALANCE_ANALYSIS, &scenario.name, message);
@@ -257,7 +264,7 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
             findings.push(finding);
             return;
         }
-    }
+    };
 
     on_progress(
         "Planning harmonic-balance backend",
@@ -281,39 +288,95 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
         return;
     };
 
-    let mut finding = unsupported_backend_plan_finding(
-        scenario,
-        UnsupportedBackendPlan {
-            check_id: SPICE_HARMONIC_BALANCE_ANALYSIS,
-            selected_backend: backend,
-            implemented_backend: "none_yet",
-            analysis_kind: "harmonic_balance",
-            required_normalized_outputs: &["hb_spectrum"],
-        },
-    );
-    finding
-        .measured
-        .insert("output_expression".to_string(), json!(output_expression));
-    finding.measured.insert(
-        "fundamental_frequency_hz".to_string(),
-        json!(fundamental_hz),
-    );
-    finding.measured.insert(
-        "harmonics".to_string(),
-        json!(analog.analysis.hb_harmonics.unwrap_or(10)),
-    );
-    finding.measured.insert(
-        "drive_sources".to_string(),
-        json!(analog.analysis.hb_drive_sources),
-    );
-    finding
-        .limit
-        .insert("preferred_backend".to_string(), json!("xyce"));
-    finding.limit.insert(
-        "required_evidence".to_string(),
-        json!("hb_spectrum_csv_or_json"),
-    );
-    findings.push(finding);
+    if !matches!(backend, "Xyce" | "xyce") {
+        let mut finding = unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_HARMONIC_BALANCE_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "xyce",
+                analysis_kind: "harmonic_balance",
+                required_normalized_outputs: &["hb_spectrum"],
+            },
+        );
+        finding
+            .measured
+            .insert("output_expression".to_string(), json!(output_expression));
+        finding.measured.insert(
+            "fundamental_frequency_hz".to_string(),
+            json!(fundamental_hz),
+        );
+        finding.measured.insert(
+            "harmonics".to_string(),
+            json!(analog.analysis.hb_harmonics.unwrap_or(10)),
+        );
+        finding.measured.insert(
+            "drive_sources".to_string(),
+            json!(analog.analysis.hb_drive_sources),
+        );
+        finding.limit.insert(
+            "required_evidence".to_string(),
+            json!("xyce_hb_spectrum_csv"),
+        );
+        findings.push(finding);
+        return;
+    }
+
+    for run_plan in run_plans {
+        if should_cancel() {
+            push_canceled_finding(findings, scenario);
+            return;
+        }
+        on_progress(
+            "Running analog harmonic-balance input corner",
+            run_plan.progress_label(),
+        );
+        let parameter_overrides = run_plan.parameter_overrides_for_solver();
+        let run_result = run_xyce_harmonic_balance(
+            bound,
+            scenario,
+            backend,
+            &source_netlist,
+            XyceHarmonicBalanceRunOptions {
+                output,
+                run_subdir: run_plan.run_subdir.as_deref(),
+                parameter_overrides: &parameter_overrides,
+                model_section_overrides: &run_plan.model_section_overrides,
+                on_progress: &mut on_progress,
+                should_cancel: &should_cancel,
+            },
+        );
+        match run_result {
+            Ok(run) => {
+                for artifact in &run.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                push_artifact(artifacts, &run.hb_spectrum);
+            }
+            Err(error) => {
+                for artifact in &error.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                let mut finding = Finding::critical(
+                    SPICE_HARMONIC_BALANCE_ANALYSIS,
+                    &scenario.name,
+                    error.message,
+                );
+                finding
+                    .measured
+                    .insert("selected_backend".to_string(), json!(backend));
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!("xyce_hb_spectrum_csv"),
+                );
+                finding.suggested_fixes.push(
+                    "Inspect the generated Xyce harmonic-balance wrapper deck and solver log artifacts."
+                        .to_string(),
+                );
+                findings.push(finding);
+            }
+        }
+    }
 }
 
 fn validate_output_expression(
