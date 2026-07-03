@@ -79,6 +79,10 @@ The verifier checks:
 - package name/version in the lock
 - non-empty artifact rows with id, path, SHA-256, and artifact format
 - each package artifact hash relative to the lock file directory
+- `model_conformance_report` artifacts against
+  `schemas/model_conformance_report.schema.json`
+- conformance report package identity, target artifact id, runtime artifact
+  SHA-256, overall pass result, and per-check pass results
 - optional registry entry existence
 - registry package identity against the lock package identity
 - registry lock path and lock SHA-256 against the supplied lock file
@@ -86,6 +90,8 @@ The verifier checks:
 The package lock shape is defined by `schemas/model_package_lock.schema.json`.
 The package registry shape is defined by
 `schemas/model_package_registry.schema.json`.
+The conformance report shape is defined by
+`schemas/model_conformance_report.schema.json`.
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a

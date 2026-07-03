@@ -754,6 +754,11 @@ The GUI should not become the solver.
   blocks on conflicting existing package fields, rewrites copied-project
   analog model/package paths to absolute paths for validation, and preserves
   stale-report proposal replay safeguards.
+- Added `schemas/model_conformance_report.schema.json` plus semantic
+  `verify-model-package` checks for `model_conformance_report` artifacts, so
+  reusable compact-model packages now prove pass/fail behavioral qualification
+  against a named runtime artifact SHA-256 instead of only pinning opaque
+  conformance files by hash.
 
 ## Risks
 

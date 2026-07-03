@@ -56,6 +56,22 @@ fn assert_model_package_registry_schema_valid(registry: &Value) {
     );
 }
 
+fn assert_model_conformance_report_schema_valid(report: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/model_conformance_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(report)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "model conformance report schema errors: {errors:#?}"
+    );
+}
+
 fn write_package_files(dir: &std::path::Path) -> (String, String) {
     let artifact = b"stable compact model artifact\n";
     let artifact_sha = sha256_hex(artifact);
@@ -192,11 +208,36 @@ fn export_model_package_supports_multiple_artifacts() {
     let source = b"`include \"disciplines.vams\"\nmodule tiny(p,n); inout p,n; endmodule\n";
     let osdi = b"compiled ngspice osdi fixture\n";
     let xyce_plugin = b"compiled xyce plugin fixture\n";
-    let conformance = b"{\"result\":\"pass\",\"solver\":\"fixture\"}\n";
+    let osdi_sha = sha256_hex(osdi);
+    let conformance = format!(
+        r#"{{
+  "schema_version": "circuitci.model_conformance_report.v1",
+  "package": {{
+    "name": "org.circuitci.test.multi_artifact_model",
+    "version": "2.0.0"
+  }},
+  "artifact_id": "tiny_osdi",
+  "runtime_artifact_sha256": "{osdi_sha}",
+  "result": "pass",
+  "checks": [
+    {{
+      "name": "dc_operating_point_smoke",
+      "analysis": "op",
+      "solver": "fixture",
+      "result": "pass"
+    }}
+  ]
+}}
+"#
+    );
     fs::write(dir.path().join("tiny.va"), source).unwrap();
     fs::write(dir.path().join("tiny.osdi"), osdi).unwrap();
     fs::write(dir.path().join("tiny_xyce_plugin.so"), xyce_plugin).unwrap();
-    fs::write(dir.path().join("tiny_conformance.json"), conformance).unwrap();
+    fs::write(
+        dir.path().join("tiny_conformance.json"),
+        conformance.as_bytes(),
+    )
+    .unwrap();
     let lock = dir.path().join("multi_artifact_model.lock.json");
     let registry = dir.path().join("multi_artifact_registry.json");
 
@@ -249,9 +290,15 @@ fn export_model_package_supports_multiple_artifacts() {
     assert_eq!(artifacts[0]["sha256"], sha256_hex(source));
     assert_eq!(artifacts[1]["id"], "tiny_osdi");
     assert_eq!(artifacts[1]["compiler"], "openvaf");
+    assert_eq!(artifacts[1]["sha256"], osdi_sha);
     assert_eq!(artifacts[2]["id"], "tiny_xyce_plugin");
     assert_eq!(artifacts[2]["compiler"], "xyce_adms");
     assert_eq!(artifacts[3]["id"], "tiny_conformance");
+    let conformance_value: Value = serde_json::from_str(
+        &fs::read_to_string(dir.path().join("tiny_conformance.json")).unwrap(),
+    )
+    .unwrap();
+    assert_model_conformance_report_schema_valid(&conformance_value);
     let registry_value: Value =
         serde_json::from_str(&fs::read_to_string(&registry).unwrap()).unwrap();
     assert_eq!(registry_value["packages"][0]["artifact_id"], "tiny_osdi");
@@ -274,6 +321,91 @@ fn export_model_package_supports_multiple_artifacts() {
     let report: Value = serde_json::from_str(&fs::read_to_string(report_path).unwrap()).unwrap();
     assert_eq!(report["result"], "pass");
     assert_eq!(report["artifacts"].as_array().unwrap().len(), 4);
+    assert_model_package_report_schema_valid(&report);
+}
+
+#[test]
+fn verify_model_package_fails_for_failed_conformance_report() {
+    let dir = tempfile::tempdir().unwrap();
+    let artifact = b"qualified model runtime\n";
+    let artifact_sha = sha256_hex(artifact);
+    fs::write(dir.path().join("runtime.osdi"), artifact).unwrap();
+    let conformance = format!(
+        r#"{{
+  "schema_version": "circuitci.model_conformance_report.v1",
+  "package": {{
+    "name": "org.circuitci.test.failed_conformance",
+    "version": "1.0.0"
+  }},
+  "artifact_id": "runtime_osdi",
+  "runtime_artifact_sha256": "{artifact_sha}",
+  "result": "fail",
+  "checks": [
+    {{
+      "name": "gain_limit",
+      "analysis": "ac",
+      "solver": "fixture",
+      "result": "fail",
+      "measured": {{ "gain_db": 20.0 }},
+      "limits": {{ "gain_db_min": 40.0 }}
+    }}
+  ]
+}}
+"#
+    );
+    fs::write(dir.path().join("conformance.json"), conformance.as_bytes()).unwrap();
+    let conformance_sha = sha256_hex(conformance.as_bytes());
+    fs::write(
+        dir.path().join("package.lock.json"),
+        format!(
+            r#"{{
+  "schema_version": "circuitci.model_package_lock.v1",
+  "package": {{
+    "name": "org.circuitci.test.failed_conformance",
+    "version": "1.0.0"
+  }},
+  "artifacts": [
+    {{
+      "id": "runtime_osdi",
+      "path": "runtime.osdi",
+      "sha256": "{artifact_sha}",
+      "artifact_format": "osdi_shared_object",
+      "compiler": "openvaf"
+    }},
+    {{
+      "id": "failed_conformance",
+      "path": "conformance.json",
+      "sha256": "{conformance_sha}",
+      "artifact_format": "model_conformance_report"
+    }}
+  ]
+}}
+"#
+        ),
+    )
+    .unwrap();
+    let report_path = dir.path().join("verification.json");
+
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package",
+            dir.path().join("package.lock.json").to_str().unwrap(),
+            "--output",
+            report_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!result.status.success());
+    let report: Value = serde_json::from_str(&fs::read_to_string(report_path).unwrap()).unwrap();
+    assert_eq!(report["result"], "fail");
+    assert!(
+        report["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|finding| finding["id"] == "MODEL_PACKAGE_CONFORMANCE_FAILED")
+    );
     assert_model_package_report_schema_valid(&report);
 }
 

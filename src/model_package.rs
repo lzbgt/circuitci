@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 pub const MODEL_PACKAGE_VERIFICATION_SCHEMA: &str = "circuitci.model_package_verification.v1";
 pub const MODEL_PACKAGE_LOCK_SCHEMA: &str = "circuitci.model_package_lock.v1";
 pub const MODEL_PACKAGE_REGISTRY_SCHEMA: &str = "circuitci.model_package_registry.v1";
+pub const MODEL_CONFORMANCE_REPORT_SCHEMA: &str = "circuitci.model_conformance_report.v1";
 
 #[derive(Debug, Clone)]
 pub struct ModelPackageVerifyOptions {
@@ -183,7 +184,13 @@ pub fn verify_model_package(
     let artifacts = lock_value
         .as_ref()
         .map(|value| {
-            verify_lock_artifacts(value, &options.lock, package_name.as_deref(), &mut findings)
+            verify_lock_artifacts(
+                value,
+                &options.lock,
+                package_name.as_deref(),
+                package_version.as_deref(),
+                &mut findings,
+            )
         })
         .unwrap_or_default();
     let registry = verify_registry(
@@ -607,6 +614,7 @@ fn verify_lock_artifacts(
     lock: &Value,
     lock_path: &Path,
     package: Option<&str>,
+    package_version: Option<&str>,
     findings: &mut Vec<ModelPackageFinding>,
 ) -> Vec<VerifiedModelArtifact> {
     let Some(artifacts) = lock
@@ -636,10 +644,12 @@ fn verify_lock_artifacts(
             None,
         ));
     }
-    artifacts
+    let verified = artifacts
         .iter()
         .map(|artifact| verify_artifact(artifact, lock_path, package, findings))
-        .collect()
+        .collect::<Vec<_>>();
+    verify_conformance_reports(lock, lock_path, package, package_version, findings);
+    verified
 }
 
 fn verify_artifact(
@@ -728,6 +738,246 @@ fn verify_artifact(
         sha256_actual: actual_sha,
         status: status.to_string(),
     }
+}
+
+fn verify_conformance_reports(
+    lock: &Value,
+    lock_path: &Path,
+    package: Option<&str>,
+    package_version: Option<&str>,
+    findings: &mut Vec<ModelPackageFinding>,
+) {
+    let Some(artifacts) = lock
+        .get("artifacts")
+        .or_else(|| lock.get("model_artifacts"))
+        .and_then(Value::as_array)
+    else {
+        return;
+    };
+    for artifact in artifacts {
+        if string_field(artifact, &["artifact_format"]).as_deref()
+            != Some("model_conformance_report")
+        {
+            continue;
+        }
+        let id = string_field(artifact, &["id"])
+            .or_else(|| string_field(artifact, &["name"]))
+            .unwrap_or_else(|| "<missing>".to_string());
+        let Some(path) = string_field(artifact, &["path"]) else {
+            continue;
+        };
+        let report_path = lock_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(&path);
+        let Ok(text) = std::fs::read_to_string(&report_path) else {
+            continue;
+        };
+        let Some(report) = parse_model_package_document(
+            &text,
+            findings,
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_INVALID",
+        ) else {
+            continue;
+        };
+        validate_conformance_report(
+            &report,
+            artifacts,
+            &id,
+            &report_path,
+            package,
+            package_version,
+            findings,
+        );
+    }
+}
+
+fn validate_conformance_report(
+    report: &Value,
+    artifacts: &[Value],
+    report_id: &str,
+    report_path: &Path,
+    package: Option<&str>,
+    package_version: Option<&str>,
+    findings: &mut Vec<ModelPackageFinding>,
+) {
+    compare_conformance_field(
+        "schema_version",
+        Some(MODEL_CONFORMANCE_REPORT_SCHEMA),
+        string_field(report, &["schema_version"]).as_deref(),
+        report_id,
+        report_path,
+        package,
+        findings,
+    );
+    compare_conformance_field(
+        "package.name",
+        package,
+        string_field(report, &["package", "name"]).as_deref(),
+        report_id,
+        report_path,
+        package,
+        findings,
+    );
+    compare_conformance_field(
+        "package.version",
+        package_version,
+        string_field(report, &["package", "version"]).as_deref(),
+        report_id,
+        report_path,
+        package,
+        findings,
+    );
+    let target_artifact_id = string_field(report, &["artifact_id"]);
+    let target_artifact = target_artifact_id.as_deref().and_then(|target| {
+        artifacts
+            .iter()
+            .find(|artifact| artifact_id(artifact) == Some(target))
+    });
+    match (target_artifact_id.as_deref(), target_artifact) {
+        (Some(_), Some(target)) => {
+            if string_field(target, &["artifact_format"]).as_deref()
+                == Some("model_conformance_report")
+            {
+                findings.push(finding(
+                    "MODEL_PACKAGE_CONFORMANCE_REPORT_MISMATCH",
+                    "Model conformance report must target a runtime/source artifact, not another conformance report.",
+                    package,
+                    Some(report_id),
+                    Some(report_path),
+                    None,
+                    None,
+                ));
+            }
+            let expected_sha = string_field(target, &["sha256"]);
+            compare_conformance_field(
+                "runtime_artifact_sha256",
+                expected_sha.as_deref(),
+                string_field(report, &["runtime_artifact_sha256"]).as_deref(),
+                report_id,
+                report_path,
+                package,
+                findings,
+            );
+        }
+        (Some(target), None) => findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_MISMATCH",
+            "Model conformance report artifact_id does not match any package artifact.",
+            package,
+            Some(report_id),
+            Some(report_path),
+            Some(target),
+            None,
+        )),
+        (None, _) => findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_INVALID",
+            "Model conformance report must declare artifact_id.",
+            package,
+            Some(report_id),
+            Some(report_path),
+            None,
+            None,
+        )),
+    }
+    if string_field(report, &["result"]).as_deref() != Some("pass") {
+        findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_FAILED",
+            "Model conformance report result is not pass.",
+            package,
+            Some(report_id),
+            Some(report_path),
+            Some("pass"),
+            string_field(report, &["result"]).as_deref(),
+        ));
+    }
+    let Some(checks) = report.get("checks").and_then(Value::as_array) else {
+        findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_INVALID",
+            "Model conformance report must contain a non-empty checks array.",
+            package,
+            Some(report_id),
+            Some(report_path),
+            None,
+            None,
+        ));
+        return;
+    };
+    if checks.is_empty() {
+        findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_INVALID",
+            "Model conformance report checks array must not be empty.",
+            package,
+            Some(report_id),
+            Some(report_path),
+            None,
+            None,
+        ));
+    }
+    for check in checks {
+        let check_name = string_field(check, &["name"]).unwrap_or_else(|| "<missing>".to_string());
+        if check_name == "<missing>" || string_field(check, &["analysis"]).is_none() {
+            findings.push(finding(
+                "MODEL_PACKAGE_CONFORMANCE_REPORT_INVALID",
+                "Every model conformance check must declare name and analysis.",
+                package,
+                Some(report_id),
+                Some(report_path),
+                None,
+                None,
+            ));
+        }
+        if string_field(check, &["result"]).as_deref() != Some("pass") {
+            findings.push(finding(
+                "MODEL_PACKAGE_CONFORMANCE_FAILED",
+                &format!("Model conformance check {check_name} is not pass."),
+                package,
+                Some(report_id),
+                Some(report_path),
+                Some("pass"),
+                string_field(check, &["result"]).as_deref(),
+            ));
+        }
+    }
+}
+
+fn compare_conformance_field(
+    field: &str,
+    expected: Option<&str>,
+    actual: Option<&str>,
+    report_id: &str,
+    report_path: &Path,
+    package: Option<&str>,
+    findings: &mut Vec<ModelPackageFinding>,
+) {
+    match (expected, actual) {
+        (Some(expected), Some(actual)) if expected == actual => {}
+        (Some(expected), Some(actual)) => findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_MISMATCH",
+            &format!("Model conformance report {field} does not match package lock."),
+            package,
+            Some(report_id),
+            Some(report_path),
+            Some(expected),
+            Some(actual),
+        )),
+        (Some(expected), None) => findings.push(finding(
+            "MODEL_PACKAGE_CONFORMANCE_REPORT_INVALID",
+            &format!("Model conformance report must declare {field}."),
+            package,
+            Some(report_id),
+            Some(report_path),
+            Some(expected),
+            None,
+        )),
+        (None, Some(_)) | (None, None) => {}
+    }
+}
+
+fn artifact_id(artifact: &Value) -> Option<&str> {
+    artifact
+        .get("id")
+        .or_else(|| artifact.get("name"))
+        .and_then(Value::as_str)
 }
 
 fn verify_registry(
