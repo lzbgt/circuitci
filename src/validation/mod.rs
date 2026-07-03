@@ -6,6 +6,7 @@ mod analog_dc_runner;
 mod analog_dc_spice;
 mod analog_dc_sweep_runner;
 mod analog_dc_sweep_spice;
+mod analog_dc_sweep_xyce_runner;
 mod analog_fourier_runner;
 mod analog_fourier_spice;
 mod analog_measure_runner;

@@ -542,9 +542,14 @@ The GUI should not become the solver.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and
-  `dc_sweep_assertions[]` for min/max/mean/sample scalar specs. Xyce and
-  embedded ngspice remain fail-closed with planning evidence until equivalent
-  output normalization is implemented.
+  `dc_sweep_assertions[]` for min/max/mean/sample scalar specs. Explicit Xyce
+  now emits the same normalized `dc_sweep`/manifest contract. Opt-in
+  real-solver conformance is available through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_dc_sweep_cli` and
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli`; each path
+  skips unless the requested solver is on `PATH`. Embedded ngspice remains
+  fail-closed with planning evidence until equivalent output normalization is
+  implemented.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

@@ -1,9 +1,15 @@
 mod common;
 
-use common::{assert_report_schema_valid, assert_yaml_file_valid};
+use common::{assert_report_schema_valid, assert_yaml_file_valid, binary_available};
 use serde_json::Value;
 use std::fs;
 use std::process::Command;
+
+#[cfg(unix)]
+const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
+
+#[cfg(unix)]
+const REAL_XYCE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE";
 
 #[cfg(unix)]
 fn fake_executable_with_body(dir: &std::path::Path, name: &str, body: &str) {
@@ -106,6 +112,34 @@ fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
 }
 
 #[cfg(unix)]
+fn real_ngspice_conformance_enabled() -> bool {
+    if std::env::var(REAL_NGSPICE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real-ngspice DC sweep conformance; set {REAL_NGSPICE_CONFORMANCE_ENV}=1"
+        );
+        return false;
+    }
+    if !binary_available("ngspice") {
+        eprintln!("skipping real-ngspice DC sweep conformance; ngspice is not on PATH");
+        return false;
+    }
+    true
+}
+
+#[cfg(unix)]
+fn real_xyce_conformance_enabled() -> bool {
+    if std::env::var(REAL_XYCE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!("skipping real-Xyce DC sweep conformance; set {REAL_XYCE_CONFORMANCE_ENV}=1");
+        return false;
+    }
+    if !binary_available("Xyce") && !binary_available("xyce") {
+        eprintln!("skipping real-Xyce DC sweep conformance; Xyce/xyce is not on PATH");
+        return false;
+    }
+    true
+}
+
+#[cfg(unix)]
 #[test]
 fn dc_sweep_backend_normalizes_curve_and_manifest() {
     let fake_path = tempfile::tempdir().unwrap();
@@ -151,6 +185,117 @@ fn dc_sweep_backend_normalizes_curve_and_manifest() {
     .unwrap();
     assert_eq!(manifest["analysis"]["kind"], "dc_sweep");
     assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "dc_sweep");
+}
+
+#[cfg(unix)]
+#[test]
+fn xyce_dc_sweep_backend_normalizes_curve_and_manifest() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\n/bin/cat > dc_sweep_raw.csv <<'EOF'\nIndex,out\n0.0,0.0\n0.5,0.25\n1.0,0.5\nEOF\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_dc_sweep_project(project_dir.path(), "xyce", 0.7);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_report_schema_valid(&report);
+    assert!(report["failures"].as_array().unwrap().is_empty());
+    assert!(artifact_path(&report, "circuitci_xyce_dc_sweep.cir").ends_with(".cir"));
+    let sweep = fs::read_to_string(artifact_path(&report, "dc_sweep.csv")).unwrap();
+    assert!(sweep.contains("V1,1.000000000000e0,out_voltage,5.000000000000e-1"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["analysis"]["kind"], "dc_sweep");
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_dc_sweep_raw");
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "dc_sweep");
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_dc_sweep_conformance_when_enabled() {
+    if !real_ngspice_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_dc_sweep_project(project_dir.path(), "ngspice", 0.7);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_report_schema_valid(&report);
+    assert!(report["failures"].as_array().unwrap().is_empty());
+    let sweep = fs::read_to_string(artifact_path(&report, "dc_sweep.csv")).unwrap();
+    assert!(sweep.contains("sweep_source,sweep_value,probe,value"));
+    assert!(sweep.lines().skip(1).count() >= 3);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_xyce_dc_sweep_conformance_when_enabled() {
+    if !real_xyce_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_dc_sweep_project(project_dir.path(), "xyce", 0.7);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_report_schema_valid(&report);
+    assert!(report["failures"].as_array().unwrap().is_empty());
+    let sweep = fs::read_to_string(artifact_path(&report, "dc_sweep.csv")).unwrap();
+    assert!(sweep.contains("sweep_source,sweep_value,probe,value"));
+    assert!(sweep.lines().skip(1).count() >= 3);
 }
 
 #[cfg(unix)]

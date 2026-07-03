@@ -12,6 +12,7 @@ use super::SPICE_DC_SWEEP_ANALYSIS;
 use super::analog_assertions::{AnalogAssertionMeasurement, validate_probe_contract};
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_dc_sweep_runner::{NgspiceDcSweepRunOptions, run_ngspice_dc_sweep};
+use super::analog_dc_sweep_xyce_runner::{XyceDcSweepRunOptions, run_xyce_dc_sweep};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
     external_backend_unavailable, select_backend_for_feature,
@@ -301,13 +302,13 @@ pub(super) fn validate_spice_dc_sweep_with_progress<F, C>(
         findings.push(finding);
         return;
     };
-    if backend != "ngspice" {
+    if !matches!(backend, "ngspice" | "Xyce" | "xyce") {
         findings.push(unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
                 check_id: SPICE_DC_SWEEP_ANALYSIS,
                 selected_backend: backend,
-                implemented_backend: "ngspice",
+                implemented_backend: "ngspice_or_xyce",
                 analysis_kind: "dc_sweep",
                 required_normalized_outputs: &["dc_sweep"],
             },
@@ -326,20 +327,37 @@ pub(super) fn validate_spice_dc_sweep_with_progress<F, C>(
             run_plan.progress_label(),
         );
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        let run_result = run_ngspice_dc_sweep(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceDcSweepRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        );
+        let run_result = if matches!(backend, "Xyce" | "xyce") {
+            run_xyce_dc_sweep(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceDcSweepRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_ngspice_dc_sweep(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceDcSweepRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
         match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
@@ -371,13 +389,21 @@ pub(super) fn validate_spice_dc_sweep_with_progress<F, C>(
                     .insert("selected_backend".to_string(), json!(backend));
                 finding.limit.insert(
                     "required_evidence".to_string(),
-                    json!("ngspice_dc_sweep_csv"),
+                    json!(if matches!(backend, "Xyce" | "xyce") {
+                        "xyce_dc_sweep_csv"
+                    } else {
+                        "ngspice_dc_sweep_csv"
+                    }),
                 );
                 tag_corner_finding(&mut finding, &run_plan);
-                finding.suggested_fixes.push(
-                    "Inspect the generated ngspice DC sweep wrapper deck and solver log artifacts."
-                        .to_string(),
-                );
+                let solver_name = if matches!(backend, "Xyce" | "xyce") {
+                    "Xyce"
+                } else {
+                    "ngspice"
+                };
+                finding.suggested_fixes.push(format!(
+                    "Inspect the generated {solver_name} DC sweep wrapper deck and solver log artifacts."
+                ));
                 findings.push(finding);
             }
         }

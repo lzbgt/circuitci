@@ -154,11 +154,13 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    of inferring run state from backend-specific filenames alone.
    Opt-in real-Xyce conformance coverage is available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
-   transient/AC/DC/noise and
+   transient/AC/DC/noise,
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli` for DC
+   sweep,
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sparameter_cli` for
-   S-parameter, plus
+   S-parameter, and
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli` for
-   structured measure templates; these tests are skipped by default unless the
+   structured measure templates. These tests are skipped by default unless the
    variable is set and `Xyce` or `xyce` is on `PATH`.
 10. For generated Board IR decks, append datasheet operating-limit probes for
    MOSFET, BJT, and diode voltage/current/power ratings. Exceeding a rating
@@ -225,9 +227,11 @@ For a scenario with check `SPICE_DC_SWEEP_ANALYSIS`:
 2. Require `analysis.type: dc_sweep`, a finite source sweep range, at least one
    probe, and a generated-board source component when the deck is generated
    from Board IR.
-3. Select external `ngspice`; Xyce and embedded ngspice fail closed with
-   planning evidence until equivalent output normalization is implemented.
-4. Run ngspice `.dc`, export raw sweep probe data, and normalize it to
+3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
+   fails closed with planning evidence until equivalent output normalization
+   is implemented. `backend: auto` remains conservative and selects ngspice
+   for this path.
+4. Run `.dc`/`.DC`, export raw sweep probe data, and normalize it to
    `dc_sweep.csv` rows with `sweep_source`, `sweep_value`, `probe`, and
    `value`.
 5. Optional `dc_sweep_assertions[]` evaluate `min`, `max`, `mean`, or `sample`

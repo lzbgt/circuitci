@@ -113,11 +113,15 @@ Current analog support:
   DC transfer curves. The Board IR/schema can declare `analysis.type:
   dc_sweep`, a swept independent source, start/stop/step values, probes, and
   optional `dc_sweep_assertions[]` over `min`, `max`, `mean`, or a sampled
-  sweep point. External `ngspice` runs `.dc`, writes `dc_sweep_raw.csv`,
-  normalizes rows into `dc_sweep.csv`, and records the run in
-  `solver_manifest.json`. Xyce and embedded ngspice remain fail-closed with
+  sweep point. External `ngspice` and explicit `backend: xyce` run `.dc`/`.DC`,
+  write `dc_sweep_raw.csv`, normalize rows into `dc_sweep.csv`, and record the
+  run in `solver_manifest.json`. Embedded ngspice remains fail-closed with
   planning evidence for this path. DC sweep assertions feed the shared
-  worst-corner and Monte Carlo yield summary machinery.
+  worst-corner and Monte Carlo yield summary machinery. Opt-in real-solver
+  conformance is available through `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test
+  --test analog_dc_sweep_cli` and `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
+  analog_dc_sweep_cli`; each path skips unless the requested solver is on
+  `PATH`.
 - `analog_noise` scenarios with `SPICE_NOISE_ANALYSIS` for external-ngspice
   and explicit-Xyce small-signal noise observations. Noise runs write
   normalized `noise_spectrum.csv` artifacts with frequency, output noise
@@ -220,15 +224,18 @@ Current analog support:
   overrides, raw outputs, and normalized outputs so future Xyce/RF adapters can
   target the same provenance contract.
 - Explicit `backend: xyce` is detected when `Xyce` or `xyce` is on `PATH`.
-  Transient, AC, DC, and noise Xyce runs can export CSV-like solver data,
-  normalize it into the `transient_waveform`, `ac_bode`, `operating_point`,
-  `noise_spectrum`, and `noise_total` contracts, and write solver manifests.
+  Transient, AC, DC, DC sweep, and noise Xyce runs can export CSV-like solver
+  data, normalize it into the `transient_waveform`, `ac_bode`,
+  `operating_point`, `dc_sweep`, `noise_spectrum`, and `noise_total`
+  contracts, and write solver manifests.
   `backend: auto` keeps Xyce explicit-only until real-Xyce conformance coverage
   is enabled. The opt-in real-solver conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
-  transient/AC/DC/noise and
+  transient/AC/DC/noise,
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli` for DC
+  sweep,
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sparameter_cli` for
-  S-parameter, plus
+  S-parameter, and
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli` for
   structured measure templates. They skip unless `Xyce` or `xyce` is on `PATH`.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
