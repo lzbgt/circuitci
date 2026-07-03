@@ -1439,6 +1439,12 @@ identity, an overall `pass` result, and passing check rows. Each projected
 conformance check records the report artifact id/path, target artifact id and
 SHA-256, check name, analysis, optional solver, result, and referenced check
 artifacts.
+Portable compact-model package bundles use
+`schemas/model_package_bundle_manifest.schema.json`, written by
+`circuitci export-model-package-bundle`. The manifest records the bundled lock
+and optional registry hashes, verification report paths, copied package
+artifacts, and projected conformance checks so a directory-level package can be
+reviewed before any scenario imports it.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

@@ -9,6 +9,7 @@ pub const MODEL_PACKAGE_VERIFICATION_SCHEMA: &str = "circuitci.model_package_ver
 pub const MODEL_PACKAGE_LOCK_SCHEMA: &str = "circuitci.model_package_lock.v1";
 pub const MODEL_PACKAGE_REGISTRY_SCHEMA: &str = "circuitci.model_package_registry.v1";
 pub const MODEL_CONFORMANCE_REPORT_SCHEMA: &str = "circuitci.model_conformance_report.v1";
+pub const MODEL_PACKAGE_BUNDLE_SCHEMA: &str = "circuitci.model_package_bundle.v1";
 
 #[derive(Debug, Clone)]
 pub struct ModelPackageVerifyOptions {
@@ -33,6 +34,14 @@ pub struct ModelPackageExportOptions {
 pub struct ModelPackageRegistryMergeOptions {
     pub base: Option<PathBuf>,
     pub inputs: Vec<PathBuf>,
+    pub output: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelPackageBundleExportOptions {
+    pub lock: PathBuf,
+    pub registry: Option<PathBuf>,
+    pub registry_entry: Option<String>,
     pub output: PathBuf,
 }
 
@@ -98,6 +107,20 @@ pub struct ModelConformanceReportExportSummary {
     pub package_version: String,
     pub artifact_id: String,
     pub runtime_artifact_sha256: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageBundleExportSummary {
+    pub output: String,
+    pub manifest_path: String,
+    pub manifest_sha256: String,
+    pub lock_path: String,
+    pub lock_sha256: String,
+    pub registry_path: Option<String>,
+    pub registry_sha256: Option<String>,
+    pub verification_report: String,
+    pub artifact_count: usize,
+    pub conformance_check_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -482,6 +505,169 @@ pub fn merge_model_package_registries(
     })
 }
 
+pub fn export_model_package_bundle(
+    options: &ModelPackageBundleExportOptions,
+) -> Result<ModelPackageBundleExportSummary> {
+    validate_bundle_export_options(options)?;
+    let source_report = verify_model_package(&ModelPackageVerifyOptions {
+        lock: options.lock.clone(),
+        registry: options.registry.clone(),
+        registry_entry: options.registry_entry.clone(),
+        output: options
+            .output
+            .join("source_model_package_verification.json"),
+    })?;
+    if source_report.result != "pass" {
+        anyhow::bail!(
+            "Source model package verification failed for {}; export a bundle only from a passing package.",
+            options.lock.display()
+        );
+    }
+    let lock_text = std::fs::read_to_string(&options.lock).with_context(|| {
+        format!(
+            "Unable to read model package lock {}",
+            options.lock.display()
+        )
+    })?;
+    let mut parse_findings = Vec::new();
+    let mut lock = parse_model_package_document(
+        &lock_text,
+        &mut parse_findings,
+        "MODEL_PACKAGE_LOCK_INVALID",
+    )
+    .with_context(|| {
+        format!(
+            "Model package lock {} is not valid JSON or YAML.",
+            options.lock.display()
+        )
+    })?;
+    let package_name = string_field(&lock, &["package", "name"])
+        .or_else(|| string_field(&lock, &["package_name"]))
+        .or_else(|| string_field(&lock, &["name"]))
+        .context("Model package lock must declare package.name.")?;
+    let package_version = string_field(&lock, &["package", "version"])
+        .or_else(|| string_field(&lock, &["package_version"]))
+        .or_else(|| string_field(&lock, &["version"]))
+        .context("Model package lock must declare package.version.")?;
+    std::fs::create_dir_all(options.output.join("artifacts")).with_context(|| {
+        format!(
+            "Failed to create model package bundle directory {}",
+            options.output.display()
+        )
+    })?;
+    let source_parent = options.lock.parent().unwrap_or_else(|| Path::new("."));
+    let mut copied_artifacts = Vec::new();
+    let mut used_paths = BTreeSet::new();
+    let artifacts = lock_artifacts_mut(&mut lock)?;
+    for artifact in artifacts {
+        let id = required_value_string(artifact, &["id"], "model package artifact id")?;
+        let source_relative =
+            required_value_string(artifact, &["path"], "model package artifact path")?;
+        let source_path = source_parent.join(&source_relative);
+        let file_name = source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .with_context(|| {
+                format!("Model package artifact {source_relative} has no file name.")
+            })?;
+        let mut bundled_relative = format!(
+            "artifacts/{}__{}",
+            sanitize_bundle_name(&id),
+            sanitize_bundle_name(file_name)
+        );
+        let mut duplicate_index = 2usize;
+        while !used_paths.insert(bundled_relative.clone()) {
+            bundled_relative = format!(
+                "artifacts/{}__{}__{}",
+                sanitize_bundle_name(&id),
+                duplicate_index,
+                sanitize_bundle_name(file_name)
+            );
+            duplicate_index += 1;
+        }
+        let destination = options.output.join(&bundled_relative);
+        std::fs::copy(&source_path, &destination).with_context(|| {
+            format!(
+                "Failed to copy model package artifact {} to {}",
+                source_path.display(),
+                destination.display()
+            )
+        })?;
+        set_object_string(artifact, "path", &bundled_relative)?;
+        copied_artifacts.push(ModelPackageExportArtifactSummary {
+            id,
+            artifact_path: bundled_relative,
+            artifact_sha256: file_sha256_hex(&destination)?,
+            artifact_format: string_field(artifact, &["artifact_format"]).unwrap_or_default(),
+            compiler: string_field(artifact, &["compiler"]),
+        });
+    }
+    set_object_string(&mut lock, "schema_version", MODEL_PACKAGE_LOCK_SCHEMA)?;
+    let lock_path = options.output.join("package.lock.json");
+    write_json_value(&lock_path, &lock)?;
+    let lock_sha = file_sha256_hex(&lock_path)?;
+    let (registry_path, registry_sha, registry_entry_id) =
+        bundled_registry(options, &package_name, &package_version, &lock_sha)?;
+    let verification_path = options.output.join("model_package_verification.json");
+    let bundled_report = verify_model_package(&ModelPackageVerifyOptions {
+        lock: lock_path.clone(),
+        registry: registry_path.clone(),
+        registry_entry: registry_entry_id,
+        output: verification_path.clone(),
+    })?;
+    write_model_package_verification_report(&bundled_report, &verification_path)?;
+    let readme_path = options.output.join("README.md");
+    std::fs::write(
+        &readme_path,
+        model_package_bundle_readme(
+            &package_name,
+            &package_version,
+            &copied_artifacts,
+            &bundled_report,
+        ),
+    )
+    .with_context(|| {
+        format!(
+            "Failed to write model package bundle README {}",
+            readme_path.display()
+        )
+    })?;
+    let manifest_path = options.output.join("model_package_bundle_manifest.json");
+    let manifest = serde_json::json!({
+        "schema_version": MODEL_PACKAGE_BUNDLE_SCHEMA,
+        "package": {
+            "name": package_name,
+            "version": package_version,
+        },
+        "lock_path": "package.lock.json",
+        "lock_sha256": lock_sha,
+        "registry_path": registry_path
+            .as_ref()
+            .and_then(|path| path.file_name())
+            .and_then(|name| name.to_str())
+            .map(ToOwned::to_owned),
+        "registry_sha256": registry_sha,
+        "verification_report": "model_package_verification.json",
+        "verification_markdown": "model_package_verification.md",
+        "readme": "README.md",
+        "artifacts": copied_artifacts.clone(),
+        "conformance_checks": bundled_report.conformance_checks.clone(),
+    });
+    write_json_value(&manifest_path, &manifest)?;
+    Ok(ModelPackageBundleExportSummary {
+        output: options.output.to_string_lossy().to_string(),
+        manifest_path: manifest_path.to_string_lossy().to_string(),
+        manifest_sha256: file_sha256_hex(&manifest_path)?,
+        lock_path: lock_path.to_string_lossy().to_string(),
+        lock_sha256: lock_sha,
+        registry_path: registry_path.map(|path| path.to_string_lossy().to_string()),
+        registry_sha256: registry_sha,
+        verification_report: verification_path.to_string_lossy().to_string(),
+        artifact_count: copied_artifacts.len(),
+        conformance_check_count: bundled_report.conformance_checks.len(),
+    })
+}
+
 pub fn export_model_conformance_report(
     options: &ModelConformanceReportExportOptions,
 ) -> Result<ModelConformanceReportExportSummary> {
@@ -616,6 +802,174 @@ fn validate_registry_merge_options(options: &ModelPackageRegistryMergeOptions) -
         }
     }
     Ok(())
+}
+
+fn validate_bundle_export_options(options: &ModelPackageBundleExportOptions) -> Result<()> {
+    if !options.lock.is_file() {
+        anyhow::bail!("Model package lock {} is missing.", options.lock.display());
+    }
+    if options.registry.is_some() && options.registry_entry.is_none() {
+        anyhow::bail!("--registry-entry is required when --registry is supplied.");
+    }
+    if let Some(registry) = &options.registry
+        && !registry.is_file()
+    {
+        anyhow::bail!("Model package registry {} is missing.", registry.display());
+    }
+    Ok(())
+}
+
+fn lock_artifacts_mut(lock: &mut Value) -> Result<&mut Vec<Value>> {
+    if lock.get("artifacts").is_some() {
+        lock.get_mut("artifacts")
+            .and_then(Value::as_array_mut)
+            .context("Model package lock artifacts must be an array.")
+    } else {
+        lock.get_mut("model_artifacts")
+            .and_then(Value::as_array_mut)
+            .context("Model package lock must contain an artifacts array.")
+    }
+}
+
+fn required_value_string(value: &Value, path: &[&str], description: &str) -> Result<String> {
+    string_field(value, path).with_context(|| format!("Missing {description}."))
+}
+
+fn set_object_string(value: &mut Value, key: &str, text: &str) -> Result<()> {
+    let object = value
+        .as_object_mut()
+        .with_context(|| format!("Expected JSON object while setting {key}."))?;
+    object.insert(key.to_string(), Value::String(text.to_string()));
+    Ok(())
+}
+
+fn write_json_value(path: &Path, value: &Value) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+    }
+    let mut text = serde_json::to_string_pretty(value)?;
+    text.push('\n');
+    std::fs::write(path, text).with_context(|| format!("Failed to write {}", path.display()))?;
+    Ok(())
+}
+
+fn bundled_registry(
+    options: &ModelPackageBundleExportOptions,
+    package_name: &str,
+    package_version: &str,
+    lock_sha: &str,
+) -> Result<(Option<PathBuf>, Option<String>, Option<String>)> {
+    let Some(registry_path) = &options.registry else {
+        return Ok((None, None, None));
+    };
+    let entry_id = options
+        .registry_entry
+        .as_deref()
+        .context("--registry-entry is required when --registry is supplied.")?;
+    let text = std::fs::read_to_string(registry_path).with_context(|| {
+        format!(
+            "Unable to read model package registry {}",
+            registry_path.display()
+        )
+    })?;
+    let mut findings = Vec::new();
+    let registry =
+        parse_model_package_document(&text, &mut findings, "MODEL_PACKAGE_REGISTRY_INVALID")
+            .with_context(|| {
+                format!(
+                    "Model package registry {} is not valid JSON or YAML.",
+                    registry_path.display()
+                )
+            })?;
+    let entry = model_package_registry_entry(&registry, entry_id)
+        .with_context(|| format!("Model package registry does not contain entry {entry_id}."))?;
+    let artifact_id = string_field(entry, &["artifact_id"])
+        .or_else(|| string_field(entry, &["model_package_artifact_id"]))
+        .with_context(|| {
+            format!("Model package registry entry {entry_id} must declare artifact_id.")
+        })?;
+    let bundled_entry = ModelPackageRegistryEntry {
+        id: entry_id.to_string(),
+        package_name: package_name.to_string(),
+        package_version: package_version.to_string(),
+        artifact_id,
+        lock_path: "package.lock.json".to_string(),
+        lock_sha256: lock_sha.to_string(),
+    };
+    let output = options.output.join("compact_model_registry.json");
+    std::fs::write(
+        &output,
+        render_registry_entries_document([&bundled_entry].into_iter()).as_bytes(),
+    )
+    .with_context(|| {
+        format!(
+            "Failed to write bundled model package registry {}",
+            output.display()
+        )
+    })?;
+    Ok((
+        Some(output.clone()),
+        Some(file_sha256_hex(&output)?),
+        Some(entry_id.to_string()),
+    ))
+}
+
+fn sanitize_bundle_name(value: &str) -> String {
+    let mut sanitized = value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_') {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    if sanitized.is_empty() {
+        sanitized.push_str("artifact");
+    }
+    sanitized
+}
+
+fn model_package_bundle_readme(
+    package_name: &str,
+    package_version: &str,
+    artifacts: &[ModelPackageExportArtifactSummary],
+    report: &ModelPackageVerificationReport,
+) -> String {
+    let mut text = String::new();
+    text.push_str(&format!(
+        "# CircuitCI Model Package Bundle: {package_name} {package_version}\n\n"
+    ));
+    text.push_str("- `package.lock.json`: rewritten lock with bundled artifact paths\n");
+    text.push_str("- `model_package_verification.json`: machine-readable verification report\n");
+    text.push_str("- `model_package_verification.md`: human-readable verification summary\n");
+    text.push_str("- `model_package_bundle_manifest.json`: bundle manifest and hashes\n");
+    text.push_str("- `artifacts/`: source/runtime/conformance artifacts\n\n");
+    text.push_str("## Artifacts\n\n");
+    for artifact in artifacts {
+        text.push_str(&format!(
+            "- `{}` [{}] `{}` `{}`\n",
+            artifact.id, artifact.artifact_format, artifact.artifact_path, artifact.artifact_sha256
+        ));
+    }
+    text.push_str("\n## Conformance Checks\n\n");
+    if report.conformance_checks.is_empty() {
+        text.push_str("None.\n");
+    } else {
+        for check in &report.conformance_checks {
+            text.push_str(&format!(
+                "- `{}` `{}` via `{}`: `{}` target `{}`\n",
+                check.check_name.as_deref().unwrap_or(""),
+                check.analysis.as_deref().unwrap_or(""),
+                check.solver.as_deref().unwrap_or(""),
+                check.result.as_deref().unwrap_or(""),
+                check.target_artifact_id.as_deref().unwrap_or("")
+            ));
+        }
+    }
+    text
 }
 
 fn read_registry_entries_for_merge(

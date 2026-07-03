@@ -773,6 +773,13 @@ The GUI should not become the solver.
   retained package-verification artifacts into
   `model_package_conformance_checks[]`, and the GUI Simulation report panel
   displays those compact qualification rows.
+- Added `circuitci export-model-package-bundle` and
+  `schemas/model_package_bundle_manifest.schema.json` so a verified compact
+  model package can be shipped as one deterministic directory containing a
+  rewritten lock, optional registry, runtime/source/conformance artifacts,
+  package verification JSON/Markdown, README, and bundle manifest. The bundled
+  registry is immediately usable by `verify-model-package` and scenario
+  package imports.
 
 ## Risks
 

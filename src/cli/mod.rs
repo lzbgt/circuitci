@@ -93,6 +93,15 @@ enum Command {
         #[arg(long, short = 'o')]
         output: PathBuf,
     },
+    ExportModelPackageBundle {
+        lock: PathBuf,
+        #[arg(long)]
+        registry: Option<PathBuf>,
+        #[arg(long = "registry-entry")]
+        registry_entry: Option<String>,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
     MergeModelPackageRegistry {
         #[arg(long)]
         base: Option<PathBuf>,
@@ -386,6 +395,12 @@ pub fn run() -> Result<()> {
             solver,
             output,
         ),
+        Some(Command::ExportModelPackageBundle {
+            lock,
+            registry,
+            registry_entry,
+            output,
+        }) => run_export_model_package_bundle(lock, registry, registry_entry, output),
         Some(Command::MergeModelPackageRegistry {
             base,
             inputs,
@@ -668,6 +683,31 @@ fn run_export_model_conformance_report(
         summary.result,
         summary.artifact_id,
         summary.runtime_artifact_sha256
+    );
+    Ok(())
+}
+
+fn run_export_model_package_bundle(
+    lock: PathBuf,
+    registry: Option<PathBuf>,
+    registry_entry: Option<String>,
+    output: PathBuf,
+) -> Result<()> {
+    let summary = crate::model_package::export_model_package_bundle(
+        &crate::model_package::ModelPackageBundleExportOptions {
+            lock,
+            registry,
+            registry_entry,
+            output,
+        },
+    )?;
+    println!(
+        "CircuitCI exported model package bundle {} manifest={} manifest_sha256={} artifacts={} conformance_checks={}",
+        summary.output,
+        summary.manifest_path,
+        summary.manifest_sha256,
+        summary.artifact_count,
+        summary.conformance_check_count
     );
     Ok(())
 }

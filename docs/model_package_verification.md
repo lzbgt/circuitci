@@ -122,6 +122,32 @@ The package registry shape is defined by
 `schemas/model_package_registry.schema.json`.
 The conformance report shape is defined by
 `schemas/model_conformance_report.schema.json`.
+
+Portable package bundles can be exported after a lock or registry-backed
+package verifies cleanly:
+
+```bash
+circuitci export-model-package-bundle compact_model.lock.json \
+  --registry compact_model_registry.json \
+  --registry-entry tiny_resistor_qualified \
+  --output dist/tiny_resistor_bundle
+```
+
+The bundle exporter re-verifies the source package, copies every pinned
+artifact under `artifacts/`, rewrites the bundled `package.lock.json` to those
+portable paths, optionally writes a bundled `compact_model_registry.json`,
+re-runs verification against the bundled copy, and writes:
+
+- `model_package_bundle_manifest.json` using
+  `schemas/model_package_bundle_manifest.schema.json`
+- `model_package_verification.json` and sibling Markdown summary
+- `README.md` with artifact hashes and conformance check summaries
+
+The bundled registry can be used directly by scenarios or by
+`verify-model-package`, so a package can ship runtime artifacts, source,
+conformance evidence, and human-readable review material as one deterministic
+directory.
+
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a

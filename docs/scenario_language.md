@@ -3763,7 +3763,11 @@ runtime artifact. Then use `circuitci verify-model-package` for an independent
 lock/registry preflight before referencing the package from a scenario. Shared
 registries can be produced with `circuitci merge-model-package-registry`, which
 rewrites imported lock paths relative to the merged registry and rejects
-conflicting duplicate entry ids.
+conflicting duplicate entry ids. Use `circuitci export-model-package-bundle`
+when distributing a qualified package directory; the bundle includes a
+portable lock, optional registry, copied artifacts, verification JSON/Markdown,
+README, and bundle manifest, and its registry can be referenced by scenarios
+without hand-editing artifact paths.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

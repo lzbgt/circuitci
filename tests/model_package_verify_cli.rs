@@ -72,6 +72,22 @@ fn assert_model_conformance_report_schema_valid(report: &Value) {
     );
 }
 
+fn assert_model_package_bundle_manifest_schema_valid(manifest: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/model_package_bundle_manifest.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(manifest)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "model package bundle manifest schema errors: {errors:#?}"
+    );
+}
+
 fn write_package_files(dir: &std::path::Path) -> (String, String) {
     let artifact = b"stable compact model artifact\n";
     let artifact_sha = sha256_hex(artifact);
@@ -437,6 +453,175 @@ fn export_model_conformance_report_generates_verifiable_package_evidence() {
     assert!(markdown.contains("`transient_smoke`"));
     assert!(markdown.contains("`runtime_osdi`"));
     assert_model_package_report_schema_valid(&report);
+}
+
+#[test]
+fn export_model_package_bundle_writes_portable_import_fixture() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = b"qualified runtime artifact\n";
+    let runtime_sha = sha256_hex(runtime);
+    fs::write(dir.path().join("runtime.osdi"), runtime).unwrap();
+    fs::write(
+        dir.path().join("report.json"),
+        r#"{
+  "schema_version": "0.1.0",
+  "project": "compact-model-conformance",
+  "profile": "model_package",
+  "result": "pass",
+  "summary": { "critical": 0, "warning": 0, "info": 0 },
+  "failures": [],
+  "warnings": [],
+  "infos": [],
+  "artifacts": ["out/solver_manifest.json"]
+}
+"#,
+    )
+    .unwrap();
+    let conformance = dir.path().join("conformance.json");
+    let conformance_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "export-model-conformance-report",
+            "--report",
+            dir.path().join("report.json").to_str().unwrap(),
+            "--package-name",
+            "org.circuitci.test.bundle_fixture",
+            "--package-version",
+            "1.0.0",
+            "--artifact-id",
+            "runtime_osdi",
+            "--runtime-artifact",
+            dir.path().join("runtime.osdi").to_str().unwrap(),
+            "--check-name",
+            "transient_smoke",
+            "--analysis",
+            "tran",
+            "--solver",
+            "ngspice",
+            "--output",
+            conformance.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(conformance_status.success());
+
+    let lock = dir.path().join("bundle_fixture.lock.json");
+    let registry = dir.path().join("bundle_fixture_registry.json");
+    let export_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .arg("export-model-package")
+        .args([
+            "--package-name",
+            "org.circuitci.test.bundle_fixture",
+            "--package-version",
+            "1.0.0",
+            "--package-artifact",
+            &format!(
+                "id=runtime_osdi,path={},artifact_format=osdi_shared_object,compiler=openvaf",
+                dir.path().join("runtime.osdi").display()
+            ),
+            "--package-artifact",
+            &format!(
+                "id=generated_conformance,path={},artifact_format=model_conformance_report",
+                conformance.display()
+            ),
+            "--output",
+            lock.to_str().unwrap(),
+            "--registry-output",
+            registry.to_str().unwrap(),
+            "--registry-entry",
+            "bundle_fixture_runtime",
+            "--registry-artifact-id",
+            "runtime_osdi",
+        ])
+        .status()
+        .unwrap();
+    assert!(export_status.success());
+
+    let bundle_dir = dir.path().join("bundle");
+    let bundle_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "export-model-package-bundle",
+            lock.to_str().unwrap(),
+            "--registry",
+            registry.to_str().unwrap(),
+            "--registry-entry",
+            "bundle_fixture_runtime",
+            "--output",
+            bundle_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(bundle_status.success());
+
+    let bundled_lock = bundle_dir.join("package.lock.json");
+    let bundled_registry = bundle_dir.join("compact_model_registry.json");
+    let bundle_manifest = bundle_dir.join("model_package_bundle_manifest.json");
+    let bundle_report = bundle_dir.join("model_package_verification.json");
+    let bundle_markdown = bundle_dir.join("model_package_verification.md");
+    let bundle_readme = bundle_dir.join("README.md");
+    assert!(bundled_lock.is_file());
+    assert!(bundled_registry.is_file());
+    assert!(bundle_report.is_file());
+    assert!(bundle_markdown.is_file());
+    assert!(bundle_readme.is_file());
+
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(&bundle_manifest).unwrap()).unwrap();
+    assert_model_package_bundle_manifest_schema_valid(&manifest);
+    assert_eq!(
+        manifest["schema_version"],
+        "circuitci.model_package_bundle.v1"
+    );
+    assert_eq!(
+        manifest["package"]["name"],
+        "org.circuitci.test.bundle_fixture"
+    );
+    assert_eq!(manifest["artifacts"].as_array().unwrap().len(), 2);
+    assert_eq!(manifest["conformance_checks"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        manifest["conformance_checks"][0]["check_name"],
+        "transient_smoke"
+    );
+
+    let bundled_lock_value: Value =
+        serde_json::from_str(&fs::read_to_string(&bundled_lock).unwrap()).unwrap();
+    assert_model_package_lock_schema_valid(&bundled_lock_value);
+    let artifacts = bundled_lock_value["artifacts"].as_array().unwrap();
+    assert_eq!(artifacts[0]["sha256"], runtime_sha);
+    assert!(
+        artifacts
+            .iter()
+            .all(|artifact| artifact["path"].as_str().unwrap().starts_with("artifacts/"))
+    );
+    let readme = fs::read_to_string(bundle_readme).unwrap();
+    assert!(readme.contains("transient_smoke"));
+    assert!(readme.contains("runtime_osdi"));
+
+    let reverify = bundle_dir.join("reverify.json");
+    let verify_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "verify-model-package",
+            bundled_lock.to_str().unwrap(),
+            "--registry",
+            bundled_registry.to_str().unwrap(),
+            "--registry-entry",
+            "bundle_fixture_runtime",
+            "--output",
+            reverify.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(verify_status.success());
+    let reverify_report: Value =
+        serde_json::from_str(&fs::read_to_string(reverify).unwrap()).unwrap();
+    assert_eq!(reverify_report["result"], "pass");
+    assert_eq!(
+        reverify_report["conformance_checks"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_model_package_report_schema_valid(&reverify_report);
 }
 
 #[test]
