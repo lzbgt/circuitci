@@ -1152,6 +1152,150 @@ board:
     );
 }
 
+#[test]
+fn repair_yaml_adds_generated_analog_model_package_metadata() {
+    std::fs::create_dir_all("out").unwrap();
+    let temp = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: old_generated_analog_package_metadata
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins: {{P: vcc_5v, N: gnd}}
+      spice: {{primitive: dc_voltage_source, dc_v: 5.0}}
+    VIN:
+      model: generic.analog.dc_voltage_source
+      pins: {{P: input, N: gnd}}
+      spice: {{primitive: dc_voltage_source, dc_v: 1.0}}
+    XU1:
+      model: generic.analog.ideal_opamp
+      pins: {{INP: input, INN: output, VCC: vcc_5v, VEE: gnd, OUT: output}}
+    RLOAD:
+      model: generic.analog.resistor
+      pins: {{A: output, B: gnd}}
+      spice: {{primitive: resistor, value_ohm: 10000.0}}
+  nets:
+    vcc_5v: {{kind: power, nominal_voltage: 5.0, powered: true}}
+    input: {{kind: digital_or_analog}}
+    output: {{kind: digital_or_analog}}
+    gnd: {{kind: ground}}
+
+scenarios:
+  - name: old_generated_step
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [VCC, VIN, XU1, RLOAD]
+      model_files:
+        - path: ../../models/spice/generic/analog_behavioral.lib
+          sha256: ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59
+      node_bindings:
+        - {{node: vcc, net: vcc_5v}}
+        - {{node: in, net: input}}
+        - {{node: out, net: output}}
+        - {{node: "0", net: gnd}}
+      pin_bindings:
+        - {{node: vcc, endpoint: {{component: VCC, pin: P}}}}
+        - {{node: in, endpoint: {{component: VIN, pin: P}}}}
+        - {{node: out, endpoint: {{component: XU1, pin: OUT}}}}
+      analysis:
+        type: transient
+        stop_time_us: 10.0
+        max_step_us: 0.1
+      stimuli: []
+      probes:
+        - {{name: output_voltage, expression: V(out)}}
+      assertions: []
+"#,
+            repo.join("libs/generic/analog").display()
+        ),
+    )
+    .unwrap();
+
+    let output = temp.path().join("repair");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--finding",
+            "analog-model-package-metadata",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("repair_report.json")).unwrap())
+            .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "pass");
+    assert_eq!(repair_report["finding"], "ANALOG_MODEL_PACKAGE_METADATA");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["blocked"], 0);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 0);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 0);
+    assert_eq!(repair_report["proof"]["original_finding_removed"], true);
+    assert_eq!(repair_report["proof"]["no_new_criticals"], true);
+    assert!(repair_report["messages"].as_array().unwrap().is_empty());
+    assert_eq!(
+        repair_report["proposals"][0]["edits"][0]["path"],
+        "/scenarios/0/analog/model_files/0/model_package_name"
+    );
+
+    let repaired_project = output.join("repaired/project.yaml");
+    let repaired_yaml = std::fs::read_to_string(repaired_project).unwrap();
+    let repaired: circuitci::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&repaired_yaml).unwrap();
+    let model_file = &repaired.scenarios[0].analog.as_ref().unwrap().model_files[0];
+    assert_eq!(
+        model_file.model_package_name.as_deref(),
+        Some("org.circuitci.models.generic.analog_behavioral")
+    );
+    assert_eq!(
+        model_file.model_package_artifact_id.as_deref(),
+        Some("generic_analog_behavioral_spice")
+    );
+    assert_eq!(
+        model_file.model_package_lock_path.as_deref(),
+        Some(
+            repo.join("models/packages/generic/analog_behavioral.lock.json")
+                .to_str()
+                .unwrap()
+        )
+    );
+    assert_eq!(
+        model_file.model_package_registry_path.as_deref(),
+        Some(
+            repo.join("models/packages/compact_model_registry.json")
+                .to_str()
+                .unwrap()
+        )
+    );
+    assert_eq!(
+        model_file.model_package_registry_entry.as_deref(),
+        Some("generic_analog_behavioral_spice")
+    );
+}
+
 fn assert_repair_report_schema_valid(report: &Value) {
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/repair_report.schema.json")).unwrap();

@@ -24,6 +24,12 @@ Supported repair classes:
   component already declares a compatible existing net for that exact pin
   through `power_domains.<pin>`, or for an electrical-power pin through
   `power_domain`.
+- `analog-model-package-metadata`: migrates older generated analog scenarios by
+  adding missing `analog.model_files[]` package-lock and registry fields inferred
+  from component-library `simulation.spice` metadata. It is additive only; if an
+  existing package field disagrees with the library metadata, the proposal is
+  blocked with `reason_code: package_metadata_conflict` instead of overwriting
+  provenance.
 
 Example:
 
@@ -125,4 +131,6 @@ explicit compatible component metadata, repair ambiguous missing nets with
 conflicting inferred kinds, remove required declared pins, edit component
 models, or repair schematic/PCB geometry. Relative `libraries:` entries are
 converted to absolute paths in the repaired copy so the copied project validates
-from the repair output directory.
+from the repair output directory. Relative analog model-file paths and
+package-lock/registry paths are also rewritten to absolute paths in repaired
+copies for the same reason.

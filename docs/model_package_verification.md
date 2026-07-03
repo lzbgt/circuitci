@@ -99,3 +99,7 @@ The repository ships a reusable generic behavioral SPICE package fixture:
 `generic_analog_behavioral_spice`. Generic analog component models reference
 that registry entry, so generated analog scenarios preserve package provenance
 automatically instead of emitting only an ad hoc `model_path` and SHA-256.
+Older generated scenarios that predate those fields can be migrated with
+`circuitci repair-yaml <project.yaml> --finding analog-model-package-metadata`;
+the repair copy adds only missing package fields and validates the migrated
+copy without editing the original project in place.

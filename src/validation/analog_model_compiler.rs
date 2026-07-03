@@ -2,7 +2,7 @@ use crate::board_ir::{AnalogBackend, AnalogModelFile, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::{Value, json};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
@@ -527,13 +527,26 @@ fn validate_model_package_lock(
             "Model package lock does not contain the declared model_package_artifact_id.",
         ));
     };
-    if string_field(artifact, &["path"]).as_deref() != Some(model_file.path.as_str()) {
+    let lock_dir = lock.parent().unwrap_or_else(|| Path::new("."));
+    if let Some(artifact_path) = string_field(artifact, &["path"]) {
+        let package_artifact_path = resolve_path(lock_dir, &artifact_path);
+        let model_file_path = resolve_path(&bound.project.source_dir, &model_file.path);
+        if !equivalent_paths(&package_artifact_path, &model_file_path) {
+            return Some(model_package_lock_mismatch(
+                scenario,
+                model_file,
+                &context,
+                "artifact_path",
+                "Model package lock artifact path does not resolve to analog.model_files[].path.",
+            ));
+        }
+    } else {
         return Some(model_package_lock_mismatch(
             scenario,
             model_file,
             &context,
             "artifact_path",
-            "Model package lock artifact path does not match analog.model_files[].path.",
+            "Model package lock artifact does not declare a path.",
         ));
     }
     if let Some(expected_sha) = model_file.sha256.as_deref()
@@ -610,14 +623,8 @@ fn resolve_model_package_lock_context(
         |context| Some(context.artifact_id.as_str()),
         "model_package_artifact_id",
     )?;
-    let lock_path = resolve_package_field(
-        scenario,
-        model_file,
-        registry_context.as_ref(),
-        model_file.model_package_lock_path.as_deref(),
-        |context| Some(context.lock_path.as_str()),
-        "model_package_lock_path",
-    )?;
+    let lock_path =
+        resolve_model_package_lock_path(bound, scenario, model_file, registry_context.as_ref())?;
     let lock_sha256 = resolve_package_field(
         scenario,
         model_file,
@@ -794,6 +801,8 @@ fn resolve_model_package_registry_context(
                 "lock_path",
             ))
         })?;
+    let registry_dir = registry.parent().unwrap_or_else(|| Path::new("."));
+    let lock_path = resolve_path_string(registry_dir, &lock_path);
     let lock_sha256 = string_field(entry, &["lock_sha256"])
         .or_else(|| string_field(entry, &["model_package_lock_sha256"]))
         .ok_or_else(|| {
@@ -820,6 +829,75 @@ fn parse_model_package_lock(text: &str) -> Result<Value, String> {
     serde_json::from_str::<Value>(text)
         .or_else(|_| serde_yaml_ng::from_str::<Value>(text))
         .map_err(|error| format!("Model package lock is not valid JSON or YAML: {error}"))
+}
+
+fn resolve_model_package_lock_path(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    registry_context: Option<&ModelPackageLockContext>,
+) -> Result<String, Box<Finding>> {
+    let direct = nonempty(model_file.model_package_lock_path.as_deref());
+    let registry = registry_context.map(|context| context.lock_path.as_str());
+    match (direct, registry) {
+        (Some(direct), Some(registry)) => {
+            let direct_path = resolve_path(&bound.project.source_dir, direct);
+            let registry_path = PathBuf::from(registry);
+            if equivalent_paths(&direct_path, &registry_path) {
+                Ok(direct.to_string())
+            } else {
+                Err(Box::new(model_package_registry_entry_mismatch(
+                    scenario,
+                    model_file,
+                    "model_package_lock_path",
+                    direct,
+                    registry,
+                    "Model package registry entry disagrees with explicitly declared package metadata.",
+                )))
+            }
+        }
+        (Some(value), None) => Ok(value.to_string()),
+        (None, Some(value)) => Ok(value.to_string()),
+        (None, None) => Err(Box::new(model_package_lock_missing(
+            scenario,
+            model_file,
+            "model_package_lock_path",
+            "Model package lock metadata requires either a direct field or a pinned model package registry entry.",
+        ))),
+    }
+}
+
+fn resolve_path_string(base: &Path, path: &str) -> String {
+    resolve_path(base, path).to_string_lossy().to_string()
+}
+
+fn resolve_path(base: &Path, path: &str) -> PathBuf {
+    let path = Path::new(path);
+    if path.is_absolute() {
+        normalize_path(path)
+    } else {
+        normalize_path(&base.join(path))
+    }
+}
+
+fn equivalent_paths(left: &Path, right: &Path) -> bool {
+    let left = std::fs::canonicalize(left).unwrap_or_else(|_| normalize_path(left));
+    let right = std::fs::canonicalize(right).unwrap_or_else(|_| normalize_path(right));
+    left == right
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized
 }
 
 #[derive(Clone)]

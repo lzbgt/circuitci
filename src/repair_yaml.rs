@@ -14,6 +14,7 @@ pub enum BoardYamlRepairFindingKind {
     NetNotFound,
     PinNotDeclared,
     RequiredPinFloating,
+    AnalogModelPackageMetadata,
 }
 
 #[derive(Debug, Clone)]
@@ -154,6 +155,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         BoardYamlRepairFindingKind::RequiredPinFloating => {
             required_pin_floating_proposals(&project, &library)?
         }
+        BoardYamlRepairFindingKind::AnalogModelPackageMetadata => {
+            analog_model_package_metadata_proposals(&options.project, &project, &library)?
+        }
     };
     let finding_id = options.finding.finding_id();
     let original_matching = matching_findings(&original_report, finding_id);
@@ -179,6 +183,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
                 new_criticals: &[],
                 dry_run: true,
                 selective_apply: false,
+                requires_matching_validation_finding: options
+                    .finding
+                    .requires_matching_validation_finding(),
             },
         );
         let report = BoardYamlRepairReport {
@@ -247,6 +254,10 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
         &mut repaired_yaml,
         options.project.parent().unwrap_or_else(|| Path::new(".")),
     )?;
+    absolutize_relative_analog_model_paths(
+        &mut repaired_yaml,
+        options.project.parent().unwrap_or_else(|| Path::new(".")),
+    )?;
     std::fs::create_dir_all(&repaired_output).with_context(|| {
         format!(
             "Failed to create repair output directory {}.",
@@ -283,7 +294,11 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
     let repaired_matching = matching_findings(&repaired_report, finding_id);
     let repaired_matching_criticals = matching_critical_findings(&repaired_report, finding_id);
     let new_criticals = new_critical_findings(&original_report, &repaired_report);
-    let original_finding_removed = !original_matching.is_empty() && repaired_matching.is_empty();
+    let original_finding_removed = if options.finding.requires_matching_validation_finding() {
+        !original_matching.is_empty() && repaired_matching.is_empty()
+    } else {
+        applied == selected && selected > 0
+    };
     let no_new_criticals = new_criticals.is_empty();
     let blocked = proposals
         .iter()
@@ -304,6 +319,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             new_criticals: &new_criticals,
             dry_run: false,
             selective_apply: !options.proposal_ids.is_empty(),
+            requires_matching_validation_finding: options
+                .finding
+                .requires_matching_validation_finding(),
         },
     );
     let result =
@@ -730,6 +748,313 @@ fn required_pin_floating_proposals(
     Ok(proposals)
 }
 
+fn analog_model_package_metadata_proposals(
+    project_path: &Path,
+    project: &BoardProject,
+    library: &crate::library::ComponentLibrary,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let mut proposals = Vec::new();
+    for (scenario_index, scenario) in project.scenarios.iter().enumerate() {
+        let Some(analog) = scenario.analog.as_ref() else {
+            continue;
+        };
+        let Some(generated) = analog.generated.as_ref() else {
+            continue;
+        };
+        let package_models =
+            package_models_for_generated_components(project_path, project, library, generated)?;
+        if package_models.is_empty() {
+            continue;
+        }
+        for (model_file_index, model_file) in analog.model_files.iter().enumerate() {
+            let Some(model_file_path) =
+                canonicalize_project_relative_path(project_path, &model_file.path)?
+            else {
+                continue;
+            };
+            let Some(expected) = package_models
+                .iter()
+                .find(|metadata| metadata.canonical_model_path == model_file_path)
+            else {
+                continue;
+            };
+            let yaml_path =
+                format!("/scenarios/{scenario_index}/analog/model_files/{model_file_index}");
+            let mut edits = Vec::new();
+            let mut conflicts = Vec::new();
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_name",
+                model_file.model_package_name.as_deref(),
+                expected.model_package_name.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_version",
+                model_file.model_package_version.as_deref(),
+                expected.model_package_version.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_artifact_id",
+                model_file.model_package_artifact_id.as_deref(),
+                expected.model_package_artifact_id.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_lock_path",
+                model_file.model_package_lock_path.as_deref(),
+                expected.model_package_lock_path.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_lock_sha256",
+                model_file.model_package_lock_sha256.as_deref(),
+                expected.model_package_lock_sha256.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_registry_path",
+                model_file.model_package_registry_path.as_deref(),
+                expected.model_package_registry_path.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_registry_sha256",
+                model_file.model_package_registry_sha256.as_deref(),
+                expected.model_package_registry_sha256.as_deref(),
+            );
+            collect_package_metadata_edit(
+                &mut edits,
+                &mut conflicts,
+                &yaml_path,
+                "model_package_registry_entry",
+                model_file.model_package_registry_entry.as_deref(),
+                expected.model_package_registry_entry.as_deref(),
+            );
+            if conflicts.is_empty() && edits.is_empty() {
+                continue;
+            }
+            let proposal_id = format!("analog_model_package_metadata_{}", proposals.len() + 1);
+            if conflicts.is_empty() {
+                proposals.push(BoardYamlRepairProposal {
+                    id: proposal_id,
+                    finding_id: BoardYamlRepairFindingKind::AnalogModelPackageMetadata
+                        .finding_id()
+                        .to_string(),
+                    status: "proposed".to_string(),
+                    reason_code: None,
+                    description: format!(
+                        "Add package-lock and registry metadata to generated analog model file {} in scenario {}.",
+                        model_file.path, scenario.name
+                    ),
+                    yaml_path,
+                    affected_pins: expected.components.clone(),
+                    edits,
+                });
+            } else {
+                proposals.push(BoardYamlRepairProposal {
+                    id: proposal_id,
+                    finding_id: BoardYamlRepairFindingKind::AnalogModelPackageMetadata
+                        .finding_id()
+                        .to_string(),
+                    status: "blocked".to_string(),
+                    reason_code: Some("package_metadata_conflict".to_string()),
+                    description: format!(
+                        "Not changing generated analog model file {} in scenario {} because existing package fields conflict: {}.",
+                        model_file.path,
+                        scenario.name,
+                        conflicts.join(", ")
+                    ),
+                    yaml_path,
+                    affected_pins: expected.components.clone(),
+                    edits: Vec::new(),
+                });
+            }
+        }
+    }
+    Ok(proposals)
+}
+
+#[derive(Debug)]
+struct AnalogPackageModelMetadata {
+    canonical_model_path: PathBuf,
+    components: Vec<String>,
+    model_package_name: Option<String>,
+    model_package_version: Option<String>,
+    model_package_artifact_id: Option<String>,
+    model_package_lock_path: Option<String>,
+    model_package_lock_sha256: Option<String>,
+    model_package_registry_path: Option<String>,
+    model_package_registry_sha256: Option<String>,
+    model_package_registry_entry: Option<String>,
+}
+
+fn package_models_for_generated_components(
+    project_path: &Path,
+    project: &BoardProject,
+    library: &crate::library::ComponentLibrary,
+    generated: &crate::board_ir::AnalogGeneratedNetlist,
+) -> Result<Vec<AnalogPackageModelMetadata>> {
+    let mut models = Vec::new();
+    let mut seen = BTreeSet::new();
+    for component_id in &generated.components {
+        let Some(component) = project.board.components.get(component_id) else {
+            continue;
+        };
+        let Some(model) = library.get(&component.model) else {
+            continue;
+        };
+        let Some(spice) = model.simulation.spice.as_ref() else {
+            continue;
+        };
+        if spice.model_package_name.is_none()
+            && spice.model_package_lock_path.is_none()
+            && spice.model_package_registry_path.is_none()
+        {
+            continue;
+        }
+        let Some(canonical_model_path) =
+            canonicalize_project_relative_path(project_path, &spice.model_path)?
+        else {
+            continue;
+        };
+        if !seen.insert(canonical_model_path.clone()) {
+            continue;
+        }
+        models.push(AnalogPackageModelMetadata {
+            canonical_model_path,
+            components: vec![component_id.clone()],
+            model_package_name: spice.model_package_name.clone(),
+            model_package_version: spice.model_package_version.clone(),
+            model_package_artifact_id: spice.model_package_artifact_id.clone(),
+            model_package_lock_path: project_relative_existing_path(
+                project_path,
+                spice.model_package_lock_path.as_deref(),
+            )?,
+            model_package_lock_sha256: spice.model_package_lock_sha256.clone(),
+            model_package_registry_path: project_relative_existing_path(
+                project_path,
+                spice.model_package_registry_path.as_deref(),
+            )?,
+            model_package_registry_sha256: spice.model_package_registry_sha256.clone(),
+            model_package_registry_entry: spice.model_package_registry_entry.clone(),
+        });
+    }
+    Ok(models)
+}
+
+fn collect_package_metadata_edit(
+    edits: &mut Vec<BoardYamlRepairEdit>,
+    conflicts: &mut Vec<String>,
+    yaml_path: &str,
+    field: &str,
+    current: Option<&str>,
+    expected: Option<&str>,
+) {
+    let Some(expected) = expected else {
+        return;
+    };
+    match current {
+        Some(current) if current == expected => {}
+        Some(current) => conflicts.push(format!("{field}={current} expected {expected}")),
+        None => edits.push(BoardYamlRepairEdit {
+            op: "add".to_string(),
+            path: format!("{yaml_path}/{field}"),
+            from: serde_json::Value::Null,
+            to: serde_json::Value::String(expected.to_string()),
+            reason: format!(
+                "Generated analog model file can import package metadata from component-library simulation.spice.{field}."
+            ),
+        }),
+    }
+}
+
+fn project_relative_existing_path(
+    project_path: &Path,
+    path: Option<&str>,
+) -> Result<Option<String>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let Some(canonical_path) = canonicalize_project_relative_path(project_path, path)? else {
+        return Ok(None);
+    };
+    let project_dir = project_path.parent().unwrap_or_else(|| Path::new("."));
+    Ok(Some(
+        relative_path(&canonicalize_existing_path(project_dir)?, &canonical_path)
+            .unwrap_or(canonical_path)
+            .to_string_lossy()
+            .replace('\\', "/"),
+    ))
+}
+
+fn canonicalize_project_relative_path(project_path: &Path, path: &str) -> Result<Option<PathBuf>> {
+    let path = Path::new(path);
+    if path.is_absolute() {
+        return Ok(Some(canonicalize_existing_path(path)?));
+    }
+    let project_dir = project_path.parent().unwrap_or_else(|| Path::new("."));
+    let project_dir = canonicalize_existing_path(project_dir)?;
+    for base in project_dir.ancestors() {
+        let candidate = base.join(path);
+        if candidate.exists() {
+            return Ok(Some(canonicalize_existing_path(&candidate)?));
+        }
+    }
+    Ok(None)
+}
+
+fn relative_path(from_dir: &Path, to: &Path) -> Option<PathBuf> {
+    let from_components = from_dir.components().collect::<Vec<_>>();
+    let to_components = to.components().collect::<Vec<_>>();
+    let common = from_components
+        .iter()
+        .zip(&to_components)
+        .take_while(|(left, right)| left == right)
+        .count();
+    if common == 0 {
+        return None;
+    }
+
+    let mut path = PathBuf::new();
+    for component in &from_components[common..] {
+        match component {
+            std::path::Component::Normal(_) => path.push(".."),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => path.push(".."),
+            std::path::Component::Prefix(_) | std::path::Component::RootDir => return None,
+        }
+    }
+    for component in &to_components[common..] {
+        match component {
+            std::path::Component::Normal(value) => path.push(value),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => path.push(".."),
+            std::path::Component::Prefix(_) | std::path::Component::RootDir => return None,
+        }
+    }
+    Some(if path.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        path
+    })
+}
+
 fn required_pin_candidate_net<'a>(
     component: &'a crate::board_ir::ComponentSpec,
     pin_name: &str,
@@ -813,6 +1138,33 @@ fn apply_proposals(
                     continue;
                 }
             }
+        } else if proposal.yaml_path.starts_with("/scenarios/")
+            && proposal.yaml_path.contains("/analog/model_files/")
+        {
+            let mut applied_metadata_edits = 0;
+            for edit in &proposal.edits {
+                let Some((scenario_index, model_file_index, field)) =
+                    analog_model_file_metadata_path(&edit.path)
+                else {
+                    continue;
+                };
+                let Some(value) = edit.to.as_str() else {
+                    continue;
+                };
+                add_analog_model_file_metadata(
+                    project_yaml,
+                    scenario_index,
+                    model_file_index,
+                    field,
+                    value,
+                )?;
+                applied_metadata_edits += 1;
+            }
+            if applied_metadata_edits != proposal.edits.len() {
+                proposal.status = "skipped".to_string();
+                proposal.reason_code = Some("unapplicable_yaml_path".to_string());
+                continue;
+            }
         } else {
             proposal.status = "skipped".to_string();
             proposal.reason_code = Some("unapplicable_yaml_path".to_string());
@@ -831,6 +1183,59 @@ fn component_pin_path(path: &str) -> Option<(&str, &str)> {
         return None;
     }
     Some((component_id, pin_path))
+}
+
+fn analog_model_file_metadata_path(path: &str) -> Option<(usize, usize, &str)> {
+    let rest = path.strip_prefix("/scenarios/")?;
+    let (scenario_index, rest) = rest.split_once("/analog/model_files/")?;
+    let (model_file_index, field) = rest.split_once('/')?;
+    if field.is_empty() || field.contains('/') {
+        return None;
+    }
+    Some((
+        scenario_index.parse().ok()?,
+        model_file_index.parse().ok()?,
+        field,
+    ))
+}
+
+fn add_analog_model_file_metadata(
+    project_yaml: &mut Value,
+    scenario_index: usize,
+    model_file_index: usize,
+    field: &str,
+    value: &str,
+) -> Result<()> {
+    let root = project_yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?;
+    let scenarios = root
+        .get_mut(Value::String("scenarios".to_string()))
+        .context("Board IR scenarios field is missing.")?
+        .as_sequence_mut()
+        .context("Board IR scenarios field must be a list.")?;
+    let scenario = scenarios
+        .get_mut(scenario_index)
+        .with_context(|| format!("Board IR scenario index {scenario_index} is missing."))?
+        .as_mapping_mut()
+        .context("Board IR scenario must be an object.")?;
+    let analog = get_mapping_field_mut(scenario, "analog")?;
+    let model_files = analog
+        .get_mut(Value::String("model_files".to_string()))
+        .context("Board IR analog.model_files field is missing.")?
+        .as_sequence_mut()
+        .context("Board IR analog.model_files field must be a list.")?;
+    let model_file = model_files
+        .get_mut(model_file_index)
+        .with_context(|| format!("Board IR model file index {model_file_index} is missing."))?
+        .as_mapping_mut()
+        .context("Board IR analog.model_files entries must be objects.")?;
+    let key = Value::String(field.to_string());
+    if model_file.contains_key(&key) {
+        bail!("Board IR analog model file metadata field {field} already exists.");
+    }
+    model_file.insert(key, Value::String(value.to_string()));
+    Ok(())
 }
 
 fn replace_net_kind(project_yaml: &mut Value, net_name: &str, kind: &str) -> Result<()> {
@@ -963,6 +1368,67 @@ fn absolutize_relative_libraries(project_yaml: &mut Value, project_dir: &Path) -
     Ok(())
 }
 
+fn absolutize_relative_analog_model_paths(
+    project_yaml: &mut Value,
+    project_dir: &Path,
+) -> Result<()> {
+    let Some(scenarios) = project_yaml
+        .as_mapping_mut()
+        .and_then(|mapping| mapping.get_mut(Value::String("scenarios".to_string())))
+        .and_then(Value::as_sequence_mut)
+    else {
+        return Ok(());
+    };
+    for scenario in scenarios {
+        let Some(model_files) = scenario
+            .as_mapping_mut()
+            .and_then(|mapping| mapping.get_mut(Value::String("analog".to_string())))
+            .and_then(Value::as_mapping_mut)
+            .and_then(|analog| analog.get_mut(Value::String("model_files".to_string())))
+            .and_then(Value::as_sequence_mut)
+        else {
+            continue;
+        };
+        for model_file in model_files {
+            let Some(model_file) = model_file.as_mapping_mut() else {
+                continue;
+            };
+            for field in [
+                "path",
+                "source_path",
+                "conformance_artifact",
+                "model_package_lock_path",
+                "model_package_registry_path",
+            ] {
+                absolutize_optional_path_field(model_file, field, project_dir)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn absolutize_optional_path_field(
+    mapping: &mut Mapping,
+    field: &str,
+    project_dir: &Path,
+) -> Result<()> {
+    let key = Value::String(field.to_string());
+    let Some(value) = mapping.get_mut(&key) else {
+        return Ok(());
+    };
+    let Some(path_text) = value.as_str() else {
+        bail!("Board IR analog model file field {field} must be a string.");
+    };
+    let path = Path::new(path_text);
+    if path.is_absolute() {
+        return Ok(());
+    }
+    let resolved = normalize_path(&project_dir.join(path));
+    let absolute = std::fs::canonicalize(&resolved).unwrap_or(resolved);
+    *value = Value::String(absolute.to_string_lossy().to_string());
+    Ok(())
+}
+
 fn normalize_path(path: &Path) -> PathBuf {
     let mut normalized = PathBuf::new();
     for component in path.components() {
@@ -1040,6 +1506,7 @@ struct RepairMessageContext<'a> {
     new_criticals: &'a [BoardYamlFindingEvidence],
     dry_run: bool,
     selective_apply: bool,
+    requires_matching_validation_finding: bool,
 }
 
 struct RepairMessages {
@@ -1057,7 +1524,7 @@ fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Repai
         );
         reason_codes.push("dry_run_not_validated".to_string());
     }
-    if context.original_matching.is_empty() {
+    if context.requires_matching_validation_finding && context.original_matching.is_empty() {
         messages.push(format!(
             "Original validation report did not contain {finding_id}; no matching finding was available to repair."
         ));
@@ -1091,7 +1558,8 @@ fn repair_messages(finding_id: &str, context: RepairMessageContext<'_>) -> Repai
             reason_codes.push("proposal_skipped_unapplicable_path".to_string());
         }
     }
-    if !context.dry_run
+    if context.requires_matching_validation_finding
+        && !context.dry_run
         && !context.original_matching.is_empty()
         && !context.repaired_matching.is_empty()
     {
@@ -1234,6 +1702,7 @@ impl BoardYamlRepairFindingKind {
             Self::NetNotFound => "NET_NOT_FOUND",
             Self::PinNotDeclared => "PIN_NOT_DECLARED",
             Self::RequiredPinFloating => "REQUIRED_PIN_FLOATING",
+            Self::AnalogModelPackageMetadata => "ANALOG_MODEL_PACKAGE_METADATA",
         }
     }
 
@@ -1243,7 +1712,12 @@ impl BoardYamlRepairFindingKind {
             Self::NetNotFound => "net-not-found",
             Self::PinNotDeclared => "pin-not-declared",
             Self::RequiredPinFloating => "required-pin-floating",
+            Self::AnalogModelPackageMetadata => "analog-model-package-metadata",
         }
+    }
+
+    fn requires_matching_validation_finding(self) -> bool {
+        !matches!(self, Self::AnalogModelPackageMetadata)
     }
 }
 

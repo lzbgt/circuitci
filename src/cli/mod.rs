@@ -271,6 +271,7 @@ enum RepairYamlFinding {
     NetNotFound,
     PinNotDeclared,
     RequiredPinFloating,
+    AnalogModelPackageMetadata,
 }
 
 impl RepairYamlFinding {
@@ -280,6 +281,9 @@ impl RepairYamlFinding {
             Self::NetNotFound => BoardYamlRepairFindingKind::NetNotFound,
             Self::PinNotDeclared => BoardYamlRepairFindingKind::PinNotDeclared,
             Self::RequiredPinFloating => BoardYamlRepairFindingKind::RequiredPinFloating,
+            Self::AnalogModelPackageMetadata => {
+                BoardYamlRepairFindingKind::AnalogModelPackageMetadata
+            }
         }
     }
 }

@@ -748,6 +748,12 @@ The GUI should not become the solver.
   infer the shared registry entry `generic_analog_behavioral_spice` from the
   component library and carry lock/registry pins into `analog.model_files[]`,
   solver manifests, report JSON, Markdown reports, and GUI artifact views.
+- Added `repair-yaml --finding analog-model-package-metadata` so older
+  generated analog scenarios can be migrated to package-qualified model-file
+  metadata without editing the original project. The repair is additive,
+  blocks on conflicting existing package fields, rewrites copied-project
+  analog model/package paths to absolute paths for validation, and preserves
+  stale-report proposal replay safeguards.
 
 ## Risks
 
