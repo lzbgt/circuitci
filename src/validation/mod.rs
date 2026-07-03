@@ -12,6 +12,7 @@ mod analog_fourier_spice;
 mod analog_harmonic_balance_spice;
 mod analog_measure_runner;
 mod analog_measure_spice;
+mod analog_model_compiler;
 mod analog_noise_assertions;
 mod analog_noise_runner;
 mod analog_noise_spice;

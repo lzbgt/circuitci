@@ -105,7 +105,10 @@ OSDI shared object uses the compiled artifact path as `path`, pins it with
 `source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and a
 reproducible `compiler_command`. CircuitCI validates the source file and source
 hash before solver planning, adds the Verilog-A source to report artifacts, and
-fails closed if any compiler provenance field is missing.
+fails closed if any compiler provenance field is missing. It also checks that
+the compiler command invokes `openvaf`, references the declared source and OSDI
+output path, and reports a build plan when the compiled artifact is missing or
+its hash is stale.
 
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear

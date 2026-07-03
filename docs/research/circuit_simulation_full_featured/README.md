@@ -644,9 +644,15 @@ The GUI should not become the solver.
   `artifact_format: osdi_shared_object`, compiled artifact SHA, Verilog-A
   `source_path`/`source_sha256`, `compiler: openvaf`, compiler version, and
   compiler command. CircuitCI validates source availability and source hash
-  before solver planning and fails closed when provenance is incomplete.
-- Add executable OpenVAF build/check commands that can produce the declared
-  OSDI artifact from the pinned Verilog-A source.
+  before solver planning and fails closed when provenance is incomplete. The
+  preflight also validates that the command invokes `openvaf` and references
+  the declared source/output artifact.
+- Added executable OpenVAF build/check planning for compiled OSDI artifacts:
+  when the artifact is missing or hash-stale, the failure carries the declared
+  compiler command, output path, and `openvaf` availability on `PATH` so CI can
+  rebuild from pinned Verilog-A source before rerunning simulation.
+- Add an opt-in OpenVAF execution path that can produce the declared OSDI
+  artifact from pinned source under controlled CI settings.
 - Add model compatibility tests per backend.
 - Add artifact hashes and generated-model provenance to reports.
 

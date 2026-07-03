@@ -37,6 +37,22 @@ fn write_model_compiler_project(
     artifact_sha256: Option<&str>,
     compiler: Option<&str>,
 ) -> std::path::PathBuf {
+    write_model_compiler_project_with_command(
+        dir,
+        source_sha256,
+        artifact_sha256,
+        compiler,
+        "openvaf tiny_resistor.va -o tiny_resistor.osdi",
+    )
+}
+
+fn write_model_compiler_project_with_command(
+    dir: &std::path::Path,
+    source_sha256: Option<&str>,
+    artifact_sha256: Option<&str>,
+    compiler: Option<&str>,
+    compiler_command: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let source_sha256 = source_sha256
         .map(|sha| format!("          source_sha256: {sha}\n"))
@@ -92,7 +108,7 @@ scenarios:
 {artifact_sha256}          artifact_format: osdi_shared_object
           source_path: tiny_resistor.va
 {source_sha256}{compiler}          compiler_version: 23.5.0-test
-          compiler_command: openvaf tiny_resistor.va -o tiny_resistor.osdi
+          compiler_command: {compiler_command}
       node_bindings:
         - {{ node: vin, net: vin }}
         - {{ node: out, net: out }}
@@ -235,4 +251,102 @@ fn openvaf_osdi_model_requires_openvaf_compiler_identity() {
         "ANALOG_MODEL_COMPILER_PROVENANCE_MISSING"
     );
     assert_eq!(report["failures"][0]["limit"]["required_field"], "compiler");
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_reports_build_plan_when_artifact_is_missing() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    fs::remove_file(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    let project_path = write_model_compiler_project(
+        project_dir.path(),
+        Some(&source_sha),
+        Some(&artifact_sha),
+        Some("openvaf"),
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_MODEL_COMPILER_ARTIFACT_UNAVAILABLE"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["compiler_command"],
+        "openvaf tiny_resistor.va -o tiny_resistor.osdi"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["compiler_available_on_path"],
+        false
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["required_build_step"],
+        "openvaf_compile_osdi_shared_object"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_reports_build_plan_when_artifact_hash_is_stale() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, _artifact_sha) = write_osdi_files(project_dir.path());
+    let wrong_artifact_sha = "1111111111111111111111111111111111111111111111111111111111111111";
+    let project_path = write_model_compiler_project(
+        project_dir.path(),
+        Some(&source_sha),
+        Some(wrong_artifact_sha),
+        Some("openvaf"),
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_MODEL_COMPILER_ARTIFACT_HASH_MISMATCH"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["expected_sha256"],
+        wrong_artifact_sha
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["output_path"],
+        "tiny_resistor.osdi"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_requires_command_to_reference_source_and_output() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    let project_path = write_model_compiler_project_with_command(
+        project_dir.path(),
+        Some(&source_sha),
+        Some(&artifact_sha),
+        Some("openvaf"),
+        "openvaf other.va -o other.osdi",
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_MODEL_COMPILER_COMMAND_MISMATCH"
+    );
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("tiny_resistor.va")
+    );
 }

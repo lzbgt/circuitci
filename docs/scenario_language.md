@@ -3716,7 +3716,11 @@ Compiled Verilog-A compact models use the same `model_files` list with the
 compiled OSDI artifact as `path`. Add `artifact_format: osdi_shared_object`,
 `source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and
 `compiler_command`; validation fails closed before solver execution if any
-OpenVAF/OSDI provenance is missing or the Verilog-A source hash does not match.
+OpenVAF/OSDI provenance is missing, the Verilog-A source hash does not match,
+the command does not reference the declared source/output, or the compiled OSDI
+artifact is missing or hash-stale. The failure includes the declared command
+and whether `openvaf` is currently available on `PATH`, so CI can rebuild the
+artifact from pinned source before rerunning simulation.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

@@ -89,7 +89,9 @@ Required fields:
   model artifacts additionally declare `artifact_format: osdi_shared_object`,
   `source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and
   `compiler_command` so the compiled shared object is tied to auditable
-  Verilog-A source and build provenance.
+  Verilog-A source and build provenance. The compiler command must invoke
+  `openvaf` and reference the declared Verilog-A source and OSDI output path;
+  missing or hash-stale compiled artifacts fail closed with a rebuild plan.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

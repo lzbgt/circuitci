@@ -1,6 +1,6 @@
 use crate::board_ir::{
-    AnalogAggregation, AnalogModelFile, AnalogMonteCarloCriteria, AnalogNetlistSource,
-    AnalogRelation, AnalogSweepComponentField, Scenario,
+    AnalogAggregation, AnalogMonteCarloCriteria, AnalogNetlistSource, AnalogRelation,
+    AnalogSweepComponentField, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -15,6 +15,7 @@ use super::analog_assertions::{
     validate_assertion_contract, validate_probe_contract,
 };
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
+use super::analog_model_compiler::validate_model_compiler_provenance;
 use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
 };
@@ -1452,182 +1453,6 @@ pub(super) fn validate_netlist_source(
         return netlist_finding;
     }
     validate_model_compiler_provenance(bound, scenario, artifacts)
-}
-
-fn validate_model_compiler_provenance(
-    bound: &BoundBoard<'_>,
-    scenario: &Scenario,
-    artifacts: &mut Vec<String>,
-) -> Option<Finding> {
-    let analog = scenario
-        .analog
-        .as_ref()
-        .expect("analog was validated before model provenance validation");
-    for model_file in &analog.model_files {
-        if !model_file_requires_compiler_provenance(model_file) {
-            continue;
-        }
-        if model_file.artifact_format.as_deref() != Some("osdi_shared_object") {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "artifact_format",
-                "OpenVAF model provenance requires artifact_format: osdi_shared_object.",
-            ));
-        }
-        if model_file.sha256.as_deref().is_none_or(str::is_empty) {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "sha256",
-                "OpenVAF/OSDI model artifacts require a SHA-256 pin for the compiled shared object.",
-            ));
-        }
-        let Some(source_path) = nonempty(model_file.source_path.as_deref()) else {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "source_path",
-                "OpenVAF/OSDI model artifacts require the Verilog-A source path.",
-            ));
-        };
-        let Some(source_sha256) = nonempty(model_file.source_sha256.as_deref()) else {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "source_sha256",
-                "OpenVAF/OSDI model artifacts require a SHA-256 pin for the Verilog-A source.",
-            ));
-        };
-        if model_file.compiler.as_deref() != Some("openvaf") {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "compiler",
-                "OpenVAF/OSDI model artifacts require compiler: openvaf.",
-            ));
-        }
-        if nonempty(model_file.compiler_version.as_deref()).is_none() {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "compiler_version",
-                "OpenVAF/OSDI model artifacts require compiler_version provenance.",
-            ));
-        }
-        if nonempty(model_file.compiler_command.as_deref()).is_none() {
-            return Some(model_compiler_metadata_missing(
-                scenario,
-                model_file,
-                "compiler_command",
-                "OpenVAF/OSDI model artifacts require the reproducible compiler command.",
-            ));
-        }
-
-        let source = bound.project.source_dir.join(source_path);
-        if !source.is_file() {
-            let mut finding = Finding::critical(
-                "ANALOG_MODEL_SOURCE_UNAVAILABLE",
-                &scenario.name,
-                format!(
-                    "Verilog-A source file {} is required for OpenVAF/OSDI model provenance.",
-                    source.display()
-                ),
-            );
-            finding.limit.insert(
-                "required_artifact".to_string(),
-                json!("verilog_a_source_file"),
-            );
-            finding
-                .limit
-                .insert("model_file".to_string(), json!(model_file.path));
-            finding
-                .limit
-                .insert("source_path".to_string(), json!(source_path));
-            finding.suggested_fixes.push(
-                "Add the Verilog-A source artifact or remove OpenVAF/OSDI provenance metadata until the source can be audited."
-                    .to_string(),
-            );
-            return Some(finding);
-        }
-        match file_sha256_hex(&source) {
-            Ok(actual) if actual.eq_ignore_ascii_case(source_sha256) => {}
-            Ok(actual) => {
-                let mut finding = Finding::critical(
-                    "ANALOG_MODEL_SOURCE_HASH_MISMATCH",
-                    &scenario.name,
-                    format!(
-                        "Verilog-A source file {} does not match the declared SHA-256.",
-                        source.display()
-                    ),
-                );
-                finding.measured.insert("sha256".to_string(), json!(actual));
-                finding
-                    .limit
-                    .insert("expected_sha256".to_string(), json!(source_sha256));
-                finding
-                    .limit
-                    .insert("model_file".to_string(), json!(model_file.path));
-                finding.suggested_fixes.push(
-                    "Rebuild the OSDI artifact from the declared Verilog-A source or update the provenance pins together."
-                        .to_string(),
-                );
-                return Some(finding);
-            }
-            Err(message) => {
-                let mut finding =
-                    Finding::critical("ANALOG_MODEL_SOURCE_UNAVAILABLE", &scenario.name, message);
-                finding.limit.insert(
-                    "required_artifact".to_string(),
-                    json!("verilog_a_source_file"),
-                );
-                return Some(finding);
-            }
-        }
-        push_artifact(artifacts, &source);
-    }
-    None
-}
-
-fn model_file_requires_compiler_provenance(model_file: &AnalogModelFile) -> bool {
-    model_file.artifact_format.as_deref() == Some("osdi_shared_object")
-        || model_file.compiler.is_some()
-        || model_file.compiler_version.is_some()
-        || model_file.compiler_command.is_some()
-        || model_file.source_path.is_some()
-        || model_file.source_sha256.is_some()
-}
-
-fn model_compiler_metadata_missing(
-    scenario: &Scenario,
-    model_file: &AnalogModelFile,
-    field: &str,
-    message: &str,
-) -> Finding {
-    let mut finding = Finding::critical(
-        "ANALOG_MODEL_COMPILER_PROVENANCE_MISSING",
-        &scenario.name,
-        message,
-    );
-    finding
-        .measured
-        .insert("model_file".to_string(), json!(model_file.path));
-    finding
-        .limit
-        .insert("required_field".to_string(), json!(field));
-    finding.limit.insert(
-        "required_artifact".to_string(),
-        json!("openvaf_osdi_model_provenance"),
-    );
-    finding.suggested_fixes.push(
-        "Declare the compiled OSDI artifact, Verilog-A source, SHA-256 pins, OpenVAF version, and compiler command before using this compact model in simulation sign-off."
-            .to_string(),
-    );
-    finding
-}
-
-fn nonempty(value: Option<&str>) -> Option<&str> {
-    value.map(str::trim).filter(|value| !value.is_empty())
 }
 
 pub(super) fn prepare_source_netlist(
