@@ -279,8 +279,8 @@ CircuitCI implication:
 - Model availability is a bigger bottleneck than analysis command support.
   OpenVAF/OSDI support should be part of any serious "full simulation" roadmap.
   Xyce compact-model support now has a separate fail-closed Xyce/ADMS plugin
-  artifact contract; execution still requires a real-Xyce plugin loader and
-  conformance fixture.
+  artifact contract plus opt-in plugin build/load qualification; execution
+  still requires a real-Xyce plugin loader.
 
 ## arXiv Paper Findings
 
@@ -704,6 +704,12 @@ The GUI should not become the solver.
   validates those fields and emits
   `ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED` until a real-Xyce loader and
   conformance path are implemented.
+- Added opt-in real-Xyce ADMS plugin qualification coverage:
+  `CIRCUITCI_RUN_REAL_XYCE_ADMS_PLUGIN=1 cargo test --test analog_model_compiler_cli`.
+  It skips unless `Xyce`/`xyce` and `buildxyceplugin` are on `PATH`; when
+  runnable it builds the primary-source RLC Verilog-A plugin, loads it with
+  `Xyce -plugin`, pins the retained conformance artifact, and verifies the
+  fail-closed `xyce_adms_plugin` contract against those real artifacts.
 
 ## Risks
 

@@ -121,7 +121,12 @@ Required fields:
   Xyce version, Xyce/ADMS template revision, and configure options including
   `--enable-shared` and `--enable-xyce-shareable`. CircuitCI validates those
   fields and artifacts but emits `ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED`
-  until a real-Xyce plugin loader and conformance fixture are enabled.
+  until a real-Xyce plugin loader is enabled. The opt-in qualification hook
+  `CIRCUITCI_RUN_REAL_XYCE_ADMS_PLUGIN=1 cargo test --test analog_model_compiler_cli`
+  skips unless `Xyce`/`xyce` and `buildxyceplugin` are on `PATH`; when runnable
+  it builds the Xyce tutorial RLC Verilog-A plugin, loads it with `Xyce
+  -plugin`, pins the retained conformance artifact, and verifies CircuitCI's
+  fail-closed contract against those real artifacts.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/
@@ -218,7 +223,8 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    OpenVAF `*.osdi` artifacts are currently external-ngspice-only in CircuitCI;
    Xyce compact-model support uses the separate fail-closed
    `xyce_adms_plugin` contract and still requires a real-Xyce plugin loader
-   plus conformance before execution is enabled.
+   before execution is enabled. The real plugin-build/load qualification hook is
+   `CIRCUITCI_RUN_REAL_XYCE_ADMS_PLUGIN=1 cargo test --test analog_model_compiler_cli`.
    Opt-in real-Xyce conformance coverage is available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
    transient/AC/DC/noise,

@@ -139,7 +139,12 @@ not an execution adapter. A valid entry must declare:
   loaded and the generated model was active.
 
 Even when all of those fields are valid, CircuitCI emits
-`ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED` until a real-Xyce plugin loader,
-solver manifest contract, and conformance fixture are implemented. This keeps
-Xyce model extension as a backend-qualification target while preserving the
-metadata needed for that future adapter.
+`ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED` until a real-Xyce plugin loader
+and solver manifest contract are implemented. The opt-in qualification command
+`CIRCUITCI_RUN_REAL_XYCE_ADMS_PLUGIN=1 cargo test --test analog_model_compiler_cli`
+now exercises the primary-source build/load path when the host has
+`buildxyceplugin` and `Xyce`/`xyce` on `PATH`: it builds the Xyce tutorial RLC
+Verilog-A plugin, runs `Xyce -plugin`, retains the conformance log, pins its
+hash, and verifies CircuitCI's fail-closed contract against those real
+artifacts. This keeps Xyce model extension as a backend-qualification target
+while preserving the metadata needed for that future adapter.

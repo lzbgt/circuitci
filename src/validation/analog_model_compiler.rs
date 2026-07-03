@@ -764,13 +764,32 @@ fn validate_xyce_adms_compiler_command(
             "Xyce/ADMS compiler_command must reference Verilog-A source {source_path}."
         ));
     }
-    if !compiler_command.contains(&model_file.path) {
+    if !xyce_build_command_references_plugin_output(model_file, &tokens, compiler_command) {
         return Some(format!(
             "Xyce/ADMS compiler_command must write declared plugin artifact {}.",
             model_file.path
         ));
     }
     None
+}
+
+fn xyce_build_command_references_plugin_output(
+    model_file: &AnalogModelFile,
+    tokens: &[String],
+    compiler_command: &str,
+) -> bool {
+    if compiler_command.contains(&model_file.path) {
+        return true;
+    }
+    let Some(plugin_stem) = Path::new(&model_file.path)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+    else {
+        return false;
+    };
+    tokens.windows(2).any(|pair| {
+        pair[0] == "-o" && (pair[1] == plugin_stem || format!("{}.so", pair[1]) == model_file.path)
+    })
 }
 
 fn validate_xyce_plugin_load_command(

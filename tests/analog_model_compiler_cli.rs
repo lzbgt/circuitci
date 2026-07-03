@@ -13,6 +13,9 @@ use std::process::Command;
 const REAL_NGSPICE_OSDI_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE_OSDI";
 
 #[cfg(unix)]
+const REAL_XYCE_ADMS_PLUGIN_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE_ADMS_PLUGIN";
+
+#[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
     fake_executable_with_body(dir, name, "#!/bin/sh\nexit 99\n");
 }
@@ -94,6 +97,26 @@ fn write_xyce_adms_plugin_project(
     conformance_sha256: &str,
     configure_options: &[&str],
 ) -> std::path::PathBuf {
+    write_xyce_adms_plugin_project_with_commands(
+        dir,
+        source_sha256,
+        plugin_sha256,
+        conformance_sha256,
+        configure_options,
+        "buildxyceplugin tiny_xyce_resistor.va tiny_xyce_plugin.so",
+        "Xyce -plugin tiny_xyce_plugin.so circuit.cir",
+    )
+}
+
+fn write_xyce_adms_plugin_project_with_commands(
+    dir: &std::path::Path,
+    source_sha256: &str,
+    plugin_sha256: &str,
+    conformance_sha256: &str,
+    configure_options: &[&str],
+    compiler_command: &str,
+    plugin_load_command: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let configure_options = configure_options
         .iter()
@@ -138,8 +161,8 @@ scenarios:
           source_sha256: {source_sha256}
           compiler: xyce_adms
           compiler_version: xyce-7.8-adms-test
-          compiler_command: buildxyceplugin tiny_xyce_resistor.va tiny_xyce_plugin.so
-          plugin_load_command: Xyce -plugin tiny_xyce_plugin.so circuit.cir
+          compiler_command: {compiler_command}
+          plugin_load_command: {plugin_load_command}
           xyce_version: 7.8-test
           xyce_adms_template_revision: xyce-7.8-utils-ADMS-test
           xyce_configure_options:
@@ -471,6 +494,36 @@ fn ngspice_has_pre_osdi_command() -> bool {
 }
 
 #[cfg(unix)]
+fn xyce_binary() -> Option<&'static str> {
+    if binary_available("Xyce") {
+        Some("Xyce")
+    } else if binary_available("xyce") {
+        Some("xyce")
+    } else {
+        None
+    }
+}
+
+#[cfg(unix)]
+fn real_xyce_adms_plugin_conformance_enabled() -> bool {
+    if std::env::var(REAL_XYCE_ADMS_PLUGIN_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real-Xyce ADMS plugin conformance; set {REAL_XYCE_ADMS_PLUGIN_CONFORMANCE_ENV}=1"
+        );
+        return false;
+    }
+    if xyce_binary().is_none() {
+        eprintln!("skipping real-Xyce ADMS plugin conformance; Xyce/xyce is not on PATH");
+        return false;
+    }
+    if !binary_available("buildxyceplugin") {
+        eprintln!("skipping real-Xyce ADMS plugin conformance; buildxyceplugin is not on PATH");
+        return false;
+    }
+    true
+}
+
+#[cfg(unix)]
 fn write_real_openvaf_fixture(dir: &std::path::Path) -> (String, String) {
     let source = b"`include \"disciplines.vams\"\nmodule tiny_resistor(p, n);\n  inout p, n;\n  electrical p, n;\n  parameter real r = 1000.0 from (0:inf);\n  analog begin\n    I(p, n) <+ V(p, n) / r;\n  end\nendmodule\n";
     fs::write(dir.join("tiny_resistor.va"), source).unwrap();
@@ -487,6 +540,89 @@ fn write_real_openvaf_fixture(dir: &std::path::Path) -> (String, String) {
     );
     let artifact = fs::read(dir.join("tiny_resistor.osdi")).unwrap();
     (sha256_hex(source), sha256_hex(&artifact))
+}
+
+#[cfg(unix)]
+fn write_real_xyce_adms_plugin_fixture(dir: &std::path::Path) -> (String, String, String) {
+    let source = b"`include \"disciplines.vams\"\n`include \"constants.vams\"\n\n`define attr(txt) (*txt*)\n\nmodule rlc (p,n) `attr(xyceSpiceDeviceName=\"RLC\" xyceLevelNumber=\"1\");\n  electrical p,n;\n  inout p,n;\n  electrical internal1, internal2;\n\n  parameter real L=1e-3 from (0:inf) `attr(info=\"Inductance\" type=\"instance\");\n  parameter real R=1e3 from (0:inf) `attr(info=\"Resistance\" type=\"instance\");\n  parameter real C=1e-12 from (0:inf) `attr(info=\"Capacitance\" type=\"instance\");\n  real InductorCurrent;\n  real CapacitorCharge;\n\n  analog begin\n    I(p,internal1) <+ V(p,internal1)/R;\n    CapacitorCharge = V(internal1,internal2)*C;\n    I(internal1,internal2) <+ ddt(CapacitorCharge);\n    InductorCurrent=I(internal2,n);\n    V(internal2,n) <+ L*ddt(InductorCurrent);\n  end\nendmodule\n";
+    fs::write(dir.join("tiny_xyce_resistor.va"), source).unwrap();
+    let build_output = Command::new("buildxyceplugin")
+        .args(["-o", "tiny_xyce_plugin", "tiny_xyce_resistor.va", "."])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        build_output.status.success(),
+        "buildxyceplugin fixture compile failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&build_output.stdout),
+        String::from_utf8_lossy(&build_output.stderr)
+    );
+    let built_plugin = find_xyce_plugin_output(dir);
+    let normalized_plugin = dir.join("tiny_xyce_plugin.so");
+    if built_plugin != normalized_plugin {
+        fs::copy(&built_plugin, &normalized_plugin).unwrap();
+    }
+    let deck = b"Test of Xyce ADMS plugin load\nV1 1 0 SIN (5v 5v 20MEG)\nYrlc rlc1 1 0 R=1kohm L=1mH C=1pf\n.tran 1n 4u\n.print tran v(1) I(v1)\n.end\n";
+    fs::write(dir.join("rlc_series.cir"), deck).unwrap();
+    let xyce = xyce_binary().expect("real Xyce conformance requires Xyce binary");
+    let conformance_output = Command::new(xyce)
+        .args([
+            "-plugin",
+            normalized_plugin.to_str().unwrap(),
+            "rlc_series.cir",
+        ])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    let conformance_log = format!(
+        "status: {}\nstdout:\n{}\nstderr:\n{}",
+        conformance_output.status,
+        String::from_utf8_lossy(&conformance_output.stdout),
+        String::from_utf8_lossy(&conformance_output.stderr)
+    );
+    fs::write(dir.join("xyce_plugin_conformance.json"), &conformance_log).unwrap();
+    assert!(
+        conformance_output.status.success(),
+        "Xyce plugin conformance run failed\n{conformance_log}"
+    );
+    let plugin = fs::read(normalized_plugin).unwrap();
+    (
+        sha256_hex(source),
+        sha256_hex(&plugin),
+        sha256_hex(conformance_log.as_bytes()),
+    )
+}
+
+#[cfg(unix)]
+fn find_xyce_plugin_output(dir: &std::path::Path) -> std::path::PathBuf {
+    for candidate in [
+        dir.join("tiny_xyce_plugin.so"),
+        dir.join("libtiny_xyce_plugin.so"),
+        dir.join(".libs/tiny_xyce_plugin.so"),
+        dir.join(".libs/libtiny_xyce_plugin.so"),
+    ] {
+        if candidate.is_file() {
+            return candidate;
+        }
+    }
+    for subdir in [dir.to_path_buf(), dir.join(".libs")] {
+        if let Ok(entries) = fs::read_dir(&subdir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let file_name = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("");
+                if path.is_file()
+                    && file_name.ends_with(".so")
+                    && file_name.contains("tiny_xyce_plugin")
+                {
+                    return path;
+                }
+            }
+        }
+    }
+    panic!("buildxyceplugin did not produce a tiny_xyce_plugin shared library");
 }
 
 #[cfg(unix)]
@@ -709,6 +845,59 @@ fn xyce_adms_plugin_contract_requires_shareable_xyce_build_options() {
     assert_eq!(
         report["failures"][0]["limit"]["required_configure_option"],
         "--enable-xyce-shareable"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_xyce_adms_plugin_conformance_builds_loads_and_records_contract_when_enabled() {
+    if !real_xyce_adms_plugin_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, plugin_sha, conformance_sha) =
+        write_real_xyce_adms_plugin_fixture(project_dir.path());
+    let project_path = write_xyce_adms_plugin_project_with_commands(
+        project_dir.path(),
+        &source_sha,
+        &plugin_sha,
+        &conformance_sha,
+        &["--enable-shared", "--enable-xyce-shareable"],
+        "buildxyceplugin -o tiny_xyce_plugin tiny_xyce_resistor.va .",
+        "Xyce -plugin tiny_xyce_plugin.so rlc_series.cir",
+    );
+
+    let report = common::run_validation(project_path.to_str().unwrap());
+
+    assert_eq!(report["result"], "fail", "{report:#}");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["id"] == "ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED")
+        .expect("missing Xyce/ADMS plugin planning finding");
+    assert_eq!(
+        failure["measured"]["compiler_command"],
+        "buildxyceplugin -o tiny_xyce_plugin tiny_xyce_resistor.va ."
+    );
+    assert_eq!(
+        failure["measured"]["plugin_load_command"],
+        "Xyce -plugin tiny_xyce_plugin.so rlc_series.cir"
+    );
+    assert_eq!(
+        failure["measured"]["conformance_artifact"],
+        "xyce_plugin_conformance.json"
+    );
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact
+                .as_str()
+                .unwrap()
+                .ends_with("xyce_plugin_conformance.json"))
     );
     assert_report_schema_valid(&report);
 }
