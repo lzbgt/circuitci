@@ -535,7 +535,10 @@ The GUI should not become the solver.
   `measure_statements[]` remain ngspice-only because their syntax is
   backend-specific. Portable templates now include simple scalar operations and
   transient threshold delay/slew/window crossing time through SPICE
-  `TRIG`/`TARG` and `WHEN`; next add measured-value assertion binding.
+  `TRIG`/`TARG` and `WHEN`. Normalized `measure_summary` rows can now feed
+  `measure_assertions[]` so scalar simulation specs directly pass or fail
+  validation; next add richer aggregation/summary reporting across swept
+  measure corners.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

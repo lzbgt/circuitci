@@ -378,18 +378,23 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    `ngspice_measure.log`, `measure_raw.txt`, `measure_summary.csv`, and
    `solver_manifest.json`. The normalized summary records measurement name,
    mode, scalar value, and raw solver line.
-7. Explicit `backend: xyce` supports structured `measure_templates[]` and writes
+7. Optional `measure_assertions[]` bind normalized `measure_summary.csv` rows to
+   design limits. Each assertion names one measurement, declares `relation:
+   above|below`, a finite `threshold`, and an optional display `unit`. A failed
+   assertion emits a normal `SPICE_MEASURE_ANALYSIS` finding with the measured
+   value, threshold, margin, summary artifact, and suggested fixes.
+8. Explicit `backend: xyce` supports structured `measure_templates[]` and writes
    `circuitci_xyce_measure.cir`, `xyce_measure.log`, `measure_raw.txt`,
    `measure_summary.csv`, and `solver_manifest.json` using the same normalized
    `measure_summary` contract. The adapter records Xyce measure result files
    such as `.mt0` when the solver emits them, with stdout as a fallback for
    compatible outputs. Raw `measure_statements[]` remain ngspice-only and fail
    closed on Xyce because their syntax is backend-specific.
-8. Opt-in real-ngspice conformance coverage is available through
+9. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`.
-9. Embedded ngspice remains fail-closed with backend-planning evidence until it
+10. Embedded ngspice remains fail-closed with backend-planning evidence until it
    emits the same normalized `measure_summary` contract. `backend: auto` remains
    conservative and does not select Xyce for measure runs.
 

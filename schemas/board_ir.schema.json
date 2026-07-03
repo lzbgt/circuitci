@@ -2923,6 +2923,26 @@
                       ]
                     }
                   },
+                  "measure_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "measurement", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "measurement": { "type": "string", "minLength": 1 },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "s_parameter_ports": {
                     "type": "array",
                     "minItems": 1,

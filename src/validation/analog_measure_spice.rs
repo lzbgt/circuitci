@@ -1,8 +1,8 @@
-use crate::board_ir::{AnalogMeasureTemplate, Scenario};
+use crate::board_ir::{AnalogMeasureAssertion, AnalogMeasureTemplate, AnalogRelation, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -17,7 +17,9 @@ use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
 use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
-use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::analog_util::{
+    file_sha256_hex, normalize_artifact_path, push_artifact, safe_artifact_name,
+};
 use super::analog_xyce_measure_runner::{XyceMeasureRunOptions, run_xyce_measure};
 use super::common::validation_input_missing;
 
@@ -276,6 +278,10 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             return;
         }
     }
+    if let Err(message) = validate_measure_assertions(analog, &names) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
     let run_plans = match analog_run_plans(analog) {
         Ok(run_plans) => run_plans,
         Err(message) => {
@@ -439,6 +445,7 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
                     push_artifact(artifacts, artifact);
                 }
                 push_artifact(artifacts, &run.summary);
+                evaluate_measure_assertions(scenario, &run.summary, findings);
                 tag_corner_findings(findings, finding_start, &run_plan, false);
             }
             Err(error) => {
@@ -471,6 +478,181 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             }
         }
     }
+}
+
+fn validate_measure_assertions(
+    analog: &crate::board_ir::AnalogScenario,
+    measurement_names: &BTreeSet<String>,
+) -> Result<(), String> {
+    let mut assertion_names = BTreeSet::new();
+    for assertion in &analog.analysis.measure_assertions {
+        let Some(name) = nonempty(Some(&assertion.name)) else {
+            return Err("analog_measure assertion name is empty.".to_string());
+        };
+        if !assertion_names.insert(name.to_ascii_lowercase()) {
+            return Err(format!("analog_measure duplicate assertion name {name}."));
+        }
+        let Some(measurement) = nonempty(Some(&assertion.measurement)) else {
+            return Err(format!(
+                "analog_measure assertion {name} is missing measurement."
+            ));
+        };
+        if !measurement_names.contains(&measurement.to_ascii_lowercase()) {
+            return Err(format!(
+                "analog_measure assertion {name} references unknown measurement {measurement}."
+            ));
+        }
+        if !assertion.threshold.is_finite() {
+            return Err(format!(
+                "analog_measure assertion {name} requires finite threshold."
+            ));
+        }
+        if matches!(assertion.unit.as_deref(), Some(unit) if unit.trim().is_empty()) {
+            return Err(format!(
+                "analog_measure assertion {name} has an empty unit."
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn evaluate_measure_assertions(scenario: &Scenario, summary: &Path, findings: &mut Vec<Finding>) {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before measure assertions");
+    if analog.analysis.measure_assertions.is_empty() {
+        return;
+    }
+    let rows = match read_measure_summary(summary) {
+        Ok(rows) => rows,
+        Err(message) => {
+            findings.push(Finding::critical(
+                SPICE_MEASURE_ANALYSIS,
+                &scenario.name,
+                message,
+            ));
+            return;
+        }
+    };
+    for assertion in &analog.analysis.measure_assertions {
+        let Some(measured) = rows
+            .get(&assertion.measurement.to_ascii_lowercase())
+            .copied()
+        else {
+            let mut finding = Finding::critical(
+                SPICE_MEASURE_ANALYSIS,
+                &scenario.name,
+                format!(
+                    "Measure assertion {} references missing normalized measurement {}.",
+                    assertion.name, assertion.measurement
+                ),
+            );
+            finding
+                .measured
+                .insert("assertion".to_string(), json!(&assertion.name));
+            finding.measured.insert(
+                "measure_summary".to_string(),
+                json!(normalize_artifact_path(summary)),
+            );
+            findings.push(finding);
+            continue;
+        };
+        push_measure_assertion_finding(scenario, assertion, measured, summary, findings);
+    }
+}
+
+fn push_measure_assertion_finding(
+    scenario: &Scenario,
+    assertion: &AnalogMeasureAssertion,
+    measured: f64,
+    summary: &Path,
+    findings: &mut Vec<Finding>,
+) {
+    let (relation, margin, passed) = match assertion.relation {
+        AnalogRelation::Above => (
+            "above",
+            measured - assertion.threshold,
+            measured > assertion.threshold,
+        ),
+        AnalogRelation::Below => (
+            "below",
+            assertion.threshold - measured,
+            measured < assertion.threshold,
+        ),
+    };
+    if passed {
+        return;
+    }
+    let unit = assertion.unit.as_deref().unwrap_or("scalar");
+    let mut finding = Finding::critical(
+        SPICE_MEASURE_ANALYSIS,
+        &scenario.name,
+        format!(
+            "Measure assertion {} failed: measurement {} was {:.6} {}, expected {relation} {:.6} {}.",
+            assertion.name, assertion.measurement, measured, unit, assertion.threshold, unit
+        ),
+    );
+    finding
+        .measured
+        .insert("assertion".to_string(), json!(&assertion.name));
+    finding
+        .measured
+        .insert("measurement".to_string(), json!(&assertion.measurement));
+    finding
+        .measured
+        .insert("value".to_string(), json!(measured));
+    finding.measured.insert("unit".to_string(), json!(unit));
+    finding.measured.insert("margin".to_string(), json!(margin));
+    finding.measured.insert(
+        "measure_summary".to_string(),
+        json!(normalize_artifact_path(summary)),
+    );
+    finding
+        .limit
+        .insert(format!("{relation}_threshold"), json!(assertion.threshold));
+    if assertion.suggested_fixes.is_empty() {
+        finding.suggested_fixes.push(
+            "Adjust the circuit, stimulus, model, or measurement template so the normalized scalar result meets the declared design limit."
+                .to_string(),
+        );
+    } else {
+        finding
+            .suggested_fixes
+            .extend(assertion.suggested_fixes.clone());
+    }
+    findings.push(finding);
+}
+
+fn read_measure_summary(summary: &Path) -> Result<BTreeMap<String, f64>, String> {
+    let text = fs::read_to_string(summary).map_err(|error| {
+        format!(
+            "Failed to read normalized measure summary {}: {error}",
+            summary.display()
+        )
+    })?;
+    let mut rows = BTreeMap::new();
+    for (index, line) in text.lines().enumerate() {
+        if index == 0 {
+            continue;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        let mut columns = line.splitn(4, ',');
+        let measurement = columns.next().unwrap_or("").trim();
+        let _mode = columns.next();
+        let value = columns.next().unwrap_or("").trim();
+        let parsed = value.parse::<f64>().map_err(|error| {
+            format!(
+                "Measure summary {} row {} has invalid numeric value {value}: {error}",
+                summary.display(),
+                index + 1
+            )
+        })?;
+        rows.insert(measurement.to_ascii_lowercase(), parsed);
+    }
+    Ok(rows)
 }
 
 fn is_xyce_backend(backend: &str) -> bool {

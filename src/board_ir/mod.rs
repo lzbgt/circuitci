@@ -1301,6 +1301,8 @@ pub struct AnalogTransientAnalysis {
     pub measure_statements: Vec<AnalogMeasureStatement>,
     #[serde(default)]
     pub measure_templates: Vec<AnalogMeasureTemplate>,
+    #[serde(default)]
+    pub measure_assertions: Vec<AnalogMeasureAssertion>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1340,6 +1342,18 @@ pub struct AnalogMeasureTemplate {
     pub to_hz: Option<f64>,
     #[serde(default)]
     pub at_hz: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogMeasureAssertion {
+    pub name: String,
+    pub measurement: String,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

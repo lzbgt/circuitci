@@ -192,9 +192,12 @@ Current analog support:
   `backend: xyce` runs structured templates only. Both write
   `measure_raw.txt`, `measure_summary.csv`, and `solver_manifest.json`; the
   normalized summary records measurement name, mode, scalar value, and raw
-  solver line. The Xyce path records measure result files such as `.mt0` when
-  emitted. Raw `measure_statements[]` remain ngspice-only and fail closed on
-  Xyce. Opt-in real-ngspice conformance coverage is available through
+  solver line. Optional `measure_assertions[]` compare named normalized
+  measurements against finite `above`/`below` thresholds so scalar simulation
+  specs can directly pass or fail validation. The Xyce path records measure
+  result files such as `.mt0` when emitted. Raw `measure_statements[]` remain
+  ngspice-only and fail closed on Xyce. Opt-in real-ngspice conformance
+  coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; it skips
   unless `ngspice` is on `PATH`. Opt-in real-Xyce template conformance uses
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli`; it skips

@@ -121,6 +121,16 @@ fn write_measure_template_project(
     mode: &str,
     template_yaml: &str,
 ) -> std::path::PathBuf {
+    write_measure_template_project_with_assertions(dir, backend, mode, template_yaml, "")
+}
+
+fn write_measure_template_project_with_assertions(
+    dir: &std::path::Path,
+    backend: &str,
+    mode: &str,
+    template_yaml: &str,
+    measure_assertions_yaml: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let analysis_extra = if mode == "tran" {
         "        stop_time_us: 100.0\n        max_step_us: 0.1\n".to_string()
@@ -188,6 +198,7 @@ scenarios:
         measure_mode: {mode}
 {analysis_extra}        measure_templates:
 {template_yaml}
+{measure_assertions_yaml}
       stimuli: []
       probes:
         - {{ name: out_measure, expression: V(out) }}
@@ -456,6 +467,79 @@ fn measure_slew_and_threshold_templates_generate_portable_statements() {
         wrapper.contains(
             "meas tran out_rise_time WHEN v(out)=5.000000000000e-1 FROM=1.000000000000e-6 TO=2.000000000000e-5 RISE=1"
         )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_assertion_fails_when_scalar_exceeds_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'avg_out = 5.10001e-01 from= 2.00000e-05 to= 1.00000e-04'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project_with_assertions(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+        "        measure_assertions:\n          - name: avg_out_below_limit\n            measurement: avg_out\n            relation: below\n            threshold: 0.4\n            unit: V\n            suggested_fixes:\n              - Reduce the RC output average voltage during the measurement window.\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_MEASURE_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "avg_out_below_limit"
+    );
+    assert_eq!(report["failures"][0]["measured"]["measurement"], "avg_out");
+    assert_eq!(report["failures"][0]["measured"]["unit"], "V");
+    assert_eq!(
+        report["failures"][0]["limit"]["below_threshold"]
+            .as_f64()
+            .unwrap(),
+        0.4
+    );
+    assert!(report["failures"][0]["measured"]["value"].as_f64().unwrap() > 0.5);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_assertion_rejects_unknown_measurement() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project_with_assertions(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+        "        measure_assertions:\n          - name: missing_measurement_limit\n            measurement: no_such_measurement\n            relation: above\n            threshold: 0.1\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("references unknown measurement no_such_measurement")
     );
     assert_report_schema_valid(&report);
 }
