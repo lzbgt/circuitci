@@ -667,7 +667,13 @@ The GUI should not become the solver.
   deletes the artifact, lets CircuitCI rebuild it through the declared
   `compiler_command`, and verifies ngspice `pre_osdi` loading, normalized
   transient output, and solver manifest model-file provenance.
-- Add artifact hashes and generated-model provenance to reports.
+- Added solver-manifest generated-model provenance records for OpenVAF/OSDI
+  artifacts. `inputs.model_file_provenance[]` records declared and actual
+  source/artifact hashes, compiler identity and command, compiler availability,
+  build-env state, rebuild mode, and whether CircuitCI produced the artifact in
+  the current validation run.
+- Add backend compatibility tests for Xyce or other future Verilog-A/OSDI
+  loading paths only after primary documentation and runnable adapters exist.
 
 ## Risks
 

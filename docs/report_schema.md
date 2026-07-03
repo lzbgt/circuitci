@@ -1371,7 +1371,13 @@ execution, OSDI artifacts are loaded through generated `pre_osdi` wrapper
 commands. If the runtime rejects those commands or cannot load the OSDI
 artifact, the normal `SPICE_TRANSIENT_ANALYSIS` finding preserves the wrapper
 and log artifacts and its message identifies OSDI model loading as the failing
-boundary.
+boundary. Successful solver manifests include
+`inputs.model_file_provenance[]` records for OpenVAF/OSDI artifacts. Stable
+fields include `model_file`, `artifact_format`, `source_path`,
+`source_sha256_declared`, `source_sha256_actual`,
+`artifact_sha256_declared`, `artifact_sha256_actual`, `compiler`,
+`compiler_version`, `compiler_command`, `compiler_available_on_path`,
+`build_env_enabled`, `rebuild_mode`, and `produced_by_circuitci`.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

@@ -4,16 +4,38 @@ use crate::reports::Finding;
 use serde_json::json;
 use std::path::Path;
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 
 use super::analog_util::{executable_on_path, file_sha256_hex, push_artifact};
 
 const OPENVAF_BUILD_ENV: &str = "CIRCUITCI_RUN_OPENVAF_BUILDS";
+
+#[derive(Clone)]
+struct ModelCompilerManifestRecord {
+    scenario: String,
+    model_file: String,
+    source_path: String,
+    source_sha256_declared: String,
+    source_sha256_actual: String,
+    artifact_sha256_declared: String,
+    artifact_sha256_actual: String,
+    compiler: String,
+    compiler_version: Option<String>,
+    compiler_command: String,
+    compiler_available_on_path: bool,
+    build_env_enabled: bool,
+    rebuild_mode: &'static str,
+}
+
+static MODEL_COMPILER_MANIFEST_RECORDS: OnceLock<Mutex<Vec<ModelCompilerManifestRecord>>> =
+    OnceLock::new();
 
 pub(super) fn validate_model_compiler_provenance(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     artifacts: &mut Vec<String>,
 ) -> Option<Finding> {
+    clear_model_compiler_manifest_records(&scenario.name);
     let analog = scenario
         .analog
         .as_ref()
@@ -114,8 +136,8 @@ pub(super) fn validate_model_compiler_provenance(
             );
             return Some(finding);
         }
-        match file_sha256_hex(&source) {
-            Ok(actual) if actual.eq_ignore_ascii_case(source_sha256) => {}
+        let source_sha256_actual = match file_sha256_hex(&source) {
+            Ok(actual) if actual.eq_ignore_ascii_case(source_sha256) => actual,
             Ok(actual) => {
                 let mut finding = Finding::critical(
                     "ANALOG_MODEL_SOURCE_HASH_MISMATCH",
@@ -147,13 +169,14 @@ pub(super) fn validate_model_compiler_provenance(
                 );
                 return Some(finding);
             }
-        }
+        };
         push_artifact(artifacts, &source);
 
         let artifact = bound.project.source_dir.join(&model_file.path);
+        let mut rebuild_mode = "prebuilt_verified";
         if !artifact.is_file() && openvaf_builds_enabled() {
             match run_openvaf_build(bound, scenario, model_file, source_path, compiler_command) {
-                Ok(()) => {}
+                Ok(()) => rebuild_mode = "rebuilt_missing_artifact",
                 Err(finding) => return Some(*finding),
             }
         }
@@ -181,7 +204,23 @@ pub(super) fn validate_model_compiler_provenance(
             .as_deref()
             .expect("model compiler provenance requires sha256");
         match file_sha256_hex(&artifact) {
-            Ok(actual) if actual.eq_ignore_ascii_case(expected_artifact_sha) => {}
+            Ok(actual) if actual.eq_ignore_ascii_case(expected_artifact_sha) => {
+                record_model_compiler_manifest(ModelCompilerManifestRecord {
+                    scenario: scenario.name.clone(),
+                    model_file: model_file.path.clone(),
+                    source_path: source_path.to_string(),
+                    source_sha256_declared: source_sha256.to_string(),
+                    source_sha256_actual: source_sha256_actual.clone(),
+                    artifact_sha256_declared: expected_artifact_sha.to_string(),
+                    artifact_sha256_actual: actual,
+                    compiler: "openvaf".to_string(),
+                    compiler_version: model_file.compiler_version.clone(),
+                    compiler_command: compiler_command.to_string(),
+                    compiler_available_on_path: executable_on_path("openvaf"),
+                    build_env_enabled: openvaf_builds_enabled(),
+                    rebuild_mode,
+                });
+            }
             Ok(actual) => {
                 if openvaf_builds_enabled() {
                     if let Err(finding) = run_openvaf_build(
@@ -193,8 +232,25 @@ pub(super) fn validate_model_compiler_provenance(
                     ) {
                         return Some(*finding);
                     }
+                    rebuild_mode = "rebuilt_hash_stale_artifact";
                     match file_sha256_hex(&artifact) {
-                        Ok(rebuilt) if rebuilt.eq_ignore_ascii_case(expected_artifact_sha) => {}
+                        Ok(rebuilt) if rebuilt.eq_ignore_ascii_case(expected_artifact_sha) => {
+                            record_model_compiler_manifest(ModelCompilerManifestRecord {
+                                scenario: scenario.name.clone(),
+                                model_file: model_file.path.clone(),
+                                source_path: source_path.to_string(),
+                                source_sha256_declared: source_sha256.to_string(),
+                                source_sha256_actual: source_sha256_actual.clone(),
+                                artifact_sha256_declared: expected_artifact_sha.to_string(),
+                                artifact_sha256_actual: rebuilt,
+                                compiler: "openvaf".to_string(),
+                                compiler_version: model_file.compiler_version.clone(),
+                                compiler_command: compiler_command.to_string(),
+                                compiler_available_on_path: executable_on_path("openvaf"),
+                                build_env_enabled: openvaf_builds_enabled(),
+                                rebuild_mode,
+                            });
+                        }
                         Ok(rebuilt) => {
                             return Some(artifact_hash_mismatch_finding(
                                 scenario,
@@ -253,6 +309,51 @@ pub(super) fn validate_model_compiler_provenance(
         push_artifact(artifacts, &artifact);
     }
     None
+}
+
+pub(super) fn solver_manifest_model_file_provenance(scenario: &Scenario) -> Vec<serde_json::Value> {
+    model_compiler_manifest_records()
+        .lock()
+        .expect("model compiler manifest records mutex is poisoned")
+        .iter()
+        .filter(|record| record.scenario == scenario.name)
+        .map(|record| {
+            json!({
+                "model_file": &record.model_file,
+                "artifact_format": "osdi_shared_object",
+                "source_path": &record.source_path,
+                "source_sha256_declared": &record.source_sha256_declared,
+                "source_sha256_actual": &record.source_sha256_actual,
+                "artifact_sha256_declared": &record.artifact_sha256_declared,
+                "artifact_sha256_actual": &record.artifact_sha256_actual,
+                "compiler": &record.compiler,
+                "compiler_version": &record.compiler_version,
+                "compiler_command": &record.compiler_command,
+                "compiler_available_on_path": record.compiler_available_on_path,
+                "build_env_enabled": record.build_env_enabled,
+                "rebuild_mode": record.rebuild_mode,
+                "produced_by_circuitci": record.rebuild_mode != "prebuilt_verified",
+            })
+        })
+        .collect()
+}
+
+fn record_model_compiler_manifest(record: ModelCompilerManifestRecord) {
+    model_compiler_manifest_records()
+        .lock()
+        .expect("model compiler manifest records mutex is poisoned")
+        .push(record);
+}
+
+fn clear_model_compiler_manifest_records(scenario: &str) {
+    model_compiler_manifest_records()
+        .lock()
+        .expect("model compiler manifest records mutex is poisoned")
+        .retain(|record| record.scenario != scenario);
+}
+
+fn model_compiler_manifest_records() -> &'static Mutex<Vec<ModelCompilerManifestRecord>> {
+    MODEL_COMPILER_MANIFEST_RECORDS.get_or_init(|| Mutex::new(Vec::new()))
 }
 
 fn run_openvaf_build(

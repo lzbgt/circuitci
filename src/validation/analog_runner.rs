@@ -15,6 +15,7 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use super::analog_model_compiler::solver_manifest_model_file_provenance;
 use super::analog_util::{
     absolute_path, executable_on_path, normalize_artifact_path, normalize_path, safe_artifact_name,
 };
@@ -1594,6 +1595,7 @@ pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf,
         .collect();
     let raw_outputs = path_entries(io.raw_outputs);
     let normalized_outputs = path_entries(io.normalized_outputs);
+    let model_file_provenance = solver_manifest_model_file_provenance(io.scenario);
     let model_files: Vec<_> = analog
         .model_files
         .iter()
@@ -1633,6 +1635,7 @@ pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf,
             "source_netlist": normalize_artifact_path(io.source_netlist),
             "wrapper": normalize_artifact_path(io.wrapper),
             "model_files": model_files,
+            "model_file_provenance": model_file_provenance,
             "parameter_overrides": parameter_overrides,
             "model_section_overrides": model_section_overrides,
         },

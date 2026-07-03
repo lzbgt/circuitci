@@ -266,8 +266,17 @@ fn run_validation_with_path_retaining_output(
     project: &str,
     path: &std::path::Path,
 ) -> (tempfile::TempDir, Value) {
+    run_validation_with_path_and_env_retaining_output(project, path, &[])
+}
+
+fn run_validation_with_path_and_env_retaining_output(
+    project: &str,
+    path: &std::path::Path,
+    envs: &[(&str, &str)],
+) -> (tempfile::TempDir, Value) {
     let out_dir = tempfile::tempdir().unwrap();
-    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_circuitci"));
+    command
         .args([
             "validate",
             project,
@@ -276,9 +285,11 @@ fn run_validation_with_path_retaining_output(
             "--output",
             out_dir.path().to_str().unwrap(),
         ])
-        .env("PATH", path)
-        .status()
-        .unwrap();
+        .env("PATH", path);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let status = command.status().unwrap();
     assert!(status.success());
     let report =
         serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
@@ -449,6 +460,54 @@ fn openvaf_osdi_model_is_loaded_with_ngspice_pre_osdi() {
         manifest["inputs"]["model_files"][0]["artifact_format"],
         "osdi_shared_object"
     );
+    let provenance = &manifest["inputs"]["model_file_provenance"][0];
+    assert_eq!(provenance["model_file"], "tiny_resistor.osdi");
+    assert_eq!(provenance["source_sha256_declared"], source_sha);
+    assert_eq!(provenance["source_sha256_actual"], source_sha);
+    assert_eq!(provenance["artifact_sha256_declared"], artifact_sha);
+    assert_eq!(provenance["artifact_sha256_actual"], artifact_sha);
+    assert_eq!(provenance["rebuild_mode"], "prebuilt_verified");
+    assert_eq!(provenance["produced_by_circuitci"], false);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_rebuild_is_recorded_in_solver_manifest() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'time v(out)\\n0.0 0.5\\n0.000001 0.5\\n' > waveform.csv\n",
+    );
+    fake_openvaf_builder(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    fs::remove_file(project_dir.path().join("tiny_resistor.osdi")).unwrap();
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+
+    let (_out_dir, report) = run_validation_with_path_and_env_retaining_output(
+        project_path.to_str().unwrap(),
+        fake_path.path(),
+        &[("CIRCUITCI_RUN_OPENVAF_BUILDS", "1")],
+    );
+
+    assert_eq!(report["result"], "pass", "{report:#}");
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    let provenance = &manifest["inputs"]["model_file_provenance"][0];
+    assert_eq!(provenance["model_file"], "tiny_resistor.osdi");
+    assert_eq!(provenance["source_sha256_declared"], source_sha);
+    assert_eq!(provenance["source_sha256_actual"], source_sha);
+    assert_eq!(provenance["artifact_sha256_declared"], artifact_sha);
+    assert_eq!(provenance["artifact_sha256_actual"], artifact_sha);
+    assert_eq!(provenance["compiler_available_on_path"], true);
+    assert_eq!(provenance["build_env_enabled"], true);
+    assert_eq!(provenance["rebuild_mode"], "rebuilt_missing_artifact");
+    assert_eq!(provenance["produced_by_circuitci"], true);
     assert_report_schema_valid(&report);
 }
 
