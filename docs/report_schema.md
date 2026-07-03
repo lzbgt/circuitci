@@ -1423,6 +1423,10 @@ package-lock fields `model_package_name`, `model_package_version`,
 `backend`, and `manifest` path, so report consumers can inspect compiled-model
 provenance without opening `solver_manifest.json` first. Markdown reports
 include the same information in the "Model File Provenance" section.
+Standalone compact-model package preflights use
+`schemas/model_package_verification_report.schema.json`, written by
+`circuitci verify-model-package`. That report records lock and optional registry
+hashes, per-artifact hash status, and stable `MODEL_PACKAGE_*` finding ids.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

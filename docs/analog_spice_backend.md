@@ -140,7 +140,10 @@ Required fields:
   with any explicit scenario metadata. Valid package locks and registries are
   retained as report artifacts and projected into `solver_manifest.json` plus
   top-level `model_file_provenance[]` so reports can distinguish
-  package-qualified compact models from one-off scenario files.
+  package-qualified compact models from one-off scenario files. Use
+  `circuitci verify-model-package` to validate the lock and optional registry
+  before adding the package to a scenario; its output follows
+  `schemas/model_package_verification_report.schema.json`.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

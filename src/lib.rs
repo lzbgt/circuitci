@@ -6,6 +6,7 @@ pub mod cli;
 pub mod gui;
 pub mod importers;
 pub mod library;
+pub mod model_package;
 pub mod power_mux_selection;
 pub mod repair_yaml;
 pub mod reports;

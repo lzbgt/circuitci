@@ -724,6 +724,10 @@ The GUI should not become the solver.
   from a reusable registry. Registry files are hash-pinned, retained as report
   artifacts, and fail closed when entries are missing or conflict with explicit
   scenario metadata.
+- Added `circuitci verify-model-package` and
+  `schemas/model_package_verification_report.schema.json` so package authors
+  can validate lock files, registry entries, and artifact hashes independently
+  before scenarios depend on those compact-model packages.
 
 ## Risks
 

@@ -3752,7 +3752,9 @@ identity, artifact id, lock path, and lock SHA-256. Explicit scenario fields are
 allowed as assertions but must match the registry. Lock and registry failures
 emit `ANALOG_MODEL_PACKAGE_LOCK_*` or `ANALOG_MODEL_PACKAGE_REGISTRY_*` findings
 before solver execution; valid locks and registries are retained as artifacts
-and surfaced in `model_file_provenance[]`.
+and surfaced in `model_file_provenance[]`. Use
+`circuitci verify-model-package` for an independent lock/registry preflight
+before referencing the package from a scenario.
 
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the

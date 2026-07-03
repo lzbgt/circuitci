@@ -36,6 +36,19 @@ enum Command {
         #[arg(long, short = 'o', default_value = "out/suite")]
         output: PathBuf,
     },
+    VerifyModelPackage {
+        lock: PathBuf,
+        #[arg(long)]
+        registry: Option<PathBuf>,
+        #[arg(long = "registry-entry")]
+        registry_entry: Option<String>,
+        #[arg(
+            long,
+            short = 'o',
+            default_value = "out/model_package_verification.json"
+        )]
+        output: PathBuf,
+    },
     RepairYaml {
         project: PathBuf,
         #[arg(long, default_value = "iot_basic_v0")]
@@ -265,6 +278,12 @@ pub fn run() -> Result<()> {
             no_open_ui: _,
         }) => run_validate(project, profile, output, json),
         Some(Command::ValidateSuite { manifest, output }) => run_validate_suite(manifest, output),
+        Some(Command::VerifyModelPackage {
+            lock,
+            registry,
+            registry_entry,
+            output,
+        }) => run_verify_model_package(lock, registry, registry_entry, output),
         Some(Command::RepairYaml {
             project,
             profile,
@@ -410,6 +429,38 @@ pub fn run() -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn run_verify_model_package(
+    lock: PathBuf,
+    registry: Option<PathBuf>,
+    registry_entry: Option<String>,
+    output: PathBuf,
+) -> Result<()> {
+    let report = crate::model_package::verify_model_package(
+        &crate::model_package::ModelPackageVerifyOptions {
+            lock: lock.clone(),
+            registry,
+            registry_entry,
+            output: output.clone(),
+        },
+    )?;
+    crate::model_package::write_model_package_verification_report(&report, &output)?;
+    println!(
+        "CircuitCI model package verification {}: artifacts={} findings={} -> {}",
+        report.result,
+        report.artifacts.len(),
+        report.findings.len(),
+        output.display()
+    );
+    if report.result != "pass" {
+        bail!(
+            "Model package verification failed for {}; see {}",
+            lock.display(),
+            output.display()
+        );
+    }
+    Ok(())
 }
 
 fn run_repair_yaml(
