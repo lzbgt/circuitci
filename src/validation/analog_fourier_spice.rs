@@ -8,6 +8,7 @@ use std::path::Path;
 
 use super::SPICE_FOURIER_ANALYSIS;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
+use super::analog_fourier_runner::{NgspiceFourierRunOptions, run_ngspice_fourier};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
     external_backend_unavailable, select_backend_for_feature,
@@ -15,6 +16,7 @@ use super::analog_runner::{
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
+use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 
@@ -221,10 +223,13 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
         );
         return;
     }
-    if let Err(message) = analog_run_plans(analog) {
-        validation_input_missing(findings, scenario, message);
-        return;
-    }
+    let run_plans = match analog_run_plans(analog) {
+        Ok(run_plans) => run_plans,
+        Err(message) => {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    };
 
     let run_dir = output
         .join("analog")
@@ -240,8 +245,11 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
         ));
         return;
     }
-    match prepare_source_netlist(bound, scenario, &run_dir) {
-        Ok(source_netlist) => push_artifact(artifacts, &source_netlist),
+    let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => {
+            push_artifact(artifacts, &source_netlist);
+            source_netlist
+        }
         Err(message) => {
             let mut finding = Finding::critical(SPICE_FOURIER_ANALYSIS, &scenario.name, message);
             finding
@@ -250,7 +258,7 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
             findings.push(finding);
             return;
         }
-    }
+    };
 
     on_progress(
         "Planning analog Fourier backend",
@@ -273,40 +281,99 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
         return;
     };
 
-    let mut finding = unsupported_backend_plan_finding(
-        scenario,
-        UnsupportedBackendPlan {
-            check_id: SPICE_FOURIER_ANALYSIS,
-            selected_backend: backend,
-            implemented_backend: "none_yet",
-            analysis_kind: "fourier",
-            required_normalized_outputs: &["fourier_summary"],
-        },
-    );
-    finding
-        .measured
-        .insert("output_expression".to_string(), json!(output_expression));
-    finding.measured.insert(
-        "fundamental_frequency_hz".to_string(),
-        json!(fundamental_hz),
-    );
-    finding.measured.insert(
-        "stop_time_us".to_string(),
-        json!(analog.analysis.stop_time_us),
-    );
-    finding.measured.insert(
-        "max_step_us".to_string(),
-        json!(analog.analysis.max_step_us),
-    );
-    finding.measured.insert(
-        "harmonics".to_string(),
-        json!(analog.analysis.fourier_harmonics.unwrap_or(10)),
-    );
-    finding.limit.insert(
-        "required_evidence".to_string(),
-        json!("fourier_summary_csv_or_json"),
-    );
-    findings.push(finding);
+    if backend != "ngspice" {
+        let mut finding = unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_FOURIER_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice",
+                analysis_kind: "fourier",
+                required_normalized_outputs: &["fourier_summary"],
+            },
+        );
+        finding
+            .measured
+            .insert("output_expression".to_string(), json!(output_expression));
+        finding.measured.insert(
+            "fundamental_frequency_hz".to_string(),
+            json!(fundamental_hz),
+        );
+        finding.measured.insert(
+            "stop_time_us".to_string(),
+            json!(analog.analysis.stop_time_us),
+        );
+        finding.measured.insert(
+            "max_step_us".to_string(),
+            json!(analog.analysis.max_step_us),
+        );
+        finding.measured.insert(
+            "harmonics".to_string(),
+            json!(analog.analysis.fourier_harmonics.unwrap_or(10)),
+        );
+        finding.limit.insert(
+            "required_evidence".to_string(),
+            json!("fourier_summary_csv_or_json"),
+        );
+        findings.push(finding);
+        return;
+    }
+
+    for run_plan in run_plans {
+        if should_cancel() {
+            push_canceled_finding(findings, scenario);
+            return;
+        }
+        on_progress(
+            "Running analog Fourier input corner",
+            run_plan.progress_label(),
+        );
+        let parameter_overrides = run_plan.parameter_overrides_for_solver();
+        let run_result = run_ngspice_fourier(
+            bound,
+            scenario,
+            backend,
+            &source_netlist,
+            NgspiceFourierRunOptions {
+                output,
+                run_subdir: run_plan.run_subdir.as_deref(),
+                parameter_overrides: &parameter_overrides,
+                model_section_overrides: &run_plan.model_section_overrides,
+                on_progress: &mut on_progress,
+                should_cancel: &should_cancel,
+            },
+        );
+        match run_result {
+            Ok(run) => {
+                let finding_start = findings.len();
+                for artifact in &run.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                push_artifact(artifacts, &run.summary);
+                tag_corner_findings(findings, finding_start, &run_plan, false);
+            }
+            Err(error) => {
+                for artifact in &error.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                let mut finding =
+                    Finding::critical(SPICE_FOURIER_ANALYSIS, &scenario.name, error.message);
+                finding
+                    .measured
+                    .insert("selected_backend".to_string(), json!(backend));
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!("ngspice_fourier_summary_csv"),
+                );
+                tag_corner_finding(&mut finding, &run_plan);
+                finding.suggested_fixes.push(
+                    "Inspect the generated ngspice .FOUR wrapper deck and solver log artifacts."
+                        .to_string(),
+                );
+                findings.push(finding);
+            }
+        }
+    }
 }
 
 fn validate_output_expression(

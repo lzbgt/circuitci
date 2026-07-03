@@ -330,9 +330,18 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
    `V(node,reference)`, or `I(source)` expression.
 4. The stop time must cover at least one fundamental period. Optional
    `fourier_harmonics` must be in `1..=1024`; omitted harmonic count defaults
-   to the ngspice-compatible ten-harmonic planning contract.
-5. All backends currently fail closed with backend-planning evidence until an
-   adapter emits normalized `fourier_summary` evidence and a solver manifest.
+   to ten non-DC harmonics.
+5. External `ngspice` writes `circuitci_ngspice_fourier.cir`,
+   `ngspice_fourier.log`, `fourier_raw.txt`, `fourier_summary.csv`, and
+   `solver_manifest.json`. The normalized summary records the DC row,
+   harmonic number, frequency, magnitude, phase, normalized magnitude/phase,
+   and solver-reported THD/grid metadata.
+6. Opt-in real-ngspice conformance coverage is available through
+   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; the
+   test is skipped by default unless the variable is set and `ngspice` is on
+   `PATH`.
+7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+   until those adapters emit the same normalized `fourier_summary` contract.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

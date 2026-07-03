@@ -174,10 +174,14 @@ Current analog support:
   transient-backed `.FOUR` harmonic extraction contracts. The Board IR/schema
   can declare `analysis.type: fourier`, transient stop/max-step timing, a
   fundamental frequency, a bound voltage/current output expression, and an
-  optional harmonic count. The validator checks that the transient window
-  covers at least one fundamental period and then fails closed with planned
-  `fourier_summary` evidence until a backend adapter emits normalized output
-  and a solver manifest.
+  optional harmonic count. External `ngspice` runs write `fourier_raw.txt`,
+  `fourier_summary.csv`, and `solver_manifest.json`; the normalized summary
+  records DC plus harmonic rows, frequency, magnitude/phase, normalized
+  magnitude/phase, and THD/grid metadata. Opt-in real-ngspice conformance
+  coverage is available through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
+  unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
+  with planning evidence for this path.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

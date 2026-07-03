@@ -518,10 +518,11 @@ The GUI should not become the solver.
   contract for DC or AC output sensitivity, optional filters, normalized
   `sensitivity_summary`, solver manifests, and opt-in real-ngspice conformance;
   next add non-ngspice planning/adapters.
-- The first `.FOUR` path is a Board IR/schema contract for transient-backed
-  harmonic extraction, fundamental frequency/window validation, bound output
-  provenance, and fail-closed `fourier_summary` backend planning before
-  enabling solver adapters.
+- The first `.FOUR` path is an external-ngspice adapter with a Board IR/schema
+  contract for transient-backed harmonic extraction, fundamental
+  frequency/window validation, bound output provenance, normalized
+  `fourier_summary`, solver manifests, and opt-in real-ngspice conformance;
+  next add non-ngspice planning/adapters.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

@@ -4,6 +4,7 @@ mod analog_backend_plan;
 mod analog_dc_assertions;
 mod analog_dc_runner;
 mod analog_dc_spice;
+mod analog_fourier_runner;
 mod analog_fourier_spice;
 mod analog_noise_assertions;
 mod analog_noise_runner;
