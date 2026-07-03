@@ -19,6 +19,8 @@ use super::analog_util::{
     absolute_path, executable_on_path, normalize_artifact_path, normalize_path, safe_artifact_name,
 };
 
+pub(super) const ANALOG_SOLVER_MANIFEST_SCHEMA: &str = "circuitci.analog_solver_manifest.v0.1";
+
 #[derive(Debug, Clone)]
 pub(super) struct ParameterOverride {
     pub(super) name: String,
@@ -1527,7 +1529,7 @@ pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf,
         })
         .collect();
     let value = json!({
-        "schema_version": "circuitci.analog_solver_manifest.v0.1",
+        "schema_version": ANALOG_SOLVER_MANIFEST_SCHEMA,
         "scenario": io.scenario.name,
         "scenario_type": io.scenario.scenario_type,
         "analysis": {

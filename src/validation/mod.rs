@@ -1,5 +1,6 @@
 mod analog_ac_assertions;
 mod analog_assertions;
+mod analog_backend_plan;
 mod analog_dc_assertions;
 mod analog_dc_runner;
 mod analog_dc_spice;

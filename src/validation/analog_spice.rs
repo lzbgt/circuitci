@@ -14,6 +14,7 @@ use super::analog_assertions::{
     assertion_reference_contract_is_complete, evaluate_waveform_assertions,
     validate_assertion_contract, validate_probe_contract,
 };
+use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
 };
@@ -461,21 +462,16 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
     };
 
     if !matches!(backend, "ngspice" | "embedded_ngspice") {
-        let mut finding = Finding::critical(
-            SPICE_TRANSIENT_ANALYSIS,
-            &scenario.name,
-            format!(
-                "Backend {backend} was detected, but only ngspice-compatible execution is implemented in this runtime slice."
-            ),
-        );
-        finding
-            .measured
-            .insert("selected_backend".to_string(), json!(backend));
-        finding.limit.insert(
-            "implemented_backend".to_string(),
-            json!("ngspice_or_embedded_ngspice"),
-        );
-        findings.push(finding);
+        findings.push(unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_TRANSIENT_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice_or_embedded_ngspice",
+                analysis_kind: "transient",
+                required_normalized_outputs: &["transient_waveform"],
+            },
+        ));
         return;
     }
 
@@ -833,20 +829,16 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
         return;
     };
     if backend != "ngspice" {
-        let mut finding = Finding::critical(
-            SPICE_AC_ANALYSIS,
-            &scenario.name,
-            format!(
-                "Backend {backend} was detected, but AC sweep export is currently implemented for external ngspice."
-            ),
-        );
-        finding
-            .measured
-            .insert("selected_backend".to_string(), json!(backend));
-        finding
-            .limit
-            .insert("implemented_backend".to_string(), json!("ngspice"));
-        findings.push(finding);
+        findings.push(unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_AC_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice",
+                analysis_kind: "ac",
+                required_normalized_outputs: &["ac_bode"],
+            },
+        ));
         return;
     }
 

@@ -8,6 +8,7 @@ use std::path::Path;
 
 use super::SPICE_DC_ANALYSIS;
 use super::analog_assertions::validate_probe_contract;
+use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_dc_assertions::{evaluate_dc_assertions, validate_dc_assertion_contract};
 use super::analog_dc_runner::{NgspiceDcRunOptions, run_ngspice_dc};
 use super::analog_runner::{
@@ -276,20 +277,16 @@ pub(super) fn validate_spice_dc_with_progress<F, C>(
         return;
     };
     if backend != "ngspice" {
-        let mut finding = Finding::critical(
-            SPICE_DC_ANALYSIS,
-            &scenario.name,
-            format!(
-                "Backend {backend} was detected, but DC operating-point export is currently implemented for external ngspice."
-            ),
-        );
-        finding
-            .measured
-            .insert("selected_backend".to_string(), json!(backend));
-        finding
-            .limit
-            .insert("implemented_backend".to_string(), json!("ngspice"));
-        findings.push(finding);
+        findings.push(unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_DC_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice",
+                analysis_kind: "operating_point",
+                required_normalized_outputs: &["operating_point"],
+            },
+        ));
         return;
     }
 

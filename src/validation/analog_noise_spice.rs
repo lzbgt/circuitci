@@ -8,6 +8,7 @@ use std::path::Path;
 
 use super::SPICE_NOISE_ANALYSIS;
 use super::analog_assertions::validate_probe_contract;
+use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_noise_assertions::{
     evaluate_noise_assertions, validate_noise_assertion_contract,
 };
@@ -351,20 +352,16 @@ pub(super) fn validate_spice_noise_with_progress<F, C>(
         return;
     };
     if backend != "ngspice" {
-        let mut finding = Finding::critical(
-            SPICE_NOISE_ANALYSIS,
-            &scenario.name,
-            format!(
-                "Backend {backend} was detected, but noise analysis export is currently implemented for external ngspice."
-            ),
-        );
-        finding
-            .measured
-            .insert("selected_backend".to_string(), json!(backend));
-        finding
-            .limit
-            .insert("implemented_backend".to_string(), json!("ngspice"));
-        findings.push(finding);
+        findings.push(unsupported_backend_plan_finding(
+            scenario,
+            UnsupportedBackendPlan {
+                check_id: SPICE_NOISE_ANALYSIS,
+                selected_backend: backend,
+                implemented_backend: "ngspice",
+                analysis_kind: "noise",
+                required_normalized_outputs: &["noise_spectrum", "noise_total"],
+            },
+        ));
         return;
     }
 

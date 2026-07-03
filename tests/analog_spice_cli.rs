@@ -768,6 +768,22 @@ fn explicit_xyce_backend_fails_closed_until_adapter_exists() {
         report["failures"][0]["limit"]["implemented_backend"],
         "ngspice_or_embedded_ngspice"
     );
+    assert_eq!(
+        report["failures"][0]["measured"]["adapter_status"],
+        "planned_not_implemented"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["planned_manifest_schema"],
+        "circuitci.analog_solver_manifest.v0.1"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["required_normalized_outputs"][0],
+        "transient_waveform"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["required_adapter"],
+        "xyce_result_normalizer"
+    );
     assert!(report["waveforms"].as_array().unwrap().is_empty());
     assert_report_schema_valid(&report);
 }
