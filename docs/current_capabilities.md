@@ -224,6 +224,20 @@ Current analog support:
   is not treated as PSS, ngspice PSS remains experimental/build-gated without a
   trusted normalized artifact contract here, and SPICE OPUS `ssse` needs a
   dedicated adapter plus conformance before use.
+- `analog_phase_noise` scenarios with `SPICE_PHASE_NOISE_ANALYSIS` for
+  oscillator phase-noise evidence planning. The Board IR/schema can declare
+  `analysis.type: phase_noise`, `phase_noise_mode: driven|autonomous`,
+  `phase_noise_carrier_frequency_hz`, offset sweep fields,
+  `phase_noise_output_expression`, optional integration window fields, and
+  `phase_noise_drive_sources[]` for driven generated-source provenance. This
+  path intentionally fails closed today: it records manifest-compatible
+  planning evidence for future `phase_noise_spectrum`,
+  `phase_noise_integrated_jitter`, `phase_noise_convergence`, and
+  `pss_convergence` artifacts, but no backend is allowed to pass oscillator
+  phase-noise sign-off until a trusted PSS/PNOISE chain exists. The planning
+  finding records that QUCS-COPEN is currently a theory/reference source, not
+  an executable backend target, because no public source repository or adapter
+  contract was found.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

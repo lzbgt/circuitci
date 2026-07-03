@@ -1332,6 +1332,24 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub pss_max_iterations: Option<u32>,
     #[serde(default)]
+    pub phase_noise_mode: Option<String>,
+    #[serde(default)]
+    pub phase_noise_carrier_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub phase_noise_offset_start_hz: Option<f64>,
+    #[serde(default)]
+    pub phase_noise_offset_stop_hz: Option<f64>,
+    #[serde(default)]
+    pub phase_noise_points_per_decade: Option<u32>,
+    #[serde(default)]
+    pub phase_noise_output_expression: Option<String>,
+    #[serde(default)]
+    pub phase_noise_drive_sources: Vec<String>,
+    #[serde(default)]
+    pub phase_noise_integration_start_hz: Option<f64>,
+    #[serde(default)]
+    pub phase_noise_integration_stop_hz: Option<f64>,
+    #[serde(default)]
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,

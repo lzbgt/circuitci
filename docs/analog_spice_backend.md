@@ -72,6 +72,10 @@ frequency, a bound output expression, and normalized spectrum evidence. An
 `analog_pss` scenario owns periodic steady-state or oscillator evidence
 requirements: mode, frequency guess, stabilization interval, output expression,
 drive-source provenance when driven, and convergence metadata. An
+`analog_phase_noise` scenario owns oscillator phase-noise evidence
+requirements: carrier frequency, offset sweep bounds, output expression,
+optional integration window, drive-source provenance when driven, and a hard
+dependency on trusted PSS/PNOISE convergence artifacts. An
 `analog_measure` scenario owns reviewed ngspice `.MEASURE` scalar extraction
 statements or portable structured measure templates for transient or AC
 results.
@@ -103,7 +107,14 @@ Required fields:
   `pss_mode: driven|autonomous`, optional `pss_periods`,
   `pss_drive_sources[]` for driven generated-source provenance, and optional
   `pss_residual_tolerance`, `pss_state_error_tolerance`, and
-  `pss_max_iterations`. Measurement
+  `pss_max_iterations`. Phase-noise contracts use `type: phase_noise`,
+  `phase_noise_carrier_frequency_hz`, offset sweep fields
+  `phase_noise_offset_start_hz`, `phase_noise_offset_stop_hz`,
+  `phase_noise_points_per_decade`, `phase_noise_output_expression`, optional
+  `phase_noise_mode: driven|autonomous`, optional
+  `phase_noise_drive_sources[]`, and optional integration window fields
+  `phase_noise_integration_start_hz` / `phase_noise_integration_stop_hz`.
+  Measurement
   contracts use `type: measure`, `measure_mode: tran|ac`, and either reviewed
   raw `measure_statements[]` or portable `measure_templates[]`; transient
   measure mode uses `stop_time_us` and `max_step_us`, while AC measure mode
@@ -450,6 +461,40 @@ For a scenario with check `SPICE_PSS_ANALYSIS`:
 7. CircuitCI must not present PSS or oscillator sign-off as passing until a
    trusted backend emits the normalized waveform, spectrum, convergence, raw
    solver output, and solver-manifest artifacts.
+
+For a scenario with check `SPICE_PHASE_NOISE_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: phase_noise`, a positive finite
+   `phase_noise_carrier_frequency_hz`, positive finite
+   `phase_noise_offset_start_hz`, `phase_noise_offset_stop_hz` greater than
+   the start offset, `phase_noise_points_per_decade` in `1..=1000`, and a
+   bound `phase_noise_output_expression`.
+3. `phase_noise_mode` defaults to `autonomous` and may be `driven` or
+   `autonomous`. Driven mode requires at least one
+   `phase_noise_drive_sources[]` entry. For generated Board IR decks, each
+   drive source must name a generated board component so the large-signal
+   periodic excitation has source provenance.
+4. `phase_noise_output_expression` must be a bound `V(node)`,
+   `V(node,reference)`, or `I(source)` expression. If integration limits are
+   provided, both `phase_noise_integration_start_hz` and
+   `phase_noise_integration_stop_hz` must be present, ordered, positive, and
+   contained inside the offset sweep.
+5. The current implementation intentionally fails closed after contract
+   validation. It emits backend-planning evidence with planned normalized
+   outputs `phase_noise_spectrum`, `phase_noise_integrated_jitter`,
+   `phase_noise_convergence`, and `pss_convergence`.
+6. The backend-planning finding records the current source-backed boundary:
+   QUCS-COPEN papers document a `pnsolver` after `psssolver`, but no public
+   source repository or adapter contract was found; Xyce HB is not treated as
+   PSS/PNOISE; ngspice PSS/PNOISE remains experimental or build/runtime
+   dependent without a trusted normalized contract here; SPICE OPUS `ssse`
+   has no CircuitCI phase-noise adapter or conformance suite.
+7. CircuitCI must not present oscillator phase-noise sign-off as passing until
+   a trusted backend emits normalized phase-noise spectrum, integrated jitter,
+   PSS convergence, phase-noise convergence, raw solver output, and
+   solver-manifest artifacts.
 
 For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 

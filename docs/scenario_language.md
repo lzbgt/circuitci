@@ -180,6 +180,7 @@ Canonical executable check IDs:
 - `SPICE_FOURIER_ANALYSIS`
 - `SPICE_HARMONIC_BALANCE_ANALYSIS`
 - `SPICE_PSS_ANALYSIS`
+- `SPICE_PHASE_NOISE_ANALYSIS`
 - `SPICE_MEASURE_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an

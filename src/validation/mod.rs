@@ -16,6 +16,7 @@ mod analog_noise_assertions;
 mod analog_noise_runner;
 mod analog_noise_spice;
 mod analog_operating_limits;
+mod analog_phase_noise_spice;
 mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
 mod analog_pss_spice;
@@ -149,6 +150,7 @@ pub(super) const SPICE_SENSITIVITY_ANALYSIS: &str = "SPICE_SENSITIVITY_ANALYSIS"
 pub(super) const SPICE_FOURIER_ANALYSIS: &str = "SPICE_FOURIER_ANALYSIS";
 pub(super) const SPICE_HARMONIC_BALANCE_ANALYSIS: &str = "SPICE_HARMONIC_BALANCE_ANALYSIS";
 pub(super) const SPICE_PSS_ANALYSIS: &str = "SPICE_PSS_ANALYSIS";
+pub(super) const SPICE_PHASE_NOISE_ANALYSIS: &str = "SPICE_PHASE_NOISE_ANALYSIS";
 pub(super) const SPICE_MEASURE_ANALYSIS: &str = "SPICE_MEASURE_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
@@ -191,6 +193,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_fourier",
     "analog_harmonic_balance",
     "analog_pss",
+    "analog_phase_noise",
     "analog_measure",
     "motor_drive",
     "load_budget",
@@ -918,6 +921,20 @@ where
                         &should_cancel,
                     )
                 }
+                SPICE_PHASE_NOISE_ANALYSIS if scenario.scenario_type == "analog_phase_noise" => {
+                    let mut sinks = analog_phase_noise_spice::AnalogPhaseNoiseSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_phase_noise_spice::validate_spice_phase_noise_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
                 SPICE_MEASURE_ANALYSIS if scenario.scenario_type == "analog_measure" => {
                     let mut sinks = analog_measure_spice::AnalogMeasureSinks {
                         findings: &mut findings,
@@ -1092,6 +1109,7 @@ where
                 | SPICE_FOURIER_ANALYSIS
                 | SPICE_HARMONIC_BALANCE_ANALYSIS
                 | SPICE_PSS_ANALYSIS
+                | SPICE_PHASE_NOISE_ANALYSIS
                 | SPICE_MEASURE_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID

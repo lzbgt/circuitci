@@ -101,6 +101,7 @@ declare them:
 - `SPICE_FOURIER_ANALYSIS`
 - `SPICE_HARMONIC_BALANCE_ANALYSIS`
 - `SPICE_PSS_ANALYSIS`
+- `SPICE_PHASE_NOISE_ANALYSIS`
 - `SPICE_MEASURE_ANALYSIS`
 
 `circuitci suggest-scenarios` can propose missing `power_tree`, reset timing,

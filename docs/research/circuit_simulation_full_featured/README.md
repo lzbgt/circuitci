@@ -628,6 +628,14 @@ The GUI should not become the solver.
   is documented but would require a new backend adapter and conformance suite;
   QUCS-COPEN papers document `psssolver`/`pnsolver`, but no public source
   repository or adapter contract was found.
+- Added the first fail-closed phase-noise evidence contract for
+  `analysis.type: phase_noise` and `SPICE_PHASE_NOISE_ANALYSIS`. Scenarios
+  declare carrier frequency, offset sweep bounds, output expression, optional
+  integration window, and driven-source provenance when driven. The validator
+  records required future artifacts `phase_noise_spectrum`,
+  `phase_noise_integrated_jitter`, `phase_noise_convergence`, and
+  `pss_convergence`, and intentionally fails closed until a trusted PSS/PNOISE
+  solver chain plus real-solver conformance exists.
 
 ### Phase 5: Model Compiler Pipeline
 
