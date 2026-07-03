@@ -442,7 +442,7 @@ fn openvaf_osdi_model_is_loaded_with_ngspice_pre_osdi() {
     let project_path =
         write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
 
-    let (_out_dir, report) =
+    let (out_dir, report) =
         run_validation_with_path_retaining_output(project_path.to_str().unwrap(), fake_path.path());
 
     assert_eq!(report["result"], "pass", "{report:#}");
@@ -468,6 +468,19 @@ fn openvaf_osdi_model_is_loaded_with_ngspice_pre_osdi() {
     assert_eq!(provenance["artifact_sha256_actual"], artifact_sha);
     assert_eq!(provenance["rebuild_mode"], "prebuilt_verified");
     assert_eq!(provenance["produced_by_circuitci"], false);
+    let report_provenance = &report["model_file_provenance"][0];
+    assert_eq!(report_provenance["scenario"], "model_compiler_transient");
+    assert_eq!(report_provenance["analysis"], "transient");
+    assert_eq!(report_provenance["backend"], "ngspice");
+    assert_eq!(report_provenance["model_file"], "tiny_resistor.osdi");
+    assert_eq!(report_provenance["source_sha256_actual"], source_sha);
+    assert_eq!(report_provenance["artifact_sha256_actual"], artifact_sha);
+    assert_eq!(report_provenance["rebuild_mode"], "prebuilt_verified");
+    assert_eq!(report_provenance["produced_by_circuitci"], false);
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("## Model File Provenance"));
+    assert!(markdown.contains("`tiny_resistor.osdi`"));
+    assert!(markdown.contains("`prebuilt_verified`"));
     assert_report_schema_valid(&report);
 }
 
@@ -508,6 +521,20 @@ fn openvaf_osdi_rebuild_is_recorded_in_solver_manifest() {
     assert_eq!(provenance["build_env_enabled"], true);
     assert_eq!(provenance["rebuild_mode"], "rebuilt_missing_artifact");
     assert_eq!(provenance["produced_by_circuitci"], true);
+    let report_provenance = &report["model_file_provenance"][0];
+    assert!(
+        report_provenance["manifest"]
+            .as_str()
+            .unwrap()
+            .ends_with("solver_manifest.json")
+    );
+    assert_eq!(report_provenance["compiler_available_on_path"], true);
+    assert_eq!(report_provenance["build_env_enabled"], true);
+    assert_eq!(
+        report_provenance["rebuild_mode"],
+        "rebuilt_missing_artifact"
+    );
+    assert_eq!(report_provenance["produced_by_circuitci"], true);
     assert_report_schema_valid(&report);
 }
 

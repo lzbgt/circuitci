@@ -20,6 +20,7 @@ CircuitCI reports are built for both AI agents and engineers.
   "infos": [],
   "waveforms": [],
   "artifacts": [],
+  "model_file_provenance": [],
   "limitations": [],
   "suggested_next_actions": [],
   "reproduction": {
@@ -1377,7 +1378,12 @@ fields include `model_file`, `artifact_format`, `source_path`,
 `source_sha256_declared`, `source_sha256_actual`,
 `artifact_sha256_declared`, `artifact_sha256_actual`, `compiler`,
 `compiler_version`, `compiler_command`, `compiler_available_on_path`,
-`build_env_enabled`, `rebuild_mode`, and `produced_by_circuitci`.
+`build_env_enabled`, `rebuild_mode`, and `produced_by_circuitci`. Reports also
+project those records into top-level `model_file_provenance[]` entries with
+the solver `scenario`, `analysis`, `backend`, and `manifest` path, so report
+consumers can inspect compiled-model provenance without opening
+`solver_manifest.json` first. Markdown reports include the same information in
+the "Model File Provenance" section.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

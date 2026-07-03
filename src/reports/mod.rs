@@ -1,6 +1,7 @@
 use crate::board_ir::Endpoint;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use serde_json::Value;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -58,9 +59,32 @@ pub struct ValidationReport {
     pub infos: Vec<Finding>,
     pub waveforms: Vec<String>,
     pub artifacts: Vec<String>,
+    pub model_file_provenance: Vec<ModelFileProvenance>,
     pub limitations: Vec<Limitation>,
     pub suggested_next_actions: Vec<String>,
     pub reproduction: Reproduction,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ModelFileProvenance {
+    pub scenario: String,
+    pub analysis: String,
+    pub backend: String,
+    pub manifest: String,
+    pub model_file: String,
+    pub artifact_format: String,
+    pub source_path: String,
+    pub source_sha256_declared: String,
+    pub source_sha256_actual: String,
+    pub artifact_sha256_declared: String,
+    pub artifact_sha256_actual: String,
+    pub compiler: String,
+    pub compiler_version: String,
+    pub compiler_command: String,
+    pub compiler_available_on_path: Option<bool>,
+    pub build_env_enabled: Option<bool>,
+    pub rebuild_mode: String,
+    pub produced_by_circuitci: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -214,6 +238,7 @@ impl ValidationReport {
             .flat_map(|finding| finding.suggested_fixes.iter().cloned())
             .collect();
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
+        let model_file_provenance = collect_model_file_provenance(&artifacts);
         Self {
             schema_version: "0.1.0".to_string(),
             project,
@@ -225,6 +250,7 @@ impl ValidationReport {
             infos,
             waveforms,
             artifacts,
+            model_file_provenance,
             limitations,
             suggested_next_actions,
             reproduction: Reproduction { command },
@@ -268,6 +294,34 @@ fn markdown_report(report: &ValidationReport) -> String {
             text.push_str(&format!(
                 "- `{}` [{}]: {}\n",
                 limitation.id, limitation.confidence, limitation.message
+            ));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Model File Provenance\n\n");
+    if report.model_file_provenance.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for provenance in &report.model_file_provenance {
+            text.push_str(&format!(
+                "- `{}` in scenario `{}` via `{}`: `{}` ({}, produced_by_circuitci: {})\n",
+                provenance.model_file,
+                provenance.scenario,
+                provenance.backend,
+                provenance.rebuild_mode,
+                provenance.compiler,
+                provenance
+                    .produced_by_circuitci
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            ));
+            text.push_str(&format!(
+                "  - Source: `{}` `{}`\n",
+                provenance.source_path, provenance.source_sha256_actual
+            ));
+            text.push_str(&format!(
+                "  - Artifact: `{}` `{}`\n",
+                provenance.artifact_format, provenance.artifact_sha256_actual
             ));
         }
         text.push('\n');
@@ -332,4 +386,74 @@ fn push_findings(text: &mut String, findings: &[Finding]) {
         }
     }
     text.push('\n');
+}
+
+fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenance> {
+    let mut records = BTreeSet::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("solver_manifest.json") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        let Ok(manifest) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
+        let scenario = string_at(&manifest, &["scenario"]);
+        let analysis = string_at(&manifest, &["analysis", "kind"]);
+        let backend = string_at(&manifest, &["backend", "selected"]);
+        let Some(entries) = manifest
+            .get("inputs")
+            .and_then(|inputs| inputs.get("model_file_provenance"))
+            .and_then(Value::as_array)
+        else {
+            continue;
+        };
+        for entry in entries {
+            let record = ModelFileProvenance {
+                scenario: scenario.clone(),
+                analysis: analysis.clone(),
+                backend: backend.clone(),
+                manifest: artifact.clone(),
+                model_file: string_at(entry, &["model_file"]),
+                artifact_format: string_at(entry, &["artifact_format"]),
+                source_path: string_at(entry, &["source_path"]),
+                source_sha256_declared: string_at(entry, &["source_sha256_declared"]),
+                source_sha256_actual: string_at(entry, &["source_sha256_actual"]),
+                artifact_sha256_declared: string_at(entry, &["artifact_sha256_declared"]),
+                artifact_sha256_actual: string_at(entry, &["artifact_sha256_actual"]),
+                compiler: string_at(entry, &["compiler"]),
+                compiler_version: string_at(entry, &["compiler_version"]),
+                compiler_command: string_at(entry, &["compiler_command"]),
+                compiler_available_on_path: bool_at(entry, &["compiler_available_on_path"]),
+                build_env_enabled: bool_at(entry, &["build_env_enabled"]),
+                rebuild_mode: string_at(entry, &["rebuild_mode"]),
+                produced_by_circuitci: bool_at(entry, &["produced_by_circuitci"]),
+            };
+            if !record.model_file.is_empty() {
+                records.insert(record);
+            }
+        }
+    }
+    records.into_iter().collect()
+}
+
+fn string_at(value: &Value, path: &[&str]) -> String {
+    let mut current = value;
+    for key in path {
+        let Some(next) = current.get(*key) else {
+            return String::new();
+        };
+        current = next;
+    }
+    current.as_str().unwrap_or_default().to_string()
+}
+
+fn bool_at(value: &Value, path: &[&str]) -> Option<bool> {
+    let mut current = value;
+    for key in path {
+        current = current.get(*key)?;
+    }
+    current.as_bool()
 }

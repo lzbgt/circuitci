@@ -191,6 +191,34 @@ impl CircuitCiApp {
                             ui.monospace(artifact);
                         }
                     }
+                    ui.add_space(8.0);
+                    ui.label("Model file provenance");
+                    if report.model_file_provenance.is_empty() {
+                        ui.label("No compiled model provenance was emitted.");
+                    } else {
+                        for provenance in &report.model_file_provenance {
+                            ui.monospace(format!(
+                                "{} [{}] scenario={} backend={} rebuild={} produced_by_circuitci={}",
+                                provenance.model_file,
+                                provenance.artifact_format,
+                                provenance.scenario,
+                                provenance.backend,
+                                provenance.rebuild_mode,
+                                provenance
+                                    .produced_by_circuitci
+                                    .map(|value| value.to_string())
+                                    .unwrap_or_else(|| "unknown".to_string())
+                            ));
+                            ui.monospace(format!(
+                                "source {} {}",
+                                provenance.source_path, provenance.source_sha256_actual
+                            ));
+                            ui.monospace(format!(
+                                "artifact {}",
+                                provenance.artifact_sha256_actual
+                            ));
+                        }
+                    }
                 });
             egui::CollapsingHeader::new("Findings")
                 .default_open(false)

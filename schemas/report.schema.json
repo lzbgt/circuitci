@@ -29,6 +29,10 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
+    "model_file_provenance": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model_file_provenance" }
+    },
     "limitations": { "type": "array", "items": { "$ref": "#/$defs/limitation" } },
     "suggested_next_actions": { "type": "array" },
     "reproduction": {
@@ -86,6 +90,47 @@
         "confidence": { "enum": ["high", "medium", "low"] },
         "blocking": { "type": "boolean" },
         "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "model_file_provenance": {
+      "type": "object",
+      "required": [
+        "scenario",
+        "analysis",
+        "backend",
+        "manifest",
+        "model_file",
+        "artifact_format",
+        "source_path",
+        "source_sha256_declared",
+        "source_sha256_actual",
+        "artifact_sha256_declared",
+        "artifact_sha256_actual",
+        "compiler",
+        "compiler_version",
+        "compiler_command",
+        "rebuild_mode"
+      ],
+      "properties": {
+        "scenario": { "type": "string" },
+        "analysis": { "type": "string" },
+        "backend": { "type": "string" },
+        "manifest": { "type": "string", "minLength": 1 },
+        "model_file": { "type": "string", "minLength": 1 },
+        "artifact_format": { "type": "string" },
+        "source_path": { "type": "string" },
+        "source_sha256_declared": { "type": "string" },
+        "source_sha256_actual": { "type": "string" },
+        "artifact_sha256_declared": { "type": "string" },
+        "artifact_sha256_actual": { "type": "string" },
+        "compiler": { "type": "string" },
+        "compiler_version": { "type": "string" },
+        "compiler_command": { "type": "string" },
+        "compiler_available_on_path": { "type": ["boolean", "null"] },
+        "build_env_enabled": { "type": ["boolean", "null"] },
+        "rebuild_mode": { "type": "string" },
+        "produced_by_circuitci": { "type": ["boolean", "null"] }
       },
       "additionalProperties": false
     }

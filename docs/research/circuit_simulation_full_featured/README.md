@@ -672,6 +672,10 @@ The GUI should not become the solver.
   source/artifact hashes, compiler identity and command, compiler availability,
   build-env state, rebuild mode, and whether CircuitCI produced the artifact in
   the current validation run.
+- Added report and GUI projection for OpenVAF/OSDI generated-model provenance:
+  validation report JSON/Markdown and the Scopes artifact drawer now surface
+  `model_file_provenance[]` with scenario, analysis, backend, manifest path,
+  rebuild mode, and declared/actual hash evidence.
 - Add backend compatibility tests for Xyce or other future Verilog-A/OSDI
   loading paths only after primary documentation and runnable adapters exist.
 

@@ -106,7 +106,9 @@ Required fields:
   and actual source/artifact hashes, compiler command/version, compiler
   availability, whether the OpenVAF build env was enabled, and `rebuild_mode`
   such as `prebuilt_verified`, `rebuilt_missing_artifact`, or
-  `rebuilt_hash_stale_artifact`.
+  `rebuilt_hash_stale_artifact`. Report JSON, Markdown, and GUI artifact views
+  also expose these records as `model_file_provenance[]` with scenario,
+  analysis, backend, and manifest-path context.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/
@@ -196,9 +198,10 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    `operating_point.csv`, `noise_spectrum.csv`, and `noise_total.csv`. The
    manifest also records OpenVAF/OSDI source/artifact hash verification and
    rebuild mode under `inputs.model_file_provenance[]`. It is a backend-neutral
-   contract for future Xyce and RF/HB adapters; report consumers should use it
-   for provenance and output discovery instead of inferring run state from
-   backend-specific filenames alone.
+   contract for future Xyce and RF/HB adapters. Report consumers can inspect
+   top-level `model_file_provenance[]` first and open the referenced manifest
+   only when they need full solver inputs or output discovery instead of
+   inferring run state from backend-specific filenames alone.
    Opt-in real-Xyce conformance coverage is available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
    transient/AC/DC/noise,
