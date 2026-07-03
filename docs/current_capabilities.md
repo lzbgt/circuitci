@@ -138,7 +138,9 @@ Current analog support:
   normalize it into the `transient_waveform`, `ac_bode`, `operating_point`,
   `noise_spectrum`, and `noise_total` contracts, and write solver manifests.
   `backend: auto` keeps Xyce explicit-only until real-Xyce conformance coverage
-  is enabled.
+  is enabled. The opt-in real-solver conformance path is
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli`, which
+  skips unless `Xyce` or `xyce` is on `PATH`.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

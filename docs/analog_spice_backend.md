@@ -96,12 +96,11 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
      embedded ngspice for transient only. Xyce is intentionally not selected by
      `auto` until coverage is complete enough to avoid surprising backend
      changes.
-   - Explicit `backend: xyce` supports transient runs through a dedicated Xyce
-     wrapper that exports CSV-like transient data, normalizes it to the
-     `transient_waveform` contract, and writes the same `solver_manifest.json`
-     provenance as ngspice runs. Explicit Xyce AC, DC, and noise analyses still
-     fail closed with adapter-planning evidence until their result normalizers
-     land.
+   - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
+     noise runs through dedicated Xyce wrappers that export CSV-like solver
+     data, normalize it to the `transient_waveform`, `ac_bode`,
+     `operating_point`, `noise_spectrum`, and `noise_total` contracts, and
+     write the same `solver_manifest.json` provenance as ngspice runs.
 3. If no required backend is available, emit a critical
    `ANALOG_BACKEND_UNAVAILABLE` finding.
 4. If the netlist or included model files are missing, emit a critical
@@ -124,6 +123,10 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    manifest is a backend-neutral contract for future Xyce and RF/HB adapters;
    report consumers should use it for provenance and output discovery instead
    of inferring run state from backend-specific filenames alone.
+   Opt-in real-Xyce conformance coverage is available through
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli`; the
+   conformance test is skipped by default unless the variable is set and
+   `Xyce` or `xyce` is on `PATH`.
 10. For generated Board IR decks, append datasheet operating-limit probes for
    MOSFET, BJT, and diode voltage/current/power ratings. Exceeding a rating
    emits a critical `SPICE_OPERATING_LIMIT` finding with measured maximum
@@ -171,7 +174,7 @@ For a scenario with check `SPICE_DC_ANALYSIS`:
 3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
    still fails closed until an equivalent operating-point export path is
    implemented. `backend: auto` does not select Xyce for this analysis until
-   Xyce coverage is broad enough to avoid surprising backend changes.
+   real-Xyce conformance coverage is enabled.
 4. Expand bounded run-input sweeps exactly like transient and AC validation.
 5. Run `.op`/`.OP`, export operating-point probe data, and normalize it to
    `operating_point.csv` with one column per declared probe.
