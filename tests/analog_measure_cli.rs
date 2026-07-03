@@ -131,6 +131,24 @@ fn write_measure_template_project_with_assertions(
     template_yaml: &str,
     measure_assertions_yaml: &str,
 ) -> std::path::PathBuf {
+    write_measure_template_project_with_extras(
+        dir,
+        backend,
+        mode,
+        template_yaml,
+        measure_assertions_yaml,
+        "",
+    )
+}
+
+fn write_measure_template_project_with_extras(
+    dir: &std::path::Path,
+    backend: &str,
+    mode: &str,
+    template_yaml: &str,
+    measure_assertions_yaml: &str,
+    sweeps_yaml: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let analysis_extra = if mode == "tran" {
         "        stop_time_us: 100.0\n        max_step_us: 0.1\n".to_string()
@@ -199,6 +217,7 @@ scenarios:
 {analysis_extra}        measure_templates:
 {template_yaml}
 {measure_assertions_yaml}
+{sweeps_yaml}
       stimuli: []
       probes:
         - {{ name: out_measure, expression: V(out) }}
@@ -541,6 +560,103 @@ fn measure_assertion_rejects_unknown_measurement() {
             .unwrap()
             .contains("references unknown measurement no_such_measurement")
     );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_assertion_sweep_reports_worst_corner_summary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\ncase \"$PWD\" in\n  *corner_002*) val=5.00000e-01 ;;\n  *) val=3.00000e-01 ;;\nesac\nprintf '%s\\n' \"avg_out = $val\"\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project_with_extras(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+        "        measure_assertions:\n          - name: avg_out_below_limit\n            measurement: avg_out\n            relation: below\n            threshold: 0.4\n            unit: V\n",
+        "      sweeps:\n        - name: r_tolerance\n          component_values:\n            - component: R1\n              field: value_ohm\n              values: [900.0, 1100.0]\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let summaries: Vec<&Value> = report["infos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|failure| failure["id"] == "ANALOG_SWEEP_MARGIN_SUMMARY")
+        .collect();
+    assert_eq!(summaries.len(), 1);
+    let summary = summaries[0];
+    assert_eq!(summary["measured"]["analog_sweep"], "r_tolerance");
+    assert_eq!(summary["measured"]["assertion"], "avg_out_below_limit");
+    assert_eq!(summary["measured"]["probe"], "avg_out");
+    assert_eq!(summary["measured"]["quantity"], "measure");
+    assert_eq!(summary["measured"]["measured_unit"], "V");
+    assert_eq!(summary["measured"]["evaluated_corners"], 2);
+    assert!(
+        summary["measured"]["margin"].as_f64().unwrap() < 0.0,
+        "worst corner margin should be negative"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn measure_assertion_monte_carlo_reports_yield_summary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\ncase \"$PWD\" in\n  *corner_001*) val=3.00000e-01 ;;\n  *corner_002*) val=3.50000e-01 ;;\n  *corner_003*) val=3.90000e-01 ;;\n  *) val=5.00000e-01 ;;\nesac\nprintf '%s\\n' \"avg_out = $val\"\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project_with_extras(
+        project_dir.path(),
+        "ngspice",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+        "        measure_assertions:\n          - name: avg_out_below_limit\n            measurement: avg_out\n            relation: below\n            threshold: 0.4\n            unit: V\n",
+        "      sweeps:\n        - name: avg_mc\n          monte_carlo:\n            samples: 4\n            seed: 77\n            component_values:\n              - component: R1\n                field: value_ohm\n                nominal: 1000.0\n                tolerance_percent: 5.0\n            criteria:\n              min_yield_percent: 80.0\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let summaries: Vec<&Value> = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|failure| failure["id"] == "ANALOG_MONTE_CARLO_YIELD_SUMMARY")
+        .collect();
+    assert_eq!(summaries.len(), 1);
+    let summary = summaries[0];
+    assert_eq!(summary["measured"]["analog_sweep"], "avg_mc");
+    assert_eq!(summary["measured"]["assertion"], "avg_out_below_limit");
+    assert_eq!(summary["measured"]["evaluated_samples"], 4);
+    assert_eq!(summary["measured"]["passed_samples"], 3);
+    assert_eq!(summary["measured"]["failed_samples"], 1);
+    assert_eq!(summary["measured"]["criteria_passed"], false);
+    assert_eq!(summary["limit"]["minimum_yield_percent"], 80.0);
+    assert!((summary["measured"]["yield_percent"].as_f64().unwrap() - 75.0).abs() < 1.0e-9);
+    assert!(report["infos"].as_array().unwrap().iter().any(|failure| {
+        failure["id"] == "SPICE_MEASURE_ANALYSIS"
+            && failure["severity"] == "info"
+            && failure["measured"]["monte_carlo_sample_assertion_evidence"] == true
+    }));
     assert_report_schema_valid(&report);
 }
 

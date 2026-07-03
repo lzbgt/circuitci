@@ -537,8 +537,8 @@ The GUI should not become the solver.
   transient threshold delay/slew/window crossing time through SPICE
   `TRIG`/`TARG` and `WHEN`. Normalized `measure_summary` rows can now feed
   `measure_assertions[]` so scalar simulation specs directly pass or fail
-  validation; next add richer aggregation/summary reporting across swept
-  measure corners.
+  validation, including shared worst-corner and Monte Carlo yield summaries
+  across swept measure corners.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

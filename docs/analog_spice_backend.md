@@ -382,7 +382,11 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    design limits. Each assertion names one measurement, declares `relation:
    above|below`, a finite `threshold`, and an optional display `unit`. A failed
    assertion emits a normal `SPICE_MEASURE_ANALYSIS` finding with the measured
-   value, threshold, margin, summary artifact, and suggested fixes.
+   value, threshold, margin, summary artifact, and suggested fixes. Declared
+   run-input sweeps record measure assertion margins in the shared
+   `ANALOG_SWEEP_MARGIN_SUMMARY` and `ANALOG_MONTE_CARLO_YIELD_SUMMARY`
+   reports, including Monte Carlo criteria handling and per-sample assertion
+   evidence demotion when criteria are declared.
 8. Explicit `backend: xyce` supports structured `measure_templates[]` and writes
    `circuitci_xyce_measure.cir`, `xyce_measure.log`, `measure_raw.txt`,
    `measure_summary.csv`, and `solver_manifest.json` using the same normalized

@@ -144,7 +144,7 @@ pub(super) fn evaluate_noise_assertions(
             limit,
             margin,
             relation,
-            unit,
+            unit: unit.to_string(),
             quantity: quantity.clone(),
             passed,
         });

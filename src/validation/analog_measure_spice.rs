@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use super::SPICE_MEASURE_ANALYSIS;
+use super::analog_assertions::AnalogAssertionMeasurement;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_measure_runner::{NgspiceMeasureRunOptions, run_ngspice_measure};
 use super::analog_runner::{
@@ -16,7 +17,10 @@ use super::analog_runner::{
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
-use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
+use super::analog_sweep_reports::{
+    monte_carlo_criteria_enabled, push_sweep_margin_summaries, record_sweep_measurements,
+    tag_corner_finding, tag_corner_findings,
+};
 use super::analog_util::{
     file_sha256_hex, normalize_artifact_path, push_artifact, safe_artifact_name,
 };
@@ -397,6 +401,7 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
         return;
     }
 
+    let mut sweep_measurements = Vec::new();
     for run_plan in run_plans {
         if should_cancel() {
             push_canceled_finding(findings, scenario);
@@ -445,8 +450,19 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
                     push_artifact(artifacts, artifact);
                 }
                 push_artifact(artifacts, &run.summary);
-                evaluate_measure_assertions(scenario, &run.summary, findings);
-                tag_corner_findings(findings, finding_start, &run_plan, false);
+                let assertion_measurements =
+                    evaluate_measure_assertions(scenario, &run.summary, findings);
+                record_sweep_measurements(
+                    &mut sweep_measurements,
+                    &run_plan,
+                    assertion_measurements,
+                );
+                tag_corner_findings(
+                    findings,
+                    finding_start,
+                    &run_plan,
+                    monte_carlo_criteria_enabled(scenario, &run_plan),
+                );
             }
             Err(error) => {
                 for artifact in &error.artifacts {
@@ -478,6 +494,7 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             }
         }
     }
+    push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
 }
 
 fn validate_measure_assertions(
@@ -516,13 +533,17 @@ fn validate_measure_assertions(
     Ok(())
 }
 
-fn evaluate_measure_assertions(scenario: &Scenario, summary: &Path, findings: &mut Vec<Finding>) {
+fn evaluate_measure_assertions(
+    scenario: &Scenario,
+    summary: &Path,
+    findings: &mut Vec<Finding>,
+) -> Vec<AnalogAssertionMeasurement> {
     let analog = scenario
         .analog
         .as_ref()
         .expect("analog was validated before measure assertions");
     if analog.analysis.measure_assertions.is_empty() {
-        return;
+        return Vec::new();
     }
     let rows = match read_measure_summary(summary) {
         Ok(rows) => rows,
@@ -532,9 +553,10 @@ fn evaluate_measure_assertions(scenario: &Scenario, summary: &Path, findings: &m
                 &scenario.name,
                 message,
             ));
-            return;
+            return Vec::new();
         }
     };
+    let mut measurements = Vec::new();
     for assertion in &analog.analysis.measure_assertions {
         let Some(measured) = rows
             .get(&assertion.measurement.to_ascii_lowercase())
@@ -558,7 +580,47 @@ fn evaluate_measure_assertions(scenario: &Scenario, summary: &Path, findings: &m
             findings.push(finding);
             continue;
         };
-        push_measure_assertion_finding(scenario, assertion, measured, summary, findings);
+        let evaluation = evaluate_measure_assertion_value(assertion, measured);
+        measurements.push(AnalogAssertionMeasurement {
+            assertion_name: assertion.name.clone(),
+            probe_name: assertion.measurement.clone(),
+            measured,
+            limit: assertion.threshold,
+            margin: evaluation.margin,
+            relation: evaluation.relation,
+            unit: measure_assertion_unit(assertion).to_string(),
+            quantity: "measure".to_string(),
+            passed: evaluation.passed,
+        });
+        push_measure_assertion_finding(
+            scenario, assertion, measured, summary, evaluation, findings,
+        );
+    }
+    measurements
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MeasureAssertionEvaluation {
+    relation: &'static str,
+    margin: f64,
+    passed: bool,
+}
+
+fn evaluate_measure_assertion_value(
+    assertion: &AnalogMeasureAssertion,
+    measured: f64,
+) -> MeasureAssertionEvaluation {
+    match assertion.relation {
+        AnalogRelation::Above => MeasureAssertionEvaluation {
+            relation: "above",
+            margin: measured - assertion.threshold,
+            passed: measured > assertion.threshold,
+        },
+        AnalogRelation::Below => MeasureAssertionEvaluation {
+            relation: "below",
+            margin: assertion.threshold - measured,
+            passed: measured < assertion.threshold,
+        },
     }
 }
 
@@ -567,30 +629,25 @@ fn push_measure_assertion_finding(
     assertion: &AnalogMeasureAssertion,
     measured: f64,
     summary: &Path,
+    evaluation: MeasureAssertionEvaluation,
     findings: &mut Vec<Finding>,
 ) {
-    let (relation, margin, passed) = match assertion.relation {
-        AnalogRelation::Above => (
-            "above",
-            measured - assertion.threshold,
-            measured > assertion.threshold,
-        ),
-        AnalogRelation::Below => (
-            "below",
-            assertion.threshold - measured,
-            measured < assertion.threshold,
-        ),
-    };
-    if passed {
+    if evaluation.passed {
         return;
     }
-    let unit = assertion.unit.as_deref().unwrap_or("scalar");
+    let unit = measure_assertion_unit(assertion);
     let mut finding = Finding::critical(
         SPICE_MEASURE_ANALYSIS,
         &scenario.name,
         format!(
-            "Measure assertion {} failed: measurement {} was {:.6} {}, expected {relation} {:.6} {}.",
-            assertion.name, assertion.measurement, measured, unit, assertion.threshold, unit
+            "Measure assertion {} failed: measurement {} was {:.6} {}, expected {} {:.6} {}.",
+            assertion.name,
+            assertion.measurement,
+            measured,
+            unit,
+            evaluation.relation,
+            assertion.threshold,
+            unit
         ),
     );
     finding
@@ -603,14 +660,17 @@ fn push_measure_assertion_finding(
         .measured
         .insert("value".to_string(), json!(measured));
     finding.measured.insert("unit".to_string(), json!(unit));
-    finding.measured.insert("margin".to_string(), json!(margin));
+    finding
+        .measured
+        .insert("margin".to_string(), json!(evaluation.margin));
     finding.measured.insert(
         "measure_summary".to_string(),
         json!(normalize_artifact_path(summary)),
     );
-    finding
-        .limit
-        .insert(format!("{relation}_threshold"), json!(assertion.threshold));
+    finding.limit.insert(
+        format!("{}_threshold", evaluation.relation),
+        json!(assertion.threshold),
+    );
     if assertion.suggested_fixes.is_empty() {
         finding.suggested_fixes.push(
             "Adjust the circuit, stimulus, model, or measurement template so the normalized scalar result meets the declared design limit."
@@ -622,6 +682,10 @@ fn push_measure_assertion_finding(
             .extend(assertion.suggested_fixes.clone());
     }
     findings.push(finding);
+}
+
+fn measure_assertion_unit(assertion: &AnalogMeasureAssertion) -> &str {
+    assertion.unit.as_deref().unwrap_or("scalar")
 }
 
 fn read_measure_summary(summary: &Path) -> Result<BTreeMap<String, f64>, String> {

@@ -206,7 +206,7 @@ pub(super) fn evaluate_ac_assertions(
             limit,
             margin,
             relation,
-            unit,
+            unit: unit.to_string(),
             quantity: quantity.clone(),
             passed,
         });

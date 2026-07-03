@@ -129,7 +129,7 @@ pub(super) fn evaluate_dc_assertions(
             limit,
             margin,
             relation,
-            unit,
+            unit: unit.to_string(),
             quantity: "operating point".to_string(),
             passed,
         });

@@ -879,7 +879,7 @@ scenarios:
                 limit: 0.64,
                 margin,
                 relation: "below",
-                unit: "V",
+                unit: "V".to_string(),
                 quantity: "rms voltage".to_string(),
                 passed,
             },

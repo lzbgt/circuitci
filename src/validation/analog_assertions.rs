@@ -26,7 +26,7 @@ pub(super) struct AnalogAssertionMeasurement {
     pub(super) limit: f64,
     pub(super) margin: f64,
     pub(super) relation: &'static str,
-    pub(super) unit: &'static str,
+    pub(super) unit: String,
     pub(super) quantity: String,
     pub(super) passed: bool,
 }
@@ -217,7 +217,7 @@ pub(super) fn evaluate_waveform_assertions(
             limit: comparison_threshold.value,
             margin,
             relation,
-            unit: comparison_threshold.unit,
+            unit: comparison_threshold.unit.to_string(),
             quantity: measured_quantity_name(assertion, &probe.quantity).to_string(),
             passed,
         });
