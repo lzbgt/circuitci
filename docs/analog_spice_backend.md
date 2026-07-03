@@ -58,7 +58,9 @@ scenario owns a SPICE deck, `.op` operating-point export, and DC bias
 assertions. An `analog_sparameter` scenario owns a frequency sweep plus
 single-port or multi-port reference-impedance definitions for Xyce
 S-parameter exports. An `analog_transfer_function` scenario owns a small-signal
-output/input source contract for future `.TF` gain and resistance exports.
+output/input source contract for `.TF` gain and resistance exports. An
+`analog_pole_zero` scenario owns a small-signal output/reference/input-source
+contract for future `.PZ` pole and zero extraction.
 
 Required fields:
 
@@ -72,7 +74,9 @@ Required fields:
   `type: op` for DC operating-point analysis, `s_parameter_ports` for
   S-parameter port contracts, and `type: tf` with
   `transfer_output_expression` plus `transfer_input_source` for transfer
-  function contracts.
+  function contracts. Pole-zero contracts use `type: pz`,
+  `pole_zero_output_node`, `pole_zero_reference_node`,
+  `pole_zero_input_source`, and `pole_zero_mode`.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -259,6 +263,19 @@ For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
 5. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `transfer_function_summary`
    contract.
+
+For a scenario with check `SPICE_POLE_ZERO_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: pz`, non-empty `pole_zero_output_node`,
+   `pole_zero_reference_node`, `pole_zero_input_source`, and `pole_zero_mode`.
+3. Require output/reference nodes to be bound through `node_bindings`; for
+   generated Board IR decks, `pole_zero_input_source` must name a generated
+   board component.
+4. `pole_zero_mode` is one of `poles`, `zeros`, or `poles_and_zeros`.
+5. All backends currently fail closed with backend-planning evidence until an
+   adapter emits normalized `pole_zero_summary` evidence and a solver manifest.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

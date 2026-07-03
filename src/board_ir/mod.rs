@@ -1275,6 +1275,14 @@ pub struct AnalogTransientAnalysis {
     pub transfer_output_expression: Option<String>,
     #[serde(default)]
     pub transfer_input_source: Option<String>,
+    #[serde(default)]
+    pub pole_zero_output_node: Option<String>,
+    #[serde(default)]
+    pub pole_zero_reference_node: Option<String>,
+    #[serde(default)]
+    pub pole_zero_input_source: Option<String>,
+    #[serde(default)]
+    pub pole_zero_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

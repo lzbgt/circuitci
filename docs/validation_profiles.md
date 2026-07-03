@@ -95,6 +95,8 @@ declare them:
 - `SPICE_DC_ANALYSIS`
 - `SPICE_NOISE_ANALYSIS`
 - `SPICE_S_PARAMETER_ANALYSIS`
+- `SPICE_TRANSFER_FUNCTION_ANALYSIS`
+- `SPICE_POLE_ZERO_ANALYSIS`
 
 `circuitci suggest-scenarios` can propose missing `power_tree`, reset timing,
 boot-strap, UART bootloader, GPIO backdrive, and interface-protection scenario

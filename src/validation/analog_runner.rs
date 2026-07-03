@@ -1376,6 +1376,7 @@ pub(super) enum AnalogRuntimeFeature {
     Noise,
     SParameter,
     TransferFunction,
+    PoleZero,
 }
 
 impl AnalogRuntimeFeature {

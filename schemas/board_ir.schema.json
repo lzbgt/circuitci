@@ -2841,7 +2841,7 @@
                 "type": "object",
                 "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran", "ac", "op", "noise", "sparam", "tf"] },
+                  "type": { "enum": ["tran", "ac", "op", "noise", "sparam", "tf", "pz"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
                   "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
@@ -2852,6 +2852,10 @@
                   "noise_input_source": { "type": "string", "minLength": 1 },
                   "transfer_output_expression": { "type": "string", "minLength": 1 },
                   "transfer_input_source": { "type": "string", "minLength": 1 },
+                  "pole_zero_output_node": { "type": "string", "minLength": 1 },
+                  "pole_zero_reference_node": { "type": "string", "minLength": 1 },
+                  "pole_zero_input_source": { "type": "string", "minLength": 1 },
+                  "pole_zero_mode": { "enum": ["poles", "zeros", "poles_and_zeros"] },
                   "s_parameter_ports": {
                     "type": "array",
                     "minItems": 1,
@@ -2893,6 +2897,10 @@
                   {
                     "if": { "properties": { "type": { "const": "tf" } } },
                     "then": { "required": ["transfer_output_expression", "transfer_input_source"] }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "pz" } } },
+                    "then": { "required": ["pole_zero_output_node", "pole_zero_reference_node", "pole_zero_input_source", "pole_zero_mode"] }
                   }
                 ],
                 "additionalProperties": false
