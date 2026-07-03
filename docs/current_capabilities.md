@@ -203,9 +203,11 @@ Current analog support:
   components when the deck is generated from Board IR. Explicit `backend:
   xyce` runs `.HB`, emits `hb_spectrum_raw.csv`, normalizes signed harmonic
   complex spectrum rows into `hb_spectrum.csv`, and records the run in
-  `solver_manifest.json`. `backend: auto`, `ngspice`, and embedded ngspice
-  remain fail-closed with planning evidence until they emit the same
-  normalized output contract.
+  `solver_manifest.json`. Opt-in real-Xyce conformance is available through
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
+  it skips unless `Xyce` or `xyce` is on `PATH`. `backend: auto`, `ngspice`,
+  and embedded ngspice remain fail-closed with planning evidence until they
+  emit the same normalized output contract.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

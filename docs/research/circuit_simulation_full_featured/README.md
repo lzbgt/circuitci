@@ -562,6 +562,9 @@ The GUI should not become the solver.
   complex spectrum rows. This keeps HB distinct from transient `.FOUR`
   extraction: Fourier analysis measures a transient waveform after integration,
   while HB solves the periodic steady-state frequency-domain problem directly.
+  Opt-in real-Xyce HB conformance is covered by
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
+  the test skips unless `Xyce` or `xyce` is on `PATH`.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
 - Add report limitations for backend-specific gaps.

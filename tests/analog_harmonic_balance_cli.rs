@@ -1,9 +1,14 @@
 mod common;
 
-use common::{assert_report_schema_valid, assert_yaml_file_valid, run_validation_with_path};
+use common::{
+    assert_report_schema_valid, assert_yaml_file_valid, binary_available, run_validation_with_path,
+};
 use serde_json::Value;
 use std::fs;
 use std::process::Command;
+
+#[cfg(unix)]
+const REAL_XYCE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE";
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
@@ -19,6 +24,21 @@ fn fake_executable_with_body(dir: &std::path::Path, name: &str, body: &str) {
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&path, permissions).unwrap();
+}
+
+#[cfg(unix)]
+fn real_xyce_harmonic_balance_conformance_enabled() -> bool {
+    if std::env::var(REAL_XYCE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real-Xyce harmonic-balance conformance; set {REAL_XYCE_CONFORMANCE_ENV}=1"
+        );
+        return false;
+    }
+    if !binary_available("Xyce") && !binary_available("xyce") {
+        eprintln!("skipping real-Xyce harmonic-balance conformance; Xyce/xyce is not on PATH");
+        return false;
+    }
+    true
 }
 
 fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
@@ -102,6 +122,74 @@ scenarios:
         hb_drive_sources: [{drive_source}]
       stimuli:
         - {{ name: periodic_drive, description: Planned harmonic-balance spectrum extraction. }}
+      probes:
+        - {{ name: out_hb, expression: V(out) }}
+      assertions: []
+"#,
+            libs = repo.join("libs/generic/analog").to_string_lossy()
+        ),
+    )
+    .unwrap();
+    project
+}
+
+fn write_file_harmonic_balance_project(dir: &std::path::Path) -> std::path::PathBuf {
+    let repo = std::env::current_dir().unwrap();
+    fs::write(
+        dir.join("hb_real_xyce.cir"),
+        "* CircuitCI real-Xyce HB conformance deck\nV1 vin 0 SIN(0 1 100000)\nR1 vin out 1000\nR2 out 0 1000\n.END\n",
+    )
+    .unwrap();
+    let project = dir.join("project.yaml");
+    fs::write(
+        &project,
+        format!(
+            r#"project: {{ name: hb_real_xyce_conformance, version: 0.1.0 }}
+libraries:
+  - {libs}
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins: {{ P: vin, N: gnd }}
+    R1:
+      model: generic.analog.resistor
+      pins: {{ A: vin, B: out }}
+    R2:
+      model: generic.analog.resistor
+      pins: {{ A: out, B: gnd }}
+  nets:
+    vin: {{ kind: power, nominal_voltage: 1.0, powered: true }}
+    out: {{ kind: digital_or_analog }}
+    gnd: {{ kind: ground }}
+scenarios:
+  - name: rc_harmonic_balance_file
+    type: analog_harmonic_balance
+    checks: [SPICE_HARMONIC_BALANCE_ANALYSIS]
+    analog:
+      backend: xyce
+      netlist_source: file
+      netlist: hb_real_xyce.cir
+      model_files: []
+      node_bindings:
+        - {{ node: vin, net: vin }}
+        - {{ node: out, net: out }}
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: vin, endpoint: {{ component: V1, pin: P }} }}
+        - {{ node: "0", endpoint: {{ component: V1, pin: N }} }}
+        - {{ node: vin, endpoint: {{ component: R1, pin: A }} }}
+        - {{ node: out, endpoint: {{ component: R1, pin: B }} }}
+        - {{ node: out, endpoint: {{ component: R2, pin: A }} }}
+        - {{ node: "0", endpoint: {{ component: R2, pin: B }} }}
+      analysis:
+        type: hb
+        hb_fundamental_frequency_hz: 100000.0
+        hb_output_expression: V(out)
+        hb_harmonics: 5
+        hb_drive_sources: [V1]
+      stimuli:
+        - {{ name: sinusoidal_drive, description: 100 kHz sine source declared in hb_real_xyce.cir. }}
       probes:
         - {{ name: out_hb, expression: V(out) }}
       assertions: []
@@ -246,6 +334,69 @@ fn explicit_xyce_harmonic_balance_normalizes_spectrum_and_manifest() {
     assert!(wrapper_text.contains(".OPTIONS HBINT NUMFREQ=10"));
     assert!(wrapper_text.contains(".PRINT HB_FD FORMAT=CSV"));
     assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_xyce_harmonic_balance_conformance_when_enabled() {
+    if !real_xyce_harmonic_balance_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_file_harmonic_balance_project(project_dir.path());
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+    let spectrum = out_dir
+        .path()
+        .join(artifact_path(&report, "hb_spectrum.csv"));
+    let text = fs::read_to_string(&spectrum).unwrap();
+    assert!(
+        text.starts_with("output_expression,fundamental_frequency_hz,harmonic,frequency_hz,real,imaginary,magnitude,phase_deg\n"),
+        "unexpected HB spectrum header in {}: {text}",
+        spectrum.display()
+    );
+    assert!(
+        text.lines().skip(1).count() >= 2,
+        "real-Xyce HB spectrum has too few data rows: {text}"
+    );
+    artifact_path(&report, "hb_spectrum_raw.csv");
+    let manifest = out_dir
+        .path()
+        .join(artifact_path(&report, "solver_manifest.json"));
+    let manifest_json: Value =
+        serde_json::from_str(&fs::read_to_string(manifest).unwrap()).unwrap();
+    assert_eq!(manifest_json["backend"]["selected"], "Xyce");
+    assert_eq!(manifest_json["analysis"]["kind"], "harmonic_balance");
+    assert!(
+        manifest_json["outputs"]["normalized"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|output| output["kind"] == "hb_spectrum")
+    );
 }
 
 #[cfg(unix)]
