@@ -127,6 +127,14 @@ Required fields:
   it builds the Xyce tutorial RLC Verilog-A plugin, loads it with `Xyce
   -plugin`, pins the retained conformance artifact, and verifies CircuitCI's
   fail-closed contract against those real artifacts.
+  Reusable compact-model packages can additionally declare
+  `model_package_name`, `model_package_version`, `model_package_artifact_id`,
+  `model_package_lock_path`, and `model_package_lock_sha256`. The lock file may
+  be JSON or YAML, must contain matching package identity plus an artifact row
+  with matching id, path, SHA-256, artifact format, and compiler, and is
+  retained as a report artifact. Valid package locks are projected into
+  `solver_manifest.json` and top-level `model_file_provenance[]` so reports can
+  distinguish package-qualified compact models from one-off scenario files.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
 - `pin_bindings`: mapping from Board IR component pins to SPICE nodes.
 - `analysis`: transient settings with stop time and maximum step, AC/noise/

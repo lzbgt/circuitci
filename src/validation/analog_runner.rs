@@ -1609,6 +1609,11 @@ pub(super) fn write_solver_manifest(io: SolverManifestIo<'_>) -> Result<PathBuf,
                 "compiler": model_file.compiler,
                 "compiler_version": model_file.compiler_version,
                 "compiler_command": model_file.compiler_command,
+                "model_package_name": model_file.model_package_name,
+                "model_package_version": model_file.model_package_version,
+                "model_package_artifact_id": model_file.model_package_artifact_id,
+                "model_package_lock_path": model_file.model_package_lock_path,
+                "model_package_lock_sha256": model_file.model_package_lock_sha256,
             })
         })
         .collect();

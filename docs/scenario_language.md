@@ -3739,6 +3739,15 @@ artifact/hash. CircuitCI validates those pins and emits
 `ANALOG_MODEL_COMPILER_XYCE_PLUGIN_UNSUPPORTED`; it does not execute Xyce
 plugin loading until that backend has real-solver conformance coverage.
 
+Package-qualified compact models add `model_package_name`,
+`model_package_version`, `model_package_artifact_id`,
+`model_package_lock_path`, and `model_package_lock_sha256` to the same
+`model_files` entry. The package lock may be JSON or YAML and must contain the
+matching package identity plus an artifact row whose id, path, SHA-256,
+artifact format, and compiler match the scenario. Lock failures emit
+`ANALOG_MODEL_PACKAGE_LOCK_*` findings before solver execution; valid locks are
+retained as artifacts and surfaced in `model_file_provenance[]`.
+
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the
 scenario must fail with a critical analog finding.

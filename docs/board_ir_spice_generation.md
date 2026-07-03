@@ -130,6 +130,15 @@ source, plugin, and conformance artifact hashes and then fails closed with
 not execute Xyce plugin loading until a real-Xyce adapter and conformance
 fixture are available.
 
+Both OpenVAF/OSDI and Xyce/ADMS compact-model artifacts may also reference a
+reusable package lock with `model_package_name`, `model_package_version`,
+`model_package_artifact_id`, `model_package_lock_path`, and
+`model_package_lock_sha256`. The lock file can be JSON or YAML. It must match
+the declared package name/version and contain an artifact row whose id, path,
+SHA-256, artifact format, and compiler match the `model_files[]` entry. CircuitCI
+adds the lock file to report artifacts and projects valid package metadata into
+solver manifests and report-level `model_file_provenance[]`.
+
 Generated analog scenarios may also declare `operating_conditions`. An ambient
 temperature enables datasheet power derating when the model provides linear
 derating metadata. `allow_pulse_ratings` only permits pulse-current waivers

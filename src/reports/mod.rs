@@ -81,6 +81,11 @@ pub struct ModelFileProvenance {
     pub compiler: String,
     pub compiler_version: String,
     pub compiler_command: String,
+    pub model_package_name: Option<String>,
+    pub model_package_version: Option<String>,
+    pub model_package_artifact_id: Option<String>,
+    pub model_package_lock_path: Option<String>,
+    pub model_package_lock_sha256: Option<String>,
     pub compiler_available_on_path: Option<bool>,
     pub build_env_enabled: Option<bool>,
     pub rebuild_mode: String,
@@ -323,6 +328,18 @@ fn markdown_report(report: &ValidationReport) -> String {
                 "  - Artifact: `{}` `{}`\n",
                 provenance.artifact_format, provenance.artifact_sha256_actual
             ));
+            if let Some(package_name) = &provenance.model_package_name {
+                text.push_str(&format!(
+                    "  - Package: `{}` `{}` artifact `{}` lock `{}`\n",
+                    package_name,
+                    provenance.model_package_version.as_deref().unwrap_or(""),
+                    provenance
+                        .model_package_artifact_id
+                        .as_deref()
+                        .unwrap_or(""),
+                    provenance.model_package_lock_path.as_deref().unwrap_or("")
+                ));
+            }
         }
         text.push('\n');
     }
@@ -426,6 +443,17 @@ fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenanc
                 compiler: string_at(entry, &["compiler"]),
                 compiler_version: string_at(entry, &["compiler_version"]),
                 compiler_command: string_at(entry, &["compiler_command"]),
+                model_package_name: optional_string_at(entry, &["model_package_name"]),
+                model_package_version: optional_string_at(entry, &["model_package_version"]),
+                model_package_artifact_id: optional_string_at(
+                    entry,
+                    &["model_package_artifact_id"],
+                ),
+                model_package_lock_path: optional_string_at(entry, &["model_package_lock_path"]),
+                model_package_lock_sha256: optional_string_at(
+                    entry,
+                    &["model_package_lock_sha256"],
+                ),
                 compiler_available_on_path: bool_at(entry, &["compiler_available_on_path"]),
                 build_env_enabled: bool_at(entry, &["build_env_enabled"]),
                 rebuild_mode: string_at(entry, &["rebuild_mode"]),
@@ -448,6 +476,11 @@ fn string_at(value: &Value, path: &[&str]) -> String {
         current = next;
     }
     current.as_str().unwrap_or_default().to_string()
+}
+
+fn optional_string_at(value: &Value, path: &[&str]) -> Option<String> {
+    let text = string_at(value, path);
+    if text.is_empty() { None } else { Some(text) }
 }
 
 fn bool_at(value: &Value, path: &[&str]) -> Option<bool> {

@@ -217,6 +217,18 @@ impl CircuitCiApp {
                                 "artifact {}",
                                 provenance.artifact_sha256_actual
                             ));
+                            if let Some(package_name) = &provenance.model_package_name {
+                                ui.monospace(format!(
+                                    "package {} {} artifact={} lock={}",
+                                    package_name,
+                                    provenance.model_package_version.as_deref().unwrap_or(""),
+                                    provenance
+                                        .model_package_artifact_id
+                                        .as_deref()
+                                        .unwrap_or(""),
+                                    provenance.model_package_lock_path.as_deref().unwrap_or("")
+                                ));
+                            }
                         }
                     }
                 });

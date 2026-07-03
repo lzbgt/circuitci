@@ -1471,6 +1471,16 @@ pub struct AnalogModelFile {
     pub conformance_artifact: Option<String>,
     #[serde(default)]
     pub conformance_sha256: Option<String>,
+    #[serde(default)]
+    pub model_package_name: Option<String>,
+    #[serde(default)]
+    pub model_package_version: Option<String>,
+    #[serde(default)]
+    pub model_package_artifact_id: Option<String>,
+    #[serde(default)]
+    pub model_package_lock_path: Option<String>,
+    #[serde(default)]
+    pub model_package_lock_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

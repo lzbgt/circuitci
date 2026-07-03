@@ -76,6 +76,45 @@ fn write_osdi_files(dir: &std::path::Path) -> (String, String) {
     (sha256_hex(source), sha256_hex(artifact))
 }
 
+fn write_model_package_lock(
+    dir: &std::path::Path,
+    artifact_id: &str,
+    artifact_path: &str,
+    artifact_sha256: &str,
+    artifact_format: &str,
+    compiler: &str,
+) -> String {
+    let lock = format!(
+        r#"package:
+  name: org.circuitci.test.tiny_resistor
+  version: 1.0.0
+artifacts:
+  - id: {artifact_id}
+    path: {artifact_path}
+    sha256: {artifact_sha256}
+    artifact_format: {artifact_format}
+    compiler: {compiler}
+"#
+    );
+    fs::write(dir.join("compact_model.lock.yaml"), lock.as_bytes()).unwrap();
+    sha256_hex(lock.as_bytes())
+}
+
+fn add_model_package_lock_to_project(
+    project_path: &std::path::Path,
+    artifact_id: &str,
+    lock_sha256: &str,
+) {
+    let project = fs::read_to_string(project_path).unwrap();
+    let updated = project.replace(
+        "          compiler_command: openvaf tiny_resistor.va -o tiny_resistor.osdi\n",
+        &format!(
+            "          compiler_command: openvaf tiny_resistor.va -o tiny_resistor.osdi\n          model_package_name: org.circuitci.test.tiny_resistor\n          model_package_version: 1.0.0\n          model_package_artifact_id: {artifact_id}\n          model_package_lock_path: compact_model.lock.yaml\n          model_package_lock_sha256: {lock_sha256}\n"
+        ),
+    );
+    fs::write(project_path, updated).unwrap();
+}
+
 fn write_xyce_adms_plugin_files(dir: &std::path::Path) -> (String, String, String) {
     let source = b"`include \"disciplines.vams\"\nmodule tiny_xyce_resistor(p, n); endmodule\n";
     let plugin = b"not-a-real-xyce-plugin-but-stable-test-content\n";
@@ -714,6 +753,114 @@ fn openvaf_osdi_model_is_loaded_with_ngspice_pre_osdi() {
     assert!(markdown.contains("## Model File Provenance"));
     assert!(markdown.contains("`tiny_resistor.osdi`"));
     assert!(markdown.contains("`prebuilt_verified`"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_package_lock_is_recorded_in_manifest_and_report() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'time v(out)\\n0.0 0.5\\n0.000001 0.5\\n' > waveform.csv\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    let lock_sha = write_model_package_lock(
+        project_dir.path(),
+        "tiny_resistor_osdi",
+        "tiny_resistor.osdi",
+        &artifact_sha,
+        "osdi_shared_object",
+        "openvaf",
+    );
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+    add_model_package_lock_to_project(&project_path, "tiny_resistor_osdi", &lock_sha);
+
+    let (out_dir, report) =
+        run_validation_with_path_retaining_output(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass", "{report:#}");
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact
+                .as_str()
+                .unwrap()
+                .ends_with("compact_model.lock.yaml"))
+    );
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    let provenance = &manifest["inputs"]["model_file_provenance"][0];
+    assert_eq!(
+        provenance["model_package_name"],
+        "org.circuitci.test.tiny_resistor"
+    );
+    assert_eq!(provenance["model_package_version"], "1.0.0");
+    assert_eq!(
+        provenance["model_package_artifact_id"],
+        "tiny_resistor_osdi"
+    );
+    assert_eq!(
+        provenance["model_package_lock_path"],
+        "compact_model.lock.yaml"
+    );
+    assert_eq!(provenance["model_package_lock_sha256"], lock_sha);
+    let report_provenance = &report["model_file_provenance"][0];
+    assert_eq!(
+        report_provenance["model_package_name"],
+        "org.circuitci.test.tiny_resistor"
+    );
+    assert_eq!(
+        report_provenance["model_package_artifact_id"],
+        "tiny_resistor_osdi"
+    );
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("Package: `org.circuitci.test.tiny_resistor`"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn openvaf_osdi_model_package_lock_rejects_mismatched_artifact_path() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'time v(out)\\n0.0 0.5\\n0.000001 0.5\\n' > waveform.csv\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let (source_sha, artifact_sha) = write_osdi_files(project_dir.path());
+    let lock_sha = write_model_package_lock(
+        project_dir.path(),
+        "tiny_resistor_osdi",
+        "other_resistor.osdi",
+        &artifact_sha,
+        "osdi_shared_object",
+        "openvaf",
+    );
+    let project_path =
+        write_model_compiler_transient_project(project_dir.path(), &source_sha, &artifact_sha);
+    add_model_package_lock_to_project(&project_path, "tiny_resistor_osdi", &lock_sha);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_MODEL_PACKAGE_LOCK_ARTIFACT_MISMATCH"
+    );
+    assert_eq!(report["failures"][0]["limit"]["mismatch"], "artifact_path");
+    assert_eq!(
+        report["failures"][0]["measured"]["model_package_artifact_id"],
+        "tiny_resistor_osdi"
+    );
     assert_report_schema_valid(&report);
 }
 

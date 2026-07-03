@@ -1,7 +1,7 @@
 use crate::board_ir::{AnalogBackend, AnalogModelFile, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::path::Path;
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
@@ -22,6 +22,11 @@ struct ModelCompilerManifestRecord {
     compiler: String,
     compiler_version: Option<String>,
     compiler_command: String,
+    model_package_name: Option<String>,
+    model_package_version: Option<String>,
+    model_package_artifact_id: Option<String>,
+    model_package_lock_path: Option<String>,
+    model_package_lock_sha256: Option<String>,
     compiler_available_on_path: bool,
     build_env_enabled: bool,
     rebuild_mode: &'static str,
@@ -42,6 +47,12 @@ pub(super) fn validate_model_compiler_provenance(
         .expect("analog was validated before model provenance validation");
     for model_file in &analog.model_files {
         if !model_file_requires_compiler_provenance(model_file) {
+            continue;
+        }
+        if let Some(finding) = validate_model_package_lock(bound, scenario, model_file, artifacts) {
+            return Some(finding);
+        }
+        if !model_file_requires_compiler_artifact_provenance(model_file) {
             continue;
         }
         if model_file.artifact_format.as_deref() == Some("xyce_adms_plugin") {
@@ -227,6 +238,11 @@ pub(super) fn validate_model_compiler_provenance(
                     compiler: "openvaf".to_string(),
                     compiler_version: model_file.compiler_version.clone(),
                     compiler_command: compiler_command.to_string(),
+                    model_package_name: model_file.model_package_name.clone(),
+                    model_package_version: model_file.model_package_version.clone(),
+                    model_package_artifact_id: model_file.model_package_artifact_id.clone(),
+                    model_package_lock_path: model_file.model_package_lock_path.clone(),
+                    model_package_lock_sha256: model_file.model_package_lock_sha256.clone(),
                     compiler_available_on_path: executable_on_path("openvaf"),
                     build_env_enabled: openvaf_builds_enabled(),
                     rebuild_mode,
@@ -257,6 +273,15 @@ pub(super) fn validate_model_compiler_provenance(
                                 compiler: "openvaf".to_string(),
                                 compiler_version: model_file.compiler_version.clone(),
                                 compiler_command: compiler_command.to_string(),
+                                model_package_name: model_file.model_package_name.clone(),
+                                model_package_version: model_file.model_package_version.clone(),
+                                model_package_artifact_id: model_file
+                                    .model_package_artifact_id
+                                    .clone(),
+                                model_package_lock_path: model_file.model_package_lock_path.clone(),
+                                model_package_lock_sha256: model_file
+                                    .model_package_lock_sha256
+                                    .clone(),
                                 compiler_available_on_path: executable_on_path("openvaf"),
                                 build_env_enabled: openvaf_builds_enabled(),
                                 rebuild_mode,
@@ -340,6 +365,11 @@ pub(super) fn solver_manifest_model_file_provenance(scenario: &Scenario) -> Vec<
                 "compiler": &record.compiler,
                 "compiler_version": &record.compiler_version,
                 "compiler_command": &record.compiler_command,
+                "model_package_name": &record.model_package_name,
+                "model_package_version": &record.model_package_version,
+                "model_package_artifact_id": &record.model_package_artifact_id,
+                "model_package_lock_path": &record.model_package_lock_path,
+                "model_package_lock_sha256": &record.model_package_lock_sha256,
                 "compiler_available_on_path": record.compiler_available_on_path,
                 "build_env_enabled": record.build_env_enabled,
                 "rebuild_mode": record.rebuild_mode,
@@ -365,6 +395,228 @@ fn clear_model_compiler_manifest_records(scenario: &str) {
 
 fn model_compiler_manifest_records() -> &'static Mutex<Vec<ModelCompilerManifestRecord>> {
     MODEL_COMPILER_MANIFEST_RECORDS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn validate_model_package_lock(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    artifacts: &mut Vec<String>,
+) -> Option<Finding> {
+    if !model_file_requires_package_lock(model_file) {
+        return None;
+    }
+    let Some(package_name) = nonempty(model_file.model_package_name.as_deref()) else {
+        return Some(model_package_lock_missing(
+            scenario,
+            model_file,
+            "model_package_name",
+            "Model package lock metadata requires model_package_name.",
+        ));
+    };
+    let Some(package_version) = nonempty(model_file.model_package_version.as_deref()) else {
+        return Some(model_package_lock_missing(
+            scenario,
+            model_file,
+            "model_package_version",
+            "Model package lock metadata requires model_package_version.",
+        ));
+    };
+    let Some(artifact_id) = nonempty(model_file.model_package_artifact_id.as_deref()) else {
+        return Some(model_package_lock_missing(
+            scenario,
+            model_file,
+            "model_package_artifact_id",
+            "Model package lock metadata requires model_package_artifact_id.",
+        ));
+    };
+    let Some(lock_path) = nonempty(model_file.model_package_lock_path.as_deref()) else {
+        return Some(model_package_lock_missing(
+            scenario,
+            model_file,
+            "model_package_lock_path",
+            "Model package lock metadata requires model_package_lock_path.",
+        ));
+    };
+    let Some(lock_sha256) = nonempty(model_file.model_package_lock_sha256.as_deref()) else {
+        return Some(model_package_lock_missing(
+            scenario,
+            model_file,
+            "model_package_lock_sha256",
+            "Model package lock metadata requires model_package_lock_sha256.",
+        ));
+    };
+    let context = ModelPackageLockContext {
+        package_name,
+        package_version,
+        artifact_id,
+        lock_path,
+    };
+    let lock = bound.project.source_dir.join(lock_path);
+    if let Some(finding) = validate_pinned_file(
+        scenario,
+        model_file,
+        &lock,
+        lock_sha256,
+        "model_package_lock",
+        "ANALOG_MODEL_PACKAGE_LOCK_UNAVAILABLE",
+        "ANALOG_MODEL_PACKAGE_LOCK_HASH_MISMATCH",
+    ) {
+        return Some(finding);
+    }
+    let lock_text = match std::fs::read_to_string(&lock) {
+        Ok(text) => text,
+        Err(error) => {
+            let mut finding = Finding::critical(
+                "ANALOG_MODEL_PACKAGE_LOCK_UNAVAILABLE",
+                &scenario.name,
+                format!(
+                    "Unable to read model package lock {}: {error}",
+                    lock.display()
+                ),
+            );
+            insert_model_package_context(
+                &mut finding,
+                model_file,
+                context.package_name,
+                context.package_version,
+                context.artifact_id,
+                context.lock_path,
+            );
+            return Some(finding);
+        }
+    };
+    let lock_value = match parse_model_package_lock(&lock_text) {
+        Ok(value) => value,
+        Err(message) => {
+            let mut finding =
+                Finding::critical("ANALOG_MODEL_PACKAGE_LOCK_INVALID", &scenario.name, message);
+            insert_model_package_context(
+                &mut finding,
+                model_file,
+                context.package_name,
+                context.package_version,
+                context.artifact_id,
+                context.lock_path,
+            );
+            return Some(finding);
+        }
+    };
+    if string_field(&lock_value, &["package", "name"])
+        .or_else(|| string_field(&lock_value, &["package_name"]))
+        .or_else(|| string_field(&lock_value, &["name"]))
+        .as_deref()
+        != Some(package_name)
+    {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "package_name",
+            "Model package lock package name does not match the scenario metadata.",
+        ));
+    }
+    if string_field(&lock_value, &["package", "version"])
+        .or_else(|| string_field(&lock_value, &["package_version"]))
+        .or_else(|| string_field(&lock_value, &["version"]))
+        .as_deref()
+        != Some(package_version)
+    {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "package_version",
+            "Model package lock package version does not match the scenario metadata.",
+        ));
+    }
+    let Some(artifact) = model_package_artifact(&lock_value, artifact_id) else {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "artifact_id",
+            "Model package lock does not contain the declared model_package_artifact_id.",
+        ));
+    };
+    if string_field(artifact, &["path"]).as_deref() != Some(model_file.path.as_str()) {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "artifact_path",
+            "Model package lock artifact path does not match analog.model_files[].path.",
+        ));
+    }
+    if let Some(expected_sha) = model_file.sha256.as_deref()
+        && string_field(artifact, &["sha256"]).as_deref() != Some(expected_sha)
+    {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "artifact_sha256",
+            "Model package lock artifact SHA-256 does not match analog.model_files[].sha256.",
+        ));
+    }
+    if let Some(format) = model_file.artifact_format.as_deref()
+        && string_field(artifact, &["artifact_format"]).as_deref() != Some(format)
+    {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "artifact_format",
+            "Model package lock artifact_format does not match analog.model_files[].artifact_format.",
+        ));
+    }
+    if let Some(compiler) = model_file.compiler.as_deref()
+        && string_field(artifact, &["compiler"]).as_deref() != Some(compiler)
+    {
+        return Some(model_package_lock_mismatch(
+            scenario,
+            model_file,
+            &context,
+            "compiler",
+            "Model package lock compiler does not match analog.model_files[].compiler.",
+        ));
+    }
+    push_artifact(artifacts, &lock);
+    None
+}
+
+fn parse_model_package_lock(text: &str) -> Result<Value, String> {
+    serde_json::from_str::<Value>(text)
+        .or_else(|_| serde_yaml_ng::from_str::<Value>(text))
+        .map_err(|error| format!("Model package lock is not valid JSON or YAML: {error}"))
+}
+
+struct ModelPackageLockContext<'a> {
+    package_name: &'a str,
+    package_version: &'a str,
+    artifact_id: &'a str,
+    lock_path: &'a str,
+}
+
+fn model_package_artifact<'a>(lock: &'a Value, artifact_id: &str) -> Option<&'a Value> {
+    let artifacts = lock
+        .get("artifacts")
+        .or_else(|| lock.get("model_artifacts"))
+        .and_then(Value::as_array)?;
+    artifacts.iter().find(|artifact| {
+        string_field(artifact, &["id"])
+            .or_else(|| string_field(artifact, &["name"]))
+            .as_deref()
+            == Some(artifact_id)
+    })
+}
+
+fn string_field(value: &Value, path: &[&str]) -> Option<String> {
+    let mut current = value;
+    for key in path {
+        current = current.get(*key)?;
+    }
+    current.as_str().map(ToOwned::to_owned)
 }
 
 fn run_openvaf_build(
@@ -922,6 +1174,7 @@ fn insert_xyce_adms_plan(
         "conformance_artifact".to_string(),
         json!(model_file.conformance_artifact),
     );
+    insert_optional_model_package_measured(finding, model_file);
     finding.measured.insert(
         "research_evidence".to_string(),
         json!("docs/research/circuit_simulation_full_featured/xyce_openvaf_osdi_compatibility.md"),
@@ -944,6 +1197,11 @@ fn insert_xyce_adms_plan(
 }
 
 fn model_file_requires_compiler_provenance(model_file: &AnalogModelFile) -> bool {
+    model_file_requires_compiler_artifact_provenance(model_file)
+        || model_file_requires_package_lock(model_file)
+}
+
+fn model_file_requires_compiler_artifact_provenance(model_file: &AnalogModelFile) -> bool {
     model_file.artifact_format.as_deref() == Some("osdi_shared_object")
         || model_file.artifact_format.as_deref() == Some("xyce_adms_plugin")
         || model_file.compiler.is_some()
@@ -957,6 +1215,39 @@ fn model_file_requires_compiler_provenance(model_file: &AnalogModelFile) -> bool
         || !model_file.xyce_configure_options.is_empty()
         || model_file.conformance_artifact.is_some()
         || model_file.conformance_sha256.is_some()
+}
+
+fn model_file_requires_package_lock(model_file: &AnalogModelFile) -> bool {
+    model_file.model_package_name.is_some()
+        || model_file.model_package_version.is_some()
+        || model_file.model_package_artifact_id.is_some()
+        || model_file.model_package_lock_path.is_some()
+        || model_file.model_package_lock_sha256.is_some()
+}
+
+fn insert_optional_model_package_measured(finding: &mut Finding, model_file: &AnalogModelFile) {
+    if model_file_requires_package_lock(model_file) {
+        finding.measured.insert(
+            "model_package_name".to_string(),
+            json!(model_file.model_package_name),
+        );
+        finding.measured.insert(
+            "model_package_version".to_string(),
+            json!(model_file.model_package_version),
+        );
+        finding.measured.insert(
+            "model_package_artifact_id".to_string(),
+            json!(model_file.model_package_artifact_id),
+        );
+        finding.measured.insert(
+            "model_package_lock_path".to_string(),
+            json!(model_file.model_package_lock_path),
+        );
+        finding.measured.insert(
+            "model_package_lock_sha256".to_string(),
+            json!(model_file.model_package_lock_sha256),
+        );
+    }
 }
 
 fn model_compiler_metadata_missing(
@@ -985,6 +1276,93 @@ fn model_compiler_metadata_missing(
             .to_string(),
     );
     finding
+}
+
+fn model_package_lock_missing(
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    field: &str,
+    message: &str,
+) -> Finding {
+    let mut finding =
+        Finding::critical("ANALOG_MODEL_PACKAGE_LOCK_MISSING", &scenario.name, message);
+    finding
+        .measured
+        .insert("model_file".to_string(), json!(model_file.path));
+    insert_optional_model_package_measured(&mut finding, model_file);
+    finding
+        .limit
+        .insert("required_field".to_string(), json!(field));
+    finding
+        .limit
+        .insert("required_artifact".to_string(), json!("model_package_lock"));
+    finding.suggested_fixes.push(
+        "Declare a package name, version, artifact id, lock path, and lock SHA-256 for reusable compact-model packages."
+            .to_string(),
+    );
+    finding
+}
+
+fn model_package_lock_mismatch(
+    scenario: &Scenario,
+    model_file: &AnalogModelFile,
+    context: &ModelPackageLockContext<'_>,
+    mismatch: &str,
+    message: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        "ANALOG_MODEL_PACKAGE_LOCK_ARTIFACT_MISMATCH",
+        &scenario.name,
+        message,
+    );
+    insert_model_package_context(
+        &mut finding,
+        model_file,
+        context.package_name,
+        context.package_version,
+        context.artifact_id,
+        context.lock_path,
+    );
+    finding
+        .limit
+        .insert("mismatch".to_string(), json!(mismatch));
+    finding.suggested_fixes.push(
+        "Update the scenario to reference the package-locked model artifact, or revise the lock file and SHA-256 pin together after re-qualifying the package."
+            .to_string(),
+    );
+    finding
+}
+
+fn insert_model_package_context(
+    finding: &mut Finding,
+    model_file: &AnalogModelFile,
+    package_name: &str,
+    package_version: &str,
+    artifact_id: &str,
+    lock_path: &str,
+) {
+    finding
+        .measured
+        .insert("model_file".to_string(), json!(model_file.path));
+    finding.measured.insert(
+        "artifact_format".to_string(),
+        json!(model_file.artifact_format),
+    );
+    finding
+        .measured
+        .insert("model_package_name".to_string(), json!(package_name));
+    finding
+        .measured
+        .insert("model_package_version".to_string(), json!(package_version));
+    finding
+        .measured
+        .insert("model_package_artifact_id".to_string(), json!(artifact_id));
+    finding
+        .measured
+        .insert("model_package_lock_path".to_string(), json!(lock_path));
+    finding
+        .limit
+        .insert("required_artifact".to_string(), json!("model_package_lock"));
 }
 
 fn xyce_adms_metadata_missing(

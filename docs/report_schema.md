@@ -1364,18 +1364,29 @@ as explicit `backend: xyce` or `backend: embedded_ngspice`.
 `xyce_adms_plugin` entry has pinned source, plugin, and conformance artifacts
 but CircuitCI has not yet enabled a real-Xyce `-plugin` loader and conformance
 path.
+`ANALOG_MODEL_PACKAGE_LOCK_MISSING`,
+`ANALOG_MODEL_PACKAGE_LOCK_UNAVAILABLE`,
+`ANALOG_MODEL_PACKAGE_LOCK_HASH_MISMATCH`,
+`ANALOG_MODEL_PACKAGE_LOCK_INVALID`, and
+`ANALOG_MODEL_PACKAGE_LOCK_ARTIFACT_MISMATCH` are emitted when reusable
+compact-model package metadata is incomplete, the JSON/YAML lock file is
+missing or stale, or the lock does not contain the exact package/artifact row
+declared by `analog.model_files[]`.
 `ANALOG_MODEL_COMPILER_BUILD_FAILED` is emitted only when
 `CIRCUITCI_RUN_OPENVAF_BUILDS=1` opts into direct OpenVAF execution and the
 declared command fails. Stable measured keys include `model_file`,
 `source_path`, `compiler`, `compiler_version`, `compiler_command`,
 `compiler_available_on_path`, `artifact_format`, `requested_backend`,
 `plugin_load_command`, `xyce_version`, `xyce_adms_template_revision`,
-`xyce_configure_options`, `conformance_artifact`, `research_evidence`,
+`xyce_configure_options`, `conformance_artifact`, `model_package_name`,
+`model_package_version`, `model_package_artifact_id`,
+`model_package_lock_path`, `model_package_lock_sha256`, `research_evidence`,
 optional `stdout`/`stderr` prefixes for failed builds, and `sha256` for hash
 mismatches. Stable limit keys include `required_field`, `required_artifact`,
 `required_build_step`, `required_backend_adapter`, `required_conformance`,
-`required_configure_option`, `source_path`, `model_file`, `output_path`,
-`expected_sha256`, `supported_backend`, and `xyce_required_model_path`. These
+`required_configure_option`, `mismatch`, `source_path`, `model_file`,
+`output_path`, `expected_sha256`, `supported_backend`, and
+`xyce_required_model_path`. These
 findings keep Verilog-A compact-model use
 fail-closed until the compiled OSDI artifact is tied to source path/hash,
 OpenVAF compiler identity/version, reproducible compiler command metadata, and
@@ -1392,12 +1403,14 @@ fields include `model_file`, `artifact_format`, `source_path`,
 `source_sha256_declared`, `source_sha256_actual`,
 `artifact_sha256_declared`, `artifact_sha256_actual`, `compiler`,
 `compiler_version`, `compiler_command`, `compiler_available_on_path`,
-`build_env_enabled`, `rebuild_mode`, and `produced_by_circuitci`. Reports also
-project those records into top-level `model_file_provenance[]` entries with
-the solver `scenario`, `analysis`, `backend`, and `manifest` path, so report
-consumers can inspect compiled-model provenance without opening
-`solver_manifest.json` first. Markdown reports include the same information in
-the "Model File Provenance" section.
+`build_env_enabled`, `rebuild_mode`, `produced_by_circuitci`, and optional
+package-lock fields `model_package_name`, `model_package_version`,
+`model_package_artifact_id`, `model_package_lock_path`, and
+`model_package_lock_sha256`. Reports also project those records into top-level
+`model_file_provenance[]` entries with the solver `scenario`, `analysis`,
+`backend`, and `manifest` path, so report consumers can inspect compiled-model
+provenance without opening `solver_manifest.json` first. Markdown reports
+include the same information in the "Model File Provenance" section.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

@@ -2830,6 +2830,14 @@
                     "conformance_sha256": {
                       "type": "string",
                       "pattern": "^[0-9a-fA-F]{64}$"
+                    },
+                    "model_package_name": { "type": "string", "minLength": 1 },
+                    "model_package_version": { "type": "string", "minLength": 1 },
+                    "model_package_artifact_id": { "type": "string", "minLength": 1 },
+                    "model_package_lock_path": { "type": "string", "minLength": 1 },
+                    "model_package_lock_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{64}$"
                     }
                   },
                   "additionalProperties": false

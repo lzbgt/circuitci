@@ -710,6 +710,13 @@ The GUI should not become the solver.
   runnable it builds the primary-source RLC Verilog-A plugin, loads it with
   `Xyce -plugin`, pins the retained conformance artifact, and verifies the
   fail-closed `xyce_adms_plugin` contract against those real artifacts.
+- Added compact-model package-lock metadata for reusable model artifacts.
+  `analog.model_files[]` can now carry `model_package_name`,
+  `model_package_version`, `model_package_artifact_id`,
+  `model_package_lock_path`, and `model_package_lock_sha256`; CircuitCI
+  verifies the JSON/YAML lock package identity and artifact row against the
+  scenario, retains the lock as an artifact, and projects package fields into
+  solver manifests and report-level `model_file_provenance[]`.
 
 ## Risks
 
