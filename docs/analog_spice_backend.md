@@ -62,7 +62,9 @@ output/input source contract for `.TF` gain and resistance exports. An
 `analog_pole_zero` scenario owns a small-signal output/reference/input-source
 contract for `.PZ` pole and zero extraction. An `analog_sensitivity` scenario
 owns a DC or AC output-variable sensitivity contract with optional ngspice
-parameter filters for `.SENS` exports.
+parameter filters for `.SENS` exports. An `analog_fourier` scenario owns a
+transient-backed `.FOUR` harmonic extraction contract for a bound output
+expression and fundamental frequency.
 
 Required fields:
 
@@ -81,6 +83,9 @@ Required fields:
   `pole_zero_input_source`, and `pole_zero_mode`. Sensitivity contracts use
   `type: sens`, `sensitivity_output_expression`, `sensitivity_mode`, optional
   `sensitivity_filters`, and AC frequency fields when `sensitivity_mode: ac`.
+  Fourier contracts use `type: fourier`, transient `stop_time_us` and
+  `max_step_us`, `fourier_fundamental_frequency_hz`,
+  `fourier_output_expression`, and optional `fourier_harmonics`.
 - `stimuli`: named host, power, or load events when the deck is generated from
   board IR. For hand-authored decks this can be empty.
 - `probes`: named voltages/currents to export.
@@ -313,6 +318,21 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
 7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `sensitivity_summary`
    contract.
+
+For a scenario with check `SPICE_FOURIER_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: fourier`, positive finite transient `stop_time_us`
+   and `max_step_us`, positive finite `fourier_fundamental_frequency_hz`, and a
+   non-empty `fourier_output_expression`.
+3. `fourier_output_expression` must be a bound `V(node)`,
+   `V(node,reference)`, or `I(source)` expression.
+4. The stop time must cover at least one fundamental period. Optional
+   `fourier_harmonics` must be in `1..=1024`; omitted harmonic count defaults
+   to the ngspice-compatible ten-harmonic planning contract.
+5. All backends currently fail closed with backend-planning evidence until an
+   adapter emits normalized `fourier_summary` evidence and a solver manifest.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

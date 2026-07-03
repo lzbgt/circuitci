@@ -170,6 +170,14 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.
+- `analog_fourier` scenarios with `SPICE_FOURIER_ANALYSIS` for
+  transient-backed `.FOUR` harmonic extraction contracts. The Board IR/schema
+  can declare `analysis.type: fourier`, transient stop/max-step timing, a
+  fundamental frequency, a bound voltage/current output expression, and an
+  optional harmonic count. The validator checks that the transient window
+  covers at least one fundamental period and then fails closed with planned
+  `fourier_summary` evidence until a backend adapter emits normalized output
+  and a solver manifest.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

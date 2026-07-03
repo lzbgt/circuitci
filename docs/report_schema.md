@@ -218,6 +218,11 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `SPICE_AC_ANALYSIS`
 - `SPICE_DC_ANALYSIS`
 - `SPICE_NOISE_ANALYSIS`
+- `SPICE_S_PARAMETER_ANALYSIS`
+- `SPICE_TRANSFER_FUNCTION_ANALYSIS`
+- `SPICE_POLE_ZERO_ANALYSIS`
+- `SPICE_SENSITIVITY_ANALYSIS`
+- `SPICE_FOURIER_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
 Reports must include `scenario`, `component` when applicable, measured timing values in `measured`, limits or expected states in `limit`, and concrete suggested fixes.

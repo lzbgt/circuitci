@@ -1,0 +1,361 @@
+use crate::board_ir::Scenario;
+use crate::library::BoundBoard;
+use crate::reports::Finding;
+use serde_json::json;
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::Path;
+
+use super::SPICE_FOURIER_ANALYSIS;
+use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
+use super::analog_runner::{
+    AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
+    external_backend_unavailable, select_backend_for_feature,
+};
+use super::analog_spice::{
+    analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
+};
+use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::common::validation_input_missing;
+
+pub(super) struct AnalogFourierSinks<'a> {
+    pub(super) findings: &'a mut Vec<Finding>,
+    pub(super) artifacts: &'a mut Vec<String>,
+}
+
+pub(super) fn validate_spice_fourier_with_progress<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    sinks: &mut AnalogFourierSinks<'_>,
+    output: &Path,
+    mut on_progress: F,
+    should_cancel: C,
+) where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let findings = &mut *sinks.findings;
+    let artifacts = &mut *sinks.artifacts;
+    on_progress(
+        "Preparing analog Fourier analysis",
+        format!("Checking analog scenario {}.", scenario.name),
+    );
+    let Some(analog) = &scenario.analog else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier scenario requires an analog block.",
+        );
+        return;
+    };
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
+    }
+
+    if let Some(finding) = validate_netlist_source(bound, scenario, artifacts) {
+        findings.push(finding);
+        return;
+    }
+    for model_file in &analog.model_files {
+        let path = bound.project.source_dir.join(&model_file.path);
+        if !path.is_file() {
+            let mut finding = Finding::critical(
+                "ANALOG_MODEL_UNAVAILABLE",
+                &scenario.name,
+                format!(
+                    "SPICE model file {} is required for physical analog Fourier analysis.",
+                    path.display()
+                ),
+            );
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_model_file"));
+            findings.push(finding);
+            return;
+        }
+        if let Some(expected) = &model_file.sha256 {
+            match file_sha256_hex(&path) {
+                Ok(actual) if actual.eq_ignore_ascii_case(expected) => {}
+                Ok(actual) => {
+                    let mut finding = Finding::critical(
+                        "ANALOG_MODEL_HASH_MISMATCH",
+                        &scenario.name,
+                        format!(
+                            "SPICE model file {} does not match the declared SHA-256.",
+                            path.display()
+                        ),
+                    );
+                    finding.measured.insert("sha256".to_string(), json!(actual));
+                    finding
+                        .limit
+                        .insert("expected_sha256".to_string(), json!(expected));
+                    findings.push(finding);
+                    return;
+                }
+                Err(message) => {
+                    validation_input_missing(findings, scenario, message);
+                    return;
+                }
+            }
+        }
+        push_artifact(artifacts, &path);
+    }
+
+    if analog.node_bindings.is_empty() || analog.pin_bindings.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires node_bindings and pin_bindings.",
+        );
+        return;
+    }
+    let mut bound_nodes = BTreeSet::new();
+    for binding in &analog.node_bindings {
+        if !bound.project.board.nets.contains_key(&binding.net) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog Fourier node binding {} references unknown board net {}.",
+                    binding.node, binding.net
+                ),
+            );
+            return;
+        }
+        bound_nodes.insert(binding.node.as_str());
+    }
+    for binding in &analog.pin_bindings {
+        if !bound_nodes.contains(binding.node.as_str()) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog Fourier pin binding references unbound SPICE node {}.",
+                    binding.node
+                ),
+            );
+            return;
+        }
+    }
+
+    if analog.analysis.analysis_type != "fourier" {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "Unsupported analog analysis type {}; only fourier is accepted for this check.",
+                analog.analysis.analysis_type
+            ),
+        );
+        return;
+    }
+    if !analog.analysis.stop_time_us.is_finite() || analog.analysis.stop_time_us <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires positive finite stop_time_us for the transient source run.",
+        );
+        return;
+    }
+    if !analog.analysis.max_step_us.is_finite() || analog.analysis.max_step_us <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires positive finite max_step_us for the transient source run.",
+        );
+        return;
+    }
+    if analog.analysis.max_step_us >= analog.analysis.stop_time_us {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires max_step_us smaller than stop_time_us.",
+        );
+        return;
+    }
+    let Some(fundamental_hz) = analog.analysis.fourier_fundamental_frequency_hz else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires fourier_fundamental_frequency_hz.",
+        );
+        return;
+    };
+    if !fundamental_hz.is_finite() || fundamental_hz <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires positive finite fourier_fundamental_frequency_hz.",
+        );
+        return;
+    }
+    let stop_time_s = analog.analysis.stop_time_us / 1_000_000.0;
+    let fundamental_period_s = 1.0 / fundamental_hz;
+    if stop_time_s < fundamental_period_s {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier stop_time_us must cover at least one fundamental period.",
+        );
+        return;
+    }
+    let Some(output_expression) = nonempty(analog.analysis.fourier_output_expression.as_deref())
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires fourier_output_expression.",
+        );
+        return;
+    };
+    if let Err(message) = validate_output_expression(output_expression, &bound_nodes, scenario) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+    if !matches!(analog.analysis.fourier_harmonics, None | Some(1..=1024)) {
+        validation_input_missing(
+            findings,
+            scenario,
+            "analog_fourier requires fourier_harmonics in 1..=1024 when provided.",
+        );
+        return;
+    }
+    if let Err(message) = analog_run_plans(analog) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
+
+    let run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Err(error) = fs::create_dir_all(&run_dir) {
+        findings.push(Finding::critical(
+            SPICE_FOURIER_ANALYSIS,
+            &scenario.name,
+            format!(
+                "Failed to create analog Fourier run directory {}: {error}",
+                run_dir.display()
+            ),
+        ));
+        return;
+    }
+    match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => push_artifact(artifacts, &source_netlist),
+        Err(message) => {
+            let mut finding = Finding::critical(SPICE_FOURIER_ANALYSIS, &scenario.name, message);
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_netlist"));
+            findings.push(finding);
+            return;
+        }
+    }
+
+    on_progress(
+        "Planning analog Fourier backend",
+        format!("Requested backend {}.", backend_name(&analog.backend)),
+    );
+    let selected = select_backend_for_feature(&analog.backend, AnalogRuntimeFeature::Fourier);
+    let BackendSelection::Selected(backend) = selected else {
+        let mut finding = match selected {
+            BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),
+            BackendSelection::Unavailable => {
+                external_backend_unavailable(&scenario.name, &analog.backend)
+            }
+            BackendSelection::Selected(_) => unreachable!("handled by let-else pattern"),
+        };
+        finding.measured.insert(
+            "requested_backend".to_string(),
+            json!(backend_name(&analog.backend)),
+        );
+        findings.push(finding);
+        return;
+    };
+
+    let mut finding = unsupported_backend_plan_finding(
+        scenario,
+        UnsupportedBackendPlan {
+            check_id: SPICE_FOURIER_ANALYSIS,
+            selected_backend: backend,
+            implemented_backend: "none_yet",
+            analysis_kind: "fourier",
+            required_normalized_outputs: &["fourier_summary"],
+        },
+    );
+    finding
+        .measured
+        .insert("output_expression".to_string(), json!(output_expression));
+    finding.measured.insert(
+        "fundamental_frequency_hz".to_string(),
+        json!(fundamental_hz),
+    );
+    finding.measured.insert(
+        "stop_time_us".to_string(),
+        json!(analog.analysis.stop_time_us),
+    );
+    finding.measured.insert(
+        "max_step_us".to_string(),
+        json!(analog.analysis.max_step_us),
+    );
+    finding.measured.insert(
+        "harmonics".to_string(),
+        json!(analog.analysis.fourier_harmonics.unwrap_or(10)),
+    );
+    finding.limit.insert(
+        "required_evidence".to_string(),
+        json!("fourier_summary_csv_or_json"),
+    );
+    findings.push(finding);
+}
+
+fn validate_output_expression(
+    expression: &str,
+    bound_nodes: &BTreeSet<&str>,
+    scenario: &Scenario,
+) -> Result<(), String> {
+    let expression = expression.trim();
+    let lower = expression.to_ascii_lowercase();
+    if lower.starts_with("v(") && expression.ends_with(')') {
+        let inner = &expression[2..expression.len() - 1];
+        for node in inner
+            .split(',')
+            .map(str::trim)
+            .filter(|node| !node.is_empty())
+        {
+            if !bound_nodes.contains(node) {
+                return Err(format!(
+                    "analog_fourier output expression references unbound node {node}."
+                ));
+            }
+        }
+        return Ok(());
+    }
+    if lower.starts_with("i(") && expression.ends_with(')') {
+        let component = expression[2..expression.len() - 1].trim();
+        if component.is_empty() {
+            return Err("analog_fourier current expression requires a component.".to_string());
+        }
+        let Some(analog) = &scenario.analog else {
+            return Ok(());
+        };
+        let bound = analog
+            .pin_bindings
+            .iter()
+            .any(|binding| binding.endpoint.component == component);
+        if !bound {
+            return Err(format!(
+                "analog_fourier output expression references unbound component {component}."
+            ));
+        }
+        return Ok(());
+    }
+    Err(
+        "analog_fourier output expression must be V(node), V(node,reference), or I(source)."
+            .to_string(),
+    )
+}
+
+fn nonempty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
+}

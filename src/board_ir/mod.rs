@@ -1289,6 +1289,12 @@ pub struct AnalogTransientAnalysis {
     pub sensitivity_mode: Option<String>,
     #[serde(default)]
     pub sensitivity_filters: Vec<String>,
+    #[serde(default)]
+    pub fourier_fundamental_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub fourier_output_expression: Option<String>,
+    #[serde(default)]
+    pub fourier_harmonics: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
