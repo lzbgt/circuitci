@@ -718,6 +718,13 @@ The GUI should not become the solver.
   `s_parameter_source_reflection` / `s_parameter_load_reflection` Board IR
   provenance keys, and can hydrate those fields from failed report metadata
   when retained findings include the measured coefficients.
+- 2026-07-04: Added Scopes derived S-parameter traces for source/load-dependent
+  transducer, available, and operating gain. The waveform loader now hides
+  `source_reflection_*` / `load_reflection_*` metadata columns and emits
+  `two-port transducer gain dB`, `two-port available gain dB`, and
+  `two-port operating gain dB` only when the full S11/S12/S21/S22 complex
+  sweep and the required source/load reflection metadata are present and
+  satisfy the same passive-gamma availability contract as the sign-off path.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

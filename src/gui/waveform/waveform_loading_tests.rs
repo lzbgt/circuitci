@@ -134,7 +134,7 @@ fn waveform_csv_loader_maps_bode_artifacts_to_frequency_axis() {
 #[test]
 fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     let waveform = parse_waveform_csv_text(
-        "frequency_hz,reference_impedance_ohm,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db,s21_phase_deg,s21_mag_linear,s12_mag_db,s12_phase_deg,s12_mag_linear,s22_mag_db,s22_phase_deg,s22_mag_linear\n1e6,50,-6.02059991328,0,0.5,6.02059991328,0,2.0,-40,0,0.01,-7.95880017344,0,0.4\n1e9,50,-13.97940008672,0,0.2,3.52182518111,0,1.5,-33.9794000867,0,0.02,-10.4575749056,0,0.3\n",
+        "frequency_hz,reference_impedance_ohm,source_reflection_real,source_reflection_imaginary,load_reflection_real,load_reflection_imaginary,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db,s21_phase_deg,s21_mag_linear,s12_mag_db,s12_phase_deg,s12_mag_linear,s22_mag_db,s22_phase_deg,s22_mag_linear\n1e6,50,0,0,0,0,-6.02059991328,0,0.5,6.02059991328,0,2.0,-40,0,0.01,-7.95880017344,0,0.4\n1e9,50,0,0,0,0,-13.97940008672,0,0.2,3.52182518111,0,1.5,-33.9794000867,0,0.02,-10.4575749056,0,0.3\n",
         "s_parameters.csv",
     )
     .unwrap();
@@ -148,6 +148,10 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
         .map(|probe| probe.label.as_str())
         .collect();
     assert!(!labels.contains(&"reference_impedance_ohm"));
+    assert!(!labels.contains(&"source_reflection_real"));
+    assert!(!labels.contains(&"source_reflection_imaginary"));
+    assert!(!labels.contains(&"load_reflection_real"));
+    assert!(!labels.contains(&"load_reflection_imaginary"));
     assert!(labels.contains(&"s11 return loss dB"));
     assert!(labels.contains(&"s11 VSWR"));
     assert!(labels.contains(&"s11 mismatch loss dB"));
@@ -164,6 +168,9 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(labels.contains(&"two-port maximum available gain dB"));
     assert!(labels.contains(&"two-port maximum stable gain dB"));
     assert!(labels.contains(&"two-port maximum unilateral gain dB"));
+    assert!(labels.contains(&"two-port transducer gain dB"));
+    assert!(labels.contains(&"two-port available gain dB"));
+    assert!(labels.contains(&"two-port operating gain dB"));
     assert!(labels.contains(&"s21 group delay s"));
     let s11_return_loss = waveform
         .probes
@@ -298,6 +305,39 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!((maximum_unilateral_gain.values[0] - expected_unilateral_0).abs() < 1.0e-12);
     assert!((maximum_unilateral_gain.values[1] - expected_unilateral_1).abs() < 1.0e-12);
     assert_eq!(super::probe_unit(&maximum_unilateral_gain.label), "dB");
+    let transducer_gain = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port transducer gain dB")
+        .unwrap();
+    assert!(transducer_gain.derived);
+    let expected_transducer_0 = 10.0_f64 * 4.0_f64.log10();
+    let expected_transducer_1 = 10.0_f64 * 2.25_f64.log10();
+    assert!((transducer_gain.values[0] - expected_transducer_0).abs() < 1.0e-12);
+    assert!((transducer_gain.values[1] - expected_transducer_1).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&transducer_gain.label), "dB");
+    let available_gain = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port available gain dB")
+        .unwrap();
+    assert!(available_gain.derived);
+    let expected_available_0 = 10.0_f64 * (4.0_f64 / 0.84_f64).log10();
+    let expected_available_1 = 10.0_f64 * (2.25_f64 / 0.91_f64).log10();
+    assert!((available_gain.values[0] - expected_available_0).abs() < 1.0e-12);
+    assert!((available_gain.values[1] - expected_available_1).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&available_gain.label), "dB");
+    let operating_gain = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port operating gain dB")
+        .unwrap();
+    assert!(operating_gain.derived);
+    let expected_operating_0 = 10.0_f64 * (4.0_f64 / 0.75_f64).log10();
+    let expected_operating_1 = 10.0_f64 * (2.25_f64 / 0.96_f64).log10();
+    assert!((operating_gain.values[0] - expected_operating_0).abs() < 1.0e-12);
+    assert!((operating_gain.values[1] - expected_operating_1).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&operating_gain.label), "dB");
     let s21_group_delay = waveform
         .probes
         .iter()

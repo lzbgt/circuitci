@@ -23,6 +23,7 @@ mod waveform_operating_point;
 mod waveform_plot;
 mod waveform_runtime;
 mod waveform_snapshots;
+mod waveform_sparameters;
 mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;
@@ -918,6 +919,9 @@ fn probe_unit(label: &str) -> &'static str {
         || normalized.contains("maximum available gain")
         || normalized.contains("maximum stable gain")
         || normalized.contains("maximum unilateral gain")
+        || normalized.contains("transducer gain")
+        || normalized.contains("available gain")
+        || normalized.contains("operating gain")
     {
         "dB"
     } else if normalized.contains("phase_deg") || normalized.contains("phase") {

@@ -193,7 +193,9 @@ Current analog support:
   return-loss, insertion-loss, VSWR, mismatch-loss,
   group-delay, reflection-impedance,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
-  Rollet K, MAG, MSG, and unilateral-gain traces from full `s_parameters.csv` artifacts.
+  Rollet K, MAG, MSG, unilateral-gain, and source/load-dependent
+  transducer/available/operating gain traces from full `s_parameters.csv`
+  artifacts when the required reflection metadata columns are present.
   `backend: auto` does not select Xyce for this path until real solver
   conformance coverage is enabled.
 - `analog_transfer_function` scenarios with
