@@ -34,6 +34,7 @@ mod analog_sensitivity_spice;
 mod analog_soa;
 mod analog_sparameter_assertions;
 mod analog_sparameter_noise;
+mod analog_sparameter_noise_runner;
 mod analog_sparameter_spice;
 mod analog_spice;
 mod analog_sweep_reports;

@@ -733,13 +733,21 @@ The GUI should not become the solver.
 - 2026-07-04: Added a fail-closed RF SP-noise sign-off contract for
   `analysis.s_parameter_noise_assertions[]`. The contract accepts noise
   figure, minimum noise figure, equivalent noise resistance, and optimum
-  source reflection magnitude limits, then requires future
+  source reflection magnitude limits, then requires
   `s_parameter_noise_summary.csv` evidence rather than deriving RF noise
   figure from ordinary `.NOISE` voltage-density artifacts. The primary
   evidence is the saved ngspice manual section in `sources/ngspice_manual.xhtml`
   stating that `.SP` with `donoise=1` gives NF, NFmin, Rn, and SOpt for
-  two-port SP noise; the current Xyce Touchstone adapter does not emit those
+  two-port SP noise; the Xyce Touchstone adapter does not emit those
   quantities.
+- 2026-07-04: Added the first ngspice RF SP-noise adapter. For pure
+  `s_parameter_noise_assertions[]`, CircuitCI now writes RF-port voltage
+  sources with `portnum`/`z0`, runs `.SP DEC ... 1`, retains
+  `s_parameter_noise_raw.csv`, normalizes worst-case NF, NFmin, Rn, and
+  `|SOpt|` into `s_parameter_noise_summary.csv`, records the solver manifest,
+  and evaluates RF noise assertions against the retained summary. Mixed
+  S-parameter term/network sign-off remains on the existing Xyce Touchstone
+  path until ngspice S-matrix normalization is added.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

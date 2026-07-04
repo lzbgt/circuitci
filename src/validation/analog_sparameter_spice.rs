@@ -18,7 +18,11 @@ use super::analog_sparameter_assertions::{
     write_s_parameter_summary,
 };
 use super::analog_sparameter_noise::{
-    evaluate_s_parameter_noise_assertion_boundary, validate_s_parameter_noise_assertion_contract,
+    evaluate_s_parameter_noise_assertion_boundary, evaluate_s_parameter_noise_assertions,
+    validate_s_parameter_noise_assertion_contract,
+};
+use super::analog_sparameter_noise_runner::{
+    NgspiceSParameterNoiseRunOptions, run_ngspice_sparameter_noise,
 };
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
@@ -315,6 +319,82 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
         return;
     };
 
+    let has_noise_assertions = !analog.analysis.s_parameter_noise_assertions.is_empty();
+    let has_s_parameter_assertions = !analog.analysis.s_parameter_assertions.is_empty()
+        || !analog.analysis.s_parameter_network_assertions.is_empty();
+    if backend == "ngspice" && has_noise_assertions && !has_s_parameter_assertions {
+        let mut sweep_measurements = Vec::new();
+        for run_plan in run_plans {
+            if should_cancel() {
+                push_canceled_finding(findings, scenario);
+                return;
+            }
+            on_progress(
+                "Running analog S-parameter noise input corner",
+                run_plan.progress_label(),
+            );
+            let parameter_overrides = run_plan.parameter_overrides_for_solver();
+            let run_result = run_ngspice_sparameter_noise(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceSParameterNoiseRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            );
+            match run_result {
+                Ok(run) => {
+                    let finding_start = findings.len();
+                    for artifact in &run.artifacts {
+                        push_artifact(artifacts, artifact);
+                    }
+                    let assertion_measurements = evaluate_s_parameter_noise_assertions(
+                        scenario,
+                        &run.noise_summary,
+                        findings,
+                    );
+                    record_sweep_measurements(
+                        &mut sweep_measurements,
+                        &run_plan,
+                        assertion_measurements,
+                    );
+                    tag_corner_findings(findings, finding_start, &run_plan, false);
+                }
+                Err(error) => {
+                    for artifact in &error.artifacts {
+                        push_artifact(artifacts, artifact);
+                    }
+                    let mut finding = Finding::critical(
+                        SPICE_S_PARAMETER_ANALYSIS,
+                        &scenario.name,
+                        error.message,
+                    );
+                    finding
+                        .measured
+                        .insert("selected_backend".to_string(), json!(backend));
+                    finding.limit.insert(
+                        "required_evidence".to_string(),
+                        json!("ngspice_sp_donoise_nf_nfmin_rn_sopt"),
+                    );
+                    tag_corner_finding(&mut finding, &run_plan);
+                    finding.suggested_fixes.push(
+                        "Inspect the generated ngspice S-parameter noise wrapper deck and solver log artifacts."
+                            .to_string(),
+                    );
+                    findings.push(finding);
+                }
+            }
+        }
+        push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
+        return;
+    }
+
     if !matches!(backend, "Xyce" | "xyce") {
         let mut finding = unsupported_backend_plan_finding(
             scenario,
@@ -323,7 +403,11 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
                 selected_backend: backend,
                 implemented_backend: "xyce",
                 analysis_kind: "s_parameter",
-                required_normalized_outputs: &["s_parameters"],
+                required_normalized_outputs: if has_noise_assertions {
+                    &["s_parameters", "s_parameter_noise_summary"]
+                } else {
+                    &["s_parameters"]
+                },
             },
         );
         finding.measured.insert(

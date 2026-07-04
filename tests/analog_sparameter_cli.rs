@@ -892,6 +892,94 @@ fn sparameter_noise_assertions_fail_closed_until_sp_noise_summary_exists() {
 
 #[cfg(unix)]
 #[test]
+fn ngspice_sparameter_noise_assertions_evaluate_summary_artifact() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'frequency_hz,nf_db,nfmin_db,rn_ohm,sopt_real,sopt_imaginary\\n1.0e6,2.0,1.0,4.0,0.3,0.4\\n1.0e9,3.0,1.5,6.0,0.1,0.2\\n' > s_parameter_noise_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "port1",
+        r#"        s_parameter_noise_assertions:
+          - name: nf_limit
+            metric: noise_figure_db_max
+            relation: below
+            threshold: 2.5
+          - name: nfmin_limit
+            metric: minimum_noise_figure_db_max
+            relation: below
+            threshold: 2.0
+          - name: rn_limit
+            metric: equivalent_noise_resistance_ohm_max
+            relation: below
+            threshold: 10.0
+          - name: gamma_opt_limit
+            metric: optimum_source_reflection_magnitude_max
+            relation: below
+            threshold: 0.6
+"#,
+    );
+
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "fail");
+    let summary_path = artifact_path(&report, "s_parameter_noise_summary.csv");
+    assert_csv_has_header(
+        summary_path,
+        &[
+            "max_noise_figure_db",
+            "max_minimum_noise_figure_db",
+            "max_equivalent_noise_resistance_ohm",
+            "max_optimum_source_reflection_magnitude",
+        ],
+    );
+    let summary = fs::read_to_string(summary_path).unwrap();
+    assert!(summary.contains("3.000000000000e0,1.000000000000e9"));
+    assert!(summary.contains("5.000000000000e-1,1.000000000000e6"));
+    let failures = report["failures"].as_array().unwrap();
+    assert_eq!(failures.len(), 1);
+    assert_eq!(failures[0]["measured"]["assertion"], "nf_limit");
+    assert_eq!(failures[0]["measured"]["metric"], "noise_figure_db_max");
+    assert_eq!(failures[0]["measured"]["measured"], 3.0);
+    assert!(
+        failures[0]["measured"]["s_parameter_noise_summary"]
+            .as_str()
+            .unwrap()
+            .ends_with("s_parameter_noise_summary.csv")
+    );
+    let manifest_path = artifact_path(&report, "solver_manifest.json");
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["analysis"]["kind"], "s_parameter_noise");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "s_parameter_noise_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn sparameter_network_assertion_fails_on_rollet_k_limit() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable_with_body(

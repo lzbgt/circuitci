@@ -179,12 +179,12 @@ Current analog support:
   unlock source/load-dependent transducer, available, and operating gain
   metrics (`transducer_gain_db_min`, `available_gain_db_min`, and
   `operating_gain_db_min`) with fail-closed missing-provenance behavior.
-  Optional `analysis.s_parameter_noise_assertions[]` declares RF two-port
-  noise sign-off intent for noise figure, minimum noise figure, equivalent
-  noise resistance, and optimum source reflection magnitude; it currently
-  fails closed with required `s_parameter_noise_summary` provenance because
-  the Xyce Touchstone path does not emit ngspice `.SP donoise=1` NF/NFmin/Rn/SOpt
-  evidence yet.
+  Optional `analysis.s_parameter_noise_assertions[]` signs off RF two-port
+  noise figure, minimum noise figure, equivalent noise resistance, and optimum
+  source reflection magnitude from normalized `s_parameter_noise_summary.csv`
+  evidence emitted by the ngspice `.SP ... donoise=1` adapter. The Xyce
+  Touchstone path still fails closed for these noise metrics because it does
+  not emit NF/NFmin/Rn/SOpt evidence.
   Reports project retained rows into `s_parameter_summaries[]` and retained
   network-quality rows into `s_parameter_network_summaries[]`, Markdown
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
