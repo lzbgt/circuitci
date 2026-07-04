@@ -236,7 +236,11 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
      ordinary `.NOISE`, ordinary S-parameter term/network, sensitivity, and
      Fourier analyses when ngspice is absent. Harmonic balance is the exception:
      auto prefers Xyce because it is the only backend that emits the normalized
-     `hb_spectrum` contract.
+     `hb_spectrum` contract. For planned-only `.TF`, `.PZ`, distortion, PSS,
+     phase-noise, and PAC/PXF paths, auto may select an available Xyce binary
+     only to emit the source-backed fail-closed `adapter_blocker` /
+     `evidence_sources[]` planning finding; it does not mark those analyses as
+     implemented.
    - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
      noise runs through dedicated Xyce wrappers that export CSV-like solver
      data, normalize it to the `transient_waveform`, `ac_bode`,

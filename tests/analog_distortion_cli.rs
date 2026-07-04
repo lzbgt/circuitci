@@ -509,6 +509,47 @@ fn distortion_xyce_fails_closed_with_planning_evidence() {
 
 #[cfg(unix)]
 #[test]
+fn auto_distortion_uses_available_xyce_for_planning_evidence() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_distortion_project(
+        project_dir.path(),
+        DistortionProjectOptions {
+            backend: "auto",
+            mode: "harmonic",
+            output_expression: "V(out)",
+            f1_source: "VIN1",
+            f2_source: "",
+            f2_over_f1: None,
+            stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: "",
+        },
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_DISTORTION_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["selected_backend"],
+        "Xyce"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["adapter_status"],
+        "planned_not_implemented"
+    );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("No trusted non-ngspice small-signal distortion backend path")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn real_ngspice_distortion_conformance_when_enabled() {
     if !real_ngspice_distortion_enabled() {
         return;

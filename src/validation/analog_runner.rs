@@ -1510,6 +1510,10 @@ pub(super) fn select_backend_for_feature(
                 BackendSelection::Selected("Xyce")
             } else if feature.supports_auto_xyce() && executable_on_path("xyce") {
                 BackendSelection::Selected("xyce")
+            } else if feature.supports_auto_planning_backend() && executable_on_path("Xyce") {
+                BackendSelection::Selected("Xyce")
+            } else if feature.supports_auto_planning_backend() && executable_on_path("xyce") {
+                BackendSelection::Selected("xyce")
             } else {
                 BackendSelection::Unavailable
             }

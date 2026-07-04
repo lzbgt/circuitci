@@ -38,6 +38,18 @@ impl AnalogRuntimeFeature {
         )
     }
 
+    pub(super) fn supports_auto_planning_backend(self) -> bool {
+        matches!(
+            self,
+            Self::TransferFunction
+                | Self::PoleZero
+                | Self::Distortion
+                | Self::PeriodicSteadyState
+                | Self::PhaseNoise
+                | Self::PeriodicAc
+        )
+    }
+
     pub(super) fn prefers_auto_xyce(self) -> bool {
         matches!(self, Self::HarmonicBalance)
     }

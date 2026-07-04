@@ -664,6 +664,13 @@ The GUI should not become the solver.
   policy because only the Xyce adapter currently emits normalized
   `hb_spectrum.csv` plus solver-manifest evidence; explicit ngspice and
   embedded ngspice still fail closed with the retained HB blocker metadata.
+- 2026-07-04: Tightened `backend: auto` diagnostics for planned-only
+  frequency-domain paths. When ngspice is absent but Xyce is available, auto
+  now selects Xyce for `.TF`, `.PZ`, distortion, PSS, phase-noise, and PAC/PXF
+  only far enough to emit the existing source-backed `adapter_blocker` and
+  `evidence_sources[]` fail-closed findings. These paths remain unimplemented;
+  the change prevents generic solver-unavailable reports from hiding retained
+  backend evidence.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and

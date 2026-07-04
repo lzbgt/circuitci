@@ -462,8 +462,9 @@ Current analog support:
   `backend: auto` prefers ngspice, can fall back to Xyce for transient, AC, DC,
   DC sweep, ordinary noise, ordinary S-parameter term/network, sensitivity,
   Fourier, and template-only measure scenarios, prefers Xyce for harmonic
-  balance, and keeps Xyce explicit-only for other specialized analyses until
-  those auto boundaries are handled separately. The opt-in real-solver
+  balance, and can select Xyce for planned-only `.TF`, `.PZ`, distortion, PSS,
+  phase-noise, and PAC/PXF scenarios only to emit the retained source-backed
+  fail-closed blocker metadata when ngspice is absent. The opt-in real-solver
   conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,

@@ -477,6 +477,35 @@ fn pole_zero_xyce_backend_fails_closed_with_planning_evidence() {
 
 #[cfg(unix)]
 #[test]
+fn auto_pole_zero_uses_available_xyce_for_planning_evidence() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_pole_zero_project(project_dir.path(), "auto", "out", "V1");
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_POLE_ZERO_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["selected_backend"],
+        "Xyce"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["adapter_status"],
+        "planned_not_implemented"
+    );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("does not document a native .PZ command")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn pole_zero_contract_rejects_unbound_output_node_before_backend_planning() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "ngspice");
