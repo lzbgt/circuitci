@@ -915,6 +915,8 @@ fn probe_unit(label: &str) -> &'static str {
         || normalized.contains("return loss")
         || normalized.contains("insertion loss")
         || normalized.contains("mismatch loss")
+        || normalized.contains("maximum available gain")
+        || normalized.contains("maximum stable gain")
     {
         "dB"
     } else if normalized.contains("phase_deg") || normalized.contains("phase") {

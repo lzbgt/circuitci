@@ -161,6 +161,8 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(labels.contains(&"two-port passivity singular value"));
     assert!(labels.contains(&"two-port stability delta magnitude"));
     assert!(labels.contains(&"two-port Rollet K"));
+    assert!(labels.contains(&"two-port maximum available gain dB"));
+    assert!(labels.contains(&"two-port maximum stable gain dB"));
     assert!(labels.contains(&"s21 group delay s"));
     let s11_return_loss = waveform
         .probes
@@ -262,6 +264,28 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!((rollet_k.values[0] - 15.56).abs() < 1.0e-12);
     assert!((rollet_k.values[1] - 14.515).abs() < 1.0e-12);
     assert_eq!(super::probe_unit(&rollet_k.label), "ratio");
+    let maximum_available_gain = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port maximum available gain dB")
+        .unwrap();
+    assert!(maximum_available_gain.derived);
+    let expected_mag_0 =
+        10.0_f64 * (200.0_f64 * (15.56_f64 - (15.56_f64 * 15.56_f64 - 1.0).sqrt())).log10();
+    let expected_mag_1 =
+        10.0_f64 * (75.0_f64 * (14.515_f64 - (14.515_f64 * 14.515_f64 - 1.0).sqrt())).log10();
+    assert!((maximum_available_gain.values[0] - expected_mag_0).abs() < 1.0e-12);
+    assert!((maximum_available_gain.values[1] - expected_mag_1).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&maximum_available_gain.label), "dB");
+    let maximum_stable_gain = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port maximum stable gain dB")
+        .unwrap();
+    assert!(maximum_stable_gain.derived);
+    assert!((maximum_stable_gain.values[0] - 10.0_f64 * 200.0_f64.log10()).abs() < 1.0e-12);
+    assert!((maximum_stable_gain.values[1] - 10.0_f64 * 75.0_f64.log10()).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&maximum_stable_gain.label), "dB");
     let s21_group_delay = waveform
         .probes
         .iter()
@@ -292,6 +316,8 @@ fn waveform_csv_loader_skips_vswr_when_reflection_magnitude_reaches_unity() {
     assert!(!labels.contains(&"two-port passivity singular value"));
     assert!(!labels.contains(&"two-port stability delta magnitude"));
     assert!(!labels.contains(&"two-port Rollet K"));
+    assert!(!labels.contains(&"two-port maximum available gain dB"));
+    assert!(!labels.contains(&"two-port maximum stable gain dB"));
 }
 
 #[test]

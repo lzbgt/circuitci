@@ -658,11 +658,12 @@ The GUI should not become the solver.
   `|Delta|`, with retained `s_parameter_network_summary.csv` evidence,
   projected report rows in `s_parameter_network_summaries[]`, Markdown output,
   and GUI Scopes network-quality rows. Scopes also derives per-frequency
-  reciprocity error, passivity singular-value, stability `|Delta|`, and
-  Rollet K traces directly from full `s_parameters.csv` artifacts when
-  S11/S12/S21/S22 magnitude and phase columns are available. Rollet K traces
-  are skipped when any sweep row has zero `|S12 S21|`, matching the
-  fail-closed assertion contract for unavailable K. GUI Scopes now also
+  reciprocity error, passivity singular-value, stability `|Delta|`, Rollet K,
+  MAG, and MSG traces directly from full `s_parameters.csv` artifacts when
+  S11/S12/S21/S22 magnitude and phase columns are available. Rollet K, MAG,
+  and MSG traces are skipped when any sweep row lacks the required nonzero
+  transmission or stability condition, matching the fail-closed assertion
+  contract for unavailable metrics. GUI Scopes now also
   provides an RF Network Check editor that writes two-port
   `s_parameter_network_assertions[]` for reciprocity, passivity, Rollet K,
   stability `|Delta|`, MAG, and MSG limits with Board IR validation before

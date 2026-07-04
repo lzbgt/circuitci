@@ -184,7 +184,7 @@ Current analog support:
   return-loss, insertion-loss, VSWR, mismatch-loss,
   group-delay, reflection-impedance,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
-  and Rollet K traces from full `s_parameters.csv` artifacts.
+  Rollet K, MAG, and MSG traces from full `s_parameters.csv` artifacts.
   `backend: auto` does not select Xyce for this path until real solver
   conformance coverage is enabled.
 - `analog_transfer_function` scenarios with
