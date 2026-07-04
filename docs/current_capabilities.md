@@ -161,8 +161,8 @@ Current analog support:
   insertion loss, VSWR, group-delay, and reflection-impedance limits with fail-closed metric
   applicability checks. Scopes includes an RF Port Check editor for authoring
   those per-parameter checks without hand-editing YAML, and retained
-  S-parameter assertion failures can be loaded back into the RF Port Check
-  editor from the report artifact panel.
+  S-parameter assertion failures, including reflection-impedance limits, can be
+  loaded back into the RF Port Check editor from the report artifact panel.
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix), plus active-network stability margins (`rollet_k_min`

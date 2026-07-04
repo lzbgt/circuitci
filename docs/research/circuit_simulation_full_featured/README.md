@@ -645,8 +645,9 @@ The GUI should not become the solver.
   artifacts for visual RF matching and margin review. GUI Scopes also provides an RF Port
   Check editor that writes `s_parameter_assertions[]` for magnitude, return
   loss, insertion loss, VSWR, group-delay, and reflection-impedance limits with Board IR validation
-  before accepting the YAML edit; retained S-parameter assertion failures can
-  be loaded from the report panel back into that editor. Two-port
+  before accepting the YAML edit; retained S-parameter assertion failures,
+  including reflection-impedance limits, can be loaded from the report panel
+  back into that editor. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity
   (`max |S21-S12|`) and passivity (maximum singular value of the complex S
   matrix), plus active-network stability through minimum Rollet K and maximum

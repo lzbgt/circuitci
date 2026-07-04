@@ -544,6 +544,56 @@ mod tests {
     }
 
     #[test]
+    fn sparameter_impedance_failure_loads_rf_port_editor_state() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter assertion s11_impedance_magnitude_ceiling failed",
+        );
+        finding.measured.insert(
+            "assertion".to_string(),
+            json!("s11_impedance_magnitude_ceiling"),
+        );
+        finding
+            .measured
+            .insert("parameter".to_string(), json!("s11"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("impedance_magnitude_ohm"));
+        finding
+            .measured
+            .insert("aggregation".to_string(), json!("max"));
+        finding
+            .limit
+            .insert("below_threshold".to_string(), json!(75.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+        let mut app = CircuitCiApp::default();
+        app.load_sparameter_failure_row(&rows[0]);
+
+        assert_eq!(
+            app.analog_sparameter_assertion_scenario,
+            "two_port_sparameter"
+        );
+        assert_eq!(
+            app.analog_sparameter_assertion_name,
+            "s11_impedance_magnitude_ceiling"
+        );
+        assert_eq!(app.analog_sparameter_assertion_parameter, "s11");
+        assert_eq!(
+            app.analog_sparameter_assertion_metric,
+            "impedance_magnitude_ohm"
+        );
+        assert_eq!(app.analog_sparameter_assertion_aggregation, "max");
+        assert_eq!(app.analog_sparameter_assertion_relation, "below");
+        assert_eq!(app.analog_sparameter_assertion_threshold, 75.0);
+        assert!(
+            app.status
+                .contains("Loaded RF port check s11_impedance_magnitude_ceiling")
+        );
+    }
+
+    #[test]
     fn sparameter_failure_rows_parse_network_assertion_limit() {
         let mut finding = Finding::critical(
             "SPICE_S_PARAMETER_ANALYSIS",
