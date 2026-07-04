@@ -1,0 +1,121 @@
+component_id: vendor.nexperia.pesd5v0s1ul
+version: 0.1.0
+category: protection
+ports:
+  K:
+    kind: passive
+    required: true
+  A:
+    kind: electrical_ground
+    required: true
+signal_conditioning:
+  protection_clamps:
+    - name: vbus_to_ground
+      protected_pin: K
+      reference_pin: A
+      reference: ground
+      working_voltage_max_V: 5.0
+      line_capacitance_F: 200.0e-12
+datasheet:
+  manufacturer: Nexperia
+  part_number: PESD5V0S1UL
+  package: DFN1006-2 / SOD882
+  polarity: unidirectional_single_line_esd_protection
+  pinout:
+    K: Cathode, marking bar
+    A: Anode
+  electrical_characteristics:
+    reverse_standoff_voltage:
+      conditions: Tamb = 25 C.
+      max: 5.0
+      unit: V
+    breakdown_voltage:
+      conditions: IR = 5 mA, Tamb = 25 C.
+      min: 6.4
+      typ: 6.8
+      max: 7.2
+      unit: V
+    reverse_leakage_current:
+      conditions: VRWM = 5 V, Tamb = 25 C.
+      typ: 0.1
+      max: 1.0
+      unit: uA
+    diode_capacitance:
+      conditions: f = 1 MHz, VR = 0 V, Tamb = 25 C.
+      typ: 152
+      max: 200
+      unit: pF
+    clamping_voltage_1a:
+      conditions: IPP = 1 A, tp = 8/20 us, Tamb = 25 C.
+      max: 9
+      unit: V
+    clamping_voltage_15a:
+      conditions: IPPM = 15 A, tp = 8/20 us, Tamb = 25 C.
+      max: 20
+      unit: V
+  absolute_maximum_ratings:
+    PPPM:
+      value: 150
+      unit: W
+      conditions: Non-repetitive 8/20 us exponential decay pulse.
+    IPPM:
+      value: 15
+      unit: A
+      conditions: Non-repetitive 8/20 us exponential decay pulse.
+    Tj:
+      value: 150
+      unit: C
+      conditions: Maximum junction temperature.
+    Tamb_min:
+      value: -55
+      unit: C
+      conditions: Minimum ambient temperature.
+    Tamb_max:
+      value: 150
+      unit: C
+      conditions: Maximum ambient temperature.
+    Tstg_min:
+      value: -65
+      unit: C
+      conditions: Minimum storage temperature.
+    Tstg_max:
+      value: 150
+      unit: C
+      conditions: Maximum storage temperature.
+    ESD_contact:
+      value: 30
+      unit: kV
+      conditions: IEC 61000-4-2 contact discharge.
+    ESD_hbm:
+      value: 10
+      unit: kV
+      conditions: MIL-STD-883 Human Body Model.
+  documents:
+    - title: PESD5V0S1UL Unidirectional ESD protection diode
+      path: docs/research/datasheets/nexperia/pesd5v0s1ul.pdf
+      source_url: https://assets.nexperia.com/documents/data-sheet/PESD5V0S1UL.pdf
+      sha256: 8ddea76afa74f87de5d3662e4d9149bf7397761fa99dc29b44bfbe42872d447e
+      retrieved: "2026-07-05"
+simulation:
+  spice:
+    model_name: CIRCUITCI_PESD5V0S1UL_VBUS_ESD
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [K, A]
+    valid_operating_notes:
+      - Reduced PESD5V0S1UL observation model for static VBUS line-to-ground standoff and capacitance screening only.
+      - Uses source-backed 5.0 V reverse standoff and 200 pF maximum diode capacitance metadata while leaving the protected line high impedance during normal operation.
+      - IEC ESD pulse clamping, surge thermal behavior, leakage over temperature, USB inrush, and connector placement/layout are out of scope.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - vbus_esd_static_screening
+    - usb_connector_vbus_protection_review
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - esd_pulse_clamp_waveform
+    - surge_or_iec61000_4_2_signoff
+    - usb_inrush_or_power_entry_signoff
+    - layout_return_path_or_placement_signoff

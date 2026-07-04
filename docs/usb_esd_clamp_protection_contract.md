@@ -75,6 +75,8 @@ Current fixtures:
 - `examples/bad_usb_esd_reference`
 - `examples/bad_usb_esd_standoff`
 - `examples/bad_usb_esd_line_capacitance`
+- `examples/good_nexperia_pesd5v0s1ul_vbus_esd`
+- `examples/bad_nexperia_pesd5v0s1ul_vbus_capacitance`
 - `examples/good_usb_connector_protection`
 - `examples/bad_usb_connector_missing_data_protection`
 - `examples/bad_usb_connector_missing_vbus_protection`

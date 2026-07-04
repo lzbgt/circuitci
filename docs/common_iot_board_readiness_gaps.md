@@ -50,7 +50,10 @@ standoff-voltage and capacitance screening plus a reduced generated-SPICE
 normal-operation D+/D- standoff and line-capacitance observation face. Nexperia
 PRTR5V0U2X now covers a rail-to-rail two-line USB ESD array with VCC reference
 validation plus a reduced generated-SPICE face for normal-operation
-VBUS/IO1/IO2 standoff and capacitance-load checks. TI ESD2CAN24-Q1 now covers
+VBUS/IO1/IO2 standoff and capacitance-load checks. Nexperia PESD5V0S1UL now
+covers a source-backed single-line VBUS-to-ground ESD clamp for static USB
+power-entry standoff and capacitance screening; ESD pulse and surge thermal
+behavior remain outside that reduced model. TI ESD2CAN24-Q1 now covers
 CANH/CANL clamp presence, ground reference, 24 V standoff, 3 pF line
 capacitance, and a reduced generated-SPICE normal-operation CAN line
 observation face. TI TCAN3413 now covers a source-backed CAN transceiver with

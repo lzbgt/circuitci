@@ -466,6 +466,11 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   `examples/bad_onsemi_1n5819_overcurrent` prove the same diode operating-limit
   path works for a source-backed Schottky rectifier whose datasheet average
   rectified current is mapped into the Board IR `IF_AV` rating key.
+- `examples/good_nexperia_pesd5v0s1ul_vbus_esd` and
+  `examples/bad_nexperia_pesd5v0s1ul_vbus_capacitance` prove a source-backed
+  single-line VBUS ESD clamp through the static interface-protection path. The
+  reduced generated-SPICE metadata is intentionally limited to normal-operation
+  standoff/capacitance evidence, not ESD pulse simulation.
 
 ## Datasheet Operating Limits
 

@@ -537,6 +537,12 @@ signal_conditioning:
   `working_voltage_max_V` is the maximum normal protected-net voltage the clamp
   may see. `line_capacitance_F` records the modeled capacitance added to that
   interface line.
+- Single-line power-entry clamps use the same contract. For example,
+  `vendor.nexperia.pesd5v0s1ul` declares cathode `K` on protected VBUS and
+  anode `A` on ground, with `working_voltage_max_V: 5.0` and
+  `line_capacitance_F: 200.0e-12`. This proves static schematic coverage,
+  standoff, and capacitance only; surge heating, USB inrush, and ESD waveform
+  sign-off require separate evidence.
 
 ## USB Connector Metadata
 

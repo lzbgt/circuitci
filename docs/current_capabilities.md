@@ -173,6 +173,16 @@ probes; it does not sign off thermal runaway, repetitive surge behavior,
 rectifier waveform heating, reverse leakage over temperature, or production
 hardware behavior. See `docs/onsemi_1n5819_model.md`.
 
+`vendor.nexperia.pesd5v0s1ul` provides a source-backed static protection pack
+for Nexperia's single-line unidirectional ESD diode. It records 5.0 V reverse
+standoff, 200 pF maximum diode capacitance, SOD882 pinning, and
+cathode-to-protected-line/anode-to-ground topology for USB VBUS or 5 V
+power-entry review. It supports `INTERFACE_PROTECTION_REVIEW` and USB connector
+VBUS protection evidence; ESD pulse waveforms, surge thermal behavior, leakage
+over temperature, USB inrush, placement, return-path quality, and final
+hardware robustness remain outside the model. See
+`docs/nexperia_pesd5v0s1ul_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully
@@ -710,6 +720,8 @@ Current analog support:
   NL27WZ17-style dual non-inverting Schmitt-buffer input/output line-state
   observations,
   TPD2EUSB30-style USB ESD normal-operation standoff and line-capacitance
+  observations,
+  PESD5V0S1UL-style single-line VBUS ESD standoff and capacitance
   observations,
   PRTR5V0U2X-style rail-to-rail USB ESD normal-operation standoff and
   capacitance observations,
