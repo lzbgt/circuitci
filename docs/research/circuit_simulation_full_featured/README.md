@@ -710,6 +710,14 @@ The GUI should not become the solver.
   `sources/mathworks_powergain.html`, which defines `Gt` with both source/load
   reflection coefficients, `Ga` from source reflection plus `Gamma_out`, and
   `Gp` from load reflection plus `Gamma_in`.
+- 2026-07-04: Added GUI RF Network Check authoring for the source/load
+  reflection coefficients needed by source/load-dependent RF gain sign-off.
+  The editor now enables required source and/or load gamma inputs for
+  `transducer_gain_db_min`, `available_gain_db_min`, and
+  `operating_gain_db_min`, writes the existing
+  `s_parameter_source_reflection` / `s_parameter_load_reflection` Board IR
+  provenance keys, and can hydrate those fields from failed report metadata
+  when retained findings include the measured coefficients.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

@@ -48,6 +48,14 @@ pub(super) struct AnalogSParameterNetworkAssertionDraft {
     pub(super) metric: String,
     pub(super) relation: String,
     pub(super) threshold: f64,
+    pub(super) source_reflection: Option<AnalogSParameterReflectionDraft>,
+    pub(super) load_reflection: Option<AnalogSParameterReflectionDraft>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct AnalogSParameterReflectionDraft {
+    pub(super) real: f64,
+    pub(super) imaginary: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -371,6 +379,18 @@ pub(super) fn append_analog_sparameter_network_assertion(
     let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
     let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
     let analysis_mapping = child_mapping_mut(analog_mapping, "analysis", "analog analysis")?;
+    if let Some(source_reflection) = draft.source_reflection {
+        analysis_mapping.insert(
+            key("s_parameter_source_reflection"),
+            sparameter_reflection_value(source_reflection)?,
+        );
+    }
+    if let Some(load_reflection) = draft.load_reflection {
+        analysis_mapping.insert(
+            key("s_parameter_load_reflection"),
+            sparameter_reflection_value(load_reflection)?,
+        );
+    }
     let assertions = ensure_child_sequence_mut(
         analysis_mapping,
         "s_parameter_network_assertions",
@@ -1139,6 +1159,47 @@ fn validate_sparameter_network_assertion_draft(
     if !draft.threshold.is_finite() {
         anyhow::bail!("S-parameter network assertion threshold must be finite.");
     }
+    validate_sparameter_reflection_draft(draft.source_reflection, "source")?;
+    validate_sparameter_reflection_draft(draft.load_reflection, "load")?;
+    if matches!(
+        draft.metric.as_str(),
+        "transducer_gain_db_min" | "available_gain_db_min"
+    ) && draft.source_reflection.is_none()
+    {
+        anyhow::bail!(
+            "S-parameter network metric {} requires source reflection coefficients.",
+            draft.metric
+        );
+    }
+    if matches!(
+        draft.metric.as_str(),
+        "transducer_gain_db_min" | "operating_gain_db_min"
+    ) && draft.load_reflection.is_none()
+    {
+        anyhow::bail!(
+            "S-parameter network metric {} requires load reflection coefficients.",
+            draft.metric
+        );
+    }
+    Ok(())
+}
+
+fn validate_sparameter_reflection_draft(
+    draft: Option<AnalogSParameterReflectionDraft>,
+    label: &str,
+) -> Result<()> {
+    let Some(draft) = draft else {
+        return Ok(());
+    };
+    if !draft.real.is_finite() || !draft.imaginary.is_finite() {
+        anyhow::bail!("S-parameter {label} reflection coefficients must be finite.");
+    }
+    let magnitude_squared = draft
+        .real
+        .mul_add(draft.real, draft.imaginary * draft.imaginary);
+    if magnitude_squared >= 1.0 {
+        anyhow::bail!("S-parameter {label} reflection magnitude must be below 1.");
+    }
     Ok(())
 }
 
@@ -1651,6 +1712,15 @@ fn sparameter_network_assertion_value(
     insert_string(&mut assertion, "relation", draft.relation.trim());
     insert_number(&mut assertion, "threshold", draft.threshold)?;
     Ok(serde_yaml_ng::Value::Mapping(assertion))
+}
+
+fn sparameter_reflection_value(
+    draft: AnalogSParameterReflectionDraft,
+) -> Result<serde_yaml_ng::Value> {
+    let mut reflection = serde_yaml_ng::Mapping::new();
+    insert_number(&mut reflection, "real", draft.real)?;
+    insert_number(&mut reflection, "imaginary", draft.imaginary)?;
+    Ok(serde_yaml_ng::Value::Mapping(reflection))
 }
 
 fn sparameter_assertion_value(

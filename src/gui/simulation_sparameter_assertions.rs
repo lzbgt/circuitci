@@ -253,6 +253,20 @@ impl CircuitCiApp {
                 if let Some(threshold) = row.threshold {
                     self.analog_sparameter_network_assertion_threshold = threshold;
                 }
+                if network_metric_requires_source_reflection(&row.metric) {
+                    self.analog_sparameter_network_source_reflection_enabled = true;
+                    if let Some((real, imaginary)) = row.source_reflection {
+                        self.analog_sparameter_network_source_reflection_real = real;
+                        self.analog_sparameter_network_source_reflection_imaginary = imaginary;
+                    }
+                }
+                if network_metric_requires_load_reflection(&row.metric) {
+                    self.analog_sparameter_network_load_reflection_enabled = true;
+                    if let Some((real, imaginary)) = row.load_reflection {
+                        self.analog_sparameter_network_load_reflection_real = real;
+                        self.analog_sparameter_network_load_reflection_imaginary = imaginary;
+                    }
+                }
                 self.status = format!(
                     "Loaded RF network check {} from latest report.",
                     row.assertion
@@ -294,6 +308,8 @@ struct SParameterFailureRow {
     aggregation: Option<String>,
     relation: Option<String>,
     threshold: Option<f64>,
+    source_reflection: Option<(f64, f64)>,
+    load_reflection: Option<(f64, f64)>,
 }
 
 fn sparameter_failure_rows(failures: &[Finding]) -> Vec<SParameterFailureRow> {
@@ -319,6 +335,8 @@ fn sparameter_failure_row(finding: &Finding) -> Option<SParameterFailureRow> {
             aggregation: text_field(&finding.measured, "aggregation"),
             relation,
             threshold,
+            source_reflection: None,
+            load_reflection: None,
         });
     }
     if finding.measured.contains_key("s_parameter_network_summary") {
@@ -331,9 +349,38 @@ fn sparameter_failure_row(finding: &Finding) -> Option<SParameterFailureRow> {
             aggregation: None,
             relation,
             threshold,
+            source_reflection: reflection_fields(
+                &finding.measured,
+                "source_reflection_real",
+                "source_reflection_imaginary",
+            ),
+            load_reflection: reflection_fields(
+                &finding.measured,
+                "load_reflection_real",
+                "load_reflection_imaginary",
+            ),
         });
     }
     None
+}
+
+fn reflection_fields(
+    map: &std::collections::BTreeMap<String, Value>,
+    real_name: &str,
+    imaginary_name: &str,
+) -> Option<(f64, f64)> {
+    Some((
+        map.get(real_name)?.as_f64()?,
+        map.get(imaginary_name)?.as_f64()?,
+    ))
+}
+
+fn network_metric_requires_source_reflection(metric: &str) -> bool {
+    matches!(metric, "transducer_gain_db_min" | "available_gain_db_min")
+}
+
+fn network_metric_requires_load_reflection(metric: &str) -> bool {
+    matches!(metric, "transducer_gain_db_min" | "operating_gain_db_min")
 }
 
 fn text_field(map: &std::collections::BTreeMap<String, Value>, name: &str) -> Option<String> {
@@ -670,6 +717,63 @@ mod tests {
         assert!(
             app.status
                 .contains("Loaded RF network check available_gain_floor")
+        );
+    }
+
+    #[test]
+    fn sparameter_source_load_gain_failure_loads_reflection_editor_state() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter network assertion transducer_gain_floor failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("transducer_gain_floor"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("transducer_gain_db_min"));
+        finding
+            .measured
+            .insert("source_reflection_real".to_string(), json!(0.2));
+        finding
+            .measured
+            .insert("source_reflection_imaginary".to_string(), json!(-0.1));
+        finding
+            .measured
+            .insert("load_reflection_real".to_string(), json!(-0.15));
+        finding
+            .measured
+            .insert("load_reflection_imaginary".to_string(), json!(0.05));
+        finding.measured.insert(
+            "s_parameter_network_summary".to_string(),
+            json!("out/s_parameter_network_summary.csv"),
+        );
+        finding
+            .limit
+            .insert("above_threshold".to_string(), json!(3.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+        let mut app = CircuitCiApp::default();
+        app.load_sparameter_failure_row(&rows[0]);
+
+        assert_eq!(
+            app.analog_sparameter_network_assertion_metric,
+            "transducer_gain_db_min"
+        );
+        assert_eq!(app.analog_sparameter_network_assertion_relation, "above");
+        assert_eq!(app.analog_sparameter_network_assertion_threshold, 3.0);
+        assert!(app.analog_sparameter_network_source_reflection_enabled);
+        assert_eq!(app.analog_sparameter_network_source_reflection_real, 0.2);
+        assert_eq!(
+            app.analog_sparameter_network_source_reflection_imaginary,
+            -0.1
+        );
+        assert!(app.analog_sparameter_network_load_reflection_enabled);
+        assert_eq!(app.analog_sparameter_network_load_reflection_real, -0.15);
+        assert_eq!(
+            app.analog_sparameter_network_load_reflection_imaginary,
+            0.05
         );
     }
 

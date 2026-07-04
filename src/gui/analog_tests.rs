@@ -3,7 +3,7 @@ use super::analog::{
     AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogNoiseScenarioDraft,
     AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
     AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
-    AnalogScenarioDraft, analog_probe_assertion_summaries,
+    AnalogSParameterReflectionDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
     append_analog_ac_scenario_with_project_path, append_analog_assertion,
     append_analog_current_probe, append_analog_dc_scenario_with_project_path,
     append_analog_expression_probe, append_analog_noise_scenario_with_project_path,
@@ -144,6 +144,8 @@ fn sparameter_network_assertion_draft() -> AnalogSParameterNetworkAssertionDraft
         metric: "rollet_k_min".to_string(),
         relation: "above".to_string(),
         threshold: 1.0,
+        source_reflection: None,
+        load_reflection: None,
     }
 }
 
@@ -945,6 +947,66 @@ fn append_sparameter_network_assertion_emits_analysis_yaml() {
         crate::board_ir::AnalogRelation::Above
     );
     assert_eq!(assertions[0].threshold, 1.0);
+}
+
+#[test]
+fn append_sparameter_network_gain_assertion_emits_source_load_reflections() {
+    let mut draft = sparameter_network_assertion_draft();
+    draft.assertion_name = "transducer_gain_floor".to_string();
+    draft.metric = "transducer_gain_db_min".to_string();
+    draft.threshold = 3.0;
+    draft.source_reflection = Some(AnalogSParameterReflectionDraft {
+        real: 0.2,
+        imaginary: -0.1,
+    });
+    draft.load_reflection = Some(AnalogSParameterReflectionDraft {
+        real: -0.15,
+        imaginary: 0.05,
+    });
+
+    let edited =
+        append_analog_sparameter_network_assertion(sparameter_project_yaml(), &draft).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let analysis = &project.scenarios[0].analog.as_ref().unwrap().analysis;
+
+    let source = analysis.s_parameter_source_reflection.unwrap();
+    assert_eq!(source.real, 0.2);
+    assert_eq!(source.imaginary, -0.1);
+    let load = analysis.s_parameter_load_reflection.unwrap();
+    assert_eq!(load.real, -0.15);
+    assert_eq!(load.imaginary, 0.05);
+    let assertion = &analysis.s_parameter_network_assertions[0];
+    assert_eq!(
+        assertion.metric,
+        crate::board_ir::AnalogSParameterNetworkMetric::TransducerGainDbMin
+    );
+    assert_eq!(assertion.threshold, 3.0);
+}
+
+#[test]
+fn append_sparameter_network_gain_assertion_requires_source_reflection() {
+    let mut draft = sparameter_network_assertion_draft();
+    draft.assertion_name = "available_gain_floor".to_string();
+    draft.metric = "available_gain_db_min".to_string();
+
+    let error =
+        append_analog_sparameter_network_assertion(sparameter_project_yaml(), &draft).unwrap_err();
+
+    assert!(error.to_string().contains("requires source reflection"));
+}
+
+#[test]
+fn append_sparameter_network_assertion_rejects_invalid_reflection() {
+    let mut draft = sparameter_network_assertion_draft();
+    draft.source_reflection = Some(AnalogSParameterReflectionDraft {
+        real: 1.0,
+        imaginary: 0.0,
+    });
+
+    let error =
+        append_analog_sparameter_network_assertion(sparameter_project_yaml(), &draft).unwrap_err();
+
+    assert!(error.to_string().contains("magnitude must be below 1"));
 }
 
 #[test]

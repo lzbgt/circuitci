@@ -182,8 +182,13 @@ Current analog support:
   the GUI artifact panel shows compact RF term and network sign-off rows,
   Scopes includes an RF Network Check editor for authoring two-port
   reciprocity, passivity, Rollet K, `|Delta|`, MAG, MSG, unilateral-gain, and
-  source/load gain sign-off checks without hand-editing YAML, retained network assertion failures including MAG/MSG/unilateral-gain/source-load-gain
-  limits can be loaded back into that editor from the report artifact panel,
+  source/load gain sign-off checks without hand-editing YAML, including the
+  required source/load reflection coefficient provenance for Gt/Ga/Gp checks.
+  Retained network assertion failures, including
+  MAG/MSG/unilateral-gain/source-load-gain limits, can be loaded back into
+  that editor from the report artifact panel with metric, relation, threshold,
+  and source/load reflection fields hydrated when report metadata provides
+  them,
   and Scopes derives
   return-loss, insertion-loss, VSWR, mismatch-loss,
   group-delay, reflection-impedance,

@@ -46,6 +46,7 @@ mod simulation_editors;
 mod simulation_forms;
 mod simulation_probe_assertions;
 mod simulation_sparameter_assertions;
+mod simulation_sparameter_network_assertions;
 mod simulation_sweeps;
 mod sketch;
 mod sketch_actions;
@@ -397,6 +398,12 @@ pub struct CircuitCiApp {
     analog_sparameter_network_assertion_metric: String,
     analog_sparameter_network_assertion_relation: String,
     analog_sparameter_network_assertion_threshold: f64,
+    analog_sparameter_network_source_reflection_enabled: bool,
+    analog_sparameter_network_source_reflection_real: f64,
+    analog_sparameter_network_source_reflection_imaginary: f64,
+    analog_sparameter_network_load_reflection_enabled: bool,
+    analog_sparameter_network_load_reflection_real: f64,
+    analog_sparameter_network_load_reflection_imaginary: f64,
     analog_sparameter_assertion_scenario: String,
     analog_sparameter_assertion_name: String,
     analog_sparameter_assertion_parameter: String,
@@ -663,6 +670,12 @@ impl Default for CircuitCiApp {
             analog_sparameter_network_assertion_metric: "rollet_k_min".to_string(),
             analog_sparameter_network_assertion_relation: "above".to_string(),
             analog_sparameter_network_assertion_threshold: 1.0,
+            analog_sparameter_network_source_reflection_enabled: false,
+            analog_sparameter_network_source_reflection_real: 0.0,
+            analog_sparameter_network_source_reflection_imaginary: 0.0,
+            analog_sparameter_network_load_reflection_enabled: false,
+            analog_sparameter_network_load_reflection_real: 0.0,
+            analog_sparameter_network_load_reflection_imaginary: 0.0,
             analog_sparameter_assertion_scenario: String::new(),
             analog_sparameter_assertion_name: "s11_return_loss_floor".to_string(),
             analog_sparameter_assertion_parameter: "s11".to_string(),
