@@ -92,6 +92,24 @@ pub(super) struct AnalogDistortionScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogMeasureScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) mode: String,
+    pub(super) template_name: String,
+    pub(super) operation: String,
+    pub(super) from: f64,
+    pub(super) to: f64,
+    pub(super) stop_time_us: f64,
+    pub(super) max_step_us: f64,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -303,6 +321,34 @@ pub(super) fn append_analog_distortion_scenario_with_project_path(
             f1_sources: trim_nonempty_values(&draft.f1_sources),
             f2_sources: trim_nonempty_values(&draft.f2_sources),
             f2_over_f1: draft.f2_over_f1,
+        },
+    )
+}
+
+pub(super) fn append_analog_measure_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogMeasureScenarioDraft,
+) -> Result<String> {
+    validate_measure_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::Measure {
+            mode: draft.mode.trim().to_string(),
+            template_name: draft.template_name.trim().to_string(),
+            operation: draft.operation.trim().to_string(),
+            from: draft.from,
+            to: draft.to,
+            stop_time_us: draft.stop_time_us,
+            max_step_us: draft.max_step_us,
+            start_frequency_hz: draft.start_frequency_hz,
+            stop_frequency_hz: draft.stop_frequency_hz,
+            points_per_decade: draft.points_per_decade,
         },
     )
 }
@@ -678,6 +724,56 @@ fn validate_distortion_draft(draft: &AnalogDistortionScenarioDraft) -> Result<()
     Ok(())
 }
 
+fn validate_measure_draft(draft: &AnalogMeasureScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    validated_id(&draft.template_name, "measure template name")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    if !matches!(draft.operation.trim(), "avg" | "max" | "min" | "rms") {
+        anyhow::bail!("Measure operation must be avg, max, min, or rms.");
+    }
+    if !draft.from.is_finite()
+        || !draft.to.is_finite()
+        || draft.from < 0.0
+        || draft.to <= draft.from
+    {
+        anyhow::bail!("Measure window start and stop must be finite, non-negative, and ordered.");
+    }
+    match draft.mode.trim() {
+        "tran" => {
+            if !draft.stop_time_us.is_finite()
+                || !draft.max_step_us.is_finite()
+                || draft.stop_time_us <= 0.0
+                || draft.max_step_us <= 0.0
+                || draft.max_step_us > draft.stop_time_us
+                || draft.to > draft.stop_time_us
+            {
+                anyhow::bail!(
+                    "Transient measure stop time and max step must be finite positive values, max step must not exceed stop time, and the measure window must fit inside stop time."
+                );
+            }
+        }
+        "ac" => {
+            validate_frequency_range(
+                draft.start_frequency_hz,
+                draft.stop_frequency_hz,
+                draft.points_per_decade,
+                "Analog measure AC",
+            )?;
+            if draft.from < draft.start_frequency_hz || draft.to > draft.stop_frequency_hz {
+                anyhow::bail!("AC measure window must fit inside the AC sweep range.");
+            }
+        }
+        _ => anyhow::bail!("Measure mode must be tran or ac."),
+    }
+    Ok(())
+}
+
 fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.output_probe_name, "output noise probe name")?;
@@ -913,6 +1009,18 @@ enum GeneratedAnalogScenarioKind {
         f2_sources: Vec<String>,
         f2_over_f1: Option<f64>,
     },
+    Measure {
+        mode: String,
+        template_name: String,
+        operation: String,
+        from: f64,
+        to: f64,
+        stop_time_us: f64,
+        max_step_us: f64,
+        start_frequency_hz: f64,
+        stop_frequency_hz: f64,
+        points_per_decade: u32,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -944,6 +1052,7 @@ impl GeneratedAnalogScenarioKind {
             Self::PoleZero { .. } => "analog_pole_zero",
             Self::Sensitivity { .. } => "analog_sensitivity",
             Self::Distortion { .. } => "analog_distortion",
+            Self::Measure { .. } => "analog_measure",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -960,6 +1069,7 @@ impl GeneratedAnalogScenarioKind {
             Self::PoleZero { .. } => "SPICE_POLE_ZERO_ANALYSIS",
             Self::Sensitivity { .. } => "SPICE_SENSITIVITY_ANALYSIS",
             Self::Distortion { .. } => "SPICE_DISTORTION_ANALYSIS",
+            Self::Measure { .. } => "SPICE_MEASURE_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -1189,6 +1299,54 @@ fn analog_block(
             if let Some(ratio) = f2_over_f1 {
                 insert_number(&mut analysis, "distortion_f2_over_f1", *ratio)?;
             }
+        }
+        GeneratedAnalogScenarioKind::Measure {
+            mode,
+            template_name,
+            operation,
+            from,
+            to,
+            stop_time_us,
+            max_step_us,
+            start_frequency_hz,
+            stop_frequency_hz,
+            points_per_decade,
+        } => {
+            insert_string(&mut analysis, "type", "measure");
+            insert_string(&mut analysis, "measure_mode", mode);
+            if mode == "tran" {
+                insert_number(&mut analysis, "stop_time_us", *stop_time_us)?;
+                insert_number(&mut analysis, "max_step_us", *max_step_us)?;
+            } else {
+                insert_number(&mut analysis, "start_frequency_hz", *start_frequency_hz)?;
+                insert_number(&mut analysis, "stop_frequency_hz", *stop_frequency_hz)?;
+                analysis.insert(
+                    key("points_per_decade"),
+                    serde_yaml_ng::to_value(points_per_decade)
+                        .context("Failed to encode measure points_per_decade.")?,
+                );
+            }
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Measure output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            let mut template = serde_yaml_ng::Mapping::new();
+            insert_string(&mut template, "name", template_name);
+            insert_string(&mut template, "operation", operation);
+            insert_string(&mut template, "expression", &format!("V({output_node})"));
+            if mode == "tran" {
+                insert_number(&mut template, "from_us", *from)?;
+                insert_number(&mut template, "to_us", *to)?;
+            } else {
+                insert_number(&mut template, "from_hz", *from)?;
+                insert_number(&mut template, "to_hz", *to)?;
+            }
+            analysis.insert(
+                key("measure_templates"),
+                serde_yaml_ng::Value::Sequence(vec![serde_yaml_ng::Value::Mapping(template)]),
+            );
         }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,
@@ -1461,6 +1619,121 @@ mod tests {
         );
         assert_eq!(analog.probes[0].name, "out_fourier");
         assert_eq!(analog.probes[0].expression, "V(out)");
+    }
+
+    #[test]
+    fn append_analog_measure_scenario_emits_valid_transient_yaml() {
+        let draft = AnalogMeasureScenarioDraft {
+            name: "gui_measure".to_string(),
+            ground_net: "gnd".to_string(),
+            probe_net: "out".to_string(),
+            probe_name: "out_measure".to_string(),
+            mode: "tran".to_string(),
+            template_name: "avg_out".to_string(),
+            operation: "avg".to_string(),
+            from: 10.0,
+            to: 80.0,
+            stop_time_us: 100.0,
+            max_step_us: 0.5,
+            start_frequency_hz: 10.0,
+            stop_frequency_hz: 100_000.0,
+            points_per_decade: 20,
+        };
+        let edited = append_analog_measure_scenario_with_project_path(
+            editable_project_yaml(),
+            Path::new("examples/generated_measure/project.yaml"),
+            &draft,
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let scenario = &project.scenarios[0];
+        assert_eq!(scenario.name, "gui_measure");
+        assert_eq!(scenario.scenario_type, "analog_measure");
+        assert_eq!(scenario.checks, vec!["SPICE_MEASURE_ANALYSIS".to_string()]);
+        let analog = scenario.analog.as_ref().unwrap();
+        assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
+        assert_eq!(analog.analysis.analysis_type, "measure");
+        assert_eq!(analog.analysis.measure_mode.as_deref(), Some("tran"));
+        assert_eq!(analog.analysis.stop_time_us, 100.0);
+        assert_eq!(analog.analysis.max_step_us, 0.5);
+        let template = &analog.analysis.measure_templates[0];
+        assert_eq!(template.name, "avg_out");
+        assert_eq!(template.operation, "avg");
+        assert_eq!(template.expression, "V(out)");
+        assert_eq!(template.from_us, Some(10.0));
+        assert_eq!(template.to_us, Some(80.0));
+        assert_eq!(template.from_hz, None);
+        assert_eq!(analog.probes[0].name, "out_measure");
+        assert_eq!(analog.probes[0].expression, "V(out)");
+    }
+
+    #[test]
+    fn append_analog_measure_scenario_emits_valid_ac_yaml() {
+        let draft = AnalogMeasureScenarioDraft {
+            name: "gui_measure_ac".to_string(),
+            ground_net: "gnd".to_string(),
+            probe_net: "out".to_string(),
+            probe_name: "out_measure_ac".to_string(),
+            mode: "ac".to_string(),
+            template_name: "max_out".to_string(),
+            operation: "max".to_string(),
+            from: 100.0,
+            to: 10_000.0,
+            stop_time_us: 100.0,
+            max_step_us: 0.5,
+            start_frequency_hz: 10.0,
+            stop_frequency_hz: 100_000.0,
+            points_per_decade: 20,
+        };
+        let edited = append_analog_measure_scenario_with_project_path(
+            editable_project_yaml(),
+            Path::new("examples/generated_measure/project.yaml"),
+            &draft,
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        assert_eq!(analog.analysis.measure_mode.as_deref(), Some("ac"));
+        assert_eq!(analog.analysis.start_frequency_hz, Some(10.0));
+        assert_eq!(analog.analysis.stop_frequency_hz, Some(100_000.0));
+        assert_eq!(analog.analysis.points_per_decade, Some(20));
+        let template = &analog.analysis.measure_templates[0];
+        assert_eq!(template.name, "max_out");
+        assert_eq!(template.operation, "max");
+        assert_eq!(template.from_hz, Some(100.0));
+        assert_eq!(template.to_hz, Some(10_000.0));
+        assert_eq!(template.from_us, None);
+    }
+
+    #[test]
+    fn append_analog_measure_scenario_rejects_window_outside_ac_sweep() {
+        let draft = AnalogMeasureScenarioDraft {
+            name: "gui_measure_ac".to_string(),
+            ground_net: "gnd".to_string(),
+            probe_net: "out".to_string(),
+            probe_name: "out_measure_ac".to_string(),
+            mode: "ac".to_string(),
+            template_name: "max_out".to_string(),
+            operation: "max".to_string(),
+            from: 1.0,
+            to: 10_000.0,
+            stop_time_us: 100.0,
+            max_step_us: 0.5,
+            start_frequency_hz: 10.0,
+            stop_frequency_hz: 100_000.0,
+            points_per_decade: 20,
+        };
+        let error = append_analog_measure_scenario_with_project_path(
+            editable_project_yaml(),
+            Path::new("examples/generated_measure/project.yaml"),
+            &draft,
+        )
+        .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("AC measure window must fit inside the AC sweep range")
+        );
     }
 
     fn editable_project_yaml() -> &'static str {

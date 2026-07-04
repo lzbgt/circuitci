@@ -2,13 +2,14 @@ use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft,
     AnalogDistortionScenarioDraft, AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
-    AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft, AnalogScenarioDraft,
-    AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
+    AnalogMeasureScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
+    AnalogScenarioDraft, AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
     append_analog_ac_scenario_with_project_path, append_analog_dc_scenario_with_project_path,
     append_analog_dc_sweep_scenario_with_project_path,
     append_analog_distortion_scenario_with_project_path,
     append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
+    append_analog_measure_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
     append_analog_pole_zero_scenario_with_project_path,
     append_analog_sensitivity_scenario_with_project_path,
@@ -194,6 +195,37 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "Distortion run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "measure" {
+            let draft = AnalogMeasureScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                mode: self.analog_measure_mode.clone(),
+                template_name: self.analog_measure_template_name.clone(),
+                operation: self.analog_measure_operation.clone(),
+                from: self.analog_measure_from,
+                to: self.analog_measure_to,
+                stop_time_us: self.analog_stop_time_us,
+                max_step_us: self.analog_max_step_us,
+                start_frequency_hz: self.analog_start_frequency_hz,
+                stop_frequency_hz: self.analog_stop_frequency_hz,
+                points_per_decade: self.analog_points_per_decade,
+            };
+            match append_analog_measure_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Measure run setup {} added.",
                         self.analog_scenario_name.trim()
                     ),
                 ),

@@ -442,6 +442,10 @@ Distortion creation writes a normal `analog_distortion` scenario with
 intermodulation mode, frequency sweep bounds, selected F1 source, optional F2
 source plus F2/F1 ratio for intermodulation, generated board component
 inclusion, ground binding, and model-file inference.
+Measure creation writes a normal `analog_measure` scenario with
+`analysis: {type: measure}`, transient or AC measure mode, selected output
+probe net, simulation bounds, and one portable `measure_templates[]` entry for
+bounded `avg`, `max`, `min`, or `rms` scalar extraction.
 The Fourier Check editor writes `analysis.fourier_assertions[]` for harmonic
 magnitude, normalized magnitude, phase, normalized phase, or THD-percent
 limits, and Fourier report failure actions load the failed check back into that

@@ -102,6 +102,36 @@ pub(super) fn distortion_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
         });
 }
 
+pub(super) fn measure_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
+    if !matches!(selected.as_str(), "tran" | "ac") {
+        *selected = "tran".to_string();
+    }
+    let selected_label = match selected.as_str() {
+        "ac" => "AC",
+        _ => "Transient",
+    };
+    egui::ComboBox::from_id_salt("analog_measure_mode")
+        .selected_text(selected_label)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected, "tran".to_string(), "Transient");
+            ui.selectable_value(selected, "ac".to_string(), "AC");
+        });
+}
+
+pub(super) fn measure_operation_combo(ui: &mut egui::Ui, selected: &mut String) {
+    if !matches!(selected.as_str(), "avg" | "max" | "min" | "rms") {
+        *selected = "avg".to_string();
+    }
+    egui::ComboBox::from_id_salt("analog_measure_operation")
+        .selected_text(selected.to_ascii_uppercase())
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected, "avg".to_string(), "AVG");
+            ui.selectable_value(selected, "max".to_string(), "MAX");
+            ui.selectable_value(selected, "min".to_string(), "MIN");
+            ui.selectable_value(selected, "rms".to_string(), "RMS");
+        });
+}
+
 pub(super) fn initialize_sensitivity_filters_default(
     snapshot: &ProjectSnapshot,
     selected: &mut String,

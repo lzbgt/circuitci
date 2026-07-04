@@ -25,8 +25,8 @@ use super::analog_stimulus::{
 use super::simulation_forms::*;
 use super::simulation_run_setup_controls::{
     distortion_mode_combo, generated_noise_source_combo, initialize_noise_source_default,
-    initialize_sensitivity_filters_default, noise_source_combo, pole_zero_mode_combo,
-    sensitivity_mode_combo,
+    initialize_sensitivity_filters_default, measure_mode_combo, measure_operation_combo,
+    noise_source_combo, pole_zero_mode_combo, sensitivity_mode_combo,
 };
 use super::sketch::ProjectSnapshot;
 use eframe::egui;
@@ -54,6 +54,7 @@ impl CircuitCiApp {
                             "pz" => "Pole-Zero",
                             "sens" => "Sensitivity",
                             "disto" => "Distortion",
+                            "measure" => "Measure",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -99,6 +100,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "disto".to_string(),
                                 "Distortion",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "measure".to_string(),
+                                "Measure",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -378,6 +384,110 @@ impl CircuitCiApp {
                                 egui::DragValue::new(&mut self.analog_distortion_f2_over_f1)
                                     .speed(0.01)
                                     .range(1.0e-12..=0.999999),
+                            );
+                            ui.end_row();
+                        }
+                    } else if self.analog_run_setup_kind == "measure" {
+                        if self.analog_measure_mode == "ac" {
+                            if self.analog_measure_from <= 0.0 {
+                                self.analog_measure_from = self.analog_start_frequency_hz;
+                            }
+                            if self.analog_measure_to <= self.analog_measure_from {
+                                self.analog_measure_to = self.analog_stop_frequency_hz;
+                            }
+                        } else if self.analog_measure_to > self.analog_stop_time_us {
+                            self.analog_measure_to = self.analog_stop_time_us;
+                        }
+                        ui.label("Mode");
+                        measure_mode_combo(ui, &mut self.analog_measure_mode);
+                        ui.end_row();
+
+                        ui.label("Measurement");
+                        ui.text_edit_singleline(&mut self.analog_measure_template_name);
+                        ui.end_row();
+
+                        ui.label("Operation");
+                        measure_operation_combo(ui, &mut self.analog_measure_operation);
+                        ui.end_row();
+
+                        if self.analog_measure_mode == "ac" {
+                            ui.label("Start frequency");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_start_frequency_hz)
+                                    .speed(10.0)
+                                    .range(1.0e-9..=1.0e15)
+                                    .suffix(" Hz"),
+                            );
+                            ui.end_row();
+
+                            ui.label("Stop frequency");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_stop_frequency_hz)
+                                    .speed(100.0)
+                                    .range(1.0e-9..=1.0e15)
+                                    .suffix(" Hz"),
+                            );
+                            ui.end_row();
+
+                            ui.label("Points/decade");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_points_per_decade)
+                                    .speed(1.0)
+                                    .range(1..=1000),
+                            );
+                            ui.end_row();
+
+                            ui.label("From");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_measure_from)
+                                    .speed(10.0)
+                                    .range(1.0e-9..=1.0e15)
+                                    .suffix(" Hz"),
+                            );
+                            ui.end_row();
+
+                            ui.label("To");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_measure_to)
+                                    .speed(100.0)
+                                    .range(1.0e-9..=1.0e15)
+                                    .suffix(" Hz"),
+                            );
+                            ui.end_row();
+                        } else {
+                            ui.label("Stop time");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_stop_time_us)
+                                    .speed(1.0)
+                                    .range(0.001..=1_000_000.0)
+                                    .suffix(" us"),
+                            );
+                            ui.end_row();
+
+                            ui.label("Max step");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_max_step_us)
+                                    .speed(0.1)
+                                    .range(0.001..=1_000_000.0)
+                                    .suffix(" us"),
+                            );
+                            ui.end_row();
+
+                            ui.label("From");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_measure_from)
+                                    .speed(1.0)
+                                    .range(0.0..=1_000_000.0)
+                                    .suffix(" us"),
+                            );
+                            ui.end_row();
+
+                            ui.label("To");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_measure_to)
+                                    .speed(1.0)
+                                    .range(0.001..=1_000_000.0)
+                                    .suffix(" us"),
                             );
                             ui.end_row();
                         }

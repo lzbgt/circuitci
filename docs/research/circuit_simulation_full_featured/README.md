@@ -643,7 +643,11 @@ The GUI should not become the solver.
   `measure_assertions[]` so scalar simulation specs directly pass or fail
   validation, including shared worst-corner and Monte Carlo yield summaries
   across swept measure corners. The GUI Measure Check editor now authors and
-  hydrates failed `measure_assertions[]` entries.
+  hydrates failed `measure_assertions[]` entries. The GUI Run Setup editor now
+  authors generated-from-board `analog_measure` scenarios with portable
+  `measure_templates[]` for transient or AC `avg`/`max`/`min`/`rms` scalar
+  extraction over bounded time/frequency windows, avoiding backend-specific raw
+  statement text.
 - 2026-07-04: `backend: auto` for `analog_measure` now falls back to Xyce when
   ngspice is absent and the scenario uses only portable `measure_templates[]`.
   Raw `measure_statements[]` still do not auto-translate to Xyce; they retain
