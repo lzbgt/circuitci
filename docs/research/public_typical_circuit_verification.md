@@ -24,6 +24,9 @@ audit the modeled facts without relying on chat history.
 | Raspberry Pi RP2040 MCU boot and power use | <https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf> and <https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf> | `docs/research/datasheets/raspberrypi/rp2040-datasheet.pdf` and `docs/research/datasheets/raspberrypi/hardware-design-with-rp2040.pdf` |
 | Nordic nRF52840 normal-voltage MCU use | <https://docs.nordicsemi.com/bundle/ps_nrf52840/page/keyfeatures_html5.html> plus retained PDF mirror | `docs/research/datasheets/nordic/nrf52840-product-spec-farnell.pdf` |
 | Silicon Labs CP2102N USB-UART bridge use | <https://www.silabs.com/documents/public/data-sheets/cp2102n-datasheet.pdf> | `docs/research/datasheets/silabs/cp2102n-datasheet.pdf` |
+| WCH CH340C USB-UART bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf` |
+| FTDI FT232R USB-UART bridge use | <https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf> plus public PDF mirror | `docs/research/datasheets/ftdi/DS_FT232R_sparkfun_mirror.pdf` |
+| WCH CH347 USB-JTAG/debug bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch347ds1_bitsavers_mirror.pdf` |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
 | STC15W408AS 1T 8051-family MCU power use | <https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf> and <https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf> | `docs/research/datasheets/stc/stc15w408as_features.pdf` and `docs/research/datasheets/stc/stc15f2k60s2_en.pdf` |
 | TI NE555 astable timer power use | <https://www.ti.com/lit/ds/symlink/ne555.pdf> | `docs/research/datasheets/ti/ne555.pdf` |
@@ -40,14 +43,16 @@ were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
 STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PESD5V0S1UL,
 Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and Microchip
-MCP131X/2X PDFs were downloaded from their official vendor URLs. The local PDF
-copies and SHA-256 hashes are listed in the part-specific research notes under
-`docs/research/datasheets/`.
+MCP131X/2X PDFs were downloaded from their official vendor URLs. WCH CH340C,
+WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
+public PDF mirrors because direct automated binary retrieval was blocked by the
+vendor endpoints. The local PDF copies and SHA-256 hashes are listed in the
+part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines thirty public-reference passing
-cases and thirty-seven paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines thirty-three public-reference
+passing cases and forty paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -84,6 +89,12 @@ cases and thirty-seven paired injected-error cases:
 | `nordic_nrf52840_vdd_overvoltage_detected` | `examples/bad_nordic_nrf52840_vdd_overvoltage/project.yaml` | fail | Detects `VDD` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `silabs_cp2102n_usb_uart_observation_passes` | `examples/good_silabs_cp2102n_usb_uart_observation/project.yaml` | pass | CP2102N USB-UART bridge with 5 V `VREGIN`, generated 3.3 V `VDD`/`VIO`, reset pull-up, and generated-SPICE UART/modem output-state observation. |
 | `silabs_cp2102n_vdd_overvoltage_detected` | `examples/bad_silabs_cp2102n_vdd_overvoltage/project.yaml` | fail | Detects CP2102N `VDD` connected to a 5 V rail above the source-backed 3.6 V maximum. |
+| `wch_ch340c_usb_uart_observation_passes` | `examples/good_wch_ch340c_usb_uart_observation/project.yaml` | pass | CH340C USB-UART bridge with source-backed 3.3 V supply mode and generated-SPICE idle/control-line output observation. |
+| `wch_ch340c_power_overvoltage_detected` | `examples/bad_wch_ch340c_power_overvoltage/project.yaml` | fail | Detects CH340C `VCC` connected to a 6 V rail above the source-backed 5.3 V maximum. |
+| `ftdi_ft232r_usb_uart_observation_passes` | `examples/good_ftdi_ft232r_usb_uart_observation/project.yaml` | pass | FT232R USB-UART bridge with 5 V `VCC`, generated 3.3 V `3V3OUT`/`VCCIO`, reset pull-up, and generated-SPICE UART/modem output-state observation. |
+| `ftdi_ft232r_vcc_overvoltage_detected` | `examples/bad_ftdi_ft232r_vcc_overvoltage/project.yaml` | fail | Detects FT232R `VCC` connected to a 6 V rail above the source-backed 5.25 V operating maximum. |
+| `wch_ch347_usb_jtag_observation_passes` | `examples/good_wch_ch347_usb_jtag_observation/project.yaml` | pass | CH347T USB-JTAG/debug bridge with source-backed 3.3 V supply mode and generated-SPICE UART/JTAG line-state observation. |
+| `wch_ch347_vcc_overvoltage_detected` | `examples/bad_wch_ch347_vcc_overvoltage/project.yaml` | fail | Detects CH347T `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `st_stm8s003f3p6_power_passes` | `examples/good_st_stm8s003f3p6_power/project.yaml` | pass | STM8S003F3P6 with 5 V `VDD`, `VCAP` pin support capacitor, active-low reset, SWIM, and UART1 TX/RX boundaries. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `examples/bad_st_stm8s003f3p6_vdd_overvoltage/project.yaml` | fail | Detects `VDD` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `stc_stc15w408as_power_passes` | `examples/good_stc_stc15w408as_power/project.yaml` | pass | STC15W408AS with 5 V `VCC`, active-high reset boundary, and primary UART/ISP RX/TX pin boundaries. |
@@ -130,7 +141,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=67, passed=67, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=73, passed=73, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -159,6 +170,9 @@ Observed detection details:
 | `raspberrypi_rp2040_iovdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `URP.IOVDD` at `5.000000 V`, outside the model maximum operating voltage `3.630000 V`. |
 | `nordic_nrf52840_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UNRF.VDD` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `silabs_cp2102n_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `cp2102n_vdd_bad_5v` supplies `U6.VDD` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
+| `wch_ch340c_power_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `U5.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.300000 V`. |
+| `ftdi_ft232r_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `usb_6v_bad` supplies `U7.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.250000 V`. |
+| `wch_ch347_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `debug_5v_bad` supplies `U8.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTM8.VDD` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `stc_stc15w408as_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTC.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `ti_ne555_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_18v` supplies `U555.VCC` at `18.000000 V`, outside the model maximum operating voltage `16.000000 V`. |
@@ -175,9 +189,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All thirty public-reference pass cases produced zero critical findings.
-All thirty-seven paired injected-error cases failed with the expected critical
-finding ID, and all thirty-seven repair-pair checks passed.
+All thirty-three public-reference pass cases produced zero critical findings.
+All forty paired injected-error cases failed with the expected critical finding
+ID, and all forty repair-pair checks passed.
 
 ## Interpretation Limits
 
