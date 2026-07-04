@@ -12,6 +12,7 @@ mod analog_assertion_fields;
 mod analog_assertion_kinds;
 mod analog_branches;
 mod analog_dc_presets;
+mod analog_distortion_assertions;
 mod analog_fourier_assertions;
 mod analog_generated;
 mod analog_hb_assertions;
@@ -47,6 +48,7 @@ mod project_example_workflow_tests;
 mod scope_auto_probes;
 mod shell;
 mod simulation;
+mod simulation_distortion_assertions;
 mod simulation_editors;
 mod simulation_forms;
 mod simulation_fourier_assertions;
@@ -409,6 +411,11 @@ pub struct CircuitCiApp {
     analog_assertion_duty_limit_percent: f64,
     analog_assertion_count_limit: f64,
     analog_assertion_overshoot_limit_percent: f64,
+    analog_distortion_assertion_scenario: String,
+    analog_distortion_assertion_name: String,
+    analog_distortion_assertion_component: String,
+    analog_distortion_assertion_relation: String,
+    analog_distortion_assertion_threshold: f64,
     analog_sparameter_network_assertion_scenario: String,
     analog_sparameter_network_assertion_name: String,
     analog_sparameter_network_assertion_metric: String,
@@ -724,6 +731,11 @@ impl Default for CircuitCiApp {
             analog_assertion_duty_limit_percent: 50.0,
             analog_assertion_count_limit: 1.0,
             analog_assertion_overshoot_limit_percent: 10.0,
+            analog_distortion_assertion_scenario: String::new(),
+            analog_distortion_assertion_name: "im_sum_below_limit".to_string(),
+            analog_distortion_assertion_component: "im_f1_plus_f2".to_string(),
+            analog_distortion_assertion_relation: "below".to_string(),
+            analog_distortion_assertion_threshold: 0.001,
             analog_sparameter_network_assertion_scenario: String::new(),
             analog_sparameter_network_assertion_name: "stable_rollet_k".to_string(),
             analog_sparameter_network_assertion_metric: "rollet_k_min".to_string(),

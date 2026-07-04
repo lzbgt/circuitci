@@ -326,7 +326,9 @@ Current analog support:
   is absent. Validation reports project `distortion_summary.csv` rows into
   `distortion_summaries[]`, and Scopes recognizes `distortion_spectrum.csv` as
   frequency-axis magnitude/phase/real/imaginary traces grouped by distortion
-  component.
+  component. The GUI Distortion Check editor authors
+  `analysis.distortion_assertions[]` entries and failure actions hydrate the
+  component, relation, and threshold from retained findings.
   Opt-in real-ngspice conformance is available through
   `CIRCUITCI_RUN_REAL_NGSPICE_DISTO=1 cargo test --test analog_distortion_cli`.
   Xyce remains fail-closed because the saved Xyce reference text does not

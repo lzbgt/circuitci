@@ -437,6 +437,9 @@ The Pole-Zero Check editor writes `analysis.pole_zero_assertions[]` for pole or
 zero real-part, imaginary-part, or derived-frequency limits with optional root
 index selection, and `.PZ` report failure actions load the failed check back
 into that editor.
+The Distortion Check editor writes `analysis.distortion_assertions[]` for
+normalized distortion component max-magnitude limits, and distortion report
+failure actions load the failed check back into that editor.
 The HB Check editor writes `analysis.hb_assertions[]` for magnitude, phase,
 real, or imaginary limits at a selected harmonic, and HB report failure actions
 load the failed check back into that editor.
