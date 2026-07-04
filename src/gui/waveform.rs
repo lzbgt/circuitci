@@ -914,6 +914,7 @@ fn probe_unit(label: &str) -> &'static str {
         || normalized.contains("magnitude db")
         || normalized.contains("return loss")
         || normalized.contains("insertion loss")
+        || normalized.contains("mismatch loss")
     {
         "dB"
     } else if normalized.contains("phase_deg") || normalized.contains("phase") {

@@ -176,7 +176,7 @@ Current analog support:
   reciprocity, passivity, Rollet K, and `|Delta|` sign-off checks without
   hand-editing YAML, retained network assertion failures can be loaded back
   into that editor from the report artifact panel, and Scopes derives
-  return-loss, insertion-loss, VSWR,
+  return-loss, insertion-loss, VSWR, mismatch-loss,
   group-delay, reflection-impedance,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
   and Rollet K traces from full `s_parameters.csv` artifacts.

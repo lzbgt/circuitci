@@ -645,7 +645,7 @@ The GUI should not become the solver.
   `sources/wikipedia_mismatch_loss.html` for formula provenance. Validation reports project
   retained summaries into `s_parameter_summaries[]`, Markdown includes an
   "S-Parameter Summary" section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
-  return-loss, insertion-loss, VSWR, and reflection-impedance real/imaginary/magnitude traces from full `s_parameters.csv`
+  return-loss, insertion-loss, VSWR, mismatch-loss, and reflection-impedance real/imaginary/magnitude traces from full `s_parameters.csv`
   artifacts for visual RF matching and margin review. GUI Scopes also provides an RF Port
   Check editor that writes `s_parameter_assertions[]` for magnitude, return
   loss, insertion loss, VSWR, mismatch-loss, group-delay, and reflection-impedance limits with Board IR validation

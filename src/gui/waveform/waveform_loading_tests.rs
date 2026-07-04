@@ -150,6 +150,7 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(!labels.contains(&"reference_impedance_ohm"));
     assert!(labels.contains(&"s11 return loss dB"));
     assert!(labels.contains(&"s11 VSWR"));
+    assert!(labels.contains(&"s11 mismatch loss dB"));
     assert!(labels.contains(&"s11 impedance real ohm"));
     assert!(labels.contains(&"s11 impedance imaginary ohm"));
     assert!(labels.contains(&"s11 impedance magnitude ohm"));
@@ -178,6 +179,17 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!((s11_vswr.values[0] - 3.0).abs() < 1.0e-12);
     assert!((s11_vswr.values[1] - 1.5).abs() < 1.0e-12);
     assert_eq!(super::probe_unit(&s11_vswr.label), "ratio");
+    let s11_mismatch_loss = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s11 mismatch loss dB")
+        .unwrap();
+    assert!(s11_mismatch_loss.derived);
+    let expected_mismatch_loss_0 = -10.0_f64 * (1.0_f64 - 0.5_f64 * 0.5_f64).log10();
+    let expected_mismatch_loss_1 = -10.0_f64 * (1.0_f64 - 0.2_f64 * 0.2_f64).log10();
+    assert!((s11_mismatch_loss.values[0] - expected_mismatch_loss_0).abs() < 1.0e-12);
+    assert!((s11_mismatch_loss.values[1] - expected_mismatch_loss_1).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&s11_mismatch_loss.label), "dB");
     let s11_impedance_real = waveform
         .probes
         .iter()
@@ -275,6 +287,7 @@ fn waveform_csv_loader_skips_vswr_when_reflection_magnitude_reaches_unity() {
         .collect();
     assert!(labels.contains(&"s11 return loss dB"));
     assert!(!labels.contains(&"s11 VSWR"));
+    assert!(!labels.contains(&"s11 mismatch loss dB"));
     assert!(!labels.contains(&"two-port reciprocity error"));
     assert!(!labels.contains(&"two-port passivity singular value"));
     assert!(!labels.contains(&"two-port stability delta magnitude"));

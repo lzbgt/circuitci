@@ -1390,13 +1390,22 @@ fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
                     .iter()
                     .all(|value| value.is_finite() && *value >= 0.0 && *value < 1.0)
                 {
-                    let vswr_values = linear_values
-                        .iter()
-                        .map(|value| (1.0 + value) / (1.0 - value))
-                        .collect();
+                    let mut vswr_values = Vec::with_capacity(linear_values.len());
+                    let mut mismatch_loss_values = Vec::with_capacity(linear_values.len());
+                    for value in linear_values {
+                        vswr_values.push((1.0 + value) / (1.0 - value));
+                        mismatch_loss_values.push(-10.0 * (1.0 - value * value).log10());
+                    }
                     probes.push(WaveformProbe {
                         label: format!("{parameter} VSWR"),
                         values: vswr_values,
+                        derived: true,
+                        expression: Some(parameter.clone()),
+                        promoted_quantity: None,
+                    });
+                    probes.push(WaveformProbe {
+                        label: format!("{parameter} mismatch loss dB"),
+                        values: mismatch_loss_values,
                         derived: true,
                         expression: Some(parameter.clone()),
                         promoted_quantity: None,
