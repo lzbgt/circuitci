@@ -949,6 +949,15 @@ and the explicit port list for board-boundary review; it does not validate
 humidity, pressure, or temperature accuracy, compensation algorithms, register
 protocols, bus timing, response time, noise, drift, self-heating, or
 calibration behavior.
+`vendor.kingbright.apt1608surck` adds a source-backed common indicator LED
+pack. Official Kingbright documentation backs its 30 mA DC forward-current
+limit, 5 V reverse-voltage limit, 75 mW power limit, 1.95 V typical and 2.5 V
+maximum forward voltage at 20 mA, capacitance, wavelength, viewing-angle, and
+package metadata. Generated SPICE uses the same diode operating-limit probes as
+small-signal diodes, but the bundled electrical card is a reduced preliminary
+fit and does not validate optical output, lifetime, thermal board coupling,
+pulse-current derating, reflow-process exposure, or production hardware
+behavior.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

@@ -1,0 +1,103 @@
+project:
+  name: good_kingbright_apt1608surck_led_indicator
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/kingbright/leds
+
+board:
+  components:
+    VLED:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: rail_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    RLED:
+      model: generic.analog.resistor
+      pins:
+        A: rail_3v3
+        B: led_anode
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    DLED:
+      model: vendor.kingbright.apt1608surck
+      part_number: APT1608SURCK
+      pins:
+        A: led_anode
+        K: gnd
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    led_anode:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: low_current_led_indicator
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VLED
+          - RLED
+          - DLED
+      model_files:
+        - path: ../../models/spice/kingbright/apt1608surck.lib
+          sha256: 399027e946c80af60874d8e4d5363bb8418ed3e1e827de7bfd4beb34d833366a
+      node_bindings:
+        - node: rail
+          net: rail_3v3
+        - node: anode
+          net: led_anode
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: anode
+          endpoint:
+            component: DLED
+            pin: A
+        - node: "0"
+          endpoint:
+            component: DLED
+            pin: K
+        - node: rail
+          endpoint:
+            component: VLED
+            pin: P
+      analysis:
+        type: tran
+        stop_time_us: 100
+        max_step_us: 0.2
+      stimuli:
+        - name: led_indicator_on
+          description: APT1608SURCK is driven from 3.3 V through a 1k resistor.
+      probes:
+        - name: led_anode
+          expression: V(anode)
+        - name: led_current
+          expression: abs(I(VLED))
+          quantity: current
+      assertions:
+        - name: led_anode_above_red_forward_drop
+          probe: led_anode
+          at_us: 50
+          relation: above
+          threshold_v: 1.5
+        - name: led_current_below_dc_limit
+          probe: led_current
+          at_us: 50
+          relation: below
+          threshold_a: 0.01

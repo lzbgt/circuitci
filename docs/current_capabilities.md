@@ -133,6 +133,16 @@ address metadata. It does not validate sensor accuracy, compensation
 algorithms, register protocol, bus timing, response time, noise, drift,
 self-heating, or calibration. See `docs/bosch_bme280_model.md`.
 
+`vendor.kingbright.apt1608surck` provides a source-backed static/generated-SPICE
+model for a common 0603 Hyper Red indicator LED. It records the 30 mA DC
+forward-current limit, 5 V reverse-voltage limit, 75 mW power limit,
+1.95 V typical / 2.5 V maximum forward voltage at 20 mA, 35 pF capacitance,
+and optical metadata. The bundled SPICE card is a reduced preliminary
+electrical fit for generated-transient plumbing and source-backed
+operating-limit probes; it does not sign off brightness, color bins, lifetime,
+thermal board coupling, pulse-drive derating, or production behavior. See
+`docs/kingbright_apt1608surck_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

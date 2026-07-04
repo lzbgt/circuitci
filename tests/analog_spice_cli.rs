@@ -1016,6 +1016,33 @@ fn generated_diode_switching_passes_when_ngspice_available() {
 }
 
 #[test]
+fn generated_kingbright_led_indicator_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_kingbright_apt1608surck_led_indicator/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/kingbright/apt1608surck.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_diode_overcurrent_fails_operating_limits() {
     let report = run_validation("examples/bad_diode_overcurrent/project.yaml");
     if binary_available("ngspice") {
@@ -1036,6 +1063,36 @@ fn generated_diode_overcurrent_fails_operating_limits() {
                 && failure["measured"]["component"] == "D1"
                 && failure["measured"]["time_of_max_us"].as_f64().is_some()
                 && failure["limit"]["rating_value"] == 0.2
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_kingbright_led_overcurrent_fails_operating_limits() {
+    let report =
+        run_validation("examples/bad_kingbright_apt1608surck_led_overcurrent/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "IF"
+                && failure["measured"]["unit"] == "A"
+                && failure["measured"]["component"] == "DLED"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == 0.03
+        }));
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "PD"
+                && failure["measured"]["unit"] == "W"
+                && failure["measured"]["component"] == "DLED"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == 0.075
         }));
     } else {
         assert_eq!(report["result"], "fail");

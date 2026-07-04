@@ -450,9 +450,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
 - `examples/bad_bjt_overcurrent` proves generated BJT collector current can be
   checked automatically against datasheet absolute maximum ratings without a
   hand-authored transistor-limit assertion.
-- `examples/bad_diode_overcurrent` and `examples/bad_diode_reverse_voltage`
-  prove generated diode forward-current, reverse-voltage, and power stress can
-  be checked automatically against datasheet absolute maximum ratings.
+- `examples/bad_diode_overcurrent`, `examples/bad_diode_reverse_voltage`, and
+  `examples/bad_kingbright_apt1608surck_led_overcurrent` prove generated diode
+  and LED forward-current, reverse-voltage, and power stress can be checked
+  automatically against datasheet absolute maximum ratings.
 
 ## Datasheet Operating Limits
 

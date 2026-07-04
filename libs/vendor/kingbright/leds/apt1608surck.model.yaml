@@ -1,0 +1,109 @@
+component_id: vendor.kingbright.apt1608surck
+version: 0.1.0
+category: led
+ports:
+  A:
+    kind: passive
+    required: true
+  K:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: Kingbright
+  part_number: APT1608SURCK
+  package: 1.6 mm x 0.8 mm x 0.75 mm SMD chip LED
+  polarity: hyper_red_indicator_led
+  pinout:
+    A: Anode
+    K: Cathode
+  absolute_maximum_ratings:
+    VR:
+      value: 5
+      unit: V
+    IF:
+      value: 0.03
+      unit: A
+    IFM:
+      value: 0.185
+      unit: A
+      conditions: 1/10 duty cycle, 0.1 ms pulse width.
+    PD:
+      value: 0.075
+      unit: W
+    Tj:
+      value: 115
+      unit: C
+  electrical_characteristics:
+    forward_voltage:
+      conditions: IF = 20 mA, TA = 25 C.
+      typ: 1.95
+      max: 2.5
+      unit: V
+    reverse_current:
+      conditions: VR = 5 V.
+      max: 10
+      unit: uA
+    capacitance:
+      typ: 35
+      unit: pF
+    dominant_wavelength:
+      conditions: IF = 20 mA.
+      typ: 630
+      unit: nm
+    peak_wavelength:
+      conditions: IF = 20 mA.
+      typ: 645
+      unit: nm
+    viewing_angle:
+      typ: 120
+      unit: degree
+  device_parameters:
+    luminous_intensity_min_20ma:
+      value: 120
+      unit: mcd
+      simulation_relevance: Optical output is retained as metadata only.
+    luminous_intensity_typ_20ma:
+      value: 230
+      unit: mcd
+      simulation_relevance: Optical output is retained as metadata only.
+    package_length:
+      value: 1.6
+      unit: mm
+    package_width:
+      value: 0.8
+      unit: mm
+    package_height:
+      value: 0.75
+      unit: mm
+    moisture_sensitivity_level:
+      value: 3
+      unit: MSL
+  documents:
+    - title: APT1608SURCK 1.6 x 0.8 mm SMD Chip LED Lamp
+      path: docs/research/datasheets/kingbright/apt1608surck.pdf
+      source_url: https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf
+      sha256: 9e1b5b4425e7251bf67a228b42f881ef87ed5f4088d89dc1bcb74b29789dd156
+      retrieved: "2026-07-05"
+simulation:
+  spice:
+    model_name: KINGBRIGHT_APT1608SURCK
+    model_type: diode
+    model_path: models/spice/kingbright/apt1608surck.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Reduced electrical diode fit for generated board-level transient checks.
+      - Source-backed operating-limit probes enforce 30 mA DC forward current, 5 V reverse voltage, and 75 mW power dissipation limits.
+      - Optical output, binning, chromaticity, luminous-intensity degradation, thermal board coupling, and pulse-current derating need separate evidence.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - led_indicator_generated_spice_plumbing
+    - led_operating_limit_validation
+    - preliminary_forward_current_and_reverse_voltage_screening
+  not_valid_for:
+    - optical_brightness_or_color_signoff
+    - led_lifetime_or_lumen_degradation_prediction
+    - thermal_board_coupling_or_reflow_process_signoff
+    - pulse_drive_derating_without_duty_cycle_evidence
+    - final_hardware_signoff_without_vendor_or_bench_calibration

@@ -1,0 +1,4 @@
+* Preliminary red LED diode card for generated board simulations.
+* Operating limits are enforced from the Kingbright APT1608SURCK datasheet.
+* Use a vendor or bench-calibrated optical/electrical model for final sign-off.
+.model KINGBRIGHT_APT1608SURCK D(Is=1e-16 N=2 Rs=12 Cjo=35p Eg=1.9)

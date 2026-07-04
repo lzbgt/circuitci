@@ -78,7 +78,12 @@ parasitics, and phase-noise behavior remain outside that static model. Winbond
 W25Q64JV now covers a first source-backed SPI/QSPI NOR flash static pack for
 VCC range, active current class, and SPI/QSPI board-boundary pin review; SPI
 protocol timing, JEDEC ID/SFDP behavior, flash contents, XIP performance, and
-write-protection policy remain outside that static model. TI
+write-protection policy remain outside that static model. Kingbright
+APT1608SURCK now covers a first source-backed common indicator LED pack with
+generated SPICE operating-limit probes for forward current, reverse voltage,
+and power dissipation; optical output, color bins, pulse-drive derating,
+thermal board coupling, lifetime, and production behavior remain outside that
+preliminary electrical model. TI
 TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
 static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI

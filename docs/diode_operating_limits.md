@@ -65,3 +65,19 @@ The first vendor diode fixture uses the onsemi 1N4148WS datasheet:
 The metadata records `VRRM = 100 V`, `IF_AV = 0.15 A`, and `PD = 0.2 W` from
 the absolute maximum / thermal ratings in the downloaded datasheet at
 `TA = 25 C` / `TC = 25 C` as applicable.
+
+The first source-backed LED fixture uses the Kingbright APT1608SURCK datasheet:
+
+- Source URL: `https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf`
+- Local copy: `docs/research/datasheets/kingbright/apt1608surck.pdf`
+- SHA-256:
+  `9e1b5b4425e7251bf67a228b42f881ef87ed5f4088d89dc1bcb74b29789dd156`
+
+The metadata records `VR = 5 V`, `IF = 0.03 A`, and `PD = 0.075 W` from the
+absolute maximum ratings in the downloaded datasheet at `TA = 25 C`.
+
+The current SPICE card in `models/spice/kingbright/apt1608surck.lib` is a
+reduced preliminary red-LED electrical fit. It exists to exercise generated
+Board IR diode plumbing and operating-limit report evidence. It is not an
+optical, aging, thermal-board-coupling, pulse-drive-derating, or final
+production sign-off model.
