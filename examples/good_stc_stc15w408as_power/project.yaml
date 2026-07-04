@@ -1,0 +1,49 @@
+project:
+  name: good_stc_stc15w408as_power
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    USTC:
+      model: vendor.stc.stc15w408as
+      part_number: STC15W408AS
+      power_domains:
+        VCC: rail_5v
+      pins:
+        VCC: rail_5v
+        GND: gnd
+        RST: stc_rst
+        P3_0_RXD: uart_to_stc
+        P3_1_TXD: uart_from_stc
+    RRST_DOWN:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: stc_rst
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    stc_rst:
+      kind: digital_or_analog
+    uart_to_stc:
+      kind: digital_or_analog
+    uart_from_stc:
+      kind: digital_or_analog
+
+scenarios:
+  - name: stc15w408as_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

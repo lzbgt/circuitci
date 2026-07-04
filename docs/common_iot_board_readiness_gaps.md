@@ -15,7 +15,7 @@ models for common parts:
 
 - MCU and wireless modules such as ESP32, STM32, RP2040, nRF52, STM8, and C51
   variants. First source-backed packs now exist for representative ESP32,
-  STM32L4, RP2040, nRF52840, and STM8S003F3P6 devices.
+  STM32L4, RP2040, nRF52840, STM8S003F3P6, and STC15W408AS devices.
 - USB-UART bridges such as CH340, CP210x, FT232, and CMSIS-DAP/debug probes.
 - Regulators, load switches, battery chargers, ideal diodes, reset supervisors,
   level shifters, ESD arrays, sensors, flash memories, crystals, LEDs, and

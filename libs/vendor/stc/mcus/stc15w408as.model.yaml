@@ -1,0 +1,91 @@
+component_id: vendor.stc.stc15w408as
+version: 0.1.0
+category: mcu
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.4
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+  RST:
+    kind: digital_electrical_input
+    required: false
+  P3_0_RXD:
+    kind: digital_electrical_input
+    required: false
+  P3_1_TXD:
+    kind: digital_electrical_output
+    required: false
+  P3_6_RXD_2:
+    kind: digital_electrical_input
+    required: false
+  P3_7_TXD_2:
+    kind: digital_electrical_output
+    required: false
+  P1_6_RXD_3:
+    kind: digital_electrical_input
+    required: false
+  P1_7_TXD_3:
+    kind: digital_electrical_output
+    required: false
+behavior:
+  reset:
+    pin: RST
+    active: high
+rules:
+  - POWER_TREE_VALID
+  - RESET_RELEASE_AFTER_POWER_VALID
+datasheet:
+  manufacturer: STC Micro
+  part_number: STC15W408AS
+  package: SOP20/DIP20/TSSOP20 class
+  polarity: stc_1t_8051_mcu
+  pinout:
+    VCC: Positive supply
+    GND: Ground
+    RST: P5.4/RST/SysClkO/CMP-, reset function active high when configured
+    P3_0_RXD: P3.0/RxD/INT4/T2CLKO primary UART receive and ISP receive pin
+    P3_1_TXD: P3.1/TxD/T2 primary UART transmit and ISP transmit pin
+    P3_6_RXD_2: P3.6/RxD_2 alternate UART receive pin
+    P3_7_TXD_2: P3.7/TxD_2 alternate UART transmit pin
+    P1_6_RXD_3: P1.6/RxD_3/XTAL2 alternate UART receive pin
+    P1_7_TXD_3: P1.7/TxD_3/XTAL1 alternate UART transmit pin
+  electrical_characteristics:
+    vcc_supply:
+      conditions: STC15W408AS feature summary operating voltage range.
+      min: 2.4
+      max: 5.5
+      unit: V
+  documents:
+    - title: STC15W408AS Features
+      path: docs/research/datasheets/stc/stc15w408as_features.pdf
+      source_url: https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf
+      sha256: 6129da6f667beb9d6491d5984c2d2aa35f641cfa02c069d11376e4b334bc21bf
+      retrieved: 2026-07-05
+    - title: STC15F2K60S2 English reference manual
+      path: docs/research/datasheets/stc/stc15f2k60s2_en.pdf
+      source_url: https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf
+      sha256: c1df3cdb156465acc3f1d07b283b0c599d33cc170a7946a8cb9330aa84273801
+      retrieved: 2026-07-05
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - vcc_power_tree_supply_voltage
+    - reset_pin_polarity
+    - primary_uart_isp_pin_boundary
+    - alternate_uart_pin_boundary
+  not_valid_for:
+    - formula_based_gpio_threshold_signoff
+    - exact_stc_isp_sync_or_ack_bytes
+    - isp_monitor_entry_timing
+    - oscillator_startup_or_accuracy
+    - uart_protocol_timing
+    - flash_or_eeprom_programming_behavior
+    - firmware_execution
+    - package_variant_exhaustive_pin_mapping
+    - thermal_or_peak_current_waveforms

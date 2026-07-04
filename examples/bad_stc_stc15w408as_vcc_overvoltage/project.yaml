@@ -1,0 +1,43 @@
+project:
+  name: bad_stc_stc15w408as_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    USTC:
+      model: vendor.stc.stc15w408as
+      part_number: STC15W408AS
+      power_domains:
+        VCC: rail_6v
+      pins:
+        VCC: rail_6v
+        GND: gnd
+        RST: stc_rst
+    RRST_DOWN:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: stc_rst
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    gnd:
+      kind: ground
+    stc_rst:
+      kind: digital_or_analog
+
+scenarios:
+  - name: stc15w408as_vcc_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

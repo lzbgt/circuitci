@@ -906,6 +906,15 @@ voltage checks and required pin binding, but not `VCAP` capacitance/ESR/ESL,
 formula-based GPIO thresholds, oscillator startup/accuracy, SWIM protocol
 timing, UART bootloader behavior, flash/EEPROM programming behavior, firmware
 execution, thermal behavior, or transient current waveforms.
+`vendor.stc.stc15w408as` adds a source-backed static STC 1T 8051-family pack
+without a generated-SPICE face yet. Official STC documentation backs its `VCC`
+operating range, active-high reset boundary, primary ISP/UART pins
+`P3.0/RxD` and `P3.1/TxD`, and alternate UART pin pairs. That model can
+exercise board-level supply voltage checks and reset/UART board-boundary
+review, but not exact STC ISP sync/ACK bytes, ISP monitor entry timing,
+package-variant exhaustive pin mapping, oscillator startup/accuracy, flash or
+EEPROM programming behavior, firmware execution, thermal behavior, or
+transient current waveforms.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,
