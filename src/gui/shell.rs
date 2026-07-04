@@ -579,6 +579,13 @@ fn finding_group(ui: &mut egui::Ui, title: &str, findings: &[Finding]) {
                     ui.strong(&finding.id);
                     ui.label(&finding.scenario);
                     ui.label(&finding.message);
+                    if let Some(blocker) = finding_text_field(finding, "adapter_blocker") {
+                        ui.label(format!("Backend blocker: {blocker}"));
+                    }
+                    let evidence = finding_string_array_field(finding, "evidence_sources");
+                    if !evidence.is_empty() {
+                        ui.monospace(format!("Evidence: {}", evidence.join(", ")));
+                    }
                     if !finding.suggested_fixes.is_empty() {
                         ui.label("Suggested fixes");
                         for fix in &finding.suggested_fixes {
@@ -588,6 +595,30 @@ fn finding_group(ui: &mut egui::Ui, title: &str, findings: &[Finding]) {
                 });
             }
         });
+}
+
+fn finding_text_field(finding: &Finding, name: &str) -> Option<String> {
+    finding
+        .measured
+        .get(name)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn finding_string_array_field(finding: &Finding, name: &str) -> Vec<String> {
+    finding
+        .measured
+        .get(name)
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
 }
 
 fn limitation_group(ui: &mut egui::Ui, limitations: &[Limitation]) {
@@ -603,4 +634,32 @@ fn limitation_group(ui: &mut egui::Ui, limitations: &[Limitation]) {
             });
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{finding_string_array_field, finding_text_field};
+    use crate::reports::Finding;
+    use serde_json::json;
+
+    #[test]
+    fn finding_blocker_metadata_helpers_ignore_blank_values() {
+        let mut finding = Finding::critical("SPICE_PHASE_NOISE_ANALYSIS", "pn", "planned");
+        finding
+            .measured
+            .insert("adapter_blocker".to_string(), json!("  backend pending  "));
+        finding.measured.insert(
+            "evidence_sources".to_string(),
+            json!([" docs/research/pss_backend_evidence.md ", "", 42]),
+        );
+
+        assert_eq!(
+            finding_text_field(&finding, "adapter_blocker").as_deref(),
+            Some("backend pending")
+        );
+        assert_eq!(
+            finding_string_array_field(&finding, "evidence_sources"),
+            vec!["docs/research/pss_backend_evidence.md"]
+        );
+    }
 }

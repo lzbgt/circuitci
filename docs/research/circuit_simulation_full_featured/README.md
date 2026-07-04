@@ -862,6 +862,10 @@ The GUI should not become the solver.
   operating-point linearization chain plus real-solver conformance exists. The
   fail-closed finding now also carries compact `adapter_blocker` and
   `evidence_sources[]` metadata that points back to the retained research notes.
+- Markdown reports and the GUI Findings panel now render planned-backend
+  `adapter_blocker` and `evidence_sources[]` metadata generically, so `.TF`,
+  `.PZ`, phase-noise, and PAC/PXF fail-closed findings explain the exact
+  retained blocker provenance without requiring raw JSON inspection.
 - Primary-source review in `periodic_ac_backend_evidence.md` found no
   trustworthy PAC/PXF adapter target to enable immediately: Xyce documents HB
   but not PAC/PXF command/output artifacts; ngspice mentions PAC as downstream

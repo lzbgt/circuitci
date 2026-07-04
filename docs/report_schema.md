@@ -57,6 +57,12 @@ CircuitCI reports are built for both AI agents and engineers.
 }
 ```
 
+Markdown reports render `measured.adapter_blocker` and
+`measured.evidence_sources[]` under each finding when present. Planned backend
+findings use those fields to preserve the exact blocker and retained research
+sources behind fail-closed adapter boundaries without requiring raw JSON
+inspection.
+
 ## Result Semantics
 
 - `fail`: at least one critical finding.

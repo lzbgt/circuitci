@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 
 mod analog_summaries;
+mod findings_markdown;
 pub use analog_summaries::{
     DistortionSummary, FourierSummary, PoleZeroSummary, SParameterNetworkSummary,
     SParameterNoiseSummary, SParameterSummary, SensitivitySummary, TransferFunctionSummary,
@@ -16,6 +17,7 @@ use analog_summaries::{
     collect_s_parameter_summaries, collect_sensitivity_summaries,
     collect_transfer_function_summaries, render_s_parameter_network_summary_markdown,
 };
+use findings_markdown::push_findings;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -972,20 +974,6 @@ fn suite_markdown_report(report: &SuiteReport) -> String {
     text.push_str("\n## Reproduction\n\n");
     text.push_str(&format!("```bash\n{}\n```\n", report.reproduction.command));
     text
-}
-
-fn push_findings(text: &mut String, findings: &[Finding]) {
-    if findings.is_empty() {
-        text.push_str("None.\n\n");
-        return;
-    }
-    for finding in findings {
-        text.push_str(&format!("- `{}`: {}\n", finding.id, finding.message));
-        for fix in &finding.suggested_fixes {
-            text.push_str(&format!("  - Fix: {fix}\n"));
-        }
-    }
-    text.push('\n');
 }
 
 fn format_optional_range(min: Option<f64>, max: Option<f64>) -> String {
