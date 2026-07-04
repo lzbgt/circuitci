@@ -725,6 +725,11 @@ The GUI should not become the solver.
   `two-port operating gain dB` only when the full S11/S12/S21/S22 complex
   sweep and the required source/load reflection metadata are present and
   satisfy the same passive-gamma availability contract as the sign-off path.
+- 2026-07-04: Annotated Xyce-normalized S-parameter CSVs with source/load
+  reflection metadata before solver manifest retention. Normal validation
+  artifacts now carry the declared coefficients directly in `s_parameters.csv`,
+  which lets report-bundled Scopes sessions derive Gt/Ga/Gp traces without
+  relying on separate project YAML state.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

@@ -156,7 +156,10 @@ Current analog support:
   explicit port nodes/reference impedances. Explicit `backend: xyce` generates
   Xyce port devices, runs `.AC` plus `.LIN SPARCALC=1`, captures Touchstone RI
   output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
-  provenance. Validation derives `s_parameter_summary.csv`; optional
+  provenance; when source/load reflection coefficients are declared, the
+  normalized CSV carries those metadata columns before manifest hashing so
+  downstream reports and Scopes traces use the retained solver artifact.
+  Validation derives `s_parameter_summary.csv`; optional
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
   insertion loss, VSWR, mismatch loss, group-delay, and reflection-impedance
   limits with fail-closed metric applicability checks. Scopes includes an RF

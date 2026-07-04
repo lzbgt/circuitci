@@ -868,6 +868,15 @@ where
                 artifacts.clone(),
             )
         })?;
+    let s_csv = append_sparameter_reflection_metadata(s_csv, scenario).map_err(|message| {
+        ngspice_error(
+            format!(
+                "Failed to annotate Xyce S-parameter CSV {}: {message}",
+                raw.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
     fs::write(&s_parameters, s_csv).map_err(|error| {
         ngspice_error(
             format!(
@@ -1713,6 +1722,91 @@ fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String,
     Ok(output)
 }
 
+fn append_sparameter_reflection_metadata(
+    csv: String,
+    scenario: &Scenario,
+) -> Result<String, String> {
+    let Some(analog) = scenario.analog.as_ref() else {
+        return Ok(csv);
+    };
+    let mut requested_columns = Vec::new();
+    if let Some(source) = analog.analysis.s_parameter_source_reflection {
+        push_reflection_metadata_columns(&mut requested_columns, "source", source)?;
+    }
+    if let Some(load) = analog.analysis.s_parameter_load_reflection {
+        push_reflection_metadata_columns(&mut requested_columns, "load", load)?;
+    }
+    if requested_columns.is_empty() {
+        return Ok(csv);
+    }
+    let mut lines = csv.lines();
+    let Some(header) = lines.next() else {
+        return Ok(csv);
+    };
+    let header_fields: Vec<_> = header.split(',').map(str::trim).collect();
+    let columns_to_add: Vec<_> = requested_columns
+        .iter()
+        .filter(|(name, _)| !header_fields.contains(name))
+        .copied()
+        .collect();
+    if columns_to_add.is_empty() {
+        return Ok(csv);
+    }
+    let mut annotated = String::new();
+    annotated.push_str(header);
+    for (name, _) in &columns_to_add {
+        annotated.push(',');
+        annotated.push_str(name);
+    }
+    annotated.push('\n');
+    for line in lines {
+        if line.trim().is_empty() {
+            annotated.push('\n');
+            continue;
+        }
+        annotated.push_str(line);
+        for (_, value) in &columns_to_add {
+            annotated.push(',');
+            annotated.push_str(&format!("{value:.12e}"));
+        }
+        annotated.push('\n');
+    }
+    Ok(annotated)
+}
+
+fn push_reflection_metadata_columns(
+    columns: &mut Vec<(&'static str, f64)>,
+    role: &str,
+    coefficient: crate::board_ir::AnalogSParameterReflectionCoefficient,
+) -> Result<(), String> {
+    if !coefficient.real.is_finite() || !coefficient.imaginary.is_finite() {
+        return Err(format!(
+            "S-parameter {role} reflection metadata must be finite."
+        ));
+    }
+    if coefficient.real.mul_add(
+        coefficient.real,
+        coefficient.imaginary * coefficient.imaginary,
+    ) >= 1.0
+    {
+        return Err(format!(
+            "S-parameter {role} reflection metadata magnitude must be below 1."
+        ));
+    }
+    match role {
+        "source" => {
+            columns.push(("source_reflection_real", coefficient.real));
+            columns.push(("source_reflection_imaginary", coefficient.imaginary));
+        }
+        "load" => {
+            columns.push(("load_reflection_real", coefficient.real));
+            columns.push(("load_reflection_imaginary", coefficient.imaginary));
+        }
+        _ => unreachable!("reflection metadata role is fixed by caller"),
+    }
+    Ok(())
+}
+
 fn touchstone_pairs(port_count: usize) -> Vec<(usize, usize)> {
     if port_count == 2 {
         return vec![(1, 1), (2, 1), (1, 2), (2, 2)];
@@ -1728,7 +1822,10 @@ fn touchstone_pairs(port_count: usize) -> Vec<(usize, usize)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{touchstone_to_sparameter_csv, xyce_transient_raw_to_waveform_csv};
+    use super::{
+        append_sparameter_reflection_metadata, touchstone_to_sparameter_csv,
+        xyce_transient_raw_to_waveform_csv,
+    };
 
     #[test]
     fn xyce_transient_raw_csv_normalizes_to_waveform_csv() {
@@ -1765,5 +1862,42 @@ mod tests {
         ));
         assert!(csv.contains("1.000000000000e6,5.000000000000e1,-6.020599913280e0"));
         assert!(csv.contains("6.020599913280e0,0.000000000000e0,2.000000000000e0"));
+    }
+
+    #[test]
+    fn sparameter_csv_reflection_metadata_annotation_adds_source_load_columns() {
+        let scenario: crate::board_ir::Scenario = serde_yaml_ng::from_str(
+            r#"
+name: two_port_sparameter
+type: analog_sparameter
+analog:
+  backend: xyce
+  model_files: []
+  node_bindings: []
+  pin_bindings: []
+  analysis:
+    type: sparam
+    s_parameter_source_reflection: { real: 0.2, imaginary: -0.1 }
+    s_parameter_load_reflection: { real: -0.15, imaginary: 0.05 }
+  stimuli: []
+  probes: []
+  assertions: []
+"#,
+        )
+        .unwrap();
+        let csv = concat!(
+            "frequency_hz,reference_impedance_ohm,s11_mag_db\n",
+            "1.000000000000e6,5.000000000000e1,-6.020599913280e0\n",
+        )
+        .to_string();
+
+        let annotated = append_sparameter_reflection_metadata(csv, &scenario).unwrap();
+
+        assert!(annotated.contains(
+            "source_reflection_real,source_reflection_imaginary,load_reflection_real,load_reflection_imaginary"
+        ));
+        assert!(annotated.contains(
+            "1.000000000000e6,5.000000000000e1,-6.020599913280e0,2.000000000000e-1,-1.000000000000e-1,-1.500000000000e-1,5.000000000000e-2"
+        ));
     }
 }
