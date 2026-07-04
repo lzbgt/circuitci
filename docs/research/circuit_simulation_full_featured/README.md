@@ -633,9 +633,9 @@ The GUI should not become the solver.
   rewritten as templates.
 - 2026-07-04: `backend: auto` now also falls back to Xyce for AC Bode, DC
   operating-point, and ordinary `.NOISE` analyses when ngspice is absent. The
-  selector remains conservative for transient, DC sweep, S-parameter,
-  sensitivity, Fourier, harmonic-balance, and planned periodic/RF paths until
-  those auto boundaries are handled explicitly.
+  selector remains conservative for transient, S-parameter, sensitivity,
+  Fourier, harmonic-balance, and planned periodic/RF paths until those auto
+  boundaries are handled explicitly.
 - 2026-07-04: Extended the same `backend: auto` Xyce fallback to DC sweep.
   Explicit Xyce DC sweep already emitted the same normalized `dc_sweep.csv`
   and `solver_manifest.json` contract and had opt-in real-Xyce conformance, so

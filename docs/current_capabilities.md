@@ -233,8 +233,9 @@ Current analog support:
   source/load-dependent transducer/available/operating gain traces from full
   `s_parameters.csv` artifacts when the required reflection metadata columns
   are present.
-  `backend: auto` does not select Xyce for this path until real solver
-  conformance coverage is enabled.
+  `backend: auto` keeps Xyce explicit-only for this path because ordinary
+  S-parameter and RF SP-noise runs have different backend availability and
+  normalized evidence contracts.
 - `analog_transfer_function` scenarios with
   `SPICE_TRANSFER_FUNCTION_ANALYSIS` for `.TF` small-signal transfer
   contracts. The Board IR/schema can declare `analysis.type: tf`,
@@ -450,9 +451,9 @@ Current analog support:
   data, normalize it into the `transient_waveform`, `ac_bode`,
   `operating_point`, `dc_sweep`, `noise_spectrum`, and `noise_total`
   contracts, and write solver manifests.
-  `backend: auto` prefers ngspice, can fall back to Xyce for AC/DC/DC
-  sweep/noise and template-only measure scenarios, and keeps Xyce explicit-only
-  for transient, S-parameter, and other specialized analyses until those auto
+  `backend: auto` prefers ngspice, can fall back to Xyce for AC, DC, DC sweep,
+  noise, and template-only measure scenarios, and keeps Xyce explicit-only for
+  transient, S-parameter, and other specialized analyses until those auto
   boundaries are handled separately. The opt-in real-solver conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,
