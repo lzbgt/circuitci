@@ -897,14 +897,26 @@ fn ngspice_sparameter_noise_assertions_evaluate_summary_artifact() {
     fake_executable_with_body(
         fake_path.path(),
         "ngspice",
-        "#!/bin/sh\nprintf 'frequency_hz,nf_db,nfmin_db,rn_ohm,sopt_real,sopt_imaginary\\n1.0e6,2.0,1.0,4.0,0.3,0.4\\n1.0e9,3.0,1.5,6.0,0.1,0.2\\n' > s_parameter_noise_raw.csv\nexit 0\n",
+        "#!/bin/sh\nprintf 'frequency_hz,s_1_1_real,s_1_1_imaginary,s_2_1_real,s_2_1_imaginary,s_1_2_real,s_1_2_imaginary,s_2_2_real,s_2_2_imaginary\\n1.0e6,0.5,0,0.1,0,0.1,0,0.4,0\\n1.0e9,0.2,0,0.15,0,0.15,0,0.3,0\\n' > s_parameters_raw.csv\nprintf 'frequency_hz,nf_db,nfmin_db,rn_ohm,sopt_real,sopt_imaginary\\n1.0e6,2.0,1.0,4.0,0.3,0.4\\n1.0e9,3.0,1.5,6.0,0.1,0.2\\n' > s_parameter_noise_raw.csv\nexit 0\n",
     );
     let project_dir = tempfile::tempdir().unwrap();
     let project_path = write_sparameter_project_with_analysis_extra(
         project_dir.path(),
         "ngspice",
         "port1",
-        r#"        s_parameter_noise_assertions:
+        r#"        s_parameter_assertions:
+          - name: s11_return_loss_floor
+            parameter: s11
+            metric: return_loss_db
+            aggregation: min
+            relation: above
+            threshold: 3.0
+        s_parameter_network_assertions:
+          - name: passive_two_port
+            metric: passivity_max_singular_value
+            relation: below
+            threshold: 1.0
+        s_parameter_noise_assertions:
           - name: nf_limit
             metric: noise_figure_db_max
             relation: below
@@ -943,6 +955,29 @@ fn ngspice_sparameter_noise_assertions_evaluate_summary_artifact() {
             .unwrap();
 
     assert_eq!(report["result"], "fail");
+    let s_parameters_path = artifact_path(&report, "s_parameters.csv");
+    assert_csv_has_header(
+        s_parameters_path,
+        &["s11_mag_db", "s21_mag_db", "s12_mag_db", "s22_mag_db"],
+    );
+    let s_summary_path = artifact_path(&report, "s_parameter_summary.csv");
+    assert_csv_has_header(
+        s_summary_path,
+        &[
+            "min_return_loss_db",
+            "max_return_loss_db",
+            "min_vswr",
+            "max_vswr",
+        ],
+    );
+    let network_summary_path = artifact_path(&report, "s_parameter_network_summary.csv");
+    assert_csv_has_header(
+        network_summary_path,
+        &[
+            "max_passivity_singular_value",
+            "frequency_hz_at_max_passivity",
+        ],
+    );
     let summary_path = artifact_path(&report, "s_parameter_noise_summary.csv");
     assert_csv_has_header(
         summary_path,
@@ -971,10 +1006,21 @@ fn ngspice_sparameter_noise_assertions_evaluate_summary_artifact() {
     let manifest: Value =
         serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
     assert_eq!(manifest["analysis"]["kind"], "s_parameter_noise");
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "s_parameters");
     assert_eq!(
-        manifest["outputs"]["normalized"][0]["kind"],
+        manifest["outputs"]["normalized"][1]["kind"],
         "s_parameter_noise_summary"
     );
+    let waveforms = report["waveforms"].as_array().unwrap();
+    assert!(
+        waveforms
+            .iter()
+            .any(|path| path.as_str().unwrap().ends_with("s_parameters.csv"))
+    );
+    let s_summaries = report["s_parameter_summaries"].as_array().unwrap();
+    assert!(s_summaries.iter().any(|row| row["parameter"] == "s11"));
+    let network_summaries = report["s_parameter_network_summaries"].as_array().unwrap();
+    assert_eq!(network_summaries.len(), 1);
     let summaries = report["s_parameter_noise_summaries"].as_array().unwrap();
     assert_eq!(summaries.len(), 1);
     assert_eq!(summaries[0]["row_count"], 2);

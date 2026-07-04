@@ -459,15 +459,16 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
 8. Optional `analysis.s_parameter_noise_assertions[]` signs off two-port RF
    noise metrics `noise_figure_db_max`, `minimum_noise_figure_db_max`,
    `equivalent_noise_resistance_ohm_max`, and
-   `optimum_source_reflection_magnitude_max`. For pure RF noise assertions,
-   `backend: ngspice` emits RF port voltage sources, runs `.SP ... donoise=1`,
-   retains `s_parameter_noise_raw.csv`, normalizes worst-case NF, NFmin, Rn,
-   and `|SOpt|` into `s_parameter_noise_summary.csv`, records the run in
-   `solver_manifest.json`, and evaluates the assertions against that summary.
-   The saved ngspice manual states that `.SP` with `donoise=1` provides NF,
-   NFmin, Rn, and SOpt for two-port SP noise. Mixed S-parameter term/network
-   assertions still require the Xyce Touchstone path until ngspice S-matrix
-   normalization is added.
+   `optimum_source_reflection_magnitude_max`. When RF noise assertions are
+   present, `backend: ngspice` emits RF port voltage sources, runs
+   `.SP ... donoise=1`, retains `s_parameters_raw.csv` and
+   `s_parameter_noise_raw.csv`, normalizes the S matrix into
+   `s_parameters.csv`, normalizes worst-case NF, NFmin, Rn, and `|SOpt|` into
+   `s_parameter_noise_summary.csv`, records both normalized outputs in
+   `solver_manifest.json`, and evaluates S-parameter term, network, and noise
+   assertions from the same solver run. The saved ngspice manual states that
+   `.SP` exports S-parameter vectors and that `.SP` with `donoise=1` provides
+   NF, NFmin, Rn, and SOpt for two-port SP noise.
 9. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into
@@ -476,11 +477,11 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    "S-Parameter Summary", "S-Parameter Network Summary", and "S-Parameter
    Noise Summary" sections, and GUI Scopes surfaces compact RF term,
    network-quality, and RF-noise rows.
-10. `backend: auto` may select ngspice for pure SP-noise assertions or fail
-   closed when no requested solver is available. `ngspice` without
-   SP-noise-only assertions and `embedded_ngspice` remain conservative for
-   this check and fail closed with backend-planning evidence until those
-   adapters emit the same normalized `s_parameters` contract.
+10. `backend: auto` may select ngspice for SP-noise assertion runs or fail
+   closed when no requested solver is available. `ngspice` without RF-noise
+   assertions and `embedded_ngspice` remain conservative for this check and
+   fail closed with backend-planning evidence until those adapters emit the
+   same normalized `s_parameters` contract for ordinary S-parameter runs.
 
 For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
 

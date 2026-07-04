@@ -320,9 +320,7 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
     };
 
     let has_noise_assertions = !analog.analysis.s_parameter_noise_assertions.is_empty();
-    let has_s_parameter_assertions = !analog.analysis.s_parameter_assertions.is_empty()
-        || !analog.analysis.s_parameter_network_assertions.is_empty();
-    if backend == "ngspice" && has_noise_assertions && !has_s_parameter_assertions {
+    if backend == "ngspice" && has_noise_assertions {
         let mut sweep_measurements = Vec::new();
         for run_plan in run_plans {
             if should_cancel() {
@@ -354,6 +352,49 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
                     for artifact in &run.artifacts {
                         push_artifact(artifacts, artifact);
                     }
+                    push_artifact(waveforms, &run.s_parameters);
+                    match write_s_parameter_summary(&run.s_parameters) {
+                        Ok(summary) => {
+                            push_artifact(artifacts, &summary);
+                            let assertion_measurements =
+                                evaluate_s_parameter_assertions(scenario, &summary, findings);
+                            record_sweep_measurements(
+                                &mut sweep_measurements,
+                                &run_plan,
+                                assertion_measurements,
+                            );
+                        }
+                        Err(message) => {
+                            findings.push(Finding::critical(
+                                SPICE_S_PARAMETER_ANALYSIS,
+                                &scenario.name,
+                                message,
+                            ));
+                        }
+                    }
+                    if !analog.analysis.s_parameter_network_assertions.is_empty() {
+                        match write_s_parameter_network_summary(&run.s_parameters, analog) {
+                            Ok(summary) => {
+                                push_artifact(artifacts, &summary);
+                                let assertion_measurements =
+                                    evaluate_s_parameter_network_assertions(
+                                        scenario, &summary, findings,
+                                    );
+                                record_sweep_measurements(
+                                    &mut sweep_measurements,
+                                    &run_plan,
+                                    assertion_measurements,
+                                );
+                            }
+                            Err(message) => {
+                                findings.push(Finding::critical(
+                                    SPICE_S_PARAMETER_ANALYSIS,
+                                    &scenario.name,
+                                    message,
+                                ));
+                            }
+                        }
+                    }
                     let assertion_measurements = evaluate_s_parameter_noise_assertions(
                         scenario,
                         &run.noise_summary,
@@ -380,7 +421,7 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
                         .insert("selected_backend".to_string(), json!(backend));
                     finding.limit.insert(
                         "required_evidence".to_string(),
-                        json!("ngspice_sp_donoise_nf_nfmin_rn_sopt"),
+                        json!("ngspice_sp_donoise_smatrix_nf_nfmin_rn_sopt"),
                     );
                     tag_corner_finding(&mut finding, &run_plan);
                     finding.suggested_fixes.push(

@@ -10,9 +10,11 @@ use super::analog_runner::{
     rewrite_include_line, run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
+use super::analog_xyce_runner::append_sparameter_reflection_metadata;
 
 pub(super) struct NgspiceSParameterNoiseRun {
     pub(super) artifacts: Vec<PathBuf>,
+    pub(super) s_parameters: PathBuf,
     pub(super) noise_summary: PathBuf,
 }
 
@@ -70,6 +72,8 @@ where
     let mut artifacts = vec![source_netlist.to_path_buf()];
     let wrapper = run_dir.join("circuitci_ngspice_sparameter_noise.cir");
     let log = run_dir.join("ngspice_sparameter_noise.log");
+    let raw_s_parameters = run_dir.join("s_parameters_raw.csv");
+    let s_parameters = run_dir.join("s_parameters.csv");
     let raw = run_dir.join("s_parameter_noise_raw.csv");
     let noise_summary = run_dir.join("s_parameter_noise_summary.csv");
 
@@ -81,6 +85,7 @@ where
         bound,
         scenario,
         source_netlist,
+        Path::new("s_parameters_raw.csv"),
         Path::new("s_parameter_noise_raw.csv"),
         parameter_overrides,
         model_section_overrides,
@@ -145,6 +150,40 @@ where
             artifacts,
         ));
     }
+    if !raw_s_parameters.is_file() {
+        return Err(ngspice_error(
+            format!(
+                "ngspice completed without producing S-parameter export {}.",
+                raw_s_parameters.display()
+            ),
+            artifacts,
+        ));
+    }
+    artifacts.push(raw_s_parameters.clone());
+    let s_csv = ngspice_sparameter_raw_to_csv(
+        &raw_s_parameters,
+        analog.analysis.s_parameter_ports.len(),
+        scenario,
+    )
+    .map_err(|message| {
+        ngspice_error(
+            format!(
+                "Failed to normalize ngspice S-parameter export {}: {message}",
+                raw_s_parameters.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    fs::write(&s_parameters, s_csv).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write ngspice S-parameter CSV {}: {error}",
+                s_parameters.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(s_parameters.clone());
     if !raw.is_file() {
         return Err(ngspice_error(
             format!(
@@ -186,13 +225,20 @@ where
         output: &output,
         parameter_overrides,
         model_section_overrides,
-        raw_outputs: &[("ngspice_s_parameter_noise_raw", &raw)],
-        normalized_outputs: &[("s_parameter_noise_summary", &noise_summary)],
+        raw_outputs: &[
+            ("ngspice_s_parameters_raw", &raw_s_parameters),
+            ("ngspice_s_parameter_noise_raw", &raw),
+        ],
+        normalized_outputs: &[
+            ("s_parameters", &s_parameters),
+            ("s_parameter_noise_summary", &noise_summary),
+        ],
     })
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     artifacts.push(manifest);
     Ok(NgspiceSParameterNoiseRun {
         artifacts,
+        s_parameters,
         noise_summary,
     })
 }
@@ -201,6 +247,7 @@ fn build_ngspice_sparameter_noise_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     netlist: &Path,
+    s_parameters_raw: &Path,
     raw_output: &Path,
     parameter_overrides: &[ParameterOverride],
     model_section_overrides: &[ModelSectionOverride],
@@ -292,9 +339,168 @@ fn build_ngspice_sparameter_noise_wrapper(
         "sp dec {points} {start_hz:.12e} {stop_hz:.12e} 1\n"
     ));
     text.push_str("wrdata ");
+    text.push_str(&s_parameters_raw.to_string_lossy());
+    for (row, column) in sparameter_pairs(analog.analysis.s_parameter_ports.len()) {
+        text.push_str(&format!(" S_{row}_{column}"));
+    }
+    text.push('\n');
+    text.push_str("wrdata ");
     text.push_str(&raw_output.to_string_lossy());
     text.push_str(" NF NFmin Rn SOpt\nquit\n.endc\n.end\n");
     Ok(text)
+}
+
+pub(super) fn ngspice_sparameter_raw_to_csv(
+    raw: &Path,
+    port_count: usize,
+    scenario: &Scenario,
+) -> Result<String, String> {
+    let text = fs::read_to_string(raw).map_err(|error| {
+        format!(
+            "failed to read ngspice S-parameter raw CSV {}: {error}",
+            raw.display()
+        )
+    })?;
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let header = lines
+        .next()
+        .ok_or_else(|| "ngspice S-parameter export is empty".to_string())?;
+    let columns = split_fields(header);
+    let frequency = find_column(&columns, &["frequency_hz", "frequency", "freq"])
+        .ok_or_else(|| "ngspice S-parameter export lacks a frequency column".to_string())?;
+    let pairs = sparameter_pairs(port_count);
+    let mut term_columns = Vec::new();
+    for (row, column) in &pairs {
+        let term = format!("s{row}{column}");
+        let ngspice_term = format!("s_{row}_{column}");
+        term_columns.push(
+            find_sparameter_term_columns(&columns, &term, &ngspice_term).ok_or_else(|| {
+                format!("ngspice S-parameter export lacks {ngspice_term} real/imaginary columns")
+            })?,
+        );
+    }
+
+    let mut output = String::from("frequency_hz,reference_impedance_ohm");
+    for (row, column) in &pairs {
+        output.push_str(&format!(
+            ",s{row}{column}_mag_db,s{row}{column}_phase_deg,s{row}{column}_mag_linear"
+        ));
+    }
+    output.push('\n');
+    let reference_impedance_ohm = scenario
+        .analog
+        .as_ref()
+        .and_then(|analog| analog.analysis.s_parameter_ports.first())
+        .map(|port| port.reference_impedance_ohm)
+        .unwrap_or(50.0);
+    if !reference_impedance_ohm.is_finite() || reference_impedance_ohm <= 0.0 {
+        return Err(format!(
+            "ngspice S-parameter export has invalid reference impedance {reference_impedance_ohm}"
+        ));
+    }
+    let mut row_count = 0usize;
+    let mut previous_frequency = None;
+    for (line_index, line) in lines.enumerate() {
+        let fields = split_fields(line);
+        let frequency_hz = parse_column(&fields, frequency, line_index, "frequency")?;
+        if frequency_hz <= 0.0 {
+            return Err(format!(
+                "ngspice S-parameter row {} has non-positive frequency",
+                line_index + 2
+            ));
+        }
+        if previous_frequency.is_some_and(|previous| frequency_hz <= previous) {
+            return Err(format!(
+                "ngspice S-parameter row {} has duplicate or non-increasing frequency",
+                line_index + 2
+            ));
+        }
+        previous_frequency = Some(frequency_hz);
+        output.push_str(&format!(
+            "{frequency_hz:.12e},{reference_impedance_ohm:.12e}"
+        ));
+        for columns in &term_columns {
+            let real = parse_column(&fields, columns.real, line_index, "S real")?;
+            let imaginary = parse_column(&fields, columns.imaginary, line_index, "S imaginary")?;
+            let magnitude = real.hypot(imaginary);
+            let phase_deg = imaginary.atan2(real).to_degrees();
+            let magnitude_db = if magnitude > 0.0 {
+                20.0 * magnitude.log10()
+            } else {
+                -300.0
+            };
+            output.push_str(&format!(
+                ",{magnitude_db:.12e},{phase_deg:.12e},{magnitude:.12e}"
+            ));
+        }
+        output.push('\n');
+        row_count += 1;
+    }
+    if row_count == 0 {
+        return Err("ngspice S-parameter export has no data rows".to_string());
+    }
+    append_sparameter_reflection_metadata(output, scenario)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SParameterTermColumns {
+    real: usize,
+    imaginary: usize,
+}
+
+fn find_sparameter_term_columns(
+    columns: &[String],
+    compact_term: &str,
+    ngspice_term: &str,
+) -> Option<SParameterTermColumns> {
+    let real_names = [
+        format!("{compact_term}_real"),
+        format!("{compact_term}_re"),
+        format!("{ngspice_term}_real"),
+        format!("{ngspice_term}_re"),
+    ];
+    let imaginary_names = [
+        format!("{compact_term}_imaginary"),
+        format!("{compact_term}_imag"),
+        format!("{compact_term}_im"),
+        format!("{ngspice_term}_imaginary"),
+        format!("{ngspice_term}_imag"),
+        format!("{ngspice_term}_im"),
+    ];
+    if let (Some(real), Some(imaginary)) = (
+        columns
+            .iter()
+            .position(|column| real_names.contains(column)),
+        columns
+            .iter()
+            .position(|column| imaginary_names.contains(column)),
+    ) {
+        return Some(SParameterTermColumns { real, imaginary });
+    }
+    let repeated: Vec<_> = columns
+        .iter()
+        .enumerate()
+        .filter_map(|(index, column)| {
+            (column == compact_term || column == ngspice_term).then_some(index)
+        })
+        .collect();
+    (repeated.len() >= 2).then_some(SParameterTermColumns {
+        real: repeated[0],
+        imaginary: repeated[1],
+    })
+}
+
+fn sparameter_pairs(port_count: usize) -> Vec<(usize, usize)> {
+    if port_count == 2 {
+        return vec![(1, 1), (2, 1), (1, 2), (2, 2)];
+    }
+    let mut pairs = Vec::with_capacity(port_count * port_count);
+    for row in 1..=port_count {
+        for column in 1..=port_count {
+            pairs.push((row, column));
+        }
+    }
+    pairs
 }
 
 pub(super) fn s_parameter_noise_raw_to_summary_csv(raw: &Path) -> Result<String, String> {
@@ -452,7 +658,7 @@ fn update_max(target: &mut (f64, f64), value: f64, frequency_hz: f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::s_parameter_noise_raw_to_summary_csv;
+    use super::{ngspice_sparameter_raw_to_csv, s_parameter_noise_raw_to_summary_csv};
 
     #[test]
     fn s_parameter_noise_raw_summary_accepts_sopt_real_imaginary() {
@@ -470,5 +676,67 @@ mod tests {
         assert!(summary.contains("3.000000000000e0,1.000000000000e9"));
         assert!(summary.contains("6.000000000000e0,1.000000000000e9"));
         assert!(summary.contains("5.000000000000e-1,1.000000000000e6"));
+    }
+
+    #[test]
+    fn ngspice_sparameter_raw_normalizes_explicit_real_imaginary_columns() {
+        let dir = tempfile::tempdir().unwrap();
+        let raw = dir.path().join("s_parameters_raw.csv");
+        std::fs::write(
+            &raw,
+            "frequency_hz,s_1_1_real,s_1_1_imaginary,s_2_1_real,s_2_1_imaginary,s_1_2_real,s_1_2_imaginary,s_2_2_real,s_2_2_imaginary\n1e6,0.5,0,0.1,0,0.1,0,0.4,0\n1e9,0.2,0,0.15,0,0.15,0,0.3,0\n",
+        )
+        .unwrap();
+        let scenario = sparameter_scenario();
+
+        let csv = ngspice_sparameter_raw_to_csv(&raw, 2, &scenario).unwrap();
+
+        assert!(csv.starts_with("frequency_hz,reference_impedance_ohm,s11_mag_db"));
+        assert!(csv.contains("-6.020599913280e0,0.000000000000e0,5.000000000000e-1"));
+        assert!(csv.contains("source_reflection_real"));
+    }
+
+    #[test]
+    fn ngspice_sparameter_raw_normalizes_repeated_complex_vector_headers() {
+        let dir = tempfile::tempdir().unwrap();
+        let raw = dir.path().join("s_parameters_raw.csv");
+        std::fs::write(
+            &raw,
+            "frequency s_1_1 s_1_1 s_2_1 s_2_1 s_1_2 s_1_2 s_2_2 s_2_2\n1e6 0.5 0 0.1 0 0.1 0 0.4 0\n1e9 0.2 0 0.15 0 0.15 0 0.3 0\n",
+        )
+        .unwrap();
+        let scenario = sparameter_scenario();
+
+        let csv = ngspice_sparameter_raw_to_csv(&raw, 2, &scenario).unwrap();
+
+        assert!(csv.contains("s21_mag_db"));
+        assert!(csv.contains("-2.000000000000e1,0.000000000000e0,1.000000000000e-1"));
+    }
+
+    fn sparameter_scenario() -> crate::board_ir::Scenario {
+        serde_yaml_ng::from_str(
+            "name: two_port_sparameter
+type: analog_sparameter
+analog:
+  backend: ngspice
+  netlist_source: generated_from_board
+  model_files: []
+  node_bindings: []
+  pin_bindings: []
+  analysis:
+    type: sparam
+    start_frequency_hz: 1.0e6
+    stop_frequency_hz: 1.0e9
+    points_per_decade: 20
+    s_parameter_source_reflection: { real: 0.2, imaginary: -0.1 }
+    s_parameter_ports:
+      - { name: p1, positive_node: port1, negative_node: '0', reference_impedance_ohm: 50.0 }
+      - { name: p2, positive_node: port2, negative_node: '0', reference_impedance_ohm: 50.0 }
+  stimuli: []
+  probes: []
+  assertions: []
+",
+        )
+        .unwrap()
     }
 }

@@ -1722,7 +1722,7 @@ fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String,
     Ok(output)
 }
 
-fn append_sparameter_reflection_metadata(
+pub(super) fn append_sparameter_reflection_metadata(
     csv: String,
     scenario: &Scenario,
 ) -> Result<String, String> {

@@ -182,9 +182,12 @@ Current analog support:
   Optional `analysis.s_parameter_noise_assertions[]` signs off RF two-port
   noise figure, minimum noise figure, equivalent noise resistance, and optimum
   source reflection magnitude from normalized `s_parameter_noise_summary.csv`
-  evidence emitted by the ngspice `.SP ... donoise=1` adapter. The Xyce
-  Touchstone path still fails closed for these noise metrics because it does
-  not emit NF/NFmin/Rn/SOpt evidence.
+  evidence emitted by the ngspice `.SP ... donoise=1` adapter. That adapter
+  now also normalizes ngspice S-matrix output into retained
+  `s_parameters.csv`, so mixed RF term, network, and noise assertions can run
+  from one ngspice SP-noise solver pass. The Xyce Touchstone path still fails
+  closed for these noise metrics because it does not emit NF/NFmin/Rn/SOpt
+  evidence.
   Reports project retained rows into `s_parameter_summaries[]`, retained
   network-quality rows into `s_parameter_network_summaries[]`, and retained RF
   noise rows into `s_parameter_noise_summaries[]`. Markdown includes

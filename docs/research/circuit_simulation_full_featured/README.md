@@ -740,14 +740,14 @@ The GUI should not become the solver.
   stating that `.SP` with `donoise=1` gives NF, NFmin, Rn, and SOpt for
   two-port SP noise; the Xyce Touchstone adapter does not emit those
   quantities.
-- 2026-07-04: Added the first ngspice RF SP-noise adapter. For pure
-  `s_parameter_noise_assertions[]`, CircuitCI now writes RF-port voltage
-  sources with `portnum`/`z0`, runs `.SP DEC ... 1`, retains
-  `s_parameter_noise_raw.csv`, normalizes worst-case NF, NFmin, Rn, and
-  `|SOpt|` into `s_parameter_noise_summary.csv`, records the solver manifest,
-  and evaluates RF noise assertions against the retained summary. Mixed
-  S-parameter term/network sign-off remains on the existing Xyce Touchstone
-  path until ngspice S-matrix normalization is added.
+- 2026-07-04: Added the first ngspice RF SP-noise adapter. CircuitCI writes
+  RF-port voltage sources with `portnum`/`z0`, runs `.SP DEC ... 1` with
+  `donoise=1`, retains `s_parameters_raw.csv` and
+  `s_parameter_noise_raw.csv`, normalizes the ngspice S matrix into
+  `s_parameters.csv`, normalizes worst-case NF, NFmin, Rn, and `|SOpt|` into
+  `s_parameter_noise_summary.csv`, records both normalized outputs in the
+  solver manifest, and evaluates mixed S-parameter term, network, and RF-noise
+  assertions from the same retained solver run.
 - 2026-07-04: Projected retained RF SP-noise summaries into normal validation
   reports. `s_parameter_noise_summary.csv` now appears as
   `s_parameter_noise_summaries[]`, Markdown reports include an "S-Parameter
