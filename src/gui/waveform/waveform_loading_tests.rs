@@ -154,6 +154,8 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(labels.contains(&"s22 return loss dB"));
     assert!(labels.contains(&"two-port reciprocity error"));
     assert!(labels.contains(&"two-port passivity singular value"));
+    assert!(labels.contains(&"two-port stability delta magnitude"));
+    assert!(labels.contains(&"two-port Rollet K"));
     assert!(labels.contains(&"s21 group delay s"));
     let s11_return_loss = waveform
         .probes
@@ -200,6 +202,24 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(passivity.values[0] > 2.0);
     assert!(passivity.values[1] > 1.5);
     assert_eq!(super::probe_unit(&passivity.label), "ratio");
+    let stability_delta = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port stability delta magnitude")
+        .unwrap();
+    assert!(stability_delta.derived);
+    assert!((stability_delta.values[0] - 0.18).abs() < 1.0e-12);
+    assert!((stability_delta.values[1] - 0.03).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&stability_delta.label), "ratio");
+    let rollet_k = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port Rollet K")
+        .unwrap();
+    assert!(rollet_k.derived);
+    assert!((rollet_k.values[0] - 15.56).abs() < 1.0e-12);
+    assert!((rollet_k.values[1] - 14.515).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&rollet_k.label), "ratio");
     let s21_group_delay = waveform
         .probes
         .iter()
@@ -227,6 +247,8 @@ fn waveform_csv_loader_skips_vswr_when_reflection_magnitude_reaches_unity() {
     assert!(!labels.contains(&"s11 VSWR"));
     assert!(!labels.contains(&"two-port reciprocity error"));
     assert!(!labels.contains(&"two-port passivity singular value"));
+    assert!(!labels.contains(&"two-port stability delta magnitude"));
+    assert!(!labels.contains(&"two-port Rollet K"));
 }
 
 #[test]

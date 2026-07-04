@@ -169,8 +169,8 @@ Current analog support:
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
   the GUI artifact panel shows compact RF term and network sign-off rows, and
   Scopes derives return-loss, insertion-loss, VSWR, group-delay,
-  two-port reciprocity error, and passivity singular-value traces from full
-  `s_parameters.csv` artifacts.
+  two-port reciprocity error, passivity singular-value, stability `|Delta|`,
+  and Rollet K traces from full `s_parameters.csv` artifacts.
   `backend: auto` does not select Xyce for this path until real solver
   conformance coverage is enabled.
 - `analog_transfer_function` scenarios with

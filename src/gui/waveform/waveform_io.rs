@@ -1472,11 +1472,31 @@ fn append_derived_s_parameter_network_probes(
     }
     let mut reciprocity_values = Vec::with_capacity(sample_count);
     let mut passivity_values = Vec::with_capacity(sample_count);
+    let mut stability_delta_values = Vec::with_capacity(sample_count);
+    let mut rollet_k_values = Vec::with_capacity(sample_count);
+    let mut rollet_k_available = true;
     for index in 0..sample_count {
         reciprocity_values.push(s21[index].subtract(s12[index]).magnitude());
         passivity_values.push(two_port_max_singular_value(
             s11[index], s12[index], s21[index], s22[index],
         ));
+        let delta = stability_delta(s11[index], s12[index], s21[index], s22[index]);
+        let delta_magnitude = delta.magnitude();
+        stability_delta_values.push(delta_magnitude);
+        if rollet_k_available {
+            if let Some(rollet_k) = rollet_stability_factor(
+                s11[index],
+                s12[index],
+                s21[index],
+                s22[index],
+                delta_magnitude,
+            ) {
+                rollet_k_values.push(rollet_k);
+            } else {
+                rollet_k_available = false;
+                rollet_k_values.clear();
+            }
+        }
     }
     probes.push(WaveformProbe {
         label: "two-port reciprocity error".to_string(),
@@ -1492,6 +1512,22 @@ fn append_derived_s_parameter_network_probes(
         expression: Some("max singular value(S)".to_string()),
         promoted_quantity: None,
     });
+    probes.push(WaveformProbe {
+        label: "two-port stability delta magnitude".to_string(),
+        values: stability_delta_values,
+        derived: true,
+        expression: Some("|S11*S22 - S12*S21|".to_string()),
+        promoted_quantity: None,
+    });
+    if rollet_k_available && rollet_k_values.len() == sample_count {
+        probes.push(WaveformProbe {
+            label: "two-port Rollet K".to_string(),
+            values: rollet_k_values,
+            derived: true,
+            expression: Some("(1 - |S11|^2 - |S22|^2 + |Delta|^2) / (2*|S12*S21|)".to_string()),
+            promoted_quantity: None,
+        });
+    }
 }
 
 fn s_parameter_complex_values(
@@ -1588,6 +1624,32 @@ fn two_port_max_singular_value(
     let discriminant = (a - d).mul_add(a - d, 4.0 * b.magnitude_squared());
     let largest_eigenvalue = 0.5 * (trace + discriminant.max(0.0).sqrt());
     largest_eigenvalue.max(0.0).sqrt()
+}
+
+fn stability_delta(
+    s11: SParameterComplexValue,
+    s12: SParameterComplexValue,
+    s21: SParameterComplexValue,
+    s22: SParameterComplexValue,
+) -> SParameterComplexValue {
+    s11.multiply(s22).subtract(s12.multiply(s21))
+}
+
+fn rollet_stability_factor(
+    s11: SParameterComplexValue,
+    s12: SParameterComplexValue,
+    s21: SParameterComplexValue,
+    s22: SParameterComplexValue,
+    delta_magnitude: f64,
+) -> Option<f64> {
+    let denominator = 2.0 * s12.multiply(s21).magnitude();
+    if !denominator.is_finite() || denominator <= f64::EPSILON {
+        return None;
+    }
+    let numerator =
+        1.0 - s11.magnitude_squared() - s22.magnitude_squared() + delta_magnitude.powi(2);
+    let rollet_k = numerator / denominator;
+    rollet_k.is_finite().then_some(rollet_k)
 }
 
 fn waveform_x_axis_from_header(header: &str) -> WaveformXAxis {

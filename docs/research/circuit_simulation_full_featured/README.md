@@ -649,9 +649,11 @@ The GUI should not become the solver.
   `|Delta|`, with retained `s_parameter_network_summary.csv` evidence,
   projected report rows in `s_parameter_network_summaries[]`, Markdown output,
   and GUI Scopes network-quality rows. Scopes also derives per-frequency
-  reciprocity error and passivity singular-value traces directly from full
-  `s_parameters.csv` artifacts when S11/S12/S21/S22 magnitude and phase columns
-  are available.
+  reciprocity error, passivity singular-value, stability `|Delta|`, and
+  Rollet K traces directly from full `s_parameters.csv` artifacts when
+  S11/S12/S21/S22 magnitude and phase columns are available. Rollet K traces
+  are skipped when any sweep row has zero `|S12 S21|`, matching the
+  fail-closed assertion contract for unavailable K.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

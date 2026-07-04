@@ -925,6 +925,8 @@ fn probe_unit(label: &str) -> &'static str {
         || normalized.contains("vswr")
         || normalized.contains("reciprocity error")
         || normalized.contains("passivity singular")
+        || normalized.contains("rollet k")
+        || normalized.contains("stability delta")
     {
         "ratio"
     } else if normalized.contains("noise density")
