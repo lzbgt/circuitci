@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::fs;
 use std::process::Command;
 
+const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
 const REAL_XYCE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE";
 
 #[cfg(unix)]
@@ -23,6 +24,21 @@ fn fake_executable_with_body(dir: &std::path::Path, name: &str, body: &str) {
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&path, permissions).unwrap();
+}
+
+#[cfg(unix)]
+fn real_ngspice_sparameter_conformance_enabled() -> bool {
+    if std::env::var(REAL_NGSPICE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!(
+            "skipping real ngspice S-parameter conformance; set {REAL_NGSPICE_CONFORMANCE_ENV}=1 to run"
+        );
+        return false;
+    }
+    if !binary_available("ngspice") {
+        eprintln!("skipping real ngspice S-parameter conformance; ngspice is not on PATH");
+        return false;
+    }
+    true
 }
 
 #[cfg(unix)]
@@ -1374,6 +1390,83 @@ fn sparameter_network_assertion_fails_when_available_gain_lacks_source_reflectio
     let summaries = report["s_parameter_network_summaries"].as_array().unwrap();
     assert!(summaries[0]["source_reflection_real"].is_null());
     assert!(summaries[0]["min_available_gain_db"].is_null());
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_sparameter_conformance_normalizes_smatrix_when_enabled() {
+    if !real_ngspice_sparameter_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project(project_dir.path(), "ngspice", "port1");
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_csv_has_header(
+        waveform_path(&report, "s_parameters.csv"),
+        &[
+            "frequency_hz",
+            "reference_impedance_ohm",
+            "s11_mag_db",
+            "s11_phase_deg",
+            "s11_mag_linear",
+            "s21_mag_db",
+            "s21_phase_deg",
+            "s21_mag_linear",
+        ],
+    );
+    assert_csv_has_header(
+        artifact_path(&report, "s_parameter_summary.csv"),
+        &["parameter", "min_mag_db", "max_mag_linear"],
+    );
+    artifact_path(&report, "s_parameters_raw.csv");
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["selected"], "ngspice");
+    assert_eq!(manifest["analysis"]["kind"], "s_parameter");
+    assert_eq!(
+        manifest["outputs"]["raw"][0]["kind"],
+        "ngspice_s_parameters_raw"
+    );
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "s_parameters");
+    assert_eq!(
+        manifest["outputs"]["normalized"].as_array().unwrap().len(),
+        1
+    );
+    assert!(
+        report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|artifact| artifact.as_str())
+            .all(|artifact| !artifact.ends_with("s_parameter_noise_summary.csv"))
+    );
     assert_report_schema_valid(&report);
 }
 

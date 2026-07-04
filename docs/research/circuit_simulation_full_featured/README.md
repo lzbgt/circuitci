@@ -755,6 +755,12 @@ The GUI should not become the solver.
   `analysis.kind: s_parameter` in `solver_manifest.json`, and evaluates the
   existing term/network summaries and assertions from the same normalized CSV
   contract used by the Xyce Touchstone path.
+- 2026-07-04: Added opt-in real-ngspice conformance coverage for ordinary
+  `.SP` S-matrix normalization through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sparameter_cli`. The
+  live fixture verifies retained `s_parameters_raw.csv`, normalized
+  `s_parameters.csv`, `s_parameter_summary.csv`, and solver-manifest
+  provenance against the installed ngspice executable.
 - 2026-07-04: Projected retained RF SP-noise summaries into normal validation
   reports. `s_parameter_noise_summary.csv` now appears as
   `s_parameter_noise_summaries[]`, Markdown reports include an "S-Parameter

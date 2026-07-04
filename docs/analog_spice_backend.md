@@ -485,6 +485,11 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `embedded_ngspice` remains conservative for this check and fails closed
    with backend-planning evidence until it emits the same normalized
    `s_parameters` contract.
+11. Opt-in real-ngspice conformance coverage is available through
+   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sparameter_cli`;
+   the ordinary `.SP` test skips unless `ngspice` is on `PATH` and verifies
+   real S-matrix normalization, summary projection, and solver-manifest
+   output provenance.
 
 For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
 

@@ -190,7 +190,9 @@ Current analog support:
   `s_parameters.csv`, so mixed RF term, network, and noise assertions can run
   from one ngspice SP-noise solver pass. The Xyce Touchstone path still fails
   closed for these noise metrics because it does not emit NF/NFmin/Rn/SOpt
-  evidence.
+  evidence. Opt-in real-ngspice S-parameter conformance is available through
+  `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sparameter_cli`; it
+  skips unless `ngspice` is on `PATH`.
   Reports project retained rows into `s_parameter_summaries[]`, retained
   network-quality rows into `s_parameter_network_summaries[]`, and retained RF
   noise rows into `s_parameter_noise_summaries[]`. Markdown includes
