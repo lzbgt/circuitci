@@ -126,6 +126,85 @@ fn ti_tps22918_output_current_uses_datasheet_limit() {
 }
 
 #[test]
+fn ti_tps25948_powered_output_requires_enable_evidence() {
+    let report = run_validation("examples/bad_tps25948_missing_enable/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_enabled_state").is_some())
+        .expect("expected TPS25948 EN evidence finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UEFUSE");
+    assert_eq!(failure["net"], "protected_12v");
+    assert_eq!(failure["measured"]["control_state"], "missing");
+    assert_eq!(failure["limit"]["control_pin"], "EN");
+    assert_eq!(failure["limit"]["required_enabled_state"], "high");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tps24751_powered_output_requires_enable_evidence() {
+    let report = run_validation("examples/bad_tps24751_missing_enable/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_enabled_state").is_some())
+        .expect("expected TPS24751 EN evidence finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UHOTSWAP");
+    assert_eq!(failure["net"], "protected_12v");
+    assert_eq!(failure["measured"]["control_state"], "missing");
+    assert_eq!(failure["limit"]["control_pin"], "EN");
+    assert_eq!(failure["limit"]["required_enabled_state"], "high");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tps54331_5v_output_current_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_tps54331_5v_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected TPS54331 output current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UBUCK");
+    assert_eq!(failure["net"], "rail_5v");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 3.5);
+    assert_eq!(failure["limit"]["regulator_max_output_current_A"], 3.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_drv8323_vm_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_drv8323_vm_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["component"] == "UDRV"
+                && finding["limit"]["operating_voltage_maximum_V"] == 60.0
+        })
+        .expect("DRV8323 VM finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 70.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 60.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn microchip_mcp73831_usb_charger_passes_current_budget() {
     let report = run_validation("examples/good_microchip_mcp73831_usb_charger/project.yaml");
     assert_eq!(report["result"], "pass");

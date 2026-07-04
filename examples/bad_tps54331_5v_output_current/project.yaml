@@ -1,0 +1,55 @@
+project:
+  name: bad_tps54331_5v_output_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor/ti/regulators
+  - models
+
+board:
+  components:
+    UBUCK:
+      model: vendor.ti.tps54331_5v
+      part_number: TPS54331DR
+      power_domains:
+        VIN: input_12v
+        VSENSE: rail_5v
+      pins:
+        VIN: input_12v
+        EN: enable
+        PH: switch_node
+        BOOT: boot
+        VSENSE: rail_5v
+        GND: gnd
+    ULOAD:
+      model: fixture.tps54331_high_current_load
+      part_number: HIGH_CURRENT_LOAD
+      power_domains:
+        VDD: rail_5v
+      pins:
+        VDD: rail_5v
+        GND: gnd
+  nets:
+    input_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    enable:
+      kind: digital_or_analog
+    switch_node:
+      kind: digital_or_analog
+    boot:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps54331_5v_output_overcurrent
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

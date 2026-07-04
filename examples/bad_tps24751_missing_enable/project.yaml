@@ -1,0 +1,39 @@
+project:
+  name: bad_tps24751_missing_enable
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/efuses
+
+board:
+  components:
+    UHOTSWAP:
+      model: vendor.ti.tps24751_csd17501q5a_12a_reverse_blocking
+      part_number: TPS24751RUV_CSD17501Q5A
+      power_domains:
+        VIN: input_12v
+        VOUT: protected_12v
+      pins:
+        VIN: input_12v
+        VOUT: protected_12v
+        GND: gnd
+        EN: hotswap_enable
+  nets:
+    input_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+    protected_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+    hotswap_enable:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps24751_missing_enable_evidence
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

@@ -1,0 +1,54 @@
+project:
+  name: bad_drv8323_vm_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/motor_drivers
+
+board:
+  components:
+    UDRV:
+      model: vendor.ti.drv8323
+      part_number: DRV8323RS
+      power_domains:
+        VM: motor_70v
+        DVDD: dvdd_3v3
+      pins:
+        VM: motor_70v
+        DVDD: dvdd_3v3
+        GND: gnd
+        ENABLE: gate_enable
+        NFAULT: nfault
+        SDO: sdo
+        SOA: sense_a
+        SOB: sense_b
+        SOC: sense_c
+  nets:
+    motor_70v:
+      kind: power
+      nominal_voltage: 70.0
+      powered: true
+    dvdd_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gate_enable:
+      kind: digital_or_analog
+    nfault:
+      kind: digital_or_analog
+    sdo:
+      kind: digital_or_analog
+    sense_a:
+      kind: digital_or_analog
+    sense_b:
+      kind: digital_or_analog
+    sense_c:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: drv8323_vm_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

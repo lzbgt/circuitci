@@ -99,6 +99,28 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_tps25948_efuse_observation_passes
+    project: ../examples/good_tps25948_efuse_observation/project.yaml
+    expect: pass
+
+  - id: ti_tps25948_missing_enable_detected
+    project: ../examples/bad_tps25948_missing_enable/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_tps24751_hot_swap_observation_passes
+    project: ../examples/good_tps24751_hot_swap_observation/project.yaml
+    expect: pass
+
+  - id: ti_tps24751_missing_enable_detected
+    project: ../examples/bad_tps24751_missing_enable/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: ti_tpd2eusb30_typical_usb_esd_passes
     project: ../examples/good_ti_tpd2eusb30_usb_esd/project.yaml
     expect: pass
@@ -174,6 +196,17 @@ cases:
 
   - id: ti_tps62162_output_inductance_detected
     project: ../examples/bad_ti_tps62162_3v3_output_inductance/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_tps54331_5v_buck_observation_passes
+    project: ../examples/good_tps54331_5v_buck_observation/project.yaml
+    expect: pass
+
+  - id: ti_tps54331_5v_output_overcurrent_detected
+    project: ../examples/bad_tps54331_5v_output_current/project.yaml
     expect: fail
     required_findings:
       - id: POWER_TREE_VALID
@@ -338,6 +371,17 @@ cases:
 
   - id: ti_thvd1450_vcc_overvoltage_detected
     project: ../examples/bad_ti_thvd1450_vcc_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_drv8323_gate_driver_observation_passes
+    project: ../examples/good_drv8323_gate_driver_observation/project.yaml
+    expect: pass
+
+  - id: ti_drv8323_vm_overvoltage_detected
+    project: ../examples/bad_drv8323_vm_overvoltage/project.yaml
     expect: fail
     required_findings:
       - id: POWER_TREE_VALID
@@ -588,6 +632,18 @@ repairs:
     fixes_findings:
       - POWER_TREE_VALID
 
+  - id: fix_tps25948_missing_enable
+    detects_case: ti_tps25948_missing_enable_detected
+    fixed_case: ti_tps25948_efuse_observation_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps24751_missing_enable
+    detects_case: ti_tps24751_missing_enable_detected
+    fixed_case: ti_tps24751_hot_swap_observation_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
   - id: fix_tpd2eusb30_capacitance_budget
     detects_case: ti_tpd2eusb30_capacitance_budget_detected
     fixed_case: ti_tpd2eusb30_typical_usb_esd_passes
@@ -633,6 +689,12 @@ repairs:
   - id: fix_tps62162_output_inductance
     detects_case: ti_tps62162_output_inductance_detected
     fixed_case: ti_tps62162_typical_buck_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps54331_5v_output_current
+    detects_case: ti_tps54331_5v_output_overcurrent_detected
+    fixed_case: ti_tps54331_5v_buck_observation_passes
     fixes_findings:
       - POWER_TREE_VALID
 
@@ -729,6 +791,12 @@ repairs:
   - id: fix_thvd1450_vcc_overvoltage
     detects_case: ti_thvd1450_vcc_overvoltage_detected
     fixed_case: ti_thvd1450_rs485_transceiver_observation_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_drv8323_vm_overvoltage
+    detects_case: ti_drv8323_vm_overvoltage_detected
+    fixed_case: ti_drv8323_gate_driver_observation_passes
     fixes_findings:
       - POWER_TREE_VALID
 
