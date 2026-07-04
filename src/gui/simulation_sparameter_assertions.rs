@@ -272,6 +272,21 @@ impl CircuitCiApp {
                     row.assertion
                 );
             }
+            SParameterFailureKind::Noise => {
+                self.analog_sparameter_noise_assertion_scenario = row.scenario.clone();
+                self.analog_sparameter_noise_assertion_name = row.assertion.clone();
+                self.analog_sparameter_noise_assertion_metric = row.metric.clone();
+                if let Some(relation) = &row.relation {
+                    self.analog_sparameter_noise_assertion_relation = relation.clone();
+                }
+                if let Some(threshold) = row.threshold {
+                    self.analog_sparameter_noise_assertion_threshold = threshold;
+                }
+                self.status = format!(
+                    "Loaded RF noise check {} from latest report.",
+                    row.assertion
+                );
+            }
         }
     }
 }
@@ -280,6 +295,7 @@ impl CircuitCiApp {
 enum SParameterFailureKind {
     Port,
     Network,
+    Noise,
 }
 
 impl SParameterFailureKind {
@@ -287,6 +303,7 @@ impl SParameterFailureKind {
         match self {
             Self::Port => "port",
             Self::Network => "network",
+            Self::Noise => "noise",
         }
     }
 
@@ -294,6 +311,7 @@ impl SParameterFailureKind {
         match self {
             Self::Port => "Open Port Check",
             Self::Network => "Open Network Check",
+            Self::Noise => "Open Noise Check",
         }
     }
 }
@@ -361,6 +379,20 @@ fn sparameter_failure_row(finding: &Finding) -> Option<SParameterFailureRow> {
             ),
         });
     }
+    if finding.measured.contains_key("s_parameter_noise_summary") {
+        return Some(SParameterFailureRow {
+            kind: SParameterFailureKind::Noise,
+            scenario: finding.scenario.clone(),
+            assertion,
+            parameter: None,
+            metric,
+            aggregation: None,
+            relation,
+            threshold,
+            source_reflection: None,
+            load_reflection: None,
+        });
+    }
     None
 }
 
@@ -397,6 +429,14 @@ fn threshold_limit(
     for relation in ["above", "below"] {
         let key = format!("{relation}_threshold");
         if let Some(threshold) = map.get(&key).and_then(Value::as_f64) {
+            return (Some(relation.to_string()), Some(threshold));
+        }
+        let prefix = format!("{relation}_");
+        if let Some(threshold) = map
+            .iter()
+            .find(|(key, value)| key.starts_with(&prefix) && value.as_f64().is_some())
+            .and_then(|(_, value)| value.as_f64())
+        {
             return (Some(relation.to_string()), Some(threshold));
         }
     }
@@ -774,6 +814,51 @@ mod tests {
         assert_eq!(
             app.analog_sparameter_network_load_reflection_imaginary,
             0.05
+        );
+    }
+
+    #[test]
+    fn sparameter_noise_failure_loads_rf_noise_editor_state() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter noise assertion rf_noise_figure_ceiling failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("rf_noise_figure_ceiling"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("noise_figure_db_max"));
+        finding.measured.insert(
+            "s_parameter_noise_summary".to_string(),
+            json!("out/s_parameter_noise_summary.csv"),
+        );
+        finding.limit.insert("below_dB".to_string(), json!(3.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+        let mut app = CircuitCiApp::default();
+        app.load_sparameter_failure_row(&rows[0]);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, SParameterFailureKind::Noise);
+        assert_eq!(
+            app.analog_sparameter_noise_assertion_scenario,
+            "two_port_sparameter"
+        );
+        assert_eq!(
+            app.analog_sparameter_noise_assertion_name,
+            "rf_noise_figure_ceiling"
+        );
+        assert_eq!(
+            app.analog_sparameter_noise_assertion_metric,
+            "noise_figure_db_max"
+        );
+        assert_eq!(app.analog_sparameter_noise_assertion_relation, "below");
+        assert_eq!(app.analog_sparameter_noise_assertion_threshold, 3.0);
+        assert!(
+            app.status
+                .contains("Loaded RF noise check rf_noise_figure_ceiling")
         );
     }
 

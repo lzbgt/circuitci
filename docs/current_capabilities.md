@@ -190,16 +190,21 @@ Current analog support:
   noise rows into `s_parameter_noise_summaries[]`. Markdown includes
   "S-Parameter Summary", "S-Parameter Network Summary", and "S-Parameter Noise
   Summary" sections, the GUI artifact panel shows compact RF term, network,
-  and RF-noise sign-off rows,
+  and RF-noise sign-off rows.
   Scopes includes an RF Network Check editor for authoring two-port
   reciprocity, passivity, Rollet K, `|Delta|`, MAG, MSG, unilateral-gain, and
   source/load gain sign-off checks without hand-editing YAML, including the
   required source/load reflection coefficient provenance for Gt/Ga/Gp checks.
+  Scopes also includes an RF Noise Check editor for authoring
+  `noise_figure_db_max`, `minimum_noise_figure_db_max`,
+  `equivalent_noise_resistance_ohm_max`, and
+  `optimum_source_reflection_magnitude_max` limits without hand-editing YAML.
   Retained network assertion failures, including
   MAG/MSG/unilateral-gain/source-load-gain limits, can be loaded back into
   that editor from the report artifact panel with metric, relation, threshold,
   and source/load reflection fields hydrated when report metadata provides
-  them,
+  them. Retained RF noise assertion failures can likewise hydrate the RF Noise
+  Check editor with scenario, check name, metric, relation, and threshold.
   and Scopes derives
   return-loss, insertion-loss, VSWR, mismatch-loss,
   group-delay, reflection-impedance,

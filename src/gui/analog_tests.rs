@@ -3,15 +3,17 @@ use super::analog::{
     AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogNoiseScenarioDraft,
     AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
     AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
-    AnalogSParameterReflectionDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
-    append_analog_expression_probe, append_analog_noise_scenario_with_project_path,
-    append_analog_power_probe, append_analog_sparameter_assertion,
-    append_analog_sparameter_network_assertion, append_analog_transient_scenario,
+    AnalogSParameterNoiseAssertionDraft, AnalogSParameterReflectionDraft, AnalogScenarioDraft,
+    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
+    append_analog_assertion, append_analog_current_probe,
+    append_analog_dc_scenario_with_project_path, append_analog_expression_probe,
+    append_analog_noise_scenario_with_project_path, append_analog_power_probe,
+    append_analog_sparameter_assertion, append_analog_sparameter_network_assertion,
+    append_analog_sparameter_noise_assertion, append_analog_transient_scenario,
     append_analog_transient_scenario_with_project_path, append_analog_voltage_probe,
     remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
     unique_analog_sparameter_assertion_name, unique_analog_sparameter_network_assertion_name,
+    unique_analog_sparameter_noise_assertion_name,
 };
 use crate::reports::{Finding, ValidationReport};
 use std::path::Path;
@@ -158,6 +160,16 @@ fn sparameter_assertion_draft() -> AnalogSParameterAssertionDraft {
         aggregation: "min".to_string(),
         relation: "above".to_string(),
         threshold: 10.0,
+    }
+}
+
+fn sparameter_noise_assertion_draft() -> AnalogSParameterNoiseAssertionDraft {
+    AnalogSParameterNoiseAssertionDraft {
+        scenario_name: "two_port_sparameter".to_string(),
+        assertion_name: "rf_noise_figure_ceiling".to_string(),
+        metric: "noise_figure_db_max".to_string(),
+        relation: "below".to_string(),
+        threshold: 3.0,
     }
 }
 
@@ -1023,6 +1035,60 @@ fn unique_sparameter_network_assertion_name_suffixes_collisions() {
     )
     .unwrap();
     assert_eq!(name, "stable_rollet_k_2");
+}
+
+#[test]
+fn append_sparameter_noise_assertion_emits_analysis_yaml() {
+    let edited = append_analog_sparameter_noise_assertion(
+        sparameter_project_yaml(),
+        &sparameter_noise_assertion_draft(),
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertions = &project.scenarios[0]
+        .analog
+        .as_ref()
+        .unwrap()
+        .analysis
+        .s_parameter_noise_assertions;
+    assert_eq!(assertions.len(), 1);
+    assert_eq!(assertions[0].name, "rf_noise_figure_ceiling");
+    assert_eq!(
+        assertions[0].metric,
+        crate::board_ir::AnalogSParameterNoiseMetric::NoiseFigureDbMax
+    );
+    assert_eq!(
+        assertions[0].relation,
+        crate::board_ir::AnalogRelation::Below
+    );
+    assert_eq!(assertions[0].threshold, 3.0);
+}
+
+#[test]
+fn append_sparameter_noise_assertion_rejects_invalid_metric() {
+    let mut draft = sparameter_noise_assertion_draft();
+    draft.metric = "ordinary_noise_density".to_string();
+
+    let error =
+        append_analog_sparameter_noise_assertion(sparameter_project_yaml(), &draft).unwrap_err();
+
+    assert!(error.to_string().contains("Unsupported S-parameter noise"));
+}
+
+#[test]
+fn unique_sparameter_noise_assertion_name_suffixes_collisions() {
+    let edited = append_analog_sparameter_noise_assertion(
+        sparameter_project_yaml(),
+        &sparameter_noise_assertion_draft(),
+    )
+    .unwrap();
+    let name = unique_analog_sparameter_noise_assertion_name(
+        &edited,
+        "two_port_sparameter",
+        "rf_noise_figure_ceiling",
+    )
+    .unwrap();
+    assert_eq!(name, "rf_noise_figure_ceiling_2");
 }
 
 #[test]

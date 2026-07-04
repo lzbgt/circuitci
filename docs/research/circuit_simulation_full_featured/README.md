@@ -754,6 +754,12 @@ The GUI should not become the solver.
   Noise Summary" section, and GUI Scopes shows compact NF/NFmin/Rn/`|SOpt|`
   worst-case rows alongside the existing S-parameter term and network
   summaries.
+- 2026-07-04: Added GUI RF Noise Check authoring and failure-action hydration
+  for `analysis.s_parameter_noise_assertions[]`. Scopes can now create
+  NF/NFmin/Rn/`|SOpt|` sign-off checks for `analog_sparameter` scenarios
+  without hand-editing YAML, and retained RF noise assertion failures reload
+  the editor with scenario, check name, metric, relation, and threshold from
+  report metadata.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter
