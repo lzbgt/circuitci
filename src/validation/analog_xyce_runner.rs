@@ -1598,6 +1598,7 @@ fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String,
     let pairs = touchstone_pairs(port_count);
     let mut frequency_scale = 1.0;
     let mut data_format = "ri".to_string();
+    let mut reference_impedance_ohm = 50.0;
     let mut numbers = Vec::new();
     for line in text.lines() {
         let content = line.split('!').next().unwrap_or("").trim();
@@ -1619,10 +1620,25 @@ fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String,
                     }
                 };
             }
-            for token in tokens {
+            for token in &tokens {
                 let lower = token.to_ascii_lowercase();
                 if matches!(lower.as_str(), "ri" | "ma" | "db") {
                     data_format = lower;
+                }
+            }
+            for pair in tokens.windows(2) {
+                if pair[0].eq_ignore_ascii_case("r") {
+                    reference_impedance_ohm = parse_float(pair[1]).ok_or_else(|| {
+                        format!(
+                            "Touchstone option line declares non-numeric reference impedance {}.",
+                            pair[1]
+                        )
+                    })?;
+                    if !reference_impedance_ohm.is_finite() || reference_impedance_ohm <= 0.0 {
+                        return Err(format!(
+                            "Touchstone reference impedance must be finite and positive, got {reference_impedance_ohm}."
+                        ));
+                    }
                 }
             }
             continue;
@@ -1646,7 +1662,7 @@ fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String,
         ));
     }
 
-    let mut output = String::from("frequency_hz");
+    let mut output = String::from("frequency_hz,reference_impedance_ohm");
     for (row, column) in &pairs {
         output.push_str(&format!(
             ",s{row}{column}_mag_db,s{row}{column}_phase_deg,s{row}{column}_mag_linear"
@@ -1655,7 +1671,9 @@ fn touchstone_to_sparameter_csv(raw: &Path, port_count: usize) -> Result<String,
     output.push('\n');
     for chunk in numbers.chunks(row_width) {
         let frequency_hz = chunk[0] * frequency_scale;
-        output.push_str(&format!("{frequency_hz:.12e}"));
+        output.push_str(&format!(
+            "{frequency_hz:.12e},{reference_impedance_ohm:.12e}"
+        ));
         for (index, _) in pairs.iter().enumerate() {
             let first = chunk[1 + index * 2];
             let second = chunk[1 + index * 2 + 1];
@@ -1742,8 +1760,10 @@ mod tests {
 
         let csv = touchstone_to_sparameter_csv(&raw, 2).unwrap();
 
-        assert!(csv.starts_with("frequency_hz,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db"));
-        assert!(csv.contains("1.000000000000e6,-6.020599913280e0"));
+        assert!(csv.starts_with(
+            "frequency_hz,reference_impedance_ohm,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db"
+        ));
+        assert!(csv.contains("1.000000000000e6,5.000000000000e1,-6.020599913280e0"));
         assert!(csv.contains("6.020599913280e0,0.000000000000e0,2.000000000000e0"));
     }
 }

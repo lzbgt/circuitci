@@ -48,7 +48,11 @@ pub(super) fn validate_s_parameter_assertion_contract(
         }
         if matches!(
             assertion.metric,
-            AnalogSParameterMetric::ReturnLossDb | AnalogSParameterMetric::Vswr
+            AnalogSParameterMetric::ReturnLossDb
+                | AnalogSParameterMetric::Vswr
+                | AnalogSParameterMetric::ImpedanceRealOhm
+                | AnalogSParameterMetric::ImpedanceImagOhm
+                | AnalogSParameterMetric::ImpedanceMagnitudeOhm
         ) && output_port != input_port
         {
             return Err(format!(
@@ -121,11 +125,11 @@ pub(super) fn write_s_parameter_summary(s_parameters: &Path) -> Result<PathBuf, 
         .join("s_parameter_summary.csv");
     let rows = summarize_s_parameters(s_parameters)?;
     let mut text = String::from(
-        "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s\n",
+        "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm\n",
     );
     for row in rows {
         text.push_str(&format!(
-            "{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{}\n",
+            "{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
             row.parameter,
             row.row_count,
             row.min_frequency_hz,
@@ -142,6 +146,12 @@ pub(super) fn write_s_parameter_summary(s_parameters: &Path) -> Result<PathBuf, 
             optional_csv(row.max_vswr),
             optional_csv(row.min_group_delay_s),
             optional_csv(row.max_group_delay_s),
+            optional_csv(row.min_impedance_real_ohm),
+            optional_csv(row.max_impedance_real_ohm),
+            optional_csv(row.min_impedance_imag_ohm),
+            optional_csv(row.max_impedance_imag_ohm),
+            optional_csv(row.min_impedance_magnitude_ohm),
+            optional_csv(row.max_impedance_magnitude_ohm),
         ));
     }
     fs::write(&summary, text).map_err(|error| {
@@ -305,6 +315,7 @@ struct SParameterSample {
     mag_db: f64,
     mag_linear: f64,
     phase_deg: f64,
+    reference_impedance_ohm: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -325,6 +336,12 @@ struct SParameterSummaryRow {
     max_vswr: Option<f64>,
     min_group_delay_s: Option<f64>,
     max_group_delay_s: Option<f64>,
+    min_impedance_real_ohm: Option<f64>,
+    max_impedance_real_ohm: Option<f64>,
+    min_impedance_imag_ohm: Option<f64>,
+    max_impedance_imag_ohm: Option<f64>,
+    min_impedance_magnitude_ohm: Option<f64>,
+    max_impedance_magnitude_ohm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -380,6 +397,9 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
     if header.first() != Some(&"frequency_hz") {
         return Err("S-parameter CSV header must start with frequency_hz.".to_string());
     }
+    let reference_impedance_index = header
+        .iter()
+        .position(|candidate| *candidate == "reference_impedance_ohm");
     let mut parameter_columns = Vec::new();
     for (index, column) in header.iter().enumerate() {
         let Some(parameter) = column.strip_suffix("_mag_db") else {
@@ -426,6 +446,19 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
                 frequency_hz
             ));
         }
+        let reference_impedance_ohm = if let Some(index) = reference_impedance_index {
+            let value = parse_finite_f64(fields[index], "reference_impedance_ohm")?;
+            if value <= 0.0 {
+                return Err(format!(
+                    "S-parameter CSV row {} has non-positive reference impedance {}.",
+                    line_index + 2,
+                    value
+                ));
+            }
+            value
+        } else {
+            50.0
+        };
         for (parameter, mag_db_index, mag_linear_index, phase_index) in &parameter_columns {
             let mag_db = parse_finite_f64(fields[*mag_db_index], parameter)?;
             let mag_linear = parse_finite_f64(fields[*mag_linear_index], parameter)?;
@@ -444,6 +477,7 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
                     mag_db,
                     mag_linear,
                     phase_deg,
+                    reference_impedance_ohm,
                 });
         }
     }
@@ -466,6 +500,9 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
     let mut return_losses = Vec::new();
     let mut insertion_losses = Vec::new();
     let mut vswrs = Vec::new();
+    let mut impedance_real = Vec::new();
+    let mut impedance_imag = Vec::new();
+    let mut impedance_magnitude = Vec::new();
     let group_delays = group_delay_values_s(values);
     let reflection = is_reflection_parameter(&parameter);
     for sample in values {
@@ -479,6 +516,11 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
             return_losses.push(-sample.mag_db);
             if sample.mag_linear < 1.0 {
                 vswrs.push((1.0 + sample.mag_linear) / (1.0 - sample.mag_linear));
+            }
+            if let Some(impedance) = reflection_impedance_ohm(sample) {
+                impedance_real.push(impedance.real);
+                impedance_imag.push(impedance.imaginary);
+                impedance_magnitude.push(impedance.magnitude());
             }
         } else {
             insertion_losses.push(-sample.mag_db);
@@ -501,7 +543,33 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
         max_vswr: finite_max(&vswrs),
         min_group_delay_s: group_delays.as_deref().and_then(finite_min),
         max_group_delay_s: group_delays.as_deref().and_then(finite_max),
+        min_impedance_real_ohm: finite_min(&impedance_real),
+        max_impedance_real_ohm: finite_max(&impedance_real),
+        min_impedance_imag_ohm: finite_min(&impedance_imag),
+        max_impedance_imag_ohm: finite_max(&impedance_imag),
+        min_impedance_magnitude_ohm: finite_min(&impedance_magnitude),
+        max_impedance_magnitude_ohm: finite_max(&impedance_magnitude),
     }
+}
+
+fn reflection_impedance_ohm(sample: &SParameterSample) -> Option<ComplexValue> {
+    let gamma = ComplexValue::from_polar_degrees(sample.mag_linear, sample.phase_deg);
+    let numerator = ComplexValue {
+        real: 1.0 + gamma.real,
+        imaginary: gamma.imaginary,
+    };
+    let denominator = ComplexValue {
+        real: 1.0 - gamma.real,
+        imaginary: -gamma.imaginary,
+    };
+    let impedance = numerator
+        .divide(denominator)?
+        .scale(sample.reference_impedance_ohm);
+    impedance
+        .real
+        .is_finite()
+        .then_some(impedance)
+        .filter(|value| value.imaginary.is_finite())
 }
 
 fn group_delay_values_s(values: &[SParameterSample]) -> Option<Vec<f64>> {
@@ -739,6 +807,24 @@ impl ComplexValue {
         }
     }
 
+    fn divide(self, other: Self) -> Option<Self> {
+        let denominator = other.magnitude_squared();
+        if !denominator.is_finite() || denominator <= f64::EPSILON {
+            return None;
+        }
+        Some(Self {
+            real: (self.real * other.real + self.imaginary * other.imaginary) / denominator,
+            imaginary: (self.imaginary * other.real - self.real * other.imaginary) / denominator,
+        })
+    }
+
+    fn scale(self, factor: f64) -> Self {
+        Self {
+            real: self.real * factor,
+            imaginary: self.imaginary * factor,
+        }
+    }
+
     fn magnitude_squared(self) -> f64 {
         self.real
             .mul_add(self.real, self.imaginary * self.imaginary)
@@ -792,16 +878,16 @@ fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, St
         .next()
         .ok_or_else(|| "S-parameter summary CSV has no header row.".to_string())?;
     if header
-        != "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s"
+        != "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm"
     {
         return Err("S-parameter summary CSV has unexpected header.".to_string());
     }
     let mut rows = Vec::new();
     for (line_index, line) in lines.enumerate() {
         let fields: Vec<_> = line.split(',').map(str::trim).collect();
-        if fields.len() != 16 {
+        if fields.len() != 22 {
             return Err(format!(
-                "S-parameter summary row {} has {} fields, expected 16.",
+                "S-parameter summary row {} has {} fields, expected 22.",
                 line_index + 2,
                 fields.len()
             ));
@@ -828,6 +914,30 @@ fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, St
             max_vswr: parse_optional_finite_f64(fields[13], "max_vswr")?,
             min_group_delay_s: parse_optional_finite_f64(fields[14], "min_group_delay_s")?,
             max_group_delay_s: parse_optional_finite_f64(fields[15], "max_group_delay_s")?,
+            min_impedance_real_ohm: parse_optional_finite_f64(
+                fields[16],
+                "min_impedance_real_ohm",
+            )?,
+            max_impedance_real_ohm: parse_optional_finite_f64(
+                fields[17],
+                "max_impedance_real_ohm",
+            )?,
+            min_impedance_imag_ohm: parse_optional_finite_f64(
+                fields[18],
+                "min_impedance_imag_ohm",
+            )?,
+            max_impedance_imag_ohm: parse_optional_finite_f64(
+                fields[19],
+                "max_impedance_imag_ohm",
+            )?,
+            min_impedance_magnitude_ohm: parse_optional_finite_f64(
+                fields[20],
+                "min_impedance_magnitude_ohm",
+            )?,
+            max_impedance_magnitude_ohm: parse_optional_finite_f64(
+                fields[21],
+                "max_impedance_magnitude_ohm",
+            )?,
         });
     }
     if rows.is_empty() {
@@ -935,6 +1045,24 @@ fn metric_value(assertion: &AnalogSParameterAssertion, row: &SParameterSummaryRo
         }
         (AnalogSParameterMetric::GroupDelayS, AnalogSParameterAggregation::Max) => {
             row.max_group_delay_s
+        }
+        (AnalogSParameterMetric::ImpedanceRealOhm, AnalogSParameterAggregation::Min) => {
+            row.min_impedance_real_ohm
+        }
+        (AnalogSParameterMetric::ImpedanceRealOhm, AnalogSParameterAggregation::Max) => {
+            row.max_impedance_real_ohm
+        }
+        (AnalogSParameterMetric::ImpedanceImagOhm, AnalogSParameterAggregation::Min) => {
+            row.min_impedance_imag_ohm
+        }
+        (AnalogSParameterMetric::ImpedanceImagOhm, AnalogSParameterAggregation::Max) => {
+            row.max_impedance_imag_ohm
+        }
+        (AnalogSParameterMetric::ImpedanceMagnitudeOhm, AnalogSParameterAggregation::Min) => {
+            row.min_impedance_magnitude_ohm
+        }
+        (AnalogSParameterMetric::ImpedanceMagnitudeOhm, AnalogSParameterAggregation::Max) => {
+            row.max_impedance_magnitude_ohm
         }
     }
 }
@@ -1346,6 +1474,9 @@ fn s_parameter_assertion_unit(assertion: &AnalogSParameterAssertion) -> &str {
         AnalogSParameterMetric::MagnitudeLinear => "ratio",
         AnalogSParameterMetric::Vswr => "ratio",
         AnalogSParameterMetric::GroupDelayS => "s",
+        AnalogSParameterMetric::ImpedanceRealOhm
+        | AnalogSParameterMetric::ImpedanceImagOhm
+        | AnalogSParameterMetric::ImpedanceMagnitudeOhm => "ohm",
     })
 }
 
@@ -1361,6 +1492,9 @@ fn metric_name(metric: AnalogSParameterMetric) -> &'static str {
         AnalogSParameterMetric::InsertionLossDb => "insertion_loss_db",
         AnalogSParameterMetric::Vswr => "vswr",
         AnalogSParameterMetric::GroupDelayS => "group_delay_s",
+        AnalogSParameterMetric::ImpedanceRealOhm => "impedance_real_ohm",
+        AnalogSParameterMetric::ImpedanceImagOhm => "impedance_imag_ohm",
+        AnalogSParameterMetric::ImpedanceMagnitudeOhm => "impedance_magnitude_ohm",
     }
 }
 

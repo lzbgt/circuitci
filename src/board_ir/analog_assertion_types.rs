@@ -69,6 +69,9 @@ pub enum AnalogSParameterMetric {
     InsertionLossDb,
     Vswr,
     GroupDelayS,
+    ImpedanceRealOhm,
+    ImpedanceImagOhm,
+    ImpedanceMagnitudeOhm,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]

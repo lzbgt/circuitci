@@ -638,13 +638,13 @@ The GUI should not become the solver.
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized
   `s_parameter_summary.csv` metrics for magnitude, return loss, insertion
-  loss, VSWR, and group delay; validation reports project retained summaries into
-  `s_parameter_summaries[]`, Markdown includes an "S-Parameter Summary"
-  section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
+  loss, VSWR, group delay, and reflection impedance; validation reports project
+  retained summaries into `s_parameter_summaries[]`, Markdown includes an
+  "S-Parameter Summary" section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
   return-loss, insertion-loss, and VSWR traces from full `s_parameters.csv`
   artifacts for visual RF margin review. GUI Scopes also provides an RF Port
   Check editor that writes `s_parameter_assertions[]` for magnitude, return
-  loss, insertion loss, VSWR, and group-delay limits with Board IR validation
+  loss, insertion loss, VSWR, group-delay, and reflection-impedance limits with Board IR validation
   before accepting the YAML edit; retained S-parameter assertion failures can
   be loaded from the report panel back into that editor. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity

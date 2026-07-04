@@ -3225,7 +3225,7 @@
                       "properties": {
                         "name": { "type": "string", "minLength": 1 },
                         "parameter": { "type": "string", "pattern": "^s[1-9][0-9]*[1-9][0-9]*$" },
-                        "metric": { "enum": ["magnitude_db", "magnitude_linear", "return_loss_db", "insertion_loss_db", "vswr", "group_delay_s"] },
+                        "metric": { "enum": ["magnitude_db", "magnitude_linear", "return_loss_db", "insertion_loss_db", "vswr", "group_delay_s", "impedance_real_ohm", "impedance_imag_ohm", "impedance_magnitude_ohm"] },
                         "aggregation": { "enum": ["min", "max"] },
                         "relation": { "enum": ["above", "below"] },
                         "threshold": { "type": "number" },

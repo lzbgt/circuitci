@@ -158,7 +158,7 @@ Current analog support:
   output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
   provenance. Validation derives `s_parameter_summary.csv`; optional
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
-  insertion loss, VSWR, and group-delay limits with fail-closed metric
+  insertion loss, VSWR, group-delay, and reflection-impedance limits with fail-closed metric
   applicability checks. Scopes includes an RF Port Check editor for authoring
   those per-parameter checks without hand-editing YAML, and retained
   S-parameter assertion failures can be loaded back into the RF Port Check

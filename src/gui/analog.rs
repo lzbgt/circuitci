@@ -412,7 +412,15 @@ pub(super) fn append_analog_sparameter_assertion(
             draft.parameter
         );
     }
-    if matches!(draft.metric.as_str(), "return_loss_db" | "vswr") && output_port != input_port {
+    if matches!(
+        draft.metric.as_str(),
+        "return_loss_db"
+            | "vswr"
+            | "impedance_real_ohm"
+            | "impedance_imag_ohm"
+            | "impedance_magnitude_ohm"
+    ) && output_port != input_port
+    {
         anyhow::bail!(
             "S-parameter assertion metric {} requires a reflection parameter such as s11.",
             draft.metric
@@ -1082,6 +1090,9 @@ fn validate_sparameter_assertion_draft(draft: &AnalogSParameterAssertionDraft) -
             | "insertion_loss_db"
             | "vswr"
             | "group_delay_s"
+            | "impedance_real_ohm"
+            | "impedance_imag_ohm"
+            | "impedance_magnitude_ohm"
     ) {
         anyhow::bail!("Unsupported S-parameter assertion metric {}.", draft.metric);
     }

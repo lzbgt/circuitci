@@ -1025,6 +1025,28 @@ fn append_sparameter_assertion_rejects_incompatible_metric_parameter() {
 }
 
 #[test]
+fn append_sparameter_assertion_accepts_impedance_metric_on_reflection_term() {
+    let mut assertion = sparameter_assertion_draft();
+    assertion.assertion_name = "s11_impedance_ceiling".to_string();
+    assertion.metric = "impedance_magnitude_ohm".to_string();
+    assertion.aggregation = "max".to_string();
+    assertion.relation = "below".to_string();
+    assertion.threshold = 75.0;
+    let edited = append_analog_sparameter_assertion(sparameter_project_yaml(), &assertion).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(
+        project.scenarios[0]
+            .analog
+            .as_ref()
+            .unwrap()
+            .analysis
+            .s_parameter_assertions[0]
+            .metric,
+        crate::board_ir::AnalogSParameterMetric::ImpedanceMagnitudeOhm
+    );
+}
+
+#[test]
 fn append_sparameter_network_assertion_rejects_non_sparameter_scenario() {
     let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
     let mut network_draft = sparameter_network_assertion_draft();

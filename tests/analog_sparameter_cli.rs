@@ -257,10 +257,10 @@ fn explicit_xyce_sparameter_backend_normalizes_touchstone_and_manifest() {
     assert_eq!(waveforms.len(), 1);
     assert!(waveforms[0].as_str().unwrap().ends_with("s_parameters.csv"));
     let s_parameters = fs::read_to_string(waveforms[0].as_str().unwrap()).unwrap();
-    assert!(
-        s_parameters.contains("frequency_hz,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db")
-    );
-    assert!(s_parameters.contains("1.000000000000e6,-6.020599913280e0"));
+    assert!(s_parameters.contains(
+        "frequency_hz,reference_impedance_ohm,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db"
+    ));
+    assert!(s_parameters.contains("1.000000000000e6,5.000000000000e1,-6.020599913280e0"));
     assert!(s_parameters.contains("3.521825181114e0,0.000000000000e0,1.500000000000e0"));
     let artifacts = report["artifacts"].as_array().unwrap();
     assert!(
@@ -320,6 +320,13 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
             relation: below
             threshold: 0.0
             unit: dB
+          - name: s11_impedance_ceiling
+            parameter: s11
+            metric: impedance_magnitude_ohm
+            aggregation: max
+            relation: below
+            threshold: 151.0
+            unit: ohm
 "#,
     );
     fs::create_dir_all("out").unwrap();
@@ -353,6 +360,8 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
             "max_vswr",
             "min_group_delay_s",
             "max_group_delay_s",
+            "min_impedance_real_ohm",
+            "max_impedance_magnitude_ohm",
         ],
     );
     let summaries = report["s_parameter_summaries"].as_array().unwrap();
@@ -363,6 +372,8 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
     assert!(s11["min_return_loss_db"].as_f64().unwrap() > 6.0);
     assert!((s11["max_vswr"].as_f64().unwrap() - 3.0).abs() < 1.0e-9);
     assert_eq!(s11["max_group_delay_s"], 0.0);
+    assert!((s11["min_impedance_real_ohm"].as_f64().unwrap() - 75.0).abs() < 1.0e-9);
+    assert!((s11["max_impedance_magnitude_ohm"].as_f64().unwrap() - 150.0).abs() < 1.0e-9);
     let s21 = summaries
         .iter()
         .find(|row| row["parameter"] == "s21")
@@ -370,9 +381,52 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
     assert!(s21["max_insertion_loss_db"].as_f64().unwrap() < 0.0);
     assert!(s21["max_vswr"].is_null());
     assert_eq!(s21["max_group_delay_s"], 0.0);
+    assert!(s21["max_impedance_magnitude_ohm"].is_null());
     let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
     assert!(markdown.contains("## S-Parameter Summary"));
     assert!(markdown.contains("`s11`"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_assertion_fails_on_impedance_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 1.5 0.0 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s11_impedance_ceiling
+            parameter: s11
+            metric: impedance_magnitude_ohm
+            aggregation: max
+            relation: below
+            threshold: 120.0
+            unit: ohm
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "s11_impedance_ceiling")
+        .expect("impedance assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(failure["measured"]["metric"], "impedance_magnitude_ohm");
+    assert_eq!(failure["measured"]["aggregation"], "max");
+    assert!(failure["measured"]["value"].as_f64().unwrap() > 120.0);
+    assert_eq!(failure["limit"]["below_threshold"], 120.0);
     assert_report_schema_valid(&report);
 }
 

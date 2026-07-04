@@ -458,7 +458,7 @@ deferred artifact placeholder for later all-column loading. Loaded full artifact
 The Scopes side dock includes dedicated RF Port Check and RF Network Check
 editors for `analog_sparameter` scenarios; they write
 `analysis.s_parameter_assertions[]` entries for magnitude, return loss,
-insertion loss, VSWR, and group-delay limits, plus two-port
+insertion loss, VSWR, group-delay, and reflection-impedance limits, plus two-port
 `analysis.s_parameter_network_assertions[]` entries for reciprocity,
 passivity, Rollet K, and stability `|Delta|` limits, with YAML validation
 before the edited project is accepted. The same Scopes artifact panel surfaces

@@ -280,7 +280,7 @@ impl CircuitCiApp {
                     } else {
                         for row in &report.s_parameter_summaries {
                             ui.monospace(format!(
-                                "{} rows={} f={:.6e}..{:.6e}Hz mag_db={:.6e}..{:.6e} return_loss={} insertion_loss={} vswr={} group_delay={} artifact={}",
+                                "{} rows={} f={:.6e}..{:.6e}Hz mag_db={:.6e}..{:.6e} return_loss={} insertion_loss={} vswr={} group_delay={} z_mag={} artifact={}",
                                 row.parameter,
                                 row.row_count,
                                 row.min_frequency_hz,
@@ -291,6 +291,7 @@ impl CircuitCiApp {
                                 optional_range_label(row.min_insertion_loss_db, row.max_insertion_loss_db),
                                 optional_range_label(row.min_vswr, row.max_vswr),
                                 optional_range_label(row.min_group_delay_s, row.max_group_delay_s),
+                                optional_range_label(row.min_impedance_magnitude_ohm, row.max_impedance_magnitude_ohm),
                                 row.artifact
                             ));
                         }

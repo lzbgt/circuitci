@@ -400,20 +400,23 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    Board IR nets through `node_bindings`.
 4. Explicit `backend: xyce` generates Xyce port devices, runs `.AC` plus
    `.LIN SPARCALC=1`, captures Touchstone RI output, and normalizes it to
-   `s_parameters.csv` with magnitude, phase, and linear magnitude columns.
-   The raw Touchstone file and normalized CSV are recorded in
+   `s_parameters.csv` with reference impedance, magnitude, phase, and linear
+   magnitude columns. The raw Touchstone file and normalized CSV are recorded in
    `solver_manifest.json`.
 5. CircuitCI derives `s_parameter_summary.csv` from the normalized waveform
    with per-term frequency span, magnitude min/max, return-loss min/max for
    reflection terms, insertion-loss min/max for transmission terms, and VSWR
    min/max for reflection terms whose linear magnitude is below unity. It also
    derives per-term group-delay min/max in seconds from unwrapped phase as
-   `-dphi/domega`.
+   `-dphi/domega`, and reflection impedance real/imaginary/magnitude ranges in
+   ohms from `Z = Z0 * (1 + Gamma) / (1 - Gamma)`.
 6. Optional `analysis.s_parameter_assertions[]` sign off
    `s_parameter_summary.csv` metrics (`magnitude_db`, `magnitude_linear`,
-   `return_loss_db`, `insertion_loss_db`, `vswr`, or `group_delay_s`) using
-   `min`/`max` aggregation plus `above`/`below` limits. `return_loss_db` and
-   `vswr` require reflection terms such as `s11`; `insertion_loss_db` requires
+   `return_loss_db`, `insertion_loss_db`, `vswr`, `group_delay_s`,
+   `impedance_real_ohm`, `impedance_imag_ohm`, or
+   `impedance_magnitude_ohm`) using `min`/`max` aggregation plus
+   `above`/`below` limits. `return_loss_db`, `vswr`, and impedance metrics
+   require reflection terms such as `s11`; `insertion_loss_db` requires
    transmission terms such as `s21`. Missing or unavailable metrics and failed
    limits emit `SPICE_S_PARAMETER_ANALYSIS` findings with retained summary
    provenance.

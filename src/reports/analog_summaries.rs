@@ -79,6 +79,12 @@ pub struct SParameterSummary {
     pub max_vswr: Option<f64>,
     pub min_group_delay_s: Option<f64>,
     pub max_group_delay_s: Option<f64>,
+    pub min_impedance_real_ohm: Option<f64>,
+    pub max_impedance_real_ohm: Option<f64>,
+    pub min_impedance_imag_ohm: Option<f64>,
+    pub max_impedance_imag_ohm: Option<f64>,
+    pub min_impedance_magnitude_ohm: Option<f64>,
+    pub max_impedance_magnitude_ohm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -594,6 +600,12 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
             "max_vswr",
             "min_group_delay_s",
             "max_group_delay_s",
+            "min_impedance_real_ohm",
+            "max_impedance_real_ohm",
+            "min_impedance_imag_ohm",
+            "max_impedance_imag_ohm",
+            "min_impedance_magnitude_ohm",
+            "max_impedance_magnitude_ohm",
         ]
     {
         return Vec::new();
@@ -603,7 +615,7 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
         let Some(fields) = split_csv_fields(line) else {
             continue;
         };
-        if fields.len() != 16 {
+        if fields.len() != 22 {
             continue;
         }
         let Some(row_count) = fields[1].parse::<usize>().ok() else {
@@ -651,6 +663,24 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
         let Some(max_group_delay_s) = parse_optional_finite_f64(&fields[15]) else {
             continue;
         };
+        let Some(min_impedance_real_ohm) = parse_optional_finite_f64(&fields[16]) else {
+            continue;
+        };
+        let Some(max_impedance_real_ohm) = parse_optional_finite_f64(&fields[17]) else {
+            continue;
+        };
+        let Some(min_impedance_imag_ohm) = parse_optional_finite_f64(&fields[18]) else {
+            continue;
+        };
+        let Some(max_impedance_imag_ohm) = parse_optional_finite_f64(&fields[19]) else {
+            continue;
+        };
+        let Some(min_impedance_magnitude_ohm) = parse_optional_finite_f64(&fields[20]) else {
+            continue;
+        };
+        let Some(max_impedance_magnitude_ohm) = parse_optional_finite_f64(&fields[21]) else {
+            continue;
+        };
         rows.push(SParameterSummary {
             artifact: artifact.to_string(),
             parameter: fields[0].clone(),
@@ -669,6 +699,12 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
             max_vswr,
             min_group_delay_s,
             max_group_delay_s,
+            min_impedance_real_ohm,
+            max_impedance_real_ohm,
+            min_impedance_imag_ohm,
+            max_impedance_imag_ohm,
+            min_impedance_magnitude_ohm,
+            max_impedance_magnitude_ohm,
         });
     }
     rows

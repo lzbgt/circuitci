@@ -608,8 +608,12 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 format_optional_range(row.min_insertion_loss_db, row.max_insertion_loss_db);
             let vswr = format_optional_range(row.min_vswr, row.max_vswr);
             let group_delay = format_optional_range(row.min_group_delay_s, row.max_group_delay_s);
+            let impedance_magnitude = format_optional_range(
+                row.min_impedance_magnitude_ohm,
+                row.max_impedance_magnitude_ohm,
+            );
             text.push_str(&format!(
-                "- `{}`: rows={} frequency={:.6e}..{:.6e} Hz magnitude_db={:.6e}..{:.6e} return_loss_db={} insertion_loss_db={} vswr={} group_delay_s={}\n",
+                "- `{}`: rows={} frequency={:.6e}..{:.6e} Hz magnitude_db={:.6e}..{:.6e} return_loss_db={} insertion_loss_db={} vswr={} group_delay_s={} impedance_magnitude_ohm={}\n",
                 row.parameter,
                 row.row_count,
                 row.min_frequency_hz,
@@ -619,7 +623,8 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 return_loss,
                 insertion_loss,
                 vswr,
-                group_delay
+                group_delay,
+                impedance_magnitude
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -1941,7 +1946,7 @@ mod tests {
         let summary = dir.path().join("s_parameter_summary.csv");
         fs::write(
             &summary,
-            "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s\ns11,2,1.000000000000e6,1.000000000000e9,-1.397940008672e1,-6.020599913280e0,2.000000000000e-1,5.000000000000e-1,6.020599913280e0,1.397940008672e1,,,1.500000000000e0,3.000000000000e0,0.000000000000e0,0.000000000000e0\ns21,2,1.000000000000e6,1.000000000000e9,3.521825181114e0,6.020599913280e0,1.500000000000e0,2.000000000000e0,,,-6.020599913280e0,-3.521825181114e0,,,1.000000000000e-9,2.000000000000e-9\n",
+            "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm\ns11,2,1.000000000000e6,1.000000000000e9,-1.397940008672e1,-6.020599913280e0,2.000000000000e-1,5.000000000000e-1,6.020599913280e0,1.397940008672e1,,,1.500000000000e0,3.000000000000e0,0.000000000000e0,0.000000000000e0,7.500000000000e1,1.500000000000e2,0.000000000000e0,0.000000000000e0,7.500000000000e1,1.500000000000e2\ns21,2,1.000000000000e6,1.000000000000e9,3.521825181114e0,6.020599913280e0,1.500000000000e0,2.000000000000e0,,,-6.020599913280e0,-3.521825181114e0,,,1.000000000000e-9,2.000000000000e-9,,,,,,\n",
         )
         .unwrap();
 
@@ -1963,6 +1968,10 @@ mod tests {
         );
         assert_eq!(report.s_parameter_summaries[0].max_vswr, Some(3.0));
         assert_eq!(report.s_parameter_summaries[0].min_group_delay_s, Some(0.0));
+        assert_eq!(
+            report.s_parameter_summaries[0].max_impedance_magnitude_ohm,
+            Some(150.0)
+        );
         assert_eq!(report.s_parameter_summaries[1].parameter, "s21");
         assert_eq!(report.s_parameter_summaries[1].min_return_loss_db, None);
         assert_eq!(
@@ -1974,5 +1983,6 @@ mod tests {
         assert!(markdown.contains("`s11`"));
         assert!(markdown.contains("vswr=1.500000e0..3.000000e0"));
         assert!(markdown.contains("group_delay_s=1.000000e-9..2.000000e-9"));
+        assert!(markdown.contains("impedance_magnitude_ohm=7.500000e1..1.500000e2"));
     }
 }

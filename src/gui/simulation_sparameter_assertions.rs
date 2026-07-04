@@ -163,6 +163,9 @@ impl CircuitCiApp {
                 if ui.button("Group Delay").clicked() {
                     self.apply_sparameter_preset("group_delay_s");
                 }
+                if ui.button("Input Z").clicked() {
+                    self.apply_sparameter_preset("impedance_magnitude_ohm");
+                }
                 if ui.button("Add Port Check").clicked() {
                     self.apply_add_sparameter_assertion();
                 }
@@ -420,6 +423,9 @@ fn sparameter_metric_options() -> &'static [(&'static str, &'static str)] {
         ("insertion_loss_db", "Insertion loss"),
         ("vswr", "VSWR"),
         ("group_delay_s", "Group delay"),
+        ("impedance_real_ohm", "Z real"),
+        ("impedance_imag_ohm", "Z imaginary"),
+        ("impedance_magnitude_ohm", "Z magnitude"),
         ("magnitude_db", "Magnitude dB"),
         ("magnitude_linear", "Magnitude linear"),
     ]
@@ -430,6 +436,9 @@ fn default_sparameter_assertion_name(metric: &str) -> &'static str {
         "insertion_loss_db" => "s21_insertion_loss_ceiling",
         "vswr" => "s11_vswr_ceiling",
         "group_delay_s" => "s21_group_delay_ceiling",
+        "impedance_real_ohm" => "s11_impedance_real_window",
+        "impedance_imag_ohm" => "s11_impedance_imag_ceiling",
+        "impedance_magnitude_ohm" => "s11_impedance_magnitude_ceiling",
         "magnitude_db" => "s21_magnitude_db_ceiling",
         "magnitude_linear" => "s21_magnitude_ceiling",
         _ => "s11_return_loss_floor",
@@ -438,7 +447,11 @@ fn default_sparameter_assertion_name(metric: &str) -> &'static str {
 
 fn default_sparameter_parameter(metric: &str) -> &'static str {
     match metric {
-        "return_loss_db" | "vswr" => "s11",
+        "return_loss_db"
+        | "vswr"
+        | "impedance_real_ohm"
+        | "impedance_imag_ohm"
+        | "impedance_magnitude_ohm" => "s11",
         _ => "s21",
     }
 }
@@ -463,6 +476,8 @@ fn default_sparameter_threshold(metric: &str) -> f64 {
         "insertion_loss_db" => 3.0,
         "vswr" => 2.0,
         "group_delay_s" => 1.0e-9,
+        "impedance_real_ohm" | "impedance_magnitude_ohm" => 75.0,
+        "impedance_imag_ohm" => 25.0,
         "magnitude_linear" => 1.0,
         _ => 0.0,
     }
@@ -471,6 +486,7 @@ fn default_sparameter_threshold(metric: &str) -> f64 {
 fn sparameter_threshold_speed(metric: &str) -> f64 {
     match metric {
         "group_delay_s" => 1.0e-10,
+        "impedance_real_ohm" | "impedance_imag_ohm" | "impedance_magnitude_ohm" => 1.0,
         "magnitude_linear" | "vswr" => 0.01,
         _ => 0.1,
     }
@@ -480,6 +496,7 @@ fn sparameter_threshold_suffix(metric: &str) -> &'static str {
     match metric {
         "return_loss_db" | "insertion_loss_db" | "magnitude_db" => " dB",
         "group_delay_s" => " s",
+        "impedance_real_ohm" | "impedance_imag_ohm" | "impedance_magnitude_ohm" => " ohm",
         _ => " ratio",
     }
 }

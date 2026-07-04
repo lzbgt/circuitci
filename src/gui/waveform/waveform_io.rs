@@ -1068,6 +1068,9 @@ impl WaveformCsvBuilder {
     }
 
     fn ingest_line(&mut self, line_index: usize, line: &str) -> Result<()> {
+        if line.trim_matches('\0').trim().is_empty() {
+            return Ok(());
+        }
         let fields = split_waveform_fields(line);
         if fields.is_empty() {
             return Ok(());
@@ -1190,8 +1193,20 @@ impl WaveformCsvBuilder {
 
     fn apply_header_labels(&mut self, labels: Vec<String>) -> Result<()> {
         if self.selected_probe_labels.is_empty() {
-            self.probe_labels = labels;
-            self.selected_probe_columns = None;
+            let mut columns = Vec::new();
+            let mut selected_labels = Vec::new();
+            for (index, label) in labels.into_iter().enumerate() {
+                if is_waveform_metadata_label(&label) {
+                    continue;
+                }
+                columns.push(index);
+                selected_labels.push(label);
+            }
+            if selected_labels.is_empty() {
+                anyhow::bail!("Waveform header contains no plottable probe columns.");
+            }
+            self.probe_labels = selected_labels;
+            self.selected_probe_columns = Some(columns);
             return Ok(());
         }
         let mut columns = Vec::new();
@@ -1257,6 +1272,10 @@ impl WaveformCsvBuilder {
             probes,
         })
     }
+}
+
+fn is_waveform_metadata_label(label: &str) -> bool {
+    matches!(label.trim(), "reference_impedance_ohm")
 }
 
 fn append_derived_group_delay_probes(probes: &mut Vec<WaveformProbe>, frequency_storage: &[f64]) {

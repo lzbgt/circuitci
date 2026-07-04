@@ -134,7 +134,7 @@ fn waveform_csv_loader_maps_bode_artifacts_to_frequency_axis() {
 #[test]
 fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     let waveform = parse_waveform_csv_text(
-        "frequency_hz,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db,s21_phase_deg,s21_mag_linear,s12_mag_db,s12_phase_deg,s12_mag_linear,s22_mag_db,s22_phase_deg,s22_mag_linear\n1e6,-6.02059991328,0,0.5,6.02059991328,0,2.0,-40,0,0.01,-7.95880017344,0,0.4\n1e9,-13.97940008672,0,0.2,3.52182518111,0,1.5,-33.9794000867,0,0.02,-10.4575749056,0,0.3\n",
+        "frequency_hz,reference_impedance_ohm,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db,s21_phase_deg,s21_mag_linear,s12_mag_db,s12_phase_deg,s12_mag_linear,s22_mag_db,s22_phase_deg,s22_mag_linear\n1e6,50,-6.02059991328,0,0.5,6.02059991328,0,2.0,-40,0,0.01,-7.95880017344,0,0.4\n1e9,50,-13.97940008672,0,0.2,3.52182518111,0,1.5,-33.9794000867,0,0.02,-10.4575749056,0,0.3\n",
         "s_parameters.csv",
     )
     .unwrap();
@@ -147,6 +147,7 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
         .iter()
         .map(|probe| probe.label.as_str())
         .collect();
+    assert!(!labels.contains(&"reference_impedance_ohm"));
     assert!(labels.contains(&"s11 return loss dB"));
     assert!(labels.contains(&"s11 VSWR"));
     assert!(labels.contains(&"s21 insertion loss dB"));
