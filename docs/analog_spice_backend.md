@@ -232,9 +232,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    - `auto` chooses the first available backend that this CircuitCI runtime can
      actually execute and normalize for the requested analysis. In the current
      slice it prefers external ngspice, may use embedded ngspice for transient,
-     and may fall back to Xyce for AC, DC operating-point, DC sweep, ordinary
-     `.NOISE`, and ordinary S-parameter term/network analyses when ngspice is
-     absent.
+     and may fall back to Xyce for transient, AC, DC operating-point, DC sweep,
+     ordinary `.NOISE`, and ordinary S-parameter term/network analyses when
+     ngspice is absent.
    - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
      noise runs through dedicated Xyce wrappers that export CSV-like solver
      data, normalize it to the `transient_waveform`, `ac_bode`,

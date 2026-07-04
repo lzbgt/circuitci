@@ -453,11 +453,11 @@ Current analog support:
   data, normalize it into the `transient_waveform`, `ac_bode`,
   `operating_point`, `dc_sweep`, `noise_spectrum`, and `noise_total`
   contracts, and write solver manifests.
-  `backend: auto` prefers ngspice, can fall back to Xyce for AC, DC, DC sweep,
-  ordinary noise, ordinary S-parameter term/network, and template-only measure
-  scenarios, and keeps Xyce explicit-only for transient and other specialized
-  analyses until those auto boundaries are handled separately. The opt-in
-  real-solver conformance paths are
+  `backend: auto` prefers ngspice, can fall back to Xyce for transient, AC, DC,
+  DC sweep, ordinary noise, ordinary S-parameter term/network, and
+  template-only measure scenarios, and keeps Xyce explicit-only for other
+  specialized analyses until those auto boundaries are handled separately. The
+  opt-in real-solver conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli` for DC

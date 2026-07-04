@@ -633,9 +633,9 @@ The GUI should not become the solver.
   rewritten as templates.
 - 2026-07-04: `backend: auto` now also falls back to Xyce for AC Bode, DC
   operating-point, and ordinary `.NOISE` analyses when ngspice is absent. The
-  selector remains conservative for transient, S-parameter, sensitivity,
-  Fourier, harmonic-balance, and planned periodic/RF paths until those auto
-  boundaries are handled explicitly.
+  selector remains conservative for sensitivity, Fourier, harmonic-balance,
+  and planned periodic/RF paths until those auto boundaries are handled
+  explicitly.
 - 2026-07-04: Extended the same `backend: auto` Xyce fallback to DC sweep.
   Explicit Xyce DC sweep already emitted the same normalized `dc_sweep.csv`
   and `solver_manifest.json` contract and had opt-in real-Xyce conformance, so
@@ -648,6 +648,12 @@ The GUI should not become the solver.
   SP-noise remains evidence-gated: auto-selected Xyce can retain the S matrix,
   but `s_parameter_noise_assertions[]` still fail closed until a backend emits
   normalized `s_parameter_noise_summary.csv`.
+- 2026-07-04: Extended `backend: auto` Xyce fallback to `analog_transient`.
+  The explicit Xyce transient adapter already emits normalized `waveform.csv`
+  / `transient_waveform` artifacts plus `solver_manifest.json`, and the
+  opt-in real-Xyce conformance hook covers transient alongside AC/DC/noise.
+  Auto still prefers external ngspice first, then embedded ngspice for
+  transient when available, and only then falls back to Xyce.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and

@@ -1,9 +1,6 @@
 mod common;
 
-use common::{
-    assert_report_schema_valid, binary_available, run_validation_with_path,
-    run_validation_with_path_and_env,
-};
+use common::{assert_report_schema_valid, binary_available, run_validation_with_path};
 use serde_json::Value;
 use std::fs;
 use std::process::Command;
@@ -80,9 +77,19 @@ fn run_project_with_path(
     project_path: &std::path::Path,
     path: &std::path::Path,
 ) -> (tempfile::TempDir, Value) {
+    run_project_with_path_and_env(project_path, path, &[])
+}
+
+#[cfg(unix)]
+fn run_project_with_path_and_env(
+    project_path: &std::path::Path,
+    path: &std::path::Path,
+    envs: &[(&str, &str)],
+) -> (tempfile::TempDir, Value) {
     fs::create_dir_all("out").unwrap();
     let out_dir = tempfile::tempdir_in("out").unwrap();
-    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_circuitci"));
+    command
         .args([
             "validate",
             project_path.to_str().unwrap(),
@@ -91,9 +98,11 @@ fn run_project_with_path(
             "--output",
             out_dir.path().to_str().unwrap(),
         ])
-        .env("PATH", path)
-        .status()
-        .unwrap();
+        .env("PATH", path);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let status = command.status().unwrap();
     assert!(status.success());
     let report: Value =
         serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
@@ -408,26 +417,38 @@ scenarios:
 
 #[cfg(unix)]
 #[test]
-fn auto_backend_keeps_transient_xyce_explicit_until_selected() {
+fn auto_backend_uses_xyce_for_transient_when_ngspice_is_absent() {
     let fake_path = tempfile::tempdir().unwrap();
-    fake_executable(fake_path.path(), "Xyce");
-    let (_project_dir, project_path) =
-        analog_backend_project("examples/good_mosfet_low_side_switch/project.yaml", "auto");
-
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'TIME,V(out)\\n0,0\\n5e-6,1.2\\n1e-5,1.3\\n' > waveform_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_xyce_rc_project(project_dir.path());
+    use_auto_backend(&project_path);
     let missing_library = fake_path.path().join("missing-libngspice.dylib");
-    let report = run_validation_with_path_and_env(
-        project_path.to_str().unwrap(),
+
+    let (_out_dir, report) = run_project_with_path_and_env(
+        &project_path,
         fake_path.path(),
         &[("CIRCUITCI_LIBNGSPICE", missing_library.to_str().unwrap())],
     );
 
-    assert_eq!(report["result"], "fail");
-    assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    assert_eq!(report["result"], "pass");
+    waveform_path(&report, "waveform.csv");
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["requested"], "auto");
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "transient");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_transient_raw");
     assert_eq!(
-        report["failures"][0]["measured"]["requested_backend"],
-        "auto"
+        manifest["outputs"]["normalized"][0]["kind"],
+        "transient_waveform"
     );
-    assert!(report["waveforms"].as_array().unwrap().is_empty());
     assert_report_schema_valid(&report);
 }
 
