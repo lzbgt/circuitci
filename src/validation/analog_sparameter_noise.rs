@@ -168,6 +168,18 @@ fn push_s_parameter_noise_unavailable_finding(
         "source_evidence".to_string(),
         json!("ngspice .SP donoise=1 provides NF, NFmin, Rn, and SOpt for two-port SP noise; the selected backend did not emit normalized s_parameter_noise_summary evidence for this run."),
     );
+    finding.measured.insert(
+        "adapter_blocker".to_string(),
+        json!("No trusted non-ngspice RF SP-noise backend path with normalized NF, NFmin, Rn, SOpt, raw-output, S-matrix, and solver-manifest artifacts is available in this runtime."),
+    );
+    finding.measured.insert(
+        "evidence_sources".to_string(),
+        json!([
+            "docs/research/circuit_simulation_full_featured/sparameter_noise_backend_evidence.md",
+            "docs/research/circuit_simulation_full_featured/sources/ngspice_manual.xhtml",
+            "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"
+        ]),
+    );
     finding.limit.insert(
         format!(
             "{}_{}",

@@ -471,7 +471,9 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `solver_manifest.json`, and evaluates S-parameter term, network, and noise
    assertions from the same solver run. The saved ngspice manual states that
    `.SP` exports S-parameter vectors and that `.SP` with `donoise=1` provides
-   NF, NFmin, Rn, and SOpt for two-port SP noise.
+   NF, NFmin, Rn, and SOpt for two-port SP noise. Xyce Touchstone/no-SP-noise
+   runs fail closed for these RF-noise assertions with `adapter_blocker` and
+   `evidence_sources[]` metadata pointing to the retained backend evidence.
 9. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into

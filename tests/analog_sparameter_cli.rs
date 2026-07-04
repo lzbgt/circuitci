@@ -923,6 +923,16 @@ fn sparameter_noise_assertions_fail_closed_until_sp_noise_summary_exists() {
             .unwrap()
             .ends_with("s_parameters.csv")
     );
+    assert!(
+        nf_failure["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("No trusted non-ngspice RF SP-noise backend path")
+    );
+    assert_eq!(
+        nf_failure["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/sparameter_noise_backend_evidence.md"
+    );
     assert_eq!(
         nf_failure["limit"]["required_normalized_output"],
         "s_parameter_noise_summary"

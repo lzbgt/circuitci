@@ -758,7 +758,10 @@ The GUI should not become the solver.
   evidence is the saved ngspice manual section in `sources/ngspice_manual.xhtml`
   stating that `.SP` with `donoise=1` gives NF, NFmin, Rn, and SOpt for
   two-port SP noise; the Xyce Touchstone adapter does not emit those
-  quantities.
+  quantities. Non-ngspice/no-SP-noise fail-closed findings now also carry
+  compact `adapter_blocker` and `evidence_sources[]` metadata pointing to
+  `sparameter_noise_backend_evidence.md` and the retained primary source
+  snapshots.
 - 2026-07-04: Added the first ngspice RF SP-noise adapter. CircuitCI writes
   RF-port voltage sources with `portnum`/`z0`, runs `.SP DEC ... 1` with
   `donoise=1`, retains `s_parameters_raw.csv` and
