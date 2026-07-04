@@ -483,7 +483,9 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
 7. Validation reports project retained `sensitivity_summary.csv` rows into
    top-level `sensitivity_summaries[]`, Markdown reports include a
    "Sensitivity Summary" section, and GUI Scopes surfaces compact sensitivity
-   rows in the report artifact panel.
+   rows in the report artifact panel. AC `sensitivity_summary.csv` artifacts
+   are also loadable in Scopes as parameter-grouped frequency-axis magnitude,
+   real, and imaginary sensitivity traces.
 8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
    the test is skipped by default unless the variable is set and `ngspice` is

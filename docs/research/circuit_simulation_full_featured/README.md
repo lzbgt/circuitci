@@ -572,7 +572,9 @@ The GUI should not become the solver.
   fail-closed behavior for missing or ambiguous rows. Validation reports now
   project retained sensitivity rows into `sensitivity_summaries[]`, Markdown
   reports include a "Sensitivity Summary" section, and GUI Scopes shows compact
-  sensitivity rows. Next add non-ngspice planning/adapters.
+  sensitivity rows plus loads AC `sensitivity_summary.csv` as
+  parameter-grouped frequency-axis sensitivity traces. Next add non-ngspice
+  planning/adapters.
 - The first `.FOUR` path is an external-ngspice adapter with a Board IR/schema
   contract for transient-backed harmonic extraction, fundamental
   frequency/window validation, bound output provenance, normalized

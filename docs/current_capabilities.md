@@ -194,8 +194,10 @@ Current analog support:
   imaginary, or magnitude rows by parameter and optional AC frequency, with
   missing or ambiguous rows failing closed. Validation reports project retained
   rows into `sensitivity_summaries[]`, Markdown includes a "Sensitivity Summary"
-  section, and the GUI artifact panel shows compact sensitivity rows. Opt-in
-  real-ngspice conformance coverage is available through
+  section, the GUI artifact panel shows compact sensitivity rows, and Scopes
+  loads AC `sensitivity_summary.csv` rows as parameter-grouped frequency traces
+  for magnitude, real, and imaginary sensitivity. Opt-in real-ngspice
+  conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.

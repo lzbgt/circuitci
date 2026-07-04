@@ -1,5 +1,8 @@
 use super::merge_waveform_load_diagnostics;
-use super::waveform_io::{parse_distortion_spectrum_csv_text, parse_fourier_summary_csv_text};
+use super::waveform_io::{
+    parse_distortion_spectrum_csv_text, parse_fourier_summary_csv_text,
+    parse_sensitivity_summary_csv_text,
+};
 use super::{
     WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformLoadDiagnostic,
     WaveformLoadPreviewFilter, WaveformLoadRequest, WaveformLoadStatusFilter, WaveformTraceColor,
@@ -610,6 +613,69 @@ fn report_loader_includes_fourier_summary_artifacts() {
 }
 
 #[test]
+fn waveform_loader_reads_ac_sensitivity_summary_as_frequency_traces() {
+    let waveform = parse_sensitivity_summary_csv_text(
+        "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude\nV(out),dc,r1,,-2.5e-4,0,2.5e-4\n\"V(out,0)\",ac,r1,1e2,-2.5e-4,1e-6,2.50002e-4\n\"V(out,0)\",ac,r1,1e3,-1.5e-4,2e-6,1.50013e-4\n\"V(out,0)\",ac,r2,1e2,2.5e-4,0,2.5e-4\n\"V(out,0)\",ac,r2,1e3,1.5e-4,-1e-6,1.50003e-4\n",
+        "sensitivity_summary.csv",
+    )
+    .unwrap();
+
+    assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveform.time_s, vec![0.0001, 0.001]);
+    assert_eq!(waveform.probes.len(), 6);
+    assert_eq!(
+        waveform.probes[0].label,
+        "V(out,0) r1 sensitivity magnitude"
+    );
+    assert_eq!(waveform.probes[0].values, vec![2.50002e-4, 1.50013e-4]);
+    assert_eq!(waveform.probes[1].label, "V(out,0) r1 sensitivity real");
+    assert_eq!(waveform.probes[1].values, vec![-2.5e-4, -1.5e-4]);
+    assert_eq!(
+        waveform.probes[2].label,
+        "V(out,0) r1 sensitivity imaginary"
+    );
+    assert_eq!(
+        waveform.probes[3].label,
+        "V(out,0) r2 sensitivity magnitude"
+    );
+}
+
+#[test]
+fn report_loader_includes_sensitivity_summary_artifacts() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let summary_path = temp_dir.path().join("sensitivity_summary.csv");
+    std::fs::write(
+        &summary_path,
+        "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude\nV(out),ac,r1,1e2,-2.5e-4,1e-6,2.50002e-4\nV(out),ac,r1,1e3,-1.5e-4,2e-6,1.50013e-4\n",
+    )
+    .unwrap();
+    let report = crate::reports::ValidationReport::from_parts(
+        "project".to_string(),
+        "default".to_string(),
+        Vec::new(),
+        Vec::new(),
+        vec![summary_path.to_string_lossy().into_owned()],
+        Vec::new(),
+        "validate".to_string(),
+    );
+
+    let (waveforms, diagnostics) =
+        load_report_waveforms_with_progress_and_cancel(&report, |_, _| {}, || false, false)
+            .unwrap();
+
+    assert_eq!(waveforms.len(), 1);
+    assert_eq!(waveforms[0].x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(
+        waveforms[0].probes[0].label,
+        "V(out) r1 sensitivity magnitude"
+    );
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0].loaded);
+    assert_eq!(diagnostics[0].samples, 2);
+    assert_eq!(diagnostics[0].probes, 3);
+}
+
+#[test]
 fn fourier_summary_parser_rejects_duplicate_frequency_rows() {
     let error = parse_fourier_summary_csv_text(
         "output_expression,fundamental_frequency_hz,reported_harmonics,harmonic,frequency_hz,magnitude,phase_deg,normalized_magnitude,normalized_phase_deg,thd_percent,grid_size,interpolation_degree,periods\nV(out),1e5,5,1,1e5,0.3,-20,1,0,18.5,200,1,1\nV(out),1e5,5,2,1e5,0.1,10,0.3,30,18.5,200,1,1\n",
@@ -618,6 +684,17 @@ fn fourier_summary_parser_rejects_duplicate_frequency_rows() {
     .unwrap_err();
 
     assert!(format!("{error:#}").contains("duplicate or non-increasing frequency"));
+}
+
+#[test]
+fn sensitivity_summary_parser_rejects_mismatched_frequency_grids() {
+    let error = parse_sensitivity_summary_csv_text(
+        "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude\nV(out),ac,r1,1e2,-2.5e-4,1e-6,2.50002e-4\nV(out),ac,r2,1e3,1.5e-4,-1e-6,1.50003e-4\n",
+        "sensitivity_summary.csv",
+    )
+    .unwrap_err();
+
+    assert!(format!("{error:#}").contains("same frequency grid"));
 }
 
 #[test]

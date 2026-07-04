@@ -170,7 +170,8 @@ fn report_waveform_paths(report: &ValidationReport) -> Vec<String> {
     for artifact in &report.artifacts {
         if (is_hb_spectrum_path(artifact)
             || is_distortion_spectrum_path(artifact)
-            || is_fourier_summary_path(artifact))
+            || is_fourier_summary_path(artifact)
+            || is_sensitivity_summary_path(artifact))
             && !paths.iter().any(|path| path == artifact)
         {
             paths.push(artifact.clone());
@@ -251,6 +252,12 @@ where
             .with_context(|| format!("Failed to read Fourier summary CSV {}.", path.display()))?;
         return parse_fourier_summary_csv_rows(&text, label);
     }
+    if selected_probe_labels.is_empty() && is_sensitivity_summary_path(label) {
+        let text = std::fs::read_to_string(path).with_context(|| {
+            format!("Failed to read sensitivity summary CSV {}.", path.display())
+        })?;
+        return parse_sensitivity_summary_csv_rows(&text, label);
+    }
 
     let file = std::fs::File::open(path)
         .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
@@ -330,6 +337,11 @@ pub(super) fn parse_fourier_summary_csv_text(text: &str, label: &str) -> Result<
     parse_fourier_summary_csv_rows(text, label)
 }
 
+#[cfg(test)]
+pub(super) fn parse_sensitivity_summary_csv_text(text: &str, label: &str) -> Result<WaveformView> {
+    parse_sensitivity_summary_csv_rows(text, label)
+}
+
 fn is_hb_spectrum_path(path: &str) -> bool {
     path.ends_with("/hb_spectrum.csv") || path == "hb_spectrum.csv"
 }
@@ -340,6 +352,10 @@ fn is_distortion_spectrum_path(path: &str) -> bool {
 
 fn is_fourier_summary_path(path: &str) -> bool {
     path.ends_with("/fourier_summary.csv") || path == "fourier_summary.csv"
+}
+
+fn is_sensitivity_summary_path(path: &str) -> bool {
+    path.ends_with("/sensitivity_summary.csv") || path == "sensitivity_summary.csv"
 }
 
 fn parse_hb_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
@@ -823,6 +839,184 @@ struct FourierSummaryPoint {
     phase_deg: f64,
     normalized_magnitude: f64,
     normalized_phase_deg: f64,
+}
+
+fn parse_sensitivity_summary_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let header = lines
+        .next()
+        .context("Sensitivity summary CSV has no header row.")?;
+    let header = split_distortion_csv_fields(header)?;
+    if header
+        != [
+            "output_expression",
+            "mode",
+            "parameter",
+            "frequency_hz",
+            "sensitivity_real",
+            "sensitivity_imaginary",
+            "sensitivity_magnitude",
+        ]
+    {
+        anyhow::bail!(
+            "Sensitivity summary CSV header must be output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude."
+        );
+    }
+
+    let mut by_parameter: BTreeMap<String, Vec<SensitivitySummaryPoint>> = BTreeMap::new();
+    for (line_index, line) in lines.enumerate() {
+        let fields = split_distortion_csv_fields(line)?;
+        if fields.len() != 7 {
+            anyhow::bail!(
+                "Sensitivity summary row {} has {} fields, expected 7.",
+                line_index + 2,
+                fields.len()
+            );
+        }
+        if fields[1] != "ac" {
+            continue;
+        }
+        if fields[3].is_empty() {
+            continue;
+        }
+        let frequency_hz = parse_waveform_float(&fields[3]).with_context(|| {
+            format!(
+                "Sensitivity summary row {} has invalid frequency.",
+                line_index + 2
+            )
+        })?;
+        if frequency_hz <= 0.0 {
+            anyhow::bail!(
+                "Sensitivity summary row {} has non-positive AC frequency {}.",
+                line_index + 2,
+                frequency_hz
+            );
+        }
+        let sensitivity_real = parse_waveform_float(&fields[4]).with_context(|| {
+            format!(
+                "Sensitivity summary row {} has invalid real sensitivity.",
+                line_index + 2
+            )
+        })?;
+        let sensitivity_imaginary = parse_waveform_float(&fields[5]).with_context(|| {
+            format!(
+                "Sensitivity summary row {} has invalid imaginary sensitivity.",
+                line_index + 2
+            )
+        })?;
+        let sensitivity_magnitude = parse_waveform_float(&fields[6]).with_context(|| {
+            format!(
+                "Sensitivity summary row {} has invalid magnitude sensitivity.",
+                line_index + 2
+            )
+        })?;
+        by_parameter
+            .entry(fields[2].clone())
+            .or_default()
+            .push(SensitivitySummaryPoint {
+                output_expression: fields[0].clone(),
+                frequency_hz,
+                sensitivity_real,
+                sensitivity_imaginary,
+                sensitivity_magnitude,
+            });
+    }
+
+    if by_parameter.is_empty() {
+        anyhow::bail!("Sensitivity summary CSV has no AC frequency rows.");
+    }
+    let mut time_s = Vec::new();
+    let mut probes = Vec::new();
+    let mut reference_expression: Option<String> = None;
+    for (parameter, mut rows) in by_parameter {
+        rows.sort_by(|left, right| left.frequency_hz.total_cmp(&right.frequency_hz));
+        let expression = rows[0].output_expression.clone();
+        if rows.iter().any(|row| row.output_expression != expression) {
+            anyhow::bail!(
+                "Sensitivity summary parameter {parameter} must contain one output expression."
+            );
+        }
+        match &reference_expression {
+            Some(reference) if reference != &expression => {
+                anyhow::bail!("Sensitivity summary CSV must contain one output expression.")
+            }
+            Some(_) => {}
+            None => reference_expression = Some(expression.clone()),
+        }
+        let parameter_frequencies: Vec<_> = rows.iter().map(|row| row.frequency_hz).collect();
+        if time_s.is_empty() {
+            let mut previous = None;
+            for frequency_hz in &parameter_frequencies {
+                if previous.is_some_and(|value| frequency_hz <= &value) {
+                    anyhow::bail!(
+                        "Sensitivity summary parameter {parameter} has duplicate or non-increasing frequency {frequency_hz}."
+                    );
+                }
+                previous = Some(*frequency_hz);
+            }
+            time_s = parameter_frequencies
+                .iter()
+                .map(|frequency_hz| {
+                    WaveformXAxis::FrequencyHz.storage_from_csv_value(*frequency_hz)
+                })
+                .collect();
+        } else {
+            let comparable: Vec<_> = parameter_frequencies
+                .iter()
+                .map(|frequency_hz| {
+                    WaveformXAxis::FrequencyHz.storage_from_csv_value(*frequency_hz)
+                })
+                .collect();
+            if comparable != time_s {
+                anyhow::bail!("Sensitivity summary parameters must share the same frequency grid.");
+            }
+        }
+        let mut real_values = Vec::with_capacity(rows.len());
+        let mut imaginary_values = Vec::with_capacity(rows.len());
+        let mut magnitude_values = Vec::with_capacity(rows.len());
+        for row in rows {
+            real_values.push(row.sensitivity_real);
+            imaginary_values.push(row.sensitivity_imaginary);
+            magnitude_values.push(row.sensitivity_magnitude);
+        }
+        probes.push(WaveformProbe {
+            label: format!("{expression} {parameter} sensitivity magnitude"),
+            values: magnitude_values,
+            derived: false,
+            expression: Some(expression.clone()),
+            promoted_quantity: waveform_probe_quantity_from_label(&expression),
+        });
+        probes.push(WaveformProbe {
+            label: format!("{expression} {parameter} sensitivity real"),
+            values: real_values,
+            derived: false,
+            expression: Some(expression.clone()),
+            promoted_quantity: waveform_probe_quantity_from_label(&expression),
+        });
+        probes.push(WaveformProbe {
+            label: format!("{expression} {parameter} sensitivity imaginary"),
+            values: imaginary_values,
+            derived: false,
+            expression: Some(expression),
+            promoted_quantity: None,
+        });
+    }
+
+    Ok(WaveformView {
+        label: label.to_string(),
+        path: label.to_string(),
+        x_axis: WaveformXAxis::FrequencyHz,
+        time_s,
+        probes,
+    })
+}
+
+struct SensitivitySummaryPoint {
+    output_expression: String,
+    frequency_hz: f64,
+    sensitivity_real: f64,
+    sensitivity_imaginary: f64,
+    sensitivity_magnitude: f64,
 }
 
 fn split_distortion_csv_fields(line: &str) -> Result<Vec<String>> {
