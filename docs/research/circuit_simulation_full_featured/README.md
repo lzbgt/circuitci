@@ -589,7 +589,9 @@ The GUI should not become the solver.
   `sensitivity_summaries[]`, Markdown reports include a "Sensitivity Summary"
   section, and GUI Scopes shows compact sensitivity rows plus loads AC
   `sensitivity_summary.csv` as parameter-grouped frequency-axis sensitivity
-  traces. Opt-in real-Xyce `.SENS` conformance is covered by
+  traces. The GUI Sensitivity Check editor now authors these assertions and
+  hydrates failed sensitivity findings back into the editor. Opt-in real-Xyce
+  `.SENS` conformance is covered by
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sensitivity_cli`, which
   skips unless `Xyce` or `xyce` is on `PATH`.
 - The `.FOUR` path has external-ngspice and explicit-Xyce adapters with a

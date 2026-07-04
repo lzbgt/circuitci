@@ -20,6 +20,7 @@ mod analog_models;
 mod analog_noise_presets;
 mod analog_overview;
 mod analog_run_setup;
+mod analog_sensitivity_assertions;
 mod analog_stimulus;
 mod analog_sweep_monte_carlo;
 mod analog_sweeps;
@@ -49,6 +50,7 @@ mod simulation_forms;
 mod simulation_fourier_assertions;
 mod simulation_hb_assertions;
 mod simulation_probe_assertions;
+mod simulation_sensitivity_assertions;
 mod simulation_sparameter_assertions;
 mod simulation_sparameter_network_assertions;
 mod simulation_sparameter_noise_assertions;
@@ -419,6 +421,14 @@ pub struct CircuitCiApp {
     analog_sparameter_noise_assertion_metric: String,
     analog_sparameter_noise_assertion_relation: String,
     analog_sparameter_noise_assertion_threshold: f64,
+    analog_sensitivity_assertion_scenario: String,
+    analog_sensitivity_assertion_name: String,
+    analog_sensitivity_assertion_parameter: String,
+    analog_sensitivity_assertion_frequency_enabled: bool,
+    analog_sensitivity_assertion_frequency_hz: f64,
+    analog_sensitivity_assertion_metric: String,
+    analog_sensitivity_assertion_relation: String,
+    analog_sensitivity_assertion_threshold: f64,
     analog_fourier_assertion_scenario: String,
     analog_fourier_assertion_name: String,
     analog_fourier_assertion_harmonic: u32,
@@ -713,6 +723,14 @@ impl Default for CircuitCiApp {
             analog_sparameter_noise_assertion_metric: "noise_figure_db_max".to_string(),
             analog_sparameter_noise_assertion_relation: "below".to_string(),
             analog_sparameter_noise_assertion_threshold: 3.0,
+            analog_sensitivity_assertion_scenario: String::new(),
+            analog_sensitivity_assertion_name: "sensitivity_magnitude_ceiling".to_string(),
+            analog_sensitivity_assertion_parameter: "R1".to_string(),
+            analog_sensitivity_assertion_frequency_enabled: false,
+            analog_sensitivity_assertion_frequency_hz: 100.0,
+            analog_sensitivity_assertion_metric: "sensitivity_magnitude".to_string(),
+            analog_sensitivity_assertion_relation: "below".to_string(),
+            analog_sensitivity_assertion_threshold: 0.001,
             analog_fourier_assertion_scenario: String::new(),
             analog_fourier_assertion_name: "h1_magnitude_floor".to_string(),
             analog_fourier_assertion_harmonic: 1,

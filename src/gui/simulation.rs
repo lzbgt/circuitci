@@ -164,6 +164,7 @@ impl CircuitCiApp {
                 self.sparameter_assertion_editor(ui);
                 self.sparameter_network_assertion_editor(ui);
                 self.sparameter_noise_assertion_editor(ui);
+                self.sensitivity_assertion_editor(ui);
                 self.fourier_assertion_editor(ui);
                 self.hb_assertion_editor(ui);
             }
@@ -234,6 +235,8 @@ impl CircuitCiApp {
                             ));
                         }
                     }
+                    ui.add_space(8.0);
+                    self.sensitivity_assertion_failure_actions(ui, &report.failures);
                     ui.add_space(8.0);
                     ui.label("Sensitivity summary");
                     if report.sensitivity_summaries.is_empty() {

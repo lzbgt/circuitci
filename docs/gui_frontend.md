@@ -426,6 +426,9 @@ The Fourier Check editor writes `analysis.fourier_assertions[]` for harmonic
 magnitude, normalized magnitude, phase, normalized phase, or THD-percent
 limits, and Fourier report failure actions load the failed check back into that
 editor.
+The Sensitivity Check editor writes `analysis.sensitivity_assertions[]` for
+real, imaginary, or magnitude limits by parameter and optional AC frequency, and
+sensitivity report failure actions load the failed check back into that editor.
 The HB Check editor writes `analysis.hb_assertions[]` for magnitude, phase,
 real, or imaginary limits at a selected harmonic, and HB report failure actions
 load the failed check back into that editor.

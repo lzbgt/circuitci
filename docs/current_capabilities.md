@@ -292,7 +292,10 @@ Current analog support:
   rows into `sensitivity_summaries[]`, Markdown includes a "Sensitivity Summary"
   section, the GUI artifact panel shows compact sensitivity rows, and Scopes
   loads AC `sensitivity_summary.csv` rows as parameter-grouped frequency traces
-  for magnitude, real, and imaginary sensitivity. Opt-in real-ngspice
+  for magnitude, real, and imaginary sensitivity. The GUI Sensitivity Check
+  editor authors `analysis.sensitivity_assertions[]` entries and failure
+  actions hydrate parameter, optional frequency, metric, relation, and threshold
+  from retained findings. Opt-in real-ngspice
   conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
   it skips unless `ngspice` is on `PATH`. Opt-in real-Xyce `.SENS`
