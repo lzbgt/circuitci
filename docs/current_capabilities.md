@@ -279,7 +279,10 @@ Current analog support:
   rows. The GUI Pole-Zero Check editor authors
   `analysis.pole_zero_assertions[]` entries and failure actions hydrate root
   kind, optional root index, metric, relation, and threshold from retained
-  findings. Opt-in real-ngspice conformance coverage is available through
+  findings. The GUI Run Setup editor can author generated-from-board
+  `analog_pole_zero` scenarios from a selected output probe net, input source,
+  and extraction mode. Opt-in real-ngspice conformance coverage is available
+  through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce remains fail-closed with
   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
@@ -516,7 +519,7 @@ Current analog support:
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
 - Generated Board IR transient, AC/Bode, DC operating-point, DC sweep,
-  transfer-function, and noise decks for passives, independent
+  transfer-function, pole-zero, and noise decks for passives, independent
   voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
   GUI run-setup creation can author generated AC/Bode observations with
   frequency limits and an initial voltage probe; generated AC sources emit a
@@ -524,6 +527,8 @@ Current analog support:
   point. GUI-created generated DC observations write `.op` analysis setups
   with an initial voltage probe; GUI-created generated transfer-function
   observations write `.tf` analysis setups with selected output/input source
+  metadata; GUI-created generated pole-zero observations write `.pz` analysis
+  setups with selected output/reference/input-source and extraction-mode
   metadata; GUI-created generated noise observations write `.noise` analysis
   setups with output/input noise probes. All generated
   observation types reuse the same ground/node/component editors.

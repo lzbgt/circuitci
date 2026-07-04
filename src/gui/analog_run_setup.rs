@@ -54,6 +54,16 @@ pub(super) struct AnalogTransferFunctionScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogPoleZeroScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) input_source: String,
+    pub(super) mode: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -196,6 +206,26 @@ pub(super) fn append_analog_transfer_function_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_pole_zero_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogPoleZeroScenarioDraft,
+) -> Result<String> {
+    validate_pole_zero_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::PoleZero {
+            input_source: draft.input_source.trim().to_string(),
+            mode: draft.mode.trim().to_string(),
+        },
+    )
+}
+
 pub(super) fn append_analog_noise_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -319,6 +349,13 @@ fn append_generated_analog_scenario_with_project_path(
             "Transfer-function input source {input_source} must be an included voltage or current source component."
         );
     }
+    if let GeneratedAnalogScenarioKind::PoleZero { input_source, .. } = &kind
+        && !noise_input_source_exists(&project, input_source)
+    {
+        anyhow::bail!(
+            "Pole-zero input source {input_source} must be an included voltage or current source component."
+        );
+    }
     if project.board.components.is_empty() {
         anyhow::bail!("Generated analog scenarios require at least one component.");
     }
@@ -439,6 +476,22 @@ fn validate_transfer_function_draft(draft: &AnalogTransferFunctionScenarioDraft)
         anyhow::bail!("Probe net must not be blank.");
     }
     Ok(())
+}
+
+fn validate_pole_zero_draft(draft: &AnalogPoleZeroScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    validated_id(&draft.input_source, "pole-zero input source")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    match draft.mode.trim() {
+        "poles" | "zeros" | "poles_and_zeros" => Ok(()),
+        _ => anyhow::bail!("Pole-zero mode must be poles, zeros, or poles_and_zeros."),
+    }
 }
 
 fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
@@ -647,6 +700,10 @@ enum GeneratedAnalogScenarioKind {
     TransferFunction {
         input_source: String,
     },
+    PoleZero {
+        input_source: String,
+        mode: String,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -675,6 +732,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Dc => "analog_dc",
             Self::DcSweep { .. } => "analog_dc_sweep",
             Self::TransferFunction { .. } => "analog_transfer_function",
+            Self::PoleZero { .. } => "analog_pole_zero",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -688,6 +746,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Dc => "SPICE_DC_ANALYSIS",
             Self::DcSweep { .. } => "SPICE_DC_SWEEP_ANALYSIS",
             Self::TransferFunction { .. } => "SPICE_TRANSFER_FUNCTION_ANALYSIS",
+            Self::PoleZero { .. } => "SPICE_POLE_ZERO_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -798,6 +857,25 @@ fn analog_block(
                 &format!("V({output_node})"),
             );
             insert_string(&mut analysis, "transfer_input_source", input_source);
+        }
+        GeneratedAnalogScenarioKind::PoleZero { input_source, mode } => {
+            insert_string(&mut analysis, "type", "pz");
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Pole-zero output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            let reference_node = node_by_net.get(scenario.ground_net).with_context(|| {
+                format!(
+                    "Pole-zero reference net {} has no generated SPICE node.",
+                    scenario.ground_net
+                )
+            })?;
+            insert_string(&mut analysis, "pole_zero_output_node", output_node);
+            insert_string(&mut analysis, "pole_zero_reference_node", reference_node);
+            insert_string(&mut analysis, "pole_zero_input_source", input_source);
+            insert_string(&mut analysis, "pole_zero_mode", mode);
         }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,

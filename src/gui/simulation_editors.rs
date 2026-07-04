@@ -2,13 +2,14 @@ use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
     AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogFourierScenarioDraft,
-    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogScenarioDraft,
-    AnalogTransferFunctionScenarioDraft, analog_scenario_choices,
+    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
+    AnalogScenarioDraft, AnalogTransferFunctionScenarioDraft, analog_scenario_choices,
     append_analog_ac_scenario_with_project_path, append_analog_assertion,
     append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
     append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
+    append_analog_pole_zero_scenario_with_project_path,
     append_analog_transfer_function_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, replace_analog_assertion,
 };
@@ -56,6 +57,7 @@ impl CircuitCiApp {
                             "dc" => "DC operating point",
                             "dc_sweep" => "DC sweep",
                             "tf" => "Transfer Function",
+                            "pz" => "Pole-Zero",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -86,6 +88,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "tf".to_string(),
                                 "Transfer Function",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "pz".to_string(),
+                                "Pole-Zero",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -244,6 +251,23 @@ impl CircuitCiApp {
                             &mut self.analog_transfer_function_input_source,
                             snapshot,
                         );
+                        ui.end_row();
+                    } else if self.analog_run_setup_kind == "pz" {
+                        initialize_noise_source_default(
+                            snapshot,
+                            &mut self.analog_pole_zero_input_source,
+                        );
+                        ui.label("Input source");
+                        noise_source_combo(
+                            ui,
+                            "analog_pole_zero_input_source",
+                            &mut self.analog_pole_zero_input_source,
+                            snapshot,
+                        );
+                        ui.end_row();
+
+                        ui.label("Mode");
+                        pole_zero_mode_combo(ui, &mut self.analog_pole_zero_mode);
                         ui.end_row();
                     } else if self.analog_run_setup_kind == "dc_sweep" {
                         initialize_noise_source_default(snapshot, &mut self.analog_dc_sweep_source);
@@ -1383,6 +1407,29 @@ impl CircuitCiApp {
                 ),
                 Err(error) => self.record_error(error),
             }
+        } else if self.analog_run_setup_kind == "pz" {
+            let draft = AnalogPoleZeroScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                input_source: self.analog_pole_zero_input_source.clone(),
+                mode: self.analog_pole_zero_mode.clone(),
+            };
+            match append_analog_pole_zero_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Pole-zero run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
         } else if self.analog_run_setup_kind == "noise" {
             let input_probe = format!("{}_input", self.analog_probe_name.trim());
             let draft = AnalogNoiseScenarioDraft {
@@ -1828,6 +1875,25 @@ fn noise_source_combo(
             {
                 ui.selectable_value(selected, component.id.clone(), &component.id);
             }
+        });
+}
+
+fn pole_zero_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
+    if !matches!(selected.as_str(), "poles" | "zeros" | "poles_and_zeros") {
+        *selected = "poles_and_zeros".to_string();
+    }
+    let selected_label = match selected.as_str() {
+        "poles" => "Poles",
+        "zeros" => "Zeros",
+        "poles_and_zeros" => "Poles and zeros",
+        _ => "Poles and zeros",
+    };
+    egui::ComboBox::from_id_salt("analog_pole_zero_mode")
+        .selected_text(selected_label)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected, "poles".to_string(), "Poles");
+            ui.selectable_value(selected, "zeros".to_string(), "Zeros");
+            ui.selectable_value(selected, "poles_and_zeros".to_string(), "Poles and zeros");
         });
 }
 

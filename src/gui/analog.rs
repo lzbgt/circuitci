@@ -14,12 +14,13 @@ pub(super) use super::analog_run_setup::append_analog_transient_scenario;
 pub(super) use super::analog_run_setup::{
     AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft,
     AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft,
-    AnalogScenarioDraft, AnalogTransferFunctionScenarioDraft,
+    AnalogPoleZeroScenarioDraft, AnalogScenarioDraft, AnalogTransferFunctionScenarioDraft,
     append_analog_ac_scenario_with_project_path, append_analog_dc_scenario_with_project_path,
     append_analog_dc_sweep_scenario_with_project_path,
     append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
+    append_analog_pole_zero_scenario_with_project_path,
     append_analog_transfer_function_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path,
 };

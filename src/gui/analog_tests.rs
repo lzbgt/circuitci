@@ -1,16 +1,17 @@
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
     AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogExpressionProbeDraft,
-    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPowerProbeDraft,
-    AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
-    AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
+    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
+    AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
+    AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
     AnalogSParameterNoiseAssertionDraft, AnalogSParameterReflectionDraft, AnalogScenarioDraft,
     AnalogTransferFunctionScenarioDraft, analog_probe_assertion_summaries,
     append_analog_ac_scenario_with_project_path, append_analog_assertion,
     append_analog_current_probe, append_analog_dc_scenario_with_project_path,
     append_analog_dc_sweep_scenario_with_project_path, append_analog_expression_probe,
     append_analog_harmonic_balance_scenario_with_project_path,
-    append_analog_noise_scenario_with_project_path, append_analog_power_probe,
+    append_analog_noise_scenario_with_project_path,
+    append_analog_pole_zero_scenario_with_project_path, append_analog_power_probe,
     append_analog_sparameter_assertion, append_analog_sparameter_network_assertion,
     append_analog_sparameter_noise_assertion,
     append_analog_transfer_function_scenario_with_project_path, append_analog_transient_scenario,
@@ -464,6 +465,102 @@ fn append_analog_transfer_function_scenario_rejects_missing_source() {
         error
             .to_string()
             .contains("Transfer-function input source MISSING_SOURCE")
+    );
+}
+
+#[test]
+fn append_analog_pole_zero_scenario_emits_valid_yaml() {
+    let draft = AnalogPoleZeroScenarioDraft {
+        name: "gui_pz".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_pz".to_string(),
+        input_source: "V1".to_string(),
+        mode: "poles_and_zeros".to_string(),
+    };
+    let edited = append_analog_pole_zero_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_pz/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(project.scenarios.len(), 1);
+    let scenario = &project.scenarios[0];
+    assert_eq!(scenario.name, "gui_pz");
+    assert_eq!(scenario.scenario_type, "analog_pole_zero");
+    assert_eq!(
+        scenario.checks,
+        vec!["SPICE_POLE_ZERO_ANALYSIS".to_string()]
+    );
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
+    assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
+    assert_eq!(analog.analysis.analysis_type, "pz");
+    assert_eq!(
+        analog.analysis.pole_zero_output_node.as_deref(),
+        Some("out")
+    );
+    assert_eq!(
+        analog.analysis.pole_zero_reference_node.as_deref(),
+        Some("0")
+    );
+    assert_eq!(
+        analog.analysis.pole_zero_input_source.as_deref(),
+        Some("V1")
+    );
+    assert_eq!(
+        analog.analysis.pole_zero_mode.as_deref(),
+        Some("poles_and_zeros")
+    );
+    assert_eq!(analog.probes[0].name, "out_pz");
+    assert_eq!(analog.probes[0].expression, "V(out)");
+    assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_pole_zero_scenario_rejects_missing_source() {
+    let draft = AnalogPoleZeroScenarioDraft {
+        name: "gui_pz".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_pz".to_string(),
+        input_source: "MISSING_SOURCE".to_string(),
+        mode: "poles_and_zeros".to_string(),
+    };
+    let error = append_analog_pole_zero_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_pz/project.yaml"),
+        &draft,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("Pole-zero input source MISSING_SOURCE")
+    );
+}
+
+#[test]
+fn append_analog_pole_zero_scenario_rejects_unknown_mode() {
+    let draft = AnalogPoleZeroScenarioDraft {
+        name: "gui_pz".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_pz".to_string(),
+        input_source: "V1".to_string(),
+        mode: "dominant".to_string(),
+    };
+    let error = append_analog_pole_zero_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_pz/project.yaml"),
+        &draft,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("Pole-zero mode must be poles, zeros, or poles_and_zeros")
     );
 }
 

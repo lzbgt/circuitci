@@ -577,7 +577,9 @@ The GUI should not become the solver.
   root-level sign-off assertions over real rad/s, imaginary rad/s, or derived
   frequency, report projection into `pole_zero_summaries[]`, Markdown output,
   GUI report-panel surfacing, and a GUI Pole-Zero Check editor that authors and
-  hydrates failed `pole_zero_assertions[]`. Xyce remains fail-closed with
+  hydrates failed `pole_zero_assertions[]`. The GUI Run Setup editor now authors
+  generated-from-board `analog_pole_zero` scenarios from a selected output probe
+  net, input source, and extraction mode. Xyce remains fail-closed with
   structured
   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
   7.8 primary docs do not document a native `.PZ` command or equivalent result
