@@ -231,10 +231,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
      adapter. It must not resolve to a partial in-house SPICE subset.
    - `auto` chooses the first available backend that this CircuitCI runtime can
      actually execute and normalize for the requested analysis. In the current
-     slice that means external ngspice for transient, AC, DC, and noise, plus
-     embedded ngspice for transient only. Xyce is intentionally not selected by
-     `auto` until coverage is complete enough to avoid surprising backend
-     changes.
+     slice it prefers external ngspice, may use embedded ngspice for transient,
+     and may fall back to Xyce for AC, DC operating-point, and ordinary
+     `.NOISE` analyses when ngspice is absent.
    - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
      noise runs through dedicated Xyce wrappers that export CSV-like solver
      data, normalize it to the `transient_waveform`, `ac_bode`,
@@ -302,8 +301,8 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
    `points_per_decade` in `1..=1000` when provided.
 3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
    still fails closed until an equivalent AC export path is implemented.
-   `backend: auto` does not select Xyce for this analysis until real-Xyce
-   conformance coverage is enabled.
+   `backend: auto` prefers ngspice and falls back to Xyce for AC when ngspice
+   is absent.
 4. Expand bounded run-input sweeps exactly like transient validation,
    including raw `.param`, generated component-value parameters, model-library
    sections, and `.temp` corners.
@@ -327,8 +326,8 @@ For a scenario with check `SPICE_DC_ANALYSIS`:
 2. Require `analysis.type: op` and at least one operating-point probe.
 3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
    still fails closed until an equivalent operating-point export path is
-   implemented. `backend: auto` does not select Xyce for this analysis until
-   real-Xyce conformance coverage is enabled.
+   implemented. `backend: auto` prefers ngspice and falls back to Xyce for DC
+   operating-point when ngspice is absent.
 4. Expand bounded run-input sweeps exactly like transient and AC validation.
 5. Run `.op`/`.OP`, export operating-point probe data, and normalize it to
    `operating_point.csv` with one column per declared probe.
@@ -371,8 +370,8 @@ For a scenario with check `SPICE_NOISE_ANALYSIS`:
    `noise_reference_node` creates a differential output expression.
 3. Select external `ngspice` or explicit `backend: xyce`; embedded ngspice
    still fails closed until an equivalent noise export path is implemented.
-   `backend: auto` does not select Xyce for this analysis until real-Xyce
-   conformance coverage is enabled.
+   `backend: auto` prefers ngspice and falls back to Xyce for ordinary `.NOISE`
+   when ngspice is absent.
 4. Expand bounded run-input sweeps exactly like transient, AC, and DC
    validation. Temperature corners still emit `.temp`; model-section and
    generated component-value corners still produce isolated run directories.

@@ -631,6 +631,11 @@ The GUI should not become the solver.
   Raw `measure_statements[]` still do not auto-translate to Xyce; they retain
   the fail-closed backend-specific syntax blocker and should use ngspice or be
   rewritten as templates.
+- 2026-07-04: `backend: auto` now also falls back to Xyce for AC Bode, DC
+  operating-point, and ordinary `.NOISE` analyses when ngspice is absent. The
+  selector remains conservative for transient, DC sweep, S-parameter,
+  sensitivity, Fourier, harmonic-balance, and planned periodic/RF paths until
+  those auto boundaries are handled explicitly.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and

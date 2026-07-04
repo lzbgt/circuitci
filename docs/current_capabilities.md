@@ -104,7 +104,8 @@ Current analog support:
   sweep-corner and worst-corner compare pinning for Bode corners. The GUI
   observation-check editor also offers
   low-pass, unity-gain, and loop-stability Bode check presets that write
-  normal AC assertions.
+  normal AC assertions. `backend: auto` prefers ngspice and falls back to Xyce
+  for AC when ngspice is absent.
 - `analog_dc` scenarios with `SPICE_DC_ANALYSIS` for external-ngspice and
   explicit-Xyce operating-point exports. DC runs write normalized
   `operating_point.csv` artifacts with one column per declared probe, support
@@ -118,6 +119,8 @@ Current analog support:
   compact DC table with scenario, sweep, corner, probe, value, worst-corner
   marker, artifact label, Copy CSV/Markdown actions, and report-bundle export,
   so bias runs are inspectable and preservable without opening report files.
+  `backend: auto` prefers ngspice and falls back to Xyce for DC operating-point
+  when ngspice is absent.
 - `analog_dc_sweep` scenarios with `SPICE_DC_SWEEP_ANALYSIS` for swept-source
   DC transfer curves. The Board IR/schema can declare `analysis.type:
   dc_sweep`, a swept independent source, start/stop/step values, probes, and
@@ -150,6 +153,8 @@ Current analog support:
   worst-case, percentile margin rows, and CSV/Markdown copy actions, and are
   exported beside scope evidence when the loaded report contains sampled
   tolerance runs; bundle HTML preserves the same distribution strips.
+  `backend: auto` prefers ngspice and falls back to Xyce for ordinary `.NOISE`
+  when ngspice is absent.
 - `analog_sparameter` scenarios with `SPICE_S_PARAMETER_ANALYSIS` for
   frequency-domain S-parameter simulation contracts. The Board IR/schema can
   declare `analysis.type: sparam`, frequency bounds, points per decade, and
@@ -444,8 +449,10 @@ Current analog support:
   data, normalize it into the `transient_waveform`, `ac_bode`,
   `operating_point`, `dc_sweep`, `noise_spectrum`, and `noise_total`
   contracts, and write solver manifests.
-  `backend: auto` keeps Xyce explicit-only until real-Xyce conformance coverage
-  is enabled. The opt-in real-solver conformance paths are
+  `backend: auto` prefers ngspice, can fall back to Xyce for AC/DC/noise and
+  template-only measure scenarios, and keeps Xyce explicit-only for transient,
+  DC sweep, S-parameter, and other specialized analyses until those auto
+  boundaries are handled separately. The opt-in real-solver conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli` for DC

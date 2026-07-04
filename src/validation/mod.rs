@@ -28,6 +28,7 @@ mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
 mod analog_pss_spice;
 mod analog_runner;
+mod analog_runtime_feature;
 mod analog_sensitivity_assertions;
 mod analog_sensitivity_runner;
 mod analog_sensitivity_spice;

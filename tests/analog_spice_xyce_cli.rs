@@ -75,6 +75,32 @@ fn run_real_xyce_project(project_path: &std::path::Path) -> (tempfile::TempDir, 
     (out_dir, report)
 }
 
+#[cfg(unix)]
+fn run_project_with_path(
+    project_path: &std::path::Path,
+    path: &std::path::Path,
+) -> (tempfile::TempDir, Value) {
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    (out_dir, report)
+}
+
 fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
     report["artifacts"]
         .as_array()
@@ -83,6 +109,12 @@ fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
         .filter_map(|artifact| artifact.as_str())
         .find(|artifact| artifact.ends_with(suffix))
         .unwrap_or_else(|| panic!("missing artifact ending with {suffix}"))
+}
+
+fn use_auto_backend(project_path: &std::path::Path) {
+    let text = fs::read_to_string(project_path).unwrap();
+    assert!(text.contains("backend: xyce"));
+    fs::write(project_path, text.replace("backend: xyce", "backend: auto")).unwrap();
 }
 
 fn waveform_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
@@ -376,7 +408,7 @@ scenarios:
 
 #[cfg(unix)]
 #[test]
-fn auto_backend_keeps_xyce_explicit_until_conformance_enabled() {
+fn auto_backend_keeps_transient_xyce_explicit_until_selected() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "Xyce");
     let (_project_dir, project_path) =
@@ -397,6 +429,86 @@ fn auto_backend_keeps_xyce_explicit_until_conformance_enabled() {
     );
     assert!(report["waveforms"].as_array().unwrap().is_empty());
     assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn auto_backend_uses_xyce_for_ac_dc_noise_when_ngspice_is_absent() {
+    let fake_path = tempfile::tempdir().unwrap();
+    let project_root = tempfile::tempdir().unwrap();
+
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'FREQ,Re(V(out)),Im(V(out))\\n10,1,0\\n1000,0.5,0\\n100000,0.01,0\\n' > ac_raw.csv\nexit 0\n",
+    );
+    let ac_dir = project_root.path().join("ac");
+    fs::create_dir_all(&ac_dir).unwrap();
+    let ac_project = write_xyce_ac_rc_project(&ac_dir);
+    use_auto_backend(&ac_project);
+    let (_ac_out, ac_report) = run_project_with_path(&ac_project, fake_path.path());
+    assert_eq!(ac_report["result"], "pass");
+    let ac_manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&ac_report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(ac_manifest["backend"]["requested"], "auto");
+    assert_eq!(ac_manifest["backend"]["selected"], "Xyce");
+    assert_eq!(ac_manifest["analysis"]["kind"], "ac");
+    assert_eq!(ac_manifest["outputs"]["normalized"][0]["kind"], "ac_bode");
+    assert_report_schema_valid(&ac_report);
+
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'INDEX,V(vin),V(midpoint)\\n0,5.0,2.5\\n' > operating_point_raw.csv\nexit 0\n",
+    );
+    let dc_dir = project_root.path().join("dc");
+    fs::create_dir_all(&dc_dir).unwrap();
+    let dc_project = write_xyce_dc_divider_project(&dc_dir);
+    use_auto_backend(&dc_project);
+    let (_dc_out, dc_report) = run_project_with_path(&dc_project, fake_path.path());
+    assert_eq!(dc_report["result"], "pass");
+    let dc_manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&dc_report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(dc_manifest["backend"]["requested"], "auto");
+    assert_eq!(dc_manifest["backend"]["selected"], "Xyce");
+    assert_eq!(dc_manifest["analysis"]["kind"], "operating_point");
+    assert_eq!(
+        dc_manifest["outputs"]["normalized"][0]["kind"],
+        "operating_point"
+    );
+    assert_report_schema_valid(&dc_report);
+
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'FREQ,ONOISE,INOISE\\n10,2e-9,4e-9\\n1000,3e-9,6e-9\\n100000,1e-9,2e-9\\n' > noise_spectrum_raw.csv\nprintf 'INDEX,ONOISE_TOTAL,INOISE_TOTAL\\n0,2e-7,4e-7\\n' > noise_total_raw.csv\nexit 0\n",
+    );
+    let noise_dir = project_root.path().join("noise");
+    fs::create_dir_all(&noise_dir).unwrap();
+    let noise_project = write_xyce_noise_divider_project(&noise_dir);
+    use_auto_backend(&noise_project);
+    let (_noise_out, noise_report) = run_project_with_path(&noise_project, fake_path.path());
+    assert_eq!(noise_report["result"], "pass");
+    let noise_manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&noise_report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(noise_manifest["backend"]["requested"], "auto");
+    assert_eq!(noise_manifest["backend"]["selected"], "Xyce");
+    assert_eq!(noise_manifest["analysis"]["kind"], "noise");
+    assert_eq!(
+        noise_manifest["outputs"]["normalized"][0]["kind"],
+        "noise_spectrum"
+    );
+    assert_eq!(
+        noise_manifest["outputs"]["normalized"][1]["kind"],
+        "noise_total"
+    );
+    assert_report_schema_valid(&noise_report);
 }
 
 #[cfg(unix)]

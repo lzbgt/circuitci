@@ -16,6 +16,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use super::analog_model_compiler::solver_manifest_model_file_provenance;
+pub(super) use super::analog_runtime_feature::AnalogRuntimeFeature;
 use super::analog_util::{
     absolute_path, executable_on_path, normalize_artifact_path, normalize_path, safe_artifact_name,
 };
@@ -1432,32 +1433,6 @@ pub(super) enum BackendSelection {
     EmbeddedUnavailable,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AnalogRuntimeFeature {
-    Transient,
-    Ac,
-    Dc,
-    DcSweep,
-    Noise,
-    SParameter,
-    TransferFunction,
-    PoleZero,
-    Sensitivity,
-    Distortion,
-    Fourier,
-    HarmonicBalance,
-    PeriodicSteadyState,
-    PhaseNoise,
-    PeriodicAc,
-    Measure,
-}
-
-impl AnalogRuntimeFeature {
-    fn supports_embedded_ngspice(self) -> bool {
-        matches!(self, Self::Transient)
-    }
-}
-
 pub(super) fn external_backend_unavailable(
     scenario_name: &str,
     backend: &AnalogBackend,
@@ -1527,6 +1502,10 @@ pub(super) fn select_backend_for_feature(
                 BackendSelection::Selected("ngspice")
             } else if feature.supports_embedded_ngspice() && embedded_ngspice_available() {
                 BackendSelection::Selected("embedded_ngspice")
+            } else if feature.supports_auto_xyce() && executable_on_path("Xyce") {
+                BackendSelection::Selected("Xyce")
+            } else if feature.supports_auto_xyce() && executable_on_path("xyce") {
+                BackendSelection::Selected("xyce")
             } else {
                 BackendSelection::Unavailable
             }
