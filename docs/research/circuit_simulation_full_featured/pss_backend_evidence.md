@@ -5,6 +5,10 @@ Date: 2026-07-04
 This note records the backend decision for CircuitCI `analog_pss` support.
 Original sources are stored in
 `docs/research/circuit_simulation_full_featured/sources/`.
+PSS fail-closed findings carry compact `adapter_blocker` and
+`evidence_sources[]` metadata pointing to this note and the retained primary
+sources, so reports and GUI views explain the blocked backend boundary without
+requiring raw JSON inspection.
 
 ## Source Artifacts
 

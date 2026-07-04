@@ -237,6 +237,16 @@ fn harmonic_balance_contract_is_schema_valid_and_fails_closed_with_planning_evid
         report["failures"][0]["limit"]["implemented_backend"],
         "xyce"
     );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("Only the explicit Xyce harmonic-balance adapter")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][1],
+        "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"
+    );
     assert_report_schema_valid(&report);
 }
 

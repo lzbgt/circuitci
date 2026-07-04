@@ -348,7 +348,8 @@ Current analog support:
   through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_harmonic_balance_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
   `backend: auto`, `ngspice`, and embedded ngspice remain fail-closed with
-  planning evidence until they emit the same normalized output contract.
+  planning evidence plus `adapter_blocker` and `evidence_sources[]` metadata
+  until they emit the same normalized output contract.
 - `analog_pss` scenarios with `SPICE_PSS_ANALYSIS` for periodic steady-state
   and oscillator evidence planning. The Board IR/schema can declare
   `analysis.type: pss`, `pss_mode: driven|autonomous`,
@@ -362,7 +363,9 @@ Current analog support:
   planning finding records the current source-backed backend boundary: Xyce HB
   is not treated as PSS, ngspice PSS remains experimental/build-gated without a
   trusted normalized artifact contract here, and SPICE OPUS `ssse` needs a
-  dedicated adapter plus conformance before use.
+  dedicated adapter plus conformance before use. The finding also carries
+  compact `adapter_blocker` and `evidence_sources[]` metadata pointing to the
+  retained PSS backend evidence.
 - `analog_phase_noise` scenarios with `SPICE_PHASE_NOISE_ANALYSIS` for
   oscillator phase-noise evidence planning. The Board IR/schema can declare
   `analysis.type: phase_noise`, `phase_noise_mode: driven|autonomous`,

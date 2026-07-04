@@ -722,7 +722,8 @@ For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
    it skips unless `Xyce` or `xyce` is on `PATH`.
 8. `backend: auto`, `ngspice`, and `embedded_ngspice` remain fail-closed with
-   backend-planning evidence until those adapters emit the same normalized
+   backend-planning evidence plus structured `adapter_blocker` and
+   `evidence_sources[]` metadata until those adapters emit the same normalized
    `hb_spectrum` contract.
 
 For a scenario with check `SPICE_PSS_ANALYSIS`:
@@ -752,7 +753,11 @@ For a scenario with check `SPICE_PSS_ANALYSIS`:
    trusted normalized output contract in this runtime; SPICE OPUS `ssse`
    shooting is documented but has no CircuitCI backend adapter or conformance
    suite.
-7. CircuitCI must not present PSS or oscillator sign-off as passing until a
+7. The planning finding includes a compact `adapter_blocker` string and
+   `evidence_sources[]` paths to retained PSS backend notes and primary
+   sources, so reports explain the blocked backend boundary without requiring
+   raw JSON inspection.
+8. CircuitCI must not present PSS or oscillator sign-off as passing until a
    trusted backend emits the normalized waveform, spectrum, convergence, raw
    solver output, and solver-manifest artifacts.
 

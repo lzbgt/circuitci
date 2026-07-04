@@ -160,6 +160,16 @@ fn pss_contract_is_schema_valid_and_fails_closed_with_planning_evidence() {
         report["failures"][0]["measured"]["backend_research_status"]["qucs_copen"],
         "papers_document_psssolver_pnsolver_but_no_public_source_repository_or_adapter_contract_found"
     );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("No trusted open-source PSS solver chain")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/pss_backend_evidence.md"
+    );
     assert_report_schema_valid(&report);
 }
 

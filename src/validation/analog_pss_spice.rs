@@ -392,6 +392,19 @@ pub(super) fn validate_spice_pss_with_progress<F, C>(
             "qucs_copen": "papers_document_psssolver_pnsolver_but_no_public_source_repository_or_adapter_contract_found"
         }),
     );
+    finding.measured.insert(
+        "adapter_blocker".to_string(),
+        json!("No trusted open-source PSS solver chain with normalized waveform, spectrum, convergence, raw-output, and solver-manifest artifacts is available in this runtime."),
+    );
+    finding.measured.insert(
+        "evidence_sources".to_string(),
+        json!([
+            "docs/research/circuit_simulation_full_featured/pss_backend_evidence.md",
+            "docs/research/circuit_simulation_full_featured/sources/ngspice_pss_periodic_steady_state.html",
+            "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt",
+            "docs/research/circuit_simulation_full_featured/sources/arxiv_2512.10373_qucs_phase_noise.txt"
+        ]),
+    );
     finding.limit.insert(
         "required_evidence".to_string(),
         json!("pss_waveform_pss_spectrum_pss_convergence"),

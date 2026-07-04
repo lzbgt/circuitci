@@ -650,7 +650,9 @@ The GUI should not become the solver.
   frequency-axis traces.
   Opt-in real-Xyce HB conformance is covered by
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
-  the test skips unless `Xyce` or `xyce` is on `PATH`.
+  the test skips unless `Xyce` or `xyce` is on `PATH`. Non-Xyce HB
+  fail-closed findings now carry `adapter_blocker` and `evidence_sources[]`
+  metadata pointing back to the retained Xyce HB evidence.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized
@@ -834,7 +836,9 @@ The GUI should not become the solver.
   driven-source provenance. The validator records manifest-compatible planning
   evidence for future `pss_waveform`, `pss_spectrum`, and `pss_convergence`
   normalized outputs, and intentionally fails closed until a trusted backend
-  adapter emits those artifacts.
+  adapter emits those artifacts. The fail-closed finding now also carries
+  compact `adapter_blocker` and `evidence_sources[]` metadata that points back
+  to the retained PSS backend evidence.
 - Primary-source review in `pss_backend_evidence.md` found no trustworthy
   adapter target to enable immediately: Xyce 7.8 documents HB but not a
   separate PSS command; ngspice PSS is experimental/autonomous/build-gated and

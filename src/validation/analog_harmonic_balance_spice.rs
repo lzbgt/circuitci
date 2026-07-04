@@ -314,6 +314,18 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
             "drive_sources".to_string(),
             json!(analog.analysis.hb_drive_sources),
         );
+        finding.measured.insert(
+            "adapter_blocker".to_string(),
+            json!("Only the explicit Xyce harmonic-balance adapter emits the normalized hb_spectrum and solver-manifest contract in this runtime; the selected backend has no trusted HB normalizer."),
+        );
+        finding.measured.insert(
+            "evidence_sources".to_string(),
+            json!([
+                "docs/research/circuit_simulation_full_featured/README.md",
+                "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt",
+                "docs/research/circuit_simulation_full_featured/sources/Xyce_Users_Guide_7.8.txt"
+            ]),
+        );
         finding.limit.insert(
             "required_evidence".to_string(),
             json!("xyce_hb_spectrum_csv"),
