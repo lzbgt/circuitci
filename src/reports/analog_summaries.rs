@@ -92,6 +92,10 @@ pub struct SParameterNetworkSummary {
     pub frequency_hz_at_max_reciprocity_error: f64,
     pub max_passivity_singular_value: f64,
     pub frequency_hz_at_max_passivity: f64,
+    pub min_rollet_k: Option<f64>,
+    pub frequency_hz_at_min_rollet_k: Option<f64>,
+    pub max_stability_delta_magnitude: Option<f64>,
+    pub frequency_hz_at_max_stability_delta_magnitude: Option<f64>,
 }
 
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
@@ -491,6 +495,10 @@ fn parse_s_parameter_network_summary_csv(
             "frequency_hz_at_max_reciprocity_error",
             "max_passivity_singular_value",
             "frequency_hz_at_max_passivity",
+            "min_rollet_k",
+            "frequency_hz_at_min_rollet_k",
+            "max_stability_delta_magnitude",
+            "frequency_hz_at_max_stability_delta_magnitude",
         ]
     {
         return Vec::new();
@@ -500,7 +508,7 @@ fn parse_s_parameter_network_summary_csv(
         let Some(fields) = split_csv_fields(line) else {
             continue;
         };
-        if fields.len() != 8 {
+        if fields.len() != 12 {
             continue;
         }
         let Some(port_count) = fields[0].parse::<usize>().ok() else {
@@ -527,6 +535,20 @@ fn parse_s_parameter_network_summary_csv(
         let Some(frequency_hz_at_max_passivity) = parse_finite_f64(&fields[7]) else {
             continue;
         };
+        let Some(min_rollet_k) = parse_optional_finite_f64(&fields[8]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_rollet_k) = parse_optional_finite_f64(&fields[9]) else {
+            continue;
+        };
+        let Some(max_stability_delta_magnitude) = parse_optional_finite_f64(&fields[10]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_stability_delta_magnitude) =
+            parse_optional_finite_f64(&fields[11])
+        else {
+            continue;
+        };
         rows.push(SParameterNetworkSummary {
             artifact: artifact.to_string(),
             port_count,
@@ -537,6 +559,10 @@ fn parse_s_parameter_network_summary_csv(
             frequency_hz_at_max_reciprocity_error,
             max_passivity_singular_value,
             frequency_hz_at_max_passivity,
+            min_rollet_k,
+            frequency_hz_at_min_rollet_k,
+            max_stability_delta_magnitude,
+            frequency_hz_at_max_stability_delta_magnitude,
         });
     }
     rows

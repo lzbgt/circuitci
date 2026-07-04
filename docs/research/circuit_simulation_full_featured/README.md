@@ -645,10 +645,11 @@ The GUI should not become the solver.
   artifacts for visual RF margin review. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity
   (`max |S21-S12|`) and passivity (maximum singular value of the complex S
-  matrix) with retained `s_parameter_network_summary.csv` evidence, projected
-  report rows in `s_parameter_network_summaries[]`, Markdown output, and GUI
-  Scopes network-quality rows. Scopes also derives per-frequency reciprocity
-  error and passivity singular-value traces directly from full
+  matrix), plus active-network stability through minimum Rollet K and maximum
+  `|Delta|`, with retained `s_parameter_network_summary.csv` evidence,
+  projected report rows in `s_parameter_network_summaries[]`, Markdown output,
+  and GUI Scopes network-quality rows. Scopes also derives per-frequency
+  reciprocity error and passivity singular-value traces directly from full
   `s_parameters.csv` artifacts when S11/S12/S21/S22 magnitude and phase columns
   are available.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving

@@ -315,7 +315,11 @@
         "max_reciprocity_error_linear",
         "frequency_hz_at_max_reciprocity_error",
         "max_passivity_singular_value",
-        "frequency_hz_at_max_passivity"
+        "frequency_hz_at_max_passivity",
+        "min_rollet_k",
+        "frequency_hz_at_min_rollet_k",
+        "max_stability_delta_magnitude",
+        "frequency_hz_at_max_stability_delta_magnitude"
       ],
       "properties": {
         "artifact": { "type": "string", "minLength": 1 },
@@ -326,7 +330,11 @@
         "max_reciprocity_error_linear": { "type": "number" },
         "frequency_hz_at_max_reciprocity_error": { "type": "number" },
         "max_passivity_singular_value": { "type": "number" },
-        "frequency_hz_at_max_passivity": { "type": "number" }
+        "frequency_hz_at_max_passivity": { "type": "number" },
+        "min_rollet_k": { "type": ["number", "null"] },
+        "frequency_hz_at_min_rollet_k": { "type": ["number", "null"] },
+        "max_stability_delta_magnitude": { "type": ["number", "null"] },
+        "frequency_hz_at_max_stability_delta_magnitude": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },

@@ -630,8 +630,13 @@ pub fn markdown_report(report: &ValidationReport) -> String {
         text.push_str("None.\n\n");
     } else {
         for row in &report.s_parameter_network_summaries {
+            let rollet_k = format_optional_value(row.min_rollet_k);
+            let rollet_k_frequency = format_optional_value(row.frequency_hz_at_min_rollet_k);
+            let delta = format_optional_value(row.max_stability_delta_magnitude);
+            let delta_frequency =
+                format_optional_value(row.frequency_hz_at_max_stability_delta_magnitude);
             text.push_str(&format!(
-                "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz\n",
+                "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz min_rollet_k={} at {} Hz max_stability_delta_magnitude={} at {} Hz\n",
                 row.port_count,
                 row.row_count,
                 row.min_frequency_hz,
@@ -639,7 +644,11 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.max_reciprocity_error_linear,
                 row.frequency_hz_at_max_reciprocity_error,
                 row.max_passivity_singular_value,
-                row.frequency_hz_at_max_passivity
+                row.frequency_hz_at_max_passivity,
+                rollet_k,
+                rollet_k_frequency,
+                delta,
+                delta_frequency
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -969,6 +978,12 @@ fn format_optional_range(min: Option<f64>, max: Option<f64>) -> String {
         (Some(min), Some(max)) => format!("{min:.6e}..{max:.6e}"),
         _ => "n/a".to_string(),
     }
+}
+
+fn format_optional_value(value: Option<f64>) -> String {
+    value
+        .map(|value| format!("{value:.6e}"))
+        .unwrap_or_else(|| "n/a".to_string())
 }
 
 fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenance> {

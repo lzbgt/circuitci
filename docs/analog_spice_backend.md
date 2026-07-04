@@ -422,9 +422,14 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `reciprocity_error_linear` is the maximum `|S21-S12|` across frequency.
    `passivity_max_singular_value` is the maximum singular value of the complex
    2x2 S matrix across frequency, so passive networks are expected to remain
-   at or below unity aside from declared tolerance. These assertions require
-   exactly two declared S-parameter ports and retain
-   `s_parameter_network_summary.csv` with the worst frequencies.
+   at or below unity aside from declared tolerance. `rollet_k_min` is the
+   minimum Rollet stability factor
+   `(1 - |S11|^2 - |S22|^2 + |Delta|^2) / (2 |S12 S21|)`, and
+   `stability_delta_magnitude_max` is the maximum `|Delta|` where
+   `Delta = S11 S22 - S12 S21`. These assertions require exactly two declared
+   S-parameter ports and retain `s_parameter_network_summary.csv` with the
+   worst frequencies. Rollet K is unavailable, and therefore fails closed when
+   asserted, if the sweep has zero `|S12 S21|`.
 8. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into

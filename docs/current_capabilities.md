@@ -162,7 +162,8 @@ Current analog support:
   applicability checks.
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
-  complex S matrix) from full `s_parameters.csv` data.
+  complex S matrix), plus active-network stability margins (`rollet_k_min`
+  and `stability_delta_magnitude_max`), from full `s_parameters.csv` data.
   Reports project retained rows into `s_parameter_summaries[]` and retained
   network-quality rows into `s_parameter_network_summaries[]`, Markdown
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,

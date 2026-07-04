@@ -222,7 +222,7 @@ pub(super) fn write_s_parameter_network_summary(s_parameters: &Path) -> Result<P
         .join("s_parameter_network_summary.csv");
     let row = summarize_s_parameter_network(s_parameters)?;
     let text = format!(
-        "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity\n{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e}\n",
+        "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude\n{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{}\n",
         row.port_count,
         row.row_count,
         row.min_frequency_hz,
@@ -231,6 +231,10 @@ pub(super) fn write_s_parameter_network_summary(s_parameters: &Path) -> Result<P
         row.frequency_hz_at_max_reciprocity_error,
         row.max_passivity_singular_value,
         row.frequency_hz_at_max_passivity,
+        optional_csv(row.min_rollet_k),
+        optional_csv(row.frequency_hz_at_min_rollet_k),
+        optional_csv(row.max_stability_delta_magnitude),
+        optional_csv(row.frequency_hz_at_max_stability_delta_magnitude),
     );
     fs::write(&summary, text).map_err(|error| {
         format!(
@@ -266,7 +270,12 @@ pub(super) fn evaluate_s_parameter_network_assertions(
     };
     let mut measurements = Vec::new();
     for assertion in &analog.analysis.s_parameter_network_assertions {
-        let measured = network_metric_value(assertion.metric, &row);
+        let Some(measured) = network_metric_value(assertion.metric, &row) else {
+            push_s_parameter_network_metric_unavailable_finding(
+                scenario, assertion, &row, summary, findings,
+            );
+            continue;
+        };
         let evaluation = evaluate_network_assertion_value(assertion, measured);
         let unit = s_parameter_network_assertion_unit(assertion);
         measurements.push(AnalogAssertionMeasurement {
@@ -343,6 +352,10 @@ struct SParameterNetworkSummaryRow {
     frequency_hz_at_max_reciprocity_error: f64,
     max_passivity_singular_value: f64,
     frequency_hz_at_max_passivity: f64,
+    min_rollet_k: Option<f64>,
+    frequency_hz_at_min_rollet_k: Option<f64>,
+    max_stability_delta_magnitude: Option<f64>,
+    frequency_hz_at_max_stability_delta_magnitude: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -545,6 +558,10 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
     let mut frequency_hz_at_max_reciprocity_error = f64::NAN;
     let mut max_passivity_singular_value = f64::NEG_INFINITY;
     let mut frequency_hz_at_max_passivity = f64::NAN;
+    let mut min_rollet_k: Option<f64> = None;
+    let mut frequency_hz_at_min_rollet_k: Option<f64> = None;
+    let mut max_stability_delta_magnitude: Option<f64> = None;
+    let mut frequency_hz_at_max_stability_delta_magnitude: Option<f64> = None;
     for sample in &samples {
         min_frequency_hz = min_frequency_hz.min(sample.frequency_hz);
         max_frequency_hz = max_frequency_hz.max(sample.frequency_hz);
@@ -558,6 +575,18 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
             max_passivity_singular_value = passivity;
             frequency_hz_at_max_passivity = sample.frequency_hz;
         }
+        let delta = stability_delta(sample);
+        let delta_magnitude = delta.magnitude();
+        if max_stability_delta_magnitude.is_none_or(|current| delta_magnitude > current) {
+            max_stability_delta_magnitude = Some(delta_magnitude);
+            frequency_hz_at_max_stability_delta_magnitude = Some(sample.frequency_hz);
+        }
+        if let Some(rollet_k) = rollet_stability_factor(sample, delta_magnitude)
+            && min_rollet_k.is_none_or(|current| rollet_k < current)
+        {
+            min_rollet_k = Some(rollet_k);
+            frequency_hz_at_min_rollet_k = Some(sample.frequency_hz);
+        }
     }
     Ok(SParameterNetworkSummaryRow {
         port_count: 2,
@@ -568,6 +597,10 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
         frequency_hz_at_max_reciprocity_error,
         max_passivity_singular_value,
         frequency_hz_at_max_passivity,
+        min_rollet_k,
+        frequency_hz_at_min_rollet_k,
+        max_stability_delta_magnitude,
+        frequency_hz_at_max_stability_delta_magnitude,
     })
 }
 
@@ -729,6 +762,24 @@ fn two_port_max_singular_value(sample: &SParameterNetworkSample) -> f64 {
     lambda_max.max(0.0).sqrt()
 }
 
+fn stability_delta(sample: &SParameterNetworkSample) -> ComplexValue {
+    sample
+        .s11
+        .multiply(sample.s22)
+        .subtract(sample.s12.multiply(sample.s21))
+}
+
+fn rollet_stability_factor(sample: &SParameterNetworkSample, delta_magnitude: f64) -> Option<f64> {
+    let denominator = 2.0 * sample.s12.multiply(sample.s21).magnitude();
+    if !denominator.is_finite() || denominator <= f64::EPSILON {
+        return None;
+    }
+    let numerator = 1.0 - sample.s11.magnitude_squared() - sample.s22.magnitude_squared()
+        + delta_magnitude * delta_magnitude;
+    let rollet_k = numerator / denominator;
+    rollet_k.is_finite().then_some(rollet_k)
+}
+
 fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, String> {
     let text = fs::read_to_string(path).map_err(|error| {
         format!(
@@ -797,7 +848,7 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         .next()
         .ok_or_else(|| "S-parameter network summary CSV has no header row.".to_string())?;
     if header
-        != "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity"
+        != "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude"
     {
         return Err("S-parameter network summary CSV has unexpected header.".to_string());
     }
@@ -810,9 +861,9 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         );
     }
     let fields: Vec<_> = row.split(',').map(str::trim).collect();
-    if fields.len() != 8 {
+    if fields.len() != 12 {
         return Err(format!(
-            "S-parameter network summary row has {} fields, expected 8.",
+            "S-parameter network summary row has {} fields, expected 12.",
             fields.len()
         ));
     }
@@ -834,6 +885,19 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         frequency_hz_at_max_passivity: parse_finite_f64(
             fields[7],
             "frequency_hz_at_max_passivity",
+        )?,
+        min_rollet_k: parse_optional_finite_f64(fields[8], "min_rollet_k")?,
+        frequency_hz_at_min_rollet_k: parse_optional_finite_f64(
+            fields[9],
+            "frequency_hz_at_min_rollet_k",
+        )?,
+        max_stability_delta_magnitude: parse_optional_finite_f64(
+            fields[10],
+            "max_stability_delta_magnitude",
+        )?,
+        frequency_hz_at_max_stability_delta_magnitude: parse_optional_finite_f64(
+            fields[11],
+            "frequency_hz_at_max_stability_delta_magnitude",
         )?,
     })
 }
@@ -878,11 +942,17 @@ fn metric_value(assertion: &AnalogSParameterAssertion, row: &SParameterSummaryRo
 fn network_metric_value(
     metric: AnalogSParameterNetworkMetric,
     row: &SParameterNetworkSummaryRow,
-) -> f64 {
+) -> Option<f64> {
     match metric {
-        AnalogSParameterNetworkMetric::ReciprocityErrorLinear => row.max_reciprocity_error_linear,
+        AnalogSParameterNetworkMetric::ReciprocityErrorLinear => {
+            Some(row.max_reciprocity_error_linear)
+        }
         AnalogSParameterNetworkMetric::PassivityMaxSingularValue => {
-            row.max_passivity_singular_value
+            Some(row.max_passivity_singular_value)
+        }
+        AnalogSParameterNetworkMetric::RolletKMin => row.min_rollet_k,
+        AnalogSParameterNetworkMetric::StabilityDeltaMagnitudeMax => {
+            row.max_stability_delta_magnitude
         }
     }
 }
@@ -1039,6 +1109,21 @@ fn push_s_parameter_network_assertion_finding(
         "frequency_hz_at_max_passivity".to_string(),
         json!(row.frequency_hz_at_max_passivity),
     );
+    finding
+        .measured
+        .insert("min_rollet_k".to_string(), json!(row.min_rollet_k));
+    finding.measured.insert(
+        "frequency_hz_at_min_rollet_k".to_string(),
+        json!(row.frequency_hz_at_min_rollet_k),
+    );
+    finding.measured.insert(
+        "max_stability_delta_magnitude".to_string(),
+        json!(row.max_stability_delta_magnitude),
+    );
+    finding.measured.insert(
+        "frequency_hz_at_max_stability_delta_magnitude".to_string(),
+        json!(row.frequency_hz_at_max_stability_delta_magnitude),
+    );
     finding.measured.insert(
         "s_parameter_network_summary".to_string(),
         json!(normalize_artifact_path(summary)),
@@ -1057,6 +1142,57 @@ fn push_s_parameter_network_assertion_finding(
             .suggested_fixes
             .extend(assertion.suggested_fixes.clone());
     }
+    findings.push(finding);
+}
+
+fn push_s_parameter_network_metric_unavailable_finding(
+    scenario: &Scenario,
+    assertion: &AnalogSParameterNetworkAssertion,
+    row: &SParameterNetworkSummaryRow,
+    summary: &Path,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        SPICE_S_PARAMETER_ANALYSIS,
+        &scenario.name,
+        format!(
+            "S-parameter network assertion {} metric {} is unavailable from the two-port summary.",
+            assertion.name,
+            network_metric_name(assertion.metric)
+        ),
+    );
+    finding
+        .measured
+        .insert("assertion".to_string(), json!(&assertion.name));
+    finding.measured.insert(
+        "metric".to_string(),
+        json!(network_metric_name(assertion.metric)),
+    );
+    finding
+        .measured
+        .insert("port_count".to_string(), json!(row.port_count));
+    finding
+        .measured
+        .insert("row_count".to_string(), json!(row.row_count));
+    finding.measured.insert(
+        "frequency_start_hz".to_string(),
+        json!(row.min_frequency_hz),
+    );
+    finding
+        .measured
+        .insert("frequency_stop_hz".to_string(), json!(row.max_frequency_hz));
+    finding.measured.insert(
+        "s_parameter_network_summary".to_string(),
+        json!(normalize_artifact_path(summary)),
+    );
+    finding.limit.insert(
+        "required_metric".to_string(),
+        json!(network_metric_name(assertion.metric)),
+    );
+    finding.suggested_fixes.push(
+        "Use a two-port sweep with nonzero forward and reverse transmission if Rollet K stability-factor sign-off is required."
+            .to_string(),
+    );
     findings.push(finding);
 }
 
@@ -1232,6 +1368,10 @@ fn network_metric_name(metric: AnalogSParameterNetworkMetric) -> &'static str {
     match metric {
         AnalogSParameterNetworkMetric::ReciprocityErrorLinear => "reciprocity_error_linear",
         AnalogSParameterNetworkMetric::PassivityMaxSingularValue => "passivity_max_singular_value",
+        AnalogSParameterNetworkMetric::RolletKMin => "rollet_k_min",
+        AnalogSParameterNetworkMetric::StabilityDeltaMagnitudeMax => {
+            "stability_delta_magnitude_max"
+        }
     }
 }
 

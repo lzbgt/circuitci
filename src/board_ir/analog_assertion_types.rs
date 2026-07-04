@@ -95,6 +95,8 @@ pub struct AnalogSParameterNetworkAssertion {
 pub enum AnalogSParameterNetworkMetric {
     ReciprocityErrorLinear,
     PassivityMaxSingularValue,
+    RolletKMin,
+    StabilityDeltaMagnitudeMax,
 }
 
 #[derive(Debug, Clone, Deserialize)]

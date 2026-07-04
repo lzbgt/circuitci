@@ -558,6 +558,14 @@ fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
             metric: passivity_max_singular_value
             relation: below
             threshold: 0.91
+          - name: stable_rollet_k
+            metric: rollet_k_min
+            relation: above
+            threshold: 1.0
+          - name: stable_delta
+            metric: stability_delta_magnitude_max
+            relation: below
+            threshold: 1.0
 "#,
     );
 
@@ -597,10 +605,19 @@ fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
             .unwrap()
             < 0.91
     );
+    assert!(summaries[0]["min_rollet_k"].as_f64().unwrap() > 1.0);
+    assert!(
+        summaries[0]["max_stability_delta_magnitude"]
+            .as_f64()
+            .unwrap()
+            < 1.0
+    );
     let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
     assert!(markdown.contains("## S-Parameter Network Summary"));
     assert!(markdown.contains("max_reciprocity_error="));
     assert!(markdown.contains("max_passivity_singular_value="));
+    assert!(markdown.contains("min_rollet_k="));
+    assert!(markdown.contains("max_stability_delta_magnitude="));
     assert_report_schema_valid(&report);
 }
 
@@ -642,6 +659,52 @@ fn sparameter_network_assertion_fails_on_passivity_limit() {
     );
     assert!(failure["measured"]["value"].as_f64().unwrap() > 1.0);
     assert_eq!(failure["limit"]["below_threshold"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_network_assertion_fails_on_rollet_k_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.9 0.0 2.0 0.0 0.5 0.0 0.9 0.0\\n1.0e9 0.8 0.0 1.5 0.0 0.4 0.0 0.8 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_network_assertions:
+          - name: active_stability_margin
+            metric: rollet_k_min
+            relation: above
+            threshold: 1.0
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "active_stability_margin")
+        .expect("Rollet K assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(failure["measured"]["metric"], "rollet_k_min");
+    assert!(failure["measured"]["value"].as_f64().unwrap() < 1.0);
+    assert_eq!(failure["limit"]["above_threshold"], 1.0);
+    let summaries = report["s_parameter_network_summaries"].as_array().unwrap();
+    assert!(summaries[0]["min_rollet_k"].as_f64().unwrap() < 1.0);
+    assert!(
+        summaries[0]["max_stability_delta_magnitude"]
+            .as_f64()
+            .unwrap()
+            < 1.0
+    );
     assert_report_schema_valid(&report);
 }
 

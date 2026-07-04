@@ -1460,9 +1460,13 @@ compact RF sign-off rows.
 Retained `s_parameter_network_summary.csv` artifacts project into top-level
 `s_parameter_network_summaries[]` rows with the source artifact path, port
 count, row count, frequency span, maximum reciprocity error and frequency, and
-maximum passivity singular value and frequency. Markdown reports include those
-rows in an "S-Parameter Network Summary" section, and the GUI report panel
-surfaces the same compact two-port quality rows.
+maximum passivity singular value and frequency. Rows also include nullable
+`min_rollet_k`, `frequency_hz_at_min_rollet_k`,
+`max_stability_delta_magnitude`, and
+`frequency_hz_at_max_stability_delta_magnitude` fields for two-port
+active-network stability sign-off. Markdown reports include those rows in an
+"S-Parameter Network Summary" section, and the GUI report panel surfaces the
+same compact two-port quality rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

@@ -298,7 +298,7 @@ impl CircuitCiApp {
                     } else {
                         for row in &report.s_parameter_network_summaries {
                             ui.monospace(format!(
-                                "ports={} rows={} f={:.6e}..{:.6e}Hz reciprocity_error={:.6e} at {:.6e}Hz passivity_singular={:.6e} at {:.6e}Hz artifact={}",
+                                "ports={} rows={} f={:.6e}..{:.6e}Hz reciprocity_error={:.6e} at {:.6e}Hz passivity_singular={:.6e} at {:.6e}Hz rollet_k_min={} at {}Hz delta_mag_max={} at {}Hz artifact={}",
                                 row.port_count,
                                 row.row_count,
                                 row.min_frequency_hz,
@@ -307,6 +307,12 @@ impl CircuitCiApp {
                                 row.frequency_hz_at_max_reciprocity_error,
                                 row.max_passivity_singular_value,
                                 row.frequency_hz_at_max_passivity,
+                                optional_value_label(row.min_rollet_k),
+                                optional_value_label(row.frequency_hz_at_min_rollet_k),
+                                optional_value_label(row.max_stability_delta_magnitude),
+                                optional_value_label(
+                                    row.frequency_hz_at_max_stability_delta_magnitude
+                                ),
                                 row.artifact
                             ));
                         }
@@ -831,6 +837,12 @@ fn optional_range_label(min: Option<f64>, max: Option<f64>) -> String {
         (Some(min), Some(max)) => format!("{min:.6e}..{max:.6e}"),
         _ => "n/a".to_string(),
     }
+}
+
+fn optional_value_label(value: Option<f64>) -> String {
+    value
+        .map(|value| format!("{value:.6e}"))
+        .unwrap_or_else(|| "n/a".to_string())
 }
 
 #[cfg(test)]
