@@ -1447,6 +1447,7 @@ pub(super) enum AnalogRuntimeFeature {
     HarmonicBalance,
     PeriodicSteadyState,
     PhaseNoise,
+    PeriodicAc,
     Measure,
 }
 

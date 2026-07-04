@@ -2882,7 +2882,7 @@
                 "type": "object",
                 "required": ["type"],
                 "properties": {
-                  "type": { "enum": ["tran", "ac", "op", "dc_sweep", "noise", "sparam", "tf", "pz", "sens", "fourier", "hb", "pss", "phase_noise", "measure"] },
+                  "type": { "enum": ["tran", "ac", "op", "dc_sweep", "noise", "sparam", "tf", "pz", "sens", "fourier", "hb", "pss", "phase_noise", "pac", "measure"] },
                   "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
                   "max_step_us": { "type": "number", "exclusiveMinimum": 0 },
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
@@ -2978,6 +2978,20 @@
                   },
                   "phase_noise_integration_start_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "phase_noise_integration_stop_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "pac_mode": { "enum": ["pac", "pxf"] },
+                  "pac_carrier_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "pac_start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "pac_stop_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+                  "pac_points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "pac_output_expression": { "type": "string", "minLength": 1 },
+                  "pac_input_source": { "type": "string", "minLength": 1 },
+                  "pac_sidebands": { "type": "integer", "minimum": 0, "maximum": 1024 },
+                  "pac_drive_sources": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1 },
+                    "uniqueItems": true
+                  },
                   "measure_mode": { "enum": ["tran", "ac"] },
                   "measure_statements": {
                     "type": "array",
@@ -3124,6 +3138,10 @@
                   {
                     "if": { "properties": { "type": { "const": "phase_noise" } } },
                     "then": { "required": ["phase_noise_carrier_frequency_hz", "phase_noise_offset_start_hz", "phase_noise_offset_stop_hz", "phase_noise_points_per_decade", "phase_noise_output_expression"] }
+                  },
+                  {
+                    "if": { "properties": { "type": { "const": "pac" } } },
+                    "then": { "required": ["pac_carrier_frequency_hz", "pac_start_frequency_hz", "pac_stop_frequency_hz", "pac_points_per_decade", "pac_output_expression", "pac_input_source"] }
                   },
                   {
                     "if": { "properties": { "type": { "const": "measure" } } },

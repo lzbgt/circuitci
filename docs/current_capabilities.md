@@ -246,6 +246,17 @@ Current analog support:
   finding records that QUCS-COPEN is currently a theory/reference source, not
   an executable backend target, because no public source repository or adapter
   contract was found.
+- `analog_periodic_ac` scenarios with `SPICE_PERIODIC_AC_ANALYSIS` for
+  PAC/PXF-style periodic small-signal evidence planning. The Board IR/schema
+  can declare `analysis.type: pac`, `pac_mode: pac|pxf`,
+  `pac_carrier_frequency_hz`, frequency sweep bounds, points per decade, a
+  bound `pac_output_expression`, `pac_input_source`, optional
+  `pac_sidebands`, and `pac_drive_sources[]` for generated large-signal source
+  provenance. This path intentionally fails closed today: it records
+  manifest-compatible planning evidence for future `pac_response`,
+  `pac_sidebands`, `pac_convergence`, and `pss_convergence` artifacts, but no
+  backend is allowed to pass periodic small-signal sign-off until a trusted
+  PSS/HB linearization chain and PAC/PXF normalizer exist.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

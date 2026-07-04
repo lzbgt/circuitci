@@ -651,6 +651,14 @@ The GUI should not become the solver.
   `phase_noise_integrated_jitter`, `phase_noise_convergence`, and
   `pss_convergence`, and intentionally fails closed until a trusted PSS/PNOISE
   solver chain plus real-solver conformance exists.
+- Added the first fail-closed PAC/PXF evidence contract for
+  `analysis.type: pac` and `SPICE_PERIODIC_AC_ANALYSIS`. Scenarios declare
+  `pac_mode: pac|pxf`, carrier frequency, sideband count, small-signal
+  frequency sweep bounds, output expression, input-source provenance, and
+  optional large-signal drive-source provenance. The validator records required
+  future artifacts `pac_response`, `pac_sidebands`, `pac_convergence`, and
+  `pss_convergence`, and intentionally fails closed until a trusted periodic
+  operating-point linearization chain plus real-solver conformance exists.
 
 ### Phase 5: Model Compiler Pipeline
 

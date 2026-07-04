@@ -76,6 +76,11 @@ drive-source provenance when driven, and convergence metadata. An
 requirements: carrier frequency, offset sweep bounds, output expression,
 optional integration window, drive-source provenance when driven, and a hard
 dependency on trusted PSS/PNOISE convergence artifacts. An
+`analog_periodic_ac` scenario owns PAC/PXF-style periodic small-signal
+evidence requirements: carrier frequency, sideband count, small-signal
+frequency sweep, output expression, input source, large-signal drive-source
+provenance, and a hard dependency on trusted PSS/HB linearization convergence
+artifacts. An
 `analog_measure` scenario owns reviewed ngspice `.MEASURE` scalar extraction
 statements or portable structured measure templates for transient or AC
 results.
@@ -577,6 +582,36 @@ For a scenario with check `SPICE_PHASE_NOISE_ANALYSIS`:
    a trusted backend emits normalized phase-noise spectrum, integrated jitter,
    PSS convergence, phase-noise convergence, raw solver output, and
    solver-manifest artifacts.
+
+For a scenario with check `SPICE_PERIODIC_AC_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: pac`, positive finite
+   `pac_carrier_frequency_hz`, `pac_start_frequency_hz`,
+   `pac_stop_frequency_hz` greater than the start frequency,
+   `pac_points_per_decade` in `1..=1000`, a bound `pac_output_expression`,
+   and `pac_input_source`.
+3. `pac_mode` defaults to `pac` and may be `pac` or `pxf`. `pac_sidebands`
+   defaults to `1` and may be `0..=1024`. For generated Board IR decks,
+   `pac_input_source` and each optional `pac_drive_sources[]` entry must name
+   a generated board component so the small-signal injection and large-signal
+   periodic drive have explicit provenance.
+4. `pac_output_expression` must be a bound `V(node)`,
+   `V(node,reference)`, or `I(source)` expression.
+5. The current implementation intentionally fails closed after contract
+   validation. It emits backend-planning evidence with planned normalized
+   outputs `pac_response`, `pac_sidebands`, `pac_convergence`, and
+   `pss_convergence`.
+6. The backend-planning finding records the current source-backed boundary:
+   Xyce HB is available but not yet a trusted PAC/PXF adapter here; ngspice AC
+   is available but does not provide the required periodic operating-point
+   linearization contract in this runtime; QUCS-COPEN remains a theory source
+   until public source, build, adapter, and conformance artifacts are found.
+7. CircuitCI must not present periodic small-signal sign-off as passing until a
+   trusted backend emits normalized PAC/PXF response, sideband, convergence,
+   raw solver output, and solver-manifest artifacts with real-solver
+   conformance coverage.
 
 For a scenario with check `SPICE_MEASURE_ANALYSIS`:
 

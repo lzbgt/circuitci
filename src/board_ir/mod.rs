@@ -1350,6 +1350,24 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub phase_noise_integration_stop_hz: Option<f64>,
     #[serde(default)]
+    pub pac_mode: Option<String>,
+    #[serde(default)]
+    pub pac_carrier_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub pac_start_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub pac_stop_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub pac_points_per_decade: Option<u32>,
+    #[serde(default)]
+    pub pac_output_expression: Option<String>,
+    #[serde(default)]
+    pub pac_input_source: Option<String>,
+    #[serde(default)]
+    pub pac_sidebands: Option<u32>,
+    #[serde(default)]
+    pub pac_drive_sources: Vec<String>,
+    #[serde(default)]
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,

@@ -17,6 +17,7 @@ mod analog_noise_assertions;
 mod analog_noise_runner;
 mod analog_noise_spice;
 mod analog_operating_limits;
+mod analog_periodic_ac_spice;
 mod analog_phase_noise_spice;
 mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
@@ -152,6 +153,7 @@ pub(super) const SPICE_FOURIER_ANALYSIS: &str = "SPICE_FOURIER_ANALYSIS";
 pub(super) const SPICE_HARMONIC_BALANCE_ANALYSIS: &str = "SPICE_HARMONIC_BALANCE_ANALYSIS";
 pub(super) const SPICE_PSS_ANALYSIS: &str = "SPICE_PSS_ANALYSIS";
 pub(super) const SPICE_PHASE_NOISE_ANALYSIS: &str = "SPICE_PHASE_NOISE_ANALYSIS";
+pub(super) const SPICE_PERIODIC_AC_ANALYSIS: &str = "SPICE_PERIODIC_AC_ANALYSIS";
 pub(super) const SPICE_MEASURE_ANALYSIS: &str = "SPICE_MEASURE_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
@@ -195,6 +197,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_harmonic_balance",
     "analog_pss",
     "analog_phase_noise",
+    "analog_periodic_ac",
     "analog_measure",
     "motor_drive",
     "load_budget",
@@ -928,6 +931,20 @@ where
                         artifacts: &mut artifacts,
                     };
                     analog_phase_noise_spice::validate_spice_phase_noise_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
+                SPICE_PERIODIC_AC_ANALYSIS if scenario.scenario_type == "analog_periodic_ac" => {
+                    let mut sinks = analog_periodic_ac_spice::AnalogPeriodicAcSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_periodic_ac_spice::validate_spice_periodic_ac_with_progress(
                         bound,
                         scenario,
                         &mut sinks,
