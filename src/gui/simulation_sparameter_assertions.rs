@@ -379,7 +379,10 @@ fn sparameter_failure_row(finding: &Finding) -> Option<SParameterFailureRow> {
             ),
         });
     }
-    if finding.measured.contains_key("s_parameter_noise_summary") {
+    if finding.measured.contains_key("s_parameter_noise_summary")
+        || text_field(&finding.limit, "required_normalized_output").as_deref()
+            == Some("s_parameter_noise_summary")
+    {
         return Some(SParameterFailureRow {
             kind: SParameterFailureKind::Noise,
             scenario: finding.scenario.clone(),
@@ -922,6 +925,50 @@ mod tests {
             assert_eq!(app.analog_sparameter_noise_assertion_relation, "below");
             assert_eq!(app.analog_sparameter_noise_assertion_threshold, threshold);
         }
+    }
+
+    #[test]
+    fn sparameter_noise_unavailable_failure_loads_rf_noise_editor_state() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "xyce_sparameter_contract",
+            "S-parameter noise assertion nf_limit requires SP-noise evidence",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("nf_limit"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("noise_figure_db_max"));
+        finding.measured.insert(
+            "backend_status".to_string(),
+            json!("planned_not_implemented"),
+        );
+        finding.limit.insert(
+            "required_normalized_output".to_string(),
+            json!("s_parameter_noise_summary"),
+        );
+        finding.limit.insert("below_dB".to_string(), json!(3.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, SParameterFailureKind::Noise);
+        assert_eq!(rows[0].relation.as_deref(), Some("below"));
+        assert_eq!(rows[0].threshold, Some(3.0));
+
+        let mut app = CircuitCiApp::default();
+        app.load_sparameter_failure_row(&rows[0]);
+        assert_eq!(
+            app.analog_sparameter_noise_assertion_scenario,
+            "xyce_sparameter_contract"
+        );
+        assert_eq!(app.analog_sparameter_noise_assertion_name, "nf_limit");
+        assert_eq!(
+            app.analog_sparameter_noise_assertion_metric,
+            "noise_figure_db_max"
+        );
+        assert_eq!(app.analog_sparameter_noise_assertion_relation, "below");
+        assert_eq!(app.analog_sparameter_noise_assertion_threshold, 3.0);
     }
 
     #[test]

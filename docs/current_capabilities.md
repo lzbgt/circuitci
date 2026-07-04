@@ -215,15 +215,15 @@ Current analog support:
   MAG/MSG/unilateral-gain/source-load-gain limits, can be loaded back into
   that editor from the report artifact panel with metric, relation, threshold,
   and source/load reflection fields hydrated when report metadata provides
-  them. Retained RF noise assertion failures can likewise hydrate the RF Noise
-  Check editor with scenario, check name, metric, relation, and threshold.
-  and Scopes derives
-  return-loss, insertion-loss, VSWR, mismatch-loss,
-  group-delay, reflection-impedance,
-  two-port reciprocity error, passivity singular-value, stability `|Delta|`,
-  Rollet K, MAG, MSG, unilateral-gain, and source/load-dependent
-  transducer/available/operating gain traces from full `s_parameters.csv`
-  artifacts when the required reflection metadata columns are present.
+  them. Retained RF noise assertion failures and fail-closed missing-evidence
+  RF noise findings can likewise hydrate the RF Noise Check editor with
+  scenario, check name, metric, relation, and threshold. Scopes derives
+  return-loss, insertion-loss, VSWR, mismatch-loss, group-delay,
+  reflection-impedance, two-port reciprocity error, passivity singular-value,
+  stability `|Delta|`, Rollet K, MAG, MSG, unilateral-gain, and
+  source/load-dependent transducer/available/operating gain traces from full
+  `s_parameters.csv` artifacts when the required reflection metadata columns
+  are present.
   `backend: auto` does not select Xyce for this path until real solver
   conformance coverage is enabled.
 - `analog_transfer_function` scenarios with

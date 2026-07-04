@@ -778,7 +778,9 @@ The GUI should not become the solver.
   NF/NFmin/Rn/`|SOpt|` sign-off checks for `analog_sparameter` scenarios
   without hand-editing YAML, and retained RF noise assertion failures reload
   the editor with scenario, check name, metric, relation, and threshold from
-  report metadata.
+  report metadata. The same action path now covers fail-closed missing-evidence
+  RF noise findings, so Xyce/no-summary backend boundaries can still reopen the
+  RF Noise Check editor with the intended limit.
 - 2026-07-04: Added GUI Scopes loading for retained `s_parameter_noise_raw.csv`
   RF SP-noise sweeps. The waveform loader now promotes ngspice-compatible raw
   NF/NFmin/Rn/SOpt columns into frequency-axis traces, deriving `|SOpt|` from

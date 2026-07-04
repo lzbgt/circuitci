@@ -166,7 +166,7 @@ fn push_s_parameter_noise_unavailable_finding(
     );
     finding.measured.insert(
         "source_evidence".to_string(),
-        json!("ngspice .SP donoise=1 provides NF, NFmin, Rn, and SOpt for two-port SP noise; CircuitCI has not normalized those outputs yet."),
+        json!("ngspice .SP donoise=1 provides NF, NFmin, Rn, and SOpt for two-port SP noise; the selected backend did not emit normalized s_parameter_noise_summary evidence for this run."),
     );
     finding.limit.insert(
         format!(
