@@ -272,6 +272,8 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    self.sparameter_assertion_failure_actions(ui, &report.failures);
+                    ui.add_space(8.0);
                     ui.label("S-parameter summary");
                     if report.s_parameter_summaries.is_empty() {
                         ui.label("No S-parameter summary rows were emitted.");

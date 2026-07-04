@@ -4,9 +4,51 @@ use super::analog::{
     unique_analog_sparameter_assertion_name,
 };
 use super::simulation_forms::{analog_scenario_combo, string_combo};
+use crate::reports::Finding;
 use eframe::egui;
+use serde_json::Value;
 
 impl CircuitCiApp {
+    pub(super) fn sparameter_assertion_failure_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        failures: &[Finding],
+    ) {
+        let rows = sparameter_failure_rows(failures);
+        ui.label("RF assertion failures");
+        if rows.is_empty() {
+            ui.label("No S-parameter assertion failures were emitted.");
+            return;
+        }
+        egui::Grid::new("sparameter_assertion_failure_actions")
+            .num_columns(6)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.strong("Scenario");
+                ui.strong("Check");
+                ui.strong("Kind");
+                ui.strong("Metric");
+                ui.strong("Limit");
+                ui.strong("Actions");
+                ui.end_row();
+                for row in rows {
+                    ui.monospace(&row.scenario);
+                    ui.monospace(&row.assertion);
+                    ui.label(row.kind.label());
+                    ui.label(row.metric.as_str());
+                    ui.label(format!(
+                        "{} {:.6e}",
+                        row.relation.as_deref().unwrap_or("limit"),
+                        row.threshold.unwrap_or_default()
+                    ));
+                    if ui.button(row.kind.action_label()).clicked() {
+                        self.load_sparameter_failure_row(&row);
+                    }
+                    ui.end_row();
+                }
+            });
+    }
+
     pub(super) fn sparameter_assertion_editor(&mut self, ui: &mut egui::Ui) {
         let choices = match analog_scenario_choices(&self.project_yaml) {
             Ok(choices) => choices
@@ -177,6 +219,138 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn load_sparameter_failure_row(&mut self, row: &SParameterFailureRow) {
+        match row.kind {
+            SParameterFailureKind::Port => {
+                self.analog_sparameter_assertion_scenario = row.scenario.clone();
+                self.analog_sparameter_assertion_name = row.assertion.clone();
+                if let Some(parameter) = &row.parameter {
+                    self.analog_sparameter_assertion_parameter = parameter.clone();
+                }
+                self.analog_sparameter_assertion_metric = row.metric.clone();
+                if let Some(aggregation) = &row.aggregation {
+                    self.analog_sparameter_assertion_aggregation = aggregation.clone();
+                }
+                if let Some(relation) = &row.relation {
+                    self.analog_sparameter_assertion_relation = relation.clone();
+                }
+                if let Some(threshold) = row.threshold {
+                    self.analog_sparameter_assertion_threshold = threshold;
+                }
+                self.status = format!("Loaded RF port check {} from latest report.", row.assertion);
+            }
+            SParameterFailureKind::Network => {
+                self.analog_sparameter_network_assertion_scenario = row.scenario.clone();
+                self.analog_sparameter_network_assertion_name = row.assertion.clone();
+                self.analog_sparameter_network_assertion_metric = row.metric.clone();
+                if let Some(relation) = &row.relation {
+                    self.analog_sparameter_network_assertion_relation = relation.clone();
+                }
+                if let Some(threshold) = row.threshold {
+                    self.analog_sparameter_network_assertion_threshold = threshold;
+                }
+                self.status = format!(
+                    "Loaded RF network check {} from latest report.",
+                    row.assertion
+                );
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SParameterFailureKind {
+    Port,
+    Network,
+}
+
+impl SParameterFailureKind {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Port => "port",
+            Self::Network => "network",
+        }
+    }
+
+    fn action_label(self) -> &'static str {
+        match self {
+            Self::Port => "Open Port Check",
+            Self::Network => "Open Network Check",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct SParameterFailureRow {
+    kind: SParameterFailureKind,
+    scenario: String,
+    assertion: String,
+    parameter: Option<String>,
+    metric: String,
+    aggregation: Option<String>,
+    relation: Option<String>,
+    threshold: Option<f64>,
+}
+
+fn sparameter_failure_rows(failures: &[Finding]) -> Vec<SParameterFailureRow> {
+    failures
+        .iter()
+        .filter(|finding| finding.id == "SPICE_S_PARAMETER_ANALYSIS")
+        .filter_map(sparameter_failure_row)
+        .collect()
+}
+
+fn sparameter_failure_row(finding: &Finding) -> Option<SParameterFailureRow> {
+    let assertion = text_field(&finding.measured, "assertion")?;
+    let metric = text_field(&finding.measured, "metric")?;
+    let (relation, threshold) = threshold_limit(&finding.limit);
+    let parameter = text_field(&finding.measured, "parameter");
+    if let Some(parameter) = parameter {
+        return Some(SParameterFailureRow {
+            kind: SParameterFailureKind::Port,
+            scenario: finding.scenario.clone(),
+            assertion,
+            parameter: Some(parameter),
+            metric,
+            aggregation: text_field(&finding.measured, "aggregation"),
+            relation,
+            threshold,
+        });
+    }
+    if finding.measured.contains_key("s_parameter_network_summary") {
+        return Some(SParameterFailureRow {
+            kind: SParameterFailureKind::Network,
+            scenario: finding.scenario.clone(),
+            assertion,
+            parameter: None,
+            metric,
+            aggregation: None,
+            relation,
+            threshold,
+        });
+    }
+    None
+}
+
+fn text_field(map: &std::collections::BTreeMap<String, Value>, name: &str) -> Option<String> {
+    map.get(name)
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn threshold_limit(
+    map: &std::collections::BTreeMap<String, Value>,
+) -> (Option<String>, Option<f64>) {
+    for relation in ["above", "below"] {
+        let key = format!("{relation}_threshold");
+        if let Some(threshold) = map.get(&key).and_then(Value::as_f64) {
+            return (Some(relation.to_string()), Some(threshold));
+        }
+    }
+    (None, None)
 }
 
 fn initialize_sparameter_assertion_defaults(
@@ -307,5 +481,79 @@ fn sparameter_threshold_suffix(metric: &str) -> &'static str {
         "return_loss_db" | "insertion_loss_db" | "magnitude_db" => " dB",
         "group_delay_s" => " s",
         _ => " ratio",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::reports::Finding;
+    use serde_json::json;
+
+    #[test]
+    fn sparameter_failure_rows_parse_port_assertion_limit() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter assertion s11_return_loss_floor failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("s11_return_loss_floor"));
+        finding
+            .measured
+            .insert("parameter".to_string(), json!("s11"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("return_loss_db"));
+        finding
+            .measured
+            .insert("aggregation".to_string(), json!("min"));
+        finding
+            .limit
+            .insert("above_threshold".to_string(), json!(10.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, SParameterFailureKind::Port);
+        assert_eq!(rows[0].scenario, "two_port_sparameter");
+        assert_eq!(rows[0].assertion, "s11_return_loss_floor");
+        assert_eq!(rows[0].parameter.as_deref(), Some("s11"));
+        assert_eq!(rows[0].metric, "return_loss_db");
+        assert_eq!(rows[0].aggregation.as_deref(), Some("min"));
+        assert_eq!(rows[0].relation.as_deref(), Some("above"));
+        assert_eq!(rows[0].threshold, Some(10.0));
+    }
+
+    #[test]
+    fn sparameter_failure_rows_parse_network_assertion_limit() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter network assertion stable_delta failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("stable_delta"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("stability_delta_magnitude_max"));
+        finding.measured.insert(
+            "s_parameter_network_summary".to_string(),
+            json!("out/s_parameter_network_summary.csv"),
+        );
+        finding
+            .limit
+            .insert("below_threshold".to_string(), json!(1.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, SParameterFailureKind::Network);
+        assert_eq!(rows[0].assertion, "stable_delta");
+        assert_eq!(rows[0].metric, "stability_delta_magnitude_max");
+        assert_eq!(rows[0].relation.as_deref(), Some("below"));
+        assert_eq!(rows[0].threshold, Some(1.0));
     }
 }

@@ -160,7 +160,9 @@ Current analog support:
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
   insertion loss, VSWR, and group-delay limits with fail-closed metric
   applicability checks. Scopes includes an RF Port Check editor for authoring
-  those per-parameter checks without hand-editing YAML.
+  those per-parameter checks without hand-editing YAML, and retained
+  S-parameter assertion failures can be loaded back into the RF Port Check
+  editor from the report artifact panel.
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix), plus active-network stability margins (`rollet_k_min`
@@ -171,7 +173,9 @@ Current analog support:
   the GUI artifact panel shows compact RF term and network sign-off rows,
   Scopes includes an RF Network Check editor for authoring two-port
   reciprocity, passivity, Rollet K, and `|Delta|` sign-off checks without
-  hand-editing YAML, and Scopes derives return-loss, insertion-loss, VSWR,
+  hand-editing YAML, retained network assertion failures can be loaded back
+  into that editor from the report artifact panel, and Scopes derives
+  return-loss, insertion-loss, VSWR,
   group-delay,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
   and Rollet K traces from full `s_parameters.csv` artifacts.
