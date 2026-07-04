@@ -389,6 +389,18 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
             "raw_measure_statements".to_string(),
             json!(analog.analysis.measure_statements.len()),
         );
+        finding.measured.insert(
+            "adapter_blocker".to_string(),
+            json!("Raw measure_statements[] are backend-specific text and are not rewritten into Xyce .MEASURE syntax; use portable measure_templates[] for Xyce until a reviewed raw-statement translator and real-solver conformance contract exists."),
+        );
+        finding.measured.insert(
+            "evidence_sources".to_string(),
+            json!([
+                "docs/research/circuit_simulation_full_featured/measure_backend_evidence.md",
+                "docs/research/circuit_simulation_full_featured/sources/ngspice_manual.xhtml",
+                "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"
+            ]),
+        );
         finding.limit.insert(
             "required_evidence".to_string(),
             json!("measure_templates_or_ngspice_raw_measure_summary"),

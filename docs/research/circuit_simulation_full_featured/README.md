@@ -618,8 +618,10 @@ The GUI should not become the solver.
   conformance through
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli`; raw
   `measure_statements[]` remain ngspice-only because their syntax is
-  backend-specific. Portable templates now include simple scalar operations and
-  transient threshold delay/slew/window crossing time through SPICE
+  backend-specific, and Xyce/raw-statement fail-closed findings now carry
+  `adapter_blocker` and `evidence_sources[]` metadata pointing to
+  `measure_backend_evidence.md`. Portable templates now include simple scalar
+  operations and transient threshold delay/slew/window crossing time through SPICE
   `TRIG`/`TARG` and `WHEN`. Normalized `measure_summary` rows can now feed
   `measure_assertions[]` so scalar simulation specs directly pass or fail
   validation, including shared worst-corner and Monte Carlo yield summaries

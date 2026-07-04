@@ -876,7 +876,9 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    `measure_summary` contract. The adapter records Xyce measure result files
    such as `.mt0` when the solver emits them, with stdout as a fallback for
    compatible outputs. Raw `measure_statements[]` remain ngspice-only and fail
-   closed on Xyce because their syntax is backend-specific.
+   closed on Xyce because their syntax is backend-specific. That fail-closed
+   finding carries `adapter_blocker` and `evidence_sources[]` metadata pointing
+   to the retained measure backend evidence.
 9. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on

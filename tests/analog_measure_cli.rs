@@ -750,6 +750,16 @@ fn measure_xyce_backend_fails_closed_with_planning_evidence() {
         report["failures"][0]["limit"]["required_evidence"],
         "measure_templates_or_ngspice_raw_measure_summary"
     );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("Raw measure_statements[] are backend-specific text")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/measure_backend_evidence.md"
+    );
     assert_report_schema_valid(&report);
 }
 

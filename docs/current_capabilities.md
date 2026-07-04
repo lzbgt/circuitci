@@ -415,7 +415,8 @@ Current analog support:
   same worst-corner and Monte Carlo yield summaries used by waveform, AC, DC,
   and noise assertions. The Xyce path records measure result files such as
   `.mt0` when emitted. Raw `measure_statements[]` remain ngspice-only and fail
-  closed on Xyce. Opt-in real-ngspice conformance
+  closed on Xyce with `adapter_blocker` and `evidence_sources[]` metadata
+  pointing to retained measure backend evidence. Opt-in real-ngspice conformance
   coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; it skips
   unless `ngspice` is on `PATH`. Opt-in real-Xyce template conformance uses
