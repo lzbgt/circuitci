@@ -192,8 +192,9 @@ Current analog support:
   closed for these noise metrics because it does not emit NF/NFmin/Rn/SOpt
   evidence. Opt-in real-ngspice S-parameter conformance is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sparameter_cli`; it
-  skips unless `ngspice` is on `PATH` and covers both ordinary `.SP` matrix
-  normalization and `.SP ... donoise=1` RF-noise normalization.
+  skips unless `ngspice` is on `PATH` and covers ordinary `.SP` matrix
+  normalization plus mixed S-parameter term, network, and RF-noise sign-off
+  from one `.SP ... donoise=1` run.
   Reports project retained rows into `s_parameter_summaries[]`, retained
   network-quality rows into `s_parameter_network_summaries[]`, and retained RF
   noise rows into `s_parameter_noise_summaries[]`. Markdown includes

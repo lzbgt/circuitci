@@ -766,7 +766,9 @@ The GUI should not become the solver.
   complex `wrdata` vector header, so the RF-noise parser now accepts repeated
   `SOpt SOpt` columns as well as explicit `sopt_real`/`sopt_imaginary`
   aliases, then verifies retained `s_parameter_noise_raw.csv`,
-  `s_parameter_noise_summary.csv`, and solver-manifest noise provenance.
+  `s_parameter_noise_summary.csv`, solver-manifest noise provenance, and mixed
+  S-parameter term/network/noise assertion evaluation from the same live
+  `.SP ... donoise=1` run.
 - 2026-07-04: Projected retained RF SP-noise summaries into normal validation
   reports. `s_parameter_noise_summary.csv` now appears as
   `s_parameter_noise_summaries[]`, Markdown reports include an "S-Parameter

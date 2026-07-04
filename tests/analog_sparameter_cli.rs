@@ -1483,7 +1483,19 @@ fn real_ngspice_sparameter_noise_conformance_when_enabled() {
         project_dir.path(),
         "ngspice",
         "port1",
-        r#"        s_parameter_noise_assertions:
+        r#"        s_parameter_assertions:
+          - name: s11_magnitude_available
+            parameter: s11
+            metric: magnitude_linear
+            aggregation: max
+            relation: below
+            threshold: 2.0
+        s_parameter_network_assertions:
+          - name: passive_network_available
+            metric: passivity_max_singular_value
+            relation: below
+            threshold: 2.0
+        s_parameter_noise_assertions:
           - name: nf_available
             metric: noise_figure_db_max
             relation: below
@@ -1532,6 +1544,14 @@ fn real_ngspice_sparameter_noise_conformance_when_enabled() {
         &["s11_mag_db", "s21_mag_db", "s12_mag_db", "s22_mag_db"],
     );
     assert_csv_has_header(
+        artifact_path(&report, "s_parameter_summary.csv"),
+        &["parameter", "min_mag_linear", "max_mag_linear"],
+    );
+    assert_csv_has_header(
+        artifact_path(&report, "s_parameter_network_summary.csv"),
+        &["max_passivity_singular_value"],
+    );
+    assert_csv_has_header(
         artifact_path(&report, "s_parameter_noise_raw.csv"),
         &["nf", "nfmin", "rn", "sopt"],
     );
@@ -1570,6 +1590,16 @@ fn real_ngspice_sparameter_noise_conformance_when_enabled() {
             .as_f64()
             .unwrap()
             .is_finite()
+    );
+    let s_summaries = report["s_parameter_summaries"].as_array().unwrap();
+    assert!(s_summaries.iter().any(|row| row["parameter"] == "s11"));
+    let network_summaries = report["s_parameter_network_summaries"].as_array().unwrap();
+    assert_eq!(network_summaries.len(), 1);
+    assert!(
+        network_summaries[0]["max_passivity_singular_value"]
+            .as_f64()
+            .unwrap()
+            < 2.0
     );
     let manifest: Value = serde_json::from_str(
         &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
