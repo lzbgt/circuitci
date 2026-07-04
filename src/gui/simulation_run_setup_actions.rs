@@ -3,9 +3,9 @@ use super::analog::{
     AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft,
     AnalogDistortionScenarioDraft, AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
     AnalogMeasureScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
-    AnalogScenarioDraft, AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
-    append_analog_ac_scenario_with_project_path, append_analog_dc_scenario_with_project_path,
-    append_analog_dc_sweep_scenario_with_project_path,
+    AnalogSParameterScenarioDraft, AnalogScenarioDraft, AnalogSensitivityScenarioDraft,
+    AnalogTransferFunctionScenarioDraft, append_analog_ac_scenario_with_project_path,
+    append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
     append_analog_distortion_scenario_with_project_path,
     append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
@@ -13,6 +13,7 @@ use super::analog::{
     append_analog_noise_scenario_with_project_path,
     append_analog_pole_zero_scenario_with_project_path,
     append_analog_sensitivity_scenario_with_project_path,
+    append_analog_sparameter_scenario_with_project_path,
     append_analog_transfer_function_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path,
 };
@@ -226,6 +227,32 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "Measure run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "sparam" {
+            let draft = AnalogSParameterScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                port1_net: self.analog_probe_net.clone(),
+                port2_net: self.analog_sparameter_port2_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                start_frequency_hz: self.analog_start_frequency_hz,
+                stop_frequency_hz: self.analog_stop_frequency_hz,
+                points_per_decade: self.analog_points_per_decade,
+                reference_impedance_ohm: self.analog_sparameter_reference_impedance_ohm,
+            };
+            match append_analog_sparameter_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "S-parameter run setup {} added.",
                         self.analog_scenario_name.trim()
                     ),
                 ),

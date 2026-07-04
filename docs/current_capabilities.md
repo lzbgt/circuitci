@@ -163,8 +163,11 @@ Current analog support:
 - `analog_sparameter` scenarios with `SPICE_S_PARAMETER_ANALYSIS` for
   frequency-domain S-parameter simulation contracts. The Board IR/schema can
   declare `analysis.type: sparam`, frequency bounds, points per decade, and
-  explicit port nodes/reference impedances. Explicit `backend: xyce` generates
-  Xyce port devices, runs `.AC` plus `.LIN SPARCALC=1`, captures Touchstone RI
+  explicit port nodes/reference impedances. The GUI Run Setup editor can
+  author generated-from-board two-port `analog_sparameter` scenarios with
+  selected port nets, sweep bounds, and shared reference impedance before RF
+  port/network/noise checks are added. Explicit `backend: xyce` generates Xyce
+  port devices, runs `.AC` plus `.LIN SPARCALC=1`, captures Touchstone RI
   output, and normalizes it to `s_parameters.csv`; explicit
   `backend: ngspice` emits RF port voltage sources, runs `.SP`, exports
   `S_i_j` vectors, and normalizes them to the same CSV contract. Both paths

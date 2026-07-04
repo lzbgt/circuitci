@@ -110,6 +110,19 @@ pub(super) struct AnalogMeasureScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogSParameterScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) port1_net: String,
+    pub(super) port2_net: String,
+    pub(super) probe_name: String,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
+    pub(super) reference_impedance_ohm: f64,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -353,6 +366,29 @@ pub(super) fn append_analog_measure_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_sparameter_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogSParameterScenarioDraft,
+) -> Result<String> {
+    validate_sparameter_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.port1_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::SParameter {
+            port2_net: draft.port2_net.trim().to_string(),
+            start_frequency_hz: draft.start_frequency_hz,
+            stop_frequency_hz: draft.stop_frequency_hz,
+            points_per_decade: draft.points_per_decade,
+            reference_impedance_ohm: draft.reference_impedance_ohm,
+        },
+    )
+}
+
 pub(super) fn append_analog_noise_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -505,6 +541,14 @@ fn append_generated_analog_scenario_with_project_path(
                     "Distortion source {source} must be an included voltage or current source component."
                 );
             }
+        }
+    }
+    if let GeneratedAnalogScenarioKind::SParameter { port2_net, .. } = &kind {
+        if !project.board.nets.contains_key(port2_net) {
+            anyhow::bail!("S-parameter port 2 net {port2_net} was not found.");
+        }
+        if port2_net == probe_net {
+            anyhow::bail!("S-parameter port 2 net must differ from port 1 net.");
         }
     }
     if project.board.components.is_empty() {
@@ -774,6 +818,33 @@ fn validate_measure_draft(draft: &AnalogMeasureScenarioDraft) -> Result<()> {
     Ok(())
 }
 
+fn validate_sparameter_draft(draft: &AnalogSParameterScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.port1_net.trim().is_empty() {
+        anyhow::bail!("S-parameter port 1 net must not be blank.");
+    }
+    if draft.port2_net.trim().is_empty() {
+        anyhow::bail!("S-parameter port 2 net must not be blank.");
+    }
+    if draft.port1_net.trim() == draft.port2_net.trim() {
+        anyhow::bail!("S-parameter ports must use distinct nets.");
+    }
+    validate_frequency_range(
+        draft.start_frequency_hz,
+        draft.stop_frequency_hz,
+        draft.points_per_decade,
+        "Analog S-parameter",
+    )?;
+    if !draft.reference_impedance_ohm.is_finite() || draft.reference_impedance_ohm <= 0.0 {
+        anyhow::bail!("S-parameter reference impedance must be finite and positive.");
+    }
+    Ok(())
+}
+
 fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.output_probe_name, "output noise probe name")?;
@@ -1021,6 +1092,13 @@ enum GeneratedAnalogScenarioKind {
         stop_frequency_hz: f64,
         points_per_decade: u32,
     },
+    SParameter {
+        port2_net: String,
+        start_frequency_hz: f64,
+        stop_frequency_hz: f64,
+        points_per_decade: u32,
+        reference_impedance_ohm: f64,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -1053,6 +1131,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Sensitivity { .. } => "analog_sensitivity",
             Self::Distortion { .. } => "analog_distortion",
             Self::Measure { .. } => "analog_measure",
+            Self::SParameter { .. } => "analog_sparameter",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -1070,6 +1149,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Sensitivity { .. } => "SPICE_SENSITIVITY_ANALYSIS",
             Self::Distortion { .. } => "SPICE_DISTORTION_ANALYSIS",
             Self::Measure { .. } => "SPICE_MEASURE_ANALYSIS",
+            Self::SParameter { .. } => "SPICE_S_PARAMETER_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -1348,6 +1428,54 @@ fn analog_block(
                 serde_yaml_ng::Value::Sequence(vec![serde_yaml_ng::Value::Mapping(template)]),
             );
         }
+        GeneratedAnalogScenarioKind::SParameter {
+            port2_net,
+            start_frequency_hz,
+            stop_frequency_hz,
+            points_per_decade,
+            reference_impedance_ohm,
+        } => {
+            insert_string(&mut analysis, "type", "sparam");
+            insert_number(&mut analysis, "start_frequency_hz", *start_frequency_hz)?;
+            insert_number(&mut analysis, "stop_frequency_hz", *stop_frequency_hz)?;
+            analysis.insert(
+                key("points_per_decade"),
+                serde_yaml_ng::to_value(points_per_decade)
+                    .context("Failed to encode S-parameter points_per_decade.")?,
+            );
+            let reference_node = node_by_net.get(scenario.ground_net).with_context(|| {
+                format!(
+                    "S-parameter reference net {} has no generated SPICE node.",
+                    scenario.ground_net
+                )
+            })?;
+            let port1_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "S-parameter port 1 net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            let port2_node = node_by_net.get(port2_net).with_context(|| {
+                format!("S-parameter port 2 net {port2_net} has no generated SPICE node.")
+            })?;
+            analysis.insert(
+                key("s_parameter_ports"),
+                serde_yaml_ng::Value::Sequence(vec![
+                    sparameter_port_value(
+                        "p1",
+                        port1_node,
+                        reference_node,
+                        *reference_impedance_ohm,
+                    )?,
+                    sparameter_port_value(
+                        "p2",
+                        port2_node,
+                        reference_node,
+                        *reference_impedance_ohm,
+                    )?,
+                ]),
+            );
+        }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,
             stop_frequency_hz,
@@ -1447,6 +1575,9 @@ fn analog_block(
         )
     })?;
     let probes = match &scenario.kind {
+        GeneratedAnalogScenarioKind::SParameter { .. } => {
+            vec![probe_value(scenario.probe_name.trim(), "S(p1,p1)")]
+        }
         GeneratedAnalogScenarioKind::Noise {
             input_source,
             input_probe_name,
@@ -1470,6 +1601,24 @@ fn analog_block(
         serde_yaml_ng::Value::Sequence(Vec::new()),
     );
     Ok(analog)
+}
+
+fn sparameter_port_value(
+    name: &str,
+    positive_node: &str,
+    negative_node: &str,
+    reference_impedance_ohm: f64,
+) -> Result<serde_yaml_ng::Value> {
+    let mut port = serde_yaml_ng::Mapping::new();
+    insert_string(&mut port, "name", name);
+    insert_string(&mut port, "positive_node", positive_node);
+    insert_string(&mut port, "negative_node", negative_node);
+    insert_number(
+        &mut port,
+        "reference_impedance_ohm",
+        reference_impedance_ohm,
+    )?;
+    Ok(serde_yaml_ng::Value::Mapping(port))
 }
 
 fn probe_value(name: &str, expression: &str) -> serde_yaml_ng::Value {
@@ -1773,3 +1922,6 @@ board:
 "#
     }
 }
+
+#[cfg(test)]
+mod sparameter_run_setup_tests;

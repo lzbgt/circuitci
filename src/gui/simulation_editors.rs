@@ -25,8 +25,9 @@ use super::analog_stimulus::{
 use super::simulation_forms::*;
 use super::simulation_run_setup_controls::{
     distortion_mode_combo, generated_noise_source_combo, initialize_noise_source_default,
-    initialize_sensitivity_filters_default, measure_mode_combo, measure_operation_combo,
-    noise_source_combo, pole_zero_mode_combo, sensitivity_mode_combo,
+    initialize_sensitivity_filters_default, initialize_sparameter_port2_default,
+    measure_mode_combo, measure_operation_combo, noise_source_combo, pole_zero_mode_combo,
+    sensitivity_mode_combo,
 };
 use super::sketch::ProjectSnapshot;
 use eframe::egui;
@@ -55,6 +56,7 @@ impl CircuitCiApp {
                             "sens" => "Sensitivity",
                             "disto" => "Distortion",
                             "measure" => "Measure",
+                            "sparam" => "S-Parameter",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -108,6 +110,11 @@ impl CircuitCiApp {
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
+                                "sparam".to_string(),
+                                "S-Parameter",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
                                 "noise".to_string(),
                                 "Noise",
                             );
@@ -145,7 +152,10 @@ impl CircuitCiApp {
                     ui.text_edit_singleline(&mut self.analog_probe_name);
                     ui.end_row();
 
-                    if matches!(self.analog_run_setup_kind.as_str(), "ac" | "noise") {
+                    if matches!(
+                        self.analog_run_setup_kind.as_str(),
+                        "ac" | "noise" | "sparam"
+                    ) {
                         ui.label("Start frequency");
                         ui.add(
                             egui::DragValue::new(&mut self.analog_start_frequency_hz)
@@ -182,6 +192,31 @@ impl CircuitCiApp {
                                 "analog_noise_input_source",
                                 &mut self.analog_noise_input_source,
                                 snapshot,
+                            );
+                            ui.end_row();
+                        } else if self.analog_run_setup_kind == "sparam" {
+                            initialize_sparameter_port2_default(
+                                snapshot,
+                                &self.analog_probe_net,
+                                &mut self.analog_sparameter_port2_net,
+                            );
+                            ui.label("Port 2 net");
+                            net_combo(
+                                ui,
+                                "analog_sparameter_port2_net",
+                                &mut self.analog_sparameter_port2_net,
+                                snapshot,
+                            );
+                            ui.end_row();
+
+                            ui.label("Reference Z0");
+                            ui.add(
+                                egui::DragValue::new(
+                                    &mut self.analog_sparameter_reference_impedance_ohm,
+                                )
+                                .speed(1.0)
+                                .range(1.0e-12..=1.0e12)
+                                .suffix(" ohm"),
                             );
                             ui.end_row();
                         }

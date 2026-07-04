@@ -759,7 +759,11 @@ The GUI should not become the solver.
   loss, insertion loss, VSWR, mismatch-loss, group-delay, and reflection-impedance limits with Board IR validation
   before accepting the YAML edit; retained S-parameter assertion failures,
   including mismatch-loss and reflection-impedance limits, can be loaded from
-  the report panel back into that editor. Two-port
+  the report panel back into that editor. The GUI Run Setup editor now authors
+  generated-from-board two-port `analog_sparameter` scenarios with selected
+  port nets, sweep bounds, points per decade, and shared reference impedance,
+  so users can create the runnable RF scenario before adding RF port/network/noise
+  checks. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity
   (`max |S21-S12|`) and passivity (maximum singular value of the complex S
   matrix), plus active-network stability through minimum Rollet K and maximum

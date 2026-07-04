@@ -132,6 +132,27 @@ pub(super) fn measure_operation_combo(ui: &mut egui::Ui, selected: &mut String) 
         });
 }
 
+pub(super) fn initialize_sparameter_port2_default(
+    snapshot: &ProjectSnapshot,
+    port1_net: &str,
+    selected: &mut String,
+) {
+    if !selected.is_empty()
+        && selected != port1_net
+        && snapshot.nets_detail.iter().any(|net| net.id == *selected)
+    {
+        return;
+    }
+    if let Some(net) = snapshot
+        .nets_detail
+        .iter()
+        .find(|net| net.id != port1_net && net.kind != "ground")
+        .or_else(|| snapshot.nets_detail.iter().find(|net| net.id != port1_net))
+    {
+        *selected = net.id.clone();
+    }
+}
+
 pub(super) fn initialize_sensitivity_filters_default(
     snapshot: &ProjectSnapshot,
     selected: &mut String,
