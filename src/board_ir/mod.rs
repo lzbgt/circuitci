@@ -1286,6 +1286,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub transfer_input_source: Option<String>,
     #[serde(default)]
+    pub transfer_function_assertions: Vec<AnalogTransferFunctionAssertion>,
+    #[serde(default)]
     pub pole_zero_output_node: Option<String>,
     #[serde(default)]
     pub pole_zero_reference_node: Option<String>,
@@ -1462,6 +1464,26 @@ pub struct AnalogDistortionAssertion {
     pub unit: Option<String>,
     #[serde(default)]
     pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogTransferFunctionAssertion {
+    pub name: String,
+    pub metric: AnalogTransferFunctionMetric,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogTransferFunctionMetric {
+    TransferFunctionGain,
+    InputResistanceOhm,
+    OutputResistanceOhm,
 }
 
 #[derive(Debug, Clone, Deserialize)]

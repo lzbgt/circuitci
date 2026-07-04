@@ -45,6 +45,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/sensitivity_summary" }
     },
+    "transfer_function_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transfer_function_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -224,6 +228,26 @@
         "sensitivity_real": { "type": "number" },
         "sensitivity_imaginary": { "type": "number" },
         "sensitivity_magnitude": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "transfer_function_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "output_expression",
+        "input_source",
+        "transfer_function_gain",
+        "input_resistance_ohm",
+        "output_resistance_ohm"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "output_expression": { "type": "string" },
+        "input_source": { "type": "string", "minLength": 1 },
+        "transfer_function_gain": { "type": "number" },
+        "input_resistance_ohm": { "type": "number" },
+        "output_resistance_ohm": { "type": "number" }
       },
       "additionalProperties": false
     },

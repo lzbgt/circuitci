@@ -50,6 +50,16 @@ pub struct SensitivitySummary {
     pub sensitivity_magnitude: f64,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct TransferFunctionSummary {
+    pub artifact: String,
+    pub output_expression: String,
+    pub input_source: String,
+    pub transfer_function_gain: f64,
+    pub input_resistance_ohm: f64,
+    pub output_resistance_ohm: f64,
+}
+
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
     let mut records = Vec::new();
     for artifact in artifacts {
@@ -315,6 +325,76 @@ fn parse_sensitivity_summary_csv(artifact: &str, text: &str) -> Vec<SensitivityS
             sensitivity_real,
             sensitivity_imaginary,
             sensitivity_magnitude,
+        });
+    }
+    rows
+}
+
+pub(super) fn collect_transfer_function_summaries(
+    artifacts: &[String],
+) -> Vec<TransferFunctionSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("transfer_function_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_transfer_function_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| {
+        left.artifact
+            .cmp(&right.artifact)
+            .then_with(|| left.output_expression.cmp(&right.output_expression))
+            .then_with(|| left.input_source.cmp(&right.input_source))
+    });
+    records
+}
+
+fn parse_transfer_function_summary_csv(artifact: &str, text: &str) -> Vec<TransferFunctionSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "output_expression",
+            "input_source",
+            "transfer_function_gain",
+            "input_resistance_ohm",
+            "output_resistance_ohm",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 5 {
+            continue;
+        }
+        let Some(transfer_function_gain) = parse_finite_f64(&fields[2]) else {
+            continue;
+        };
+        let Some(input_resistance_ohm) = parse_finite_f64(&fields[3]) else {
+            continue;
+        };
+        let Some(output_resistance_ohm) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        rows.push(TransferFunctionSummary {
+            artifact: artifact.to_string(),
+            output_expression: fields[0].clone(),
+            input_source: fields[1].clone(),
+            transfer_function_gain,
+            input_resistance_ohm,
+            output_resistance_ohm,
         });
     }
     rows

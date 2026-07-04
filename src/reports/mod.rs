@@ -7,11 +7,11 @@ use std::path::Path;
 
 mod analog_summaries;
 pub use analog_summaries::{
-    DistortionSummary, FourierSummary, PoleZeroSummary, SensitivitySummary,
+    DistortionSummary, FourierSummary, PoleZeroSummary, SensitivitySummary, TransferFunctionSummary,
 };
 use analog_summaries::{
     collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
-    collect_sensitivity_summaries,
+    collect_sensitivity_summaries, collect_transfer_function_summaries,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -72,6 +72,7 @@ pub struct ValidationReport {
     pub fourier_summaries: Vec<FourierSummary>,
     pub pole_zero_summaries: Vec<PoleZeroSummary>,
     pub sensitivity_summaries: Vec<SensitivitySummary>,
+    pub transfer_function_summaries: Vec<TransferFunctionSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -403,6 +404,7 @@ impl ValidationReport {
         let fourier_summaries = collect_fourier_summaries(&artifacts);
         let pole_zero_summaries = collect_pole_zero_summaries(&artifacts);
         let sensitivity_summaries = collect_sensitivity_summaries(&artifacts);
+        let transfer_function_summaries = collect_transfer_function_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -430,6 +432,7 @@ impl ValidationReport {
             fourier_summaries,
             pole_zero_summaries,
             sensitivity_summaries,
+            transfer_function_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -565,6 +568,23 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.sensitivity_real,
                 row.sensitivity_imaginary,
                 row.sensitivity_magnitude
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Transfer Function Summary\n\n");
+    if report.transfer_function_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.transfer_function_summaries {
+            text.push_str(&format!(
+                "- `{}` from `{}`: gain={:.6e} input_resistance={:.6e} ohm output_resistance={:.6e} ohm\n",
+                row.output_expression,
+                row.input_source,
+                row.transfer_function_gain,
+                row.input_resistance_ohm,
+                row.output_resistance_ohm
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -1792,5 +1812,49 @@ mod tests {
         assert!(markdown.contains("## Sensitivity Summary"));
         assert!(markdown.contains("`V(out)` `dc` `r1`"));
         assert!(markdown.contains("magnitude=2.500000e-4"));
+    }
+
+    #[test]
+    fn validation_report_projects_transfer_function_summary_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let summary = dir.path().join("transfer_function_summary.csv");
+        fs::write(
+            &summary,
+            "output_expression,input_source,transfer_function_gain,input_resistance_ohm,output_resistance_ohm\nV(out),V1,5.000000000000e-1,2.000000000000e3,5.000000000000e2\n",
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![summary.to_string_lossy().into_owned()],
+            Vec::new(),
+            "circuitci validate project.yaml".to_string(),
+        );
+
+        assert_eq!(report.transfer_function_summaries.len(), 1);
+        assert_eq!(
+            report.transfer_function_summaries[0].output_expression,
+            "V(out)"
+        );
+        assert_eq!(report.transfer_function_summaries[0].input_source, "V1");
+        assert_eq!(
+            report.transfer_function_summaries[0].transfer_function_gain,
+            0.5
+        );
+        assert_eq!(
+            report.transfer_function_summaries[0].input_resistance_ohm,
+            2000.0
+        );
+        assert_eq!(
+            report.transfer_function_summaries[0].output_resistance_ohm,
+            500.0
+        );
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## Transfer Function Summary"));
+        assert!(markdown.contains("`V(out)` from `V1`"));
+        assert!(markdown.contains("gain=5.000000e-1"));
     }
 }

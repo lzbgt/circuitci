@@ -2926,6 +2926,26 @@
                   },
                   "transfer_output_expression": { "type": "string", "minLength": 1 },
                   "transfer_input_source": { "type": "string", "minLength": 1 },
+                  "transfer_function_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "metric": { "enum": ["transfer_function_gain", "input_resistance_ohm", "output_resistance_ohm"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "pole_zero_output_node": { "type": "string", "minLength": 1 },
                   "pole_zero_reference_node": { "type": "string", "minLength": 1 },
                   "pole_zero_input_source": { "type": "string", "minLength": 1 },

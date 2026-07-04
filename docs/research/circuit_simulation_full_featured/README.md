@@ -556,8 +556,12 @@ The GUI should not become the solver.
 - Add `.TF`, `.PZ`, `.SENS`, `.FOUR`, and `.MEASURE` support where available.
 - The first `.TF` path is external-ngspice execution with normalized
   `transfer_function_summary` plus opt-in real-ngspice conformance coverage;
-  next add Xyce planning or adapter support where the backend exposes
-  equivalent output.
+  `analysis.transfer_function_assertions[]` now signs off gain, input
+  resistance, or output resistance limits from `transfer_function_summary.csv`,
+  reports project retained rows into `transfer_function_summaries[]`, Markdown
+  reports include a "Transfer Function Summary" section, and GUI Scopes shows
+  compact `.TF` scalar rows. Next add Xyce planning or adapter support where
+  the backend exposes equivalent output.
 - The first `.PZ` path is an external-ngspice adapter with a Board IR/schema
   contract for output/reference nodes, input source, mode, and normalized
   `pole_zero_summary` plus opt-in real-ngspice conformance. It now also has

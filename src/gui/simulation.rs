@@ -253,6 +253,23 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Transfer function summary");
+                    if report.transfer_function_summaries.is_empty() {
+                        ui.label("No transfer-function summary rows were emitted.");
+                    } else {
+                        for row in &report.transfer_function_summaries {
+                            ui.monospace(format!(
+                                "{} from {} gain={:.6e} rin={:.6e}ohm rout={:.6e}ohm artifact={}",
+                                row.output_expression,
+                                row.input_source,
+                                row.transfer_function_gain,
+                                row.input_resistance_ohm,
+                                row.output_resistance_ohm,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Fourier summary");
                     if report.fourier_summaries.is_empty() {
                         ui.label("No Fourier summary rows were emitted.");

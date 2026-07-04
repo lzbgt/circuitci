@@ -1444,6 +1444,12 @@ Retained `sensitivity_summary.csv` artifacts project into top-level
 mode, parameter, optional frequency, real sensitivity, imaginary sensitivity,
 and magnitude. Markdown reports include those rows in a "Sensitivity Summary"
 section, and the GUI report panel surfaces the same compact sensitivity rows.
+Retained `transfer_function_summary.csv` artifacts project into top-level
+`transfer_function_summaries[]` rows with the source artifact path, output
+expression, input source, transfer-function gain, input resistance, and output
+resistance. Markdown reports include those rows in a "Transfer Function
+Summary" section, and the GUI report panel surfaces the same compact `.TF`
+scalar rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

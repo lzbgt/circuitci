@@ -36,6 +36,7 @@ mod analog_sparameter_spice;
 mod analog_spice;
 mod analog_sweep_reports;
 mod analog_sweep_sampling;
+mod analog_transfer_function_assertions;
 mod analog_transfer_function_runner;
 mod analog_transfer_function_spice;
 mod analog_util;

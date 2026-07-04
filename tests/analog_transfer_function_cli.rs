@@ -31,6 +31,15 @@ fn write_transfer_function_project(
     backend: &str,
     input_source: &str,
 ) -> std::path::PathBuf {
+    write_transfer_function_project_with_analysis_extra(dir, backend, input_source, "")
+}
+
+fn write_transfer_function_project_with_analysis_extra(
+    dir: &std::path::Path,
+    backend: &str,
+    input_source: &str,
+    analysis_extra: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let project = dir.join("project.yaml");
     fs::write(
@@ -83,6 +92,7 @@ scenarios:
         type: tf
         transfer_output_expression: V(out)
         transfer_input_source: {input_source}
+{analysis_extra}
       stimuli:
         - {{ name: dc_gain, description: Small-signal transfer from V1 to out. }}
       probes:
@@ -267,6 +277,148 @@ fn real_ngspice_transfer_function_conformance_when_enabled() {
     assert_eq!(
         manifest["outputs"]["normalized"][0]["kind"],
         "transfer_function_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn transfer_function_assertions_pass_and_project_summary_rows() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'transfer_function = 5.000000e-001\\noutput_impedance_at_v(out) = 5.000000e+002\\nv1#input_impedance = 2.000000e+003\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_transfer_function_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V1",
+        r#"
+        transfer_function_assertions:
+          - name: gain_near_expected_floor
+            metric: transfer_function_gain
+            relation: above
+            threshold: 0.49
+          - name: input_resistance_floor
+            metric: input_resistance_ohm
+            relation: above
+            threshold: 1000.0
+            unit: ohm
+          - name: output_resistance_ceiling
+            metric: output_resistance_ohm
+            relation: below
+            threshold: 1000.0
+            unit: ohm"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_eq!(
+        report["transfer_function_summaries"][0]["output_expression"],
+        "V(out)"
+    );
+    assert_eq!(
+        report["transfer_function_summaries"][0]["input_source"],
+        "V1"
+    );
+    assert_eq!(
+        report["transfer_function_summaries"][0]["transfer_function_gain"],
+        0.5
+    );
+    assert_eq!(
+        report["transfer_function_summaries"][0]["input_resistance_ohm"],
+        2000.0
+    );
+    assert_eq!(
+        report["transfer_function_summaries"][0]["output_resistance_ohm"],
+        500.0
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn transfer_function_assertion_fails_on_limit_violation() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'transfer_function = 5.000000e-001\\noutput_impedance_at_v(out) = 5.000000e+002\\nv1#input_impedance = 2.000000e+003\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_transfer_function_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V1",
+        r#"
+        transfer_function_assertions:
+          - name: gain_too_low
+            metric: transfer_function_gain
+            relation: above
+            threshold: 0.75"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "SPICE_TRANSFER_FUNCTION_ANALYSIS"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "gain_too_low"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["metric"],
+        "transfer_function_gain"
+    );
+    assert_eq!(report["failures"][0]["limit"]["above_threshold"], 0.75);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn transfer_function_assertions_fail_closed_on_bad_summary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'transfer_function = 5.000000e-001\\noutput_impedance_at_v(out) = 5.000000e+002\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_transfer_function_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V1",
+        r#"
+        transfer_function_assertions:
+          - name: input_resistance_required
+            metric: input_resistance_ohm
+            relation: above
+            threshold: 1.0"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "SPICE_TRANSFER_FUNCTION_ANALYSIS"
+    );
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("input impedance/resistance")
     );
     assert_report_schema_valid(&report);
 }

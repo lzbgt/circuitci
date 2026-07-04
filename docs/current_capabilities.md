@@ -163,8 +163,13 @@ Current analog support:
   `transfer_output_expression`, and `transfer_input_source`. External
   `ngspice` runs write `transfer_function_raw.txt`,
   `transfer_function_summary.csv`, and `solver_manifest.json`; the normalized
-  summary records gain, input resistance, and output resistance. Opt-in
-  real-ngspice conformance coverage is available through
+  summary records gain, input resistance, and output resistance.
+  `analysis.transfer_function_assertions[]` can sign off gain or resistance
+  limits, with malformed summaries and failed limits failing closed.
+  Validation reports project retained rows into `transfer_function_summaries[]`,
+  Markdown includes a "Transfer Function Summary" section, and the GUI artifact
+  panel shows compact `.TF` scalar rows. Opt-in real-ngspice conformance
+  coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.

@@ -15,7 +15,12 @@ use super::analog_runner::{
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
-use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
+use super::analog_sweep_reports::{
+    push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
+};
+use super::analog_transfer_function_assertions::{
+    evaluate_transfer_function_assertions, validate_transfer_function_assertion_contract,
+};
 use super::analog_transfer_function_runner::{
     NgspiceTransferFunctionRunOptions, run_ngspice_transfer_function,
 };
@@ -191,6 +196,10 @@ pub(super) fn validate_spice_transfer_function_with_progress<F, C>(
         );
         return;
     }
+    if let Err(message) = validate_transfer_function_assertion_contract(analog) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
     let run_plans = match analog_run_plans(analog) {
         Ok(run_plans) => run_plans,
         Err(message) => {
@@ -276,6 +285,7 @@ pub(super) fn validate_spice_transfer_function_with_progress<F, C>(
         return;
     }
 
+    let mut sweep_measurements = Vec::new();
     for run_plan in run_plans {
         if should_cancel() {
             push_canceled_finding(findings, scenario);
@@ -307,6 +317,13 @@ pub(super) fn validate_spice_transfer_function_with_progress<F, C>(
                     push_artifact(artifacts, artifact);
                 }
                 push_artifact(artifacts, &run.summary);
+                let assertion_measurements =
+                    evaluate_transfer_function_assertions(scenario, &run.summary, findings);
+                record_sweep_measurements(
+                    &mut sweep_measurements,
+                    &run_plan,
+                    assertion_measurements,
+                );
                 tag_corner_findings(findings, finding_start, &run_plan, false);
             }
             Err(error) => {
@@ -334,4 +351,5 @@ pub(super) fn validate_spice_transfer_function_with_progress<F, C>(
             }
         }
     }
+    push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
 }
