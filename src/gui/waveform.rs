@@ -922,6 +922,7 @@ fn probe_unit(label: &str) -> &'static str {
         || normalized.contains("transducer gain")
         || normalized.contains("available gain")
         || normalized.contains("operating gain")
+        || normalized.contains("noise figure")
     {
         "dB"
     } else if normalized.contains("phase_deg") || normalized.contains("phase") {
@@ -940,6 +941,7 @@ fn probe_unit(label: &str) -> &'static str {
         || normalized.contains("passivity singular")
         || normalized.contains("rollet k")
         || normalized.contains("stability delta")
+        || normalized.contains("source gamma")
     {
         "ratio"
     } else if normalized.contains("noise density")

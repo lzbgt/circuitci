@@ -1,7 +1,7 @@
 use super::merge_waveform_load_diagnostics;
 use super::waveform_io::{
     parse_distortion_spectrum_csv_text, parse_fourier_summary_csv_text,
-    parse_sensitivity_summary_csv_text,
+    parse_sensitivity_summary_csv_text, parse_sparameter_noise_raw_csv_text,
 };
 use super::{
     WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformLoadDiagnostic,
@@ -413,6 +413,43 @@ fn waveform_loader_reads_noise_spectrum_as_frequency_density_traces() {
     assert_eq!(waveform.probes[1].label, "input noise density");
     assert_eq!(waveform.probes[0].values, vec![2.0e-9, 3.0e-9]);
     assert_eq!(super::probe_unit(&waveform.probes[0].label), "V/sqrt(Hz)");
+}
+
+#[test]
+fn waveform_loader_reads_sparameter_noise_raw_as_frequency_traces() {
+    let waveform = parse_sparameter_noise_raw_csv_text(
+        "frequency_hz,nf_db,nfmin_db,rn_ohm,sopt_real,sopt_imaginary\n1.0e6,2.0,1.0,4.0,0.3,0.4\n1.0e9,3.0,1.5,6.0,0.1,0.2\n",
+        "s_parameter_noise_raw.csv",
+    )
+    .unwrap();
+
+    assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveform.time_s, vec![1.0, 1000.0]);
+    let labels: Vec<_> = waveform
+        .probes
+        .iter()
+        .map(|probe| probe.label.as_str())
+        .collect();
+    assert_eq!(
+        labels,
+        vec![
+            "RF noise figure dB",
+            "RF minimum noise figure dB",
+            "RF equivalent noise resistance ohm",
+            "RF optimum source gamma magnitude",
+        ]
+    );
+    assert_eq!(waveform.probes[0].values, vec![2.0, 3.0]);
+    assert_eq!(waveform.probes[1].values, vec![1.0, 1.5]);
+    assert_eq!(waveform.probes[2].values, vec![4.0, 6.0]);
+    assert_eq!(
+        waveform.probes[3].values,
+        vec![0.3_f64.hypot(0.4), 0.1_f64.hypot(0.2)]
+    );
+    assert_eq!(super::probe_unit(&waveform.probes[0].label), "dB");
+    assert_eq!(super::probe_unit(&waveform.probes[1].label), "dB");
+    assert_eq!(super::probe_unit(&waveform.probes[2].label), "ohm");
+    assert_eq!(super::probe_unit(&waveform.probes[3].label), "ratio");
 }
 
 #[test]

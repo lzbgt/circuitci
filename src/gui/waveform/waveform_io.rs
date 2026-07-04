@@ -172,7 +172,8 @@ fn report_waveform_paths(report: &ValidationReport) -> Vec<String> {
         if (is_hb_spectrum_path(artifact)
             || is_distortion_spectrum_path(artifact)
             || is_fourier_summary_path(artifact)
-            || is_sensitivity_summary_path(artifact))
+            || is_sensitivity_summary_path(artifact)
+            || is_sparameter_noise_raw_path(artifact))
             && !paths.iter().any(|path| path == artifact)
         {
             paths.push(artifact.clone());
@@ -259,6 +260,15 @@ where
         })?;
         return parse_sensitivity_summary_csv_rows(&text, label);
     }
+    if selected_probe_labels.is_empty() && is_sparameter_noise_raw_path(label) {
+        let text = std::fs::read_to_string(path).with_context(|| {
+            format!(
+                "Failed to read S-parameter noise raw CSV {}.",
+                path.display()
+            )
+        })?;
+        return parse_sparameter_noise_raw_csv_rows(&text, label);
+    }
 
     let file = std::fs::File::open(path)
         .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
@@ -343,6 +353,11 @@ pub(super) fn parse_sensitivity_summary_csv_text(text: &str, label: &str) -> Res
     parse_sensitivity_summary_csv_rows(text, label)
 }
 
+#[cfg(test)]
+pub(super) fn parse_sparameter_noise_raw_csv_text(text: &str, label: &str) -> Result<WaveformView> {
+    parse_sparameter_noise_raw_csv_rows(text, label)
+}
+
 fn is_hb_spectrum_path(path: &str) -> bool {
     path.ends_with("/hb_spectrum.csv") || path == "hb_spectrum.csv"
 }
@@ -357,6 +372,10 @@ fn is_fourier_summary_path(path: &str) -> bool {
 
 fn is_sensitivity_summary_path(path: &str) -> bool {
     path.ends_with("/sensitivity_summary.csv") || path == "sensitivity_summary.csv"
+}
+
+fn is_sparameter_noise_raw_path(path: &str) -> bool {
+    path.ends_with("/s_parameter_noise_raw.csv") || path == "s_parameter_noise_raw.csv"
 }
 
 fn parse_hb_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
@@ -1018,6 +1037,189 @@ struct SensitivitySummaryPoint {
     sensitivity_real: f64,
     sensitivity_imaginary: f64,
     sensitivity_magnitude: f64,
+}
+
+fn parse_sparameter_noise_raw_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let header = lines
+        .next()
+        .context("S-parameter noise raw CSV has no header row.")?;
+    let header = split_sparameter_noise_fields(header)?;
+    let frequency = find_sparameter_noise_column(&header, &["frequency_hz", "frequency", "freq"])
+        .context("S-parameter noise raw CSV lacks a frequency column.")?;
+    let noise_figure = find_sparameter_noise_column(&header, &["noise_figure_db", "nf_db", "nf"])
+        .context("S-parameter noise raw CSV lacks an NF/noise figure column.")?;
+    let minimum_noise_figure =
+        find_sparameter_noise_column(&header, &["minimum_noise_figure_db", "nfmin_db", "nfmin"])
+            .context("S-parameter noise raw CSV lacks an NFmin column.")?;
+    let equivalent_noise_resistance = find_sparameter_noise_column(
+        &header,
+        &["equivalent_noise_resistance_ohm", "rn_ohm", "rn"],
+    )
+    .context("S-parameter noise raw CSV lacks an equivalent-noise-resistance column.")?;
+    let sopt_magnitude = find_sparameter_noise_column(
+        &header,
+        &[
+            "optimum_source_reflection_magnitude",
+            "sopt_magnitude",
+            "sopt_mag",
+        ],
+    );
+    let sopt_real = find_sparameter_noise_column(&header, &["sopt_real", "sopt_re", "sopt"]);
+    let sopt_imaginary = find_sparameter_noise_column(&header, &["sopt_imaginary", "sopt_im"]);
+    if sopt_magnitude.is_none() && (sopt_real.is_none() || sopt_imaginary.is_none()) {
+        anyhow::bail!("S-parameter noise raw CSV lacks SOpt magnitude or real/imaginary columns.");
+    }
+
+    let mut frequency_values = Vec::new();
+    let mut noise_figure_values = Vec::new();
+    let mut minimum_noise_figure_values = Vec::new();
+    let mut equivalent_noise_resistance_values = Vec::new();
+    let mut sopt_magnitude_values = Vec::new();
+    for (line_index, line) in lines.enumerate() {
+        let fields = split_sparameter_noise_fields(line)?;
+        let frequency_hz =
+            parse_sparameter_noise_column(&fields, frequency, line_index, "frequency")?;
+        if frequency_hz <= 0.0 {
+            anyhow::bail!(
+                "S-parameter noise raw row {} has non-positive frequency {}.",
+                line_index + 2,
+                frequency_hz
+            );
+        }
+        if frequency_values
+            .last()
+            .is_some_and(|previous| frequency_hz <= *previous)
+        {
+            anyhow::bail!(
+                "S-parameter noise raw row {} has duplicate or non-increasing frequency {}.",
+                line_index + 2,
+                frequency_hz
+            );
+        }
+        let nf = parse_sparameter_noise_column(&fields, noise_figure, line_index, "NF")?;
+        let nfmin =
+            parse_sparameter_noise_column(&fields, minimum_noise_figure, line_index, "NFmin")?;
+        let rn =
+            parse_sparameter_noise_column(&fields, equivalent_noise_resistance, line_index, "Rn")?;
+        let sopt = if let Some(index) = sopt_magnitude {
+            parse_sparameter_noise_column(&fields, index, line_index, "SOpt magnitude")?
+        } else {
+            let real = parse_sparameter_noise_column(
+                &fields,
+                sopt_real.unwrap(),
+                line_index,
+                "SOpt real",
+            )?;
+            let imaginary = parse_sparameter_noise_column(
+                &fields,
+                sopt_imaginary.unwrap(),
+                line_index,
+                "SOpt imaginary",
+            )?;
+            real.hypot(imaginary)
+        };
+        if sopt < 0.0 {
+            anyhow::bail!(
+                "S-parameter noise raw row {} has negative SOpt magnitude {}.",
+                line_index + 2,
+                sopt
+            );
+        }
+        frequency_values.push(WaveformXAxis::FrequencyHz.storage_from_csv_value(frequency_hz));
+        noise_figure_values.push(nf);
+        minimum_noise_figure_values.push(nfmin);
+        equivalent_noise_resistance_values.push(rn);
+        sopt_magnitude_values.push(sopt);
+    }
+    if frequency_values.is_empty() {
+        anyhow::bail!("S-parameter noise raw CSV has no data rows.");
+    }
+
+    Ok(WaveformView {
+        label: label.to_string(),
+        path: label.to_string(),
+        x_axis: WaveformXAxis::FrequencyHz,
+        time_s: frequency_values,
+        probes: vec![
+            WaveformProbe {
+                label: "RF noise figure dB".to_string(),
+                values: noise_figure_values,
+                derived: false,
+                expression: Some("NF".to_string()),
+                promoted_quantity: None,
+            },
+            WaveformProbe {
+                label: "RF minimum noise figure dB".to_string(),
+                values: minimum_noise_figure_values,
+                derived: false,
+                expression: Some("NFmin".to_string()),
+                promoted_quantity: None,
+            },
+            WaveformProbe {
+                label: "RF equivalent noise resistance ohm".to_string(),
+                values: equivalent_noise_resistance_values,
+                derived: false,
+                expression: Some("Rn".to_string()),
+                promoted_quantity: None,
+            },
+            WaveformProbe {
+                label: "RF optimum source gamma magnitude".to_string(),
+                values: sopt_magnitude_values,
+                derived: false,
+                expression: Some("|SOpt|".to_string()),
+                promoted_quantity: None,
+            },
+        ],
+    })
+}
+
+fn split_sparameter_noise_fields(line: &str) -> Result<Vec<String>> {
+    if line.contains(',') {
+        return split_distortion_csv_fields(line).map(|fields| {
+            fields
+                .into_iter()
+                .map(|field| normalize_sparameter_noise_field(&field))
+                .collect()
+        });
+    }
+    Ok(line
+        .split_whitespace()
+        .map(normalize_sparameter_noise_field)
+        .collect())
+}
+
+fn normalize_sparameter_noise_field(field: &str) -> String {
+    field
+        .trim()
+        .trim_matches(|ch| matches!(ch, '"' | '\'' | '(' | ')' | '[' | ']'))
+        .to_ascii_lowercase()
+}
+
+fn find_sparameter_noise_column(columns: &[String], names: &[&str]) -> Option<usize> {
+    columns
+        .iter()
+        .position(|column| names.iter().any(|name| column == name))
+}
+
+fn parse_sparameter_noise_column(
+    fields: &[String],
+    index: usize,
+    line_index: usize,
+    label: &str,
+) -> Result<f64> {
+    let field = fields.get(index).with_context(|| {
+        format!(
+            "S-parameter noise raw row {} lacks {label} column.",
+            line_index + 2
+        )
+    })?;
+    parse_waveform_float(field).with_context(|| {
+        format!(
+            "S-parameter noise raw row {} has invalid {label} value.",
+            line_index + 2
+        )
+    })
 }
 
 fn split_distortion_csv_fields(line: &str) -> Result<Vec<String>> {

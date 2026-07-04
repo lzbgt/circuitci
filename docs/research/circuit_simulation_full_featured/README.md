@@ -760,6 +760,12 @@ The GUI should not become the solver.
   without hand-editing YAML, and retained RF noise assertion failures reload
   the editor with scenario, check name, metric, relation, and threshold from
   report metadata.
+- 2026-07-04: Added GUI Scopes loading for retained `s_parameter_noise_raw.csv`
+  RF SP-noise sweeps. The waveform loader now promotes ngspice-compatible raw
+  NF/NFmin/Rn/SOpt columns into frequency-axis traces, deriving `|SOpt|` from
+  real/imaginary columns when an explicit magnitude column is absent, while
+  keeping `s_parameter_noise_summary.csv` as the worst-case sign-off/report
+  artifact.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

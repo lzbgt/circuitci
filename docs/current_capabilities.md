@@ -191,6 +191,9 @@ Current analog support:
   "S-Parameter Summary", "S-Parameter Network Summary", and "S-Parameter Noise
   Summary" sections, the GUI artifact panel shows compact RF term, network,
   and RF-noise sign-off rows.
+  GUI Scopes also loads retained `s_parameter_noise_raw.csv` artifacts as
+  frequency-axis traces for NF, NFmin, equivalent noise resistance, and
+  `|SOpt|`, using the same raw column aliases accepted by the ngspice adapter.
   Scopes includes an RF Network Check editor for authoring two-port
   reciprocity, passivity, Rollet K, `|Delta|`, MAG, MSG, unilateral-gain, and
   source/load gain sign-off checks without hand-editing YAML, including the
