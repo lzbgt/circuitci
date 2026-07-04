@@ -99,6 +99,8 @@ passing cases and thirty-two paired injected-error cases:
 | `onsemi_1n4148ws_overcurrent_detected` | `examples/bad_diode_overcurrent/project.yaml` | fail | Detects 1N4148WS forward current above the source-backed 150 mA average rectified-current rating. |
 | `onsemi_nds7002a_low_side_switch_passes` | `examples/good_mosfet_low_side_switch/project.yaml` | pass | NDS7002A low-side MOSFET switch pulls a 100 ohm load while retaining the source-backed generated-SPICE model and MOSFET operating-limit probes. |
 | `onsemi_nds7002a_overcurrent_detected` | `examples/bad_mosfet_overcurrent/project.yaml` | fail | Detects NDS7002A drain current above the source-backed 280 mA continuous rating and power above the 300 mW limit. |
+| `onsemi_bss84_high_side_switch_passes` | `examples/good_pmos_high_side_switch/project.yaml` | pass | BSS84 high-side PMOS switch pulls a 200 ohm load from a 5 V rail while retaining the source-backed generated-SPICE model and MOSFET operating-limit probes. |
+| `onsemi_bss84_overcurrent_detected` | `examples/bad_pmos_overcurrent/project.yaml` | fail | Detects BSS84 drain current above the source-backed 130 mA continuous magnitude. |
 | `onsemi_2n3904_low_side_switch_passes` | `examples/good_onsemi_2n3904_low_side_switch/project.yaml` | pass | 2N3904 low-side switch driven from 5 V through a 47k base resistor into a 1k collector load, retaining the source-backed generated-SPICE model and operating-limit probes. |
 | `onsemi_2n3904_collector_overcurrent_detected` | `examples/bad_onsemi_2n3904_collector_overcurrent/project.yaml` | fail | Detects a 2N3904 collector-current violation above the source-backed 200 mA continuous rating. |
 | `onsemi_2n3906_high_side_switch_passes` | `examples/good_onsemi_2n3906_high_side_switch/project.yaml` | pass | 2N3906 high-side switch driven from 5 V through a 47k base resistor into a 1k collector load, retaining signed PNP rating provenance. |
@@ -120,7 +122,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=58, passed=58, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=60, passed=60, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -157,12 +159,13 @@ Observed detection details:
 | `bosch_bme280_vddio_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UBME.VDDIO` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `onsemi_1n4148ws_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `IF_AV`: maximum simulated current was `0.384935 A`, limit is `0.150000 A`; it also exceeded `PD` at `0.443047 W` against `0.200000 W`. |
 | `onsemi_nds7002a_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `0.703265 A`, limit is `0.280000 A`; it also exceeded `PD` at `1.248291 W` against `0.300000 W`. |
+| `onsemi_bss84_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `0.210814 A`, limit is `0.130000 A`. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All twenty-six public-reference pass cases produced zero critical findings.
-All thirty-two paired injected-error cases failed with the expected critical
-finding ID, and all thirty-two repair-pair checks passed.
+All twenty-seven public-reference pass cases produced zero critical findings.
+All thirty-three paired injected-error cases failed with the expected critical
+finding ID, and all thirty-three repair-pair checks passed.
 
 ## Interpretation Limits
 

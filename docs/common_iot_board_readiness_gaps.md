@@ -99,6 +99,12 @@ generated SPICE operating-limit probes for terminal voltage, continuous drain
 current, and derated power dissipation; switching loss, package thermal
 coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, and
 production behavior remain outside that preliminary electrical model. onsemi
+BSS84 now covers the matching source-backed common small-signal P-channel
+MOSFET path for high-side generated-SPICE switch checks with terminal voltage,
+continuous drain-current, and derated power probes; switching loss, package
+thermal coupling, avalanche, qualified pulse-current SOA, gate-drive margin,
+EMI, and production behavior remain outside that preliminary electrical model.
+onsemi
 2N3904 now covers a first source-backed common NPN transistor pack with generated SPICE operating-limit probes for BJT
 terminal voltages, collector current, and power dissipation; transistor gain
 spread, noise, switching storage time, package thermal coupling, and

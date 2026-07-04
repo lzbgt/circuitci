@@ -165,6 +165,17 @@ operating-limit probes; it does not sign off switching loss, package thermal
 coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, or
 production hardware behavior. See `docs/onsemi_nds7002a_model.md`.
 
+`vendor.onsemi.bss84` provides a source-backed static/generated-SPICE pack for
+onsemi's SOT-23 BSS84 P-channel enhancement-mode MOSFET. It records the -50 V
+drain-source limit, +/-20 V continuous gate-source limit, -130 mA continuous
+drain-current limit, 360 mW power limit at 25 C with 2.88 mW/C derating,
+SOT-23 pinout, threshold, on-resistance, capacitance, and gate-charge metadata.
+The bundled SPICE card is a reduced preliminary Level-1 fit for generated
+high-side switch checks and source-backed MOSFET operating-limit probes; it
+does not sign off switching loss, package thermal coupling, avalanche,
+qualified pulse-current SOA, gate-drive margin, EMI, or production hardware
+behavior. See `docs/onsemi_bss84_model.md`.
+
 `vendor.onsemi.npn_2n3904` provides a source-backed static/generated-SPICE
 model for onsemi's TO-92 2N3904 NPN general-purpose transistor. It records
 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`, 200 mA continuous collector current,

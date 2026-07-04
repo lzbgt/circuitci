@@ -78,7 +78,7 @@ datasheet:
       simulation_relevance: Gate charge affects drive current and switching time.
   documents:
     - title: BSS84 - P-Channel Enhancement Mode Field-Effect Transistor
-      path: docs/research/datasheets/onsemi_bss84-d.pdf
+      path: docs/research/datasheets/onsemi/bss84.pdf
       source_url: https://www.onsemi.com/download/data-sheet/pdf/bss84-d.pdf
       sha256: 8531adc677bb06835cc4dee425b4fa2850be9e80d9b8a26d0ffe86c314c8463a
       retrieved: "2026-06-12"

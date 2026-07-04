@@ -987,6 +987,15 @@ probes for terminal voltage, drain current, and power, but the bundled card is
 a reduced preliminary fit and does not validate switching loss, package thermal
 coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, or
 production hardware behavior.
+`vendor.onsemi.bss84` adds the matching source-backed common small-signal
+P-channel MOSFET pack. Official onsemi documentation backs its -50 V `VDSS`,
++/-20 V `VGSS`, -130 mA continuous `ID`, 360 mW ambient power limit with
+2.88 mW/C derating, SOT-23 pinout, threshold, on-resistance, capacitance, and
+gate-charge metadata. Generated SPICE uses the existing MOSFET operating-limit
+probes for terminal voltage, drain current, and power, but the bundled card is
+a reduced preliminary fit and does not validate switching loss, package thermal
+coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, or
+production hardware behavior.
 `vendor.onsemi.npn_2n3904` adds a source-backed common NPN transistor pack.
 Official onsemi documentation backs its 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`,
 200 mA continuous collector-current limit, 625 mW ambient power limit with
