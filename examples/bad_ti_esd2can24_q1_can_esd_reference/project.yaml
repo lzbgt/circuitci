@@ -1,0 +1,34 @@
+project:
+  name: bad_ti_esd2can24_q1_can_esd_reference
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/esd_protection
+
+board:
+  components:
+    UESD:
+      model: vendor.ti.esd2can24_q1
+      part_number: ESD2CAN24-Q1
+      pins:
+        CANH: canh
+        CANL: canl
+        GND: canh
+  nets:
+    canh:
+      kind: digital_or_analog
+      nominal_voltage: 3.5
+    canl:
+      kind: digital_or_analog
+      nominal_voltage: 1.5
+
+scenarios:
+  - name: esd2can24_q1_bad_reference
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: canh
+      max_line_capacitance_F: 5.0e-12

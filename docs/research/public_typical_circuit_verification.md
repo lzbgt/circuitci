@@ -18,6 +18,8 @@ audit the modeled facts without relying on chat history.
 | TI TPD2EUSB30 USB ESD protection typical use | <https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf> | `docs/research/datasheets/ti/tpd2eusb30.pdf` |
 | Nexperia PRTR5V0U2X rail-to-rail USB ESD protection typical use | <https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf> | `docs/research/datasheets/nexperia/prtr5v0u2x.pdf` |
 | Nexperia PESD5V0S1UL VBUS ESD protection typical use | <https://assets.nexperia.com/documents/data-sheet/PESD5V0S1UL.pdf> | `docs/research/datasheets/nexperia/pesd5v0s1ul.pdf` |
+| TI ESD2CAN24-Q1 CAN ESD protection use | <https://www.ti.com/lit/ds/symlink/esd2can24-q1.pdf> | `docs/research/smart_robot/sources/ti_esd2can24_q1_datasheet.pdf` |
+| TI ESDS552 RS-485 ESD protection use | <https://www.ti.com/lit/gpn/ESDS552> | `docs/research/smart_robot/sources/esds552_datasheet.pdf` |
 | TI TPS62162 3.3 V synchronous buck typical use | <https://www.ti.com/lit/ds/symlink/tps62160.pdf> | `docs/research/datasheets/ti/tps62160.pdf` |
 | TI TPS61023 5 V synchronous boost typical use | <https://www.ti.com/lit/ds/symlink/tps61023.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/tps61023.pdf` |
 | TI TPS63802 3.3 V synchronous buck-boost typical use | <https://www.ti.com/lit/ds/symlink/tps63802.pdf> and peer `../urine_monitor` fresh-design evidence | `docs/research/datasheets/ti/tps63802.pdf` |
@@ -28,6 +30,8 @@ audit the modeled facts without relying on chat history.
 | WCH CH340C USB-UART bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf` |
 | FTDI FT232R USB-UART bridge use | <https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf> plus public PDF mirror | `docs/research/datasheets/ftdi/DS_FT232R_sparkfun_mirror.pdf` |
 | WCH CH347 USB-JTAG/debug bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch347ds1_bitsavers_mirror.pdf` |
+| TI TCAN3413 CAN FD transceiver use | <https://www.ti.com/lit/ds/symlink/tcan3413.pdf> | `docs/research/smart_robot/sources/tcan3413_datasheet.pdf` |
+| TI THVD1450 RS-485 transceiver use | <https://www.ti.com/lit/ds/symlink/thvd1450.pdf> | `docs/research/smart_robot/sources/thvd1450_datasheet.pdf` |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
 | STC15W408AS 1T 8051-family MCU power use | <https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf> and <https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf> | `docs/research/datasheets/stc/stc15w408as_features.pdf` and `docs/research/datasheets/stc/stc15f2k60s2_en.pdf` |
 | TI NE555 astable timer power use | <https://www.ti.com/lit/ds/symlink/ne555.pdf> | `docs/research/datasheets/ti/ne555.pdf` |
@@ -43,17 +47,18 @@ The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
 were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
 STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
-Nexperia PESD5V0S1UL, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and Microchip
-MCP131X/2X PDFs were downloaded from their official vendor URLs. WCH CH340C,
-WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
+Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI TCAN3413,
+TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and
+Microchip MCP131X/2X PDFs were downloaded from their official vendor URLs.
+WCH CH340C, WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
 vendor endpoints. The local PDF copies and SHA-256 hashes are listed in the
 part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines thirty-four public-reference
-passing cases and forty-two paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines thirty-eight public-reference
+passing cases and forty-six paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -76,6 +81,10 @@ passing cases and forty-two paired injected-error cases:
 | `nexperia_prtr5v0u2x_reference_detected` | `examples/bad_nexperia_prtr5v0u2x_usb_esd_reference/project.yaml` | fail | Detects PRTR5V0U2X `VCC` tied to a non-power signal net instead of a power reference. |
 | `nexperia_pesd5v0s1ul_vbus_esd_passes` | `examples/good_nexperia_pesd5v0s1ul_vbus_esd/project.yaml` | pass | PESD5V0S1UL VBUS-to-ground clamp with source-backed 5.0 V standoff and 200 pF maximum capacitance evidence. |
 | `nexperia_pesd5v0s1ul_capacitance_budget_detected` | `examples/bad_nexperia_pesd5v0s1ul_vbus_capacitance/project.yaml` | fail | Detects PESD5V0S1UL capacitance above a stricter VBUS-line budget. |
+| `ti_esd2can24_q1_can_esd_observation_passes` | `examples/good_ti_esd2can24_q1_can_esd_observation/project.yaml` | pass | ESD2CAN24-Q1 CANH/CANL generated-SPICE observation with normal dominant-state line voltages below the 24 V standoff limit. |
+| `ti_esd2can24_q1_reference_detected` | `examples/bad_ti_esd2can24_q1_can_esd_reference/project.yaml` | fail | Detects ESD2CAN24-Q1 `GND` tied to the CANH signal net instead of a ground reference. |
+| `ti_esds552_rs485_esd_observation_passes` | `examples/good_ti_esds552_rs485_esd_observation/project.yaml` | pass | ESDS552 RS-485 A/B generated-SPICE observation with normal line voltages below the 12 V standoff limit. |
+| `ti_esds552_reference_detected` | `examples/bad_ti_esds552_rs485_esd_reference/project.yaml` | fail | Detects ESDS552 `GND` tied to the RS-485 A signal net instead of a ground reference. |
 | `ti_tps62162_typical_buck_passes` | `examples/good_ti_tps62162_3v3_buck/project.yaml` | pass | TPS62162 fixed 3.3 V synchronous buck with 12 V input, 10 uF input capacitance, 22 uF output capacitance, and 2.2 uH direct output inductance. |
 | `ti_tps62162_output_overcurrent_detected` | `examples/bad_ti_tps62162_3v3_output_current/project.yaml` | fail | Detects output load above modeled buck current limit. |
 | `ti_tps62162_output_inductance_detected` | `examples/bad_ti_tps62162_3v3_output_inductance/project.yaml` | fail | Detects direct SW-to-output inductance below the datasheet-backed minimum. |
@@ -99,6 +108,10 @@ passing cases and forty-two paired injected-error cases:
 | `ftdi_ft232r_vcc_overvoltage_detected` | `examples/bad_ftdi_ft232r_vcc_overvoltage/project.yaml` | fail | Detects FT232R `VCC` connected to a 6 V rail above the source-backed 5.25 V operating maximum. |
 | `wch_ch347_usb_jtag_observation_passes` | `examples/good_wch_ch347_usb_jtag_observation/project.yaml` | pass | CH347T USB-JTAG/debug bridge with source-backed 3.3 V supply mode and generated-SPICE UART/JTAG line-state observation. |
 | `wch_ch347_vcc_overvoltage_detected` | `examples/bad_wch_ch347_vcc_overvoltage/project.yaml` | fail | Detects CH347T `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
+| `ti_tcan3413_can_transceiver_observation_passes` | `examples/good_ti_tcan3413_can_transceiver_observation/project.yaml` | pass | TCAN3413 CAN FD transceiver generated-SPICE observation with source-backed 3.3 V `VCC`, 3.3 V `VIO`, and normal reduced bus-line snapshot. |
+| `ti_tcan3413_vcc_overvoltage_detected` | `examples/bad_ti_tcan3413_vcc_overvoltage/project.yaml` | fail | Detects TCAN3413 `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
+| `ti_thvd1450_rs485_transceiver_observation_passes` | `examples/good_ti_thvd1450_rs485_transceiver_observation/project.yaml` | pass | THVD1450 RS-485 transceiver generated-SPICE observation with source-backed 3.3 V `VCC` and enabled driver/receiver line-state snapshot. |
+| `ti_thvd1450_vcc_overvoltage_detected` | `examples/bad_ti_thvd1450_vcc_overvoltage/project.yaml` | fail | Detects THVD1450 `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `st_stm8s003f3p6_power_passes` | `examples/good_st_stm8s003f3p6_power/project.yaml` | pass | STM8S003F3P6 with 5 V `VDD`, `VCAP` pin support capacitor, active-low reset, SWIM, and UART1 TX/RX boundaries. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `examples/bad_st_stm8s003f3p6_vdd_overvoltage/project.yaml` | fail | Detects `VDD` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `stc_stc15w408as_power_passes` | `examples/good_stc_stc15w408as_power/project.yaml` | pass | STC15W408AS with 5 V `VCC`, active-high reset boundary, and primary UART/ISP RX/TX pin boundaries. |
@@ -145,7 +158,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=76, passed=76, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=84, passed=84, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -166,6 +179,8 @@ Observed detection details:
 | `nexperia_prtr5v0u2x_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` has `1.500e-12 F` line capacitance on `usb_dp`, above interface limit `1.000e-12 F`. |
 | `nexperia_prtr5v0u2x_reference_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` reference pin `VCC` is connected to digital-or-analog net `usb_dp`, expected power. |
 | `nexperia_pesd5v0s1ul_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `vbus_to_ground` has `2.000e-10 F` line capacitance, above the `1.000e-10 F` interface limit. |
+| `ti_esd2can24_q1_reference_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `canh` on component `UESD` reference pin `GND` is connected to digital-or-analog net `canh`, expected ground. |
+| `ti_esds552_reference_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `a` on component `UESD` reference pin `GND` is connected to digital-or-analog net `rs485_a`, expected ground. |
 | `ti_tps62162_output_overcurrent_detected` | `POWER_TREE_VALID` | Regulator `UBUCK` worst-case output load `1.200000 A` exceeds regulator limit `1.000000 A`. |
 | `ti_tps62162_output_inductance_detected` | `POWER_TREE_VALID` | Regulator `UBUCK` output inductor path `buck_sw->rail_3v3` has `1.000000e-6 H` direct inductance, outside the modeled support range. |
 | `ti_tps61023_input_inductance_detected` | `POWER_TREE_VALID` | Regulator `UBOOST` input inductor path `battery->boost_sw` has `2.200000e-7 H` direct inductance, outside the modeled support range. |
@@ -179,6 +194,8 @@ Observed detection details:
 | `wch_ch340c_power_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `U5.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.300000 V`. |
 | `ftdi_ft232r_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `usb_6v_bad` supplies `U7.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.250000 V`. |
 | `wch_ch347_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `debug_5v_bad` supplies `U8.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
+| `ti_tcan3413_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `can_5v_bad` supplies `UCAN.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
+| `ti_thvd1450_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rs485_6v_bad` supplies `UTRX.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTM8.VDD` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `stc_stc15w408as_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTC.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `ti_ne555_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_18v` supplies `U555.VCC` at `18.000000 V`, outside the model maximum operating voltage `16.000000 V`. |
@@ -195,9 +212,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All thirty-four public-reference pass cases produced zero critical findings.
-All forty-two paired injected-error cases failed with the expected critical
-finding ID, and all forty-two repair-pair checks passed.
+All thirty-eight public-reference pass cases produced zero critical findings.
+All forty-six paired injected-error cases failed with the expected critical
+finding ID, and all forty-six repair-pair checks passed.
 
 ## Interpretation Limits
 

@@ -1,0 +1,46 @@
+project:
+  name: bad_ti_thvd1450_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/rs485_transceivers
+
+board:
+  components:
+    UTRX:
+      model: vendor.ti.thvd1450
+      part_number: THVD1450
+      pins:
+        VCC: rs485_6v_bad
+        GND: gnd
+        DI: di
+        RO: ro
+        DE: de
+        RE_N: re_n
+        A: rs485_a
+        B: rs485_b
+  nets:
+    rs485_6v_bad:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    gnd:
+      kind: ground
+    di:
+      kind: digital_or_analog
+    ro:
+      kind: digital_or_analog
+    de:
+      kind: digital_or_analog
+    re_n:
+      kind: digital_or_analog
+    rs485_a:
+      kind: digital_or_analog
+    rs485_b:
+      kind: digital_or_analog
+
+scenarios:
+  - name: thvd1450_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

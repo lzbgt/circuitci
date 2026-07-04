@@ -1,0 +1,34 @@
+project:
+  name: bad_ti_esds552_rs485_esd_reference
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/esd_protection
+
+board:
+  components:
+    UESD:
+      model: vendor.ti.esds552
+      part_number: ESDS552
+      pins:
+        A: rs485_a
+        B: rs485_b
+        GND: rs485_a
+  nets:
+    rs485_a:
+      kind: digital_or_analog
+      nominal_voltage: 2.5
+    rs485_b:
+      kind: digital_or_analog
+      nominal_voltage: 0.5
+
+scenarios:
+  - name: esds552_bad_reference
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: a
+      max_line_capacitance_F: 15.0e-12

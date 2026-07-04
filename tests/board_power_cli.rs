@@ -503,6 +503,42 @@ fn ftdi_ft232r_vcc_overvoltage_uses_datasheet_limit() {
 }
 
 #[test]
+fn ti_tcan3413_vcc_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_ti_tcan3413_vcc_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["component"] == "UCAN" && finding["limit"]["operating_voltage_maximum_V"] == 3.6
+        })
+        .expect("TCAN3413 VCC finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 5.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 3.6);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_thvd1450_vcc_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_ti_thvd1450_vcc_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["component"] == "UTRX" && finding["limit"]["operating_voltage_maximum_V"] == 5.5
+        })
+        .expect("THVD1450 VCC finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 5.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn wch_ch347_vcc_overvoltage_uses_datasheet_limit() {
     let report = run_validation("examples/bad_wch_ch347_vcc_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

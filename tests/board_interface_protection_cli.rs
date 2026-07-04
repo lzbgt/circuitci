@@ -993,6 +993,28 @@ fn ti_tpd2eusb30_usb_esd_line_capacitance_must_fit_budget() {
 }
 
 #[test]
+fn ti_esd2can24_q1_requires_ground_reference_net() {
+    let report = run_validation("examples/bad_ti_esd2can24_q1_can_esd_reference/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["required_reference"] == "ground")
+        .expect("ESD2CAN24-Q1 reference finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "canh");
+    assert_eq!(
+        failure["measured"]["reference_net_kind"],
+        "digital_or_analog"
+    );
+    assert_eq!(failure["limit"]["protection_clamp"], "canh");
+    assert_eq!(failure["limit"]["reference_pin"], "GND");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn nexperia_prtr5v0u2x_usb_esd_passes_static_review() {
     let report = run_validation("examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml");
     assert_eq!(report["result"], "pass");
@@ -1064,5 +1086,27 @@ fn nexperia_pesd5v0s1ul_vbus_capacitance_must_fit_budget() {
     assert_eq!(failure["net"], "usb_vbus");
     assert_eq!(failure["measured"]["line_capacitance_F"], 200.0e-12);
     assert_eq!(failure["limit"]["protection_clamp"], "vbus_to_ground");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_esds552_requires_ground_reference_net() {
+    let report = run_validation("examples/bad_ti_esds552_rs485_esd_reference/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["required_reference"] == "ground")
+        .expect("ESDS552 reference finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "rs485_a");
+    assert_eq!(
+        failure["measured"]["reference_net_kind"],
+        "digital_or_analog"
+    );
+    assert_eq!(failure["limit"]["protection_clamp"], "a");
+    assert_eq!(failure["limit"]["reference_pin"], "GND");
     assert_report_schema_valid(&report);
 }

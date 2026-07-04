@@ -1,0 +1,48 @@
+project:
+  name: bad_ti_tcan3413_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/can_transceivers
+
+board:
+  components:
+    UCAN:
+      model: vendor.ti.tcan3413
+      part_number: TCAN3413
+      pins:
+        VCC: can_5v_bad
+        VIO: vio_3v3
+        GND: gnd
+        TXD: txd
+        RXD: rxd
+        STB: stb
+        CANH: canh
+        CANL: canl
+  nets:
+    can_5v_bad:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    vio_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    txd:
+      kind: digital_or_analog
+    rxd:
+      kind: digital_or_analog
+    stb:
+      kind: digital_or_analog
+    canh:
+      kind: digital_or_analog
+    canl:
+      kind: digital_or_analog
+
+scenarios:
+  - name: tcan3413_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
