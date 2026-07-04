@@ -255,7 +255,9 @@ Current analog support:
   Markdown includes a "Transfer Function Summary" section, and the GUI artifact
   panel shows compact `.TF` scalar rows. The GUI Transfer Function Check editor
   authors `analysis.transfer_function_assertions[]` entries and failure actions
-  hydrate metric, relation, and threshold from retained findings.
+  hydrate metric, relation, and threshold from retained findings. The GUI Run
+  Setup editor can author generated-from-board `analog_transfer_function`
+  scenarios from a selected output probe net and input source.
   Opt-in real-ngspice conformance
   coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
@@ -513,15 +515,17 @@ Current analog support:
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
-- Generated Board IR transient, AC/Bode, DC operating-point, DC sweep, and
-  noise decks for passives, independent
+- Generated Board IR transient, AC/Bode, DC operating-point, DC sweep,
+  transfer-function, and noise decks for passives, independent
   voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
   GUI run-setup creation can author generated AC/Bode observations with
   frequency limits and an initial voltage probe; generated AC sources emit a
   unity small-signal `AC 1` drive while preserving their DC or pulse operating
   point. GUI-created generated DC observations write `.op` analysis setups
-  with an initial voltage probe; GUI-created generated noise observations write
-  `.noise` analysis setups with output/input noise probes. All generated
+  with an initial voltage probe; GUI-created generated transfer-function
+  observations write `.tf` analysis setups with selected output/input source
+  metadata; GUI-created generated noise observations write `.noise` analysis
+  setups with output/input noise probes. All generated
   observation types reuse the same ground/node/component editors.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform, Bode, or operating-point artifact set, tagged on findings, and

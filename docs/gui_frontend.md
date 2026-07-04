@@ -426,6 +426,9 @@ DC sweep creation writes a normal `analog_dc_sweep` scenario with
 `analysis: {type: dc_sweep}`, selected swept source, start/stop/step sweep
 range, selected output probe net, generated board component inclusion, ground
 binding, and model-file inference.
+Transfer-function creation writes a normal `analog_transfer_function` scenario
+with `analysis: {type: tf}`, selected output probe net, selected input source,
+generated board component inclusion, ground binding, and model-file inference.
 The Fourier Check editor writes `analysis.fourier_assertions[]` for harmonic
 magnitude, normalized magnitude, phase, normalized phase, or THD-percent
 limits, and Fourier report failure actions load the failed check back into that

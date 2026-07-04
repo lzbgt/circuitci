@@ -563,7 +563,10 @@ The GUI should not become the solver.
   reports project retained rows into `transfer_function_summaries[]`, Markdown
   reports include a "Transfer Function Summary" section, and GUI Scopes shows
   compact `.TF` scalar rows. The GUI Transfer Function Check editor now authors
-  these assertions and hydrates failed `.TF` findings back into the editor.
+  these assertions and hydrates failed `.TF` findings back into the editor, and
+  the GUI Run Setup editor now authors generated-from-board
+  `analog_transfer_function` scenarios from a selected output probe net and
+  input source.
   Xyce remains fail-closed with structured
   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
   7.8 primary docs do not document a native `.TF` command or equivalent result

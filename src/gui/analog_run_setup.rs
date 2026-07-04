@@ -45,6 +45,15 @@ pub(super) struct AnalogDcSweepScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogTransferFunctionScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) input_source: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -168,6 +177,25 @@ pub(super) fn append_analog_dc_sweep_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_transfer_function_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogTransferFunctionScenarioDraft,
+) -> Result<String> {
+    validate_transfer_function_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::TransferFunction {
+            input_source: draft.input_source.trim().to_string(),
+        },
+    )
+}
+
 pub(super) fn append_analog_noise_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -284,6 +312,13 @@ fn append_generated_analog_scenario_with_project_path(
             "DC sweep source {source} must be an included voltage or current source component."
         );
     }
+    if let GeneratedAnalogScenarioKind::TransferFunction { input_source } = &kind
+        && !noise_input_source_exists(&project, input_source)
+    {
+        anyhow::bail!(
+            "Transfer-function input source {input_source} must be an included voltage or current source component."
+        );
+    }
     if project.board.components.is_empty() {
         anyhow::bail!("Generated analog scenarios require at least one component.");
     }
@@ -389,6 +424,19 @@ fn validate_dc_sweep_draft(draft: &AnalogDcSweepScenarioDraft) -> Result<()> {
         anyhow::bail!(
             "DC sweep start and stop must be finite and distinct, and step must be finite positive and no larger than the sweep span."
         );
+    }
+    Ok(())
+}
+
+fn validate_transfer_function_draft(draft: &AnalogTransferFunctionScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    validated_id(&draft.input_source, "transfer-function input source")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
     }
     Ok(())
 }
@@ -596,6 +644,9 @@ enum GeneratedAnalogScenarioKind {
         stop: f64,
         step: f64,
     },
+    TransferFunction {
+        input_source: String,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -623,6 +674,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Ac { .. } => "analog_ac",
             Self::Dc => "analog_dc",
             Self::DcSweep { .. } => "analog_dc_sweep",
+            Self::TransferFunction { .. } => "analog_transfer_function",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -635,6 +687,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Ac { .. } => "SPICE_AC_ANALYSIS",
             Self::Dc => "SPICE_DC_ANALYSIS",
             Self::DcSweep { .. } => "SPICE_DC_SWEEP_ANALYSIS",
+            Self::TransferFunction { .. } => "SPICE_TRANSFER_FUNCTION_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -730,6 +783,21 @@ fn analog_block(
             insert_number(&mut analysis, "dc_sweep_start", *start)?;
             insert_number(&mut analysis, "dc_sweep_stop", *stop)?;
             insert_number(&mut analysis, "dc_sweep_step", *step)?;
+        }
+        GeneratedAnalogScenarioKind::TransferFunction { input_source } => {
+            insert_string(&mut analysis, "type", "tf");
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Transfer-function output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "transfer_output_expression",
+                &format!("V({output_node})"),
+            );
+            insert_string(&mut analysis, "transfer_input_source", input_source);
         }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,
