@@ -308,7 +308,9 @@ Current analog support:
   Opt-in real-ngspice conformance is available through
   `CIRCUITCI_RUN_REAL_NGSPICE_DISTO=1 cargo test --test analog_distortion_cli`.
   Xyce remains fail-closed because the saved Xyce reference text does not
-  document a matching distortion analysis command.
+  document a matching distortion analysis command; fail-closed non-ngspice
+  findings carry `adapter_blocker` and `evidence_sources[]` metadata pointing
+  back to the retained distortion backend evidence.
 - `analog_fourier` scenarios with `SPICE_FOURIER_ANALYSIS` for
   transient-backed `.FOUR` harmonic extraction contracts. The Board IR/schema
   can declare `analysis.type: fourier`, transient stop/max-step timing, a

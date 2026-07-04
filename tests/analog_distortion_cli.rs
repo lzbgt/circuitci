@@ -494,6 +494,16 @@ fn distortion_xyce_fails_closed_with_planning_evidence() {
         report["failures"][0]["measured"]["source_notes"]["ngspice_disto_source"],
         "sources/ngspice_source_distoan.c.gz"
     );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("No trusted non-ngspice small-signal distortion backend path")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/distortion_backend_evidence.md"
+    );
     assert_report_schema_valid(&report);
 }
 

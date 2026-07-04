@@ -647,7 +647,11 @@ For a scenario with check `SPICE_DISTORTION_ANALYSIS`:
 9. Real-solver conformance is opt-in through
    `CIRCUITCI_RUN_REAL_NGSPICE_DISTO=1 cargo test --test analog_distortion_cli`;
    it skips unless `ngspice` is on `PATH`.
-10. Xyce and embedded ngspice remain fail-closed with backend-planning evidence.
+10. Xyce and embedded ngspice remain fail-closed with backend-planning
+   evidence plus structured `adapter_blocker` and `evidence_sources[]`
+   metadata because the retained Xyce reference guide does not document a
+   `.DISTO` or equivalent distortion-analysis command, while embedded ngspice
+   still lacks this adapter contract.
    The saved Xyce 7.8 reference text does not document a matching distortion
    command; QUCS-S and SPICE OPUS references are not current CircuitCI adapter
    contracts.

@@ -7,6 +7,10 @@ Date: 2026-07-04
 CircuitCI now enables `SPICE_DISTORTION_ANALYSIS` for external ngspice. Xyce
 and embedded ngspice remain fail-closed because the saved primary material does
 not provide an equivalent trusted adapter contract for those backends.
+Non-ngspice fail-closed findings carry compact `adapter_blocker` and
+`evidence_sources[]` metadata pointing to this note and the retained primary
+sources, so reports and GUI views explain the blocked backend boundary without
+requiring raw JSON inspection.
 
 The ngspice adapter emits:
 

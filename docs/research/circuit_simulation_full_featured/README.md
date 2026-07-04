@@ -889,7 +889,9 @@ The GUI should not become the solver.
   fail-closed behavior for missing harmonic or intermodulation components.
   `distortion_backend_evidence.md` records the primary ngspice
   manual/source evidence, the real-ngspice conformance hook, and why Xyce,
-  QUCS-S, and SPICE OPUS remain blocked.
+  QUCS-S, and SPICE OPUS remain blocked. Non-ngspice fail-closed findings now
+  also carry `adapter_blocker` and `evidence_sources[]` metadata that points
+  back to the retained distortion evidence.
 
 ### Phase 5: Model Compiler Pipeline
 

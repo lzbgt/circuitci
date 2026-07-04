@@ -487,6 +487,19 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
             "spiceopus_release": "sources/spiceopus_release.html"
         }),
     );
+    finding.measured.insert(
+        "adapter_blocker".to_string(),
+        json!("No trusted non-ngspice small-signal distortion backend path with normalized spectrum, summary, convergence, raw-output, and solver-manifest artifacts is available in this runtime."),
+    );
+    finding.measured.insert(
+        "evidence_sources".to_string(),
+        json!([
+            "docs/research/circuit_simulation_full_featured/distortion_backend_evidence.md",
+            "docs/research/circuit_simulation_full_featured/sources/ngspice_manual_disto_distortionanalysis.html",
+            "docs/research/circuit_simulation_full_featured/sources/ngspice_source_distoan.c.gz",
+            "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"
+        ]),
+    );
     finding.limit.insert(
         "required_evidence".to_string(),
         json!("distortion_spectrum_distortion_summary_distortion_convergence_solver_manifest"),
