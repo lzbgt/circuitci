@@ -63,6 +63,7 @@ pub struct ValidationReport {
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
     pub model_package_bundle_installs: Vec<ModelPackageBundleInstallSummary>,
+    pub model_package_bundle_imports: Vec<ModelPackageBundleImportSummary>,
     pub yaml_repairs: Vec<YamlRepairSummary>,
     pub limitations: Vec<Limitation>,
     pub suggested_next_actions: Vec<String>,
@@ -150,6 +151,35 @@ pub struct ModelPackageBundleInstallSummary {
     pub conformance_check_count: usize,
     pub finding_count: usize,
     pub repair_yaml_command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ModelPackageBundleImportSummary {
+    pub report: String,
+    pub result: String,
+    pub bundle_path: String,
+    pub project: String,
+    pub profile: String,
+    pub install_dir: String,
+    pub package_name: Option<String>,
+    pub package_version: Option<String>,
+    pub bundle_install_report: Option<String>,
+    pub package_verification_report: Option<String>,
+    pub yaml_repair_report: Option<String>,
+    pub repaired_project: Option<String>,
+    pub repaired_validation_report: Option<String>,
+    pub model_package_registry_path: Option<String>,
+    pub model_package_registry_sha256: Option<String>,
+    pub model_package_registry_entry: Option<String>,
+    pub model_package_lock_path: Option<String>,
+    pub model_package_lock_sha256: Option<String>,
+    pub model_package_artifact_id: Option<String>,
+    pub bundle_artifacts: usize,
+    pub conformance_checks: usize,
+    pub package_findings: usize,
+    pub repair_applied: usize,
+    pub repair_blocked: usize,
+    pub repair_new_criticals: usize,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -366,6 +396,7 @@ impl ValidationReport {
             &reproduction.command,
             reproduction.project_path,
         );
+        let model_package_bundle_imports = collect_model_package_bundle_imports(&artifacts);
         let yaml_repairs = collect_yaml_repair_summaries(&artifacts);
         Self {
             schema_version: "0.1.0".to_string(),
@@ -382,6 +413,7 @@ impl ValidationReport {
             model_package_conformance_checks,
             model_package_bundle_verifications,
             model_package_bundle_installs,
+            model_package_bundle_imports,
             yaml_repairs,
             limitations,
             suggested_next_actions,
@@ -594,6 +626,49 @@ pub fn markdown_report(report: &ValidationReport) -> String {
             }
             if let Some(command) = &install.repair_yaml_command {
                 text.push_str(&format!("  - Repair command: `{command}`\n"));
+            }
+        }
+        text.push('\n');
+    }
+    text.push_str("## Model Package Bundle Import\n\n");
+    if report.model_package_bundle_imports.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for import in &report.model_package_bundle_imports {
+            text.push_str(&format!(
+                "- `{}` `{}`: `{}` artifacts={} conformance_checks={} repair_applied={} repair_blocked={}\n",
+                import
+                    .package_name
+                    .as_deref()
+                    .unwrap_or("<unknown-package>"),
+                import.package_version.as_deref().unwrap_or(""),
+                import.result,
+                import.bundle_artifacts,
+                import.conformance_checks,
+                import.repair_applied,
+                import.repair_blocked
+            ));
+            text.push_str(&format!(
+                "  - Bundle: `{}` project `{}` install `{}` report `{}`\n",
+                import.bundle_path, import.project, import.install_dir, import.report
+            ));
+            if let Some(entry) = &import.model_package_registry_entry {
+                text.push_str(&format!(
+                    "  - Scenario import: registry `{}` sha `{}` entry `{}` lock `{}` sha `{}` artifact `{}`\n",
+                    import.model_package_registry_path.as_deref().unwrap_or(""),
+                    import.model_package_registry_sha256.as_deref().unwrap_or(""),
+                    entry,
+                    import.model_package_lock_path.as_deref().unwrap_or(""),
+                    import.model_package_lock_sha256.as_deref().unwrap_or(""),
+                    import.model_package_artifact_id.as_deref().unwrap_or("")
+                ));
+            }
+            if let Some(repaired_project) = &import.repaired_project {
+                text.push_str(&format!(
+                    "  - Repaired project: `{}` report `{}`\n",
+                    repaired_project,
+                    import.repaired_validation_report.as_deref().unwrap_or("")
+                ));
             }
         }
         text.push('\n');
@@ -919,6 +994,72 @@ fn collect_model_package_bundle_installs(
     records.into_iter().collect()
 }
 
+fn collect_model_package_bundle_imports(
+    artifacts: &[String],
+) -> Vec<ModelPackageBundleImportSummary> {
+    let mut records = BTreeSet::new();
+    for artifact in artifacts {
+        let Some(report) = read_json_artifact(artifact) else {
+            continue;
+        };
+        if string_at(&report, &["schema_version"]) != "circuitci.model_package_bundle_import.v1" {
+            continue;
+        }
+        records.insert(ModelPackageBundleImportSummary {
+            report: artifact.clone(),
+            result: string_at(&report, &["result"]),
+            bundle_path: string_at(&report, &["bundle_path"]),
+            project: string_at(&report, &["project"]),
+            profile: string_at(&report, &["profile"]),
+            install_dir: string_at(&report, &["install_dir"]),
+            package_name: optional_string_at(&report, &["package", "name"]),
+            package_version: optional_string_at(&report, &["package", "version"]),
+            bundle_install_report: optional_string_at(&report, &["bundle_install_report"]),
+            package_verification_report: optional_string_at(
+                &report,
+                &["package_verification_report"],
+            ),
+            yaml_repair_report: optional_string_at(&report, &["yaml_repair_report"]),
+            repaired_project: optional_string_at(&report, &["repaired_project"]),
+            repaired_validation_report: optional_string_at(
+                &report,
+                &["repaired_validation_report"],
+            ),
+            model_package_registry_path: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_registry_path"],
+            ),
+            model_package_registry_sha256: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_registry_sha256"],
+            ),
+            model_package_registry_entry: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_registry_entry"],
+            ),
+            model_package_lock_path: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_lock_path"],
+            ),
+            model_package_lock_sha256: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_lock_sha256"],
+            ),
+            model_package_artifact_id: optional_string_at(
+                &report,
+                &["scenario_import", "model_package_artifact_id"],
+            ),
+            bundle_artifacts: usize_at(&report, &["summary", "bundle_artifacts"]),
+            conformance_checks: usize_at(&report, &["summary", "conformance_checks"]),
+            package_findings: usize_at(&report, &["summary", "package_findings"]),
+            repair_applied: usize_at(&report, &["summary", "repair_applied"]),
+            repair_blocked: usize_at(&report, &["summary", "repair_blocked"]),
+            repair_new_criticals: usize_at(&report, &["summary", "repair_new_criticals"]),
+        });
+    }
+    records.into_iter().collect()
+}
+
 pub fn collect_yaml_repair_summaries(artifacts: &[String]) -> Vec<YamlRepairSummary> {
     let mut records = BTreeSet::new();
     for artifact in artifacts {
@@ -1091,6 +1232,7 @@ mod tests {
         let package_report = dir.path().join("model_package_verification.json");
         let bundle_verification_report = dir.path().join("bundle_verification.json");
         let bundle_install_report = dir.path().join("bundle_install.json");
+        let bundle_import_report = dir.path().join("bundle_import.json");
         let repair_report = dir.path().join("repair_report.json");
         fs::write(
             &package_report,
@@ -1280,6 +1422,51 @@ mod tests {
 "#,
         )
         .unwrap();
+        fs::write(
+            &bundle_import_report,
+            r#"{
+  "schema_version": "circuitci.model_package_bundle_import.v1",
+  "result": "pass",
+  "bundle_path": "bundle",
+  "project": "project.yaml",
+  "profile": "profile",
+  "install_dir": "installed_bundle",
+  "package": {
+    "name": "org.circuitci.test.model",
+    "version": "1.0.0"
+  },
+  "source_bundle_verification_report": "bundle_verification.json",
+  "bundle_install_report": "bundle_install.json",
+  "package_verification_report": "package_verification.json",
+  "yaml_repair_report": "repair_yaml/repair_report.json",
+  "repaired_project": "repair_yaml/repaired.project.yaml",
+  "repaired_validation_report": "repair_yaml/repaired/report.json",
+  "scenario_import": {
+    "model_package_registry_path": "shared/compact_model_registry.json",
+    "model_package_registry_sha256": "registry-sha",
+    "model_package_registry_entry": "bundle_fixture_runtime",
+    "model_package_lock_path": "installed_bundle/package.lock.json",
+    "model_package_lock_sha256": "lock-sha",
+    "model_package_artifact_id": "runtime_osdi"
+  },
+  "summary": {
+    "bundle_artifacts": 1,
+    "conformance_checks": 1,
+    "package_findings": 0,
+    "repair_proposed": 1,
+    "repair_selected": 1,
+    "repair_applied": 1,
+    "repair_blocked": 0,
+    "repair_skipped": 0,
+    "repair_new_criticals": 0
+  },
+  "findings": [],
+  "repair_reason_codes": [],
+  "repair_messages": []
+}
+"#,
+        )
+        .unwrap();
 
         let report = ValidationReport::from_parts(
             "project".to_string(),
@@ -1290,6 +1477,7 @@ mod tests {
                 package_report.to_string_lossy().into_owned(),
                 bundle_verification_report.to_string_lossy().into_owned(),
                 bundle_install_report.to_string_lossy().into_owned(),
+                bundle_import_report.to_string_lossy().into_owned(),
                 repair_report.to_string_lossy().into_owned(),
             ],
             Vec::new(),
@@ -1332,6 +1520,16 @@ mod tests {
             install.repair_yaml_command.as_deref(),
             Some(expected_repair_command.as_str())
         );
+        assert_eq!(report.model_package_bundle_imports.len(), 1);
+        let import = &report.model_package_bundle_imports[0];
+        assert_eq!(import.result, "pass");
+        assert_eq!(import.bundle_path, "bundle");
+        assert_eq!(import.repair_applied, 1);
+        assert_eq!(import.repair_blocked, 0);
+        assert_eq!(
+            import.model_package_registry_entry.as_deref(),
+            Some("bundle_fixture_runtime")
+        );
         assert_eq!(report.yaml_repairs.len(), 1);
         let repair = &report.yaml_repairs[0];
         assert_eq!(repair.finding, "BUNDLE_INSTALL_PACKAGE_METADATA");
@@ -1350,6 +1548,7 @@ mod tests {
         assert!(markdown.contains("`runtime_osdi`"));
         assert!(markdown.contains("## Model Package Bundle Verification"));
         assert!(markdown.contains("## Model Package Bundle Install"));
+        assert!(markdown.contains("## Model Package Bundle Import"));
         assert!(markdown.contains("`bundle_fixture_runtime`"));
         assert!(markdown.contains("## YAML Repairs"));
         assert!(markdown.contains("`BUNDLE_INSTALL_PACKAGE_METADATA`"));

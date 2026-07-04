@@ -1,6 +1,9 @@
 use crate::model_package::{
-    ModelPackageFinding, ModelPackageVerifyOptions, VerifiedModelConformanceCheck,
-    verify_model_package,
+    ModelPackageFinding, ModelPackageVerificationReport, ModelPackageVerifyOptions,
+    VerifiedModelConformanceCheck, verify_model_package,
+};
+use crate::repair_yaml::{
+    BoardYamlRepairFindingKind, BoardYamlRepairOptions, BoardYamlRepairReport,
 };
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -12,6 +15,7 @@ use std::path::{Path, PathBuf};
 pub const MODEL_PACKAGE_BUNDLE_VERIFICATION_SCHEMA: &str =
     "circuitci.model_package_bundle_verification.v1";
 pub const MODEL_PACKAGE_BUNDLE_INSTALL_SCHEMA: &str = "circuitci.model_package_bundle_install.v1";
+pub const MODEL_PACKAGE_BUNDLE_IMPORT_SCHEMA: &str = "circuitci.model_package_bundle_import.v1";
 const MODEL_PACKAGE_BUNDLE_SCHEMA: &str = crate::model_package::MODEL_PACKAGE_BUNDLE_SCHEMA;
 
 #[derive(Debug, Clone)]
@@ -23,6 +27,18 @@ pub struct ModelPackageBundleVerifyOptions {
 #[derive(Debug, Clone)]
 pub struct ModelPackageBundleInstallOptions {
     pub bundle: PathBuf,
+    pub install_dir: PathBuf,
+    pub registry_output: Option<PathBuf>,
+    pub registry_entry: Option<String>,
+    pub registry_artifact_id: Option<String>,
+    pub output: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelPackageBundleImportOptions {
+    pub bundle: PathBuf,
+    pub project: PathBuf,
+    pub profile: String,
     pub install_dir: PathBuf,
     pub registry_output: Option<PathBuf>,
     pub registry_entry: Option<String>,
@@ -87,6 +103,41 @@ pub struct ModelPackageBundleInstallReport {
     pub artifacts: Vec<VerifiedBundleArtifact>,
     pub conformance_checks: Vec<VerifiedModelConformanceCheck>,
     pub findings: Vec<ModelPackageFinding>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageBundleImportReport {
+    pub schema_version: String,
+    pub result: String,
+    pub bundle_path: String,
+    pub project: String,
+    pub profile: String,
+    pub install_dir: String,
+    pub package: VerifiedBundlePackage,
+    pub source_bundle_verification_report: String,
+    pub bundle_install_report: Option<String>,
+    pub package_verification_report: Option<String>,
+    pub yaml_repair_report: Option<String>,
+    pub repaired_project: Option<String>,
+    pub repaired_validation_report: Option<String>,
+    pub scenario_import: Option<BundleScenarioImport>,
+    pub summary: ModelPackageBundleImportSummary,
+    pub findings: Vec<ModelPackageFinding>,
+    pub repair_reason_codes: Vec<String>,
+    pub repair_messages: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelPackageBundleImportSummary {
+    pub bundle_artifacts: usize,
+    pub conformance_checks: usize,
+    pub package_findings: usize,
+    pub repair_proposed: usize,
+    pub repair_selected: usize,
+    pub repair_applied: usize,
+    pub repair_blocked: usize,
+    pub repair_skipped: usize,
+    pub repair_new_criticals: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -291,6 +342,88 @@ pub fn install_model_package_bundle(
     })
 }
 
+pub fn import_model_package_bundle(
+    options: &ModelPackageBundleImportOptions,
+) -> Result<ModelPackageBundleImportReport> {
+    std::fs::create_dir_all(&options.output).with_context(|| {
+        format!(
+            "Failed to create bundle import output directory {}",
+            options.output.display()
+        )
+    })?;
+    let source_verification_path = options.output.join("bundle_verification.json");
+    let install_report_path = options.output.join("bundle_install.json");
+    let package_report_path = options.output.join("package_verification.json");
+    let repair_output = options.output.join("repair_yaml");
+    let source_report = verify_model_package_bundle(&ModelPackageBundleVerifyOptions {
+        bundle: options.bundle.clone(),
+        output: source_verification_path.clone(),
+    })?;
+    write_model_package_bundle_verification_report(&source_report, &source_verification_path)?;
+    if source_report.result != "pass" {
+        return Ok(import_report_from_parts(ImportReportParts {
+            options,
+            result: "fail",
+            package: source_report.package,
+            source_verification_path,
+            install_report_path: None,
+            install_report: None,
+            package_report_path: None,
+            package_report: None,
+            repair_report_path: None,
+            repair_report: None,
+            source_findings: source_report.findings,
+        }));
+    }
+
+    let install_report = install_model_package_bundle(&ModelPackageBundleInstallOptions {
+        bundle: options.bundle.clone(),
+        install_dir: options.install_dir.clone(),
+        registry_output: options.registry_output.clone(),
+        registry_entry: options.registry_entry.clone(),
+        registry_artifact_id: options.registry_artifact_id.clone(),
+        output: install_report_path.clone(),
+    })?;
+    write_model_package_bundle_install_report(&install_report, &install_report_path)?;
+    let package_report = verify_installed_package(&install_report, &package_report_path)?;
+    crate::model_package::write_model_package_verification_report(
+        &package_report,
+        &package_report_path,
+    )?;
+    let repair_report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
+        project: options.project.clone(),
+        profile: options.profile.clone(),
+        output: repair_output.clone(),
+        finding: BoardYamlRepairFindingKind::BundleInstallPackageMetadata,
+        dry_run: false,
+        apply_report: None,
+        proposal_ids: Vec::new(),
+        bundle_install_report: Some(install_report_path.clone()),
+    })?;
+    let repair_report_path = repair_output.join("repair_report.json");
+    let result = if install_report.result == "pass"
+        && package_report.result == "pass"
+        && repair_report.result == "pass"
+    {
+        "pass"
+    } else {
+        "fail"
+    };
+    Ok(import_report_from_parts(ImportReportParts {
+        options,
+        result,
+        package: install_report.package.clone(),
+        source_verification_path,
+        install_report_path: Some(install_report_path),
+        install_report: Some(install_report),
+        package_report_path: Some(package_report_path),
+        package_report: Some(package_report),
+        repair_report_path: Some(repair_report_path),
+        repair_report: Some(repair_report),
+        source_findings: Vec::new(),
+    }))
+}
+
 pub fn write_model_package_bundle_verification_report(
     report: &ModelPackageBundleVerificationReport,
     output: &Path,
@@ -319,6 +452,183 @@ pub fn write_model_package_bundle_install_report(
     std::fs::write(output, text)
         .with_context(|| format!("Failed to write bundle install report {}", output.display()))?;
     Ok(())
+}
+
+pub fn write_model_package_bundle_import_report(
+    report: &ModelPackageBundleImportReport,
+    output_dir: &Path,
+) -> Result<()> {
+    std::fs::create_dir_all(output_dir)
+        .with_context(|| format!("Failed to create output directory {}", output_dir.display()))?;
+    let output = output_dir.join("model_package_bundle_import.json");
+    let mut text = serde_json::to_string_pretty(report)?;
+    text.push('\n');
+    std::fs::write(&output, text)
+        .with_context(|| format!("Failed to write bundle import report {}", output.display()))?;
+    std::fs::write(
+        output_dir.join("model_package_bundle_import.md"),
+        model_package_bundle_import_markdown(report),
+    )
+    .with_context(|| {
+        format!(
+            "Failed to write bundle import Markdown report {}",
+            output_dir.join("model_package_bundle_import.md").display()
+        )
+    })?;
+    Ok(())
+}
+
+struct ImportReportParts<'a> {
+    options: &'a ModelPackageBundleImportOptions,
+    result: &'a str,
+    package: VerifiedBundlePackage,
+    source_verification_path: PathBuf,
+    install_report_path: Option<PathBuf>,
+    install_report: Option<ModelPackageBundleInstallReport>,
+    package_report_path: Option<PathBuf>,
+    package_report: Option<ModelPackageVerificationReport>,
+    repair_report_path: Option<PathBuf>,
+    repair_report: Option<BoardYamlRepairReport>,
+    source_findings: Vec<ModelPackageFinding>,
+}
+
+fn import_report_from_parts(parts: ImportReportParts<'_>) -> ModelPackageBundleImportReport {
+    let install = parts.install_report.as_ref();
+    let package_report = parts.package_report.as_ref();
+    let repair = parts.repair_report.as_ref();
+    let mut findings = parts.source_findings;
+    if let Some(install) = install {
+        findings.extend(install.findings.clone());
+    }
+    if let Some(package_report) = package_report {
+        findings.extend(package_report.findings.clone());
+    }
+    ModelPackageBundleImportReport {
+        schema_version: MODEL_PACKAGE_BUNDLE_IMPORT_SCHEMA.to_string(),
+        result: parts.result.to_string(),
+        bundle_path: parts.options.bundle.to_string_lossy().into_owned(),
+        project: parts.options.project.to_string_lossy().into_owned(),
+        profile: parts.options.profile.clone(),
+        install_dir: parts.options.install_dir.to_string_lossy().into_owned(),
+        package: parts.package,
+        source_bundle_verification_report: parts
+            .source_verification_path
+            .to_string_lossy()
+            .into_owned(),
+        bundle_install_report: parts
+            .install_report_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().into_owned()),
+        package_verification_report: parts
+            .package_report_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().into_owned()),
+        yaml_repair_report: parts
+            .repair_report_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().into_owned()),
+        repaired_project: repair.and_then(|report| report.repaired_project.clone()),
+        repaired_validation_report: repair.and_then(|report| report.repaired_report.clone()),
+        scenario_import: install.and_then(|report| report.scenario_import.clone()),
+        summary: ModelPackageBundleImportSummary {
+            bundle_artifacts: install.map_or(0, |report| report.artifacts.len()),
+            conformance_checks: package_report.map_or(0, |report| report.conformance_checks.len()),
+            package_findings: package_report.map_or(0, |report| report.findings.len()),
+            repair_proposed: repair.map_or(0, |report| report.summary.proposed),
+            repair_selected: repair.map_or(0, |report| report.summary.selected),
+            repair_applied: repair.map_or(0, |report| report.summary.applied),
+            repair_blocked: repair.map_or(0, |report| report.summary.blocked),
+            repair_skipped: repair.map_or(0, |report| report.summary.skipped),
+            repair_new_criticals: repair.map_or(0, |report| report.summary.new_criticals),
+        },
+        findings,
+        repair_reason_codes: repair
+            .map(|report| report.reason_codes.clone())
+            .unwrap_or_default(),
+        repair_messages: repair
+            .map(|report| report.messages.clone())
+            .unwrap_or_default(),
+    }
+}
+
+fn verify_installed_package(
+    install_report: &ModelPackageBundleInstallReport,
+    output: &Path,
+) -> Result<ModelPackageVerificationReport> {
+    let import = install_report
+        .scenario_import
+        .as_ref()
+        .context("Bundle install report did not produce scenario_import pins.")?;
+    let lock = install_report
+        .lock
+        .as_ref()
+        .filter(|lock| lock.status == "verified")
+        .context("Bundle install report did not retain a verified lock.")?;
+    let registry = install_report
+        .installed_registry
+        .as_ref()
+        .or(install_report.registry.as_ref())
+        .filter(|registry| registry.status == "verified")
+        .context("Bundle install report did not retain a verified registry.")?;
+    verify_model_package(&ModelPackageVerifyOptions {
+        lock: PathBuf::from(&lock.path),
+        registry: Some(PathBuf::from(&registry.path)),
+        registry_entry: Some(import.model_package_registry_entry.clone()),
+        output: output.to_path_buf(),
+    })
+}
+
+fn model_package_bundle_import_markdown(report: &ModelPackageBundleImportReport) -> String {
+    let mut text = String::new();
+    text.push_str("# CircuitCI Model Package Bundle Import\n\n");
+    text.push_str(&format!(
+        "- Result: `{}`\n- Bundle: `{}`\n- Project: `{}`\n- Profile: `{}`\n- Install dir: `{}`\n\n",
+        report.result, report.bundle_path, report.project, report.profile, report.install_dir
+    ));
+    text.push_str("## Reports\n\n");
+    text.push_str(&format!(
+        "- Bundle verification: `{}`\n",
+        report.source_bundle_verification_report
+    ));
+    if let Some(path) = &report.bundle_install_report {
+        text.push_str(&format!("- Bundle install: `{path}`\n"));
+    }
+    if let Some(path) = &report.package_verification_report {
+        text.push_str(&format!("- Package verification: `{path}`\n"));
+    }
+    if let Some(path) = &report.yaml_repair_report {
+        text.push_str(&format!("- YAML repair: `{path}`\n"));
+    }
+    text.push_str("\n## Summary\n\n");
+    text.push_str(&format!(
+        "- Artifacts: {}\n- Conformance checks: {}\n- Package findings: {}\n- Repair applied/blocked/skipped: {}/{}/{}\n- Repair new criticals: {}\n\n",
+        report.summary.bundle_artifacts,
+        report.summary.conformance_checks,
+        report.summary.package_findings,
+        report.summary.repair_applied,
+        report.summary.repair_blocked,
+        report.summary.repair_skipped,
+        report.summary.repair_new_criticals
+    ));
+    if let Some(import) = &report.scenario_import {
+        text.push_str("## Scenario Import\n\n");
+        text.push_str(&format!(
+            "- Registry: `{}` `{}`\n- Entry: `{}`\n- Lock: `{}` `{}`\n- Artifact: `{}`\n\n",
+            import.model_package_registry_path,
+            import.model_package_registry_sha256,
+            import.model_package_registry_entry,
+            import.model_package_lock_path,
+            import.model_package_lock_sha256,
+            import.model_package_artifact_id
+        ));
+    }
+    if let Some(project) = &report.repaired_project {
+        text.push_str(&format!("## Repaired Project\n\n- `{project}`\n"));
+        if let Some(repaired_report) = &report.repaired_validation_report {
+            text.push_str(&format!("- Validation report: `{repaired_report}`\n"));
+        }
+    }
+    text
 }
 
 fn validate_install_options(options: &ModelPackageBundleInstallOptions) -> Result<()> {

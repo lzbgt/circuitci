@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/model_package_bundle_import_report.schema.json",
+  "title": "CircuitCI Model Package Bundle Import Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "result",
+    "bundle_path",
+    "project",
+    "profile",
+    "install_dir",
+    "package",
+    "source_bundle_verification_report",
+    "bundle_install_report",
+    "package_verification_report",
+    "yaml_repair_report",
+    "repaired_project",
+    "repaired_validation_report",
+    "scenario_import",
+    "summary",
+    "findings",
+    "repair_reason_codes",
+    "repair_messages"
+  ],
+  "properties": {
+    "schema_version": { "const": "circuitci.model_package_bundle_import.v1" },
+    "result": { "enum": ["pass", "fail"] },
+    "bundle_path": { "type": "string", "minLength": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "profile": { "type": "string", "minLength": 1 },
+    "install_dir": { "type": "string", "minLength": 1 },
+    "package": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "source_bundle_verification_report": { "type": "string", "minLength": 1 },
+    "bundle_install_report": { "type": ["string", "null"] },
+    "package_verification_report": { "type": ["string", "null"] },
+    "yaml_repair_report": { "type": ["string", "null"] },
+    "repaired_project": { "type": ["string", "null"] },
+    "repaired_validation_report": { "type": ["string", "null"] },
+    "scenario_import": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "model_package_registry_path",
+            "model_package_registry_sha256",
+            "model_package_registry_entry",
+            "model_package_lock_path",
+            "model_package_lock_sha256",
+            "model_package_artifact_id"
+          ],
+          "properties": {
+            "model_package_registry_path": { "type": "string", "minLength": 1 },
+            "model_package_registry_sha256": { "type": "string", "minLength": 1 },
+            "model_package_registry_entry": { "type": "string", "minLength": 1 },
+            "model_package_lock_path": { "type": "string", "minLength": 1 },
+            "model_package_lock_sha256": { "type": "string", "minLength": 1 },
+            "model_package_artifact_id": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "bundle_artifacts",
+        "conformance_checks",
+        "package_findings",
+        "repair_proposed",
+        "repair_selected",
+        "repair_applied",
+        "repair_blocked",
+        "repair_skipped",
+        "repair_new_criticals"
+      ],
+      "properties": {
+        "bundle_artifacts": { "type": "integer", "minimum": 0 },
+        "conformance_checks": { "type": "integer", "minimum": 0 },
+        "package_findings": { "type": "integer", "minimum": 0 },
+        "repair_proposed": { "type": "integer", "minimum": 0 },
+        "repair_selected": { "type": "integer", "minimum": 0 },
+        "repair_applied": { "type": "integer", "minimum": 0 },
+        "repair_blocked": { "type": "integer", "minimum": 0 },
+        "repair_skipped": { "type": "integer", "minimum": 0 },
+        "repair_new_criticals": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "findings": { "type": "array" },
+    "repair_reason_codes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "repair_messages": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "additionalProperties": false
+}

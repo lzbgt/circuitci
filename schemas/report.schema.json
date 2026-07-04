@@ -45,6 +45,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/model_package_bundle_install" }
     },
+    "model_package_bundle_imports": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model_package_bundle_import" }
+    },
     "yaml_repairs": {
       "type": "array",
       "items": { "$ref": "#/$defs/yaml_repair" }
@@ -317,6 +321,64 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         }
+      },
+      "additionalProperties": false
+    },
+    "model_package_bundle_import": {
+      "type": "object",
+      "required": [
+        "report",
+        "result",
+        "bundle_path",
+        "project",
+        "profile",
+        "install_dir",
+        "package_name",
+        "package_version",
+        "bundle_install_report",
+        "package_verification_report",
+        "yaml_repair_report",
+        "repaired_project",
+        "repaired_validation_report",
+        "model_package_registry_path",
+        "model_package_registry_sha256",
+        "model_package_registry_entry",
+        "model_package_lock_path",
+        "model_package_lock_sha256",
+        "model_package_artifact_id",
+        "bundle_artifacts",
+        "conformance_checks",
+        "package_findings",
+        "repair_applied",
+        "repair_blocked",
+        "repair_new_criticals"
+      ],
+      "properties": {
+        "report": { "type": "string", "minLength": 1 },
+        "result": { "type": "string" },
+        "bundle_path": { "type": "string" },
+        "project": { "type": "string" },
+        "profile": { "type": "string" },
+        "install_dir": { "type": "string" },
+        "package_name": { "type": ["string", "null"] },
+        "package_version": { "type": ["string", "null"] },
+        "bundle_install_report": { "type": ["string", "null"] },
+        "package_verification_report": { "type": ["string", "null"] },
+        "yaml_repair_report": { "type": ["string", "null"] },
+        "repaired_project": { "type": ["string", "null"] },
+        "repaired_validation_report": { "type": ["string", "null"] },
+        "model_package_registry_path": { "type": ["string", "null"] },
+        "model_package_registry_sha256": { "type": ["string", "null"] },
+        "model_package_registry_entry": { "type": ["string", "null"] },
+        "model_package_lock_path": { "type": ["string", "null"] },
+        "model_package_lock_sha256": { "type": ["string", "null"] },
+        "model_package_artifact_id": { "type": ["string", "null"] },
+        "bundle_artifacts": { "type": "integer", "minimum": 0 },
+        "conformance_checks": { "type": "integer", "minimum": 0 },
+        "package_findings": { "type": "integer", "minimum": 0 },
+        "repair_applied": { "type": "integer", "minimum": 0 },
+        "repair_blocked": { "type": "integer", "minimum": 0 },
+        "repair_new_criticals": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     }

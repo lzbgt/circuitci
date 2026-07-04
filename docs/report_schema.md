@@ -1433,13 +1433,18 @@ JSON artifact into top-level `model_package_conformance_checks[]`, and the GUI
 Simulation report panel displays the same compact rows.
 Validation reports also project retained bundle verification and install JSON
 artifacts into `model_package_bundle_verifications[]` and
-`model_package_bundle_installs[]`. Verification rows expose the bundle path,
+`model_package_bundle_installs[]`. Retained
+`circuitci.model_package_bundle_import.v1` reports project into
+`model_package_bundle_imports[]`. Verification rows expose the bundle path,
 package identity, manifest/lock/registry hashes, artifact count, conformance
 check count, and finding count. Install rows expose the source bundle,
 installed directory, installed registry hash, and scenario-import
 `model_package_*` pins so a reviewer can copy the exact registry/lock/artifact
-fields without opening the raw install JSON. When the validation reproduction
-command contains a project path, install rows also include
+fields without opening the raw install JSON. Import rows expose the source
+bundle, project/profile, install directory, bundle/install/package/repair
+subreport paths, scenario-import pins, repaired project/report paths,
+conformance count, package finding count, and YAML repair counts. When the
+validation reproduction command contains a project path, install rows also include
 `repair_yaml_command`, a ready `repair-yaml --finding
 bundle-install-package-metadata --bundle-install-report ...` command for
 writing a validated repaired project copy.
@@ -1474,6 +1479,11 @@ source and installed bundle paths, installed registry hash status when
 `--registry-output` is used, and a `scenario_import` object containing the
 registry path, registry SHA-256, registry entry, lock path, lock SHA-256, and
 artifact id needed in `analog.model_files[]`.
+Bundle import pipeline reports use
+`schemas/model_package_bundle_import_report.schema.json`, written by
+`circuitci import-model-package-bundle`. The pipeline report retains the
+source bundle verification, install, installed package verification, and YAML
+repair subreport paths plus the repaired project path and scenario-import pins.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

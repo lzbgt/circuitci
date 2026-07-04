@@ -363,6 +363,46 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Model package bundle import");
+                    if report.model_package_bundle_imports.is_empty() {
+                        ui.label("No package bundle import reports were emitted.");
+                    } else {
+                        for import in &report.model_package_bundle_imports {
+                            ui.monospace(format!(
+                                "{} {} result={} artifacts={} conformance_checks={} repair_applied={} repair_blocked={}",
+                                import.package_name.as_deref().unwrap_or("<unknown-package>"),
+                                import.package_version.as_deref().unwrap_or(""),
+                                import.result,
+                                import.bundle_artifacts,
+                                import.conformance_checks,
+                                import.repair_applied,
+                                import.repair_blocked
+                            ));
+                            ui.monospace(format!(
+                                "bundle {} project {} install_dir {} report {}",
+                                import.bundle_path, import.project, import.install_dir, import.report
+                            ));
+                            if let Some(entry) = &import.model_package_registry_entry {
+                                ui.monospace(format!(
+                                    "scenario_import registry={} sha={} entry={} lock={} lock_sha={} artifact={}",
+                                    import.model_package_registry_path.as_deref().unwrap_or(""),
+                                    import.model_package_registry_sha256.as_deref().unwrap_or(""),
+                                    entry,
+                                    import.model_package_lock_path.as_deref().unwrap_or(""),
+                                    import.model_package_lock_sha256.as_deref().unwrap_or(""),
+                                    import.model_package_artifact_id.as_deref().unwrap_or("")
+                                ));
+                            }
+                            if let Some(repaired_project) = &import.repaired_project {
+                                ui.monospace(format!(
+                                    "repaired_project {} report={}",
+                                    repaired_project,
+                                    import.repaired_validation_report.as_deref().unwrap_or("")
+                                ));
+                            }
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("YAML repairs");
                     if report.yaml_repairs.is_empty() {
                         ui.label("No YAML repair reports were emitted.");

@@ -75,6 +75,23 @@ enum Command {
         )]
         output: PathBuf,
     },
+    ImportModelPackageBundle {
+        bundle: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, default_value = "iot_basic_v0")]
+        profile: String,
+        #[arg(long = "install-dir")]
+        install_dir: PathBuf,
+        #[arg(long = "registry-output")]
+        registry_output: Option<PathBuf>,
+        #[arg(long = "registry-entry")]
+        registry_entry: Option<String>,
+        #[arg(long = "registry-artifact-id")]
+        registry_artifact_id: Option<String>,
+        #[arg(long, short = 'o', default_value = "out/model_package_bundle_import")]
+        output: PathBuf,
+    },
     ExportModelPackage {
         #[arg(long = "package-name")]
         package_name: String,
@@ -399,6 +416,27 @@ pub fn run() -> Result<()> {
             registry_artifact_id,
             output,
         ),
+        Some(Command::ImportModelPackageBundle {
+            bundle,
+            project,
+            profile,
+            install_dir,
+            registry_output,
+            registry_entry,
+            registry_artifact_id,
+            output,
+        }) => run_import_model_package_bundle(
+            crate::model_package_bundle::ModelPackageBundleImportOptions {
+                bundle,
+                project,
+                profile,
+                install_dir,
+                registry_output,
+                registry_entry,
+                registry_artifact_id,
+                output,
+            },
+        ),
         Some(Command::ExportModelPackage {
             package_name,
             package_version,
@@ -704,6 +742,33 @@ fn run_install_model_package_bundle(
             "Model package bundle install failed for {}; see {}",
             bundle.display(),
             output.display()
+        );
+    }
+    Ok(())
+}
+
+fn run_import_model_package_bundle(
+    options: crate::model_package_bundle::ModelPackageBundleImportOptions,
+) -> Result<()> {
+    let bundle = options.bundle.clone();
+    let output = options.output.clone();
+    let report = crate::model_package_bundle::import_model_package_bundle(&options)?;
+    crate::model_package_bundle::write_model_package_bundle_import_report(&report, &output)?;
+    println!(
+        "CircuitCI imported model package bundle {}: result={} artifacts={} conformance_checks={} repair_applied={} repair_blocked={} -> {}",
+        report.bundle_path,
+        report.result,
+        report.summary.bundle_artifacts,
+        report.summary.conformance_checks,
+        report.summary.repair_applied,
+        report.summary.repair_blocked,
+        output.join("model_package_bundle_import.json").display()
+    );
+    if report.result != "pass" {
+        bail!(
+            "Model package bundle import failed for {}; see {}",
+            bundle.display(),
+            output.join("model_package_bundle_import.json").display()
         );
     }
     Ok(())

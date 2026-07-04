@@ -818,6 +818,12 @@ The GUI should not become the solver.
   repairs attach their `repair_report.json` to the loaded report so package
   reviewers see repaired-project paths, applied/blocked counts, and proof
   booleans immediately after the background job finishes.
+- Added `circuitci import-model-package-bundle` and
+  `schemas/model_package_bundle_import_report.schema.json` so CI can verify a
+  bundle, install it, verify the installed package, import scenario pins into a
+  repaired project copy, and retain all subreport paths as one reproducible
+  pipeline artifact. Validation reports project retained import reports into
+  `model_package_bundle_imports[]` and GUI bundle-import summary rows.
 
 ## Risks
 

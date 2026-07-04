@@ -120,6 +120,22 @@ fn assert_model_package_bundle_install_schema_valid(report: &Value) {
     );
 }
 
+fn assert_model_package_bundle_import_schema_valid(report: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/model_package_bundle_import_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(report)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "model package bundle import schema errors: {errors:#?}"
+    );
+}
+
 fn write_package_files(dir: &std::path::Path) -> (String, String) {
     let artifact = b"stable compact model artifact\n";
     let artifact_sha = sha256_hex(artifact);
@@ -742,6 +758,85 @@ fn export_model_package_bundle_writes_portable_import_fixture() {
         .status()
         .unwrap();
     assert!(installed_package_status.success());
+
+    let import_install_dir = dir.path().join("import_installed_bundle");
+    let import_registry = dir.path().join("import_shared/compact_model_registry.json");
+    let import_project = dir.path().join("bundle_import_project.yaml");
+    fs::write(
+        &import_project,
+        r#"
+project:
+  name: bundle_import_project
+  version: 0.1.0
+
+board:
+  components: {}
+  nets: {}
+
+scenarios:
+  - name: package_import
+    type: analog_transient
+    checks: []
+    analog:
+      backend: ngspice
+      netlist_source: file
+      model_files:
+        - path: import_installed_bundle/artifacts/runtime.osdi
+          artifact_format: osdi_shared_object
+          model_package_artifact_id: runtime_osdi
+      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: transient
+        stop_time_us: 1.0
+        max_step_us: 0.1
+      stimuli: []
+      probes: []
+      assertions: []
+"#,
+    )
+    .unwrap();
+    let import_output = dir.path().join("bundle_import_pipeline");
+    let import_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-model-package-bundle",
+            bundle_dir.to_str().unwrap(),
+            "--project",
+            import_project.to_str().unwrap(),
+            "--install-dir",
+            import_install_dir.to_str().unwrap(),
+            "--registry-output",
+            import_registry.to_str().unwrap(),
+            "--output",
+            import_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(import_status.success());
+    let import_report_path = import_output.join("model_package_bundle_import.json");
+    let import_report: Value =
+        serde_json::from_str(&fs::read_to_string(&import_report_path).unwrap()).unwrap();
+    assert_model_package_bundle_import_schema_valid(&import_report);
+    assert_eq!(import_report["result"], "pass");
+    assert_eq!(import_report["summary"]["repair_applied"], 1);
+    assert_eq!(import_report["summary"]["repair_blocked"], 0);
+    assert_eq!(
+        import_report["scenario_import"]["model_package_registry_entry"],
+        "bundle_fixture_runtime"
+    );
+    assert!(import_output.join("bundle_verification.json").is_file());
+    assert!(import_output.join("bundle_install.json").is_file());
+    assert!(import_output.join("package_verification.json").is_file());
+    assert!(
+        import_output
+            .join("repair_yaml/repair_report.json")
+            .is_file()
+    );
+    assert!(
+        import_report["repaired_project"]
+            .as_str()
+            .is_some_and(|path| std::path::Path::new(path).is_file())
+    );
 }
 
 #[test]

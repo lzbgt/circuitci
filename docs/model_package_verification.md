@@ -215,6 +215,26 @@ repair report is also attached to the loaded report artifacts and projected as a
 `yaml_repairs[]` row in the current `report.json`/`report.md` with
 applied/blocked counts and proof status.
 
+For CI jobs that need the complete import flow as one reproducible artifact,
+use:
+
+```bash
+circuitci import-model-package-bundle dist/tiny_resistor_bundle \
+  --project path/to/project.yaml \
+  --install-dir third_party/models/tiny_resistor \
+  --registry-output third_party/models/compact_model_registry.json \
+  --output out/tiny_resistor_bundle_import
+```
+
+The import pipeline writes `bundle_verification.json`,
+`bundle_install.json`, `package_verification.json`,
+`repair_yaml/repair_report.json`, and
+`model_package_bundle_import.json`/`.md` under the output directory. It fails
+closed unless bundle verification, install, installed-package verification, and
+YAML repair all pass. When the import report is retained as a validation
+artifact, it projects into `model_package_bundle_imports[]` with scenario pins,
+subreport paths, repaired project path, and repair counts.
+
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a
