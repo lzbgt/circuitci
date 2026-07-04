@@ -4,7 +4,7 @@ Downloaded on 2026-06-12 for analog model provenance.
 
 | Part | Manufacturer | Source URL | Local file | SHA-256 |
 | --- | --- | --- | --- | --- |
-| 1N4148WS | onsemi | https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf | `docs/research/datasheets/onsemi_1n4148ws-d.pdf` | `11f014f05f4ab6ba5eddb0bd8fc0c27f49f9fc25433800d0a327595d4031f148` |
+| 1N4148WS | onsemi | https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf | `docs/research/datasheets/onsemi/1n4148ws.pdf` | `11f014f05f4ab6ba5eddb0bd8fc0c27f49f9fc25433800d0a327595d4031f148` |
 | APT1608SURCK | Kingbright | https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf | `docs/research/datasheets/kingbright/apt1608surck.pdf` | `9e1b5b4425e7251bf67a228b42f881ef87ed5f4088d89dc1bcb74b29789dd156` |
 
 The onsemi 1N4148WS metadata records these datasheet-backed operating limits

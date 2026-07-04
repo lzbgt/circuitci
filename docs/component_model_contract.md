@@ -969,6 +969,15 @@ small-signal diodes, but the bundled electrical card is a reduced preliminary
 fit and does not validate optical output, lifetime, thermal board coupling,
 pulse-current derating, reflow-process exposure, or production hardware
 behavior.
+`vendor.onsemi.1n4148ws` adds a source-backed common small-signal switching
+diode pack. Official onsemi documentation backs its 100 V `VRRM`, 150 mA
+average rectified forward-current limit, 200 mW power limit, SOD-323 pinout,
+forward-voltage, reverse-leakage, capacitance, and reverse-recovery metadata.
+Generated SPICE uses the existing diode operating-limit probes for reverse
+voltage, forward current, and power, but the bundled card is a reduced
+preliminary fit and does not validate pulse-current derating, leakage over
+temperature, reverse-recovery variation, package thermal coupling, or
+production hardware behavior.
 `vendor.onsemi.npn_2n3904` adds a source-backed common NPN transistor pack.
 Official onsemi documentation backs its 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`,
 200 mA continuous collector-current limit, 625 mW ambient power limit with

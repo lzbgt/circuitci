@@ -48,7 +48,7 @@ datasheet:
       simulation_relevance: Reverse recovery affects switching diode release behavior.
   documents:
     - title: 1N4148WS - Small Signal Diodes
-      path: docs/research/datasheets/onsemi_1n4148ws-d.pdf
+      path: docs/research/datasheets/onsemi/1n4148ws.pdf
       source_url: https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf
       sha256: 11f014f05f4ab6ba5eddb0bd8fc0c27f49f9fc25433800d0a327595d4031f148
       retrieved: "2026-06-12"

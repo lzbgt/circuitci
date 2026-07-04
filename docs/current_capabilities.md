@@ -143,6 +143,17 @@ operating-limit probes; it does not sign off brightness, color bins, lifetime,
 thermal board coupling, pulse-drive derating, or production behavior. See
 `docs/kingbright_apt1608surck_model.md`.
 
+`vendor.onsemi.1n4148ws` provides a source-backed static/generated-SPICE pack
+for onsemi's SOD-323 1N4148WS small-signal switching diode. It records the
+100 V repetitive reverse-voltage limit, 150 mA average rectified
+forward-current limit, 200 mW power limit, 1.0 V maximum forward voltage at
+10 mA, reverse-leakage, capacitance, and reverse-recovery metadata. The bundled
+SPICE card is a reduced preliminary switching-diode fit for generated-transient
+plumbing and source-backed diode operating-limit probes; it does not sign off
+pulse-current derating, reverse-recovery behavior across process and
+temperature, leakage over temperature, package thermal coupling, or production
+hardware behavior. See `docs/onsemi_1n4148ws_model.md`.
+
 `vendor.onsemi.npn_2n3904` provides a source-backed static/generated-SPICE
 model for onsemi's TO-92 2N3904 NPN general-purpose transistor. It records
 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`, 200 mA continuous collector current,
@@ -991,6 +1002,9 @@ Current analog support:
 - The Microchip MCP1316T-29LE/OT reset-supervisor pack now adds a
   source-backed active-low push-pull 2.90 V threshold option with static
   power-tree threshold screening and conservative reset-timeout metadata.
+- The onsemi 1N4148WS switching-diode pack now has normalized retained source
+  evidence plus public-suite generated-SPICE pass/fail coverage for diode
+  forward-current and power operating-limit probes.
 - The TI TPS22918 load-switch pack now has a datasheet-backed generated SPICE
   observation face for active-high enabled load-path behavior. Datasheet
   voltage/current/ON-threshold metadata remains available for static

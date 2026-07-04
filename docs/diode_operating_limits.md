@@ -58,7 +58,7 @@ not waive continuous current findings.
 The first vendor diode fixture uses the onsemi 1N4148WS datasheet:
 
 - Source URL: `https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf`
-- Local copy: `docs/research/datasheets/onsemi_1n4148ws-d.pdf`
+- Local copy: `docs/research/datasheets/onsemi/1n4148ws.pdf`
 - SHA-256:
   `11f014f05f4ab6ba5eddb0bd8fc0c27f49f9fc25433800d0a327595d4031f148`
 

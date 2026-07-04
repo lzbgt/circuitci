@@ -88,8 +88,13 @@ APT1608SURCK now covers a first source-backed common indicator LED pack with
 generated SPICE operating-limit probes for forward current, reverse voltage,
 and power dissipation; optical output, color bins, pulse-drive derating,
 thermal board coupling, lifetime, and production behavior remain outside that
-preliminary electrical model. onsemi 2N3904 now covers a first source-backed
-common NPN transistor pack with generated SPICE operating-limit probes for BJT
+preliminary electrical model. onsemi 1N4148WS now covers a source-backed
+small-signal switching-diode pack with normalized retained source evidence and
+generated SPICE operating-limit probes for reverse voltage, average forward
+current, and power dissipation; pulse-current derating, reverse-recovery
+variation, leakage over temperature, package thermal coupling, and production
+behavior remain outside that preliminary electrical model. onsemi 2N3904 now
+covers a first source-backed common NPN transistor pack with generated SPICE operating-limit probes for BJT
 terminal voltages, collector current, and power dissipation; transistor gain
 spread, noise, switching storage time, package thermal coupling, and
 production behavior remain outside that preliminary electrical model. onsemi
