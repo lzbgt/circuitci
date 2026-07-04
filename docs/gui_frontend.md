@@ -418,6 +418,9 @@ balance creation writes a normal `analog_harmonic_balance` scenario with
 `analysis: {type: hb}`, selected output probe net, fundamental frequency,
 harmonic count, selected drive source, generated board component inclusion,
 ground binding, and model-file inference.
+The HB Check editor writes `analysis.hb_assertions[]` for magnitude, phase,
+real, or imaginary limits at a selected harmonic, and HB report failure actions
+load the failed check back into that editor.
 The check editor can author transient, AC/Bode, DC operating-point, and noise
 assertions. AC checks expose frequency fields for gain, phase, or group delay
 at a frequency, gain crossing-frequency limits, and threshold-only phase/gain

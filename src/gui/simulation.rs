@@ -164,6 +164,7 @@ impl CircuitCiApp {
                 self.sparameter_assertion_editor(ui);
                 self.sparameter_network_assertion_editor(ui);
                 self.sparameter_noise_assertion_editor(ui);
+                self.hb_assertion_editor(ui);
             }
             self.spice_deck_editor(ui);
             self.scope_artifacts_and_findings(ui);
@@ -274,6 +275,8 @@ impl CircuitCiApp {
                     }
                     ui.add_space(8.0);
                     self.sparameter_assertion_failure_actions(ui, &report.failures);
+                    ui.add_space(8.0);
+                    self.hb_assertion_failure_actions(ui, &report.failures);
                     ui.add_space(8.0);
                     ui.label("S-parameter summary");
                     if report.s_parameter_summaries.is_empty() {

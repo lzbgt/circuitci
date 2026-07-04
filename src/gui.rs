@@ -13,6 +13,7 @@ mod analog_assertion_kinds;
 mod analog_branches;
 mod analog_dc_presets;
 mod analog_generated;
+mod analog_hb_assertions;
 mod analog_model_files;
 mod analog_models;
 mod analog_noise_presets;
@@ -44,6 +45,7 @@ mod shell;
 mod simulation;
 mod simulation_editors;
 mod simulation_forms;
+mod simulation_hb_assertions;
 mod simulation_probe_assertions;
 mod simulation_sparameter_assertions;
 mod simulation_sparameter_network_assertions;
@@ -413,6 +415,12 @@ pub struct CircuitCiApp {
     analog_sparameter_noise_assertion_metric: String,
     analog_sparameter_noise_assertion_relation: String,
     analog_sparameter_noise_assertion_threshold: f64,
+    analog_hb_assertion_scenario: String,
+    analog_hb_assertion_name: String,
+    analog_hb_assertion_harmonic: u32,
+    analog_hb_assertion_metric: String,
+    analog_hb_assertion_relation: String,
+    analog_hb_assertion_threshold: f64,
     analog_sparameter_assertion_scenario: String,
     analog_sparameter_assertion_name: String,
     analog_sparameter_assertion_parameter: String,
@@ -693,6 +701,12 @@ impl Default for CircuitCiApp {
             analog_sparameter_noise_assertion_metric: "noise_figure_db_max".to_string(),
             analog_sparameter_noise_assertion_relation: "below".to_string(),
             analog_sparameter_noise_assertion_threshold: 3.0,
+            analog_hb_assertion_scenario: String::new(),
+            analog_hb_assertion_name: "h1_magnitude_floor".to_string(),
+            analog_hb_assertion_harmonic: 1,
+            analog_hb_assertion_metric: "magnitude".to_string(),
+            analog_hb_assertion_relation: "above".to_string(),
+            analog_hb_assertion_threshold: 0.0,
             analog_sparameter_assertion_scenario: String::new(),
             analog_sparameter_assertion_name: "s11_return_loss_floor".to_string(),
             analog_sparameter_assertion_parameter: "s11".to_string(),

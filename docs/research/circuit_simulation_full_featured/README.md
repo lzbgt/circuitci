@@ -713,6 +713,9 @@ The GUI should not become the solver.
   section, and the GUI report panel shows the same compact rows. The normalizer
   now quotes the output-expression CSV field so valid expressions such as
   `V(out,0)` remain parseable by report and assertion readers.
+  The GUI HB Check editor now authors these `hb_assertions[]` entries and
+  failed HB findings hydrate the editor with the retained harmonic, metric,
+  relation, and threshold.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized
