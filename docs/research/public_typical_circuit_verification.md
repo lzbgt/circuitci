@@ -104,6 +104,8 @@ passing cases and thirty-two paired injected-error cases:
 | `onsemi_fdmc86184_qualified_pulse_passes` | `examples/good_mosfet_qualified_pulse_current/project.yaml` | pass | FDMC86184 low-side pulse switch exercises source-backed pulsed-current width and duty metadata without exceeding the qualified pulse envelope. |
 | `onsemi_fdmc86184_pulse_duty_detected` | `examples/bad_mosfet_pulse_duty/project.yaml` | fail | Detects an FDMC86184 pulse that remains below scalar pulsed current but exceeds the encoded pulse width and duty-cycle constraints. |
 | `onsemi_fdmc86184_soa_violation_detected` | `examples/bad_mosfet_soa_violation/project.yaml` | fail | Detects an FDMC86184 simultaneous VDS/ID stress point outside the hand-digitized Figure 11 SOA envelope. |
+| `onsemi_ss8050_ss8550_switches_pass` | `examples/good_onsemi_ss8050_ss8550_switches/project.yaml` | pass | SS8050 low-side and SS8550 high-side BJT switches drive light 1k loads while retaining the source-backed shared generated-SPICE model. |
+| `onsemi_ss8050_collector_overcurrent_detected` | `examples/bad_bjt_overcurrent/project.yaml` | fail | Detects SS8050 collector current above the source-backed 1.5 A continuous rating. |
 | `onsemi_2n3904_low_side_switch_passes` | `examples/good_onsemi_2n3904_low_side_switch/project.yaml` | pass | 2N3904 low-side switch driven from 5 V through a 47k base resistor into a 1k collector load, retaining the source-backed generated-SPICE model and operating-limit probes. |
 | `onsemi_2n3904_collector_overcurrent_detected` | `examples/bad_onsemi_2n3904_collector_overcurrent/project.yaml` | fail | Detects a 2N3904 collector-current violation above the source-backed 200 mA continuous rating. |
 | `onsemi_2n3906_high_side_switch_passes` | `examples/good_onsemi_2n3906_high_side_switch/project.yaml` | pass | 2N3906 high-side switch driven from 5 V through a 47k base resistor into a 1k collector load, retaining signed PNP rating provenance. |
@@ -125,7 +127,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=63, passed=63, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=65, passed=65, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -165,12 +167,13 @@ Observed detection details:
 | `onsemi_bss84_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `0.210814 A`, limit is `0.130000 A`. |
 | `onsemi_fdmc86184_pulse_duty_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `16.607301 A`, limit is `12.000000 A`; measured pulse duration was about `500.17 us` and duty cycle about `0.250085`, above the encoded `300 us` / `0.02` pulse-rating envelope. |
 | `onsemi_fdmc86184_soa_violation_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `PD`: maximum simulated power was `650.235557 W`, limit is `2.300000 W`; it also exceeded digitized SOA curve `forward_bias_100us` with `ID 15.040721 A` at `VDS 43.231676 V` against `14.801354 A` allowed. |
+| `onsemi_ss8050_collector_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `Q1` exceeded datasheet `IC`: maximum simulated current was `2.224090 A`, limit is `1.500000 A`; it also exceeded `PD` at `3.124999 W` against `1.000000 W`. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All twenty-eight public-reference pass cases produced zero critical findings.
-All thirty-five paired injected-error cases failed with the expected critical
-finding ID, and all thirty-five repair-pair checks passed.
+All twenty-nine public-reference pass cases produced zero critical findings.
+All thirty-six paired injected-error cases failed with the expected critical
+finding ID, and all thirty-six repair-pair checks passed.
 
 ## Interpretation Limits
 

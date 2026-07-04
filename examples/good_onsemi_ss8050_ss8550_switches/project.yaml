@@ -1,0 +1,228 @@
+project:
+  name: good_onsemi_ss8050_ss8550_switches
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/discrete
+
+board:
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vdd_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    VNPN:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: npn_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 5
+          delay_us: 100
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 300
+          period_us: 1000
+    VPNP:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: pnp_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 5
+          pulsed_v: 0
+          delay_us: 100
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 300
+          period_us: 1000
+    RNPN_BASE:
+      model: generic.analog.resistor
+      pins:
+        A: npn_drive
+        B: npn_base
+      spice:
+        primitive: resistor
+        value_ohm: 47000
+    RPNP_BASE:
+      model: generic.analog.resistor
+      pins:
+        A: pnp_drive
+        B: pnp_base
+      spice:
+        primitive: resistor
+        value_ohm: 47000
+    RNPN_LOAD:
+      model: generic.analog.resistor
+      pins:
+        A: vdd_5v
+        B: npn_collector
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    RPNP_LOAD:
+      model: generic.analog.resistor
+      pins:
+        A: pnp_collector
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    QNPN:
+      model: vendor.onsemi.ss8050
+      part_number: SS8050
+      pins:
+        C: npn_collector
+        B: npn_base
+        E: gnd
+    QPNP:
+      model: vendor.onsemi.ss8550
+      part_number: SS8550
+      pins:
+        C: pnp_collector
+        B: pnp_base
+        E: vdd_5v
+  nets:
+    vdd_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    gnd:
+      kind: ground
+    npn_drive:
+      kind: digital_or_analog
+    pnp_drive:
+      kind: digital_or_analog
+    npn_base:
+      kind: digital_or_analog
+    pnp_base:
+      kind: digital_or_analog
+    npn_collector:
+      kind: digital_or_analog
+    pnp_collector:
+      kind: digital_or_analog
+
+scenarios:
+  - name: ss8050_ss8550_switches
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VNPN
+          - VPNP
+          - RNPN_BASE
+          - RPNP_BASE
+          - RNPN_LOAD
+          - RPNP_LOAD
+          - QNPN
+          - QPNP
+      model_files:
+        - path: ../../models/spice/onsemi/ss8050_ss8550.lib
+          sha256: 8360ca1f35758e36a5a8dd5ea3cc41ea68f608ac8c000d048e15232565b12145
+      node_bindings:
+        - node: vdd
+          net: vdd_5v
+        - node: "0"
+          net: gnd
+        - node: npn_drive
+          net: npn_drive
+        - node: pnp_drive
+          net: pnp_drive
+        - node: npn_base
+          net: npn_base
+        - node: pnp_base
+          net: pnp_base
+        - node: npn_collector
+          net: npn_collector
+        - node: pnp_collector
+          net: pnp_collector
+      pin_bindings:
+        - node: vdd
+          endpoint:
+            component: VDD
+            pin: P
+        - node: "0"
+          endpoint:
+            component: VDD
+            pin: N
+        - node: npn_collector
+          endpoint:
+            component: QNPN
+            pin: C
+        - node: npn_base
+          endpoint:
+            component: QNPN
+            pin: B
+        - node: "0"
+          endpoint:
+            component: QNPN
+            pin: E
+        - node: pnp_collector
+          endpoint:
+            component: QPNP
+            pin: C
+        - node: pnp_base
+          endpoint:
+            component: QPNP
+            pin: B
+        - node: vdd
+          endpoint:
+            component: QPNP
+            pin: E
+      analysis:
+        type: tran
+        stop_time_us: 500
+        max_step_us: 0.2
+      stimuli:
+        - name: paired_base_drive
+          description: SS8050 base rises and SS8550 base falls at 100 us into light 1k loads.
+      probes:
+        - name: npn_collector
+          expression: V(npn_collector)
+        - name: pnp_collector
+          expression: V(pnp_collector)
+        - name: npn_supply_current
+          expression: abs(I(VDD))
+          quantity: current
+      assertions:
+        - name: npn_collector_high_before_drive
+          probe: npn_collector
+          at_us: 50
+          relation: above
+          threshold_v: 4.2
+        - name: npn_collector_low_after_drive
+          probe: npn_collector
+          at_us: 250
+          relation: below
+          threshold_v: 0.5
+        - name: pnp_collector_low_before_drive
+          probe: pnp_collector
+          at_us: 50
+          relation: below
+          threshold_v: 0.5
+        - name: pnp_collector_high_after_drive
+          probe: pnp_collector
+          at_us: 250
+          relation: above
+          threshold_v: 4.2
+        - name: light_load_current
+          probe: npn_supply_current
+          at_us: 250
+          relation: below
+          threshold_a: 0.02

@@ -188,6 +188,18 @@ checks; it does not sign off switching loss, package thermal coupling,
 avalanche, machine-readable vendor SOA, gate-drive margin, EMI, or production
 hardware behavior. See `docs/onsemi_fdmc86184_model.md`.
 
+`vendor.onsemi.ss8050` and `vendor.onsemi.ss8550` provide source-backed
+static/generated-SPICE packs for onsemi's complementary TO-92 SS8050 NPN and
+SS8550 PNP transistors. They record +/-40 V collector-base, +/-25 V
+collector-emitter, +/-6 V emitter-base, +/-1.5 A continuous collector-current,
+1 W power-dissipation, TO-92 pinout, saturation, gain, capacitance, and
+transition-frequency metadata. The shared bundled SPICE card is a reduced
+preliminary BJT fit for generated switch checks and source-backed BJT
+operating-limit probes; it does not sign off gain spread, saturation margin
+over process and temperature, switching storage time, noise, package thermal
+coupling, or production hardware behavior. See
+`docs/onsemi_ss8050_ss8550_model.md`.
+
 `vendor.onsemi.npn_2n3904` provides a source-backed static/generated-SPICE
 model for onsemi's TO-92 2N3904 NPN general-purpose transistor. It records
 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`, 200 mA continuous collector current,

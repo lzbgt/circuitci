@@ -109,11 +109,16 @@ qualified pulse-current width and duty constraints plus preliminary
 hand-digitized Figure 11 SOA envelope checks; switching loss, package thermal
 coupling, avalanche, machine-readable vendor SOA, gate-drive margin, EMI, and
 production behavior remain outside that preliminary electrical model.
-onsemi
-2N3904 now covers a first source-backed common NPN transistor pack with generated SPICE operating-limit probes for BJT
-terminal voltages, collector current, and power dissipation; transistor gain
-spread, noise, switching storage time, package thermal coupling, and
-production behavior remain outside that preliminary electrical model. onsemi
+onsemi SS8050/SS8550 now covers a source-backed complementary TO-92 BJT switch
+pair with generated SPICE operating-limit probes for BJT terminal voltages,
+collector current, and power dissipation; gain spread, saturation margin over
+process and temperature, storage time, noise, package thermal coupling, and
+production behavior remain outside that preliminary electrical model.
+onsemi 2N3904 now covers a first source-backed common NPN transistor pack with
+generated SPICE operating-limit probes for BJT terminal voltages, collector
+current, and power dissipation; transistor gain spread, noise, switching
+storage time, package thermal coupling, and production behavior remain outside
+that preliminary electrical model. onsemi
 2N3906 now covers the matching source-backed common PNP transistor complement
 with signed PNP ratings preserved in reports while probes evaluate stress
 magnitudes; the same gain/noise/switching/thermal limits remain outside the

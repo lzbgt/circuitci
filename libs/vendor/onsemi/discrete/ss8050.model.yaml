@@ -57,7 +57,7 @@ datasheet:
       simulation_relevance: Bounds high-frequency small-signal behavior.
   documents:
     - title: SS8050 - NPN Epitaxial Silicon Transistor
-      path: docs/research/datasheets/onsemi_ss8050-d.pdf
+      path: docs/research/datasheets/onsemi/ss8050.pdf
       source_url: https://www.onsemi.com/download/data-sheet/pdf/ss8050-d.pdf
       sha256: 50d1896f9ea662a42c176077b3e87b81a0b561f128b8642bdc6804d3fafb1188
       retrieved: "2026-06-12"

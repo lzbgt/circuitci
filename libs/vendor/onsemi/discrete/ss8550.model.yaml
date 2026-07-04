@@ -57,7 +57,7 @@ datasheet:
       simulation_relevance: Bounds high-frequency small-signal behavior.
   documents:
     - title: SS8550 - PNP Epitaxial Silicon Transistor
-      path: docs/research/datasheets/onsemi_ss8550-d.pdf
+      path: docs/research/datasheets/onsemi/ss8550.pdf
       source_url: https://www.onsemi.com/download/data-sheet/pdf/ss8550-d.pdf
       sha256: 82c3aab9b43a6c887d8360cf1c57e3bb89d7a5437ff01b5d0b7368340c575063
       retrieved: "2026-06-12"

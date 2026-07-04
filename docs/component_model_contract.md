@@ -1007,6 +1007,15 @@ hand-digitized SOA points are reduced preliminary screening evidence and do not
 validate switching loss, package thermal coupling, avalanche,
 machine-readable vendor SOA, gate-drive margin, EMI, or production hardware
 behavior.
+`vendor.onsemi.ss8050` and `vendor.onsemi.ss8550` add source-backed
+complementary TO-92 BJT switch packs. Official onsemi documentation backs their
+SS8050 NPN and SS8550 PNP voltage ratings, +/-1.5 A continuous collector
+current, 1 W power limit, TO-92 pinout, saturation, gain, capacitance, and
+transition-frequency metadata. Generated SPICE uses the existing BJT
+operating-limit probes for terminal voltage, collector current, and power, but
+the bundled shared card is a reduced preliminary fit and does not validate gain
+spread, saturation margin over process and temperature, switching storage time,
+noise, package thermal coupling, or production hardware behavior.
 `vendor.onsemi.npn_2n3904` adds a source-backed common NPN transistor pack.
 Official onsemi documentation backs its 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`,
 200 mA continuous collector-current limit, 625 mW ambient power limit with
