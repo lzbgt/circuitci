@@ -33,6 +33,18 @@ pub(super) struct AnalogDcScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogDcSweepScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) source: String,
+    pub(super) start: f64,
+    pub(super) stop: f64,
+    pub(super) step: f64,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -131,6 +143,28 @@ pub(super) fn append_analog_dc_scenario_with_project_path(
         &draft.probe_net,
         &draft.probe_name,
         GeneratedAnalogScenarioKind::Dc,
+    )
+}
+
+pub(super) fn append_analog_dc_sweep_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogDcSweepScenarioDraft,
+) -> Result<String> {
+    validate_dc_sweep_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::DcSweep {
+            source: draft.source.trim().to_string(),
+            start: draft.start,
+            stop: draft.stop,
+            step: draft.step,
+        },
     )
 }
 
@@ -243,6 +277,13 @@ fn append_generated_analog_scenario_with_project_path(
             "Harmonic-balance drive source {drive_source} must be an included board component."
         );
     }
+    if let GeneratedAnalogScenarioKind::DcSweep { source, .. } = &kind
+        && !noise_input_source_exists(&project, source)
+    {
+        anyhow::bail!(
+            "DC sweep source {source} must be an included voltage or current source component."
+        );
+    }
     if project.board.components.is_empty() {
         anyhow::bail!("Generated analog scenarios require at least one component.");
     }
@@ -324,6 +365,30 @@ fn validate_dc_draft(draft: &AnalogDcScenarioDraft) -> Result<()> {
     }
     if draft.probe_net.trim().is_empty() {
         anyhow::bail!("Probe net must not be blank.");
+    }
+    Ok(())
+}
+
+fn validate_dc_sweep_draft(draft: &AnalogDcSweepScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    validated_id(&draft.source, "DC sweep source")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    if !draft.start.is_finite()
+        || !draft.stop.is_finite()
+        || !draft.step.is_finite()
+        || draft.start == draft.stop
+        || draft.step <= 0.0
+        || draft.step > (draft.stop - draft.start).abs()
+    {
+        anyhow::bail!(
+            "DC sweep start and stop must be finite and distinct, and step must be finite positive and no larger than the sweep span."
+        );
     }
     Ok(())
 }
@@ -525,6 +590,12 @@ enum GeneratedAnalogScenarioKind {
         points_per_decade: u32,
     },
     Dc,
+    DcSweep {
+        source: String,
+        start: f64,
+        stop: f64,
+        step: f64,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -551,6 +622,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Transient { .. } => "analog_transient",
             Self::Ac { .. } => "analog_ac",
             Self::Dc => "analog_dc",
+            Self::DcSweep { .. } => "analog_dc_sweep",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -562,6 +634,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Transient { .. } => "SPICE_TRANSIENT_ANALYSIS",
             Self::Ac { .. } => "SPICE_AC_ANALYSIS",
             Self::Dc => "SPICE_DC_ANALYSIS",
+            Self::DcSweep { .. } => "SPICE_DC_SWEEP_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -645,6 +718,18 @@ fn analog_block(
         }
         GeneratedAnalogScenarioKind::Dc => {
             insert_string(&mut analysis, "type", "op");
+        }
+        GeneratedAnalogScenarioKind::DcSweep {
+            source,
+            start,
+            stop,
+            step,
+        } => {
+            insert_string(&mut analysis, "type", "dc_sweep");
+            insert_string(&mut analysis, "dc_sweep_source", source);
+            insert_number(&mut analysis, "dc_sweep_start", *start)?;
+            insert_number(&mut analysis, "dc_sweep_stop", *stop)?;
+            insert_number(&mut analysis, "dc_sweep_step", *step)?;
         }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,

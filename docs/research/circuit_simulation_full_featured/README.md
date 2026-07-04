@@ -691,9 +691,11 @@ The GUI should not become the solver.
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli`; each path
   skips unless the requested solver is on `PATH`. Embedded ngspice remains
   fail-closed with planning evidence until equivalent output normalization is
-  implemented. The GUI DC Sweep Check editor now authors and hydrates failed
-  `dc_sweep_assertions[]`, backed by retained failure metadata for the probe,
-  aggregation, nearest measured sweep value, and declared sample sweep value.
+  implemented. The GUI Run Setup editor now authors generated-from-board
+  `analog_dc_sweep` scenarios, and the GUI DC Sweep Check editor authors and
+  hydrates failed `dc_sweep_assertions[]`, backed by retained failure metadata
+  for the probe, aggregation, nearest measured sweep value, and declared sample
+  sweep value.
 - The first harmonic-balance path is an explicit-Xyce adapter plus Board
   IR/schema contract for `analysis.type: hb`, declared periodic drive sources,
   a fundamental frequency, bound output expression, optional harmonic count,

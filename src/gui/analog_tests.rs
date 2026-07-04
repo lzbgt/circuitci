@@ -1,12 +1,13 @@
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
-    AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogHarmonicBalanceScenarioDraft,
-    AnalogNoiseScenarioDraft, AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft,
-    AnalogProbeDraft, AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft,
-    AnalogSParameterNetworkAssertionDraft, AnalogSParameterNoiseAssertionDraft,
-    AnalogSParameterReflectionDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
+    AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogExpressionProbeDraft,
+    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPowerProbeDraft,
+    AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
+    AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
+    AnalogSParameterNoiseAssertionDraft, AnalogSParameterReflectionDraft, AnalogScenarioDraft,
+    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
+    append_analog_assertion, append_analog_current_probe,
+    append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
     append_analog_expression_probe, append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path, append_analog_power_probe,
     append_analog_sparameter_assertion, append_analog_sparameter_network_assertion,
@@ -344,6 +345,64 @@ fn append_analog_dc_scenario_emits_valid_yaml() {
     assert_eq!(analog.analysis.analysis_type, "op");
     assert_eq!(analog.probes[0].expression, "V(out)");
     assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_dc_sweep_scenario_emits_valid_yaml() {
+    let draft = AnalogDcSweepScenarioDraft {
+        name: "gui_dc_sweep".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_voltage".to_string(),
+        source: "V1".to_string(),
+        start: 0.0,
+        stop: 1.0,
+        step: 0.1,
+    };
+    let edited = append_analog_dc_sweep_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_dc_sweep/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(project.scenarios.len(), 1);
+    let scenario = &project.scenarios[0];
+    assert_eq!(scenario.name, "gui_dc_sweep");
+    assert_eq!(scenario.scenario_type, "analog_dc_sweep");
+    assert_eq!(scenario.checks, vec!["SPICE_DC_SWEEP_ANALYSIS".to_string()]);
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
+    assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
+    assert_eq!(analog.analysis.analysis_type, "dc_sweep");
+    assert_eq!(analog.analysis.dc_sweep_source.as_deref(), Some("V1"));
+    assert_eq!(analog.analysis.dc_sweep_start, Some(0.0));
+    assert_eq!(analog.analysis.dc_sweep_stop, Some(1.0));
+    assert_eq!(analog.analysis.dc_sweep_step, Some(0.1));
+    assert_eq!(analog.probes[0].name, "out_voltage");
+    assert_eq!(analog.probes[0].expression, "V(out)");
+    assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_dc_sweep_scenario_rejects_missing_source() {
+    let draft = AnalogDcSweepScenarioDraft {
+        name: "gui_dc_sweep".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_voltage".to_string(),
+        source: "MISSING_SOURCE".to_string(),
+        start: 0.0,
+        stop: 1.0,
+        step: 0.1,
+    };
+    let error = append_analog_dc_sweep_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_dc_sweep/project.yaml"),
+        &draft,
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("DC sweep source MISSING_SOURCE"));
 }
 
 #[test]

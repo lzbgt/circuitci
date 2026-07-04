@@ -129,10 +129,11 @@ Current analog support:
   write `dc_sweep_raw.csv`, normalize rows into `dc_sweep.csv`, and record the
   run in `solver_manifest.json`. Embedded ngspice remains fail-closed with
   planning evidence for this path. DC sweep assertions feed the shared
-  worst-corner and Monte Carlo yield summary machinery. The GUI DC Sweep Check
-  editor authors `dc_sweep_assertions[]` entries and report failure actions
-  hydrate failed checks with probe, aggregation, threshold, and sampled sweep
-  value metadata. Opt-in real-solver conformance is available through
+  worst-corner and Monte Carlo yield summary machinery. The GUI Run Setup
+  editor can author generated-from-board `analog_dc_sweep` scenarios, and the
+  GUI DC Sweep Check editor authors `dc_sweep_assertions[]` entries and report
+  failure actions hydrate failed checks with probe, aggregation, threshold, and
+  sampled sweep value metadata. Opt-in real-solver conformance is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test
   --test analog_dc_sweep_cli` and `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_dc_sweep_cli`; each path skips unless the requested solver is on

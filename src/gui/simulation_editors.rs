@@ -1,10 +1,11 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
-    AnalogDcScenarioDraft, AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
-    AnalogNoiseScenarioDraft, AnalogScenarioDraft, analog_scenario_choices,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_dc_scenario_with_project_path, append_analog_fourier_scenario_with_project_path,
+    AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogFourierScenarioDraft,
+    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogScenarioDraft,
+    analog_scenario_choices, append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
+    append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, replace_analog_assertion,
@@ -51,6 +52,7 @@ impl CircuitCiApp {
                         .selected_text(match self.analog_run_setup_kind.as_str() {
                             "ac" => "AC/Bode",
                             "dc" => "DC operating point",
+                            "dc_sweep" => "DC sweep",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -71,6 +73,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "dc".to_string(),
                                 "DC operating point",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "dc_sweep".to_string(),
+                                "DC sweep",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -216,6 +223,40 @@ impl CircuitCiApp {
                     } else if self.analog_run_setup_kind == "dc" {
                         ui.label("Analysis");
                         ui.label("Operating point");
+                        ui.end_row();
+                    } else if self.analog_run_setup_kind == "dc_sweep" {
+                        initialize_noise_source_default(snapshot, &mut self.analog_dc_sweep_source);
+                        ui.label("Sweep source");
+                        noise_source_combo(
+                            ui,
+                            "analog_dc_sweep_source",
+                            &mut self.analog_dc_sweep_source,
+                            snapshot,
+                        );
+                        ui.end_row();
+
+                        ui.label("Start");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_dc_sweep_start)
+                                .speed(0.01)
+                                .range(-1.0e12..=1.0e12),
+                        );
+                        ui.end_row();
+
+                        ui.label("Stop");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_dc_sweep_stop)
+                                .speed(0.01)
+                                .range(-1.0e12..=1.0e12),
+                        );
+                        ui.end_row();
+
+                        ui.label("Step");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_dc_sweep_step)
+                                .speed(0.001)
+                                .range(1.0e-15..=1.0e12),
+                        );
                         ui.end_row();
                     } else {
                         ui.label("Stop time");
@@ -1269,6 +1310,31 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "DC operating-point run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "dc_sweep" {
+            let draft = AnalogDcSweepScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                source: self.analog_dc_sweep_source.clone(),
+                start: self.analog_dc_sweep_start,
+                stop: self.analog_dc_sweep_stop,
+                step: self.analog_dc_sweep_step,
+            };
+            match append_analog_dc_sweep_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "DC sweep run setup {} added.",
                         self.analog_scenario_name.trim()
                     ),
                 ),
