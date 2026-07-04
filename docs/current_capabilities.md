@@ -118,6 +118,13 @@ capacitors while leaving oscillator startup, negative-resistance margin,
 drive-level stress, ppm accuracy, layout parasitics, and phase noise out of
 scope. See `docs/abracon_abm3_8mhz_18pf_model.md`.
 
+`vendor.winbond.w25q64jv` provides a source-backed static model for Winbond's
+W25Q64JV 3 V 64 Mbit SPI/QSPI NOR flash family. It models the 2.7 V to 3.6 V
+VCC range, 25 mA program/erase/write-current class, 8-pin SPI/QSPI
+board-boundary pins, and memory-geometry metadata. It does not emulate SPI
+commands, JEDEC ID, SFDP tables, flash contents, XIP behavior, write-protect
+policy, or signal-integrity timing. See `docs/winbond_w25q64jv_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

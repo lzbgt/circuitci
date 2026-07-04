@@ -1,0 +1,48 @@
+project:
+  name: bad_winbond_w25q64jv_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    UFLASH:
+      model: vendor.winbond.w25q64jv
+      part_number: W25Q64JVSSIQ
+      power_domains:
+        VCC: rail_5v
+      pins:
+        VCC: rail_5v
+        GND: gnd
+        CS_N: flash_cs_n
+        DO_IO1: flash_miso
+        WP_N_IO2: flash_wp_n
+        DI_IO0: flash_mosi
+        CLK: flash_clk
+        HOLD_N_RESET_N_IO3: flash_hold_n
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    flash_cs_n:
+      kind: digital_or_analog
+    flash_miso:
+      kind: digital_or_analog
+    flash_wp_n:
+      kind: digital_or_analog
+    flash_mosi:
+      kind: digital_or_analog
+    flash_clk:
+      kind: digital_or_analog
+    flash_hold_n:
+      kind: digital_or_analog
+
+scenarios:
+  - name: spi_flash_vcc_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

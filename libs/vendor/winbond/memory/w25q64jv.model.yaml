@@ -1,0 +1,138 @@
+component_id: vendor.winbond.w25q64jv
+version: 0.1.0
+category: spi_flash
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.7
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.025
+  GND:
+    kind: electrical_ground
+    required: true
+  CS_N:
+    kind: digital_electrical_input
+    required: true
+  DO_IO1:
+    kind: digital_electrical_io
+    required: true
+  WP_N_IO2:
+    kind: digital_electrical_io
+    required: true
+  DI_IO0:
+    kind: digital_electrical_io
+    required: true
+  CLK:
+    kind: digital_electrical_input
+    required: true
+  HOLD_N_RESET_N_IO3:
+    kind: digital_electrical_io
+    required: true
+datasheet:
+  manufacturer: Winbond
+  part_number: W25Q64JV
+  package: SOIC-8 208-mil / WSON-8 / XSON-8 / SOIC-16 / TFBGA package family
+  polarity: "3V_64Mbit_spi_qspi_nor_flash"
+  pinout:
+    VCC: Power supply
+    GND: Ground
+    CS_N: /CS chip-select input
+    DO_IO1: DO data output / IO1
+    WP_N_IO2: /WP write-protect input / IO2
+    DI_IO0: DI data input / IO0
+    CLK: Serial clock input
+    HOLD_N_RESET_N_IO3: /HOLD or /RESET input / IO3
+  electrical_characteristics:
+    supply_voltage_low_frequency:
+      conditions: FR = 104 MHz, fR = 50 MHz.
+      min: 2.7
+      max: 3.6
+      unit: V
+    supply_voltage_high_frequency:
+      conditions: FR = 133 MHz, fR = 50 MHz.
+      min: 3.0
+      max: 3.6
+      unit: V
+    standby_current:
+      conditions: /CS = VCC, VIN = GND or VCC.
+      typ: 10
+      max: 50
+      unit: uA
+    power_down_current:
+      conditions: /CS = VCC, VIN = GND or VCC.
+      typ: 1
+      max: 15
+      unit: uA
+    page_program_current:
+      conditions: /CS = VCC.
+      typ: 20
+      max: 25
+      unit: mA
+    sector_block_erase_current:
+      conditions: /CS = VCC.
+      typ: 20
+      max: 25
+      unit: mA
+    input_low_voltage:
+      max: 0.3
+      unit: VCC_ratio
+    input_high_voltage:
+      min: 0.7
+      unit: VCC_ratio
+    input_capacitance:
+      conditions: VIN = 0 V.
+      max: 6
+      unit: pF
+    output_capacitance:
+      conditions: VOUT = 0 V.
+      max: 8
+      unit: pF
+  device_parameters:
+    density:
+      conditions: 64 Mbit / 8 Mbyte organization.
+      typ: 64
+      unit: Mbit
+    page_size:
+      conditions: Programmable page size.
+      typ: 256
+      unit: byte
+    sector_size:
+      conditions: Small erase sector.
+      typ: 4096
+      unit: byte
+    max_spi_clock:
+      conditions: Single, Dual, and Quad SPI clocks at 3.0 V to 3.6 V.
+      max: 133
+      unit: MHz
+    endurance:
+      conditions: Minimum program-erase cycles.
+      min: 100000
+      unit: cycle
+    data_retention:
+      conditions: Minimum data retention.
+      min: 20
+      unit: year
+  documents:
+    - title: W25Q64JV-DTR 3V 64M-bit Serial Flash Memory with Dual/Quad SPI/QPI/DTR
+      path: docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf
+      source_url: https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf
+      sha256: b408f8a61e7f1d22a3a92ec9a6619f66d31fb8540bd3797b649f407268748bdc
+      retrieved: "2026-07-05"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - spi_flash_power_tree_supply_voltage
+    - static_spi_qspi_pin_boundary_review
+    - preliminary_boot_memory_board_review
+  not_valid_for:
+    - spi_protocol_timing_signoff
+    - jedec_id_or_sfdp_verification
+    - erase_program_sequence_emulation
+    - xip_performance_signoff
+    - write_protection_policy_signoff
+    - retention_or_endurance_lifetime_prediction
+    - flash_content_or_firmware_validation
+    - signal_integrity_or_layout_signoff

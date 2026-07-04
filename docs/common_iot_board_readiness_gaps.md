@@ -74,7 +74,11 @@ bypass metadata; RC timing equations and generated timer behavior remain
 outside that static model. Abracon ABM3 now covers a first source-backed common
 8 MHz crystal pack for static oscillator support-network and load-capacitance
 screening; oscillator startup, drive-level stress, ppm accuracy, layout
-parasitics, and phase-noise behavior remain outside that static model. TI
+parasitics, and phase-noise behavior remain outside that static model. Winbond
+W25Q64JV now covers a first source-backed SPI/QSPI NOR flash static pack for
+VCC range, active current class, and SPI/QSPI board-boundary pin review; SPI
+protocol timing, JEDEC ID/SFDP behavior, flash contents, XIP performance, and
+write-protection policy remain outside that static model. TI
 TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
 static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI

@@ -930,6 +930,15 @@ standard ppm tolerance/stability metadata. The validator currently uses only
 the crystal terminals and load-capacitance target for `CLOCK_SOURCE_VALID`; it
 does not sign off oscillator startup, negative resistance, drive-level stress,
 ppm accuracy, layout parasitics, motional behavior, or phase noise.
+`vendor.winbond.w25q64jv` adds a source-backed static SPI/QSPI NOR flash pack.
+Official Winbond documentation backs its 2.7 V to 3.6 V VCC rail range, 25 mA
+program/erase/write-current class, 8-pin SPI/QSPI pin roles, 64 Mbit density,
+256-byte page size, 4 KiB sector size, 100k minimum program-erase endurance,
+and 20-year minimum retention metadata. The validator currently uses the power
+pin contract for `POWER_TREE_VALID` and the explicit port list for
+board-boundary review; it does not emulate SPI commands, JEDEC ID, SFDP tables,
+erase/program sequencing, flash contents, XIP behavior, write-protection
+policy, or high-speed signal integrity.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

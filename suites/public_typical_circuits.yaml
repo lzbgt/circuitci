@@ -219,6 +219,17 @@ cases:
       - id: CLOCK_SOURCE_VALID
         severity: critical
 
+  - id: winbond_w25q64jv_spi_flash_power_passes
+    project: ../examples/good_winbond_w25q64jv_spi_flash_power/project.yaml
+    expect: pass
+
+  - id: winbond_w25q64jv_vcc_overvoltage_detected
+    project: ../examples/bad_winbond_w25q64jv_vcc_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: espressif_esp32_s3_wroom_1u_application_passes
     project: ../examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml
     expect: pass
@@ -363,6 +374,12 @@ repairs:
     fixed_case: abracon_abm3_8mhz_clock_passes
     fixes_findings:
       - CLOCK_SOURCE_VALID
+
+  - id: fix_winbond_w25q64jv_vcc_overvoltage
+    detects_case: winbond_w25q64jv_vcc_overvoltage_detected
+    fixed_case: winbond_w25q64jv_spi_flash_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
 
   - id: fix_esp32_s3_wroom_1u_supply_current
     detects_case: espressif_esp32_s3_wroom_1u_supply_current_detected
