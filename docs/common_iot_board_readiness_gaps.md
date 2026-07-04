@@ -71,7 +71,10 @@ for adapter/SYS/BAT/current checks driven by Board IR component parameters. TI
 NE555 now covers a first source-backed 555 timer static pack for supply range,
 timer pin boundaries, no-load supply current, output-current class, and VCC
 bypass metadata; RC timing equations and generated timer behavior remain
-outside that static model. TI
+outside that static model. Abracon ABM3 now covers a first source-backed common
+8 MHz crystal pack for static oscillator support-network and load-capacitance
+screening; oscillator startup, drive-level stress, ppm accuracy, layout
+parasitics, and phase-noise behavior remain outside that static model. TI
 TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
 static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI
@@ -317,11 +320,14 @@ integrity remain component-pack and physics gaps.
 Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
 external crystal support networks: crystal between oscillator pins, load
 capacitors from both oscillator pins to ground, and effective load capacitance
-against the crystal model target. `suggest-scenarios` emits clock templates
-when the component model declares `clock_sources[]` and board connectivity
-provides distinct oscillator nets, but marks them runnable only when a modeled
-crystal/resonator exists between those nets. It does not prove oscillator
-startup, ESR, drive level, ppm accuracy, or layout parasitics.
+against the crystal model target. The Abracon ABM3 fixture is now source-backed
+and proves the 18 pF target with 32 pF leg capacitors plus modeled MCU stray
+capacitance, while the paired bad fixture detects an undersized 6 pF effective
+load. `suggest-scenarios` emits clock templates when the component model
+declares `clock_sources[]` and board connectivity provides distinct oscillator
+nets, but marks them runnable only when a modeled crystal/resonator exists
+between those nets. It does not prove oscillator startup, ESR, drive level,
+ppm accuracy, or layout parasitics.
 
 ## 5. Layout-Dependent Physics
 

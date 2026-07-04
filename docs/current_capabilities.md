@@ -111,6 +111,13 @@ VCC bypass recommendation. It does not implement RC timing equations,
 threshold-spread sign-off, output-drive/load sign-off, or generated-SPICE timer
 behavior. See `docs/ti_ne555_model.md`.
 
+`vendor.abracon.abm3_8mhz_18pf` provides a source-backed static model for an
+Abracon ABM3 8 MHz crystal with the datasheet standard 18 pF load capacitance.
+It lets `CLOCK_SOURCE_VALID` screen board-level crystal placement and load
+capacitors while leaving oscillator startup, negative-resistance margin,
+drive-level stress, ppm accuracy, layout parasitics, and phase noise out of
+scope. See `docs/abracon_abm3_8mhz_18pf_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

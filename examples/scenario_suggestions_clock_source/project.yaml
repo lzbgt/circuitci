@@ -4,6 +4,7 @@ project:
 
 libraries:
   - ../../libs/generic
+  - ../../libs/vendor
 
 board:
   components:
@@ -18,29 +19,29 @@ board:
         OSC_IN: osc_in
         OSC_OUT: osc_out
     Y1:
-      model: generic.analog.crystal_8mhz_12p5pf
-      part_number: GENERIC_8MHZ_12P5PF
+      model: vendor.abracon.abm3_8mhz_18pf
+      part_number: ABM3-8.000MHZ-18PF
       pins:
         A: osc_in
         B: osc_out
     C1:
       model: generic.analog.capacitor
-      part_number: 22pF
+      part_number: 32pF
       pins:
         A: osc_in
         B: gnd
       spice:
         primitive: capacitor
-        value_f: 22.0e-12
+        value_f: 32.0e-12
     C2:
       model: generic.analog.capacitor
-      part_number: 22pF
+      part_number: 32pF
       pins:
         A: osc_out
         B: gnd
       spice:
         primitive: capacitor
-        value_f: 22.0e-12
+        value_f: 32.0e-12
   nets:
     rail_3v3:
       kind: power

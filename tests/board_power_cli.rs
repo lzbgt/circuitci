@@ -428,8 +428,8 @@ fn clock_source_load_capacitance_fails_outside_crystal_range() {
     assert_eq!(failure["measured"]["output_load_capacitance_F"], 8.0e-12);
     assert_eq!(failure["measured"]["stray_capacitance_F"], 2.0e-12);
     assert_eq!(failure["measured"]["effective_load_capacitance_F"], 6.0e-12);
-    assert_eq!(failure["limit"]["crystal_load_capacitance_min_F"], 10.0e-12);
-    assert_eq!(failure["limit"]["crystal_load_capacitance_max_F"], 15.0e-12);
+    assert_eq!(failure["limit"]["crystal_load_capacitance_min_F"], 14.4e-12);
+    assert_eq!(failure["limit"]["crystal_load_capacitance_max_F"], 21.6e-12);
     assert_report_schema_valid(&report);
 }
 

@@ -208,6 +208,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: abracon_abm3_8mhz_clock_passes
+    project: ../examples/good_clock_source_crystal/project.yaml
+    expect: pass
+
+  - id: abracon_abm3_8mhz_load_capacitance_detected
+    project: ../examples/bad_clock_source_load_capacitance/project.yaml
+    expect: fail
+    required_findings:
+      - id: CLOCK_SOURCE_VALID
+        severity: critical
+
   - id: espressif_esp32_s3_wroom_1u_application_passes
     project: ../examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml
     expect: pass
@@ -346,6 +357,12 @@ repairs:
     fixed_case: ti_ne555_astable_power_passes
     fixes_findings:
       - POWER_TREE_VALID
+
+  - id: fix_abracon_abm3_8mhz_load_capacitance
+    detects_case: abracon_abm3_8mhz_load_capacitance_detected
+    fixed_case: abracon_abm3_8mhz_clock_passes
+    fixes_findings:
+      - CLOCK_SOURCE_VALID
 
   - id: fix_esp32_s3_wroom_1u_supply_current
     detects_case: espressif_esp32_s3_wroom_1u_supply_current_detected

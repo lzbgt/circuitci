@@ -4,6 +4,7 @@ project:
 
 libraries:
   - ../../libs/generic
+  - ../../libs/vendor
 
 board:
   components:
@@ -18,8 +19,8 @@ board:
         OSC_IN: osc_in
         OSC_OUT: osc_out
     Y1:
-      model: generic.analog.crystal_8mhz_12p5pf
-      part_number: GENERIC_8MHZ_12P5PF
+      model: vendor.abracon.abm3_8mhz_18pf
+      part_number: ABM3-8.000MHZ-18PF
       pins:
         A: osc_in
         B: osc_out

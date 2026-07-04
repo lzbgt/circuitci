@@ -94,8 +94,7 @@ Crystal and resonator models can declare the static load target:
 ```yaml
 crystal:
   frequency_Hz: 8000000
-  load_capacitance_F: 12.5e-12
-  load_capacitance_tolerance_F: 2.5e-12
+  load_capacitance_F: 18.0e-12
 ```
 
 `CLOCK_SOURCE_VALID` checks that a crystal model is connected between the two
@@ -923,6 +922,14 @@ exercise board-level supply voltage checks and timer pin-boundary review, but
 not RC timing equations, threshold-spread sign-off, output-drive/load sign-off,
 discharge-transistor saturation, reset pulse timing, control-voltage
 modulation, thermal behavior, or generated timer waveforms.
+`vendor.abracon.abm3_8mhz_18pf` adds a source-backed static ABM3 8 MHz crystal
+pack. Official Abracon documentation backs its 8 MHz nominal frequency, 18 pF
+standard load capacitance, 140 ohm maximum ESR for the 8 MHz to below-9 MHz
+fundamental range, 7 pF shunt capacitance, 10 uW to 100 uW drive range, and
+standard ppm tolerance/stability metadata. The validator currently uses only
+the crystal terminals and load-capacitance target for `CLOCK_SOURCE_VALID`; it
+does not sign off oscillator startup, negative resistance, drive-level stress,
+ppm accuracy, layout parasitics, motional behavior, or phase noise.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

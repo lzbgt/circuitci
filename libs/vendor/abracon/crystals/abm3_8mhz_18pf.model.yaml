@@ -1,0 +1,76 @@
+component_id: vendor.abracon.abm3_8mhz_18pf
+version: 0.1.0
+category: crystal
+ports:
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+crystal:
+  frequency_Hz: 8000000
+  load_capacitance_F: 18.0e-12
+datasheet:
+  manufacturer: Abracon
+  part_number: ABM3-8.000MHZ-18PF
+  package: 5.0 x 3.2 x 1.3 mm SMD
+  polarity: quartz_crystal
+  pinout:
+    A: Crystal electrode
+    B: Crystal electrode
+  electrical_characteristics:
+    frequency:
+      conditions: ABM3 8 MHz option in the fundamental-mode frequency range.
+      typ: 8000000
+      unit: Hz
+    load_capacitance:
+      conditions: Standard load-capacitance option.
+      typ: 18.0e-12
+      unit: F
+    equivalent_series_resistance:
+      conditions: 8.000 MHz <= F < 9.000 MHz fundamental.
+      max: 140
+      unit: ohm
+    shunt_capacitance:
+      conditions: C0.
+      typ: 7.0e-12
+      unit: F
+    drive_level:
+      conditions: Recommended drive-level range.
+      min: 10.0e-6
+      max: 100.0e-6
+      unit: W
+    frequency_tolerance:
+      conditions: Standard option at 25 C.
+      min: -50
+      max: 50
+      unit: ppm
+    frequency_stability:
+      conditions: Standard option over operating temperature.
+      min: -50
+      max: 50
+      unit: ppm
+    aging_first_year:
+      conditions: First year.
+      min: -5
+      max: 5
+      unit: ppm
+  documents:
+    - title: ABM3 Ceramic SMD Crystal
+      path: docs/research/datasheets/abracon/abm3.pdf
+      source_url: https://abracon.com/Resonators/ABM3.pdf
+      sha256: 74a42fd33b5a0226229acd1657bdeb9c391711058c9dcdd391021d49506e9f23
+      retrieved: "2026-07-05"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - static_clock_support_network_screening
+    - crystal_load_capacitance_screening
+  not_valid_for:
+    - oscillator_startup_signoff
+    - crystal_esr_drive_level_or_gain_margin
+    - ppm_accuracy_or_temperature_signoff
+    - layout_parasitic_extraction
+    - motional_model_or_phase_noise
