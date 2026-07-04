@@ -313,6 +313,13 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
             aggregation: max
             relation: below
             threshold: 3.1
+          - name: s11_mismatch_loss_ceiling
+            parameter: s11
+            metric: mismatch_loss_db
+            aggregation: max
+            relation: below
+            threshold: 1.3
+            unit: dB
           - name: s21_insertion_loss_ceiling
             parameter: s21
             metric: insertion_loss_db
@@ -358,6 +365,7 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
             "min_return_loss_db",
             "max_insertion_loss_db",
             "max_vswr",
+            "max_mismatch_loss_db",
             "min_group_delay_s",
             "max_group_delay_s",
             "min_impedance_real_ohm",
@@ -371,6 +379,7 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
         .expect("s11 summary row");
     assert!(s11["min_return_loss_db"].as_f64().unwrap() > 6.0);
     assert!((s11["max_vswr"].as_f64().unwrap() - 3.0).abs() < 1.0e-9);
+    assert!((s11["max_mismatch_loss_db"].as_f64().unwrap() - 1.249387366083).abs() < 1.0e-9);
     assert_eq!(s11["max_group_delay_s"], 0.0);
     assert!((s11["min_impedance_real_ohm"].as_f64().unwrap() - 75.0).abs() < 1.0e-9);
     assert!((s11["max_impedance_magnitude_ohm"].as_f64().unwrap() - 150.0).abs() < 1.0e-9);
@@ -380,6 +389,7 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
         .expect("s21 summary row");
     assert!(s21["max_insertion_loss_db"].as_f64().unwrap() < 0.0);
     assert!(s21["max_vswr"].is_null());
+    assert!(s21["max_mismatch_loss_db"].is_null());
     assert_eq!(s21["max_group_delay_s"], 0.0);
     assert!(s21["max_impedance_magnitude_ohm"].is_null());
     let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
@@ -427,6 +437,48 @@ fn sparameter_assertion_fails_on_impedance_limit() {
     assert_eq!(failure["measured"]["aggregation"], "max");
     assert!(failure["measured"]["value"].as_f64().unwrap() > 120.0);
     assert_eq!(failure["limit"]["below_threshold"], 120.0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_assertion_fails_on_mismatch_loss_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 1.5 0.0 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s11_mismatch_loss_ceiling
+            parameter: s11
+            metric: mismatch_loss_db
+            aggregation: max
+            relation: below
+            threshold: 1.0
+            unit: dB
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "s11_mismatch_loss_ceiling")
+        .expect("mismatch-loss assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(failure["measured"]["metric"], "mismatch_loss_db");
+    assert_eq!(failure["measured"]["aggregation"], "max");
+    assert!(failure["measured"]["value"].as_f64().unwrap() > 1.0);
+    assert_eq!(failure["limit"]["below_threshold"], 1.0);
     assert_report_schema_valid(&report);
 }
 

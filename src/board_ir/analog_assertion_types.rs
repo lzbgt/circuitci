@@ -68,6 +68,7 @@ pub enum AnalogSParameterMetric {
     ReturnLossDb,
     InsertionLossDb,
     Vswr,
+    MismatchLossDb,
     GroupDelayS,
     ImpedanceRealOhm,
     ImpedanceImagOhm,

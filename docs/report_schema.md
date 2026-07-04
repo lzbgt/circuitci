@@ -1454,11 +1454,12 @@ Retained `s_parameter_summary.csv` artifacts project into top-level
 `s_parameter_summaries[]` rows with the source artifact path, S-parameter term,
 row count, frequency span, magnitude min/max, nullable return-loss min/max,
 nullable insertion-loss min/max, nullable VSWR min/max, and nullable
-group-delay min/max in seconds. Reflection rows also include nullable
-impedance real, imaginary, and magnitude min/max ranges in ohms derived from
-the normalized Touchstone reference impedance. Markdown reports include those
-rows in an "S-Parameter Summary" section, and the GUI report panel surfaces the
-same compact RF sign-off rows.
+mismatch-loss min/max in dB. Rows also include nullable group-delay min/max in
+seconds. Reflection rows also include nullable impedance real,
+imaginary, and magnitude min/max ranges in ohms derived from the normalized
+Touchstone reference impedance. Markdown reports include those rows in an
+"S-Parameter Summary" section, and the GUI report panel surfaces the same
+compact RF sign-off rows.
 Retained `s_parameter_network_summary.csv` artifacts project into top-level
 `s_parameter_network_summaries[]` rows with the source artifact path, port
 count, row count, frequency span, maximum reciprocity error and frequency, and

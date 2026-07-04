@@ -1,0 +1,362 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><meta charset="utf-8" /><link rel="shortcut icon" href="https://d2xunoxnk3vwmv.cloudfront.net/images/favicon.ico" type="image/x-icon" /><title>
+	Microwaves101 | Mismatch Loss, Etc.
+</title><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link href="../js/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css" /><link href="../js/font-awesome/css/font-awesome.css" rel="stylesheet" type="text/css" /><link href="../css/style.css?version=2" rel="stylesheet" type="text/css" /><link href="../css/camera.css" rel="stylesheet" type="text/css" /><link href="https://fonts.googleapis.com/css?family=Ubuntu:400,500,700" rel="stylesheet" />
+    <!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-1BBRLYKF1N"></script> <script> window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag('js', new Date()); gtag('config', 'G-1BBRLYKF1N'); </script>
+    
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+<script type='text/javascript'>
+(function() {
+var useSSL = 'https:' == document.location.protocol;
+var src = (useSSL ? 'https:' : 'http:') +
+'//www.googletagservices.com/tag/js/gpt.js';
+document.write('<scr' + 'ipt src="' + src + '"></scr' + 'ipt>');
+})();
+</script>
+<script type="text/javascript">if (location.host != "localhost:19002") {googletag.cmd.push(function() {googletag.defineSlot('/4906012/728x90_Leaderboard', [728, 90], 'div-gpt-ad-1513662084890-0').addService(googletag.pubads());googletag.enableServices();});}</script>
+<script type="text/javascript">if (location.host != "localhost:19002") {googletag.cmd.push(function() {googletag.defineSlot('/4906012/Skyscraper', [160, 600], 'div-gpt-ad-1513662144177-0').addService(googletag.pubads());googletag.enableServices();});}</script>
+<script type="text/javascript">if (location.host != "localhost:19002") {googletag.cmd.push(function() {googletag.defineSlot('/4906012/Baseboard', [728, 90], 'div-gpt-ad-1513662185452-0').addService(googletag.pubads());googletag.enableServices();});}</script>
+<meta name="description" content="Microwaves101 | Mismatch Loss, Etc." /></head>
+<body>
+    <form method="post" action="./mismatch-loss-etc" id="form1">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwULLTIwMDkyNDMwNjEPZBYCZg9kFgICAw9kFggCBQ8PFgIeBFRleHQFDUp1bHkgMDQsIDIwMjZkZAIGD2QWAmYPDxYCHgdWaXNpYmxlaGRkAhAPZBYOAgEPFgIfAWdkAgMPFgIfAAWTFSA8bGkgY2xhc3M9Jyc+PGEgZGF0YS10b2dnbGU9J3RhYicgaHJlZj0nI2FsbCcgY2xhc3M9J3RhYlRleHQnPkFsbDwvYT48L2xpPjxsaT48YSBocmVmPScjMS05JyBpZD0nIzEtOScgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+MS05PC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNBJyBpZD0nI0EnIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPkE8L2E+PC9saT48bGk+PGEgaHJlZj0nI0InIGlkPScjQicgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+QjwvYT48L2xpPjxsaT48YSBocmVmPScjQycgaWQ9JyNDJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5DPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNEJyBpZD0nI0QnIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPkQ8L2E+PC9saT48bGk+PGEgaHJlZj0nI0UnIGlkPScjRScgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+RTwvYT48L2xpPjxsaT48YSBocmVmPScjRicgaWQ9JyNGJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5GPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNHJyBpZD0nI0cnIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPkc8L2E+PC9saT48bGk+PGEgaHJlZj0nI0gnIGlkPScjSCcgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+SDwvYT48L2xpPjxsaT48YSBocmVmPScjSScgaWQ9JyNJJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5JPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNKJyBpZD0nI0onIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPko8L2E+PC9saT48bGk+PGEgaHJlZj0nI0snIGlkPScjSycgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+SzwvYT48L2xpPjxsaT48YSBocmVmPScjTCcgaWQ9JyNMJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5MPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNNJyBpZD0nI00nIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPk08L2E+PC9saT48bGk+PGEgaHJlZj0nI04nIGlkPScjTicgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+TjwvYT48L2xpPjxsaT48YSBocmVmPScjTycgaWQ9JyNPJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5PPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNQJyBpZD0nI1AnIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPlA8L2E+PC9saT48bGk+PGEgaHJlZj0nI1EnIGlkPScjUScgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+UTwvYT48L2xpPjxsaT48YSBocmVmPScjUicgaWQ9JyNSJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5SPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNTJyBpZD0nI1MnIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPlM8L2E+PC9saT48bGk+PGEgaHJlZj0nI1QnIGlkPScjVCcgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+VDwvYT48L2xpPjxsaT48YSBocmVmPScjVScgaWQ9JyNVJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5VPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNWJyBpZD0nI1YnIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPlY8L2E+PC9saT48bGk+PGEgaHJlZj0nI1cnIGlkPScjVycgY2xhc3M9J3RhYlRleHQnIHJvbGU9J3RhYicgZGF0YS10b2dnbGU9J3RhYicgYXJpYS1leHBhbmRlZD0ndHJ1ZSc+VzwvYT48L2xpPjxsaT48YSBocmVmPScjWScgaWQ9JyNZJyBjbGFzcz0ndGFiVGV4dCcgcm9sZT0ndGFiJyBkYXRhLXRvZ2dsZT0ndGFiJyBhcmlhLWV4cGFuZGVkPSd0cnVlJz5ZPC9hPjwvbGk+PGxpPjxhIGhyZWY9JyNaJyBpZD0nI1onIGNsYXNzPSd0YWJUZXh0JyByb2xlPSd0YWInIGRhdGEtdG9nZ2xlPSd0YWInIGFyaWEtZXhwYW5kZWQ9J3RydWUnPlo8L2E+PC9saT5kAgUPDxYCHgtOYXZpZ2F0ZVVybAUhfi9lbmN5Y2xvcGVkaWFzL21pc21hdGNoLWxvc3MtZXRjZGQCBw8WAh8ABdsBPGRpdiBpZD0nZGl2LWdwdC1hZC0xNTEzNjYyMDg0ODkwLTAnIHN0eWxlPSdoZWlnaHQ6OTBweDsgd2lkdGg6NzI4cHg7IG1hcmdpbjoxNXB4IGF1dG87Jz48c2NyaXB0IHR5cGU9J3RleHQvamF2YXNjcmlwdCc+Z29vZ2xldGFnLmNtZC5wdXNoKGZ1bmN0aW9uKCkgeyBnb29nbGV0YWcuZGlzcGxheSgnZGl2LWdwdC1hZC0xNTEzNjYyMDg0ODkwLTAnKTsgfSk7PC9zY3JpcHQ+PC9kaXY+ZAIJDxYCHwAF3io8aDE+TWlzbWF0Y2ggTG9zcywgRXRjLjwvaDE+PGRpdiBjbGFzcz0nbWFyZ2luLWJvdHRvbTEwJz48cD48YSBocmVmPSJodHRwczovL3d3dy5taWNyb3dhdmVzMTAxLmNvbS9lbmN5Y2xvcGVkaWFzL3ZvbHRhZ2Utc3RhbmRpbmctd2F2ZS1yYXRpby12c3dyIj5DbGljayBoZXJlPC9hPiB0byBnbyB0byBvdXIgVlNXUiBwYWdlPC9wPgoKPHA+PGEgaHJlZj0iaHR0cHM6Ly93d3cubWljcm93YXZlczEwMS5jb20vZW5jeWNsb3BlZGlhcy9zLXBhcmFtZXRlci11dGlsaXRpZXMtc3ByZWFkc2hlZXQiPkNsaWNrIGhlcmU8L2E+IHRvIGxlYXJuIGFib3V0IG91ciBTLXBhcmFtZXRlciB1dGlsaXR5IHNwcmVhZHNoZWV0IHRoYXQgeW91IGNhbiBkb3dubG9hZDwvcD4KCjxwPk9uIHRoaXMgcGFnZSB3ZSB3aWxsIGRpc2N1c3MgbWlzbWF0Y2ggbG9zcywgYXMgd2VsbCBhcyAmcXVvdDtsb3NzIGZhY3RvciZxdW90OyAoYXMgZGVzY3JpYmVkIGluIGEgcmVjZW50IHRyYWRlIGpvdXJuYWwgYXJ0aWNsZSksIGFuZCBhIG5ldyBjb25jZXB0LCAmcXVvdDtlZmZpY2llbmN5IGZhY3RvciZxdW90Oy48L3A+Cgo8aDM+PGEgbmFtZT0ibWlzbWF0Y2giPjwvYT5NaXNtYXRjaCBsb3NzPC9oMz4KCjxwPjxzdHJvbmc+VXBkYXRlZCBGZWJydWFyeSAyMDIyLi4uIDwvc3Ryb25nPnRoZSBtaXNtYXRjaCZuYnNwO2Zvcm11bGEgYmVsb3cmbmJzcDt3YXMgaW5jb3JyZWN0LCBmb3IgbWFueSB5ZWFycy4gUHJldmlvdXNseSB3ZSBoYWQoMS0mR2FtbWE7PHN1cD4yPC9zdXA+KSwgd2hlbiBpdCBzaG91bGQgaGF2ZSBiZWVuKDEtfCZHYW1tYTt8PHN1cD4yPC9zdXA+KS4gVGhhbmtzIHRvIGFsZXJ0IHJlYWRlciBUb20uIE5vdGUgdGhhdCB0aGUgYWJzb2x1dGUgdmFsdWUgb2YgJkdhbW1hOyBpcyB0eXBpY2FsbHkgYXNzaWduZWQgdG8gR3JlZWsgbGV0dGVyIHJobyAoJnJobzspLCB3aGljaCBsZWFkcyB1cyB0byBhIHNpbXBsZXIsIGFsdGVybmF0aXZlIGZvcm11bGEuPC9wPgoKPHA+TWlzbWF0Y2ggbG9zcyBpcyB0aGUgcmF0aW8gb2YgcG93ZXIgZGVsaXZlcmVkIHRvIHBvd2VyIGF2YWlsYWJsZSwgYW5kIGlzIGEgc2ltcGxlIGZ1bmN0aW9uIG9mIHJlZmxlY3Rpb24gY29lZmZpY2llbnQuIFRoZSBmb3JtdWxhIGZvciBtaXNtYXRjaCBsb3NzIGlzIHNpbXBseTo8L3A+Cgo8YmxvY2txdW90ZT4KPGJsb2NrcXVvdGU+CjxwPm1pc21hdGNoIGxvc3M9KDEtfCZHYW1tYTt8PHN1cD4yPC9zdXA+KTwvcD4KCjxwPmFsdGVybmF0aXZlbHksPC9wPgoKPHA+bWlzbWF0Y2ggbG9zcz0xLSZyaG87PHN1cD4yPC9zdXA+PC9wPgo8L2Jsb2NrcXVvdGU+CjwvYmxvY2txdW90ZT4KCjxwPkJ5IHRoZSB3YXksIDxhIGhyZWY9Imh0dHBzOi8vd3d3Lm1pY3Jvd2F2ZXMxMDEuY29tL2VuY3ljbG9wZWRpYXMvZ3JlZWstbGV0dGVycy1pbi1taWNyb3dhdmVzIj5oZXJlIGlzIGEgcGFnZTwvYT4gdGhhdCBzdW1tYXJpemVzIEdyZWVrIGxldHRlciB1c2FnZSBpbiBNaWNyb3dhdmUgRW5naW5lZXJpbmcuPC9wPgoKPHA+V2UmIzM5O3ZlIGRvbmUgdGhlIGhlYXZ5IGxpZnRpbmcgZm9yIHlvdSBvbiBtaXNtYXRjaCBsb3NzLCBhbmQgYWxyZWFkeSBwdXQgaXQgaW50byBhIGNhbGN1bGF0b3IsIDxhIGhyZWY9Imh0dHBzOi8vd3d3Lm1pY3Jvd2F2ZXMxMDEuY29tL2NhbGN1bGF0b3JzLzg3Mi12c3dyLWNhbGN1bGF0b3IiPmNoZWNrIGl0IG91dCE8L2E+PC9wPgoKPGgzPjxhIG5hbWU9Imxvc3MiPjwvYT5Mb3NzIGZhY3RvcjwvaDM+Cgo8cD5UaGlzIGNvbmNlcHQgaXMgZGVzY3JpYmVkIGluIHJlY2VudCBhIE1pY3Jvd2F2ZSBKb3VybmFsIGFydGljbGUgZW50aXRsZWQgJnF1b3Q7QXV0b21hdGlvbiBhbmQgUmVhbC10aW1lIFZlcmlmaWNhdGlvbiBvZiBQYXNzaXZlIENvbXBvbmVudCBTLXBhcmFtZXRlciBNZWFzdXJlbWVudHMgVXNpbmcgTG9zcyBGYWN0b3IgQ2FsY3VsYXRpb25zJnF1b3Q7LCBieSBKLiBDYXB3ZWxsLCBULiBXZWxsZXIsIEQuIE1hcmtlbGwgYW5kIEwuIER1bmxlYXZ5IG9mIE1vZGVsaXRoaWNzIEluYy4gWW91IGNhbiBnb29nbGUgdG8gaXQgaWYgeW91IGxpa2UsIGJ1dCB0byBnZXQgdGhlIGZ1bGwgdGV4dCB5b3UgbWlnaHQgaGF2ZSB0byBqb2luIHRoZSBNaWNyb3dhdmUgSm91cm5hbCB3ZWIgc2l0ZSwgd2hpY2ggaXMgYW5ub3lpbmcuIFlvdSBjYW4gYWx3YXlzIHJlYWQgdGhlIGdvb2dsZSAmcXVvdDtjYWNoZWQmcXVvdDsgdmVyc2lvbiBvZiB0aGUgYXJ0aWNsZSwgdGhhdCYjMzk7cyB3aGF0IHdlIGRpZC48L3A+Cgo8cD5UaGV5IHByZXNlbnQgdGhlIGNvbmNlcHQgb2YgJnF1b3Q7bG9zcyBmYWN0b3ImcXVvdDsgYXMgc29tZXRoaW5nIHRoYXQgd2lsbCBoZWxwIHlvdSBkZXRlcm1pbmUgaWYgYW4gUy1wYXJhbWV0ZXIgbWVhc3VyZW1lbnQgb2YgYSBwYXNzaXZlIGRldmljZSBpcyBnb29kLiBRdW90aW5nIHRoZSBhcnRpY2xlOjwvcD4KCjxwPjxlbT4mcXVvdDtUaGUgZm9yd2FyZCBhbmQgcmV2ZXJzZSBsb3NzIGZhY3RvcnMgYXJlIGNhbGN1bGF0ZWQgZnJvbSBwYXNzaXZlIGNvbXBvbmVudCBTLXBhcmFtZXRlcnMgYXM8L2VtPjwvcD4KCjxibG9ja3F1b3RlPgo8cD48ZW0+Rm9yd2FyZCBMb3NzIEZhY3RvciAoRkxGKSA9IDEgLSB8UzExfDxzdXA+Mjwvc3VwPiAtIHxTMjF8PHN1cD4yPC9zdXA+PC9lbT48L3A+Cgo8cD48ZW0+UmV2ZXJzZSBMb3NzIEZhY3RvciAoUkxGKSA9IDEgLSB8UzIyfDxzdXA+Mjwvc3VwPiAtIHxTMTJ8PHN1cD4yPC9zdXA+PC9lbT48L3A+CjwvYmxvY2txdW90ZT4KCjxwPjxlbT5CeSB0aGVzZSBkZWZpbml0aW9ucywgdGhlIGxvc3MgZmFjdG9ycyBhcmUgc2VlbiB0byBlcXVhbCB0aGUgZGlmZmVyZW5jZSBiZXR3ZWVuIGEgbm9ybWFsaXplZCBpbnB1dCBwb3dlciBhbmQgdGhlIHBvd2VyIHRoYXQgaXMgcmVmbGVjdGVkIGFuZCB0cmFuc21pdHRlZCB0byB0aGUgaW5wdXQgYW5kIG91dHB1dCBwb3J0cywgcmVzcGVjdGl2ZWx5LiAoUG93ZXIgbG9zcyBjYW4gb2NjdXIgZHVlIHRvIGNvbmR1Y3RvciwgZGllbGVjdHJpYyBhbmQgcmFkaWF0aW9uIGxvc3MgbWVjaGFuaXNtcy4pIEZvciByZWNpcHJvY2FsIGRldmljZXMgUzIxID0gUzEyLCB0aGUgZGlmZmVyZW5jZXMgYmV0d2VlbiB0aGUgZm9yd2FyZCBhbmQgcmV2ZXJzZSBsb3NzIGZhY3RvciBvY2N1ciBkdWUgdG8gZGlmZmVyZW5jZXMgaW4gfFMxMXwgYW5kIHxTMjJ8LiBGb3IgaWRlYWwgbG9zc2xlc3MgY29tcG9uZW50cywgdGhlIG1hZ25pdHVkZXMgb2YgUzExIGFuZCBTMjIgYXJlIGVxdWFsLCBidXQgdGhleSBjYW4gZGV2aWF0ZSBmcm9tIG9uZSBhbm90aGVyIHdoZW5ldmVyIGxvc3MgaXMgcHJlc2VudC48L2VtPjwvcD4KCjxwPjxlbT5Gb3IgcGFzc2l2ZSBjb21wb25lbnRzIHN1Y2ggYXMgY2FwYWNpdG9ycywgaW5kdWN0b3JzIGFuZCByZXNpc3RvcnMgKGFuZCBkaW9kZXMpLCB0aGUgZWxlY3RyaWNhbCBiZWhhdmlvciBpcyBtb3N0IG9mdGVuIHN5bW1ldHJpY2FsIChTMTEgPSBTMjIpOyB0aHVzLCB0aGUgZGlmZmVyZW5jZSBpbiB0aGUgZm9yd2FyZCBhbmQgcmV2ZXJzZSBsb3NzIHNob3VsZCBiZSBuZWdsaWdpYmxlLiBTaWduaWZpY2FudCBkZXZpYXRpb25zIGluIHRoZSBmb3J3YXJkIGFuZCByZXZlcnNlIGxvc3MgY2FuIGJlIG9ic2VydmVkIHdoZW4gYSBjb21wb25lbnQgYmVnaW5zIHRvIHJhZGlhdGUsIGEgY29tbW9ubHkgb2JzZXJ2ZWQgcGhlbm9tZW5vbiwgcGFydGljdWxhcmx5IGZvciBpbmR1Y3RvcnMuIEhvd2V2ZXIsIHRoZSBtYWluIG9iamVjdGl2ZSBvZiB0aGlzIGFydGljbGUgaXMgdG8gaWxsdXN0cmF0ZSBob3cgcmVhbC10aW1lIG1vbml0b3Jpbmcgb2YgbG9zcyBmYWN0b3IgYmVoYXZpb3IgYmVjb21lcyBhIHVzZWZ1bCB0b29sIGZvciBkZXRlY3RpbmcgbWVhc3VyZW1lbnQgaW5jb25zaXN0ZW5jaWVzIHdoZW4sIGFsbCB0aGluZ3MgZnVuY3Rpb25pbmcgcHJvcGVybHksIHRoZSBjb21wb25lbnQgc2hvdWxkIGV4aGliaXQgc3ltbWV0cmljYWwgY2hhcmFjdGVyaXN0aWNzLiZxdW90OzwvZW0+PC9wPgoKPHA+V2UgYWdyZWUgdGhhdCBsb3NzIGZhY3RvciBpcyBhIG9uZSBpbmRpY2F0aW9uIG9mIGhvdyBtdWNoIHBvd2VyIGlzICZxdW90O2Rpc2FwcGVhcmluZyZxdW90OyBpbiBhIG5ldHdvcmssIHRocm91Z2ggcmVzaXN0aXZlIGxvc3Mgb3IgcmFkaWF0aW9uLjwvcD4KCjxoMz48YSBuYW1lPSJlZmZpY2llbmN5Ij48L2E+RWZmaWNpZW5jeSBmYWN0b3I8L2gzPgoKPHA+VGhpcyBhIE1pY3Jvd2F2ZXMxMDEgY29uY2VwdCwgd2hpY2ggd2UgYmVsaWV2ZSBpcyBhIG1vcmUgdXNlZnVsIHF1YW50aXR5IHRoYW4gJnF1b3Q7bG9zcyBmYWN0b3ImcXVvdDsgZm9yIGV2YWx1YXRpbmcgcGFzc2l2ZSBwYXJ0cy4gV2UgZGVmaW5lIGl0IGFzOjwvcD4KCjxibG9ja3F1b3RlPgo8YmxvY2txdW90ZT4KPHA+Rm9yd2FyZCBlZmZpY2llbmN5IGZhY3RvciA9IHxTMTF8PHN1cD4yPC9zdXA+ICt8UzIxfDxzdXA+Mjwvc3VwPjwvcD4KCjxwPlJldmVyc2UgZWZmaWNpZW5jeSBmYWN0b3IgPSB8UzIyfDxzdXA+Mjwvc3VwPiArfFMxMnw8c3VwPjI8L3N1cD48L3A+CjwvYmxvY2txdW90ZT4KPC9ibG9ja3F1b3RlPgoKPHA+V2h5IGlzIHRoaXMgYmV0dGVyPyBJdCBhbGwgbWFrZXMgc2Vuc2Ugd2hlbiBjb252ZXJ0ZWQgdG8gZGVjaWJlbHMuIEEgJnF1b3Q7cGVyZmVjdCZxdW90OyBjaXJjdWl0IGhhcyBhbiBlZmZpY2llbmN5IGZhY3RvciBvZiAwIGRCLiBBIGNpcmN1aXQgdGhhdCBsb3NlcyAyMCBwZXJjZW50IG9mIGl0cyBwb3dlciBoYXMgYW4gZWZmaWNpZW5jeSBmYWN0b3Igb2YgLTEgZEIsIGV0Yy4gZXRjLiBOb3cgeW91IGhhdmUgYSBtZWFzdXJlbWVudCBvZiBob3cgJnF1b3Q7bG9zc2xlc3MmcXVvdDsgYSBjaXJjdWl0IHdvdWxkIGJlIGlmIHlvdSB3ZXJlIGFibGUgdG8gcGVyZmVjdGx5IGltcGVkYW5jZSBtYXRjaCBpdC4gVGhpcyBpcyBxdWl0ZSB1c2VmdWwgd2hlbiB5b3UgYXJlIGRlc2lnbmluZyBsb3ctbG9zcyBuZXR3b3JrcyBzdWNoIGFzIHN3aXRjaGVzLiBPZiBjb3Vyc2UsIE1pY3Jvd2F2ZXMxMDEgYWluJiMzOTt0IG1ha2luZyB0aGUgYmlnIGJ1Y2tzIGxpa2UgTW9kZWxpdGhpY3MgaXMsIHNvIHlvdSBoYXZlIHRvIGZhY3RvciB0aGF0IGluIHdoZW4geW91IHJlYWQgdGhpcyBwYWdlLi4uPC9wPgoKPHA+Q2hlY2sgb3V0IG91ciA8YSBocmVmPSJodHRwczovL3d3dy5taWNyb3dhdmVzMTAxLmNvbS9lbmN5Y2xvcGVkaWFzL3MtcGFyYW1ldGVyLXV0aWxpdGllcy1zcHJlYWRzaGVldCI+Uy1wYXJhbWV0ZXIgVXRpbGl0eSBzcHJlYWRzaGVldCBwYWdlPC9hPiwgaXQgaGFzIGFuIGV4YW1wbGUgdGhhdCB3aGVyZSBtaXNtYXRjaCBsb3NzLCBsb3NzIGZhY3RvciBhbmQgZWZmaWNpZW5jeSBmYWN0b3IgYXJlIHBsb3R0ZWQgYW5kIGFuYWx5emVkLjwvcD4KCjxwPiZuYnNwOzwvcD4KCjxwPiZuYnNwOzwvcD4KPC9kaXY+PGRpdj48cD48Yj5BdXRob3IgOiA8L2I+VW5rbm93biBFZGl0b3I8L3A+PC9kaXY+ZAILDxYCHwAF2gE8ZGl2IGlkPSdkaXYtZ3B0LWFkLTE1MTM2NjIxODU0NTItMCcgc3R5bGU9J2hlaWdodDo5MHB4OyB3aWR0aDo3MjhweDttYXJnaW46MTVweCBhdXRvOyc+PHNjcmlwdCB0eXBlPSd0ZXh0L2phdmFzY3JpcHQnPmdvb2dsZXRhZy5jbWQucHVzaChmdW5jdGlvbigpIHsgZ29vZ2xldGFnLmRpc3BsYXkoJ2Rpdi1ncHQtYWQtMTUxMzY2MjE4NTQ1Mi0wJyk7IH0pOzwvc2NyaXB0PjwvZGl2PmQCDQ8WAh8ABacBPGRpdiBpZD0nZGl2LWdwdC1hZC0xNTEzNjYyMTQ0MTc3LTAnPjxzY3JpcHQgdHlwZT0ndGV4dC9qYXZhc2NyaXB0Jz5nb29nbGV0YWcuY21kLnB1c2goZnVuY3Rpb24oKSB7IGdvb2dsZXRhZy5kaXNwbGF5KCdkaXYtZ3B0LWFkLTE1MTM2NjIxNDQxNzctMCcpOyB9KTs8L3NjcmlwdD48L2Rpdj5kAhQPDxYCHwAFMCAyMDI2IE1pY3Jvd2F2ZXMxMDEuICZjb3B5OyBBbGwgUmlnaHRzIFJlc2VydmVkLmRkZFZKI98yHSLsrElZjoHJ0h7lfzO6HsqIetyk8B7VfMMJ" />
+
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="2ED8B026" />
+<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdAAaDBKxTGYcNC9zPlGkY1OLDeFRJ+jn0FS3uPSN1G0ic13d+AWLm1JyydA4y2Uf7Mir7OjxpSl9voMHaE7bAmrFWNAiCcYw2MPeX1Zjt6oYDY/jFdKHuXUeJgagBH4OVWxTb3OX3Dyz9XvU+sOo8BTfygBKTBUtLyXLdkajrVczeMA==" />
+        <div class="main">
+            <div id="container" class="container main-container no-padding">
+                <div class="top-header">
+                   
+                        <div class="row no-margin">
+                            <div class="col-lg-6 col-md-4 col-sm-4 col-xs-12">
+                                <ul class="social">
+                                    <li><a href="https://www.facebook.com/UnknownEditor/" target="_blank" title="Facebook"><i class="fa fa-facebook-square"></i></a></li>
+                                    <li><a href="/contact-us" title="E-Mail"><i class="fa fa-envelope"></i></a></li>
+                                    <li><a href="javascript:window.print();" title="Print"><i class="fa fa-print"></i></a></li>
+                                    
+                                </ul>
+                            </div>
+                            <div class="col-lg-6 col-md-8 col-sm-8 col-xs-12 no-padding-xs">
+                                <div class="right-side">
+                                 <ul class="right-list">
+                            <li>  
+                                <a id="HyperLink18" class=" xs-font15 icon20" href="https://www.microwaves101.com/encyclopedias/mw101stuff-the-official-microwaves101-newsletter"><i class="fa fa-newspaper-o icon-margin"></i>Sign up for our Newsletter</a>
+                                </li>
+                                     <li>
+                                         <a href="https://www.microwaves101.com/advertise-with-us" target="_blank">Advertise with us</a>
+                                     </li>
+                                     </ul>
+                                </div>
+                            </div>
+                        </div>
+                    
+                </div>
+                <header id="header">
+                    
+                        <div class="row no-margin flex-col">
+                            <div class="col-lg-4 col-md-4 col-sm-4">
+                                <div class="logo">
+                                    <a id="hlnkLogo" href="../"><img id="Image1" src="https://d2xunoxnk3vwmv.cloudfront.net/images/mw101-main-site-logo-large.png" /></a>
+                                </div>
+                            </div>
+                             <div class="col-lg-8 col-md-8 col-sm-8">
+                                 <div class="last">
+                            <div class="searchbar">
+                                   
+                                    <input name="ctl00$q" type="text" id="q" class="form-control" placeholder="Search for..." onkeydown="return funEnterPress(event,&#39;btnCustomSearch&#39;)" />
+                                    <input type="submit" name="ctl00$btnCustomSearch" value="Button" id="btnCustomSearch" class="btn" />
+                                </div>
+                                <div class="clearfix">
+                                </div>
+                                
+                               
+
+                                <div class="header-right">
+                                    
+                                   	
+                                </div>
+                            </div>
+                                 </div>
+                        </div>
+                    
+                </header>
+                <nav class="navbar navbar-default navbar-static-top">
+                    <div class="">
+                        <!-- Brand and toggle get grouped for better mobile display -->
+                        <div class="navbar-header">
+                            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse"
+                                data-target="#navbarCollapse" aria-expanded="false">
+                                <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span><span
+                                    class="icon-bar"></span><span class="icon-bar"></span>
+                            </button>
+
+                            <span class="navbar-brand visible-xs" href="javascript:void(0);">Menu</span>
+                        </div>
+                        <div class="collapse navbar-collapse" id="navbarCollapse">
+                            <ul class="nav navbar-nav">
+                                <li class="" page="home">
+                                    <a href="../">Home</a>
+                                </li>
+                                <li page="encyclopedias">
+                                    <a href="../encyclopedias">Encyclopedia</a></li>
+                                <li page="calculators">
+                                    <a id="HyperLink2" href="../calculators">Calculators</a></li>
+                                <li page="download-area">
+                                    <a id="HyperLink77" href="../download-area">Downloads</a></li>
+                                <li page="acronyms">
+                                    <a id="HyperLink88" href="../acronyms">Acronyms</a></li>
+                                <li page="discussion-board">
+                                    <a id="HyperLink9" href="http://forum.microwaves101.com/">Discussion Board</a></li>
+                                <li page="cool-links">
+                                    <a id="HyperLink16" href="../cool-links">Links</a></li>
+                                <li page="feed-from-everythingrf">
+                                    <a id="HyperLink19" href="../feeds">News</a></li>
+                                
+                                <li page="contact">
+                                    <a id="hlnkNavContactUs" href="../contact-us">Contact</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+                <div class="searchbar hidden">
+                    <i class="fa fa-search search-icon"></i>
+                    <input type="text" id="txtSearchByGooglem" onkeydown="return funEnterPress(event,'SearchByGoogle')"
+                        class="form-control" placeholder="Search for...">
+                </div>
+                <div class="clearfix">
+                </div>
+                
+    
+            <div class="wrapper ">
+                <div class="row">
+                    <div class="col-lg-10 col-md-12 col-sm-12">
+                        <div id="divSelectFilterType" class="category-listing hide ">
+                            <div class="col-sm-6 col-sm-offset-3">
+                                <select name="ctl00$ContentPlaceHolder1$ddlSelectFilterType" id="ddlSelectFilterType" class="form-control">
+	<option selected="selected" value="alphabets">Filter by alphabets</option>
+	<option value="categories"> Filter by categories</option>
+
+</select>
+                            </div>
+                            <div class="clearfix">
+                            </div>
+                        </div>
+                        <div class="alphabet-filters " id="divAlphabetFilters">
+                            <ul class="tab nav-tabs clearfix" id="ulPopulateAlphabetTab">
+                                
+                                <li class=''><a data-toggle='tab' href='#all' class='tabText'>All</a></li><li><a href='#1-9' id='#1-9' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>1-9</a></li><li><a href='#A' id='#A' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>A</a></li><li><a href='#B' id='#B' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>B</a></li><li><a href='#C' id='#C' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>C</a></li><li><a href='#D' id='#D' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>D</a></li><li><a href='#E' id='#E' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>E</a></li><li><a href='#F' id='#F' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>F</a></li><li><a href='#G' id='#G' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>G</a></li><li><a href='#H' id='#H' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>H</a></li><li><a href='#I' id='#I' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>I</a></li><li><a href='#J' id='#J' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>J</a></li><li><a href='#K' id='#K' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>K</a></li><li><a href='#L' id='#L' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>L</a></li><li><a href='#M' id='#M' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>M</a></li><li><a href='#N' id='#N' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>N</a></li><li><a href='#O' id='#O' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>O</a></li><li><a href='#P' id='#P' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>P</a></li><li><a href='#Q' id='#Q' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>Q</a></li><li><a href='#R' id='#R' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>R</a></li><li><a href='#S' id='#S' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>S</a></li><li><a href='#T' id='#T' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>T</a></li><li><a href='#U' id='#U' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>U</a></li><li><a href='#V' id='#V' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>V</a></li><li><a href='#W' id='#W' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>W</a></li><li><a href='#Y' id='#Y' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>Y</a></li><li><a href='#Z' id='#Z' class='tabText' role='tab' data-toggle='tab' aria-expanded='true'>Z</a></li>
+                               
+                            </ul>
+                            <div class="tab-content hidden" id="divAlphabetListData">
+                               
+                               <span  class="btn btn-sm btn-primary pull-right  btnCloseTab icon-margin-left"><i class="fa fa-times icon-margin"></i>close</span>
+                                <label id="lbllPopulateAlphabetListData" ></label>
+                            </div>
+                        </div>
+                        <div class="category-filters hidden" id="divCategoryFilters">
+                            <div class="category-listing hidden " id="ddlCategoryDiv" >
+                                <div class="col-sm-6 col-sm-offset-3">
+                                    <div class="col-sm-10 col-xs-8" id="divDDLCategoriesFilter">
+                                        
+                                    </div>
+                                    <div class="col-sm-2 col-xs-4">
+                                        <a id="btnTopicDetailsResetFilter" class="btn btn-primary" href="mismatch-loss-etc"><i class="fa fa-rotate-left icon-margin"></i>Reset</a>
+                                    </div>
+                                </div>
+                                <div class="clearfix">
+                                </div>
+                            </div>
+                            <div class="cat-filter-data" id="divPopolateCategoryList">
+                                
+                            </div>
+                        </div>
+                        <div class="leaderboard-ads">
+                           
+                            <div class="leaderboard-inner">
+                            <div id='div-gpt-ad-1513662084890-0' style='height:90px; width:728px; margin:15px auto;'><script type='text/javascript'>googletag.cmd.push(function() { googletag.display('div-gpt-ad-1513662084890-0'); });</script></div>
+                                </div>
+                            
+                        </div>
+                        <div id="divTopicDetails" class="wrapper-encyclo">
+                            <h1>Mismatch Loss, Etc.</h1><div class='margin-bottom10'><p><a href="https://www.microwaves101.com/encyclopedias/voltage-standing-wave-ratio-vswr">Click here</a> to go to our VSWR page</p>
+
+<p><a href="https://www.microwaves101.com/encyclopedias/s-parameter-utilities-spreadsheet">Click here</a> to learn about our S-parameter utility spreadsheet that you can download</p>
+
+<p>On this page we will discuss mismatch loss, as well as &quot;loss factor&quot; (as described in a recent trade journal article), and a new concept, &quot;efficiency factor&quot;.</p>
+
+<h3><a name="mismatch"></a>Mismatch loss</h3>
+
+<p><strong>Updated February 2022... </strong>the mismatch&nbsp;formula below&nbsp;was incorrect, for many years. Previously we had(1-&Gamma;<sup>2</sup>), when it should have been(1-|&Gamma;|<sup>2</sup>). Thanks to alert reader Tom. Note that the absolute value of &Gamma; is typically assigned to Greek letter rho (&rho;), which leads us to a simpler, alternative formula.</p>
+
+<p>Mismatch loss is the ratio of power delivered to power available, and is a simple function of reflection coefficient. The formula for mismatch loss is simply:</p>
+
+<blockquote>
+<blockquote>
+<p>mismatch loss=(1-|&Gamma;|<sup>2</sup>)</p>
+
+<p>alternatively,</p>
+
+<p>mismatch loss=1-&rho;<sup>2</sup></p>
+</blockquote>
+</blockquote>
+
+<p>By the way, <a href="https://www.microwaves101.com/encyclopedias/greek-letters-in-microwaves">here is a page</a> that summarizes Greek letter usage in Microwave Engineering.</p>
+
+<p>We&#39;ve done the heavy lifting for you on mismatch loss, and already put it into a calculator, <a href="https://www.microwaves101.com/calculators/872-vswr-calculator">check it out!</a></p>
+
+<h3><a name="loss"></a>Loss factor</h3>
+
+<p>This concept is described in recent a Microwave Journal article entitled &quot;Automation and Real-time Verification of Passive Component S-parameter Measurements Using Loss Factor Calculations&quot;, by J. Capwell, T. Weller, D. Markell and L. Dunleavy of Modelithics Inc. You can google to it if you like, but to get the full text you might have to join the Microwave Journal web site, which is annoying. You can always read the google &quot;cached&quot; version of the article, that&#39;s what we did.</p>
+
+<p>They present the concept of &quot;loss factor&quot; as something that will help you determine if an S-parameter measurement of a passive device is good. Quoting the article:</p>
+
+<p><em>&quot;The forward and reverse loss factors are calculated from passive component S-parameters as</em></p>
+
+<blockquote>
+<p><em>Forward Loss Factor (FLF) = 1 - |S11|<sup>2</sup> - |S21|<sup>2</sup></em></p>
+
+<p><em>Reverse Loss Factor (RLF) = 1 - |S22|<sup>2</sup> - |S12|<sup>2</sup></em></p>
+</blockquote>
+
+<p><em>By these definitions, the loss factors are seen to equal the difference between a normalized input power and the power that is reflected and transmitted to the input and output ports, respectively. (Power loss can occur due to conductor, dielectric and radiation loss mechanisms.) For reciprocal devices S21 = S12, the differences between the forward and reverse loss factor occur due to differences in |S11| and |S22|. For ideal lossless components, the magnitudes of S11 and S22 are equal, but they can deviate from one another whenever loss is present.</em></p>
+
+<p><em>For passive components such as capacitors, inductors and resistors (and diodes), the electrical behavior is most often symmetrical (S11 = S22); thus, the difference in the forward and reverse loss should be negligible. Significant deviations in the forward and reverse loss can be observed when a component begins to radiate, a commonly observed phenomenon, particularly for inductors. However, the main objective of this article is to illustrate how real-time monitoring of loss factor behavior becomes a useful tool for detecting measurement inconsistencies when, all things functioning properly, the component should exhibit symmetrical characteristics.&quot;</em></p>
+
+<p>We agree that loss factor is a one indication of how much power is &quot;disappearing&quot; in a network, through resistive loss or radiation.</p>
+
+<h3><a name="efficiency"></a>Efficiency factor</h3>
+
+<p>This a Microwaves101 concept, which we believe is a more useful quantity than &quot;loss factor&quot; for evaluating passive parts. We define it as:</p>
+
+<blockquote>
+<blockquote>
+<p>Forward efficiency factor = |S11|<sup>2</sup> +|S21|<sup>2</sup></p>
+
+<p>Reverse efficiency factor = |S22|<sup>2</sup> +|S12|<sup>2</sup></p>
+</blockquote>
+</blockquote>
+
+<p>Why is this better? It all makes sense when converted to decibels. A &quot;perfect&quot; circuit has an efficiency factor of 0 dB. A circuit that loses 20 percent of its power has an efficiency factor of -1 dB, etc. etc. Now you have a measurement of how &quot;lossless&quot; a circuit would be if you were able to perfectly impedance match it. This is quite useful when you are designing low-loss networks such as switches. Of course, Microwaves101 ain&#39;t making the big bucks like Modelithics is, so you have to factor that in when you read this page...</p>
+
+<p>Check out our <a href="https://www.microwaves101.com/encyclopedias/s-parameter-utilities-spreadsheet">S-parameter Utility spreadsheet page</a>, it has an example that where mismatch loss, loss factor and efficiency factor are plotted and analyzed.</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div><div><p><b>Author : </b>Unknown Editor</p></div>
+                        </div>
+                        <div class="leaderboard-ads">
+                            <label>Advertisement</label>
+                            <div class="leaderboard-inner">
+                            <div id='div-gpt-ad-1513662185452-0' style='height:90px; width:728px;margin:15px auto;'><script type='text/javascript'>googletag.cmd.push(function() { googletag.display('div-gpt-ad-1513662185452-0'); });</script></div>
+                                </div>
+                            
+                        </div>
+                    </div>
+                    <div class="col-lg-2 no-padding hidden-md hidden-sm hidden-xs">
+                        <div id="fixedads" class="ads-box">
+                           <label>Advertisement</label>
+                            
+                            <div class="skyscrapper">
+                            <div id='div-gpt-ad-1513662144177-0'><script type='text/javascript'>googletag.cmd.push(function() { googletag.display('div-gpt-ad-1513662144177-0'); });</script></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+    <div class="hidden" id="pageName">
+        encyclopedias-details</div>
+       
+    <script type="text/javascript">
+        $(document).ready(function () {
+            PopulateTopicFiltersOnDetailPage();
+        });
+    </script>
+    <input type="hidden" name="ctl00$ContentPlaceHolder1$HFTopicId" id="HFTopicId" value="26228840" />
+
+                <div class="clearfix">
+                </div>
+                <footer id="footer">
+                    
+                        <div class="row no-margin">
+                            
+                            <div class="col-lg-6 col-md-6 col-sm-6">
+                                <div class="footer-widget">
+                                    <div class="footer-heading">
+                                        <h5>Published in association with</h5>
+                                    </div>
+                                    <ul class="associate-website">
+                                        
+                                        
+                                        <li><a href="https://www.everythingrf.com" target="_blank">
+                                            <img src="https://d2xunoxnk3vwmv.cloudfront.net/images/rf-logo-white.png" alt="everythingrf-logo"></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-lg-6 col-md-6 col-sm-6">
+                                <div class="footer-widget left">
+
+                                    <ul class="quick-link">
+                                        <li>
+                                            <a id="HyperLink4" href="../sitemap.xml">Sitemap</a></li>
+                                        <li>
+                                        <li>
+                                            <a id="HyperLink5" href="../terms-conditions" target="_blank">Terms & Conditions</a></li>
+                                        <li>
+                                        <li>
+                                            <a id="hlnkPrivacyPolicy" href="../privacy-policy">Privacy Policy</a></li>
+                                    </ul>
+                                    <div>
+                                        <span id="lblFooterYear"> 2026 Microwaves101. &copy; All Rights Reserved.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="clearfix">
+                            </div>
+                            
+                        </div>
+                    
+            <a class="scroll-to-top hidden" href="javascript:void(0)" id="scrollToTop"><i class="fa fa-arrow-up fa-white"></i></a>
+            </footer>
+        </div>
+        </div>
+
+        <script type="text/javascript" src='../js/bootstrap/js/bootstrap.js'></script>
+        <script type="text/javascript" src='../js/ckeditor/ckeditor.js'></script>
+        <script type="text/javascript" src='../js/mw101-clientscript.js?version=2'></script>
+        <script type="text/javascript" src='../js/jquery.orbit.min.js'></script>
+        <script src='../js/calculator.js?version=2' type="text/javascript"></script>
+
+    </form>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $('#featured').orbit({
+                'orbits': 0,
+                'bullets': false,
+                'timer': true,
+                'animation': 'horizontal-slide'
+            });
+
+            $('#featured.orbit').hide(); // hide div, may need to change id to match yours
+            $('#loading').show(); // show the loading gif instead
+
+            // then when the window has fully loaded
+            $(window).bind('load', function () {
+                $('#loading').hide(); // hide loading gif
+                $('#featured.orbit').fadeIn('slow'); // show orbit
+            });
+
+            $('[data-toggle="tooltip"]').tooltip();
+
+        });
+    </script>
+</body>
+</html>

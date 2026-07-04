@@ -50,6 +50,7 @@ pub(super) fn validate_s_parameter_assertion_contract(
             assertion.metric,
             AnalogSParameterMetric::ReturnLossDb
                 | AnalogSParameterMetric::Vswr
+                | AnalogSParameterMetric::MismatchLossDb
                 | AnalogSParameterMetric::ImpedanceRealOhm
                 | AnalogSParameterMetric::ImpedanceImagOhm
                 | AnalogSParameterMetric::ImpedanceMagnitudeOhm
@@ -125,11 +126,11 @@ pub(super) fn write_s_parameter_summary(s_parameters: &Path) -> Result<PathBuf, 
         .join("s_parameter_summary.csv");
     let rows = summarize_s_parameters(s_parameters)?;
     let mut text = String::from(
-        "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm\n",
+        "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_mismatch_loss_db,max_mismatch_loss_db,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm\n",
     );
     for row in rows {
         text.push_str(&format!(
-            "{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            "{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
             row.parameter,
             row.row_count,
             row.min_frequency_hz,
@@ -144,6 +145,8 @@ pub(super) fn write_s_parameter_summary(s_parameters: &Path) -> Result<PathBuf, 
             optional_csv(row.max_insertion_loss_db),
             optional_csv(row.min_vswr),
             optional_csv(row.max_vswr),
+            optional_csv(row.min_mismatch_loss_db),
+            optional_csv(row.max_mismatch_loss_db),
             optional_csv(row.min_group_delay_s),
             optional_csv(row.max_group_delay_s),
             optional_csv(row.min_impedance_real_ohm),
@@ -334,6 +337,8 @@ struct SParameterSummaryRow {
     max_insertion_loss_db: Option<f64>,
     min_vswr: Option<f64>,
     max_vswr: Option<f64>,
+    min_mismatch_loss_db: Option<f64>,
+    max_mismatch_loss_db: Option<f64>,
     min_group_delay_s: Option<f64>,
     max_group_delay_s: Option<f64>,
     min_impedance_real_ohm: Option<f64>,
@@ -500,6 +505,7 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
     let mut return_losses = Vec::new();
     let mut insertion_losses = Vec::new();
     let mut vswrs = Vec::new();
+    let mut mismatch_losses = Vec::new();
     let mut impedance_real = Vec::new();
     let mut impedance_imag = Vec::new();
     let mut impedance_magnitude = Vec::new();
@@ -516,6 +522,10 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
             return_losses.push(-sample.mag_db);
             if sample.mag_linear < 1.0 {
                 vswrs.push((1.0 + sample.mag_linear) / (1.0 - sample.mag_linear));
+                let delivered_power_ratio = 1.0 - sample.mag_linear * sample.mag_linear;
+                if delivered_power_ratio > 0.0 {
+                    mismatch_losses.push(-10.0 * delivered_power_ratio.log10());
+                }
             }
             if let Some(impedance) = reflection_impedance_ohm(sample) {
                 impedance_real.push(impedance.real);
@@ -541,6 +551,8 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
         max_insertion_loss_db: finite_max(&insertion_losses),
         min_vswr: finite_min(&vswrs),
         max_vswr: finite_max(&vswrs),
+        min_mismatch_loss_db: finite_min(&mismatch_losses),
+        max_mismatch_loss_db: finite_max(&mismatch_losses),
         min_group_delay_s: group_delays.as_deref().and_then(finite_min),
         max_group_delay_s: group_delays.as_deref().and_then(finite_max),
         min_impedance_real_ohm: finite_min(&impedance_real),
@@ -878,16 +890,16 @@ fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, St
         .next()
         .ok_or_else(|| "S-parameter summary CSV has no header row.".to_string())?;
     if header
-        != "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm"
+        != "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_mismatch_loss_db,max_mismatch_loss_db,min_group_delay_s,max_group_delay_s,min_impedance_real_ohm,max_impedance_real_ohm,min_impedance_imag_ohm,max_impedance_imag_ohm,min_impedance_magnitude_ohm,max_impedance_magnitude_ohm"
     {
         return Err("S-parameter summary CSV has unexpected header.".to_string());
     }
     let mut rows = Vec::new();
     for (line_index, line) in lines.enumerate() {
         let fields: Vec<_> = line.split(',').map(str::trim).collect();
-        if fields.len() != 22 {
+        if fields.len() != 24 {
             return Err(format!(
-                "S-parameter summary row {} has {} fields, expected 22.",
+                "S-parameter summary row {} has {} fields, expected 24.",
                 line_index + 2,
                 fields.len()
             ));
@@ -912,30 +924,32 @@ fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, St
             max_insertion_loss_db: parse_optional_finite_f64(fields[11], "max_insertion_loss_db")?,
             min_vswr: parse_optional_finite_f64(fields[12], "min_vswr")?,
             max_vswr: parse_optional_finite_f64(fields[13], "max_vswr")?,
-            min_group_delay_s: parse_optional_finite_f64(fields[14], "min_group_delay_s")?,
-            max_group_delay_s: parse_optional_finite_f64(fields[15], "max_group_delay_s")?,
+            min_mismatch_loss_db: parse_optional_finite_f64(fields[14], "min_mismatch_loss_db")?,
+            max_mismatch_loss_db: parse_optional_finite_f64(fields[15], "max_mismatch_loss_db")?,
+            min_group_delay_s: parse_optional_finite_f64(fields[16], "min_group_delay_s")?,
+            max_group_delay_s: parse_optional_finite_f64(fields[17], "max_group_delay_s")?,
             min_impedance_real_ohm: parse_optional_finite_f64(
-                fields[16],
+                fields[18],
                 "min_impedance_real_ohm",
             )?,
             max_impedance_real_ohm: parse_optional_finite_f64(
-                fields[17],
+                fields[19],
                 "max_impedance_real_ohm",
             )?,
             min_impedance_imag_ohm: parse_optional_finite_f64(
-                fields[18],
+                fields[20],
                 "min_impedance_imag_ohm",
             )?,
             max_impedance_imag_ohm: parse_optional_finite_f64(
-                fields[19],
+                fields[21],
                 "max_impedance_imag_ohm",
             )?,
             min_impedance_magnitude_ohm: parse_optional_finite_f64(
-                fields[20],
+                fields[22],
                 "min_impedance_magnitude_ohm",
             )?,
             max_impedance_magnitude_ohm: parse_optional_finite_f64(
-                fields[21],
+                fields[23],
                 "max_impedance_magnitude_ohm",
             )?,
         });
@@ -1040,6 +1054,12 @@ fn metric_value(assertion: &AnalogSParameterAssertion, row: &SParameterSummaryRo
         }
         (AnalogSParameterMetric::Vswr, AnalogSParameterAggregation::Min) => row.min_vswr,
         (AnalogSParameterMetric::Vswr, AnalogSParameterAggregation::Max) => row.max_vswr,
+        (AnalogSParameterMetric::MismatchLossDb, AnalogSParameterAggregation::Min) => {
+            row.min_mismatch_loss_db
+        }
+        (AnalogSParameterMetric::MismatchLossDb, AnalogSParameterAggregation::Max) => {
+            row.max_mismatch_loss_db
+        }
         (AnalogSParameterMetric::GroupDelayS, AnalogSParameterAggregation::Min) => {
             row.min_group_delay_s
         }
@@ -1378,7 +1398,7 @@ fn push_metric_unavailable_finding(
         json!(metric_name(assertion.metric)),
     );
     finding.suggested_fixes.push(
-        "Use return_loss_db/vswr on reflection terms such as s11 and insertion_loss_db on transmission terms such as s21."
+        "Use return_loss_db/vswr/mismatch_loss_db/impedance metrics on reflection terms such as s11 and insertion_loss_db on transmission terms such as s21."
             .to_string(),
     );
     findings.push(finding);
@@ -1470,7 +1490,8 @@ fn s_parameter_assertion_unit(assertion: &AnalogSParameterAssertion) -> &str {
     assertion.unit.as_deref().unwrap_or(match assertion.metric {
         AnalogSParameterMetric::MagnitudeDb
         | AnalogSParameterMetric::ReturnLossDb
-        | AnalogSParameterMetric::InsertionLossDb => "dB",
+        | AnalogSParameterMetric::InsertionLossDb
+        | AnalogSParameterMetric::MismatchLossDb => "dB",
         AnalogSParameterMetric::MagnitudeLinear => "ratio",
         AnalogSParameterMetric::Vswr => "ratio",
         AnalogSParameterMetric::GroupDelayS => "s",
@@ -1491,6 +1512,7 @@ fn metric_name(metric: AnalogSParameterMetric) -> &'static str {
         AnalogSParameterMetric::ReturnLossDb => "return_loss_db",
         AnalogSParameterMetric::InsertionLossDb => "insertion_loss_db",
         AnalogSParameterMetric::Vswr => "vswr",
+        AnalogSParameterMetric::MismatchLossDb => "mismatch_loss_db",
         AnalogSParameterMetric::GroupDelayS => "group_delay_s",
         AnalogSParameterMetric::ImpedanceRealOhm => "impedance_real_ohm",
         AnalogSParameterMetric::ImpedanceImagOhm => "impedance_imag_ohm",

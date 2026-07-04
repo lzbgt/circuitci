@@ -638,16 +638,20 @@ The GUI should not become the solver.
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized
   `s_parameter_summary.csv` metrics for magnitude, return loss, insertion
-  loss, VSWR, group delay, and reflection impedance; validation reports project
+  loss, VSWR, mismatch loss, group delay, and reflection impedance. Mismatch
+  loss is derived from the reflection coefficient as
+  `-10*log10(1-|Gamma|^2)` for `|Gamma| < 1`; source snapshots are retained in
+  `sources/microwaves101_mismatch_loss.html` and
+  `sources/wikipedia_mismatch_loss.html` for formula provenance. Validation reports project
   retained summaries into `s_parameter_summaries[]`, Markdown includes an
   "S-Parameter Summary" section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
   return-loss, insertion-loss, VSWR, and reflection-impedance real/imaginary/magnitude traces from full `s_parameters.csv`
   artifacts for visual RF matching and margin review. GUI Scopes also provides an RF Port
   Check editor that writes `s_parameter_assertions[]` for magnitude, return
-  loss, insertion loss, VSWR, group-delay, and reflection-impedance limits with Board IR validation
+  loss, insertion loss, VSWR, mismatch-loss, group-delay, and reflection-impedance limits with Board IR validation
   before accepting the YAML edit; retained S-parameter assertion failures,
-  including reflection-impedance limits, can be loaded from the report panel
-  back into that editor. Two-port
+  including mismatch-loss and reflection-impedance limits, can be loaded from
+  the report panel back into that editor. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity
   (`max |S21-S12|`) and passivity (maximum singular value of the complex S
   matrix), plus active-network stability through minimum Rollet K and maximum

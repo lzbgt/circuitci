@@ -405,21 +405,23 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `solver_manifest.json`.
 5. CircuitCI derives `s_parameter_summary.csv` from the normalized waveform
    with per-term frequency span, magnitude min/max, return-loss min/max for
-   reflection terms, insertion-loss min/max for transmission terms, and VSWR
-   min/max for reflection terms whose linear magnitude is below unity. It also
-   derives per-term group-delay min/max in seconds from unwrapped phase as
-   `-dphi/domega`, and reflection impedance real/imaginary/magnitude ranges in
-   ohms from `Z = Z0 * (1 + Gamma) / (1 - Gamma)`.
+   reflection terms, insertion-loss min/max for transmission terms, VSWR
+   min/max for reflection terms whose linear magnitude is below unity, and
+   mismatch-loss min/max as `-10*log10(1-|Gamma|^2)` for reflection terms with
+   `|Gamma| < 1`. It also derives per-term group-delay min/max in seconds from
+   unwrapped phase as `-dphi/domega`, and reflection impedance
+   real/imaginary/magnitude ranges in ohms from
+   `Z = Z0 * (1 + Gamma) / (1 - Gamma)`.
 6. Optional `analysis.s_parameter_assertions[]` sign off
    `s_parameter_summary.csv` metrics (`magnitude_db`, `magnitude_linear`,
-   `return_loss_db`, `insertion_loss_db`, `vswr`, `group_delay_s`,
-   `impedance_real_ohm`, `impedance_imag_ohm`, or
+   `return_loss_db`, `insertion_loss_db`, `vswr`, `mismatch_loss_db`,
+   `group_delay_s`, `impedance_real_ohm`, `impedance_imag_ohm`, or
    `impedance_magnitude_ohm`) using `min`/`max` aggregation plus
-   `above`/`below` limits. `return_loss_db`, `vswr`, and impedance metrics
-   require reflection terms such as `s11`; `insertion_loss_db` requires
-   transmission terms such as `s21`. Missing or unavailable metrics and failed
-   limits emit `SPICE_S_PARAMETER_ANALYSIS` findings with retained summary
-   provenance.
+   `above`/`below` limits. `return_loss_db`, `vswr`, `mismatch_loss_db`, and
+   impedance metrics require reflection terms such as `s11`;
+   `insertion_loss_db` requires transmission terms such as `s21`. Missing or
+   unavailable metrics and failed limits emit `SPICE_S_PARAMETER_ANALYSIS`
+   findings with retained summary provenance.
 7. Optional `analysis.s_parameter_network_assertions[]` sign off two-port
    network quality metrics from the full complex `s_parameters.csv` sweep.
    `reciprocity_error_linear` is the maximum `|S21-S12|` across frequency.

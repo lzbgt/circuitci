@@ -416,6 +416,7 @@ pub(super) fn append_analog_sparameter_assertion(
         draft.metric.as_str(),
         "return_loss_db"
             | "vswr"
+            | "mismatch_loss_db"
             | "impedance_real_ohm"
             | "impedance_imag_ohm"
             | "impedance_magnitude_ohm"
@@ -1089,6 +1090,7 @@ fn validate_sparameter_assertion_draft(draft: &AnalogSParameterAssertionDraft) -
             | "return_loss_db"
             | "insertion_loss_db"
             | "vswr"
+            | "mismatch_loss_db"
             | "group_delay_s"
             | "impedance_real_ohm"
             | "impedance_imag_ohm"
