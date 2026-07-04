@@ -910,11 +910,18 @@ pub(super) fn waveform_probe_value_for_badge(
 
 fn probe_unit(label: &str) -> &'static str {
     let normalized = label.trim().to_ascii_lowercase();
-    if normalized.contains("mag_db") || normalized.contains("magnitude db") {
+    if normalized.contains("mag_db")
+        || normalized.contains("magnitude db")
+        || normalized.contains("return loss")
+        || normalized.contains("insertion loss")
+    {
         "dB"
     } else if normalized.contains("phase_deg") || normalized.contains("phase") {
         "deg"
-    } else if normalized.ends_with("_mag") || normalized.contains("linear magnitude") {
+    } else if normalized.ends_with("_mag")
+        || normalized.contains("linear magnitude")
+        || normalized.contains("vswr")
+    {
         "ratio"
     } else if normalized.contains("noise density")
         || normalized.contains("v_per_sqrt_hz")

@@ -640,9 +640,9 @@ The GUI should not become the solver.
   `s_parameter_summary.csv` metrics for magnitude, return loss, insertion
   loss, and VSWR; validation reports project retained summaries into
   `s_parameter_summaries[]`, Markdown includes an "S-Parameter Summary"
-  section, and GUI Scopes shows compact RF sign-off rows. Next add derived
-  return-loss/insertion-loss/VSWR plot traces from S-parameter artifacts if
-  reviewers need visual RF margins alongside the existing numeric sign-off.
+  section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
+  return-loss, insertion-loss, and VSWR traces from full `s_parameters.csv`
+  artifacts for visual RF margin review.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path

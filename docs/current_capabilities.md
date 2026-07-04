@@ -159,9 +159,11 @@ Current analog support:
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
   insertion loss, and VSWR limits with fail-closed metric applicability checks.
   Reports project retained rows into `s_parameter_summaries[]`, Markdown
-  includes an "S-Parameter Summary" section, and the GUI artifact panel shows
-  compact RF sign-off rows. `backend: auto` does not select Xyce for this path
-  until real solver conformance coverage is enabled.
+  includes an "S-Parameter Summary" section, the GUI artifact panel shows
+  compact RF sign-off rows, and Scopes derives return-loss, insertion-loss,
+  and VSWR traces from full `s_parameters.csv` artifacts. `backend: auto` does
+  not select Xyce for this path until real solver conformance coverage is
+  enabled.
 - `analog_transfer_function` scenarios with
   `SPICE_TRANSFER_FUNCTION_ANALYSIS` for `.TF` small-signal transfer
   contracts. The Board IR/schema can declare `analysis.type: tf`,

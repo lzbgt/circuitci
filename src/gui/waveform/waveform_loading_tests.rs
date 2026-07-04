@@ -117,6 +117,73 @@ fn waveform_csv_loader_maps_bode_artifacts_to_frequency_axis() {
 }
 
 #[test]
+fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
+    let waveform = parse_waveform_csv_text(
+        "frequency_hz,s11_mag_db,s11_phase_deg,s11_mag_linear,s21_mag_db,s21_phase_deg,s21_mag_linear,s12_mag_db,s12_phase_deg,s12_mag_linear,s22_mag_db,s22_phase_deg,s22_mag_linear\n1e6,-6.02059991328,0,0.5,6.02059991328,0,2.0,-40,0,0.01,-7.95880017344,0,0.4\n1e9,-13.97940008672,0,0.2,3.52182518111,0,1.5,-33.9794000867,0,0.02,-10.4575749056,0,0.3\n",
+        "s_parameters.csv",
+    )
+    .unwrap();
+
+    assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveform.time_s, vec![1.0, 1000.0]);
+    assert_eq!(waveform.probes[2].label, "s11 linear magnitude");
+    let labels: Vec<_> = waveform
+        .probes
+        .iter()
+        .map(|probe| probe.label.as_str())
+        .collect();
+    assert!(labels.contains(&"s11 return loss dB"));
+    assert!(labels.contains(&"s11 VSWR"));
+    assert!(labels.contains(&"s21 insertion loss dB"));
+    assert!(labels.contains(&"s12 insertion loss dB"));
+    assert!(labels.contains(&"s22 return loss dB"));
+    let s11_return_loss = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s11 return loss dB")
+        .unwrap();
+    assert!(s11_return_loss.derived);
+    assert_eq!(s11_return_loss.values, vec![6.02059991328, 13.97940008672]);
+    assert_eq!(super::probe_unit(&s11_return_loss.label), "dB");
+    let s11_vswr = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s11 VSWR")
+        .unwrap();
+    assert!(s11_vswr.derived);
+    assert!((s11_vswr.values[0] - 3.0).abs() < 1.0e-12);
+    assert!((s11_vswr.values[1] - 1.5).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&s11_vswr.label), "ratio");
+    let s21_insertion_loss = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s21 insertion loss dB")
+        .unwrap();
+    assert_eq!(
+        s21_insertion_loss.values,
+        vec![-6.02059991328, -3.52182518111]
+    );
+    assert_eq!(super::probe_unit(&s21_insertion_loss.label), "dB");
+}
+
+#[test]
+fn waveform_csv_loader_skips_vswr_when_reflection_magnitude_reaches_unity() {
+    let waveform = parse_waveform_csv_text(
+        "frequency_hz,s11_mag_db,s11_phase_deg,s11_mag_linear\n1e6,0,0,1.0\n1e9,-6.02059991328,0,0.5\n",
+        "s_parameters.csv",
+    )
+    .unwrap();
+
+    let labels: Vec<_> = waveform
+        .probes
+        .iter()
+        .map(|probe| probe.label.as_str())
+        .collect();
+    assert!(labels.contains(&"s11 return loss dB"));
+    assert!(!labels.contains(&"s11 VSWR"));
+}
+
+#[test]
 fn waveform_request_loader_selects_raw_bode_header_names() {
     let mut file = tempfile::NamedTempFile::new().unwrap();
     use std::io::Write;

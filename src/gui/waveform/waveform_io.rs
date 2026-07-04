@@ -1227,13 +1227,14 @@ impl WaveformCsvBuilder {
             probe_labels,
             probe_values,
             x_axis,
-            ..
+            selected_probe_labels,
+            selected_probe_columns: _,
         } = self;
         if time_s.is_empty() {
             anyhow::bail!("Waveform CSV has no numeric samples.");
         }
 
-        let probes = probe_labels
+        let mut probes: Vec<_> = probe_labels
             .into_iter()
             .zip(probe_values)
             .map(|(label, values)| WaveformProbe {
@@ -1244,6 +1245,9 @@ impl WaveformCsvBuilder {
                 expression: None,
             })
             .collect();
+        if selected_probe_labels.is_empty() && x_axis == WaveformXAxis::FrequencyHz {
+            append_derived_s_parameter_probes(&mut probes);
+        }
         Ok(WaveformView {
             label: label.to_string(),
             path: label.to_string(),
@@ -1252,6 +1256,82 @@ impl WaveformCsvBuilder {
             probes,
         })
     }
+}
+
+fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
+    let mut magnitude_db_by_parameter = BTreeMap::new();
+    let mut magnitude_linear_by_parameter = BTreeMap::new();
+    for (index, probe) in probes.iter().enumerate() {
+        if let Some(parameter) = probe.label.strip_suffix(" magnitude dB")
+            && parse_s_parameter_term(parameter).is_some()
+        {
+            magnitude_db_by_parameter.insert(parameter.to_ascii_lowercase(), index);
+        }
+        if let Some(parameter) = probe.label.strip_suffix(" linear magnitude")
+            && parse_s_parameter_term(parameter).is_some()
+        {
+            magnitude_linear_by_parameter.insert(parameter.to_ascii_lowercase(), index);
+        }
+    }
+    for (parameter, db_index) in magnitude_db_by_parameter {
+        let Some((output_port, input_port)) = parse_s_parameter_term(&parameter) else {
+            continue;
+        };
+        let db_values = probes[db_index].values.clone();
+        if output_port == input_port {
+            let return_loss_values = db_values.iter().map(|value| -value).collect();
+            probes.push(WaveformProbe {
+                label: format!("{parameter} return loss dB"),
+                values: return_loss_values,
+                derived: true,
+                expression: Some(parameter.clone()),
+                promoted_quantity: None,
+            });
+            if let Some(linear_index) = magnitude_linear_by_parameter.get(&parameter) {
+                let linear_values = &probes[*linear_index].values;
+                if linear_values
+                    .iter()
+                    .all(|value| value.is_finite() && *value >= 0.0 && *value < 1.0)
+                {
+                    let vswr_values = linear_values
+                        .iter()
+                        .map(|value| (1.0 + value) / (1.0 - value))
+                        .collect();
+                    probes.push(WaveformProbe {
+                        label: format!("{parameter} VSWR"),
+                        values: vswr_values,
+                        derived: true,
+                        expression: Some(parameter.clone()),
+                        promoted_quantity: None,
+                    });
+                }
+            }
+        } else {
+            let insertion_loss_values = db_values.iter().map(|value| -value).collect();
+            probes.push(WaveformProbe {
+                label: format!("{parameter} insertion loss dB"),
+                values: insertion_loss_values,
+                derived: true,
+                expression: Some(parameter),
+                promoted_quantity: None,
+            });
+        }
+    }
+}
+
+fn parse_s_parameter_term(parameter: &str) -> Option<(usize, usize)> {
+    let digits = parameter
+        .trim()
+        .to_ascii_lowercase()
+        .strip_prefix('s')?
+        .to_string();
+    if digits.len() < 2 || !digits.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    let midpoint = digits.len() / 2;
+    let output = digits[..midpoint].parse::<usize>().ok()?;
+    let input = digits[midpoint..].parse::<usize>().ok()?;
+    Some((output, input))
 }
 
 fn waveform_x_axis_from_header(header: &str) -> WaveformXAxis {
@@ -1272,6 +1352,8 @@ fn waveform_probe_label_from_header(header: &str) -> String {
         format!("{stem} magnitude dB")
     } else if let Some(stem) = label.strip_suffix("_phase_deg") {
         format!("{stem} phase deg")
+    } else if let Some(stem) = label.strip_suffix("_mag_linear") {
+        format!("{stem} linear magnitude")
     } else if let Some(stem) = label.strip_suffix("_mag") {
         format!("{stem} linear magnitude")
     } else if label == "onoise_v_per_sqrt_hz" {
