@@ -133,7 +133,8 @@ Current analog support:
   conformance is available through `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test
   --test analog_dc_sweep_cli` and `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_dc_sweep_cli`; each path skips unless the requested solver is on
-  `PATH`.
+  `PATH`. `backend: auto` prefers ngspice and falls back to Xyce for DC sweep
+  when ngspice is absent.
 - `analog_noise` scenarios with `SPICE_NOISE_ANALYSIS` for external-ngspice
   and explicit-Xyce small-signal noise observations. Noise runs write
   normalized `noise_spectrum.csv` artifacts with frequency, output noise
@@ -449,9 +450,9 @@ Current analog support:
   data, normalize it into the `transient_waveform`, `ac_bode`,
   `operating_point`, `dc_sweep`, `noise_spectrum`, and `noise_total`
   contracts, and write solver manifests.
-  `backend: auto` prefers ngspice, can fall back to Xyce for AC/DC/noise and
-  template-only measure scenarios, and keeps Xyce explicit-only for transient,
-  DC sweep, S-parameter, and other specialized analyses until those auto
+  `backend: auto` prefers ngspice, can fall back to Xyce for AC/DC/DC
+  sweep/noise and template-only measure scenarios, and keeps Xyce explicit-only
+  for transient, S-parameter, and other specialized analyses until those auto
   boundaries are handled separately. The opt-in real-solver conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,

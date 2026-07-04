@@ -636,6 +636,10 @@ The GUI should not become the solver.
   selector remains conservative for transient, DC sweep, S-parameter,
   sensitivity, Fourier, harmonic-balance, and planned periodic/RF paths until
   those auto boundaries are handled explicitly.
+- 2026-07-04: Extended the same `backend: auto` Xyce fallback to DC sweep.
+  Explicit Xyce DC sweep already emitted the same normalized `dc_sweep.csv`
+  and `solver_manifest.json` contract and had opt-in real-Xyce conformance, so
+  auto can now select Xyce for `analog_dc_sweep` when ngspice is absent.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and

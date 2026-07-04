@@ -24,6 +24,6 @@ impl AnalogRuntimeFeature {
     }
 
     pub(super) fn supports_auto_xyce(self) -> bool {
-        matches!(self, Self::Ac | Self::Dc | Self::Noise)
+        matches!(self, Self::Ac | Self::Dc | Self::DcSweep | Self::Noise)
     }
 }

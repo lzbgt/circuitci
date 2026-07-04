@@ -234,6 +234,51 @@ fn xyce_dc_sweep_backend_normalizes_curve_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn auto_dc_sweep_backend_uses_xyce_when_ngspice_is_absent() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\n/bin/cat > dc_sweep_raw.csv <<'EOF'\nIndex,out\n0.0,0.0\n0.5,0.25\n1.0,0.5\nEOF\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_dc_sweep_project(project_dir.path(), "auto", 0.7);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_report_schema_valid(&report);
+    assert!(report["failures"].as_array().unwrap().is_empty());
+    let sweep = fs::read_to_string(artifact_path(&report, "dc_sweep.csv")).unwrap();
+    assert!(sweep.contains("V1,1.000000000000e0,out_voltage,5.000000000000e-1"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["requested"], "auto");
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "dc_sweep");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_dc_sweep_raw");
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "dc_sweep");
+}
+
+#[cfg(unix)]
+#[test]
 fn real_ngspice_dc_sweep_conformance_when_enabled() {
     if !real_ngspice_conformance_enabled() {
         return;
