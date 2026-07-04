@@ -608,6 +608,9 @@ The GUI should not become the solver.
   magnitude/phase traces. Opt-in real-Xyce `.FOUR` conformance is covered by
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_fourier_cli`, which
   skips unless `Xyce` or `xyce` is on `PATH`.
+  The GUI Run Setup editor now authors generated-from-board `analog_fourier`
+  scenarios, and the GUI Fourier Check editor authors `fourier_assertions[]`
+  plus hydrates failed Fourier assertion findings back into the editor.
 - The first `.MEASURE` path is an external-ngspice adapter with a Board
   IR/schema contract for reviewed transient/AC scalar extraction statements or
   portable measure templates, bound output provenance checks, normalized

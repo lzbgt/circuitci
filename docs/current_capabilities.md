@@ -341,7 +341,12 @@ Current analog support:
   Markdown reports include a "Fourier Summary" section, and the GUI artifact
   panel shows compact harmonic/THD rows. Scopes loads `fourier_summary.csv` as
   frequency-axis magnitude/phase and normalized magnitude/phase traces for
-  plotting. Opt-in real-ngspice conformance coverage is available through
+  plotting. The GUI Run Setup editor can author generated-from-board Fourier
+  scenarios with stop/max-step timing, selected output probe net, fundamental
+  frequency, and harmonic count; the GUI Fourier Check editor authors
+  `analysis.fourier_assertions[]` and failure actions hydrate the editor with
+  the failed harmonic or THD metric, relation, and threshold. Opt-in
+  real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
   unless `ngspice` is on `PATH`. Opt-in real-Xyce `.FOUR` conformance is
   available through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test

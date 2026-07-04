@@ -12,6 +12,7 @@ mod analog_assertion_fields;
 mod analog_assertion_kinds;
 mod analog_branches;
 mod analog_dc_presets;
+mod analog_fourier_assertions;
 mod analog_generated;
 mod analog_hb_assertions;
 mod analog_model_files;
@@ -45,6 +46,7 @@ mod shell;
 mod simulation;
 mod simulation_editors;
 mod simulation_forms;
+mod simulation_fourier_assertions;
 mod simulation_hb_assertions;
 mod simulation_probe_assertions;
 mod simulation_sparameter_assertions;
@@ -376,6 +378,8 @@ pub struct CircuitCiApp {
     analog_stop_frequency_hz: f64,
     analog_points_per_decade: u32,
     analog_noise_input_source: String,
+    analog_fourier_fundamental_frequency_hz: f64,
+    analog_fourier_harmonics: u32,
     analog_hb_fundamental_frequency_hz: f64,
     analog_hb_harmonics: u32,
     analog_hb_drive_source: String,
@@ -415,6 +419,12 @@ pub struct CircuitCiApp {
     analog_sparameter_noise_assertion_metric: String,
     analog_sparameter_noise_assertion_relation: String,
     analog_sparameter_noise_assertion_threshold: f64,
+    analog_fourier_assertion_scenario: String,
+    analog_fourier_assertion_name: String,
+    analog_fourier_assertion_harmonic: u32,
+    analog_fourier_assertion_metric: String,
+    analog_fourier_assertion_relation: String,
+    analog_fourier_assertion_threshold: f64,
     analog_hb_assertion_scenario: String,
     analog_hb_assertion_name: String,
     analog_hb_assertion_harmonic: u32,
@@ -662,6 +672,8 @@ impl Default for CircuitCiApp {
             analog_stop_frequency_hz: 100_000.0,
             analog_points_per_decade: 20,
             analog_noise_input_source: "V1".to_string(),
+            analog_fourier_fundamental_frequency_hz: 100_000.0,
+            analog_fourier_harmonics: 10,
             analog_hb_fundamental_frequency_hz: 100_000.0,
             analog_hb_harmonics: 10,
             analog_hb_drive_source: "V1".to_string(),
@@ -701,6 +713,12 @@ impl Default for CircuitCiApp {
             analog_sparameter_noise_assertion_metric: "noise_figure_db_max".to_string(),
             analog_sparameter_noise_assertion_relation: "below".to_string(),
             analog_sparameter_noise_assertion_threshold: 3.0,
+            analog_fourier_assertion_scenario: String::new(),
+            analog_fourier_assertion_name: "h1_magnitude_floor".to_string(),
+            analog_fourier_assertion_harmonic: 1,
+            analog_fourier_assertion_metric: "magnitude".to_string(),
+            analog_fourier_assertion_relation: "above".to_string(),
+            analog_fourier_assertion_threshold: 0.0,
             analog_hb_assertion_scenario: String::new(),
             analog_hb_assertion_name: "h1_magnitude_floor".to_string(),
             analog_hb_assertion_harmonic: 1,

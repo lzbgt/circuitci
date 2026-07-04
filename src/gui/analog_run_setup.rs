@@ -56,6 +56,18 @@ pub(super) struct AnalogHarmonicBalanceScenarioDraft {
     pub(super) drive_source: String,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AnalogFourierScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) stop_time_us: f64,
+    pub(super) max_step_us: f64,
+    pub(super) fundamental_frequency_hz: f64,
+    pub(super) harmonics: u32,
+}
+
 #[cfg(test)]
 pub(super) fn append_analog_transient_scenario(
     text: &str,
@@ -162,6 +174,28 @@ pub(super) fn append_analog_harmonic_balance_scenario_with_project_path(
             fundamental_frequency_hz: draft.fundamental_frequency_hz,
             harmonics: draft.harmonics,
             drive_source: draft.drive_source.trim().to_string(),
+        },
+    )
+}
+
+pub(super) fn append_analog_fourier_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogFourierScenarioDraft,
+) -> Result<String> {
+    validate_fourier_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::Fourier {
+            stop_time_us: draft.stop_time_us,
+            max_step_us: draft.max_step_us,
+            fundamental_frequency_hz: draft.fundamental_frequency_hz,
+            harmonics: draft.harmonics,
         },
     )
 }
@@ -334,6 +368,35 @@ fn validate_harmonic_balance_draft(draft: &AnalogHarmonicBalanceScenarioDraft) -
     Ok(())
 }
 
+fn validate_fourier_draft(draft: &AnalogFourierScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    if !draft.stop_time_us.is_finite()
+        || !draft.max_step_us.is_finite()
+        || draft.stop_time_us <= 0.0
+        || draft.max_step_us <= 0.0
+        || draft.max_step_us > draft.stop_time_us
+        || !draft.fundamental_frequency_hz.is_finite()
+        || draft.fundamental_frequency_hz <= 0.0
+        || !(1..=1024).contains(&draft.harmonics)
+    {
+        anyhow::bail!(
+            "Fourier stop time, max step, and fundamental frequency must be finite positive values, max step must not exceed stop time, and harmonics must be in 1..=1024."
+        );
+    }
+    let period_us = 1.0e6 / draft.fundamental_frequency_hz;
+    if draft.stop_time_us < period_us {
+        anyhow::bail!("Fourier stop time must cover at least one fundamental period.");
+    }
+    Ok(())
+}
+
 fn validate_frequency_range(
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
@@ -469,6 +532,12 @@ enum GeneratedAnalogScenarioKind {
         input_source: String,
         input_probe_name: String,
     },
+    Fourier {
+        stop_time_us: f64,
+        max_step_us: f64,
+        fundamental_frequency_hz: f64,
+        harmonics: u32,
+    },
     HarmonicBalance {
         fundamental_frequency_hz: f64,
         harmonics: u32,
@@ -483,6 +552,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Ac { .. } => "analog_ac",
             Self::Dc => "analog_dc",
             Self::Noise { .. } => "analog_noise",
+            Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
         }
     }
@@ -493,6 +563,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Ac { .. } => "SPICE_AC_ANALYSIS",
             Self::Dc => "SPICE_DC_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
+            Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
         }
     }
@@ -598,6 +669,37 @@ fn analog_block(
             })?;
             insert_string(&mut analysis, "noise_output_node", output_node);
             insert_string(&mut analysis, "noise_input_source", input_source);
+        }
+        GeneratedAnalogScenarioKind::Fourier {
+            stop_time_us,
+            max_step_us,
+            fundamental_frequency_hz,
+            harmonics,
+        } => {
+            insert_string(&mut analysis, "type", "fourier");
+            insert_number(&mut analysis, "stop_time_us", *stop_time_us)?;
+            insert_number(&mut analysis, "max_step_us", *max_step_us)?;
+            insert_number(
+                &mut analysis,
+                "fourier_fundamental_frequency_hz",
+                *fundamental_frequency_hz,
+            )?;
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Fourier output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "fourier_output_expression",
+                &format!("V({output_node})"),
+            );
+            analysis.insert(
+                key("fourier_harmonics"),
+                serde_yaml_ng::to_value(harmonics)
+                    .context("Failed to encode fourier_harmonics.")?,
+            );
         }
         GeneratedAnalogScenarioKind::HarmonicBalance {
             fundamental_frequency_hz,
@@ -768,4 +870,89 @@ fn insert_number(mapping: &mut serde_yaml_ng::Mapping, name: &str, value: f64) -
 
 fn key(name: &str) -> serde_yaml_ng::Value {
     serde_yaml_ng::Value::String(name.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn append_analog_fourier_scenario_emits_valid_yaml() {
+        let draft = AnalogFourierScenarioDraft {
+            name: "gui_fourier".to_string(),
+            ground_net: "gnd".to_string(),
+            probe_net: "out".to_string(),
+            probe_name: "out_fourier".to_string(),
+            stop_time_us: 100.0,
+            max_step_us: 0.5,
+            fundamental_frequency_hz: 100_000.0,
+            harmonics: 8,
+        };
+        let edited = append_analog_fourier_scenario_with_project_path(
+            editable_project_yaml(),
+            Path::new("examples/generated_fourier/project.yaml"),
+            &draft,
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let scenario = &project.scenarios[0];
+
+        assert_eq!(scenario.name, "gui_fourier");
+        assert_eq!(scenario.scenario_type, "analog_fourier");
+        assert_eq!(scenario.checks, vec!["SPICE_FOURIER_ANALYSIS".to_string()]);
+        let analog = scenario.analog.as_ref().unwrap();
+        assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
+        assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
+        assert_eq!(analog.analysis.analysis_type, "fourier");
+        assert_eq!(analog.analysis.stop_time_us, 100.0);
+        assert_eq!(analog.analysis.max_step_us, 0.5);
+        assert_eq!(
+            analog.analysis.fourier_fundamental_frequency_hz,
+            Some(100_000.0)
+        );
+        assert_eq!(analog.analysis.fourier_harmonics, Some(8));
+        assert_eq!(
+            analog.analysis.fourier_output_expression.as_deref(),
+            Some("V(out)")
+        );
+        assert_eq!(analog.probes[0].name, "out_fourier");
+        assert_eq!(analog.probes[0].expression, "V(out)");
+    }
+
+    fn editable_project_yaml() -> &'static str {
+        r#"
+project:
+  name: fourier_run_setup_test
+  version: 0.1.0
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      spice:
+        primitive: pulse_voltage_source
+        initial_v: 0.0
+        pulsed_v: 1.0
+        delay_us: 0.0
+        rise_us: 0.1
+        fall_us: 0.1
+        width_us: 5.0
+        period_us: 10.0
+      pins:
+        P: out
+        N: gnd
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: out
+        B: gnd
+  nets:
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+"#
+    }
 }

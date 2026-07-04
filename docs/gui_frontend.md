@@ -418,6 +418,14 @@ balance creation writes a normal `analog_harmonic_balance` scenario with
 `analysis: {type: hb}`, selected output probe net, fundamental frequency,
 harmonic count, selected drive source, generated board component inclusion,
 ground binding, and model-file inference.
+Fourier creation writes a normal `analog_fourier` scenario with
+`analysis: {type: fourier}`, transient stop/max-step timing, selected output
+probe net, fundamental frequency, harmonic count, generated board component
+inclusion, ground binding, and model-file inference.
+The Fourier Check editor writes `analysis.fourier_assertions[]` for harmonic
+magnitude, normalized magnitude, phase, normalized phase, or THD-percent
+limits, and Fourier report failure actions load the failed check back into that
+editor.
 The HB Check editor writes `analysis.hb_assertions[]` for magnitude, phase,
 real, or imaginary limits at a selected harmonic, and HB report failure actions
 load the failed check back into that editor.

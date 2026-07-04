@@ -1,9 +1,10 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
-    AnalogDcScenarioDraft, AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft,
-    AnalogScenarioDraft, analog_scenario_choices, append_analog_ac_scenario_with_project_path,
-    append_analog_assertion, append_analog_dc_scenario_with_project_path,
+    AnalogDcScenarioDraft, AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
+    AnalogNoiseScenarioDraft, AnalogScenarioDraft, analog_scenario_choices,
+    append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_dc_scenario_with_project_path, append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, replace_analog_assertion,
@@ -51,6 +52,7 @@ impl CircuitCiApp {
                             "ac" => "AC/Bode",
                             "dc" => "DC operating point",
                             "noise" => "Noise",
+                            "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
                             _ => "Transient",
                         })
@@ -74,6 +76,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "noise".to_string(),
                                 "Noise",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "fourier".to_string(),
+                                "Fourier",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -144,6 +151,41 @@ impl CircuitCiApp {
                             );
                             ui.end_row();
                         }
+                    } else if self.analog_run_setup_kind == "fourier" {
+                        ui.label("Stop time");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stop_time_us)
+                                .speed(1.0)
+                                .range(0.001..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Max step");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_max_step_us)
+                                .speed(0.1)
+                                .range(0.001..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Fundamental");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_fourier_fundamental_frequency_hz)
+                                .speed(100.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Harmonics");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_fourier_harmonics)
+                                .speed(1.0)
+                                .range(1..=1024),
+                        );
+                        ui.end_row();
                     } else if self.analog_run_setup_kind == "hb" {
                         initialize_noise_source_default(snapshot, &mut self.analog_hb_drive_source);
                         ui.label("Fundamental");
@@ -1254,6 +1296,31 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "Noise run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "fourier" {
+            let draft = AnalogFourierScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                stop_time_us: self.analog_stop_time_us,
+                max_step_us: self.analog_max_step_us,
+                fundamental_frequency_hz: self.analog_fourier_fundamental_frequency_hz,
+                harmonics: self.analog_fourier_harmonics,
+            };
+            match append_analog_fourier_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Fourier run setup {} added.",
                         self.analog_scenario_name.trim()
                     ),
                 ),
