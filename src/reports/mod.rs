@@ -148,6 +148,7 @@ pub struct ModelPackageBundleInstallSummary {
     pub artifact_count: usize,
     pub conformance_check_count: usize,
     pub finding_count: usize,
+    pub repair_yaml_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -237,6 +238,11 @@ pub struct Reproduction {
     pub command: String,
 }
 
+pub struct ValidationReportReproductionInput<'a> {
+    pub command: String,
+    pub project_path: Option<&'a Path>,
+}
+
 impl Finding {
     pub fn critical(id: &str, scenario: impl Into<String>, message: impl Into<String>) -> Self {
         Self::new(id, Severity::Critical, scenario, message)
@@ -281,6 +287,29 @@ impl ValidationReport {
         waveforms: Vec<String>,
         command: String,
     ) -> Self {
+        Self::from_parts_with_reproduction(
+            project,
+            profile,
+            findings,
+            limitations,
+            artifacts,
+            waveforms,
+            ValidationReportReproductionInput {
+                command,
+                project_path: None,
+            },
+        )
+    }
+
+    pub fn from_parts_with_reproduction(
+        project: String,
+        profile: String,
+        findings: Vec<Finding>,
+        limitations: Vec<Limitation>,
+        artifacts: Vec<String>,
+        waveforms: Vec<String>,
+        reproduction: ValidationReportReproductionInput<'_>,
+    ) -> Self {
         let mut failures = Vec::new();
         let mut warnings = Vec::new();
         let mut infos = Vec::new();
@@ -305,7 +334,12 @@ impl ValidationReport {
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
             collect_model_package_bundle_verifications(&artifacts);
-        let model_package_bundle_installs = collect_model_package_bundle_installs(&artifacts);
+        let model_package_bundle_installs = collect_model_package_bundle_installs(
+            &artifacts,
+            &profile,
+            &reproduction.command,
+            reproduction.project_path,
+        );
         Self {
             schema_version: "0.1.0".to_string(),
             project,
@@ -323,7 +357,9 @@ impl ValidationReport {
             model_package_bundle_installs,
             limitations,
             suggested_next_actions,
-            reproduction: Reproduction { command },
+            reproduction: Reproduction {
+                command: reproduction.command,
+            },
         }
     }
 }
@@ -527,6 +563,9 @@ fn markdown_report(report: &ValidationReport) -> String {
                     install.model_package_lock_sha256.as_deref().unwrap_or(""),
                     install.model_package_artifact_id.as_deref().unwrap_or("")
                 ));
+            }
+            if let Some(command) = &install.repair_yaml_command {
+                text.push_str(&format!("  - Repair command: `{command}`\n"));
             }
         }
         text.push('\n');
@@ -742,6 +781,9 @@ fn collect_model_package_bundle_verifications(
 
 fn collect_model_package_bundle_installs(
     artifacts: &[String],
+    profile: &str,
+    validation_command: &str,
+    project_path: Option<&Path>,
 ) -> Vec<ModelPackageBundleInstallSummary> {
     let mut records = BTreeSet::new();
     for artifact in artifacts {
@@ -790,9 +832,52 @@ fn collect_model_package_bundle_installs(
             artifact_count: array_len_at(&report, &["artifacts"]),
             conformance_check_count: array_len_at(&report, &["conformance_checks"]),
             finding_count: array_len_at(&report, &["findings"]),
+            repair_yaml_command: bundle_install_repair_command(
+                validation_command,
+                profile,
+                artifact,
+                project_path,
+            ),
         });
     }
     records.into_iter().collect()
+}
+
+fn bundle_install_repair_command(
+    validation_command: &str,
+    profile: &str,
+    bundle_install_report: &str,
+    project_path: Option<&Path>,
+) -> Option<String> {
+    let project_path = project_path
+        .map(|path| path.to_string_lossy().into_owned())
+        .or_else(|| validation_command_project_path(validation_command))?;
+    Some(format!(
+        "circuitci repair-yaml {} --profile {} --output out/repair_bundle_import --finding bundle-install-package-metadata --bundle-install-report {}",
+        shell_arg(&project_path),
+        shell_arg(profile),
+        shell_arg(bundle_install_report)
+    ))
+}
+
+fn validation_command_project_path(command: &str) -> Option<String> {
+    let mut words = command.split_whitespace();
+    while let Some(word) = words.next() {
+        if word == "validate" {
+            return words.next().map(ToOwned::to_owned);
+        }
+    }
+    None
+}
+
+fn shell_arg(value: &str) -> String {
+    if value
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '/' | '.' | '_' | '-' | ':' | '='))
+    {
+        return value.to_string();
+    }
+    format!("'{}'", value.replace('\'', "'\\''"))
 }
 
 fn read_json_artifact(artifact: &str) -> Option<Value> {
@@ -1026,7 +1111,7 @@ mod tests {
                 bundle_install_report.to_string_lossy().into_owned(),
             ],
             Vec::new(),
-            "validate".to_string(),
+            "circuitci validate project.yaml --profile profile --output out".to_string(),
         );
 
         assert_eq!(report.model_package_conformance_checks.len(), 1);
@@ -1056,6 +1141,14 @@ mod tests {
         assert_eq!(
             install.model_package_artifact_id.as_deref(),
             Some("runtime_osdi")
+        );
+        let expected_repair_command = format!(
+            "circuitci repair-yaml project.yaml --profile profile --output out/repair_bundle_import --finding bundle-install-package-metadata --bundle-install-report {}",
+            bundle_install_report.to_string_lossy()
+        );
+        assert_eq!(
+            install.repair_yaml_command.as_deref(),
+            Some(expected_repair_command.as_str())
         );
         let markdown = markdown_report(&report);
         assert!(markdown.contains("## Model Package Conformance"));

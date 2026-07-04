@@ -347,6 +347,9 @@ impl CircuitCiApp {
                                     install.model_package_artifact_id.as_deref().unwrap_or("")
                                 ));
                             }
+                            if let Some(command) = &install.repair_yaml_command {
+                                ui.monospace(format!("repair_command {command}"));
+                            }
                         }
                     }
                 });

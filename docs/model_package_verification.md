@@ -204,7 +204,9 @@ circuitci repair-yaml path/to/project.yaml \
 The repair matches `analog.model_files[]` entries by
 `model_package_artifact_id` or by the installed runtime artifact path, adds only
 missing package fields, blocks on conflicting existing metadata, writes a
-repaired project copy, and validates that copy.
+repaired project copy, and validates that copy. Normal validation reports and
+the GUI artifact panel project the same repair command as `repair_yaml_command`
+when the report was produced by `circuitci validate`.
 
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.

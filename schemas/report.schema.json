@@ -238,7 +238,8 @@
         "model_package_artifact_id",
         "artifact_count",
         "conformance_check_count",
-        "finding_count"
+        "finding_count",
+        "repair_yaml_command"
       ],
       "properties": {
         "report": { "type": "string", "minLength": 1 },
@@ -257,7 +258,8 @@
         "model_package_artifact_id": { "type": ["string", "null"] },
         "artifact_count": { "type": "integer", "minimum": 0 },
         "conformance_check_count": { "type": "integer", "minimum": 0 },
-        "finding_count": { "type": "integer", "minimum": 0 }
+        "finding_count": { "type": "integer", "minimum": 0 },
+        "repair_yaml_command": { "type": ["string", "null"] }
       },
       "additionalProperties": false
     }

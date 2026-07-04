@@ -1472,6 +1472,196 @@ scenarios:
     );
 }
 
+#[test]
+fn repair_yaml_blocks_bundle_install_package_metadata_conflict() {
+    let fixture = bundle_install_repair_fixture(
+        "pass",
+        "          model_package_registry_entry: different_bundle\n",
+    );
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            fixture.project.to_str().unwrap(),
+            "--finding",
+            "bundle-install-package-metadata",
+            "--bundle-install-report",
+            fixture.install_report.to_str().unwrap(),
+            "--output",
+            fixture.output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(fixture.output.join("repair_report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "fail");
+    assert_eq!(repair_report["finding"], "BUNDLE_INSTALL_PACKAGE_METADATA");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["selected"], 0);
+    assert_eq!(repair_report["summary"]["applied"], 0);
+    assert_eq!(repair_report["summary"]["blocked"], 1);
+    assert_eq!(
+        repair_report["proposals"][0]["reason_code"],
+        "bundle_install_package_metadata_conflict"
+    );
+    assert!(
+        repair_report["proposals"][0]["description"]
+            .as_str()
+            .unwrap()
+            .contains("model_package_registry_entry=different_bundle")
+    );
+}
+
+#[test]
+fn repair_yaml_rejects_failed_bundle_install_report() {
+    let fixture = bundle_install_repair_fixture("fail", "");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            fixture.project.to_str().unwrap(),
+            "--finding",
+            "bundle-install-package-metadata",
+            "--bundle-install-report",
+            fixture.install_report.to_str().unwrap(),
+            "--output",
+            fixture.output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!fixture.output.join("repair_report.json").exists());
+}
+
+struct BundleInstallRepairFixture {
+    project: std::path::PathBuf,
+    install_report: std::path::PathBuf,
+    output: std::path::PathBuf,
+    _temp: tempfile::TempDir,
+}
+
+fn bundle_install_repair_fixture(
+    install_result: &str,
+    model_file_extra: &str,
+) -> BundleInstallRepairFixture {
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project.yaml");
+    let installed = temp.path().join("installed_bundle");
+    let artifacts = installed.join("artifacts");
+    let shared = temp.path().join("shared");
+    std::fs::create_dir_all(&artifacts).unwrap();
+    std::fs::create_dir_all(&shared).unwrap();
+    std::fs::write(artifacts.join("runtime.osdi"), "runtime artifact\n").unwrap();
+    std::fs::write(installed.join("package.lock.json"), "{}\n").unwrap();
+    std::fs::write(shared.join("compact_model_registry.json"), "{}\n").unwrap();
+    let lock_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let registry_sha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: bundle_install_negative
+  version: 0.1.0
+
+board:
+  components: {{}}
+  nets: {{}}
+
+scenarios:
+  - name: package_import
+    type: analog_transient
+    checks: []
+    analog:
+      backend: ngspice
+      netlist_source: file
+      model_files:
+        - path: installed_bundle/artifacts/runtime.osdi
+          artifact_format: osdi_shared_object
+          model_package_artifact_id: runtime_osdi
+{model_file_extra}      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: transient
+        stop_time_us: 1.0
+        max_step_us: 0.1
+      stimuli: []
+      probes: []
+      assertions: []
+"#
+        ),
+    )
+    .unwrap();
+    let install_report = temp.path().join("bundle_install_report.json");
+    std::fs::write(
+        &install_report,
+        format!(
+            r#"{{
+  "schema_version": "circuitci.model_package_bundle_install.v1",
+  "result": "{install_result}",
+  "source_bundle": "bundle",
+  "install_dir": "installed_bundle",
+  "package": {{
+    "name": "org.circuitci.models.bundle.test",
+    "version": "1.2.3"
+  }},
+  "manifest": {{
+    "path": "installed_bundle/model_package_bundle_manifest.json",
+    "sha256_declared": null,
+    "sha256_actual": null,
+    "status": "verified"
+  }},
+  "lock": {{
+    "path": "installed_bundle/package.lock.json",
+    "sha256_declared": "{lock_sha}",
+    "sha256_actual": "{lock_sha}",
+    "status": "verified"
+  }},
+  "registry": null,
+  "installed_registry": {{
+    "path": "shared/compact_model_registry.json",
+    "sha256_declared": "{registry_sha}",
+    "sha256_actual": "{registry_sha}",
+    "status": "verified"
+  }},
+  "scenario_import": {{
+    "model_package_registry_path": "shared/compact_model_registry.json",
+    "model_package_registry_sha256": "{registry_sha}",
+    "model_package_registry_entry": "bundle_runtime",
+    "model_package_lock_path": "installed_bundle/package.lock.json",
+    "model_package_lock_sha256": "{lock_sha}",
+    "model_package_artifact_id": "runtime_osdi"
+  }},
+  "artifacts": [
+    {{
+      "id": "runtime_osdi",
+      "path": "installed_bundle/artifacts/runtime.osdi",
+      "artifact_format": "osdi_shared_object",
+      "compiler": "openvaf",
+      "sha256_declared": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sha256_actual": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "status": "verified"
+    }}
+  ],
+  "conformance_checks": [],
+  "findings": []
+}}
+"#
+        ),
+    )
+    .unwrap();
+    let output = temp.path().join("repair");
+    BundleInstallRepairFixture {
+        project,
+        install_report,
+        output,
+        _temp: temp,
+    }
+}
+
 fn assert_repair_report_schema_valid(report: &Value) {
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/repair_report.schema.json")).unwrap();

@@ -345,14 +345,17 @@ where
             outcome.waveforms.len()
         ),
     );
-    let report = ValidationReport::from_parts(
+    let report = ValidationReport::from_parts_with_reproduction(
         project.project.name.clone(),
         profile.to_string(),
         outcome.findings,
         outcome.limitations,
         outcome.artifacts,
         outcome.waveforms,
-        command,
+        crate::reports::ValidationReportReproductionInput {
+            command,
+            project_path: Some(project_path),
+        },
     );
     on_progress(
         "Writing report",

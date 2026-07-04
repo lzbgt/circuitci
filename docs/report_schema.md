@@ -1438,7 +1438,11 @@ package identity, manifest/lock/registry hashes, artifact count, conformance
 check count, and finding count. Install rows expose the source bundle,
 installed directory, installed registry hash, and scenario-import
 `model_package_*` pins so a reviewer can copy the exact registry/lock/artifact
-fields without opening the raw install JSON.
+fields without opening the raw install JSON. When the validation reproduction
+command contains a project path, install rows also include
+`repair_yaml_command`, a ready `repair-yaml --finding
+bundle-install-package-metadata --bundle-install-report ...` command for
+writing a validated repaired project copy.
 When a lock includes an artifact with
 `artifact_format: model_conformance_report`, the verifier also validates that
 document against `schemas/model_conformance_report.schema.json` and requires it

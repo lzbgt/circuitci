@@ -804,6 +804,10 @@ The GUI should not become the solver.
   `analog.model_files[]` entries in a copied project. The migration matches by
   package artifact id or installed runtime artifact path and blocks on existing
   conflicting package metadata.
+- Bundle install summaries now carry `repair_yaml_command` when generated from
+  `circuitci validate`, and the GUI artifact panel displays that command beside
+  the scenario-import pins. Added negative repair coverage for conflicting
+  existing metadata and failed bundle install reports.
 
 ## Risks
 
