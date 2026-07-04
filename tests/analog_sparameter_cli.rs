@@ -448,6 +448,80 @@ fn sparameter_assertion_rejects_vswr_on_transmission_term() {
 
 #[cfg(unix)]
 #[test]
+fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.1 0.0 0.8 0.0 0.8001 0.0 0.1 0.0\\n1.0e9 0.05 0.0 0.7 0.0 0.70005 0.0 0.05 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_network_assertions:
+          - name: reciprocal_two_port
+            metric: reciprocity_error_linear
+            relation: below
+            threshold: 0.001
+          - name: passive_two_port
+            metric: passivity_max_singular_value
+            relation: below
+            threshold: 0.91
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    artifact_path(&report, "s_parameter_network_summary.csv");
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_network_assertion_fails_on_passivity_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 1.5 0.0 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_network_assertions:
+          - name: passive_two_port
+            metric: passivity_max_singular_value
+            relation: below
+            threshold: 1.0
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "passive_two_port")
+        .expect("passivity assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(
+        failure["measured"]["metric"],
+        "passivity_max_singular_value"
+    );
+    assert!(failure["measured"]["value"].as_f64().unwrap() > 1.0);
+    assert_eq!(failure["limit"]["below_threshold"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn real_xyce_sparameter_conformance_normalizes_touchstone_when_enabled() {
     if !real_xyce_sparameter_conformance_enabled() {
         return;

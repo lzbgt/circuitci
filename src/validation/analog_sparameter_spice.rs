@@ -13,7 +13,8 @@ use super::analog_runner::{
     external_backend_unavailable, select_backend_for_feature,
 };
 use super::analog_sparameter_assertions::{
-    evaluate_s_parameter_assertions, validate_s_parameter_assertion_contract,
+    evaluate_s_parameter_assertions, evaluate_s_parameter_network_assertions,
+    validate_s_parameter_assertion_contract, write_s_parameter_network_summary,
     write_s_parameter_summary,
 };
 use super::analog_spice::{
@@ -385,6 +386,30 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
                             &scenario.name,
                             message,
                         ));
+                    }
+                }
+                if scenario.analog.as_ref().is_some_and(|analog| {
+                    !analog.analysis.s_parameter_network_assertions.is_empty()
+                }) {
+                    match write_s_parameter_network_summary(&run.s_parameters) {
+                        Ok(summary) => {
+                            push_artifact(artifacts, &summary);
+                            let assertion_measurements = evaluate_s_parameter_network_assertions(
+                                scenario, &summary, findings,
+                            );
+                            record_sweep_measurements(
+                                &mut sweep_measurements,
+                                &run_plan,
+                                assertion_measurements,
+                            );
+                        }
+                        Err(message) => {
+                            findings.push(Finding::critical(
+                                SPICE_S_PARAMETER_ANALYSIS,
+                                &scenario.name,
+                                message,
+                            ));
+                        }
                     }
                 }
                 tag_corner_findings(findings, finding_start, &run_plan, false);

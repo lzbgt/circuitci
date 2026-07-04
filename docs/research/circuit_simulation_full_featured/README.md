@@ -642,7 +642,10 @@ The GUI should not become the solver.
   `s_parameter_summaries[]`, Markdown includes an "S-Parameter Summary"
   section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
   return-loss, insertion-loss, and VSWR traces from full `s_parameters.csv`
-  artifacts for visual RF margin review.
+  artifacts for visual RF margin review. Two-port
+  `analysis.s_parameter_network_assertions[]` now signs off reciprocity
+  (`max |S21-S12|`) and passivity (maximum singular value of the complex S
+  matrix) with retained `s_parameter_network_summary.csv` evidence.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path

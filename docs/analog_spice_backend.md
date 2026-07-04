@@ -414,11 +414,19 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    transmission terms such as `s21`. Missing or unavailable metrics and failed
    limits emit `SPICE_S_PARAMETER_ANALYSIS` findings with retained summary
    provenance.
-7. Validation reports project retained `s_parameter_summary.csv` rows into
+7. Optional `analysis.s_parameter_network_assertions[]` sign off two-port
+   network quality metrics from the full complex `s_parameters.csv` sweep.
+   `reciprocity_error_linear` is the maximum `|S21-S12|` across frequency.
+   `passivity_max_singular_value` is the maximum singular value of the complex
+   2x2 S matrix across frequency, so passive networks are expected to remain
+   at or below unity aside from declared tolerance. These assertions require
+   exactly two declared S-parameter ports and retain
+   `s_parameter_network_summary.csv` with the worst frequencies.
+8. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]`, Markdown reports include an
    "S-Parameter Summary" section, and GUI Scopes surfaces compact RF sign-off
    rows.
-8. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
+9. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
    this check and fail closed with backend-planning evidence until those
    adapters emit the same normalized `s_parameters` contract.
 

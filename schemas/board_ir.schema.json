@@ -3237,6 +3237,26 @@
                       },
                       "additionalProperties": false
                     }
+                  },
+                  "s_parameter_network_assertions": {
+                    "type": "array",
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "metric": { "enum": ["reciprocity_error_linear", "passivity_max_singular_value"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "allOf": [

@@ -158,6 +158,9 @@ Current analog support:
   provenance. Validation derives `s_parameter_summary.csv`; optional
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
   insertion loss, and VSWR limits with fail-closed metric applicability checks.
+  Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
+  reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
+  complex S matrix) from full `s_parameters.csv` data.
   Reports project retained rows into `s_parameter_summaries[]`, Markdown
   includes an "S-Parameter Summary" section, the GUI artifact panel shows
   compact RF sign-off rows, and Scopes derives return-loss, insertion-loss,
