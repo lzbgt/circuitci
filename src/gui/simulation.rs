@@ -304,7 +304,7 @@ impl CircuitCiApp {
                     } else {
                         for row in &report.s_parameter_network_summaries {
                             ui.monospace(format!(
-                                "ports={} rows={} f={:.6e}..{:.6e}Hz reciprocity_error={:.6e} at {:.6e}Hz passivity_singular={:.6e} at {:.6e}Hz rollet_k_min={} at {}Hz delta_mag_max={} at {}Hz mag_min_db={} at {}Hz msg_min_db={} at {}Hz unilateral_gain_min_db={} at {}Hz artifact={}",
+                                "ports={} rows={} f={:.6e}..{:.6e}Hz reciprocity_error={:.6e} at {:.6e}Hz passivity_singular={:.6e} at {:.6e}Hz rollet_k_min={} at {}Hz delta_mag_max={} at {}Hz mag_min_db={} at {}Hz msg_min_db={} at {}Hz unilateral_gain_min_db={} at {}Hz transducer_gain_min_db={} at {}Hz available_gain_min_db={} at {}Hz operating_gain_min_db={} at {}Hz artifact={}",
                                 row.port_count,
                                 row.row_count,
                                 row.min_frequency_hz,
@@ -331,6 +331,12 @@ impl CircuitCiApp {
                                 optional_value_label(
                                     row.frequency_hz_at_min_maximum_unilateral_gain
                                 ),
+                                optional_value_label(row.min_transducer_gain_db),
+                                optional_value_label(row.frequency_hz_at_min_transducer_gain),
+                                optional_value_label(row.min_available_gain_db),
+                                optional_value_label(row.frequency_hz_at_min_available_gain),
+                                optional_value_label(row.min_operating_gain_db),
+                                optional_value_label(row.frequency_hz_at_min_operating_gain),
                                 row.artifact
                             ));
                         }

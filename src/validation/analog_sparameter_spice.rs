@@ -388,10 +388,12 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
                         ));
                     }
                 }
-                if scenario.analog.as_ref().is_some_and(|analog| {
-                    !analog.analysis.s_parameter_network_assertions.is_empty()
-                }) {
-                    match write_s_parameter_network_summary(&run.s_parameters) {
+                if let Some(analog) = scenario
+                    .analog
+                    .as_ref()
+                    .filter(|analog| !analog.analysis.s_parameter_network_assertions.is_empty())
+                {
+                    match write_s_parameter_network_summary(&run.s_parameters, analog) {
                         Ok(summary) => {
                             push_artifact(artifacts, &summary);
                             let assertion_measurements = evaluate_s_parameter_network_assertions(

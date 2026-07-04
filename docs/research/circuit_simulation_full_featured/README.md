@@ -680,9 +680,7 @@ The GUI should not become the solver.
   finite and nonzero. Formula snapshots were saved in
   `sources/mathworks_powergain.html`,
   `sources/microwaves101_stability_factor_gain.html`, and
-  `sources/libretexts_amplifier_stability.html`. Source/load-dependent
-  transducer, available, and operating gain remain future work until Board IR
-  carries source/load reflection-coefficient provenance.
+  `sources/libretexts_amplifier_stability.html`.
 - 2026-07-04: Added maximum unilateral transducer gain (`GTU,max`) to the
   two-port S-parameter network contract. `s_parameter_network_summary.csv`
   retains `min_maximum_unilateral_gain_db` plus its worst frequency,
@@ -698,6 +696,20 @@ The GUI should not become the solver.
   gain remains out of scope for now because the current RF sign-off contract
   needed the unilateral transducer gain floor, not a separate invariant-gain
   definition.
+- 2026-07-04: Added source/load reflection-coefficient provenance for
+  source/load-dependent RF two-port gains. `analysis.s_parameter_source_reflection`
+  and `analysis.s_parameter_load_reflection` carry `{ real, imaginary }`
+  coefficients with magnitude below unity. `s_parameter_network_summary.csv`
+  now retains those coefficients plus `min_transducer_gain_db`,
+  `min_available_gain_db`, and `min_operating_gain_db` with worst
+  frequencies. `analysis.s_parameter_network_assertions[]` accepts
+  `transducer_gain_db_min`, `available_gain_db_min`, and
+  `operating_gain_db_min`; missing required source/load provenance or
+  undefined gain math fails closed with retained summary provenance. Formula
+  provenance is the saved MathWorks RF Toolbox `powergain` page in
+  `sources/mathworks_powergain.html`, which defines `Gt` with both source/load
+  reflection coefficients, `Ga` from source reflection plus `Gamma_out`, and
+  `Gp` from load reflection plus `Gamma_in`.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

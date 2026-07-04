@@ -341,7 +341,17 @@
         "min_maximum_stable_gain_db",
         "frequency_hz_at_min_maximum_stable_gain",
         "min_maximum_unilateral_gain_db",
-        "frequency_hz_at_min_maximum_unilateral_gain"
+        "frequency_hz_at_min_maximum_unilateral_gain",
+        "source_reflection_real",
+        "source_reflection_imaginary",
+        "load_reflection_real",
+        "load_reflection_imaginary",
+        "min_transducer_gain_db",
+        "frequency_hz_at_min_transducer_gain",
+        "min_available_gain_db",
+        "frequency_hz_at_min_available_gain",
+        "min_operating_gain_db",
+        "frequency_hz_at_min_operating_gain"
       ],
       "properties": {
         "artifact": { "type": "string", "minLength": 1 },
@@ -362,7 +372,17 @@
         "min_maximum_stable_gain_db": { "type": ["number", "null"] },
         "frequency_hz_at_min_maximum_stable_gain": { "type": ["number", "null"] },
         "min_maximum_unilateral_gain_db": { "type": ["number", "null"] },
-        "frequency_hz_at_min_maximum_unilateral_gain": { "type": ["number", "null"] }
+        "frequency_hz_at_min_maximum_unilateral_gain": { "type": ["number", "null"] },
+        "source_reflection_real": { "type": ["number", "null"] },
+        "source_reflection_imaginary": { "type": ["number", "null"] },
+        "load_reflection_real": { "type": ["number", "null"] },
+        "load_reflection_imaginary": { "type": ["number", "null"] },
+        "min_transducer_gain_db": { "type": ["number", "null"] },
+        "frequency_hz_at_min_transducer_gain": { "type": ["number", "null"] },
+        "min_available_gain_db": { "type": ["number", "null"] },
+        "frequency_hz_at_min_available_gain": { "type": ["number", "null"] },
+        "min_operating_gain_db": { "type": ["number", "null"] },
+        "frequency_hz_at_min_operating_gain": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },

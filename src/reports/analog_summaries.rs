@@ -110,6 +110,16 @@ pub struct SParameterNetworkSummary {
     pub frequency_hz_at_min_maximum_stable_gain: Option<f64>,
     pub min_maximum_unilateral_gain_db: Option<f64>,
     pub frequency_hz_at_min_maximum_unilateral_gain: Option<f64>,
+    pub source_reflection_real: Option<f64>,
+    pub source_reflection_imaginary: Option<f64>,
+    pub load_reflection_real: Option<f64>,
+    pub load_reflection_imaginary: Option<f64>,
+    pub min_transducer_gain_db: Option<f64>,
+    pub frequency_hz_at_min_transducer_gain: Option<f64>,
+    pub min_available_gain_db: Option<f64>,
+    pub frequency_hz_at_min_available_gain: Option<f64>,
+    pub min_operating_gain_db: Option<f64>,
+    pub frequency_hz_at_min_operating_gain: Option<f64>,
 }
 
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
@@ -519,6 +529,16 @@ fn parse_s_parameter_network_summary_csv(
             "frequency_hz_at_min_maximum_stable_gain",
             "min_maximum_unilateral_gain_db",
             "frequency_hz_at_min_maximum_unilateral_gain",
+            "source_reflection_real",
+            "source_reflection_imaginary",
+            "load_reflection_real",
+            "load_reflection_imaginary",
+            "min_transducer_gain_db",
+            "frequency_hz_at_min_transducer_gain",
+            "min_available_gain_db",
+            "frequency_hz_at_min_available_gain",
+            "min_operating_gain_db",
+            "frequency_hz_at_min_operating_gain",
         ]
     {
         return Vec::new();
@@ -528,7 +548,7 @@ fn parse_s_parameter_network_summary_csv(
         let Some(fields) = split_csv_fields(line) else {
             continue;
         };
-        if fields.len() != 18 {
+        if fields.len() != 28 {
             continue;
         }
         let Some(port_count) = fields[0].parse::<usize>().ok() else {
@@ -592,6 +612,39 @@ fn parse_s_parameter_network_summary_csv(
         else {
             continue;
         };
+        let Some(source_reflection_real) = parse_optional_finite_f64(&fields[18]) else {
+            continue;
+        };
+        let Some(source_reflection_imaginary) = parse_optional_finite_f64(&fields[19]) else {
+            continue;
+        };
+        let Some(load_reflection_real) = parse_optional_finite_f64(&fields[20]) else {
+            continue;
+        };
+        let Some(load_reflection_imaginary) = parse_optional_finite_f64(&fields[21]) else {
+            continue;
+        };
+        let Some(min_transducer_gain_db) = parse_optional_finite_f64(&fields[22]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_transducer_gain) = parse_optional_finite_f64(&fields[23])
+        else {
+            continue;
+        };
+        let Some(min_available_gain_db) = parse_optional_finite_f64(&fields[24]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_available_gain) = parse_optional_finite_f64(&fields[25])
+        else {
+            continue;
+        };
+        let Some(min_operating_gain_db) = parse_optional_finite_f64(&fields[26]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_operating_gain) = parse_optional_finite_f64(&fields[27])
+        else {
+            continue;
+        };
         rows.push(SParameterNetworkSummary {
             artifact: artifact.to_string(),
             port_count,
@@ -612,6 +665,16 @@ fn parse_s_parameter_network_summary_csv(
             frequency_hz_at_min_maximum_stable_gain,
             min_maximum_unilateral_gain_db,
             frequency_hz_at_min_maximum_unilateral_gain,
+            source_reflection_real,
+            source_reflection_imaginary,
+            load_reflection_real,
+            load_reflection_imaginary,
+            min_transducer_gain_db,
+            frequency_hz_at_min_transducer_gain,
+            min_available_gain_db,
+            frequency_hz_at_min_available_gain,
+            min_operating_gain_db,
+            frequency_hz_at_min_operating_gain,
         });
     }
     rows
@@ -621,7 +684,7 @@ pub(super) fn render_s_parameter_network_summary_markdown(
     row: &SParameterNetworkSummary,
 ) -> String {
     format!(
-        "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz min_rollet_k={} at {} Hz max_stability_delta_magnitude={} at {} Hz min_maximum_available_gain_db={} at {} Hz min_maximum_stable_gain_db={} at {} Hz min_maximum_unilateral_gain_db={} at {} Hz\n  - Artifact: `{}`\n",
+        "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz min_rollet_k={} at {} Hz max_stability_delta_magnitude={} at {} Hz min_maximum_available_gain_db={} at {} Hz min_maximum_stable_gain_db={} at {} Hz min_maximum_unilateral_gain_db={} at {} Hz min_transducer_gain_db={} at {} Hz min_available_gain_db={} at {} Hz min_operating_gain_db={} at {} Hz source_reflection=({}, {}) load_reflection=({}, {})\n  - Artifact: `{}`\n",
         row.port_count,
         row.row_count,
         row.min_frequency_hz,
@@ -640,6 +703,16 @@ pub(super) fn render_s_parameter_network_summary_markdown(
         format_optional_value(row.frequency_hz_at_min_maximum_stable_gain),
         format_optional_value(row.min_maximum_unilateral_gain_db),
         format_optional_value(row.frequency_hz_at_min_maximum_unilateral_gain),
+        format_optional_value(row.min_transducer_gain_db),
+        format_optional_value(row.frequency_hz_at_min_transducer_gain),
+        format_optional_value(row.min_available_gain_db),
+        format_optional_value(row.frequency_hz_at_min_available_gain),
+        format_optional_value(row.min_operating_gain_db),
+        format_optional_value(row.frequency_hz_at_min_operating_gain),
+        format_optional_value(row.source_reflection_real),
+        format_optional_value(row.source_reflection_imaginary),
+        format_optional_value(row.load_reflection_real),
+        format_optional_value(row.load_reflection_imaginary),
         row.artifact
     )
 }

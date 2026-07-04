@@ -1124,6 +1124,9 @@ fn validate_sparameter_network_assertion_draft(
             | "maximum_available_gain_db_min"
             | "maximum_stable_gain_db_min"
             | "maximum_unilateral_gain_db_min"
+            | "transducer_gain_db_min"
+            | "available_gain_db_min"
+            | "operating_gain_db_min"
     ) {
         anyhow::bail!(
             "Unsupported S-parameter network assertion metric {}.",

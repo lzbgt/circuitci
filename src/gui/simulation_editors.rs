@@ -1853,6 +1853,9 @@ fn sparameter_network_metric_options() -> &'static [(&'static str, &'static str)
             "maximum_unilateral_gain_db_min",
             "Maximum unilateral gain minimum",
         ),
+        ("transducer_gain_db_min", "Transducer gain minimum"),
+        ("available_gain_db_min", "Available gain minimum"),
+        ("operating_gain_db_min", "Operating gain minimum"),
         ("passivity_max_singular_value", "Passivity singular maximum"),
         ("reciprocity_error_linear", "Reciprocity error maximum"),
     ]
@@ -1864,6 +1867,9 @@ fn default_sparameter_network_assertion_name(metric: &str) -> &'static str {
         "maximum_available_gain_db_min" => "available_gain_floor",
         "maximum_stable_gain_db_min" => "stable_gain_floor",
         "maximum_unilateral_gain_db_min" => "unilateral_gain_floor",
+        "transducer_gain_db_min" => "transducer_gain_floor",
+        "available_gain_db_min" => "source_available_gain_floor",
+        "operating_gain_db_min" => "load_operating_gain_floor",
         "passivity_max_singular_value" => "passive_two_port",
         "reciprocity_error_linear" => "reciprocal_two_port",
         _ => "stable_rollet_k",
@@ -1877,6 +1883,9 @@ fn default_sparameter_network_relation(metric: &str) -> &'static str {
             | "maximum_available_gain_db_min"
             | "maximum_stable_gain_db_min"
             | "maximum_unilateral_gain_db_min"
+            | "transducer_gain_db_min"
+            | "available_gain_db_min"
+            | "operating_gain_db_min"
     ) {
         "above"
     } else {
@@ -1889,7 +1898,10 @@ fn default_sparameter_network_threshold(metric: &str) -> f64 {
         "reciprocity_error_linear" => 0.01,
         "maximum_available_gain_db_min"
         | "maximum_stable_gain_db_min"
-        | "maximum_unilateral_gain_db_min" => 0.0,
+        | "maximum_unilateral_gain_db_min"
+        | "transducer_gain_db_min"
+        | "available_gain_db_min"
+        | "operating_gain_db_min" => 0.0,
         _ => 1.0,
     }
 }

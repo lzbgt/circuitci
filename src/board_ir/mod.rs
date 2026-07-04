@@ -1288,6 +1288,10 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub s_parameter_network_assertions: Vec<AnalogSParameterNetworkAssertion>,
     #[serde(default)]
+    pub s_parameter_source_reflection: Option<AnalogSParameterReflectionCoefficient>,
+    #[serde(default)]
+    pub s_parameter_load_reflection: Option<AnalogSParameterReflectionCoefficient>,
+    #[serde(default)]
     pub transfer_output_expression: Option<String>,
     #[serde(default)]
     pub transfer_input_source: Option<String>,

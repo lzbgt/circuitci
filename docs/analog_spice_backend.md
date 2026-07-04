@@ -439,14 +439,23 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `maximum_unilateral_gain_db_min` is the minimum unilateral transducer gain
    floor in dB, derived as
    `10 log10(|S21|^2 / ((1 - |S11|^2) * (1 - |S22|^2)))` and retained only
-   when both reflection magnitudes are below unity. These assertions require exactly
+   when both reflection magnitudes are below unity. Optional
+   `s_parameter_source_reflection` and `s_parameter_load_reflection` objects
+   carry source/load reflection-coefficient provenance as `{ real, imaginary }`
+   values with magnitude below unity. When present, `transducer_gain_db_min`,
+   `available_gain_db_min`, and `operating_gain_db_min` sign off MathWorks
+   `powergain`-style `Gt`, `Ga`, and `Gp` formulas from the full complex sweep.
+   `transducer_gain_db_min` requires both source and load reflections,
+   `available_gain_db_min` requires source reflection, and
+   `operating_gain_db_min` requires load reflection. These assertions require exactly
    two declared S-parameter ports and retain `s_parameter_network_summary.csv`
    with the worst frequencies. Rollet K, MAG, MSG, and unilateral gain are unavailable, and
    therefore fail closed when asserted, if the sweep has zero reverse
    transmission, invalid stability conditions, or non-finite unilateral
-   denominator conditions. Source/load-dependent
-   transducer, available, and operating gain are not exposed yet because Board
-   IR does not carry source/load reflection-coefficient provenance.
+   denominator conditions. Source/load-dependent gain metrics are unavailable,
+   and therefore fail closed when asserted, if the required reflection
+   provenance is absent or the selected source/load condition produces an
+   undefined gain.
 8. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into

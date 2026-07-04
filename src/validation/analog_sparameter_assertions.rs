@@ -1,6 +1,7 @@
 use crate::board_ir::{
     AnalogRelation, AnalogSParameterAggregation, AnalogSParameterAssertion, AnalogSParameterMetric,
-    AnalogSParameterNetworkAssertion, AnalogSParameterNetworkMetric, AnalogScenario, Scenario,
+    AnalogSParameterNetworkAssertion, AnalogSParameterNetworkMetric,
+    AnalogSParameterReflectionCoefficient, AnalogScenario, Scenario,
 };
 use crate::reports::Finding;
 use serde_json::json;
@@ -116,6 +117,38 @@ pub(super) fn validate_s_parameter_assertion_contract(
             ));
         }
     }
+    validate_optional_reflection(
+        analog.analysis.s_parameter_source_reflection,
+        "s_parameter_source_reflection",
+    )?;
+    validate_optional_reflection(
+        analog.analysis.s_parameter_load_reflection,
+        "s_parameter_load_reflection",
+    )?;
+    Ok(())
+}
+
+fn validate_optional_reflection(
+    coefficient: Option<AnalogSParameterReflectionCoefficient>,
+    name: &str,
+) -> Result<(), String> {
+    let Some(coefficient) = coefficient else {
+        return Ok(());
+    };
+    if !coefficient.real.is_finite() || !coefficient.imaginary.is_finite() {
+        return Err(format!(
+            "analog_sparameter {name} requires finite real and imaginary values."
+        ));
+    }
+    let magnitude_squared = coefficient.real.mul_add(
+        coefficient.real,
+        coefficient.imaginary * coefficient.imaginary,
+    );
+    if !magnitude_squared.is_finite() || magnitude_squared >= 1.0 {
+        return Err(format!(
+            "analog_sparameter {name} magnitude must be below 1.0 for finite passive gain calculations."
+        ));
+    }
     Ok(())
 }
 
@@ -228,14 +261,17 @@ pub(super) fn evaluate_s_parameter_assertions(
     measurements
 }
 
-pub(super) fn write_s_parameter_network_summary(s_parameters: &Path) -> Result<PathBuf, String> {
+pub(super) fn write_s_parameter_network_summary(
+    s_parameters: &Path,
+    analog: &AnalogScenario,
+) -> Result<PathBuf, String> {
     let summary = s_parameters
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .join("s_parameter_network_summary.csv");
-    let row = summarize_s_parameter_network(s_parameters)?;
+    let row = summarize_s_parameter_network(s_parameters, analog)?;
     let text = format!(
-        "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude,min_maximum_available_gain_db,frequency_hz_at_min_maximum_available_gain,min_maximum_stable_gain_db,frequency_hz_at_min_maximum_stable_gain,min_maximum_unilateral_gain_db,frequency_hz_at_min_maximum_unilateral_gain\n{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{},{},{}\n",
+        "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude,min_maximum_available_gain_db,frequency_hz_at_min_maximum_available_gain,min_maximum_stable_gain_db,frequency_hz_at_min_maximum_stable_gain,min_maximum_unilateral_gain_db,frequency_hz_at_min_maximum_unilateral_gain,source_reflection_real,source_reflection_imaginary,load_reflection_real,load_reflection_imaginary,min_transducer_gain_db,frequency_hz_at_min_transducer_gain,min_available_gain_db,frequency_hz_at_min_available_gain,min_operating_gain_db,frequency_hz_at_min_operating_gain\n{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
         row.port_count,
         row.row_count,
         row.min_frequency_hz,
@@ -254,6 +290,16 @@ pub(super) fn write_s_parameter_network_summary(s_parameters: &Path) -> Result<P
         optional_csv(row.frequency_hz_at_min_maximum_stable_gain),
         optional_csv(row.min_maximum_unilateral_gain_db),
         optional_csv(row.frequency_hz_at_min_maximum_unilateral_gain),
+        optional_csv(row.source_reflection_real),
+        optional_csv(row.source_reflection_imaginary),
+        optional_csv(row.load_reflection_real),
+        optional_csv(row.load_reflection_imaginary),
+        optional_csv(row.min_transducer_gain_db),
+        optional_csv(row.frequency_hz_at_min_transducer_gain),
+        optional_csv(row.min_available_gain_db),
+        optional_csv(row.frequency_hz_at_min_available_gain),
+        optional_csv(row.min_operating_gain_db),
+        optional_csv(row.frequency_hz_at_min_operating_gain),
     );
     fs::write(&summary, text).map_err(|error| {
         format!(
@@ -390,6 +436,16 @@ struct SParameterNetworkSummaryRow {
     frequency_hz_at_min_maximum_stable_gain: Option<f64>,
     min_maximum_unilateral_gain_db: Option<f64>,
     frequency_hz_at_min_maximum_unilateral_gain: Option<f64>,
+    source_reflection_real: Option<f64>,
+    source_reflection_imaginary: Option<f64>,
+    load_reflection_real: Option<f64>,
+    load_reflection_imaginary: Option<f64>,
+    min_transducer_gain_db: Option<f64>,
+    frequency_hz_at_min_transducer_gain: Option<f64>,
+    min_available_gain_db: Option<f64>,
+    frequency_hz_at_min_available_gain: Option<f64>,
+    min_operating_gain_db: Option<f64>,
+    frequency_hz_at_min_operating_gain: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -642,8 +698,16 @@ fn group_delay_values_s(values: &[SParameterSample]) -> Option<Vec<f64>> {
     Some(delays)
 }
 
-fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummaryRow, String> {
+fn summarize_s_parameter_network(
+    path: &Path,
+    analog: &AnalogScenario,
+) -> Result<SParameterNetworkSummaryRow, String> {
     let samples = read_s_parameter_network_samples(path)?;
+    let source_reflection = analog
+        .analysis
+        .s_parameter_source_reflection
+        .map(Into::into);
+    let load_reflection = analog.analysis.s_parameter_load_reflection.map(Into::into);
     let mut min_frequency_hz = f64::INFINITY;
     let mut max_frequency_hz = f64::NEG_INFINITY;
     let mut max_reciprocity_error_linear = f64::NEG_INFINITY;
@@ -660,6 +724,12 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
     let mut frequency_hz_at_min_maximum_stable_gain: Option<f64> = None;
     let mut min_maximum_unilateral_gain_db: Option<f64> = None;
     let mut frequency_hz_at_min_maximum_unilateral_gain: Option<f64> = None;
+    let mut min_transducer_gain_db: Option<f64> = None;
+    let mut frequency_hz_at_min_transducer_gain: Option<f64> = None;
+    let mut min_available_gain_db: Option<f64> = None;
+    let mut frequency_hz_at_min_available_gain: Option<f64> = None;
+    let mut min_operating_gain_db: Option<f64> = None;
+    let mut frequency_hz_at_min_operating_gain: Option<f64> = None;
     for sample in &samples {
         min_frequency_hz = min_frequency_hz.min(sample.frequency_hz);
         max_frequency_hz = max_frequency_hz.max(sample.frequency_hz);
@@ -703,6 +773,27 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
             min_maximum_unilateral_gain_db = Some(gain_db);
             frequency_hz_at_min_maximum_unilateral_gain = Some(sample.frequency_hz);
         }
+        if let (Some(source), Some(load)) = (source_reflection, load_reflection)
+            && let Some(gain_db) = transducer_gain_db(sample, source, load)
+            && min_transducer_gain_db.is_none_or(|current| gain_db < current)
+        {
+            min_transducer_gain_db = Some(gain_db);
+            frequency_hz_at_min_transducer_gain = Some(sample.frequency_hz);
+        }
+        if let Some(source) = source_reflection
+            && let Some(gain_db) = available_gain_db(sample, source)
+            && min_available_gain_db.is_none_or(|current| gain_db < current)
+        {
+            min_available_gain_db = Some(gain_db);
+            frequency_hz_at_min_available_gain = Some(sample.frequency_hz);
+        }
+        if let Some(load) = load_reflection
+            && let Some(gain_db) = operating_gain_db(sample, load)
+            && min_operating_gain_db.is_none_or(|current| gain_db < current)
+        {
+            min_operating_gain_db = Some(gain_db);
+            frequency_hz_at_min_operating_gain = Some(sample.frequency_hz);
+        }
     }
     Ok(SParameterNetworkSummaryRow {
         port_count: 2,
@@ -723,6 +814,16 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
         frequency_hz_at_min_maximum_stable_gain,
         min_maximum_unilateral_gain_db,
         frequency_hz_at_min_maximum_unilateral_gain,
+        source_reflection_real: source_reflection.map(|value: ComplexValue| value.real),
+        source_reflection_imaginary: source_reflection.map(|value: ComplexValue| value.imaginary),
+        load_reflection_real: load_reflection.map(|value: ComplexValue| value.real),
+        load_reflection_imaginary: load_reflection.map(|value: ComplexValue| value.imaginary),
+        min_transducer_gain_db,
+        frequency_hz_at_min_transducer_gain,
+        min_available_gain_db,
+        frequency_hz_at_min_available_gain,
+        min_operating_gain_db,
+        frequency_hz_at_min_operating_gain,
     })
 }
 
@@ -825,6 +926,13 @@ fn parse_complex_parameter(
 }
 
 impl ComplexValue {
+    fn one() -> Self {
+        Self {
+            real: 1.0,
+            imaginary: 0.0,
+        }
+    }
+
     fn from_polar_degrees(magnitude: f64, phase_deg: f64) -> Self {
         let radians = phase_deg.to_radians();
         Self {
@@ -886,6 +994,15 @@ impl ComplexValue {
 
     fn magnitude(self) -> f64 {
         self.magnitude_squared().sqrt()
+    }
+}
+
+impl From<AnalogSParameterReflectionCoefficient> for ComplexValue {
+    fn from(value: AnalogSParameterReflectionCoefficient) -> Self {
+        Self {
+            real: value.real,
+            imaginary: value.imaginary,
+        }
     }
 }
 
@@ -961,6 +1078,78 @@ fn maximum_unilateral_gain_db(sample: &SParameterNetworkSample) -> Option<f64> {
         return None;
     }
     finite_positive_db(forward_gain / denominator)
+}
+
+fn transducer_gain_db(
+    sample: &SParameterNetworkSample,
+    source: ComplexValue,
+    load: ComplexValue,
+) -> Option<f64> {
+    let source_term = passive_power_term(source)?;
+    let load_term = passive_power_term(load)?;
+    let one = ComplexValue::one();
+    let denominator = one
+        .subtract(sample.s11.multiply(source))
+        .multiply(one.subtract(sample.s22.multiply(load)))
+        .subtract(
+            sample
+                .s12
+                .multiply(sample.s21)
+                .multiply(source)
+                .multiply(load),
+        )
+        .magnitude_squared();
+    if !denominator.is_finite() || denominator <= f64::EPSILON {
+        return None;
+    }
+    finite_positive_db(source_term * sample.s21.magnitude_squared() * load_term / denominator)
+}
+
+fn available_gain_db(sample: &SParameterNetworkSample, source: ComplexValue) -> Option<f64> {
+    let source_term = passive_power_term(source)?;
+    let one = ComplexValue::one();
+    let input_denominator = one
+        .subtract(sample.s11.multiply(source))
+        .magnitude_squared();
+    if !input_denominator.is_finite() || input_denominator <= f64::EPSILON {
+        return None;
+    }
+    let gamma_out = sample.s22.add(
+        sample
+            .s12
+            .multiply(sample.s21)
+            .multiply(source)
+            .divide(one.subtract(sample.s11.multiply(source)))?,
+    );
+    let output_term = passive_power_term(gamma_out)?;
+    finite_positive_db(
+        source_term * sample.s21.magnitude_squared() / (input_denominator * output_term),
+    )
+}
+
+fn operating_gain_db(sample: &SParameterNetworkSample, load: ComplexValue) -> Option<f64> {
+    let load_term = passive_power_term(load)?;
+    let one = ComplexValue::one();
+    let output_denominator = one.subtract(sample.s22.multiply(load)).magnitude_squared();
+    if !output_denominator.is_finite() || output_denominator <= f64::EPSILON {
+        return None;
+    }
+    let gamma_in = sample.s11.add(
+        sample
+            .s12
+            .multiply(sample.s21)
+            .multiply(load)
+            .divide(one.subtract(sample.s22.multiply(load)))?,
+    );
+    let input_term = passive_power_term(gamma_in)?;
+    finite_positive_db(
+        sample.s21.magnitude_squared() * load_term / (input_term * output_denominator),
+    )
+}
+
+fn passive_power_term(value: ComplexValue) -> Option<f64> {
+    let term = 1.0 - value.magnitude_squared();
+    (term.is_finite() && term > f64::EPSILON).then_some(term)
 }
 
 fn finite_positive_db(value: f64) -> Option<f64> {
@@ -1065,7 +1254,7 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         .next()
         .ok_or_else(|| "S-parameter network summary CSV has no header row.".to_string())?;
     if header
-        != "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude,min_maximum_available_gain_db,frequency_hz_at_min_maximum_available_gain,min_maximum_stable_gain_db,frequency_hz_at_min_maximum_stable_gain,min_maximum_unilateral_gain_db,frequency_hz_at_min_maximum_unilateral_gain"
+        != "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude,min_maximum_available_gain_db,frequency_hz_at_min_maximum_available_gain,min_maximum_stable_gain_db,frequency_hz_at_min_maximum_stable_gain,min_maximum_unilateral_gain_db,frequency_hz_at_min_maximum_unilateral_gain,source_reflection_real,source_reflection_imaginary,load_reflection_real,load_reflection_imaginary,min_transducer_gain_db,frequency_hz_at_min_transducer_gain,min_available_gain_db,frequency_hz_at_min_available_gain,min_operating_gain_db,frequency_hz_at_min_operating_gain"
     {
         return Err("S-parameter network summary CSV has unexpected header.".to_string());
     }
@@ -1078,9 +1267,9 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         );
     }
     let fields: Vec<_> = row.split(',').map(str::trim).collect();
-    if fields.len() != 18 {
+    if fields.len() != 28 {
         return Err(format!(
-            "S-parameter network summary row has {} fields, expected 18.",
+            "S-parameter network summary row has {} fields, expected 28.",
             fields.len()
         ));
     }
@@ -1139,6 +1328,31 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         frequency_hz_at_min_maximum_unilateral_gain: parse_optional_finite_f64(
             fields[17],
             "frequency_hz_at_min_maximum_unilateral_gain",
+        )?,
+        source_reflection_real: parse_optional_finite_f64(fields[18], "source_reflection_real")?,
+        source_reflection_imaginary: parse_optional_finite_f64(
+            fields[19],
+            "source_reflection_imaginary",
+        )?,
+        load_reflection_real: parse_optional_finite_f64(fields[20], "load_reflection_real")?,
+        load_reflection_imaginary: parse_optional_finite_f64(
+            fields[21],
+            "load_reflection_imaginary",
+        )?,
+        min_transducer_gain_db: parse_optional_finite_f64(fields[22], "min_transducer_gain_db")?,
+        frequency_hz_at_min_transducer_gain: parse_optional_finite_f64(
+            fields[23],
+            "frequency_hz_at_min_transducer_gain",
+        )?,
+        min_available_gain_db: parse_optional_finite_f64(fields[24], "min_available_gain_db")?,
+        frequency_hz_at_min_available_gain: parse_optional_finite_f64(
+            fields[25],
+            "frequency_hz_at_min_available_gain",
+        )?,
+        min_operating_gain_db: parse_optional_finite_f64(fields[26], "min_operating_gain_db")?,
+        frequency_hz_at_min_operating_gain: parse_optional_finite_f64(
+            fields[27],
+            "frequency_hz_at_min_operating_gain",
         )?,
     })
 }
@@ -1226,6 +1440,9 @@ fn network_metric_value(
         AnalogSParameterNetworkMetric::MaximumUnilateralGainDbMin => {
             row.min_maximum_unilateral_gain_db
         }
+        AnalogSParameterNetworkMetric::TransducerGainDbMin => row.min_transducer_gain_db,
+        AnalogSParameterNetworkMetric::AvailableGainDbMin => row.min_available_gain_db,
+        AnalogSParameterNetworkMetric::OperatingGainDbMin => row.min_operating_gain_db,
     }
 }
 
@@ -1419,6 +1636,46 @@ fn push_s_parameter_network_assertion_finding(
     finding.measured.insert(
         "frequency_hz_at_min_maximum_unilateral_gain".to_string(),
         json!(row.frequency_hz_at_min_maximum_unilateral_gain),
+    );
+    finding.measured.insert(
+        "source_reflection_real".to_string(),
+        json!(row.source_reflection_real),
+    );
+    finding.measured.insert(
+        "source_reflection_imaginary".to_string(),
+        json!(row.source_reflection_imaginary),
+    );
+    finding.measured.insert(
+        "load_reflection_real".to_string(),
+        json!(row.load_reflection_real),
+    );
+    finding.measured.insert(
+        "load_reflection_imaginary".to_string(),
+        json!(row.load_reflection_imaginary),
+    );
+    finding.measured.insert(
+        "min_transducer_gain_db".to_string(),
+        json!(row.min_transducer_gain_db),
+    );
+    finding.measured.insert(
+        "frequency_hz_at_min_transducer_gain".to_string(),
+        json!(row.frequency_hz_at_min_transducer_gain),
+    );
+    finding.measured.insert(
+        "min_available_gain_db".to_string(),
+        json!(row.min_available_gain_db),
+    );
+    finding.measured.insert(
+        "frequency_hz_at_min_available_gain".to_string(),
+        json!(row.frequency_hz_at_min_available_gain),
+    );
+    finding.measured.insert(
+        "min_operating_gain_db".to_string(),
+        json!(row.min_operating_gain_db),
+    );
+    finding.measured.insert(
+        "frequency_hz_at_min_operating_gain".to_string(),
+        json!(row.frequency_hz_at_min_operating_gain),
     );
     finding.measured.insert(
         "s_parameter_network_summary".to_string(),
@@ -1653,7 +1910,10 @@ fn s_parameter_network_assertion_unit(assertion: &AnalogSParameterNetworkAsserti
     assertion.unit.as_deref().unwrap_or(match assertion.metric {
         AnalogSParameterNetworkMetric::MaximumAvailableGainDbMin
         | AnalogSParameterNetworkMetric::MaximumStableGainDbMin
-        | AnalogSParameterNetworkMetric::MaximumUnilateralGainDbMin => "dB",
+        | AnalogSParameterNetworkMetric::MaximumUnilateralGainDbMin
+        | AnalogSParameterNetworkMetric::TransducerGainDbMin
+        | AnalogSParameterNetworkMetric::AvailableGainDbMin
+        | AnalogSParameterNetworkMetric::OperatingGainDbMin => "dB",
         _ => "ratio",
     })
 }
@@ -1686,6 +1946,9 @@ fn network_metric_name(metric: AnalogSParameterNetworkMetric) -> &'static str {
         AnalogSParameterNetworkMetric::MaximumUnilateralGainDbMin => {
             "maximum_unilateral_gain_db_min"
         }
+        AnalogSParameterNetworkMetric::TransducerGainDbMin => "transducer_gain_db_min",
+        AnalogSParameterNetworkMetric::AvailableGainDbMin => "available_gain_db_min",
+        AnalogSParameterNetworkMetric::OperatingGainDbMin => "operating_gain_db_min",
     }
 }
 

@@ -75,6 +75,12 @@ pub enum AnalogSParameterMetric {
     ImpedanceMagnitudeOhm,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct AnalogSParameterReflectionCoefficient {
+    pub real: f64,
+    pub imaginary: f64,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AnalogSParameterAggregation {
@@ -104,6 +110,9 @@ pub enum AnalogSParameterNetworkMetric {
     MaximumAvailableGainDbMin,
     MaximumStableGainDbMin,
     MaximumUnilateralGainDbMin,
+    TransducerGainDbMin,
+    AvailableGainDbMin,
+    OperatingGainDbMin,
 }
 
 #[derive(Debug, Clone, Deserialize)]

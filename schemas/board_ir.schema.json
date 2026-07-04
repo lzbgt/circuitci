@@ -3216,6 +3216,24 @@
                       "additionalProperties": false
                     }
                   },
+                  "s_parameter_source_reflection": {
+                    "type": "object",
+                    "required": ["real", "imaginary"],
+                    "properties": {
+                      "real": { "type": "number" },
+                      "imaginary": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                  },
+                  "s_parameter_load_reflection": {
+                    "type": "object",
+                    "required": ["real", "imaginary"],
+                    "properties": {
+                      "real": { "type": "number" },
+                      "imaginary": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                  },
                   "s_parameter_assertions": {
                     "type": "array",
                     "maxItems": 64,
@@ -3246,7 +3264,7 @@
                       "required": ["name", "metric", "relation", "threshold"],
                       "properties": {
                         "name": { "type": "string", "minLength": 1 },
-                        "metric": { "enum": ["reciprocity_error_linear", "passivity_max_singular_value", "rollet_k_min", "stability_delta_magnitude_max", "maximum_available_gain_db_min", "maximum_stable_gain_db_min", "maximum_unilateral_gain_db_min"] },
+                        "metric": { "enum": ["reciprocity_error_linear", "passivity_max_singular_value", "rollet_k_min", "stability_delta_magnitude_max", "maximum_available_gain_db_min", "maximum_stable_gain_db_min", "maximum_unilateral_gain_db_min", "transducer_gain_db_min", "available_gain_db_min", "operating_gain_db_min"] },
                         "relation": { "enum": ["above", "below"] },
                         "threshold": { "type": "number" },
                         "unit": { "type": "string", "minLength": 1 },
