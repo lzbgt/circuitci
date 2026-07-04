@@ -331,6 +331,77 @@ fn explicit_xyce_sparameter_backend_normalizes_touchstone_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn auto_sparameter_backend_uses_xyce_when_ngspice_is_absent() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 1.5 0.0 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "auto",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s11_return_loss_floor
+            parameter: s11
+            metric: return_loss_db
+            aggregation: min
+            relation: above
+            threshold: 3.0
+        s_parameter_network_assertions:
+          - name: passive_two_port
+            metric: passivity_max_singular_value
+            relation: below
+            threshold: 3.0
+"#,
+    );
+
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let s_parameters_path = waveform_path(&report, "s_parameters.csv");
+    assert_csv_has_header(
+        s_parameters_path,
+        &["s11_mag_db", "s21_mag_db", "s12_mag_db", "s22_mag_db"],
+    );
+    artifact_path(&report, "s_parameter_summary.csv");
+    artifact_path(&report, "s_parameter_network_summary.csv");
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["requested"], "auto");
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "s_parameter");
+    assert_eq!(
+        manifest["outputs"]["raw"][0]["kind"],
+        "xyce_s_parameters_touchstone"
+    );
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "s_parameters");
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn sparameter_assertions_pass_and_project_summary_rows() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable_with_body(
@@ -940,6 +1011,58 @@ fn sparameter_noise_assertions_fail_closed_until_sp_noise_summary_exists() {
     assert_eq!(
         nf_failure["limit"]["required_backend_feature"],
         "ngspice_sp_donoise_two_port_noise_outputs"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn auto_sparameter_noise_assertions_keep_xyce_noise_boundary() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.1 0.0 0.8 0.0 0.02 0.0 0.1 0.0\\n1.0e9 0.1 0.0 0.7 0.0 0.02 0.0 0.1 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "auto",
+        "port1",
+        r#"        s_parameter_noise_assertions:
+          - name: nf_limit
+            metric: noise_figure_db_max
+            relation: below
+            threshold: 3.0
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(failure["measured"]["assertion"], "nf_limit");
+    assert_eq!(failure["measured"]["metric"], "noise_figure_db_max");
+    assert_eq!(
+        failure["measured"]["backend_status"],
+        "planned_not_implemented"
+    );
+    assert!(
+        failure["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("No trusted non-ngspice RF SP-noise backend path")
+    );
+    assert_eq!(
+        failure["limit"]["required_normalized_output"],
+        "s_parameter_noise_summary"
+    );
+    assert!(
+        failure["measured"]["s_parameters"]
+            .as_str()
+            .unwrap()
+            .ends_with("s_parameters.csv")
     );
     assert_report_schema_valid(&report);
 }

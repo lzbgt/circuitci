@@ -640,6 +640,14 @@ The GUI should not become the solver.
   Explicit Xyce DC sweep already emitted the same normalized `dc_sweep.csv`
   and `solver_manifest.json` contract and had opt-in real-Xyce conformance, so
   auto can now select Xyce for `analog_dc_sweep` when ngspice is absent.
+- 2026-07-04: Extended `backend: auto` Xyce fallback to ordinary
+  `analog_sparameter` term/network sign-off. The explicit Xyce adapter already
+  normalizes Touchstone into the shared `s_parameters.csv`,
+  `s_parameter_summary.csv`, `s_parameter_network_summary.csv`, and
+  `solver_manifest.json` contracts with opt-in real-Xyce conformance. RF
+  SP-noise remains evidence-gated: auto-selected Xyce can retain the S matrix,
+  but `s_parameter_noise_assertions[]` still fail closed until a backend emits
+  normalized `s_parameter_noise_summary.csv`.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and

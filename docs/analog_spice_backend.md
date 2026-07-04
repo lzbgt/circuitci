@@ -232,8 +232,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    - `auto` chooses the first available backend that this CircuitCI runtime can
      actually execute and normalize for the requested analysis. In the current
      slice it prefers external ngspice, may use embedded ngspice for transient,
-     and may fall back to Xyce for AC, DC operating-point, DC sweep, and
-     ordinary `.NOISE` analyses when ngspice is absent.
+     and may fall back to Xyce for AC, DC operating-point, DC sweep, ordinary
+     `.NOISE`, and ordinary S-parameter term/network analyses when ngspice is
+     absent.
    - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
      noise runs through dedicated Xyce wrappers that export CSV-like solver
      data, normalize it to the `transient_waveform`, `ac_bode`,
@@ -482,9 +483,13 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    Noise Summary" sections, and GUI Scopes surfaces compact RF term,
    network-quality, and RF-noise rows.
 10. `backend: auto` may select ngspice for ordinary S-parameter or SP-noise
-   assertion runs, or fail closed when no requested solver is available.
-   `embedded_ngspice` remains conservative for this check and fails closed
-   with backend-planning evidence until it emits the same normalized
+   assertion runs. When ngspice is absent, it may fall back to Xyce for
+   ordinary S-parameter term/network sign-off because the explicit Xyce adapter
+   emits the same normalized `s_parameters` contract. RF SP-noise assertions
+   remain evidence-gated: auto-selected Xyce can retain the S matrix but the
+   RF-noise assertion fails closed with `s_parameter_noise_summary` blocker
+   metadata. `embedded_ngspice` remains conservative for this check and fails
+   closed with backend-planning evidence until it emits the same normalized
    `s_parameters` contract.
 11. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sparameter_cli`;
