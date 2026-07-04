@@ -276,7 +276,9 @@
         "min_insertion_loss_db",
         "max_insertion_loss_db",
         "min_vswr",
-        "max_vswr"
+        "max_vswr",
+        "min_group_delay_s",
+        "max_group_delay_s"
       ],
       "properties": {
         "artifact": { "type": "string", "minLength": 1 },
@@ -296,7 +298,9 @@
         "min_insertion_loss_db": { "type": ["number", "null"] },
         "max_insertion_loss_db": { "type": ["number", "null"] },
         "min_vswr": { "type": ["number", "null"] },
-        "max_vswr": { "type": ["number", "null"] }
+        "max_vswr": { "type": ["number", "null"] },
+        "min_group_delay_s": { "type": ["number", "null"] },
+        "max_group_delay_s": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },

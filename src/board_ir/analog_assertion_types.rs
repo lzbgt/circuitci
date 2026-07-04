@@ -68,6 +68,7 @@ pub enum AnalogSParameterMetric {
     ReturnLossDb,
     InsertionLossDb,
     Vswr,
+    GroupDelayS,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]

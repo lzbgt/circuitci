@@ -158,7 +158,8 @@ Current analog support:
   output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
   provenance. Validation derives `s_parameter_summary.csv`; optional
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
-  insertion loss, and VSWR limits with fail-closed metric applicability checks.
+  insertion loss, VSWR, and group-delay limits with fail-closed metric
+  applicability checks.
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix) from full `s_parameters.csv` data.

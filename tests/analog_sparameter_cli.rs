@@ -351,6 +351,8 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
             "min_return_loss_db",
             "max_insertion_loss_db",
             "max_vswr",
+            "min_group_delay_s",
+            "max_group_delay_s",
         ],
     );
     let summaries = report["s_parameter_summaries"].as_array().unwrap();
@@ -360,15 +362,102 @@ fn sparameter_assertions_pass_and_project_summary_rows() {
         .expect("s11 summary row");
     assert!(s11["min_return_loss_db"].as_f64().unwrap() > 6.0);
     assert!((s11["max_vswr"].as_f64().unwrap() - 3.0).abs() < 1.0e-9);
+    assert_eq!(s11["max_group_delay_s"], 0.0);
     let s21 = summaries
         .iter()
         .find(|row| row["parameter"] == "s21")
         .expect("s21 summary row");
     assert!(s21["max_insertion_loss_db"].as_f64().unwrap() < 0.0);
     assert!(s21["max_vswr"].is_null());
+    assert_eq!(s21["max_group_delay_s"], 0.0);
     let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
     assert!(markdown.contains("## S-Parameter Summary"));
     assert!(markdown.contains("`s11`"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_group_delay_assertions_pass_and_fail_from_phase_slope() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 0.0 -1.5 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s21_group_delay_below_300ps
+            parameter: s21
+            metric: group_delay_s
+            aggregation: max
+            relation: below
+            threshold: 3.0e-10
+            unit: s
+"#,
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summaries = report["s_parameter_summaries"].as_array().unwrap();
+    let s21 = summaries
+        .iter()
+        .find(|row| row["parameter"] == "s21")
+        .expect("s21 summary row");
+    let group_delay = s21["max_group_delay_s"].as_f64().unwrap();
+    assert!((2.4e-10..2.6e-10).contains(&group_delay));
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("group_delay_s="));
+    assert_report_schema_valid(&report);
+
+    let failing_project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s21_group_delay_below_100ps
+            parameter: s21
+            metric: group_delay_s
+            aggregation: max
+            relation: below
+            threshold: 1.0e-10
+"#,
+    );
+    let report = run_validation_with_path(failing_project_path.to_str().unwrap(), fake_path.path());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "s21_group_delay_below_100ps")
+        .expect("group-delay assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(failure["measured"]["metric"], "group_delay_s");
+    assert_eq!(failure["measured"]["aggregation"], "max");
+    assert!(failure["measured"]["value"].as_f64().unwrap() > 1.0e-10);
+    assert_eq!(failure["limit"]["below_threshold"], 1.0e-10);
     assert_report_schema_valid(&report);
 }
 

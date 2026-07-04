@@ -77,6 +77,8 @@ pub struct SParameterSummary {
     pub max_insertion_loss_db: Option<f64>,
     pub min_vswr: Option<f64>,
     pub max_vswr: Option<f64>,
+    pub min_group_delay_s: Option<f64>,
+    pub max_group_delay_s: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -564,6 +566,8 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
             "max_insertion_loss_db",
             "min_vswr",
             "max_vswr",
+            "min_group_delay_s",
+            "max_group_delay_s",
         ]
     {
         return Vec::new();
@@ -573,7 +577,7 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
         let Some(fields) = split_csv_fields(line) else {
             continue;
         };
-        if fields.len() != 14 {
+        if fields.len() != 16 {
             continue;
         }
         let Some(row_count) = fields[1].parse::<usize>().ok() else {
@@ -615,6 +619,12 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
         let Some(max_vswr) = parse_optional_finite_f64(&fields[13]) else {
             continue;
         };
+        let Some(min_group_delay_s) = parse_optional_finite_f64(&fields[14]) else {
+            continue;
+        };
+        let Some(max_group_delay_s) = parse_optional_finite_f64(&fields[15]) else {
+            continue;
+        };
         rows.push(SParameterSummary {
             artifact: artifact.to_string(),
             parameter: fields[0].clone(),
@@ -631,6 +641,8 @@ fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSu
             max_insertion_loss_db,
             min_vswr,
             max_vswr,
+            min_group_delay_s,
+            max_group_delay_s,
         });
     }
     rows

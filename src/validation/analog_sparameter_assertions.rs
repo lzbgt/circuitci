@@ -121,11 +121,11 @@ pub(super) fn write_s_parameter_summary(s_parameters: &Path) -> Result<PathBuf, 
         .join("s_parameter_summary.csv");
     let rows = summarize_s_parameters(s_parameters)?;
     let mut text = String::from(
-        "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr\n",
+        "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s\n",
     );
     for row in rows {
         text.push_str(&format!(
-            "{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{}\n",
+            "{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{}\n",
             row.parameter,
             row.row_count,
             row.min_frequency_hz,
@@ -140,6 +140,8 @@ pub(super) fn write_s_parameter_summary(s_parameters: &Path) -> Result<PathBuf, 
             optional_csv(row.max_insertion_loss_db),
             optional_csv(row.min_vswr),
             optional_csv(row.max_vswr),
+            optional_csv(row.min_group_delay_s),
+            optional_csv(row.max_group_delay_s),
         ));
     }
     fs::write(&summary, text).map_err(|error| {
@@ -293,6 +295,7 @@ struct SParameterSample {
     frequency_hz: f64,
     mag_db: f64,
     mag_linear: f64,
+    phase_deg: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -311,6 +314,8 @@ struct SParameterSummaryRow {
     max_insertion_loss_db: Option<f64>,
     min_vswr: Option<f64>,
     max_vswr: Option<f64>,
+    min_group_delay_s: Option<f64>,
+    max_group_delay_s: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -375,7 +380,15 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
                 "S-parameter CSV is missing {parameter}_mag_linear for {parameter}_mag_db."
             ));
         };
-        parameter_columns.push((parameter.to_string(), index, mag_linear_index));
+        let Some(phase_index) = header
+            .iter()
+            .position(|candidate| *candidate == format!("{parameter}_phase_deg"))
+        else {
+            return Err(format!(
+                "S-parameter CSV is missing {parameter}_phase_deg for {parameter}_mag_db."
+            ));
+        };
+        parameter_columns.push((parameter.to_string(), index, mag_linear_index, phase_index));
     }
     if parameter_columns.is_empty() {
         return Err("S-parameter CSV has no *_mag_db columns.".to_string());
@@ -400,7 +413,7 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
                 frequency_hz
             ));
         }
-        for (parameter, mag_db_index, mag_linear_index) in &parameter_columns {
+        for (parameter, mag_db_index, mag_linear_index, phase_index) in &parameter_columns {
             let mag_db = parse_finite_f64(fields[*mag_db_index], parameter)?;
             let mag_linear = parse_finite_f64(fields[*mag_linear_index], parameter)?;
             if mag_linear < 0.0 {
@@ -409,6 +422,7 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
                     line_index + 2
                 ));
             }
+            let phase_deg = parse_finite_f64(fields[*phase_index], parameter)?;
             samples
                 .entry(parameter.clone())
                 .or_default()
@@ -416,6 +430,7 @@ fn summarize_s_parameters(path: &Path) -> Result<Vec<SParameterSummaryRow>, Stri
                     frequency_hz,
                     mag_db,
                     mag_linear,
+                    phase_deg,
                 });
         }
     }
@@ -438,6 +453,7 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
     let mut return_losses = Vec::new();
     let mut insertion_losses = Vec::new();
     let mut vswrs = Vec::new();
+    let group_delays = group_delay_values_s(values);
     let reflection = is_reflection_parameter(&parameter);
     for sample in values {
         min_frequency_hz = min_frequency_hz.min(sample.frequency_hz);
@@ -470,7 +486,55 @@ fn summarize_parameter(parameter: String, values: &[SParameterSample]) -> SParam
         max_insertion_loss_db: finite_max(&insertion_losses),
         min_vswr: finite_min(&vswrs),
         max_vswr: finite_max(&vswrs),
+        min_group_delay_s: group_delays.as_deref().and_then(finite_min),
+        max_group_delay_s: group_delays.as_deref().and_then(finite_max),
     }
+}
+
+fn group_delay_values_s(values: &[SParameterSample]) -> Option<Vec<f64>> {
+    if values.len() < 2 {
+        return None;
+    }
+    let mut phase_rad = Vec::with_capacity(values.len());
+    let mut previous = None;
+    let mut offset = 0.0;
+    for (index, sample) in values.iter().enumerate() {
+        if index > 0 && sample.frequency_hz <= values[index - 1].frequency_hz {
+            return None;
+        }
+        let raw = sample.phase_deg.to_radians();
+        if let Some(previous_unwrapped) = previous {
+            let mut delta = raw + offset - previous_unwrapped;
+            while delta > std::f64::consts::PI {
+                offset -= std::f64::consts::TAU;
+                delta -= std::f64::consts::TAU;
+            }
+            while delta < -std::f64::consts::PI {
+                offset += std::f64::consts::TAU;
+                delta += std::f64::consts::TAU;
+            }
+        }
+        let unwrapped = raw + offset;
+        previous = Some(unwrapped);
+        phase_rad.push(unwrapped);
+    }
+    let mut delays = Vec::with_capacity(values.len());
+    for index in 0..values.len() {
+        let (left, right) = if index == 0 {
+            (0, 1)
+        } else if index + 1 == values.len() {
+            (index - 1, index)
+        } else {
+            (index - 1, index + 1)
+        };
+        let omega_span =
+            std::f64::consts::TAU * (values[right].frequency_hz - values[left].frequency_hz);
+        if !omega_span.is_finite() || omega_span <= 0.0 {
+            return None;
+        }
+        delays.push(-(phase_rad[right] - phase_rad[left]) / omega_span);
+    }
+    Some(delays)
 }
 
 fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummaryRow, String> {
@@ -677,16 +741,16 @@ fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, St
         .next()
         .ok_or_else(|| "S-parameter summary CSV has no header row.".to_string())?;
     if header
-        != "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr"
+        != "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s"
     {
         return Err("S-parameter summary CSV has unexpected header.".to_string());
     }
     let mut rows = Vec::new();
     for (line_index, line) in lines.enumerate() {
         let fields: Vec<_> = line.split(',').map(str::trim).collect();
-        if fields.len() != 14 {
+        if fields.len() != 16 {
             return Err(format!(
-                "S-parameter summary row {} has {} fields, expected 14.",
+                "S-parameter summary row {} has {} fields, expected 16.",
                 line_index + 2,
                 fields.len()
             ));
@@ -711,6 +775,8 @@ fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, St
             max_insertion_loss_db: parse_optional_finite_f64(fields[11], "max_insertion_loss_db")?,
             min_vswr: parse_optional_finite_f64(fields[12], "min_vswr")?,
             max_vswr: parse_optional_finite_f64(fields[13], "max_vswr")?,
+            min_group_delay_s: parse_optional_finite_f64(fields[14], "min_group_delay_s")?,
+            max_group_delay_s: parse_optional_finite_f64(fields[15], "max_group_delay_s")?,
         });
     }
     if rows.is_empty() {
@@ -800,6 +866,12 @@ fn metric_value(assertion: &AnalogSParameterAssertion, row: &SParameterSummaryRo
         }
         (AnalogSParameterMetric::Vswr, AnalogSParameterAggregation::Min) => row.min_vswr,
         (AnalogSParameterMetric::Vswr, AnalogSParameterAggregation::Max) => row.max_vswr,
+        (AnalogSParameterMetric::GroupDelayS, AnalogSParameterAggregation::Min) => {
+            row.min_group_delay_s
+        }
+        (AnalogSParameterMetric::GroupDelayS, AnalogSParameterAggregation::Max) => {
+            row.max_group_delay_s
+        }
     }
 }
 
@@ -1137,6 +1209,7 @@ fn s_parameter_assertion_unit(assertion: &AnalogSParameterAssertion) -> &str {
         | AnalogSParameterMetric::InsertionLossDb => "dB",
         AnalogSParameterMetric::MagnitudeLinear => "ratio",
         AnalogSParameterMetric::Vswr => "ratio",
+        AnalogSParameterMetric::GroupDelayS => "s",
     })
 }
 
@@ -1151,6 +1224,7 @@ fn metric_name(metric: AnalogSParameterMetric) -> &'static str {
         AnalogSParameterMetric::ReturnLossDb => "return_loss_db",
         AnalogSParameterMetric::InsertionLossDb => "insertion_loss_db",
         AnalogSParameterMetric::Vswr => "vswr",
+        AnalogSParameterMetric::GroupDelayS => "group_delay_s",
     }
 }
 

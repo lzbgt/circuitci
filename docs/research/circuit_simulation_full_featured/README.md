@@ -638,7 +638,7 @@ The GUI should not become the solver.
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized
   `s_parameter_summary.csv` metrics for magnitude, return loss, insertion
-  loss, and VSWR; validation reports project retained summaries into
+  loss, VSWR, and group delay; validation reports project retained summaries into
   `s_parameter_summaries[]`, Markdown includes an "S-Parameter Summary"
   section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
   return-loss, insertion-loss, and VSWR traces from full `s_parameters.csv`

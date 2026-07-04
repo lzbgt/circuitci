@@ -406,12 +406,14 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
 5. CircuitCI derives `s_parameter_summary.csv` from the normalized waveform
    with per-term frequency span, magnitude min/max, return-loss min/max for
    reflection terms, insertion-loss min/max for transmission terms, and VSWR
-   min/max for reflection terms whose linear magnitude is below unity.
+   min/max for reflection terms whose linear magnitude is below unity. It also
+   derives per-term group-delay min/max in seconds from unwrapped phase as
+   `-dphi/domega`.
 6. Optional `analysis.s_parameter_assertions[]` sign off
    `s_parameter_summary.csv` metrics (`magnitude_db`, `magnitude_linear`,
-   `return_loss_db`, `insertion_loss_db`, or `vswr`) using `min`/`max`
-   aggregation plus `above`/`below` limits. `return_loss_db` and `vswr`
-   require reflection terms such as `s11`; `insertion_loss_db` requires
+   `return_loss_db`, `insertion_loss_db`, `vswr`, or `group_delay_s`) using
+   `min`/`max` aggregation plus `above`/`below` limits. `return_loss_db` and
+   `vswr` require reflection terms such as `s11`; `insertion_loss_db` requires
    transmission terms such as `s21`. Missing or unavailable metrics and failed
    limits emit `SPICE_S_PARAMETER_ANALYSIS` findings with retained summary
    provenance.

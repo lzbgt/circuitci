@@ -607,8 +607,9 @@ pub fn markdown_report(report: &ValidationReport) -> String {
             let insertion_loss =
                 format_optional_range(row.min_insertion_loss_db, row.max_insertion_loss_db);
             let vswr = format_optional_range(row.min_vswr, row.max_vswr);
+            let group_delay = format_optional_range(row.min_group_delay_s, row.max_group_delay_s);
             text.push_str(&format!(
-                "- `{}`: rows={} frequency={:.6e}..{:.6e} Hz magnitude_db={:.6e}..{:.6e} return_loss_db={} insertion_loss_db={} vswr={}\n",
+                "- `{}`: rows={} frequency={:.6e}..{:.6e} Hz magnitude_db={:.6e}..{:.6e} return_loss_db={} insertion_loss_db={} vswr={} group_delay_s={}\n",
                 row.parameter,
                 row.row_count,
                 row.min_frequency_hz,
@@ -617,7 +618,8 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.max_mag_db,
                 return_loss,
                 insertion_loss,
-                vswr
+                vswr,
+                group_delay
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -1924,7 +1926,7 @@ mod tests {
         let summary = dir.path().join("s_parameter_summary.csv");
         fs::write(
             &summary,
-            "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr\ns11,2,1.000000000000e6,1.000000000000e9,-1.397940008672e1,-6.020599913280e0,2.000000000000e-1,5.000000000000e-1,6.020599913280e0,1.397940008672e1,,,1.500000000000e0,3.000000000000e0\ns21,2,1.000000000000e6,1.000000000000e9,3.521825181114e0,6.020599913280e0,1.500000000000e0,2.000000000000e0,,,-6.020599913280e0,-3.521825181114e0,,\n",
+            "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr,min_group_delay_s,max_group_delay_s\ns11,2,1.000000000000e6,1.000000000000e9,-1.397940008672e1,-6.020599913280e0,2.000000000000e-1,5.000000000000e-1,6.020599913280e0,1.397940008672e1,,,1.500000000000e0,3.000000000000e0,0.000000000000e0,0.000000000000e0\ns21,2,1.000000000000e6,1.000000000000e9,3.521825181114e0,6.020599913280e0,1.500000000000e0,2.000000000000e0,,,-6.020599913280e0,-3.521825181114e0,,,1.000000000000e-9,2.000000000000e-9\n",
         )
         .unwrap();
 
@@ -1945,6 +1947,7 @@ mod tests {
             Some(6.02059991328)
         );
         assert_eq!(report.s_parameter_summaries[0].max_vswr, Some(3.0));
+        assert_eq!(report.s_parameter_summaries[0].min_group_delay_s, Some(0.0));
         assert_eq!(report.s_parameter_summaries[1].parameter, "s21");
         assert_eq!(report.s_parameter_summaries[1].min_return_loss_db, None);
         assert_eq!(
@@ -1955,5 +1958,6 @@ mod tests {
         assert!(markdown.contains("## S-Parameter Summary"));
         assert!(markdown.contains("`s11`"));
         assert!(markdown.contains("vswr=1.500000e0..3.000000e0"));
+        assert!(markdown.contains("group_delay_s=1.000000e-9..2.000000e-9"));
     }
 }
