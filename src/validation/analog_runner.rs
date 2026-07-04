@@ -1498,7 +1498,11 @@ pub(super) fn select_backend_for_feature(
             }
         }
         AnalogBackend::Auto => {
-            if executable_on_path("ngspice") {
+            if feature.prefers_auto_xyce() && executable_on_path("Xyce") {
+                BackendSelection::Selected("Xyce")
+            } else if feature.prefers_auto_xyce() && executable_on_path("xyce") {
+                BackendSelection::Selected("xyce")
+            } else if executable_on_path("ngspice") {
                 BackendSelection::Selected("ngspice")
             } else if feature.supports_embedded_ngspice() && embedded_ngspice_available() {
                 BackendSelection::Selected("embedded_ngspice")

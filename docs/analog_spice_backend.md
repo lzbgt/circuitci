@@ -234,7 +234,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
      slice it prefers external ngspice, may use embedded ngspice for transient,
      and may fall back to Xyce for transient, AC, DC operating-point, DC sweep,
      ordinary `.NOISE`, ordinary S-parameter term/network, sensitivity, and
-     Fourier analyses when ngspice is absent.
+     Fourier analyses when ngspice is absent. Harmonic balance is the exception:
+     auto prefers Xyce because it is the only backend that emits the normalized
+     `hb_spectrum` contract.
    - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
      noise runs through dedicated Xyce wrappers that export CSV-like solver
      data, normalize it to the `transient_waveform`, `ac_bode`,
@@ -729,10 +731,11 @@ For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:
 7. Opt-in real-solver conformance is available with
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
    it skips unless `Xyce` or `xyce` is on `PATH`.
-8. `backend: auto`, `ngspice`, and `embedded_ngspice` remain fail-closed with
-   backend-planning evidence plus structured `adapter_blocker` and
-   `evidence_sources[]` metadata until those adapters emit the same normalized
-   `hb_spectrum` contract.
+8. `backend: auto` prefers Xyce for harmonic balance because the Xyce adapter is
+   the only runtime path that emits normalized `hb_spectrum` evidence. Explicit
+   `ngspice` and `embedded_ngspice` remain fail-closed with backend-planning
+   evidence plus structured `adapter_blocker` and `evidence_sources[]` metadata
+   until those adapters emit the same normalized contract.
 
 For a scenario with check `SPICE_PSS_ANALYSIS`:
 

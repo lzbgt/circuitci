@@ -34,6 +34,11 @@ impl AnalogRuntimeFeature {
                 | Self::SParameter
                 | Self::Sensitivity
                 | Self::Fourier
+                | Self::HarmonicBalance
         )
+    }
+
+    pub(super) fn prefers_auto_xyce(self) -> bool {
+        matches!(self, Self::HarmonicBalance)
     }
 }

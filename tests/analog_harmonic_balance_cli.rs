@@ -348,6 +348,55 @@ fn explicit_xyce_harmonic_balance_normalizes_spectrum_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn auto_harmonic_balance_prefers_xyce_over_ngspice() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "ngspice");
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'FREQ,V(out)_REAL,V(out)_IMAG' '0,5.0e-1,0' '1.0e5,3.0e-1,-4.0e-1' '-1.0e5,3.0e-1,4.0e-1' > hb_spectrum_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_harmonic_balance_project(project_dir.path(), "auto", "V(out)", "V1");
+
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    artifact_path(&report, "hb_spectrum.csv");
+    let manifest = out_dir
+        .path()
+        .join(artifact_path(&report, "solver_manifest.json"));
+    let manifest_json: Value =
+        serde_json::from_str(&fs::read_to_string(manifest).unwrap()).unwrap();
+    assert_eq!(manifest_json["backend"]["requested"], "auto");
+    assert_eq!(manifest_json["backend"]["selected"], "Xyce");
+    assert_eq!(manifest_json["analysis"]["kind"], "harmonic_balance");
+    assert_eq!(
+        manifest_json["outputs"]["normalized"][0]["kind"],
+        "hb_spectrum"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn real_xyce_harmonic_balance_conformance_when_enabled() {
     if !real_xyce_harmonic_balance_conformance_enabled() {
         return;

@@ -362,9 +362,11 @@ Current analog support:
   phase, real, and imaginary traces. Opt-in real-Xyce conformance is available
   through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_harmonic_balance_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
-  `backend: auto`, `ngspice`, and embedded ngspice remain fail-closed with
-  planning evidence plus `adapter_blocker` and `evidence_sources[]` metadata
-  until they emit the same normalized output contract.
+  `backend: auto` is Xyce-first for this analysis because Xyce is the only
+  backend that currently emits normalized `hb_spectrum` evidence. Explicit
+  `ngspice` and embedded ngspice remain fail-closed with planning evidence plus
+  `adapter_blocker` and `evidence_sources[]` metadata until they emit the same
+  normalized output contract.
 - `analog_pss` scenarios with `SPICE_PSS_ANALYSIS` for periodic steady-state
   and oscillator evidence planning. The Board IR/schema can declare
   `analysis.type: pss`, `pss_mode: driven|autonomous`,
@@ -459,9 +461,10 @@ Current analog support:
   contracts, and write solver manifests.
   `backend: auto` prefers ngspice, can fall back to Xyce for transient, AC, DC,
   DC sweep, ordinary noise, ordinary S-parameter term/network, sensitivity,
-  Fourier, and template-only measure scenarios, and keeps Xyce explicit-only
-  for other specialized analyses until those auto boundaries are handled
-  separately. The opt-in real-solver conformance paths are
+  Fourier, and template-only measure scenarios, prefers Xyce for harmonic
+  balance, and keeps Xyce explicit-only for other specialized analyses until
+  those auto boundaries are handled separately. The opt-in real-solver
+  conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli` for DC

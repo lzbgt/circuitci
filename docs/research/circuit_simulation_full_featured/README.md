@@ -633,8 +633,8 @@ The GUI should not become the solver.
   rewritten as templates.
 - 2026-07-04: `backend: auto` now also falls back to Xyce for AC Bode, DC
   operating-point, and ordinary `.NOISE` analyses when ngspice is absent. The
-  selector remains conservative for harmonic-balance and planned periodic/RF
-  paths until those auto boundaries are handled explicitly.
+  selector remains conservative for planned periodic/RF paths until those auto
+  boundaries are handled explicitly.
 - 2026-07-04: Extended the same `backend: auto` Xyce fallback to DC sweep.
   Explicit Xyce DC sweep already emitted the same normalized `dc_sweep.csv`
   and `solver_manifest.json` contract and had opt-in real-Xyce conformance, so
@@ -659,6 +659,11 @@ The GUI should not become the solver.
   with solver manifests, fake-solver normalization coverage, and opt-in
   real-Xyce conformance hooks. Auto `.SENS` still depends on the existing Xyce
   filter contract because Xyce requires explicit `param=` targets.
+- 2026-07-04: Enabled `backend: auto` for harmonic balance with an Xyce-first
+  selector. HB is intentionally different from the normal ngspice-first auto
+  policy because only the Xyce adapter currently emits normalized
+  `hb_spectrum.csv` plus solver-manifest evidence; explicit ngspice and
+  embedded ngspice still fail closed with the retained HB blocker metadata.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and
@@ -687,7 +692,10 @@ The GUI should not become the solver.
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_harmonic_balance_cli`;
   the test skips unless `Xyce` or `xyce` is on `PATH`. Non-Xyce HB
   fail-closed findings now carry `adapter_blocker` and `evidence_sources[]`
-  metadata pointing back to the retained Xyce HB evidence.
+  metadata pointing back to the retained Xyce HB evidence. `backend: auto`
+  now prefers Xyce for HB even if ngspice is also installed, so available
+  normalized HB evidence is used instead of selecting an unsupported ngspice
+  path.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized
