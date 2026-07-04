@@ -973,6 +973,16 @@ ambient power limit with 5 mW/C derating, TO-92 pinout, gain/saturation,
 capacitance, and transition-frequency metadata. The model stores PNP terminal
 voltage and collector-current ratings with negative signs so reports preserve
 polarity while operating-limit probes evaluate absolute magnitude.
+`vendor.onsemi.1n5819` adds a source-backed common Schottky rectifier pack.
+Official onsemi documentation backs its 40 V repetitive reverse-voltage limit,
+1 A average rectified forward-current rating, 25 A one-cycle surge-current
+metadata, low forward-voltage rows, leakage rows, ESD metadata, axial
+polarity-band package evidence, and enough thermal evidence to derive a
+conservative 0.875 W ambient power screen. Generated SPICE uses the existing
+diode operating-limit probes for reverse voltage, forward current, and power,
+but the bundled card is a reduced preliminary fit and does not validate thermal
+runaway, repetitive surge stress, leakage over temperature, rectifier waveform
+heating, or production hardware behavior.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

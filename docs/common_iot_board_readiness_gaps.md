@@ -91,7 +91,12 @@ production behavior remain outside that preliminary electrical model. onsemi
 2N3906 now covers the matching source-backed common PNP transistor complement
 with signed PNP ratings preserved in reports while probes evaluate stress
 magnitudes; the same gain/noise/switching/thermal limits remain outside the
-preliminary electrical model. TI
+preliminary electrical model. onsemi 1N5819 now covers a first source-backed
+common Schottky rectifier pack with generated SPICE operating-limit probes for
+reverse voltage, average forward current, and conservative derived power;
+thermal runaway, repetitive surge stress, reverse leakage over temperature,
+rectifier waveform heating, and
+production behavior remain outside that preliminary electrical model. TI
 TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
 static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI

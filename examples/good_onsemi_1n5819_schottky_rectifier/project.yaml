@@ -1,0 +1,116 @@
+project:
+  name: good_onsemi_1n5819_schottky_rectifier
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/diodes
+
+board:
+  components:
+    VIN:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vin_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    RSRC:
+      model: generic.analog.resistor
+      pins:
+        A: vin_5v
+        B: diode_anode
+      spice:
+        primitive: resistor
+        value_ohm: 100
+    D1:
+      model: vendor.onsemi.1n5819
+      part_number: 1N5819
+      pins:
+        A: diode_anode
+        K: load_node
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: load_node
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+  nets:
+    vin_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    diode_anode:
+      kind: digital_or_analog
+    load_node:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: schottky_rectifier_forward_bias
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VIN
+          - RSRC
+          - D1
+          - RLOAD
+      model_files:
+        - path: ../../models/spice/onsemi/1n5819.lib
+          sha256: 50695f80c8b3a16ba47a368bdf30eb6ec735a7c389a8c66c1fb88b8a134b6c86
+      node_bindings:
+        - node: vin
+          net: vin_5v
+        - node: anode
+          net: diode_anode
+        - node: load
+          net: load_node
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: anode
+          endpoint:
+            component: D1
+            pin: A
+        - node: load
+          endpoint:
+            component: D1
+            pin: K
+        - node: vin
+          endpoint:
+            component: VIN
+            pin: P
+      analysis:
+        type: tran
+        stop_time_us: 100
+        max_step_us: 0.2
+      stimuli:
+        - name: schottky_forward_bias
+          description: 1N5819 rectifier feeds a light 5 V load through 100 ohm source resistance.
+      probes:
+        - name: load_voltage
+          expression: V(load)
+        - name: diode_current
+          expression: abs(I(VIN))
+          quantity: current
+      assertions:
+        - name: load_receives_forward_current
+          probe: load_voltage
+          at_us: 50
+          relation: above
+          threshold_v: 4
+        - name: diode_current_below_average_rating
+          probe: diode_current
+          at_us: 50
+          relation: below
+          threshold_a: 0.1

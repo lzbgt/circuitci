@@ -1,0 +1,109 @@
+component_id: vendor.onsemi.1n5819
+version: 0.1.0
+category: diode
+ports:
+  A:
+    kind: passive
+    required: true
+  K:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: onsemi
+  part_number: 1N5819
+  package: Axial lead, Case 59
+  polarity: schottky_barrier_rectifier
+  pinout:
+    A: Anode
+    K: Cathode, indicated by polarity band
+  absolute_maximum_ratings:
+    VRRM:
+      value: 40
+      unit: V
+    VRSM:
+      value: 48
+      unit: V
+    VR_RMS:
+      value: 28
+      unit: V
+    IF_AV:
+      value: 1
+      unit: A
+      conditions: Average rectified forward current; datasheet symbol IO.
+    IFSM:
+      value: 25
+      unit: A
+      conditions: Non-repetitive peak surge current, one 60 Hz half-wave cycle.
+    PD:
+      value: 0.875
+      unit: W
+      conditions: Derived conservative ambient power limit from TJ(max)=125 C, TA=55 C rated-current condition, and RJA=80 C/W.
+    TJ:
+      value: 125
+      unit: C
+      conditions: Operating junction maximum with reverse voltage applied.
+    TJ_peak:
+      value: 150
+      unit: C
+      conditions: Peak operating junction temperature with forward current applied.
+  electrical_characteristics:
+    forward_voltage_100ma:
+      conditions: IF = 0.1 A, TL = 25 C.
+      max: 0.34
+      unit: V
+    forward_voltage_1a:
+      conditions: IF = 1 A, TL = 25 C.
+      max: 0.6
+      unit: V
+    forward_voltage_3a:
+      conditions: IF = 3 A, TL = 25 C.
+      max: 0.9
+      unit: V
+    reverse_current_25c:
+      conditions: Rated DC reverse voltage, TL = 25 C.
+      max: 1
+      unit: mA
+    reverse_current_100c:
+      conditions: Rated DC reverse voltage, TL = 100 C.
+      max: 10
+      unit: mA
+  device_parameters:
+    thermal_resistance_junction_to_ambient:
+      max: 80
+      unit: C/W
+    esd_machine_model_min_voltage:
+      value: 400
+      unit: V
+      conditions: Machine Model class C.
+    esd_human_body_model_min_voltage:
+      value: 8000
+      unit: V
+      conditions: Human Body Model class 3B.
+  documents:
+    - title: 1N5817, 1N5818, 1N5819 Schottky Barrier Rectifiers
+      path: docs/research/datasheets/onsemi/1n5817_1n5818_1n5819.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/1n5817-d.pdf
+      sha256: ac67aa23beb66d3e48ca1ffb6275cbe3beff1c801c65448ad2dd7863977d8307
+      retrieved: "2026-07-05"
+simulation:
+  spice:
+    model_name: ONSEMI_1N5819
+    model_type: diode
+    model_path: models/spice/onsemi/1n5819.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Reduced Schottky diode fit for generated board-level transient checks.
+      - Source-backed operating-limit probes enforce 40 V repetitive reverse voltage, 1 A average rectified forward current, and a derived 0.875 W thermal power screen from datasheet thermal evidence.
+      - Reverse leakage, thermal runaway, surge-current derating, and rectifier waveform thermal design need separate evidence.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - schottky_rectifier_generated_spice_plumbing
+    - diode_operating_limit_validation
+    - preliminary_low_voltage_rectifier_screening
+  not_valid_for:
+    - thermal_runaway_or_rectifier_waveform_signoff
+    - surge_current_repetitive_derating_without_waveform_evidence
+    - reverse_leakage_or_high_temperature_signoff
+    - final_hardware_signoff_without_vendor_or_bench_calibration

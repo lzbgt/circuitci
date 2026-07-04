@@ -161,6 +161,18 @@ SPICE card for generated high-side switch checks. It does not sign off gain
 spread, noise, storage time, thermal board coupling, or production hardware
 behavior. See `docs/onsemi_2n3906_model.md`.
 
+`vendor.onsemi.1n5819` provides a source-backed static/generated-SPICE pack
+for onsemi's 1 A, 40 V axial Schottky barrier rectifier. It records the
+40 V repetitive reverse-voltage limit, 48 V non-repetitive peak reverse
+voltage, 1 A average rectified forward-current limit, 25 A one-cycle surge
+metadata, low forward-voltage rows, leakage rows, axial polarity-band
+metadata, and a 0.875 W conservative power screen derived from datasheet
+thermal evidence. The bundled SPICE card is a reduced preliminary Schottky fit
+for generated-transient plumbing and source-backed diode operating-limit
+probes; it does not sign off thermal runaway, repetitive surge behavior,
+rectifier waveform heating, reverse leakage over temperature, or production
+hardware behavior. See `docs/onsemi_1n5819_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

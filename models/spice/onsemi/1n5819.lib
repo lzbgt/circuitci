@@ -1,0 +1,5 @@
+* Reduced preliminary SPICE card for onsemi 1N5819 generated-fixture checks.
+* Source-backed operating limits live in libs/vendor/onsemi/diodes/1n5819.model.yaml.
+* Replace with a vendor or bench-calibrated card before production sign-off.
+
+.model ONSEMI_1N5819 D(Is=220n Rs=0.08 N=1.08 Cjo=110p M=0.33 Eg=0.69 Bv=40 Ibv=1m Tt=5n)

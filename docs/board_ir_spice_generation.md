@@ -462,6 +462,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   `examples/bad_kingbright_apt1608surck_led_overcurrent` prove generated diode
   and LED forward-current, reverse-voltage, and power stress can be checked
   automatically against datasheet absolute maximum ratings.
+- `examples/good_onsemi_1n5819_schottky_rectifier` and
+  `examples/bad_onsemi_1n5819_overcurrent` prove the same diode operating-limit
+  path works for a source-backed Schottky rectifier whose datasheet average
+  rectified current is mapped into the Board IR `IF_AV` rating key.
 
 ## Datasheet Operating Limits
 
