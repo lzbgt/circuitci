@@ -224,8 +224,9 @@ Current analog support:
   magnitude/phase, normalized magnitude/phase, and THD/grid metadata.
   Validation reports project retained Fourier rows into `fourier_summaries[]`,
   Markdown reports include a "Fourier Summary" section, and the GUI artifact
-  panel shows compact harmonic/THD rows. Opt-in real-ngspice conformance
-  coverage is available through
+  panel shows compact harmonic/THD rows. Scopes loads `fourier_summary.csv` as
+  frequency-axis magnitude/phase and normalized magnitude/phase traces for
+  plotting. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
   unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
   with planning evidence for this path.

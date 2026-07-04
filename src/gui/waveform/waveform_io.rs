@@ -168,7 +168,9 @@ where
 fn report_waveform_paths(report: &ValidationReport) -> Vec<String> {
     let mut paths = report.waveforms.clone();
     for artifact in &report.artifacts {
-        if (is_hb_spectrum_path(artifact) || is_distortion_spectrum_path(artifact))
+        if (is_hb_spectrum_path(artifact)
+            || is_distortion_spectrum_path(artifact)
+            || is_fourier_summary_path(artifact))
             && !paths.iter().any(|path| path == artifact)
         {
             paths.push(artifact.clone());
@@ -244,6 +246,11 @@ where
         })?;
         return parse_distortion_spectrum_csv_rows(&text, label);
     }
+    if selected_probe_labels.is_empty() && is_fourier_summary_path(label) {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("Failed to read Fourier summary CSV {}.", path.display()))?;
+        return parse_fourier_summary_csv_rows(&text, label);
+    }
 
     let file = std::fs::File::open(path)
         .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
@@ -318,12 +325,21 @@ pub(super) fn parse_distortion_spectrum_csv_text(text: &str, label: &str) -> Res
     parse_distortion_spectrum_csv_rows(text, label)
 }
 
+#[cfg(test)]
+pub(super) fn parse_fourier_summary_csv_text(text: &str, label: &str) -> Result<WaveformView> {
+    parse_fourier_summary_csv_rows(text, label)
+}
+
 fn is_hb_spectrum_path(path: &str) -> bool {
     path.ends_with("/hb_spectrum.csv") || path == "hb_spectrum.csv"
 }
 
 fn is_distortion_spectrum_path(path: &str) -> bool {
     path.ends_with("/distortion_spectrum.csv") || path == "distortion_spectrum.csv"
+}
+
+fn is_fourier_summary_path(path: &str) -> bool {
+    path.ends_with("/fourier_summary.csv") || path == "fourier_summary.csv"
 }
 
 fn parse_hb_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
@@ -645,6 +661,168 @@ struct DistortionSpectrumPoint {
     imaginary: f64,
     magnitude: f64,
     phase_deg: f64,
+}
+
+fn parse_fourier_summary_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let header = lines
+        .next()
+        .context("Fourier summary CSV has no header row.")?;
+    let header = split_distortion_csv_fields(header)?;
+    if header
+        != [
+            "output_expression",
+            "fundamental_frequency_hz",
+            "reported_harmonics",
+            "harmonic",
+            "frequency_hz",
+            "magnitude",
+            "phase_deg",
+            "normalized_magnitude",
+            "normalized_phase_deg",
+            "thd_percent",
+            "grid_size",
+            "interpolation_degree",
+            "periods",
+        ]
+    {
+        anyhow::bail!(
+            "Fourier summary CSV header must be output_expression,fundamental_frequency_hz,reported_harmonics,harmonic,frequency_hz,magnitude,phase_deg,normalized_magnitude,normalized_phase_deg,thd_percent,grid_size,interpolation_degree,periods."
+        );
+    }
+
+    let mut rows = Vec::new();
+    for (line_index, line) in lines.enumerate() {
+        let fields = split_distortion_csv_fields(line)?;
+        if fields.len() != 13 {
+            anyhow::bail!(
+                "Fourier summary row {} has {} fields, expected 13.",
+                line_index + 2,
+                fields.len()
+            );
+        }
+        let frequency_hz = parse_waveform_float(&fields[4]).with_context(|| {
+            format!(
+                "Fourier summary row {} has invalid frequency.",
+                line_index + 2
+            )
+        })?;
+        if frequency_hz < 0.0 {
+            anyhow::bail!(
+                "Fourier summary row {} has negative frequency {}.",
+                line_index + 2,
+                frequency_hz
+            );
+        }
+        let magnitude = parse_waveform_float(&fields[5]).with_context(|| {
+            format!(
+                "Fourier summary row {} has invalid magnitude value.",
+                line_index + 2
+            )
+        })?;
+        let phase_deg = parse_waveform_float(&fields[6]).with_context(|| {
+            format!(
+                "Fourier summary row {} has invalid phase value.",
+                line_index + 2
+            )
+        })?;
+        let normalized_magnitude = parse_waveform_float(&fields[7]).with_context(|| {
+            format!(
+                "Fourier summary row {} has invalid normalized magnitude value.",
+                line_index + 2
+            )
+        })?;
+        let normalized_phase_deg = parse_waveform_float(&fields[8]).with_context(|| {
+            format!(
+                "Fourier summary row {} has invalid normalized phase value.",
+                line_index + 2
+            )
+        })?;
+        rows.push(FourierSummaryPoint {
+            output_expression: fields[0].clone(),
+            frequency_hz,
+            magnitude,
+            phase_deg,
+            normalized_magnitude,
+            normalized_phase_deg,
+        });
+    }
+
+    if rows.is_empty() {
+        anyhow::bail!("Fourier summary CSV has no harmonic rows.");
+    }
+    rows.sort_by(|left, right| left.frequency_hz.total_cmp(&right.frequency_hz));
+    let expression = rows[0].output_expression.clone();
+    if rows.iter().any(|row| row.output_expression != expression) {
+        anyhow::bail!("Fourier summary CSV must contain one output expression per artifact.");
+    }
+
+    let mut time_s = Vec::with_capacity(rows.len());
+    let mut magnitude_values = Vec::with_capacity(rows.len());
+    let mut phase_values = Vec::with_capacity(rows.len());
+    let mut normalized_magnitude_values = Vec::with_capacity(rows.len());
+    let mut normalized_phase_values = Vec::with_capacity(rows.len());
+    let mut previous_frequency = None;
+    for row in rows {
+        if previous_frequency.is_some_and(|previous| row.frequency_hz <= previous) {
+            anyhow::bail!(
+                "Fourier summary CSV has duplicate or non-increasing frequency {}.",
+                row.frequency_hz
+            );
+        }
+        previous_frequency = Some(row.frequency_hz);
+        time_s.push(WaveformXAxis::FrequencyHz.storage_from_csv_value(row.frequency_hz));
+        magnitude_values.push(row.magnitude);
+        phase_values.push(row.phase_deg);
+        normalized_magnitude_values.push(row.normalized_magnitude);
+        normalized_phase_values.push(row.normalized_phase_deg);
+    }
+
+    Ok(WaveformView {
+        label: label.to_string(),
+        path: label.to_string(),
+        x_axis: WaveformXAxis::FrequencyHz,
+        time_s,
+        probes: vec![
+            WaveformProbe {
+                label: format!("{expression} magnitude"),
+                values: magnitude_values,
+                derived: false,
+                expression: Some(expression.clone()),
+                promoted_quantity: waveform_probe_quantity_from_label(&expression),
+            },
+            WaveformProbe {
+                label: format!("{expression} phase deg"),
+                values: phase_values,
+                derived: false,
+                expression: Some(expression.clone()),
+                promoted_quantity: None,
+            },
+            WaveformProbe {
+                label: format!("{expression} normalized magnitude"),
+                values: normalized_magnitude_values,
+                derived: false,
+                expression: Some(expression.clone()),
+                promoted_quantity: None,
+            },
+            WaveformProbe {
+                label: format!("{expression} normalized phase deg"),
+                values: normalized_phase_values,
+                derived: false,
+                expression: Some(expression),
+                promoted_quantity: None,
+            },
+        ],
+    })
+}
+
+struct FourierSummaryPoint {
+    output_expression: String,
+    frequency_hz: f64,
+    magnitude: f64,
+    phase_deg: f64,
+    normalized_magnitude: f64,
+    normalized_phase_deg: f64,
 }
 
 fn split_distortion_csv_fields(line: &str) -> Result<Vec<String>> {

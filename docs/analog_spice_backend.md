@@ -544,7 +544,9 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
 7. Validation reports project retained `fourier_summary.csv` rows into
    top-level `fourier_summaries[]`, Markdown reports include a "Fourier
    Summary" section, and GUI Scopes surfaces harmonic and THD rows in the
-   report artifact panel.
+   report artifact panel. Scopes also loads retained `fourier_summary.csv`
+   artifacts as frequency-axis magnitude/phase and normalized
+   magnitude/phase traces for plotting and compare/bundle workflows.
 8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
