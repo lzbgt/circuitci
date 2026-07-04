@@ -254,7 +254,24 @@ fn fourier_assertions_pass_on_harmonic_and_thd_metrics() {
 "#,
     );
 
-    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
 
     assert_eq!(report["result"], "pass");
     assert_eq!(report["summary"]["critical"], 0);
@@ -287,7 +304,24 @@ fn fourier_assertion_fails_on_normalized_harmonic_limit() {
 "#,
     );
 
-    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
 
     assert_eq!(report["result"], "fail");
     assert_eq!(report["failures"][0]["id"], "SPICE_FOURIER_ANALYSIS");
@@ -396,36 +430,68 @@ fn real_ngspice_fourier_conformance_when_enabled() {
 
 #[cfg(unix)]
 #[test]
-fn fourier_xyce_backend_fails_closed_with_planning_evidence() {
+fn fourier_xyce_backend_normalizes_summary_and_manifest() {
     let fake_path = tempfile::tempdir().unwrap();
-    fake_executable(fake_path.path(), "Xyce");
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'Fourier analysis for V(out):' '  No. Harmonics: 9, THD: 12.5 %, Gridsize: 200, Interpolation Degree: 1, No. Periods: 1' '' 'Harmonic Frequency   Magnitude   Phase       Norm. Mag   Norm. Phase' '-------- ---------   ---------   -----       ---------   -----------' ' 0       0           0.500000    0           0           0' ' 1       100000      0.250000    -45.0       1           0' > \"$1.four0\"\nexit 0\n",
+    );
     let project_dir = tempfile::tempdir().unwrap();
-    let project_path =
-        write_fourier_project(project_dir.path(), "xyce", "V(out)", 100.0, 100_000.0, "");
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "xyce",
+        "V(out)",
+        100.0,
+        100_000.0,
+        r#"        fourier_assertions:
+          - name: fundamental_present
+            harmonic: 1
+            metric: magnitude
+            relation: below
+            threshold: 1.0
+"#,
+    );
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
     assert_yaml_file_valid(&project_path, &validator);
 
-    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
 
-    assert_eq!(report["result"], "fail");
-    assert_eq!(report["failures"][0]["id"], "SPICE_FOURIER_ANALYSIS");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert!(artifact_path(&report, "circuitci_xyce_fourier.cir.four0").ends_with(".four0"));
+    let summary_path = artifact_path(&report, "fourier_summary.csv");
+    assert_fourier_summary_has_fundamental(summary_path);
+    assert_eq!(report["fourier_summaries"].as_array().unwrap().len(), 2);
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "fourier");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_fourier_raw");
     assert_eq!(
-        report["failures"][0]["measured"]["adapter_status"],
-        "planned_not_implemented"
-    );
-    assert_eq!(
-        report["failures"][0]["limit"]["implemented_backend"],
-        "ngspice"
-    );
-    assert_eq!(
-        report["failures"][0]["measured"]["required_normalized_outputs"][0],
+        manifest["outputs"]["normalized"][0]["kind"],
         "fourier_summary"
-    );
-    assert_eq!(
-        report["failures"][0]["limit"]["required_evidence"],
-        "fourier_summary_csv_or_json"
     );
     assert_report_schema_valid(&report);
 }

@@ -11,7 +11,9 @@ use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_pla
 use super::analog_fourier_assertions::{
     evaluate_fourier_assertions, validate_fourier_assertion_contract,
 };
-use super::analog_fourier_runner::{NgspiceFourierRunOptions, run_ngspice_fourier};
+use super::analog_fourier_runner::{
+    NgspiceFourierRunOptions, XyceFourierRunOptions, run_ngspice_fourier, run_xyce_fourier,
+};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
     external_backend_unavailable, select_backend_for_feature,
@@ -290,7 +292,7 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
         return;
     };
 
-    if backend != "ngspice" {
+    if backend != "ngspice" && !is_xyce_backend(backend) {
         let mut finding = unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
@@ -339,20 +341,37 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
             run_plan.progress_label(),
         );
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        let run_result = run_ngspice_fourier(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceFourierRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        );
+        let run_result = if is_xyce_backend(backend) {
+            run_xyce_fourier(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceFourierRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_ngspice_fourier(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceFourierRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
         match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
@@ -380,13 +399,16 @@ pub(super) fn validate_spice_fourier_with_progress<F, C>(
                     .insert("selected_backend".to_string(), json!(backend));
                 finding.limit.insert(
                     "required_evidence".to_string(),
-                    json!("ngspice_fourier_summary_csv"),
+                    json!(if is_xyce_backend(backend) {
+                        "xyce_fourier_summary_csv"
+                    } else {
+                        "ngspice_fourier_summary_csv"
+                    }),
                 );
                 tag_corner_finding(&mut finding, &run_plan);
-                finding.suggested_fixes.push(
-                    "Inspect the generated ngspice .FOUR wrapper deck and solver log artifacts."
-                        .to_string(),
-                );
+                finding.suggested_fixes.push(format!(
+                    "Inspect the generated {backend} .FOUR wrapper deck and solver log artifacts."
+                ));
                 findings.push(finding);
             }
         }
@@ -443,4 +465,8 @@ fn validate_output_expression(
 
 fn nonempty(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn is_xyce_backend(backend: &str) -> bool {
+    backend.eq_ignore_ascii_case("xyce")
 }

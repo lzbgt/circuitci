@@ -650,9 +650,12 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
    to ten non-DC harmonics.
 5. External `ngspice` writes `circuitci_ngspice_fourier.cir`,
    `ngspice_fourier.log`, `fourier_raw.txt`, `fourier_summary.csv`, and
+   `solver_manifest.json`. Explicit `backend: xyce` writes
+   `circuitci_xyce_fourier.cir`, `xyce_fourier.log`, the documented Xyce
+   `<netlist>.four0` output, `fourier_summary.csv`, and
    `solver_manifest.json`. The normalized summary records the DC row,
    harmonic number, frequency, magnitude, phase, normalized magnitude/phase,
-   and solver-reported THD/grid metadata.
+   and solver-reported THD/grid metadata when the backend provides it.
 6. Optional `analysis.fourier_assertions[]` entries sign off normalized
    `fourier_summary.csv` metrics. Non-THD assertions require a `harmonic` and
    may check `magnitude`, `normalized_magnitude`, `phase_deg`, or
@@ -667,9 +670,10 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
 8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
-   `PATH`.
-9. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
-   until those adapters emit the same normalized `fourier_summary` contract.
+   `PATH`. Xyce `.FOUR` has fake-solver `.four0` adapter coverage and should
+   add opt-in real-Xyce conformance when `Xyce`/`xyce` is available.
+9. Embedded ngspice remains fail-closed with backend-planning evidence until it
+   emits the same normalized `fourier_summary` contract.
 
 For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:
 

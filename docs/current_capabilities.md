@@ -304,17 +304,20 @@ Current analog support:
   optional harmonic count. Optional `fourier_assertions[]` can sign off
   harmonic magnitude, normalized magnitude, phase, normalized phase, and
   THD-percent limits from `fourier_summary.csv`. External `ngspice` runs write
-  `fourier_raw.txt`, `fourier_summary.csv`, and `solver_manifest.json`; the
-  normalized summary records DC plus harmonic rows, frequency,
-  magnitude/phase, normalized magnitude/phase, and THD/grid metadata.
+  `fourier_raw.txt`, `fourier_summary.csv`, and `solver_manifest.json`;
+  explicit `backend: xyce` writes the documented Xyce `<netlist>.four0` output
+  and the same normalized `fourier_summary.csv`/manifest contract. The
+  normalized summary records DC plus harmonic rows, frequency, magnitude/phase,
+  normalized magnitude/phase, and THD/grid metadata when the backend provides
+  it.
   Validation reports project retained Fourier rows into `fourier_summaries[]`,
   Markdown reports include a "Fourier Summary" section, and the GUI artifact
   panel shows compact harmonic/THD rows. Scopes loads `fourier_summary.csv` as
   frequency-axis magnitude/phase and normalized magnitude/phase traces for
   plotting. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
-  unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
-  with planning evidence for this path.
+  unless `ngspice` is on `PATH`. Xyce `.FOUR` currently has fake-solver adapter
+  coverage; embedded ngspice remains fail-closed with planning evidence.
 - `analog_harmonic_balance` scenarios with
   `SPICE_HARMONIC_BALANCE_ANALYSIS` for periodic steady-state spectrum
   contracts. The Board IR/schema can declare `analysis.type: hb`,

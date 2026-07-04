@@ -10,6 +10,7 @@ use super::analog_runner::{
     run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
+use super::analog_xyce_runner::run_xyce_with_timeout;
 
 pub(super) struct NgspiceFourierRunOptions<'a, F, C>
 where
@@ -27,6 +28,19 @@ where
 pub(super) struct NgspiceFourierRun {
     pub(super) artifacts: Vec<PathBuf>,
     pub(super) summary: PathBuf,
+}
+
+pub(super) struct XyceFourierRunOptions<'a, F, C>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    pub(super) output: &'a Path,
+    pub(super) run_subdir: Option<&'a str>,
+    pub(super) parameter_overrides: &'a [ParameterOverride],
+    pub(super) model_section_overrides: &'a [ModelSectionOverride],
+    pub(super) on_progress: F,
+    pub(super) should_cancel: C,
 }
 
 pub(super) fn run_ngspice_fourier<F, C>(
@@ -194,6 +208,174 @@ where
     Ok(NgspiceFourierRun { artifacts, summary })
 }
 
+pub(super) fn run_xyce_fourier<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    backend: &str,
+    source_netlist: &Path,
+    options: XyceFourierRunOptions<'_, F, C>,
+) -> Result<NgspiceFourierRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let XyceFourierRunOptions {
+        output,
+        run_subdir,
+        parameter_overrides,
+        model_section_overrides,
+        mut on_progress,
+        should_cancel,
+    } = options;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before Xyce Fourier run");
+    let mut run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Some(run_subdir) = run_subdir {
+        run_dir = run_dir.join(safe_artifact_name(run_subdir));
+    }
+    fs::create_dir_all(&run_dir).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to create analog Xyce Fourier run directory {}: {error}",
+                run_dir.display()
+            ),
+            Vec::new(),
+        )
+    })?;
+    let mut artifacts = vec![source_netlist.to_path_buf()];
+    let wrapper = run_dir.join("circuitci_xyce_fourier.cir");
+    let log = run_dir.join("xyce_fourier.log");
+    let raw = run_dir.join("circuitci_xyce_fourier.cir.four0");
+    let summary = run_dir.join("fourier_summary.csv");
+
+    on_progress(
+        "Writing analog Xyce Fourier wrapper deck",
+        format!("Writing {}.", wrapper.to_string_lossy()),
+    );
+    let wrapper_text = build_xyce_fourier_wrapper(
+        bound,
+        scenario,
+        source_netlist,
+        parameter_overrides,
+        model_section_overrides,
+    )
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    fs::write(&wrapper, wrapper_text).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce Fourier wrapper deck {}: {error}",
+                wrapper.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(wrapper.clone());
+
+    on_progress(
+        "Running analog Xyce Fourier backend",
+        format!(
+            "{} .FOUR {} at {:.12e} Hz.",
+            backend,
+            analog
+                .analysis
+                .fourier_output_expression
+                .as_deref()
+                .unwrap_or("<missing>"),
+            analog
+                .analysis
+                .fourier_fundamental_frequency_hz
+                .unwrap_or_default()
+        ),
+    );
+    let output = run_xyce_with_timeout(backend, &wrapper, Duration::from_secs(60), should_cancel)
+        .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    let mut log_text = String::new();
+    log_text.push_str("COMMAND: ");
+    log_text.push_str(&output.command);
+    log_text.push_str("\n\nSTDOUT:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stdout));
+    log_text.push_str("\n\nSTDERR:\n");
+    log_text.push_str(&String::from_utf8_lossy(&output.stderr));
+    fs::write(&log, &log_text).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce Fourier log {}: {error}",
+                log.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(log.clone());
+    if !output.status.success() {
+        return Err(ngspice_error(
+            format!(
+                "Xyce Fourier analysis exited with status {}.",
+                output.status
+            ),
+            artifacts,
+        ));
+    }
+    if let Some(reason) = detect_nonconvergence(&log_text) {
+        return Err(ngspice_error(
+            format!("Xyce reported non-convergence or numerical failure: {reason}."),
+            artifacts,
+        ));
+    }
+    if !raw.is_file() {
+        return Err(ngspice_error(
+            format!(
+                "Xyce completed without producing Fourier output {}.",
+                raw.display()
+            ),
+            artifacts,
+        ));
+    }
+    artifacts.push(raw.clone());
+    let raw_text = fs::read_to_string(&raw).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to read Xyce Fourier output {}: {error}",
+                raw.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    let summary_csv = fourier_raw_to_csv(&raw_text, scenario)
+        .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    fs::write(&summary, summary_csv).map_err(|error| {
+        ngspice_error(
+            format!(
+                "Failed to write Xyce Fourier summary CSV {}: {error}",
+                summary.display()
+            ),
+            artifacts.clone(),
+        )
+    })?;
+    artifacts.push(summary.clone());
+    let manifest = write_solver_manifest(SolverManifestIo {
+        run_dir: &run_dir,
+        scenario,
+        requested_backend: &analog.backend,
+        selected_backend: backend,
+        analysis_kind: "fourier",
+        source_netlist,
+        wrapper: &wrapper,
+        log: &log,
+        output: &output,
+        parameter_overrides,
+        model_section_overrides,
+        raw_outputs: &[("xyce_fourier_raw", &raw)],
+        normalized_outputs: &[("fourier_summary", &summary)],
+    })
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(manifest);
+    Ok(NgspiceFourierRun { artifacts, summary })
+}
+
 fn build_ngspice_fourier_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -318,6 +500,124 @@ fn build_ngspice_fourier_wrapper(
     Ok(text)
 }
 
+fn build_xyce_fourier_wrapper(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    netlist: &Path,
+    parameter_overrides: &[ParameterOverride],
+    model_section_overrides: &[ModelSectionOverride],
+) -> Result<String, String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before Xyce Fourier wrapper generation");
+    let output_expression = analog
+        .analysis
+        .fourier_output_expression
+        .as_deref()
+        .ok_or_else(|| "fourier_output_expression is required for .FOUR analysis.".to_string())?;
+    let fundamental_hz = analog
+        .analysis
+        .fourier_fundamental_frequency_hz
+        .ok_or_else(|| {
+            "fourier_fundamental_frequency_hz is required for .FOUR analysis.".to_string()
+        })?;
+    let source = fs::read_to_string(netlist).map_err(|error| {
+        format!(
+            "Failed to read SPICE netlist {}: {error}",
+            netlist.display()
+        )
+    })?;
+    let mut text = String::new();
+    text.push_str("* Generated by CircuitCI for Xyce .FOUR. Do not edit by hand.\n");
+    text.push_str("* Source netlist: ");
+    text.push_str(&netlist.to_string_lossy());
+    text.push('\n');
+    let include_base = netlist.parent().unwrap_or(&bound.project.source_dir);
+    let mut in_control_block = false;
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        let directive = trimmed.to_ascii_lowercase();
+        let first_token = directive.split_whitespace().next().unwrap_or("");
+        if first_token == ".control" {
+            in_control_block = true;
+            continue;
+        }
+        if in_control_block {
+            if first_token == ".endc" {
+                in_control_block = false;
+            }
+            continue;
+        }
+        if matches!(
+            first_token,
+            ".end"
+                | ".tran"
+                | ".ac"
+                | ".op"
+                | ".noise"
+                | ".lin"
+                | ".tf"
+                | ".pz"
+                | ".sens"
+                | ".four"
+                | ".print"
+        ) {
+            continue;
+        }
+        text.push_str(&rewrite_include_line(line, include_base));
+        text.push('\n');
+    }
+    if !parameter_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep parameter overrides.\n");
+        for override_ in parameter_overrides {
+            text.push_str(".param ");
+            text.push_str(&override_.name);
+            text.push('=');
+            text.push_str(&format!("{:.12e}", override_.value));
+            text.push('\n');
+        }
+        if let Some(temperature_c) = sweep_temperature_c(parameter_overrides) {
+            text.push_str(".temp ");
+            text.push_str(&format!("{:.12e}", temperature_c));
+            text.push('\n');
+        }
+    }
+    if !model_section_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep model section overrides.\n");
+        for override_ in model_section_overrides {
+            let path = Path::new(&override_.path);
+            let absolute = if path.is_absolute() {
+                normalize_path(path)
+            } else {
+                absolute_path(&bound.project.source_dir.join(path))
+                    .unwrap_or_else(|_| normalize_path(&bound.project.source_dir.join(path)))
+            };
+            text.push_str(".lib \"");
+            text.push_str(&absolute.to_string_lossy());
+            text.push_str("\" ");
+            text.push_str(&override_.section);
+            text.push('\n');
+        }
+    }
+    text.push_str(".tran ");
+    text.push_str(&format!(
+        "{:.12e}",
+        analog.analysis.max_step_us / 1_000_000.0
+    ));
+    text.push(' ');
+    text.push_str(&format!(
+        "{:.12e}",
+        analog.analysis.stop_time_us / 1_000_000.0
+    ));
+    text.push_str("\n.four ");
+    text.push_str(&format!("{fundamental_hz:.12e}"));
+    text.push(' ');
+    text.push_str(output_expression);
+    text.push_str("\n.end\n");
+    Ok(text)
+}
+
 fn fourier_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> {
     let analog = scenario
         .analog
@@ -399,7 +699,7 @@ fn fourier_raw_to_csv(log: &str, scenario: &Scenario) -> Result<String, String> 
     }
     if rows.is_empty() {
         return Err(format!(
-            "ngspice .FOUR output did not contain normalized harmonic rows for {output_expression}."
+            ".FOUR output did not contain normalized harmonic rows for {output_expression}."
         ));
     }
     let mut csv = String::from(

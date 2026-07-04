@@ -579,10 +579,12 @@ The GUI should not become the solver.
   sensitivity rows plus loads AC `sensitivity_summary.csv` as
   parameter-grouped frequency-axis sensitivity traces. Next add non-ngspice
   planning/adapters.
-- The first `.FOUR` path is an external-ngspice adapter with a Board IR/schema
-  contract for transient-backed harmonic extraction, fundamental
-  frequency/window validation, bound output provenance, normalized
-  `fourier_summary`, solver manifests, and opt-in real-ngspice conformance;
+- The `.FOUR` path has external-ngspice and explicit-Xyce adapters with a
+  Board IR/schema contract for transient-backed harmonic extraction,
+  fundamental frequency/window validation, bound output provenance, normalized
+  `fourier_summary`, solver manifests, opt-in real-ngspice conformance, and
+  fake-solver Xyce `.four0` normalization coverage. Xyce 7.8 documents `.FOUR`
+  as transient Fourier analysis whose results are written to `<netlist>.four#`;
   `analysis.fourier_assertions[]` now signs off harmonic magnitude,
   normalized magnitude, phase, normalized phase, and THD-percent limits from
   `fourier_summary.csv`, with fail-closed behavior for missing rows or
@@ -590,7 +592,8 @@ The GUI should not become the solver.
   `fourier_summaries[]`, Markdown reports include a "Fourier Summary" section,
   GUI Scopes shows compact harmonic/THD rows, and Scopes loads
   `fourier_summary.csv` as frequency-axis magnitude/phase and normalized
-  magnitude/phase traces. Next add non-ngspice planning/adapters.
+  magnitude/phase traces. Next add real-Xyce `.FOUR` conformance when a Xyce
+  executable is available on the host.
 - The first `.MEASURE` path is an external-ngspice adapter with a Board
   IR/schema contract for reviewed transient/AC scalar extraction statements or
   portable measure templates, bound output provenance checks, normalized
