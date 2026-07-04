@@ -16,6 +16,7 @@ mod analog_distortion_assertions;
 mod analog_fourier_assertions;
 mod analog_generated;
 mod analog_hb_assertions;
+mod analog_measure_assertions;
 mod analog_model_files;
 mod analog_models;
 mod analog_noise_presets;
@@ -53,6 +54,7 @@ mod simulation_editors;
 mod simulation_forms;
 mod simulation_fourier_assertions;
 mod simulation_hb_assertions;
+mod simulation_measure_assertions;
 mod simulation_pole_zero_assertions;
 mod simulation_probe_assertions;
 mod simulation_sensitivity_assertions;
@@ -416,6 +418,11 @@ pub struct CircuitCiApp {
     analog_distortion_assertion_component: String,
     analog_distortion_assertion_relation: String,
     analog_distortion_assertion_threshold: f64,
+    analog_measure_assertion_scenario: String,
+    analog_measure_assertion_name: String,
+    analog_measure_assertion_measurement: String,
+    analog_measure_assertion_relation: String,
+    analog_measure_assertion_threshold: f64,
     analog_sparameter_network_assertion_scenario: String,
     analog_sparameter_network_assertion_name: String,
     analog_sparameter_network_assertion_metric: String,
@@ -736,6 +743,11 @@ impl Default for CircuitCiApp {
             analog_distortion_assertion_component: "im_f1_plus_f2".to_string(),
             analog_distortion_assertion_relation: "below".to_string(),
             analog_distortion_assertion_threshold: 0.001,
+            analog_measure_assertion_scenario: String::new(),
+            analog_measure_assertion_name: "avg_out_below_limit".to_string(),
+            analog_measure_assertion_measurement: "avg_out".to_string(),
+            analog_measure_assertion_relation: "below".to_string(),
+            analog_measure_assertion_threshold: 0.4,
             analog_sparameter_network_assertion_scenario: String::new(),
             analog_sparameter_network_assertion_name: "stable_rollet_k".to_string(),
             analog_sparameter_network_assertion_metric: "rollet_k_min".to_string(),

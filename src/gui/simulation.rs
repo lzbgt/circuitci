@@ -165,6 +165,7 @@ impl CircuitCiApp {
                 self.sparameter_network_assertion_editor(ui);
                 self.sparameter_noise_assertion_editor(ui);
                 self.distortion_assertion_editor(ui);
+                self.measure_assertion_editor(ui);
                 self.sensitivity_assertion_editor(ui);
                 self.transfer_function_assertion_editor(ui);
                 self.pole_zero_assertion_editor(ui);
@@ -201,6 +202,8 @@ impl CircuitCiApp {
                             ui.monospace(artifact);
                         }
                     }
+                    ui.add_space(8.0);
+                    self.measure_assertion_failure_actions(ui, &report.failures);
                     ui.add_space(8.0);
                     self.distortion_assertion_failure_actions(ui, &report.failures);
                     ui.add_space(8.0);

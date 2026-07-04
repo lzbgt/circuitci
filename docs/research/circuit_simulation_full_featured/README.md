@@ -634,7 +634,8 @@ The GUI should not become the solver.
   `TRIG`/`TARG` and `WHEN`. Normalized `measure_summary` rows can now feed
   `measure_assertions[]` so scalar simulation specs directly pass or fail
   validation, including shared worst-corner and Monte Carlo yield summaries
-  across swept measure corners.
+  across swept measure corners. The GUI Measure Check editor now authors and
+  hydrates failed `measure_assertions[]` entries.
 - 2026-07-04: `backend: auto` for `analog_measure` now falls back to Xyce when
   ngspice is absent and the scenario uses only portable `measure_templates[]`.
   Raw `measure_statements[]` still do not auto-translate to Xyce; they retain
