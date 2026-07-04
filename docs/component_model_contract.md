@@ -915,6 +915,14 @@ review, but not exact STC ISP sync/ACK bytes, ISP monitor entry timing,
 package-variant exhaustive pin mapping, oscillator startup/accuracy, flash or
 EEPROM programming behavior, firmware execution, thermal behavior, or
 transient current waveforms.
+`vendor.ti.ne555` adds a source-backed static NE555 timer pack without a
+generated-SPICE face yet. Official TI documentation backs its 4.5 V to 16 V
+NE555 supply range, 8-pin timer pin roles, no-load supply-current class,
+output-current class, and 0.1 uF VCC bypass recommendation. That model can
+exercise board-level supply voltage checks and timer pin-boundary review, but
+not RC timing equations, threshold-spread sign-off, output-drive/load sign-off,
+discharge-transistor saturation, reset pulse timing, control-voltage
+modulation, thermal behavior, or generated timer waveforms.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

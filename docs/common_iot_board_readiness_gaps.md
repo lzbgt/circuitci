@@ -18,8 +18,8 @@ models for common parts:
   STM32L4, RP2040, nRF52840, STM8S003F3P6, and STC15W408AS devices.
 - USB-UART bridges such as CH340, CP210x, FT232, and CMSIS-DAP/debug probes.
 - Regulators, load switches, battery chargers, ideal diodes, reset supervisors,
-  level shifters, ESD arrays, sensors, flash memories, crystals, LEDs, and
-  small-signal discrete parts.
+  timers, level shifters, ESD arrays, sensors, flash memories, crystals, LEDs,
+  and small-signal discrete parts.
 
 Without those packs, reports correctly emit `LOW_CONFIDENCE_MODEL` limitations.
 A passing rule on generic metadata is useful evidence, but not full board
@@ -68,6 +68,10 @@ plus a reduced generated-SPICE observation face for OUT/BAT/current checks. TI
 BQ25798 now covers a 1- to 4-cell buck-boost/NVDC charger pack for static
 input/current-budget screening plus a reduced generated-SPICE observation face
 for adapter/SYS/BAT/current checks driven by Board IR component parameters. TI
+NE555 now covers a first source-backed 555 timer static pack for supply range,
+timer pin boundaries, no-load supply current, output-current class, and VCC
+bypass metadata; RC timing equations and generated timer behavior remain
+outside that static model. TI
 TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
 static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI

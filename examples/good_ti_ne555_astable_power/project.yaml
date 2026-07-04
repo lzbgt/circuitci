@@ -1,0 +1,99 @@
+project:
+  name: good_ti_ne555_astable_power
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    U555:
+      model: vendor.ti.ne555
+      part_number: NE555P
+      power_domains:
+        VCC: rail_5v
+      pins:
+        VCC: rail_5v
+        GND: gnd
+        RESET: rail_5v
+        CONT: control_voltage
+        TRIG: timing_cap
+        THRES: timing_cap
+        DISCH: discharge_node
+        OUT: timer_out
+    CVCC:
+      model: generic.analog.capacitor
+      part_number: 0.1uF
+      pins:
+        A: rail_5v
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.0000001
+    CCONT:
+      model: generic.analog.capacitor
+      part_number: 10nF
+      pins:
+        A: control_voltage
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.00000001
+    RA:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_5v
+        B: discharge_node
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+    RB:
+      model: generic.analog.resistor
+      part_number: 68K
+      pins:
+        A: discharge_node
+        B: timing_cap
+      spice:
+        primitive: resistor
+        value_ohm: 68000
+    CTIM:
+      model: generic.analog.capacitor
+      part_number: 10nF
+      pins:
+        A: timing_cap
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.00000001
+    RLOAD:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: timer_out
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    control_voltage:
+      kind: digital_or_analog
+    discharge_node:
+      kind: digital_or_analog
+    timing_cap:
+      kind: digital_or_analog
+    timer_out:
+      kind: digital_or_analog
+
+scenarios:
+  - name: ne555_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

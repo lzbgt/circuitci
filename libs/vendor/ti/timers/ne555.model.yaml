@@ -1,0 +1,118 @@
+component_id: vendor.ti.ne555
+version: 0.1.0
+category: timer
+ports:
+  GND:
+    kind: electrical_ground
+    required: true
+  TRIG:
+    kind: digital_electrical_input
+    required: false
+  OUT:
+    kind: digital_electrical_output
+    required: false
+  RESET:
+    kind: digital_electrical_input
+    required: false
+  CONT:
+    kind: passive
+    required: false
+  THRES:
+    kind: digital_electrical_input
+    required: false
+  DISCH:
+    kind: digital_electrical_output
+    required: false
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.5
+      operating_voltage_max_V: 16.0
+      max_supply_current_A: 0.015
+rules:
+  - POWER_TREE_VALID
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: NE555
+  package: PDIP/SOIC/SOP/TSSOP 8-pin class
+  polarity: bipolar_precision_timer
+  pinout:
+    GND: Ground
+    TRIG: Start-of-timing trigger input
+    OUT: Timer output
+    RESET: Active-low reset input
+    CONT: Control-voltage node for comparator thresholds
+    THRES: End-of-timing threshold input
+    DISCH: Open-collector discharge output
+    VCC: Input supply voltage
+  electrical_characteristics:
+    vcc_supply:
+      conditions: Recommended operating range for NA555, NE555, and SA555.
+      min: 4.5
+      max: 16.0
+      unit: V
+    output_current:
+      conditions: Recommended operating output current.
+      min: -0.2
+      max: 0.2
+      unit: A
+    absolute_max_output_current:
+      conditions: Absolute maximum output current.
+      min: -0.225
+      max: 0.225
+      unit: A
+    supply_current_low_output_no_load:
+      conditions: Output low, no load, VCC = 15 V for NA555, NE555, and SA555.
+      typ: 0.01
+      max: 0.015
+      unit: A
+    supply_current_high_output_no_load:
+      conditions: Output high, no load, VCC = 15 V for NA555, NE555, and SA555.
+      typ: 0.009
+      max: 0.013
+      unit: A
+    control_voltage_open_circuit:
+      conditions: VCC = 5 V, CONT open circuit, NA555, NE555, and SA555.
+      min: 2.6
+      typ: 3.3
+      max: 4.0
+      unit: V
+    power_supply_bypass:
+      conditions: TI power-supply recommendations.
+      typ: 1.0e-7
+      unit: F
+  device_parameters:
+    timing_modes:
+      conditions: Monostable timing uses one resistor/capacitor network; astable operation uses two resistors and one capacitor.
+      unit: note
+    trigger_threshold_ratio:
+      conditions: With CONT open, trigger level is approximately one-third of VCC.
+      typ: 0.3333333333
+      unit: VCC_ratio
+    threshold_ratio:
+      conditions: With CONT open, threshold level is approximately two-thirds of VCC.
+      typ: 0.6666666667
+      unit: VCC_ratio
+  documents:
+    - title: NA555, NE555, SA555, SE555 Precision Timers
+      path: docs/research/datasheets/ti/ne555.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/ne555.pdf
+      sha256: c7c6ababde92bb367579e95105e9a9d2d229b05377f5624ae4184031e6266a89
+      retrieved: 2026-07-05
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - vcc_power_tree_supply_voltage
+    - static_timer_pin_boundary
+    - preliminary_astable_or_monostable_board_review
+  not_valid_for:
+    - rc_timing_equation_signoff
+    - threshold_ratio_tolerance_signoff
+    - output_drive_or_load_signoff
+    - discharge_transistor_saturation_signoff
+    - reset_pulse_timing_signoff
+    - control_voltage_modulation_signoff
+    - generated_spice_timer_behavior
+    - thermal_or_peak_current_waveforms

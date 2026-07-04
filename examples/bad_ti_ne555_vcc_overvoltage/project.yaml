@@ -1,0 +1,54 @@
+project:
+  name: bad_ti_ne555_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    U555:
+      model: vendor.ti.ne555
+      part_number: NE555P
+      power_domains:
+        VCC: rail_18v
+      pins:
+        VCC: rail_18v
+        GND: gnd
+        RESET: rail_18v
+        CONT: control_voltage
+        TRIG: timing_cap
+        THRES: timing_cap
+        DISCH: discharge_node
+        OUT: timer_out
+    CCONT:
+      model: generic.analog.capacitor
+      part_number: 10nF
+      pins:
+        A: control_voltage
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.00000001
+  nets:
+    rail_18v:
+      kind: power
+      nominal_voltage: 18.0
+      powered: true
+    gnd:
+      kind: ground
+    control_voltage:
+      kind: digital_or_analog
+    discharge_node:
+      kind: digital_or_analog
+    timing_cap:
+      kind: digital_or_analog
+    timer_out:
+      kind: digital_or_analog
+
+scenarios:
+  - name: ne555_vcc_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

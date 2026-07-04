@@ -197,6 +197,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_ne555_astable_power_passes
+    project: ../examples/good_ti_ne555_astable_power/project.yaml
+    expect: pass
+
+  - id: ti_ne555_vcc_overvoltage_detected
+    project: ../examples/bad_ti_ne555_vcc_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: espressif_esp32_s3_wroom_1u_application_passes
     project: ../examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml
     expect: pass
@@ -327,6 +338,12 @@ repairs:
   - id: fix_stc_stc15w408as_vcc_overvoltage
     detects_case: stc_stc15w408as_vcc_overvoltage_detected
     fixed_case: stc_stc15w408as_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ti_ne555_vcc_overvoltage
+    detects_case: ti_ne555_vcc_overvoltage_detected
+    fixed_case: ti_ne555_astable_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

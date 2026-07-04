@@ -102,6 +102,15 @@ active-high reset boundary, and primary/alternate UART pins. See
 `docs/raspberrypi_rp2040_model.md`, `docs/nordic_nrf52840_model.md`,
 `docs/st_stm8s003f3p6_model.md`, and `docs/stc_stc15w408as_model.md`.
 
+## Source-Backed Common Support IC Packs
+
+`vendor.ti.ne555` provides a source-backed static model for the TI NE555 timer
+family. It models the 4.5 V to 16 V NE555 supply range, GND, timer
+board-boundary pins, no-load supply-current metadata, output-current class, and
+VCC bypass recommendation. It does not implement RC timing equations,
+threshold-spread sign-off, output-drive/load sign-off, or generated-SPICE timer
+behavior. See `docs/ti_ne555_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully
