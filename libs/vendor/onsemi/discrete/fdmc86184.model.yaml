@@ -51,7 +51,7 @@ datasheet:
         pulse_width_us: 100
         duty_cycle_max: 0.02
         temperature_c: 25
-        source_document: onsemi_fdmc86184-d.pdf
+        source_document: docs/research/datasheets/onsemi/fdmc86184.pdf
         source_figure: Figure 11 Forward Bias Safe Operating Area
         digitization:
           method: manual
@@ -72,7 +72,7 @@ datasheet:
         pulse_width_us: 1000
         duty_cycle_max: 0.02
         temperature_c: 25
-        source_document: onsemi_fdmc86184-d.pdf
+        source_document: docs/research/datasheets/onsemi/fdmc86184.pdf
         source_figure: Figure 11 Forward Bias Safe Operating Area
         digitization:
           method: manual
@@ -128,7 +128,7 @@ datasheet:
       simulation_relevance: Gate charge affects required driver current and switching time.
   documents:
     - title: FDMC86184 - MOSFET N-Channel Shielded Gate PowerTrench 100 V
-      path: docs/research/datasheets/onsemi_fdmc86184-d.pdf
+      path: docs/research/datasheets/onsemi/fdmc86184.pdf
       source_url: https://www.onsemi.com/download/data-sheet/pdf/fdmc86184-d.pdf
       sha256: d338e4ae50dfd32e06bfeea148fc369220a837f36dd3b97610dcc8c33a46fa4e
       retrieved: "2026-06-12"
@@ -141,7 +141,7 @@ simulation:
     body_pin_policy: tie_to_source_when_absent
     valid_operating_notes:
       - Level-1 datasheet fit for generated-deck plumbing and qualified pulse-current operating-limit checks.
-      - SOA graph points are not digitized in this model; only the scalar pulse current, pulse width, and duty metadata are machine-checked.
+      - Figure 11 SOA graph points are hand-digitized screening evidence; use vendor or bench-calibrated data for final SOA sign-off.
       - Replace with vendor or bench-calibrated model before final physical sign-off.
 model_quality:
   source: datasheet

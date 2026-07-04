@@ -996,6 +996,17 @@ probes for terminal voltage, drain current, and power, but the bundled card is
 a reduced preliminary fit and does not validate switching loss, package thermal
 coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, or
 production hardware behavior.
+`vendor.onsemi.fdmc86184` adds a source-backed power MOSFET pulse/SOA pack.
+Official onsemi documentation backs its 100 V `VDSS`, +/-20 V `VGSS`, 12 A
+continuous `ID`, 266 A pulsed `ID` with `< 300 us` width and `< 2.0%` duty
+constraints, 2.3 W ambient power limit with 18.4 mW/C derating, WDFN-8 pin
+roles, threshold, on-resistance, capacitance, gate-charge metadata, and
+preliminary hand-digitized Figure 11 SOA points. Generated SPICE uses the
+existing MOSFET operating-limit and SOA probes, but the bundled card and
+hand-digitized SOA points are reduced preliminary screening evidence and do not
+validate switching loss, package thermal coupling, avalanche,
+machine-readable vendor SOA, gate-drive margin, EMI, or production hardware
+behavior.
 `vendor.onsemi.npn_2n3904` adds a source-backed common NPN transistor pack.
 Official onsemi documentation backs its 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`,
 200 mA continuous collector-current limit, 625 mW ambient power limit with

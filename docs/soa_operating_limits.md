@@ -27,7 +27,7 @@ safe_operating_area:
       pulse_width_us: 100
       duty_cycle_max: 0.02
       temperature_c: 25
-      source_document: onsemi_fdmc86184-d.pdf
+      source_document: docs/research/datasheets/onsemi/fdmc86184.pdf
       source_figure: Figure 11 Forward Bias Safe Operating Area
       digitization:
         method: manual

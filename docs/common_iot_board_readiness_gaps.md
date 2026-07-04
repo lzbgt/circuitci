@@ -104,6 +104,11 @@ MOSFET path for high-side generated-SPICE switch checks with terminal voltage,
 continuous drain-current, and derated power probes; switching loss, package
 thermal coupling, avalanche, qualified pulse-current SOA, gate-drive margin,
 EMI, and production behavior remain outside that preliminary electrical model.
+onsemi FDMC86184 now covers a source-backed power MOSFET pulse/SOA path with
+qualified pulse-current width and duty constraints plus preliminary
+hand-digitized Figure 11 SOA envelope checks; switching loss, package thermal
+coupling, avalanche, machine-readable vendor SOA, gate-drive margin, EMI, and
+production behavior remain outside that preliminary electrical model.
 onsemi
 2N3904 now covers a first source-backed common NPN transistor pack with generated SPICE operating-limit probes for BJT
 terminal voltages, collector current, and power dissipation; transistor gain

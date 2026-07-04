@@ -4,7 +4,7 @@ Downloaded on 2026-06-12 for qualified pulse operating-limit validation.
 
 | Part | Manufacturer | Source URL | Local file | SHA-256 |
 | --- | --- | --- | --- | --- |
-| FDMC86184 | onsemi | https://www.onsemi.com/download/data-sheet/pdf/fdmc86184-d.pdf | `docs/research/datasheets/onsemi_fdmc86184-d.pdf` | `d338e4ae50dfd32e06bfeea148fc369220a837f36dd3b97610dcc8c33a46fa4e` |
+| FDMC86184 | onsemi | https://www.onsemi.com/download/data-sheet/pdf/fdmc86184-d.pdf | `docs/research/datasheets/onsemi/fdmc86184.pdf` | `d338e4ae50dfd32e06bfeea148fc369220a837f36dd3b97610dcc8c33a46fa4e` |
 
 ## FDMC86184 Facts Used
 

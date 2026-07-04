@@ -176,6 +176,18 @@ does not sign off switching loss, package thermal coupling, avalanche,
 qualified pulse-current SOA, gate-drive margin, EMI, or production hardware
 behavior. See `docs/onsemi_bss84_model.md`.
 
+`vendor.onsemi.fdmc86184` provides a source-backed static/generated-SPICE pack
+for onsemi's WDFN-8 FDMC86184 N-channel Shielded Gate PowerTrench MOSFET. It
+records the 100 V drain-source limit, +/-20 V continuous gate-source limit,
+12 A continuous drain-current limit, 266 A pulsed-current metadata with
+`< 300 us` width and `< 2.0%` duty constraints, 2.3 W power limit at 25 C with
+18.4 mW/C derating, WDFN-8 pin roles, threshold, on-resistance, capacitance,
+gate-charge metadata, and preliminary hand-digitized Figure 11 SOA points. The
+bundled SPICE card is a reduced preliminary Level-1 fit for generated pulse/SOA
+checks; it does not sign off switching loss, package thermal coupling,
+avalanche, machine-readable vendor SOA, gate-drive margin, EMI, or production
+hardware behavior. See `docs/onsemi_fdmc86184_model.md`.
+
 `vendor.onsemi.npn_2n3904` provides a source-backed static/generated-SPICE
 model for onsemi's TO-92 2N3904 NPN general-purpose transistor. It records
 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`, 200 mA continuous collector current,
