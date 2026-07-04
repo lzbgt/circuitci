@@ -165,9 +165,10 @@ Current analog support:
   network-quality rows into `s_parameter_network_summaries[]`, Markdown
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
   the GUI artifact panel shows compact RF term and network sign-off rows, and
-  Scopes derives return-loss, insertion-loss, and VSWR traces from full
-  `s_parameters.csv` artifacts. `backend: auto` does not select Xyce for this
-  path until real solver conformance coverage is enabled.
+  Scopes derives return-loss, insertion-loss, VSWR, two-port reciprocity error,
+  and passivity singular-value traces from full `s_parameters.csv` artifacts.
+  `backend: auto` does not select Xyce for this path until real solver
+  conformance coverage is enabled.
 - `analog_transfer_function` scenarios with
   `SPICE_TRANSFER_FUNCTION_ANALYSIS` for `.TF` small-signal transfer
   contracts. The Board IR/schema can declare `analysis.type: tf`,

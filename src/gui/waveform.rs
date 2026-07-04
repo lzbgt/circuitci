@@ -921,6 +921,8 @@ fn probe_unit(label: &str) -> &'static str {
     } else if normalized.ends_with("_mag")
         || normalized.contains("linear magnitude")
         || normalized.contains("vswr")
+        || normalized.contains("reciprocity error")
+        || normalized.contains("passivity singular")
     {
         "ratio"
     } else if normalized.contains("noise density")

@@ -137,6 +137,8 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(labels.contains(&"s21 insertion loss dB"));
     assert!(labels.contains(&"s12 insertion loss dB"));
     assert!(labels.contains(&"s22 return loss dB"));
+    assert!(labels.contains(&"two-port reciprocity error"));
+    assert!(labels.contains(&"two-port passivity singular value"));
     let s11_return_loss = waveform
         .probes
         .iter()
@@ -164,6 +166,24 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
         vec![-6.02059991328, -3.52182518111]
     );
     assert_eq!(super::probe_unit(&s21_insertion_loss.label), "dB");
+    let reciprocity = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port reciprocity error")
+        .unwrap();
+    assert!(reciprocity.derived);
+    assert!((reciprocity.values[0] - 1.99).abs() < 1.0e-12);
+    assert!((reciprocity.values[1] - 1.48).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&reciprocity.label), "ratio");
+    let passivity = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port passivity singular value")
+        .unwrap();
+    assert!(passivity.derived);
+    assert!(passivity.values[0] > 2.0);
+    assert!(passivity.values[1] > 1.5);
+    assert_eq!(super::probe_unit(&passivity.label), "ratio");
 }
 
 #[test]
@@ -181,6 +201,8 @@ fn waveform_csv_loader_skips_vswr_when_reflection_magnitude_reaches_unity() {
         .collect();
     assert!(labels.contains(&"s11 return loss dB"));
     assert!(!labels.contains(&"s11 VSWR"));
+    assert!(!labels.contains(&"two-port reciprocity error"));
+    assert!(!labels.contains(&"two-port passivity singular value"));
 }
 
 #[test]

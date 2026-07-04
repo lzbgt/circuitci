@@ -1261,6 +1261,7 @@ impl WaveformCsvBuilder {
 fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
     let mut magnitude_db_by_parameter = BTreeMap::new();
     let mut magnitude_linear_by_parameter = BTreeMap::new();
+    let mut phase_deg_by_parameter = BTreeMap::new();
     for (index, probe) in probes.iter().enumerate() {
         if let Some(parameter) = probe.label.strip_suffix(" magnitude dB")
             && parse_s_parameter_term(parameter).is_some()
@@ -1271,6 +1272,11 @@ fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
             && parse_s_parameter_term(parameter).is_some()
         {
             magnitude_linear_by_parameter.insert(parameter.to_ascii_lowercase(), index);
+        }
+        if let Some(parameter) = probe.label.strip_suffix(" phase deg")
+            && parse_s_parameter_term(parameter).is_some()
+        {
+            phase_deg_by_parameter.insert(parameter.to_ascii_lowercase(), index);
         }
     }
     for (parameter, db_index) in magnitude_db_by_parameter {
@@ -1317,6 +1323,11 @@ fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
             });
         }
     }
+    append_derived_s_parameter_network_probes(
+        probes,
+        &magnitude_linear_by_parameter,
+        &phase_deg_by_parameter,
+    );
 }
 
 fn parse_s_parameter_term(parameter: &str) -> Option<(usize, usize)> {
@@ -1332,6 +1343,171 @@ fn parse_s_parameter_term(parameter: &str) -> Option<(usize, usize)> {
     let output = digits[..midpoint].parse::<usize>().ok()?;
     let input = digits[midpoint..].parse::<usize>().ok()?;
     Some((output, input))
+}
+
+fn append_derived_s_parameter_network_probes(
+    probes: &mut Vec<WaveformProbe>,
+    magnitude_linear_by_parameter: &BTreeMap<String, usize>,
+    phase_deg_by_parameter: &BTreeMap<String, usize>,
+) {
+    let Some(s11) = s_parameter_complex_values(
+        probes,
+        magnitude_linear_by_parameter,
+        phase_deg_by_parameter,
+        "s11",
+    ) else {
+        return;
+    };
+    let Some(s12) = s_parameter_complex_values(
+        probes,
+        magnitude_linear_by_parameter,
+        phase_deg_by_parameter,
+        "s12",
+    ) else {
+        return;
+    };
+    let Some(s21) = s_parameter_complex_values(
+        probes,
+        magnitude_linear_by_parameter,
+        phase_deg_by_parameter,
+        "s21",
+    ) else {
+        return;
+    };
+    let Some(s22) = s_parameter_complex_values(
+        probes,
+        magnitude_linear_by_parameter,
+        phase_deg_by_parameter,
+        "s22",
+    ) else {
+        return;
+    };
+    let sample_count = s11.len();
+    if sample_count == 0
+        || s12.len() != sample_count
+        || s21.len() != sample_count
+        || s22.len() != sample_count
+    {
+        return;
+    }
+    let mut reciprocity_values = Vec::with_capacity(sample_count);
+    let mut passivity_values = Vec::with_capacity(sample_count);
+    for index in 0..sample_count {
+        reciprocity_values.push(s21[index].subtract(s12[index]).magnitude());
+        passivity_values.push(two_port_max_singular_value(
+            s11[index], s12[index], s21[index], s22[index],
+        ));
+    }
+    probes.push(WaveformProbe {
+        label: "two-port reciprocity error".to_string(),
+        values: reciprocity_values,
+        derived: true,
+        expression: Some("max |S21-S12|".to_string()),
+        promoted_quantity: None,
+    });
+    probes.push(WaveformProbe {
+        label: "two-port passivity singular value".to_string(),
+        values: passivity_values,
+        derived: true,
+        expression: Some("max singular value(S)".to_string()),
+        promoted_quantity: None,
+    });
+}
+
+fn s_parameter_complex_values(
+    probes: &[WaveformProbe],
+    magnitude_linear_by_parameter: &BTreeMap<String, usize>,
+    phase_deg_by_parameter: &BTreeMap<String, usize>,
+    parameter: &str,
+) -> Option<Vec<SParameterComplexValue>> {
+    let magnitude_index = *magnitude_linear_by_parameter.get(parameter)?;
+    let phase_index = *phase_deg_by_parameter.get(parameter)?;
+    let magnitude_values = &probes.get(magnitude_index)?.values;
+    let phase_values = &probes.get(phase_index)?.values;
+    if magnitude_values.len() != phase_values.len() {
+        return None;
+    }
+    let mut values = Vec::with_capacity(magnitude_values.len());
+    for (magnitude, phase_deg) in magnitude_values.iter().zip(phase_values) {
+        if !magnitude.is_finite() || *magnitude < 0.0 || !phase_deg.is_finite() {
+            return None;
+        }
+        values.push(SParameterComplexValue::from_polar_degrees(
+            *magnitude, *phase_deg,
+        ));
+    }
+    Some(values)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SParameterComplexValue {
+    real: f64,
+    imaginary: f64,
+}
+
+impl SParameterComplexValue {
+    fn from_polar_degrees(magnitude: f64, phase_deg: f64) -> Self {
+        let phase_rad = phase_deg.to_radians();
+        Self {
+            real: magnitude * phase_rad.cos(),
+            imaginary: magnitude * phase_rad.sin(),
+        }
+    }
+
+    fn subtract(self, other: Self) -> Self {
+        Self {
+            real: self.real - other.real,
+            imaginary: self.imaginary - other.imaginary,
+        }
+    }
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            real: self.real + other.real,
+            imaginary: self.imaginary + other.imaginary,
+        }
+    }
+
+    fn conjugate(self) -> Self {
+        Self {
+            real: self.real,
+            imaginary: -self.imaginary,
+        }
+    }
+
+    fn multiply(self, other: Self) -> Self {
+        Self {
+            real: self.real * other.real - self.imaginary * other.imaginary,
+            imaginary: self.real * other.imaginary + self.imaginary * other.real,
+        }
+    }
+
+    fn magnitude_squared(self) -> f64 {
+        self.real
+            .mul_add(self.real, self.imaginary * self.imaginary)
+    }
+
+    fn magnitude(self) -> f64 {
+        self.magnitude_squared().sqrt()
+    }
+}
+
+fn two_port_max_singular_value(
+    s11: SParameterComplexValue,
+    s12: SParameterComplexValue,
+    s21: SParameterComplexValue,
+    s22: SParameterComplexValue,
+) -> f64 {
+    let a = s11.magnitude_squared() + s21.magnitude_squared();
+    let d = s12.magnitude_squared() + s22.magnitude_squared();
+    let b = s11
+        .conjugate()
+        .multiply(s12)
+        .add(s21.conjugate().multiply(s22));
+    let trace = a + d;
+    let discriminant = (a - d).mul_add(a - d, 4.0 * b.magnitude_squared());
+    let largest_eigenvalue = 0.5 * (trace + discriminant.max(0.0).sqrt());
+    largest_eigenvalue.max(0.0).sqrt()
 }
 
 fn waveform_x_axis_from_header(header: &str) -> WaveformXAxis {
