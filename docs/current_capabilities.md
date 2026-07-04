@@ -298,6 +298,8 @@ Current analog support:
   it skips unless `ngspice` is on `PATH`. Opt-in real-Xyce `.SENS`
   conformance is available through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_sensitivity_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
+  `backend: auto` prefers ngspice and falls back to Xyce for `.SENS` when
+  ngspice is absent and the Xyce filter contract is satisfied.
   Embedded ngspice remains fail-closed with planning evidence for this path.
 - `analog_distortion` scenarios with `SPICE_DISTORTION_ANALYSIS` for
   ngspice-backed small-signal distortion analysis. The Board IR/schema can declare
@@ -344,6 +346,8 @@ Current analog support:
   unless `ngspice` is on `PATH`. Opt-in real-Xyce `.FOUR` conformance is
   available through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_fourier_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
+  `backend: auto` prefers ngspice and falls back to Xyce for `.FOUR` when
+  ngspice is absent.
   Embedded ngspice remains fail-closed with planning evidence.
 - `analog_harmonic_balance` scenarios with
   `SPICE_HARMONIC_BALANCE_ANALYSIS` for periodic steady-state spectrum
@@ -454,10 +458,10 @@ Current analog support:
   `operating_point`, `dc_sweep`, `noise_spectrum`, and `noise_total`
   contracts, and write solver manifests.
   `backend: auto` prefers ngspice, can fall back to Xyce for transient, AC, DC,
-  DC sweep, ordinary noise, ordinary S-parameter term/network, and
-  template-only measure scenarios, and keeps Xyce explicit-only for other
-  specialized analyses until those auto boundaries are handled separately. The
-  opt-in real-solver conformance paths are
+  DC sweep, ordinary noise, ordinary S-parameter term/network, sensitivity,
+  Fourier, and template-only measure scenarios, and keeps Xyce explicit-only
+  for other specialized analyses until those auto boundaries are handled
+  separately. The opt-in real-solver conformance paths are
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_spice_xyce_cli` for
   transient/AC/DC/noise,
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_dc_sweep_cli` for DC

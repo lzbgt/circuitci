@@ -233,8 +233,8 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
      actually execute and normalize for the requested analysis. In the current
      slice it prefers external ngspice, may use embedded ngspice for transient,
      and may fall back to Xyce for transient, AC, DC operating-point, DC sweep,
-     ordinary `.NOISE`, and ordinary S-parameter term/network analyses when
-     ngspice is absent.
+     ordinary `.NOISE`, ordinary S-parameter term/network, sensitivity, and
+     Fourier analyses when ngspice is absent.
    - Explicit `backend: xyce` supports transient, AC, DC operating-point, and
      noise runs through dedicated Xyce wrappers that export CSV-like solver
      data, normalize it to the `transient_waveform`, `ac_bode`,
@@ -608,9 +608,10 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
    normalized `sensitivity_summary` contract. Opt-in real-Xyce conformance is
    available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sensitivity_cli`; it
-   skips unless `Xyce` or `xyce` is on `PATH`. Embedded ngspice remains
-   fail-closed with backend-planning evidence until it emits the same
-   normalized contract.
+   skips unless `Xyce` or `xyce` is on `PATH`. `backend: auto` prefers ngspice
+   and falls back to Xyce for `.SENS` when ngspice is absent and the Xyce
+   filter contract is satisfied. Embedded ngspice remains fail-closed with
+   backend-planning evidence until it emits the same normalized contract.
 
 For a scenario with check `SPICE_DISTORTION_ANALYSIS`:
 
@@ -698,7 +699,8 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`. Opt-in real-Xyce conformance is available through
    `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_fourier_cli`; it skips
-   unless `Xyce` or `xyce` is on `PATH`.
+   unless `Xyce` or `xyce` is on `PATH`. `backend: auto` prefers ngspice and
+   falls back to Xyce for `.FOUR` when ngspice is absent.
 9. Embedded ngspice remains fail-closed with backend-planning evidence until it
    emits the same normalized `fourier_summary` contract.
 

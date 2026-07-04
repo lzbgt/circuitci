@@ -723,6 +723,65 @@ fn sensitivity_xyce_backend_normalizes_summary_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn auto_sensitivity_backend_uses_xyce_when_ngspice_is_absent() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'Index,{V(out)},d_{V(out)}/d_R1:R_dir,d_{V(out)}/d_R2:R_dir' '0,5.000000e-01,-2.500000e-04,2.500000e-04' > sensitivity_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "auto",
+        "V(out)",
+        "dc",
+        r#"
+        sensitivity_assertions:
+          - name: r1_sensitivity_below_limit
+            parameter: R1
+            metric: sensitivity_magnitude
+            relation: below
+            threshold: 1.0e-3"#,
+    );
+
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_sensitivity_summary_has_dc_rows(artifact_path(&report, "sensitivity_summary.csv"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["requested"], "auto");
+    assert_selected_xyce(&manifest);
+    assert_eq!(manifest["analysis"]["kind"], "sensitivity");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "sensitivity_summary"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn sensitivity_backend_launch_failure_reports_solver_artifacts() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "ngspice");
