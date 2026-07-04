@@ -101,6 +101,8 @@ pub enum AnalogSParameterNetworkMetric {
     PassivityMaxSingularValue,
     RolletKMin,
     StabilityDeltaMagnitudeMax,
+    MaximumAvailableGainDbMin,
+    MaximumStableGainDbMin,
 }
 
 #[derive(Debug, Clone, Deserialize)]

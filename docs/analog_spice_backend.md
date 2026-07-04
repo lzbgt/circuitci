@@ -431,10 +431,17 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    minimum Rollet stability factor
    `(1 - |S11|^2 - |S22|^2 + |Delta|^2) / (2 |S12 S21|)`, and
    `stability_delta_magnitude_max` is the maximum `|Delta|` where
-   `Delta = S11 S22 - S12 S21`. These assertions require exactly two declared
-   S-parameter ports and retain `s_parameter_network_summary.csv` with the
-   worst frequencies. Rollet K is unavailable, and therefore fails closed when
-   asserted, if the sweep has zero `|S12 S21|`.
+   `Delta = S11 S22 - S12 S21`. `maximum_available_gain_db_min` is the
+   minimum MAG/GMAX in dB, derived as
+   `10 log10((|S21|/|S12|) * (K - sqrt(K^2 - 1)))` and retained only when
+   `K > 1` and `|Delta| < 1`. `maximum_stable_gain_db_min` is the minimum MSG
+   in dB, derived as `10 log10(|S21|/|S12|)`. These assertions require exactly
+   two declared S-parameter ports and retain `s_parameter_network_summary.csv`
+   with the worst frequencies. Rollet K, MAG, and MSG are unavailable, and
+   therefore fail closed when asserted, if the sweep has zero reverse
+   transmission or invalid stability conditions. Source/load-dependent
+   transducer, available, and operating gain are not exposed yet because Board
+   IR does not carry source/load reflection-coefficient provenance.
 8. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into

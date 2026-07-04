@@ -1121,6 +1121,8 @@ fn validate_sparameter_network_assertion_draft(
             | "passivity_max_singular_value"
             | "rollet_k_min"
             | "stability_delta_magnitude_max"
+            | "maximum_available_gain_db_min"
+            | "maximum_stable_gain_db_min"
     ) {
         anyhow::bail!(
             "Unsupported S-parameter network assertion metric {}.",

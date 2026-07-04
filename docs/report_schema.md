@@ -1467,9 +1467,14 @@ maximum passivity singular value and frequency. Rows also include nullable
 `min_rollet_k`, `frequency_hz_at_min_rollet_k`,
 `max_stability_delta_magnitude`, and
 `frequency_hz_at_max_stability_delta_magnitude` fields for two-port
-active-network stability sign-off. Markdown reports include those rows in an
-"S-Parameter Network Summary" section, and the GUI report panel surfaces the
-same compact two-port quality rows.
+active-network stability sign-off. Rows also include nullable
+`min_maximum_available_gain_db`,
+`frequency_hz_at_min_maximum_available_gain`,
+`min_maximum_stable_gain_db`, and
+`frequency_hz_at_min_maximum_stable_gain` fields for MAG/MSG gain sign-off.
+Markdown reports include those rows in an "S-Parameter Network Summary"
+section, and the GUI report panel surfaces the same compact two-port quality
+rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

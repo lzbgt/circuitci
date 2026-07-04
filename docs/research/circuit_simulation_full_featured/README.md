@@ -664,10 +664,23 @@ The GUI should not become the solver.
   are skipped when any sweep row has zero `|S12 S21|`, matching the
   fail-closed assertion contract for unavailable K. GUI Scopes now also
   provides an RF Network Check editor that writes two-port
-  `s_parameter_network_assertions[]` for reciprocity, passivity, Rollet K, and
-  stability `|Delta|` limits with Board IR validation before accepting the YAML
-  edit, and retained network assertion failures can be loaded from the report
-  panel back into that editor.
+  `s_parameter_network_assertions[]` for reciprocity, passivity, Rollet K,
+  stability `|Delta|`, MAG, and MSG limits with Board IR validation before
+  accepting the YAML edit, and retained network assertion failures can be
+  loaded from the report panel back into that editor.
+- 2026-07-04: Added RF amplifier gain sign-off to the two-port S-parameter
+  network summary contract. `s_parameter_network_summary.csv` now retains
+  minimum maximum available gain (`maximum_available_gain_db_min`) and minimum
+  maximum stable gain (`maximum_stable_gain_db_min`) with worst frequencies,
+  and `analysis.s_parameter_network_assertions[]` can fail closed on those
+  limits. MAG is retained only for rows with `K > 1`, `|Delta| < 1`, and
+  nonzero reverse transmission; MSG is retained when `|S12|` and `|S21|` are
+  finite and nonzero. Formula snapshots were saved in
+  `sources/mathworks_powergain.html`,
+  `sources/microwaves101_stability_factor_gain.html`, and
+  `sources/libretexts_amplifier_stability.html`. Source/load-dependent
+  transducer, available, and operating gain remain future work until Board IR
+  carries source/load reflection-coefficient provenance.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

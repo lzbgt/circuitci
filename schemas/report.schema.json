@@ -335,7 +335,11 @@
         "min_rollet_k",
         "frequency_hz_at_min_rollet_k",
         "max_stability_delta_magnitude",
-        "frequency_hz_at_max_stability_delta_magnitude"
+        "frequency_hz_at_max_stability_delta_magnitude",
+        "min_maximum_available_gain_db",
+        "frequency_hz_at_min_maximum_available_gain",
+        "min_maximum_stable_gain_db",
+        "frequency_hz_at_min_maximum_stable_gain"
       ],
       "properties": {
         "artifact": { "type": "string", "minLength": 1 },
@@ -350,7 +354,11 @@
         "min_rollet_k": { "type": ["number", "null"] },
         "frequency_hz_at_min_rollet_k": { "type": ["number", "null"] },
         "max_stability_delta_magnitude": { "type": ["number", "null"] },
-        "frequency_hz_at_max_stability_delta_magnitude": { "type": ["number", "null"] }
+        "frequency_hz_at_max_stability_delta_magnitude": { "type": ["number", "null"] },
+        "min_maximum_available_gain_db": { "type": ["number", "null"] },
+        "frequency_hz_at_min_maximum_available_gain": { "type": ["number", "null"] },
+        "min_maximum_stable_gain_db": { "type": ["number", "null"] },
+        "frequency_hz_at_min_maximum_stable_gain": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },

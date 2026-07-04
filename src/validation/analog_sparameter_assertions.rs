@@ -235,7 +235,7 @@ pub(super) fn write_s_parameter_network_summary(s_parameters: &Path) -> Result<P
         .join("s_parameter_network_summary.csv");
     let row = summarize_s_parameter_network(s_parameters)?;
     let text = format!(
-        "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude\n{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{}\n",
+        "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude,min_maximum_available_gain_db,frequency_hz_at_min_maximum_available_gain,min_maximum_stable_gain_db,frequency_hz_at_min_maximum_stable_gain\n{},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e},{},{},{},{},{},{},{},{}\n",
         row.port_count,
         row.row_count,
         row.min_frequency_hz,
@@ -248,6 +248,10 @@ pub(super) fn write_s_parameter_network_summary(s_parameters: &Path) -> Result<P
         optional_csv(row.frequency_hz_at_min_rollet_k),
         optional_csv(row.max_stability_delta_magnitude),
         optional_csv(row.frequency_hz_at_max_stability_delta_magnitude),
+        optional_csv(row.min_maximum_available_gain_db),
+        optional_csv(row.frequency_hz_at_min_maximum_available_gain),
+        optional_csv(row.min_maximum_stable_gain_db),
+        optional_csv(row.frequency_hz_at_min_maximum_stable_gain),
     );
     fs::write(&summary, text).map_err(|error| {
         format!(
@@ -378,6 +382,10 @@ struct SParameterNetworkSummaryRow {
     frequency_hz_at_min_rollet_k: Option<f64>,
     max_stability_delta_magnitude: Option<f64>,
     frequency_hz_at_max_stability_delta_magnitude: Option<f64>,
+    min_maximum_available_gain_db: Option<f64>,
+    frequency_hz_at_min_maximum_available_gain: Option<f64>,
+    min_maximum_stable_gain_db: Option<f64>,
+    frequency_hz_at_min_maximum_stable_gain: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -642,6 +650,10 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
     let mut frequency_hz_at_min_rollet_k: Option<f64> = None;
     let mut max_stability_delta_magnitude: Option<f64> = None;
     let mut frequency_hz_at_max_stability_delta_magnitude: Option<f64> = None;
+    let mut min_maximum_available_gain_db: Option<f64> = None;
+    let mut frequency_hz_at_min_maximum_available_gain: Option<f64> = None;
+    let mut min_maximum_stable_gain_db: Option<f64> = None;
+    let mut frequency_hz_at_min_maximum_stable_gain: Option<f64> = None;
     for sample in &samples {
         min_frequency_hz = min_frequency_hz.min(sample.frequency_hz);
         max_frequency_hz = max_frequency_hz.max(sample.frequency_hz);
@@ -667,6 +679,18 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
             min_rollet_k = Some(rollet_k);
             frequency_hz_at_min_rollet_k = Some(sample.frequency_hz);
         }
+        if let Some(gain_db) = maximum_available_gain_db(sample, delta_magnitude)
+            && min_maximum_available_gain_db.is_none_or(|current| gain_db < current)
+        {
+            min_maximum_available_gain_db = Some(gain_db);
+            frequency_hz_at_min_maximum_available_gain = Some(sample.frequency_hz);
+        }
+        if let Some(gain_db) = maximum_stable_gain_db(sample)
+            && min_maximum_stable_gain_db.is_none_or(|current| gain_db < current)
+        {
+            min_maximum_stable_gain_db = Some(gain_db);
+            frequency_hz_at_min_maximum_stable_gain = Some(sample.frequency_hz);
+        }
     }
     Ok(SParameterNetworkSummaryRow {
         port_count: 2,
@@ -681,6 +705,10 @@ fn summarize_s_parameter_network(path: &Path) -> Result<SParameterNetworkSummary
         frequency_hz_at_min_rollet_k,
         max_stability_delta_magnitude,
         frequency_hz_at_max_stability_delta_magnitude,
+        min_maximum_available_gain_db,
+        frequency_hz_at_min_maximum_available_gain,
+        min_maximum_stable_gain_db,
+        frequency_hz_at_min_maximum_stable_gain,
     })
 }
 
@@ -878,6 +906,42 @@ fn rollet_stability_factor(sample: &SParameterNetworkSample, delta_magnitude: f6
     rollet_k.is_finite().then_some(rollet_k)
 }
 
+fn maximum_available_gain_db(
+    sample: &SParameterNetworkSample,
+    delta_magnitude: f64,
+) -> Option<f64> {
+    let rollet_k = rollet_stability_factor(sample, delta_magnitude)?;
+    if rollet_k <= 1.0 || delta_magnitude >= 1.0 {
+        return None;
+    }
+    let stable_gain = maximum_stable_gain_linear(sample)?;
+    let radical = (rollet_k * rollet_k - 1.0).max(0.0).sqrt();
+    let gain = stable_gain * (rollet_k - radical);
+    finite_positive_db(gain)
+}
+
+fn maximum_stable_gain_db(sample: &SParameterNetworkSample) -> Option<f64> {
+    finite_positive_db(maximum_stable_gain_linear(sample)?)
+}
+
+fn maximum_stable_gain_linear(sample: &SParameterNetworkSample) -> Option<f64> {
+    let reverse = sample.s12.magnitude();
+    let forward = sample.s21.magnitude();
+    if !reverse.is_finite() || !forward.is_finite() || reverse <= f64::EPSILON {
+        return None;
+    }
+    let gain = forward / reverse;
+    (gain.is_finite() && gain > 0.0).then_some(gain)
+}
+
+fn finite_positive_db(value: f64) -> Option<f64> {
+    if !value.is_finite() || value <= 0.0 {
+        return None;
+    }
+    let db = 10.0 * value.log10();
+    db.is_finite().then_some(db)
+}
+
 fn read_s_parameter_summary(path: &Path) -> Result<Vec<SParameterSummaryRow>, String> {
     let text = fs::read_to_string(path).map_err(|error| {
         format!(
@@ -972,7 +1036,7 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         .next()
         .ok_or_else(|| "S-parameter network summary CSV has no header row.".to_string())?;
     if header
-        != "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude"
+        != "port_count,row_count,min_frequency_hz,max_frequency_hz,max_reciprocity_error_linear,frequency_hz_at_max_reciprocity_error,max_passivity_singular_value,frequency_hz_at_max_passivity,min_rollet_k,frequency_hz_at_min_rollet_k,max_stability_delta_magnitude,frequency_hz_at_max_stability_delta_magnitude,min_maximum_available_gain_db,frequency_hz_at_min_maximum_available_gain,min_maximum_stable_gain_db,frequency_hz_at_min_maximum_stable_gain"
     {
         return Err("S-parameter network summary CSV has unexpected header.".to_string());
     }
@@ -985,9 +1049,9 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         );
     }
     let fields: Vec<_> = row.split(',').map(str::trim).collect();
-    if fields.len() != 12 {
+    if fields.len() != 16 {
         return Err(format!(
-            "S-parameter network summary row has {} fields, expected 12.",
+            "S-parameter network summary row has {} fields, expected 16.",
             fields.len()
         ));
     }
@@ -1022,6 +1086,22 @@ fn read_s_parameter_network_summary(path: &Path) -> Result<SParameterNetworkSumm
         frequency_hz_at_max_stability_delta_magnitude: parse_optional_finite_f64(
             fields[11],
             "frequency_hz_at_max_stability_delta_magnitude",
+        )?,
+        min_maximum_available_gain_db: parse_optional_finite_f64(
+            fields[12],
+            "min_maximum_available_gain_db",
+        )?,
+        frequency_hz_at_min_maximum_available_gain: parse_optional_finite_f64(
+            fields[13],
+            "frequency_hz_at_min_maximum_available_gain",
+        )?,
+        min_maximum_stable_gain_db: parse_optional_finite_f64(
+            fields[14],
+            "min_maximum_stable_gain_db",
+        )?,
+        frequency_hz_at_min_maximum_stable_gain: parse_optional_finite_f64(
+            fields[15],
+            "frequency_hz_at_min_maximum_stable_gain",
         )?,
     })
 }
@@ -1102,6 +1182,10 @@ fn network_metric_value(
         AnalogSParameterNetworkMetric::StabilityDeltaMagnitudeMax => {
             row.max_stability_delta_magnitude
         }
+        AnalogSParameterNetworkMetric::MaximumAvailableGainDbMin => {
+            row.min_maximum_available_gain_db
+        }
+        AnalogSParameterNetworkMetric::MaximumStableGainDbMin => row.min_maximum_stable_gain_db,
     }
 }
 
@@ -1273,6 +1357,22 @@ fn push_s_parameter_network_assertion_finding(
         json!(row.frequency_hz_at_max_stability_delta_magnitude),
     );
     finding.measured.insert(
+        "min_maximum_available_gain_db".to_string(),
+        json!(row.min_maximum_available_gain_db),
+    );
+    finding.measured.insert(
+        "frequency_hz_at_min_maximum_available_gain".to_string(),
+        json!(row.frequency_hz_at_min_maximum_available_gain),
+    );
+    finding.measured.insert(
+        "min_maximum_stable_gain_db".to_string(),
+        json!(row.min_maximum_stable_gain_db),
+    );
+    finding.measured.insert(
+        "frequency_hz_at_min_maximum_stable_gain".to_string(),
+        json!(row.frequency_hz_at_min_maximum_stable_gain),
+    );
+    finding.measured.insert(
         "s_parameter_network_summary".to_string(),
         json!(normalize_artifact_path(summary)),
     );
@@ -1338,7 +1438,7 @@ fn push_s_parameter_network_metric_unavailable_finding(
         json!(network_metric_name(assertion.metric)),
     );
     finding.suggested_fixes.push(
-        "Use a two-port sweep with nonzero forward and reverse transmission if Rollet K stability-factor sign-off is required."
+        "Use a two-port sweep with nonzero forward and reverse transmission and a stable active-network region if gain or stability-factor sign-off is required."
             .to_string(),
     );
     findings.push(finding);
@@ -1502,7 +1602,11 @@ fn s_parameter_assertion_unit(assertion: &AnalogSParameterAssertion) -> &str {
 }
 
 fn s_parameter_network_assertion_unit(assertion: &AnalogSParameterNetworkAssertion) -> &str {
-    assertion.unit.as_deref().unwrap_or("ratio")
+    assertion.unit.as_deref().unwrap_or(match assertion.metric {
+        AnalogSParameterNetworkMetric::MaximumAvailableGainDbMin
+        | AnalogSParameterNetworkMetric::MaximumStableGainDbMin => "dB",
+        _ => "ratio",
+    })
 }
 
 fn metric_name(metric: AnalogSParameterMetric) -> &'static str {
@@ -1528,6 +1632,8 @@ fn network_metric_name(metric: AnalogSParameterNetworkMetric) -> &'static str {
         AnalogSParameterNetworkMetric::StabilityDeltaMagnitudeMax => {
             "stability_delta_magnitude_max"
         }
+        AnalogSParameterNetworkMetric::MaximumAvailableGainDbMin => "maximum_available_gain_db_min",
+        AnalogSParameterNetworkMetric::MaximumStableGainDbMin => "maximum_stable_gain_db_min",
     }
 }
 

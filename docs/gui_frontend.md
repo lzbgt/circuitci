@@ -460,8 +460,8 @@ editors for `analog_sparameter` scenarios; they write
 `analysis.s_parameter_assertions[]` entries for magnitude, return loss,
 insertion loss, VSWR, mismatch-loss, group-delay, and reflection-impedance limits, plus two-port
 `analysis.s_parameter_network_assertions[]` entries for reciprocity,
-passivity, Rollet K, and stability `|Delta|` limits, with YAML validation
-before the edited project is accepted. The same Scopes artifact panel surfaces
+passivity, Rollet K, stability `|Delta|`, MAG, and MSG limits, with YAML
+validation before the edited project is accepted. The same Scopes artifact panel surfaces
 retained S-parameter port/network assertion failures with row-level actions
 that hydrate the matching RF Port Check or RF Network Check editor state from
 the report metadata, including mismatch-loss/reflection-impedance metric, aggregation,

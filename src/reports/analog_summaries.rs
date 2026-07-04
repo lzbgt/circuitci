@@ -104,6 +104,10 @@ pub struct SParameterNetworkSummary {
     pub frequency_hz_at_min_rollet_k: Option<f64>,
     pub max_stability_delta_magnitude: Option<f64>,
     pub frequency_hz_at_max_stability_delta_magnitude: Option<f64>,
+    pub min_maximum_available_gain_db: Option<f64>,
+    pub frequency_hz_at_min_maximum_available_gain: Option<f64>,
+    pub min_maximum_stable_gain_db: Option<f64>,
+    pub frequency_hz_at_min_maximum_stable_gain: Option<f64>,
 }
 
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
@@ -507,6 +511,10 @@ fn parse_s_parameter_network_summary_csv(
             "frequency_hz_at_min_rollet_k",
             "max_stability_delta_magnitude",
             "frequency_hz_at_max_stability_delta_magnitude",
+            "min_maximum_available_gain_db",
+            "frequency_hz_at_min_maximum_available_gain",
+            "min_maximum_stable_gain_db",
+            "frequency_hz_at_min_maximum_stable_gain",
         ]
     {
         return Vec::new();
@@ -516,7 +524,7 @@ fn parse_s_parameter_network_summary_csv(
         let Some(fields) = split_csv_fields(line) else {
             continue;
         };
-        if fields.len() != 12 {
+        if fields.len() != 16 {
             continue;
         }
         let Some(port_count) = fields[0].parse::<usize>().ok() else {
@@ -557,6 +565,21 @@ fn parse_s_parameter_network_summary_csv(
         else {
             continue;
         };
+        let Some(min_maximum_available_gain_db) = parse_optional_finite_f64(&fields[12]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_maximum_available_gain) =
+            parse_optional_finite_f64(&fields[13])
+        else {
+            continue;
+        };
+        let Some(min_maximum_stable_gain_db) = parse_optional_finite_f64(&fields[14]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_maximum_stable_gain) = parse_optional_finite_f64(&fields[15])
+        else {
+            continue;
+        };
         rows.push(SParameterNetworkSummary {
             artifact: artifact.to_string(),
             port_count,
@@ -571,6 +594,10 @@ fn parse_s_parameter_network_summary_csv(
             frequency_hz_at_min_rollet_k,
             max_stability_delta_magnitude,
             frequency_hz_at_max_stability_delta_magnitude,
+            min_maximum_available_gain_db,
+            frequency_hz_at_min_maximum_available_gain,
+            min_maximum_stable_gain_db,
+            frequency_hz_at_min_maximum_stable_gain,
         });
     }
     rows

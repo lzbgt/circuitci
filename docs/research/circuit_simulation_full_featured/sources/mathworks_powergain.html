@@ -1,0 +1,1448 @@
+<!DOCTYPE html><html lang="en"><head><script nonce="67Unv+cYJaaPyeUrXvRz32IW">window.mwDocMetadata = {"isLoggedIn":false,"exampleVersionSpec":["\u003e=25.1"],"isArchivedDoc":false,"release":"R2026a"};</script>
+	
+	<!-- Template Source Page: /content/mathworks/www/en/template-service/help/full-header-footer-offcanvas-bs5 -->
+	<!-- Template Source Env: test2 -->
+	<!-- Template Last Modified: 2026-06-22T12:50:41-04:00 -->
+	
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	
+
+	<link rel="icon" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/images/favicon.20260619050209678.ico" type="image/x-icon"/>
+	<link rel="canonical" href="https://www.mathworks.com/help/rf/ref/powergain.html"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+	
+	
+		<meta name="twitter:card" content="summary_large_image"/>
+		<meta name="twitter:site" content="@MathWorks"/>
+		
+		<meta name="twitter:image" content="https://www.mathworks.com/template-service/help/full-header-footer-offcanvas-bs5/_jcr_content/ogImageSecureUrl.adapt.1200.medium.jpg/1744384063106.jpg"/>
+		<meta property="og:image:url" content="https://www.mathworks.com/template-service/help/full-header-footer-offcanvas-bs5/_jcr_content/ogImageSecureUrl.adapt.1200.medium.jpg/1744384063106.jpg"/>
+		<meta property="og:image:secure_url" content="https://www.mathworks.com/template-service/help/full-header-footer-offcanvas-bs5/_jcr_content/ogImageSecureUrl.adapt.1200.medium.jpg/1744384063106.jpg"/>
+	
+	<meta property="og:url" content="https://www.mathworks.com/help/rf/ref/powergain.html"/>
+	<meta property="og:description" content="This MATLAB function calculates the transducer power gain of the 2-port network by:..."/>
+	<meta property="og:title" content="powergain - Calculate power gain from two-port S-parameters - MATLAB"/>
+	<meta property="og:type" content="website"/>
+	
+
+	
+
+	<script nonce="67Unv+cYJaaPyeUrXvRz32IW"> (function() { if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) { document.documentElement.classList.add('mw-theme-dark'); } else { document.documentElement.classList.add('mw-theme-light'); } })();	</script>
+	
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/webvitals.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+
+	
+	
+
+	
+	
+	
+
+	
+
+	
+	
+		
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/bootstrap5.min.20260619050209678.css" type="text/css"/>
+
+
+
+		
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/bs5.min.20260619050209678.css" type="text/css"/>
+
+
+
+	
+	
+	
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/offcanvasv5.min.20260619050209678.css" type="text/css"/>
+
+
+
+	
+
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-italic-300.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-italic-400.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-italic-500.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-italic-700.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-normal-300.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-normal-400.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-normal-500.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/roboto/roboto-latin-normal-700.20260619050209678.woff2" rel="preload" as="font" type="font/woff2" crossorigin=""/>
+	<link href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/fonts/mathworks.20260619050209678.woff" rel="preload" as="font" type="font/woff" crossorigin=""/>
+
+	
+		
+		<script nonce="67Unv+cYJaaPyeUrXvRz32IW">(function(g,b,d,f){(function(a,c,d){if(a){var e=b.createElement("style");e.id=c;e.innerHTML=d;a.appendChild(e)}})(b.getElementsByTagName("head")[0],"at-body-style",d);setTimeout(function(){var a=b.getElementsByTagName("head")[0];if(a){var c=b.getElementById("at-body-style");c&&a.removeChild(c)}},f)})(window,document,"[class*='personalization-container']:not([id^='web-application']) {opacity: 0 !important}",1E3);</script> <script src="//assets.adobedtm.com/d0cc0600946eb3957f703b9fe43c3590597a8c2c/satelliteLib-e8d23c2e444abadc572df06537e2def59c01db09.js" async="" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+	
+	
+
+	
+
+	
+
+	<title>powergain - Calculate power gain from two-port S-parameters - MATLAB
+</title>
+	
+
+
+
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/jquery.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script><script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/jquery-migrate.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<meta xmlns="http://www.w3.org/1999/xhtml" http-equiv="Content-Script-Type" content="text/javascript"/>
+
+<link xmlns="http://www.w3.org/1999/xhtml" href="/help/releases/R2026a/includes/web/css/doc_center.css" rel="stylesheet" type="text/css"/>
+<link xmlns="http://www.w3.org/1999/xhtml" href="/help/releases/R2026a/includes/web/css/doc_center_localnav.css" rel="stylesheet" type="text/css"/>
+
+<script src="/help/releases/R2026a/includes/shared/equationrenderer/release/MathRenderer.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/l10n.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/docscripts.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/f1help.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/mw.imageanimation.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/jquery.highlight.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/product/scripts/underscore-min.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+<script xmlns="http://www.w3.org/1999/xhtml" src="/help/releases/R2026a/includes/shared/scripts/localstorage.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+<script src="/help/releases/R2026a/includes/web/scripts/overload.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/helpservices.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/product/scripts/productfilter.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/matlab_dialog_shared.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<link href="/help/releases/R2026a/includes/shared/highlight/styles/mwdochighlight.min.css" rel="stylesheet" type="text/css"/>
+<script src="/help/releases/R2026a/includes/shared/highlight/highlight.min.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<link href="/help/releases/R2026a/includes/web/css/doc_center_print.css" rel="stylesheet" type="text/css" media="print"/>
+
+<script src="/matlabcentral/jscript/userarea-typeahead-v1.js" defer="" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+  <script type="text/javascript" nonce="67Unv+cYJaaPyeUrXvRz32IW">
+    document.addEventListener("DOMContentLoaded", function () {
+      const possibleSelectors = ['#query','#inpage_query'];
+      possibleSelectors.forEach(selector => {
+        const inputElement = document.querySelector(selector);
+        if (inputElement) {
+          const customElement = document.createElement('userarea-typeahead');
+          customElement.setAttribute('input-selector', selector);
+          customElement.setAttribute('collection', 'documentation');
+          customElement.setAttribute('app-label', 'Documentation');
+          customElement.setAttribute('env', 'prod');
+          customElement.setAttribute('site-language', 'en');
+          customElement.setAttribute('blank-state', 'true');
+          document.body.appendChild(customElement);
+        }
+      });
+    });
+</script> 
+	<meta name="robots" content="all"/><meta name="description" content="This MATLAB function calculates the transducer power gain of the 2-port network by:..."/><style>#localnav:has(.alert) { height:calc(44px + 36px); padding-top:36px; }
+			#localnav .alert { width: 100%; padding-top:2px; padding-right:5px; padding-bottom:2px; border-top:none; border-left:none; border-right:none; border-radius:0; display:flex; align-items:center; flex-direction:row; flex-wrap:nowrap; gap:7px; position:absolute; top:0; z-index:2;  }
+			#localnav .alert p { margin-bottom:0; }
+			#localnav .alert-dismissible .btn-close { margin-left:auto; position:relative; }</style><link rel="alternate" hreflang="x-default" href="https://www.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="de" href="https://de.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="en" href="https://www.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="es" href="https://la.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="fr" href="https://fr.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="it" href="https://it.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="ja" href="https://jp.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="ko" href="https://kr.mathworks.com/help/rf/ref/powergain.html"/>
+	<link rel="alternate" hreflang="zh" href="https://ww2.mathworks.cn/help/rf/ref/powergain.html"/></head>
+
+
+
+	<body id="template_offcanvas" class="site_lang_en templateservice offcanvas_fixed
+		  
+		  
+		  
+		  
+ 		  
+		  -has_usernav
+		  -is_full_header
+		  
+		  " data-cid="helpcenter">
+		<a class="skip_link visually-hidden-focusable" href="#main">Skip to content</a>
+
+		
+		
+
+
+	<div class="sticky-top" id="sticky_container">
+		
+
+	<header class="-has_matrix
+					 -has_mwa
+					 -has_store
+					 -has_topnav
+					 -has_subnav
+					 ">
+		<nav class="navbar navbar-expand-lg" aria-label="Main navigation">
+			<div class="container-fluid container-lg">
+				<div class="d-lg-flex flex-row align-items-center" id="header_content_container">
+					<a class="navbar-brand d-inline-flex" href="/?s_tid=user_nav_logo">
+						
+						<img src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/images/mathworks-logo-membrane.20260619050209678.svg" class="mw_logo" alt="MathWorks" width="34" height="30"/>
+					</a>
+
+					<div class="sectionHead sectionhead containsResourceName resourceClass-sectionhead">
+
+
+	<p class="d-inline-flex d-lg-none h1">
+		<a class="add_cursor_pointer" href="/help/?s_tid=user_nav_help">MATLAB Help Center</a>
+		
+	</p>
+	
+
+
+
+
+</div>
+
+
+					<div class="d-flex d-lg-none" id="global_mobile_actuator_container_search">
+						<button class="navbar-toggler btn collapsed" id="global_search_mobile_actuator" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#global_search_mobile" data-bs-target="#global_search_mobile" aria-controls="global_search_mobile" aria-expanded="false" aria-label="Toggle Search">
+							<span class="icon-search"></span>
+						</button>
+					</div>
+					<div class="navbar-collapse collapse" id="global_search_mobile">
+						<div id="global_search_mobile_placeholder"></div>
+						<div id="global_search_container">
+							<div class="sectionHeadSearchBox sectionheadsearchbox containsResourceName resourceClass-sectionheadsearchbox">
+
+	
+
+	
+		
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/sectionheadsearchbox/bs5.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+		
+		
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/typeahead.min.20260619050209678.css" type="text/css"/>
+
+
+
+		
+		
+		
+			
+		
+		<form name="search" id="site_search" class="site_search" action="/search/user-center" method="get" data-release="R2026a" data-language="en">
+			<div class="input-group">
+				<label id="search-mathworks" class="visually-hidden" for="query">Search or ask a question</label>
+				<input type="hidden" name="c[]" id="site_search_collection" value="usercenter" disabled=""/>
+				<input type="search" name="q" id="query" class="form-control conjoined_search" aria-autocomplete="list" autocomplete="off" role="combobox" aria-controls="search_suggestions" aria-haspopup="listbox" aria-expanded="true" aria-activedescendant="" placeholder="Search or ask a question" data-site-domain="www" data-site-language="en" data-typeahead-proxy-url="https://services.mathworks.com/typeahead" data-typeahead-type="basic" data-typeahead-result-count="10" data-label-suggestions="Suggestions" data-label-see-all-results="See all results" aria-labelledby="search-mathworks"/>
+				<button type="button" id="clearsearch" class="btn btn_color_blue btn-outline icon-remove visually-hidden-focusable" aria-label="Clear search"></button>
+				
+				
+				<button type="submit" id="searchbutton" class="btn btn_color_blue btn-outline icon-search" aria-label="Search"></button>
+			</div>
+		</form>
+	
+
+	
+
+</div>
+
+						</div>
+					</div>
+
+
+					<div class="d-flex d-lg-none" id="global_mobile_actuator_container_navigation">
+						<button class="navbar-toggler collapsed btn" id="global_navigation_mobile_actuator" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#global_navigation" data-bs-target="#global_navigation" aria-controls="global_navigation" aria-expanded="false" aria-label="Toggle Main Navigation">
+							<span class="icon-menu-full"></span>
+						</button>
+					</div>
+					<div class="collapse navbar-collapse" id="global_navigation">
+						
+						<div class="topNavigation topnavigation containsResourceName resourceClass-topnavigation">
+
+
+
+	<ul class="navbar-nav flex-grow-1 align-items-lg-center mb-0">
+		
+		
+			<li class="nav-item dropdown" id="globalnav_item_helpcenter">
+				
+	
+	
+	
+
+	
+
+	<a class="nav-link active " href="/help/?s_tid=user_nav_help">
+
+		
+
+		
+			
+			MATLAB Help Center</a>
+
+		
+		
+	
+
+				
+			</li>
+		
+			<li class="nav-item dropdown" id="globalnav_item_community">
+				
+	
+	
+	
+
+	
+
+	<a class="nav-link " href="/matlabcentral/?s_tid=user_nav_community">
+
+		
+
+		
+			
+			Community</a>
+
+		
+		
+	
+
+				
+			</li>
+		
+			<li class="nav-item dropdown" id="globalnav_item_learning">
+				
+	
+	
+	
+
+	
+
+	<a class="nav-link " href="https://matlabacademy.mathworks.com/?s_tid=user_nav_learning">
+
+		
+
+		
+			
+			Learning</a>
+
+		
+		
+	
+
+				
+			</li>
+		
+
+		
+		<li class="nav-item  -alignment_lg_end" id="globalnav_item_matlab">
+			
+			
+
+			
+	
+	
+	
+
+	
+
+	<a class="not-logged-in btn btn_color_blue d-block d-lg-inline-flex " href="https://login.mathworks.com/embedded-login/landing.html?cid=getmatlab&amp;s_tid=user_nav_getml" style="display:none !important;">
+
+		
+
+		
+			
+			Get MATLAB</a>
+
+		
+		
+	
+
+			
+	
+	
+	
+
+	
+
+	<a class="logged-in btn btn_color_blue d-block d-lg-inline-flex " href="https://login.mathworks.com/embedded-login/landing.html?cid=getmatlab&amp;s_tid=user_nav_getml" style="display:none !important;">
+
+		
+
+		
+			
+			MATLAB</a>
+
+		
+		
+	
+
+
+		</li>
+
+		
+		
+			<li class="nav-item dropdown -alignment_lg_end" id="globalnav_item_mwa">
+				<a aria-label="Sign In to Your MathWorks Account" class="nav-link headernav_login mwa-nav_login" href="#" id="mwanav_item_login" style="display: none;">
+					Sign In
+				</a>
+
+				<a aria-expanded="false" class="nav-link headernav_logout dropdown-toggle" data-bs-toggle="dropdown" data-toggle="dropdown" href="#" id="mwanav_actuator" role="button" style="display: none;" title="Access your MathWorks Account">
+					<span class="mwanav_avatar mwa_image_drop_down"></span>
+					<span class="mobile_account_name visually_hidden_xxl visually_hidden_xl visually_hidden_lg hidden-md hidden-lg"></span>
+				</a>
+				<ul class="dropdown-menu dropdown-menu-lg-end" id="mwanav_dropdown_menu">
+					<li id="mwanav_item_account"><a class="mwa-account dropdown-item">My Account</a></li>
+					<li id="mwanav_item_community"><a class="mwa-community-profile dropdown-item">My Community Profile</a></li>
+					<li id="mwanav_item_associate"><a class="mwa-link-license dropdown-item">Link License</a></li>
+					<li><hr class="dropdown-divider"/></li>
+					<li id="mwanav_item_logout"><a class="mwa-logout dropdown-item">Sign Out</a></li>
+				</ul>
+			</li>
+		
+
+		
+
+		
+
+		<li class="nav-item d-block d-lg-none" id="globalnav_item_mobile_cta_support">
+			
+	
+	
+	
+
+	
+
+	<a class="nav-link " href="/support/contact_us.html" id="mobile_cta_support">
+
+		
+
+		
+			<span class="icon-phone"></span>
+			Contact MathWorks Support</a>
+
+		
+		
+	
+
+		</li>
+
+		<li class="nav-item d-block d-lg-none" id="globalnav_item_mobile_cta_corporate">
+			
+	
+	
+	
+
+	
+
+	<a class="nav-link " href="/" id="mobile_cta_corporate">
+
+		
+
+		
+			<span class="icon-membrane"></span>
+			Visit mathworks.com</a>
+
+		
+		
+	
+
+		</li>
+
+		<li class="nav-item dropdown d-none d-lg-block -alignment_lg_end" id="globalnav_item_search">
+			<a aria-expanded="false" aria-label="Search" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" data-toggle="dropdown" href="#" role="button"><span class="icon-search"></span></a>
+			<div class="dropdown-menu">
+				<div class="container-lg">
+					<div class="row align-items-center">
+						
+						
+							<div class="col">
+								<div id="global_search_desktop_placeholder"></div>
+							</div>
+						
+					</div>
+				</div>
+			</div>
+		</li>
+
+		<li class="nav-item d-none d-lg-block -alignment_lg_end" id="globalnav_item_matrix">
+			<mw-matrix lang="en" tier="DOTCOM" env="prod" bsversion="bs5" class="nav-link" host="https://www.mathworks.com"></mw-matrix>
+		</li>
+	</ul>
+
+
+	
+
+
+</div>
+
+					</div>
+				</div>
+
+				
+			</div>
+		</nav>
+	</header>
+
+
+
+		
+		
+		
+	</div>
+
+
+
+
+
+		
+<div id="offcanvas_container">
+	
+
+	<div class="collapse collapse-horizontal" id="offcanvas_menu" data-offcanvas-id="helpcenter-offcanvas">
+		<button class="btn collapsed" id="offcanvas_actuator" type="button" data-bs-toggle="collapse" data-bs-target="#offcanvas_menu" aria-expanded="false" aria-controls="offcanvas_menu">
+			<span class="icon-offcanvas-menu"><span class="visually-hidden">Off-Canvas Navigation Menu Toggle</span></span> <span class="offcanvas_actuator_label" aria-hidden="true">Contents</span>
+		</button>
+		<div id="offcanvas_menu_content"><nav class="offcanvas_nav" role="navigation">
+<div class="search_refine_v4 -presentation_browse">
+<div id="facets_area">
+<div class="personalization-container" id="web-application-offcanvas-container">
+<ol itemscope="" itemtype="https://schema.org/BreadcrumbList" class="nav_breadcrumb list-unstyled" id="ul_left_nav_ancestors">
+  <li itemscope="" itemtype="http://www.schema.org/ListItem" itemprop="itemListElement">
+	  <a href="/help/index.html?s_tid=CRUX_lftnav" itemprop="item">
+      <span itemprop="name">Documentation Home</span>
+		</a>
+    <meta itemprop="position" content="1"/>
+	</li>
+</ol>
+<ol itemscope="" itemtype="https://schema.org/BreadcrumbList" class="nav_breadcrumb list-unstyled" id="ul_left_nav_productgroups">
+<li itemscope="" itemtype="http://schema.org/ListItem" itemprop="itemListElement">
+	<a href="/help/overview/rf-and-mixed-signal.html?s_tid=hc_product_group_bc" itemprop="item">
+    <span itemprop="name">RF and Mixed Signal</span>
+	</a>
+  <meta itemprop="position" content="1"/>
+</li></ol><ol itemscope="" itemtype="https://schema.org/BreadcrumbList" class="nav_disambiguation list-unstyled"><li itemscope="" itemtype="http://schema.org/ListItem" itemprop="itemListElement">
+						<a href="../index.html?s_tid=CRUX_lftnav" id="index" itemprop="item">
+              <span itemprop="name">RF Toolbox</span>
+            </a>
+            <meta itemprop="position" content="1"/>
+					</li><li itemscope="" itemtype="http://schema.org/ListItem" itemprop="itemListElement">
+						<a href="../rf-circuit-design-and-frequency-domain-analysis.html?s_tid=CRUX_lftnav" id="mw_8d9dac7d-510f-4db8-88ce-82f0ecbed7e5" itemprop="item">
+              <span itemprop="name">Circuit Design and Analysis</span>
+            </a>
+            <meta itemprop="position" content="2"/>
+					</li><li itemscope="" itemtype="http://schema.org/ListItem" itemprop="itemListElement">
+						<a href="../frequency-domain-analysis.html?s_tid=CRUX_lftnav" id="mw_94a4ba16-afa5-43ec-8702-d900ba57d237" itemprop="item">
+              <span itemprop="name">Frequency Domain Analysis</span>
+            </a>
+            <meta itemprop="position" content="3"/>
+					</li></ol><ul class="nav_scrollspy nav list-unstyled" id="nav_scrollspy" aria-label="On this page">
+	<li class="nav_scrollspy_function nav-item notranslate">
+    <a class="intrnllnk" href="#doc_center_content" style="color: inherit; text-decoration: none;">powergain</a>
+	</li>
+
+<li class="nav_scrollspy_title" id="SSPY810-refentry">On this page</li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_e4888bff-ecc8-4153-b74c-85a34b27cfb7">Syntax</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#description">Description</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_599fa6a2-6a97-48d4-bbb4-e6334a881a8f">Examples</a><ul class="nav"><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_a4024822-a2d5-4354-8165-31ad03bc42e5">Power Gain of Two-Port Network</a></li></ul></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_eede6776-df25-4dd0-902e-a8d6aaea9f44">Input Arguments</a><ul class="nav"><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1">hs</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_7099af2f-2b91-4189-aa2f-19c51e2026e7">s_params</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_fbe8f09c-a761-4a16-81ce-b16863344ef9">z0</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a">zl</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_5cba21f4-5430-4032-95fd-bac8c3f31067">zs</a></li></ul></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_9ef952a0-8f8e-4a42-a0a0-69ac709fe89e">Output Arguments</a><ul class="nav"><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d">g</a></li></ul></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_44295d2b-e2ec-450f-a962-2abaa47ab457">More About</a><ul class="nav"><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_16970cde-f9c5-496a-8171-24f41faf4ba7">Transducer Power Gain</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_c2229957-864b-4f71-b9fe-b906800dbf23">Available Power Gain</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_c2919ebf-c006-4031-8801-ed2ceb2701b9">Operating Power Gain</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_0d97e3cf-7540-452a-980e-639e7120d6d4">Maximum Available Power Gain and Maximum Stable Power Gain</a></li></ul></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_77b7bb24-288c-46d8-a8dc-b9b986699d24_vh">Version History</a></li><li class="nav-item"><a class="intrnllnk nav-link" href="#mw_77b7bb24-288c-46d8-a8dc-b9b986699d24_seealso">See Also</a></li></ul></div>
+</div>
+</div>
+</nav>
+			<div class="sidebar parsys containsResourceName resourceClass-parsys"><div class="targetcontainer containsResourceName resourceClass-targetcontainer section">
+
+
+
+<div class="personalization-container " id="web-application-offcanvas-container">
+	<div><div class="targetContent parsys containsResourceName resourceClass-parsys">
+</div>
+</div>
+</div></div>
+
+</div>
+
+		</div>
+		
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/offcanvasv5.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+	</div>
+
+
+	<div id="offcanvas_body_container">
+		<div id="offcanvas_body" class=" -has_stickynav">
+			
+			<div class="introParsys parsys containsResourceName resourceClass-parsys">
+</div>
+
+			<div class="content_container p-0" id="content_container">
+				<div class="container-fluid container-lg">
+					<div class="row">
+						<div class="col" id="offcanvas_fixed_menu_container"> </div>
+						<div class="col" id="offcanvas_content_container">
+							
+
+	
+	<div class="localnav" id="localnav">
+		<div class="localnav_container">
+			<div class="container-fluid container-lg">
+				<div class="row">
+					<div class="col-12">
+						<nav class="navbar navbar-expand-lg" aria-label="Local Navigation">
+							<button class="navbar-toggler" type="button" id="localnav_actuator" data-toggle="collapse" data-bs-toggle="collapse" data-target="#local_navigation" data-bs-target="#local_navigation" aria-controls="localnav" aria-expanded="false" aria-label="Toggle navigation"><span class="icon-kebab"></span></button>
+							<div class="collapse navbar-collapse" id="local_navigation">
+								<div class="localNavigation localnav containsResourceName resourceClass-localnav">
+
+
+
+	
+	<ul class="navbar-nav  crux_resource_list crux_browse" id="localnav_navbar">
+	<li class="nav-item crux_resource" data-nav-id="crux_nav_documentation">
+		<a class="nav-link active" data-id="" href="/help/rf/frequency-domain-analysis.html?s_tid=CRUX_topnav">
+			Documentation
+	    </a>
+	</li>
+
+	<li class="nav-item crux_resource" data-nav-id="crux_nav_examples">
+		<a class="nav-link " data-id="" href="/help/rf/examples.html?s_tid=CRUX_topnav&amp;category=frequency-domain-analysis">
+			Examples
+	    </a>
+	</li>
+
+	<li class="nav-item crux_resource" data-nav-id="crux_nav_function">
+		<a class="nav-link " data-id="" href="/help/rf/referencelist.html?type=function&amp;s_tid=CRUX_topnav&amp;category=frequency-domain-analysis">
+			Functions
+	    </a>
+	</li>
+
+	<li class="nav-item crux_resource" data-nav-id="crux_nav_app">
+		<a class="nav-link " data-id="" href="/help/rf/referencelist.html?type=app&amp;s_tid=CRUX_topnav&amp;category=frequency-domain-analysis">
+			Apps
+	    </a>
+	</li>
+
+	<li class="nav-item crux_resource" data-nav-id="crux_nav_video">
+		<a class="nav-link " data-id="" href="/support/search.html?fq%5B%5D=asset_type_name:video&amp;fq%5B%5D=category:rf/frequency-domain-analysis&amp;page=1&amp;s_tid=CRUX_topnav">
+			Videos
+	    </a>
+	</li>
+
+	<li class="nav-item crux_resource" data-nav-id="crux_nav_answers">
+		<a class="nav-link " data-id="" href="/support/search.html?fq%5B%5D=asset_type_name:answer&amp;fq%5B%5D=category:rf/frequency-domain-analysis&amp;page=1&amp;s_tid=CRUX_topnav">
+			Answers
+	    </a>
+	</li>
+</ul>
+
+
+
+
+</div>
+
+							</div>
+						</nav>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+
+							<div id="offcanvas_focus_actuator" tabindex="0" class="d-block d-md-none"><span class="visually-hidden">Main Content</span></div>
+							
+
+<main id="main" tabindex="-1">
+	
+	<section><div class="mainParsys parsys containsResourceName resourceClass-parsys"><div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+
+<style>
+#global_search_container > .sectionHeadSearchBox:has(#suggestions) { 
+    align-items: flex-end;
+    
+    #search_scope_doc { width:100%; max-width:540px; }
+}
+</style>
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+
+<style>
+@media (max-width:991.98px) {
+
+    #localnav .nav-item:not(:first-child) .nav-link { padding-left:24px !important; }
+    #localnav .dropdown-menu .dropdown-item { padding-left:calc(var(--bs-dropdown-item-padding-x) * 3); }
+
+}
+</style>
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+	
+	
+	
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/akamai.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/enhancedchat.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+
+
+
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+
+<style>
+@media (max-width: 991.98px) {
+    #localnav_actuator { width:auto !important; padding-left:10px !important; display: flex !important; align-items:center !important; flex-direction: row-reverse !important; justify-content:center !important; }
+    #localnav_actuator:after { padding-right:5px; content:"Resources"; font-size:14px; white-space:nowrap; }
+    #localnav_actuator .icon-kebab { position:relative; top:-1px; }
+    #localnav_actuator .icon-kebab:before { content: "\e60f" !important; font-size:16px; }
+}
+</style>
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+	
+	
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/mathworks-aem.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/searchrefine.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/panel.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/card.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/search.min.20260619050209678.css" type="text/css"/>
+
+
+
+	
+
+
+
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+	
+	
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/form.min.20260619050209678.css" type="text/css"/>
+
+
+
+	
+
+
+
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+	
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/nuggets.min.20260619050209678.css" type="text/css"/>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/handlebars.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/nuggets.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+	
+	
+
+
+
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+	
+    
+
+
+
+	
+	
+
+
+
+</div>
+<div class="cssjs containsResourceName section resourceClass-cssjs">
+
+
+
+
+
+	
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/accordion.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/alert.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/band.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/blockquote.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/image.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/inpagenav.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/table.min.20260619050209678.css" type="text/css"/>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/accordion.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/panel.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+	
+	
+
+
+
+</div>
+<div class="targetcontainer containsResourceName resourceClass-targetcontainer section">
+
+
+
+<div class="personalization-container " id="web-application-body-container">
+
+
+
+
+
+
+<section xmlns="http://www.w3.org/1999/xhtml" id="doc_center_content" itemprop="content" lang="en" data-language="en" data-bs-spy="scroll" data-bs-target="#nav_scrollspy"><div id="pgtype-ref-function"><div class="function_ref"><span id="mw_77b7bb24-288c-46d8-a8dc-b9b986699d24" class="anchor_target"></span><h1 class="r2026a notranslate" itemprop="title"><span class="refname">powergain</span></h1><div class="doc_topic_desc"><div class="purpose_container"><p itemprop="purpose">Calculate power gain from two-port S-parameters</p><div class="switch"><a data-allexpanded="true1" href="javascript:void(0);" id="expandAllPage">collapse all in page</a></div></div></div>
+<span id="mw_e4888bff-ecc8-4153-b74c-85a34b27cfb7" class="anchor_target"></span><div class="ref_sect"><h2 id="mw_e4888bff-ecc8-4153-b74c-85a34b27cfb7">Syntax</h2><div class="syntax_signature"><div class="syntax_signature_module"><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44408">g = powergain(s_params,z0,zs,zl,&#39;Gt&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44456">g = powergain(s_params,z0,zs,&#39;Ga&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44494">g = powergain(s_params,z0,zl,&#39;Gp&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44531">g = powergain(s_params,&#39;Gmag&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44551">g = powergain(s_params,&#39;Gmsg&#39;)</a></code></div></div><div class="syntax_signature_module"><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44574">g = powergain(hs,zs,zl,&#39;Gt&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44591">g = powergain(hs,zs,&#39;Ga&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44606">g = powergain(hs,zl,&#39;Gp&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44621">g = powergain(hs,&#39;Gmag&#39;)</a></code></div><div class="code_responsive"><code class="synopsis"><a class="intrnllnk" href="#d127e44634">g = powergain(hs,&#39;Gmsg&#39;)</a></code></div></div></div></div><div class="clear"></div><span id="mw_b966a244-060c-457f-b5ec-830cb9a4ded0" class="anchor_target"></span><h2 id="description">Description</h2><div class="descriptions"><div class="description_module"><span id="mw_2056bbf5-8402-447f-b550-18b78ce2bff8" class="anchor_target"></span><div class="cshsummary" id="csh_mw_b966a244-060c-457f-b5ec-830cb9a4ded0"><div class="description_element"><div class="code_responsive"><p><span id="d127e44408" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><code class="argument">s_params</code></a>,<a class="intrnllnk" href="#mw_fbe8f09c-a761-4a16-81ce-b16863344ef9"><code class="argument">z0</code></a>,<a class="intrnllnk" href="#mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><code class="argument">zs</code></a>,<a class="intrnllnk" href="#mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><code class="argument">zl</code></a>,&#39;Gt&#39;)</code></span>
+                    calculates the transducer power gain of the 2-port network by:</p>
+<div id="d127e44421" class="mediaobject"><div class="code_responsive"><p class="programlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-24px" display="block"><mrow><msub><mi>G</mi><mi>t</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>P</mi><mi>L</mi></msub></mrow><mrow><msub><mi>P</mi><mrow><mtext>avs</mtext></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>Γ</mi><mi>S</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">)</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>Γ</mi><mi>L</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">)</mo></mrow><mrow><msup><mrow><mrow><mo>|</mo><mrow><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msub><mi>S</mi><mrow><mn>11</mn></mrow></msub><msub><mi>Γ</mi><mi>S</mi></msub><mo stretchy="false">)</mo><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msub><mi>S</mi><mrow><mn>22</mn></mrow></msub><msub><mi>Γ</mi><mi>L</mi></msub><mo stretchy="false">)</mo><mo>−</mo><msub><mi>S</mi><mrow><mn>12</mn></mrow></msub><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub><msub><mi>Γ</mi><mi>S</mi></msub><msub><mi>Γ</mi><mi>L</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup></mrow></mfrac></mrow></math></p></div></div><p></p><p>where,</p>
+<div class="itemizedlist"><ul><li><p><span class="emphasis"><em>P<sub>L</sub></em></span> is the output power
+                                and <span class="emphasis"><em>P</em></span><sub>avs</sub> is the maximum
+                                input power.</p></li><li><p><span class="emphasis"><em>Γ<sub>L</sub></em></span> and
+                                        <span class="emphasis"><em>Γ<sub>S</sub></em></span> are the
+                                reflection coefficients defined as:</p><div id="d127e44448" class="mediaobject"><div class="code_responsive"><p class="listprogramlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-43px" display="block"><mtable columnalign="left"><mtr><mtd><msub><mi>Γ</mi><mi>S</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>Z</mi><mi>S</mi></msub><mo>−</mo><msub><mi>Z</mi><mn>0</mn></msub></mrow><mrow><msub><mi>Z</mi><mi>S</mi></msub><mo>+</mo><msub><mi>Z</mi><mn>0</mn></msub></mrow></mfrac></mtd></mtr><mtr><mtd><msub><mi>Γ</mi><mi>L</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>Z</mi><mi>L</mi></msub><mo>−</mo><msub><mi>Z</mi><mn>0</mn></msub></mrow><mrow><msub><mi>Z</mi><mi>L</mi></msub><mo>+</mo><msub><mi>Z</mi><mn>0</mn></msub></mrow></mfrac></mtd></mtr></mtable></math></p></div></div></li></ul></div><p>
+</p></div></div><div class="description_element"><div class="code_responsive"><p><span id="d127e44456" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><code class="argument">s_params</code></a>,<a class="intrnllnk" href="#mw_fbe8f09c-a761-4a16-81ce-b16863344ef9"><code class="argument">z0</code></a>,<a class="intrnllnk" href="#mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><code class="argument">zs</code></a>,&#39;Ga&#39;)</code></span>
+                    calculates the available power gain of the 2-port network by:</p>
+<div id="d127e44467" class="mediaobject"><div class="code_responsive"><p class="programlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-24px" display="block"><mrow><msub><mi>G</mi><mi>a</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>P</mi><mrow><mtext>avn</mtext></mrow></msub></mrow><mrow><msub><mi>P</mi><mrow><mtext>avs</mtext></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>Γ</mi><mi>S</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">)</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup></mrow><mrow><msup><mrow><mrow><mo>|</mo><mrow><mn>1</mn><mo>−</mo><msub><mi>S</mi><mrow><mn>11</mn></mrow></msub><msub><mi>Γ</mi><mi>S</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>Γ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">)</mo></mrow></mfrac></mrow></math></p></div></div><p></p><p>where </p>
+<div class="itemizedlist"><ul><li><p><span class="emphasis"><em>P</em></span><sub>avn</sub> is the available
+                                output power from the network.</p></li><li><p><span class="emphasis"><em>Γ<sub>out</sub></em></span> is given
+                                by:</p><div id="d127e44486" class="mediaobject"><div class="code_responsive"><p class="listprogramlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-20px" display="block"><mrow><msub><mi>Γ</mi><mrow><mtext>out</mtext></mrow></msub><mo>=</mo><msub><mi>S</mi><mrow><mn>22</mn></mrow></msub><mo>+</mo><mfrac><mrow><msub><mi>S</mi><mrow><mn>12</mn></mrow></msub><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub><msub><mi>Γ</mi><mi>S</mi></msub></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>S</mi><mrow><mn>11</mn></mrow></msub><msub><mi>Γ</mi><mi>S</mi></msub></mrow></mfrac></mrow></math></p></div></div></li></ul></div><p>
+</p></div></div></div><div class="description_element"><div class="code_responsive"><p><span id="d127e44494" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><code class="argument">s_params</code></a>,<a class="intrnllnk" href="#mw_fbe8f09c-a761-4a16-81ce-b16863344ef9"><code class="argument">z0</code></a>,<a class="intrnllnk" href="#mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><code class="argument">zl</code></a>,&#39;Gp&#39;)</code></span>
+                    calculates the operating power gain of the 2-port network by:</p>
+<div id="d127e44505" class="mediaobject"><div class="code_responsive"><p class="programlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-24px" display="block"><mrow><msub><mi>G</mi><mi>p</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>P</mi><mi>L</mi></msub></mrow><mrow><msub><mi>P</mi><mrow><mtext>in</mtext></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>Γ</mi><mi>L</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">)</mo></mrow><mrow><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><msup><mrow><mrow><mo>|</mo><mrow><msub><mi>Γ</mi><mrow><mtext>in</mtext></mrow></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup><mo stretchy="false">)</mo><msup><mrow><mrow><mo>|</mo><mrow><mn>1</mn><mo>−</mo><msub><mi>S</mi><mrow><mn>22</mn></mrow></msub><msub><mi>Γ</mi><mi>L</mi></msub></mrow><mo>|</mo></mrow></mrow><mn>2</mn></msup></mrow></mfrac></mrow></math></p></div></div><p></p><p>where </p>
+<div class="itemizedlist"><ul><li><p><span class="emphasis"><em>P</em></span><sub>in</sub> is the input
+                                power.</p></li><li><p><span class="emphasis"><em>Γ</em></span><sub>in</sub> is given
+                                by:</p><div id="d127e44523" class="mediaobject"><div class="code_responsive"><p class="listprogramlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-20px" display="block"><mrow><msub><mi>Γ</mi><mrow><mtext>in</mtext></mrow></msub><mo>=</mo><msub><mi>S</mi><mrow><mn>11</mn></mrow></msub><mo>+</mo><mfrac><mrow><msub><mi>S</mi><mrow><mn>12</mn></mrow></msub><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub><msub><mi>Γ</mi><mi>L</mi></msub></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>S</mi><mrow><mn>22</mn></mrow></msub><msub><mi>Γ</mi><mi>L</mi></msub></mrow></mfrac></mrow></math></p></div></div></li></ul></div><p>
+</p></div></div><div class="description_element"><div class="code_responsive"><p><span id="d127e44531" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><code class="argument">s_params</code></a>,&#39;Gmag&#39;)</code></span>
+                    calculates the maximum available power gain of the 2-port network. by:</p>
+<div id="d127e44538" class="mediaobject"><div class="code_responsive"><p class="programlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-21px" display="block"><mrow><msub><mi>G</mi><mrow><mtext>mag</mtext></mrow></msub><mo>=</mo><mfrac><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>12</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow></mfrac><mrow><mo>(</mo><mrow><mi>K</mi><mo>−</mo><msqrt><mrow><msup><mi>K</mi><mn>2</mn></msup><mo>−</mo><mn>1</mn></mrow></msqrt></mrow><mo>)</mo></mrow></mrow></math></p></div></div><p></p><p>where <span class="emphasis"><em>K</em></span> is the stability factor.</p></div></div><div class="description_element"><div class="code_responsive"><p><span id="d127e44551" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><code class="argument">s_params</code></a>,&#39;Gmsg&#39;)</code></span>
+                    calculates the maximum stable gain of the 2-port network by:</p><div id="d127e44559" class="mediaobject"><div class="code_responsive"><p class="programlistingindent"><math xmlns="http://www.w3.org/1998/Math/MathML" altimg-valign="-21px" display="block"><mrow><msub><mi>G</mi><mrow><mi>m</mi><mi>s</mi><mi>g</mi></mrow></msub><mo>=</mo><mfrac><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>21</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow><mrow><mrow><mo>|</mo><mrow><msub><mi>S</mi><mrow><mn>12</mn></mrow></msub></mrow><mo>|</mo></mrow></mrow></mfrac></mrow></math></p></div></div></div><p class="syntax_example"><a class="intrnllnk" href="powergain.html#mw_a4024822-a2d5-4354-8165-31ad03bc42e5">example</a></p></div></div><div class="description_module"><span id="mw_762dbece-860a-4f1e-8398-a296a7d7dcfb" class="anchor_target"></span>
+            <div class="description_element"><div class="code_responsive"><p><span id="d127e44574" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><code class="argument">hs</code></a>,<a class="intrnllnk" href="#mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><code class="argument">zs</code></a>,<a class="intrnllnk" href="#mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><code class="argument">zl</code></a>,&#39;Gt&#39;)</code></span>
+                    calculates the transducer power gain of the network represented by the
+                    S-parameter object <code class="argument">hs</code>.</p></div></div>
+            <div class="description_element"><div class="code_responsive"><p><span id="d127e44591" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><code class="argument">hs</code></a>,<a class="intrnllnk" href="#mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><code class="argument">zs</code></a>,&#39;Ga&#39;)</code></span>
+                    calculates the available power gain of the network represented by the
+                    S-parameter object <code class="argument">hs</code>.</p></div></div>
+            <div class="description_element"><div class="code_responsive"><p><span id="d127e44606" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><code class="argument">hs</code></a>,<a class="intrnllnk" href="#mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><code class="argument">zl</code></a>,&#39;Gp&#39;)</code></span>
+                    calculates the operating power gain of the network represented by the
+                    S-parameter object <code class="argument">hs</code>.</p></div></div>
+            <div class="description_element"><div class="code_responsive"><p><span id="d127e44621" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><code class="argument">hs</code></a>,&#39;Gmag&#39;)</code></span>
+                    calculates the maximum available power gain of the network represented by the
+                    S-parameter object <code class="argument">hs</code>.</p></div></div>
+            <div class="description_element"><div class="code_responsive"><p><span id="d127e44634" itemprop="syntax"><code class="synopsis"><a class="intrnllnk" href="#mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="argument">g</code></a> = powergain(<a class="intrnllnk" href="#mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><code class="argument">hs</code></a>,&#39;Gmsg&#39;)</code></span>
+                    calculates the maximum stable gain of the network represented by the S-parameter
+                    object <code class="argument">hs</code>.</p></div></div>
+        </div></div><div class="clear"></div><div class="examples"><h2 id="mw_599fa6a2-6a97-48d4-bbb4-e6334a881a8f">Examples</h2><div class="expandableContent" id="expandableExamples"><p class="switch"><a class="expandAllLink" data-allexpanded="true3" href="javascript:void(0);">collapse all</a></p><div class="mw_ws_accordion_container"><div class="accordion" role="tablist" aria-multiselectable="true" id="expand_accordion_heading_mw_a4024822-a2d5-4354-8165-31ad03bc42e5"><div class="accordion-item "><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_a4024822-a2d5-4354-8165-31ad03bc42e5" data-bs-target="#expand_accordion_body_mw_a4024822-a2d5-4354-8165-31ad03bc42e5" aria-controls="expand_accordion_body_mw_a4024822-a2d5-4354-8165-31ad03bc42e5" class="accordion-button add_cursor_pointer" aria-expanded="true"><h3 id="mw_a4024822-a2d5-4354-8165-31ad03bc42e5">Power Gain of Two-Port Network</h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_a4024822-a2d5-4354-8165-31ad03bc42e5" aria-labelledby="expand_accordion_heading_mw_a4024822-a2d5-4354-8165-31ad03bc42e5" class="accordion-collapse collapse show"><div class="accordion-body"><div class="examples_short_list hidden_ios_android" data-products="ML RF"><div data-pane="metadata" class="card metadata_container"><div class="card-body metadata_content"><div class="d-grid"><a class="btn btn_color_blue" data-ex-genre="Live Script" href="matlab:openExample(&#39;rf/PowerGainOfTwoPortNetworkExample&#39;)">Open Live Script</a></div></div></div></div><script type="application/ld+json">
+        {
+        "@context": "http://schema.org",
+        "@type": "DigitalDocument",
+          "headline": "Power Gain of Two-Port Network",
+          "description": "Calculate power gains for a sample 2-port network.",
+          "thumbnailURL": "../../includes/product/images/doc_center/DefaultImage.png",
+          "genre": "Live Script",
+          "isPartOf": {
+          "@type": "CreativeWork",
+          "url": "powergain.html"
+
+        },
+          "identifier": "rf.PowerGainOfTwoPortNetworkExample",
+          "name": "PowerGainOfTwoPortNetworkExample",
+          "url": "powergain.html#mw_a4024822-a2d5-4354-8165-31ad03bc42e5"
+
+        }</script><script type="application/ld+json">
+        {
+        "@context": "http://schema.org",
+        "@type": "PropertyValue",
+          "name": "open_command",
+          "value": "matlab:openExample('rf/PowerGainOfTwoPortNetworkExample')"
+
+        }</script><script type="application/ld+json">
+        {
+        "@context": "http://schema.org",
+        "@type": "ItemList",
+          "name": "ExampleSourceFiles",
+
+        "itemListElement":
+        [
+        "PowerGainOfTwoPortNetworkExample.xml"
+        ],
+        "itemListOrder": "http://schema.org/ItemListOrderAscending"
+        }
+        </script><p class="shortdesc">Calculate power gains for a sample 2-port network.</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>s11 = 0.61*exp(1j*165/180*pi);
+s21 = 3.72*exp(1j*59/180*pi);
+s12 = 0.05*exp(1j*42/180*pi);
+s22 = 0.45*exp(1j*(-48/180)*pi);
+sparam = [s11 s12; s21 s22];
+z0 = 50;
+zs = 10 + 1j*20;
+zl = 30 - 1j*40;</pre></div></div></div><p><strong class="emphasis bold">Calculate the transducer power gain of the network</strong></p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gt = powergain(sparam,z0,zs,zl,<span style="color:var(--mw-color-matlabString)">&#39;Gt&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gt = 
+4.7066
+</pre></div></div></div><p><strong class="emphasis bold">Calculate the available power gain of the network</strong></p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Ga = powergain(sparam,z0,zs,<span style="color:var(--mw-color-matlabString)">&#39;Ga&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Ga = 
+11.4361
+</pre></div></div></div><p>Note that, as expected, the available power gain is larger than the transducer power gain, <code class="literal">Gt</code>. The two become identical when <code class="literal">Gt</code> is measured with a matched load impedance:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>zl_matched = gamma2z(gammaout(sparam, z0, zs)&#39;, z0);
+Gt_zl_matched = powergain(sparam, z0, zs, zl_matched, <span style="color:var(--mw-color-matlabString)">&#39;Gt&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gt_zl_matched = 
+11.4361
+</pre></div></div></div><p><strong class="emphasis bold">Calculate the operating power gain of the network</strong></p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gp = powergain(sparam,z0,zl,<span style="color:var(--mw-color-matlabString)">&#39;Gp&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gp = 
+10.5098
+</pre></div></div></div><p>Note that, as expected, the operating power gain is larger than the transducer power gain, <code class="literal">Gt</code>. The two become identical when <code class="literal">Gt</code> is measured with a matched source impedance:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>zs_matched = gamma2z(gammain(sparam, z0, zl)&#39;, z0);
+Gt_zs_matched = powergain(sparam, z0, zs_matched, zl, <span style="color:var(--mw-color-matlabString)">&#39;Gt&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gt_zs_matched = 
+10.5098
+</pre></div></div></div><p><strong class="emphasis bold">Calculate the maximum available power gain of the network</strong></p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gmag = powergain(sparam,<span style="color:var(--mw-color-matlabString)">&#39;Gmag&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gmag = 
+41.5032
+</pre></div></div></div><p>Note that, as expected, the maximum available power gain is larger than the available power gain <code class="literal">Ga</code>, the transducer power gain, <code class="literal">Gt</code>, and the operating power gain, <code class="literal">Gp</code>. They all become identical when measured with simultaneously matched source and load impedances:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>zs_matched_sim = gamma2z(gammams(sparam), z0);
+zl_matched_sim = gamma2z(gammaout(sparam, z0, zs_matched_sim)&#39;, z0)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>zl_matched_sim = 
+33.6758 +91.4816i
+</pre></div></div></div><p>That impedance can be also obtained directly using:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>zl_matched_sim = gamma2z(gammaml(sparam), z0)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>zl_matched_sim = 
+33.6758 +91.4816i
+</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Ga_matched_sim = powergain(sparam, z0, zs_matched_sim, <span style="color:var(--mw-color-matlabString)">&#39;Ga&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Ga_matched_sim = 
+41.5032
+</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gt_matched_sim = powergain(sparam, z0, zs_matched_sim, zl_matched_sim, <span style="color:var(--mw-color-matlabString)">&#39;Gt&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gt_matched_sim = 
+41.5032
+</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gp_matched_sim = powergain(sparam, z0, zl_matched_sim, <span style="color:var(--mw-color-matlabString)">&#39;Gp&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gp_matched_sim = 
+41.5032
+</pre></div></div></div><p>When the scattering parameters represent a network that is <span class="emphasis"><em>not</em></span> unconditionally stable, there is no set of source and load impedances that provide simultaneous matching. In this case, the maximum available power is infinite, but truly meaningless because the network is unstable.</p><p>To make the previously defined network conditionally stable, it is enough to increase the magnitude of the backward propagation scattering parameter, <code class="literal">s12</code>:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>s12_cond_stable = 0.06*exp(1j*42/180*pi);
+sparam_cond_stable = [s11 s12_cond_stable; s21 s22];</pre></div></div></div><p>To verify that the network is conditionally stable, check that the stability factor, <span class="emphasis"><em>K</em></span>, is smaller than 1:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>K = stabilityk(sparam_cond_stable)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>K = 
+0.9695
+</pre></div></div></div><p>An attempt to calculate the maximum available gain of the network yields a NaN:</p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gmag_cond_stable = powergain(sparam_cond_stable,<span style="color:var(--mw-color-matlabString)">&#39;Gmag&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gmag_cond_stable = 
+NaN
+</pre></div></div></div><p>Instead, the maximum stable gain, <span class="inlineequation"><math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:mwmmlx="https://www.mathworks.com/namespace/MathMLextensions" mwmmlx:extension="true" display="inline"><mrow><msub><mrow><mi>G</mi></mrow><mrow><mrow><mrow><mtext>msg</mtext></mrow></mrow></mrow></msub></mrow></math></span>, should be used.</p><p><strong class="emphasis bold">Calculate the maximum stable power gain of the network</strong></p><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeinput"><pre>Gmsg_cond_stable = powergain(sparam_cond_stable,<span style="color:var(--mw-color-matlabString)">&#39;Gmsg&#39;</span>)</pre></div></div></div><div class="code_responsive" translate="no"><div class="programlisting"><div class="codeoutput"><pre>Gmsg_cond_stable = 
+62.0000
+</pre></div></div></div><p>The maximum stable power gain is only meaningful when the network is not unconditionally stable.</p><div class="procedure"></div></div></div></div></div><div itemscope="" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/Example" itemprop="example" class="em_example"><meta itemprop="exampleid" content="rf-PowerGainOfTwoPortNetworkExample"/><meta itemprop="exampletitle" content="Power Gain of TwoPort Network"/></div></div></div></div><div class="ref_sect"><h2 id="mw_eede6776-df25-4dd0-902e-a8d6aaea9f44">Input Arguments</h2><div class="expandableContent"><p class="switch "><a class="expandAllLink" data-allexpanded="true" href="javascript:void(0);">collapse all</a></p><div class="mw_ws_accordion_container" id="mw_eede6776-df25-4dd0-902e-a8d6aaea9f44_accordion-group" role="tablist" aria-multiselectable="true"><div class="accordion"><div class="accordion-item "><div itemscope="" itemprop="inputargument" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/NamedInputArgument" itemid="mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1" data-bs-target="#expand_accordion_body_mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1" aria-controls="expand_accordion_body_mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1" class="accordion-button add_cursor_pointer" aria-expanded="true"><span id="inputarg_hs" class="anchor_target"></span><h3 id="mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><code itemprop="name">hs</code> — <span itemprop="purpose">2-port S-parameters</span><br/> <span class="add_font_color_general remove_bold"><span class="example_desc"><span itemprop="inputvalue">S-parameter object</span></span></span></h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1" aria-labelledby="expand_accordion_heading_mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1" class="accordion-collapse collapse show"><div class="accordion-body"><div class="cshsummary" id="csh_mw_76a34f1c-c2be-4099-9eda-1fd1fe99cdf1"><p>2-port S-parameters, specified as an RF Toolbox™ S-parameter object.</p></div></div></div></div></div></div><div class="accordion"><div class="accordion-item "><div itemscope="" itemprop="inputargument" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/NamedInputArgument" itemid="mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_7099af2f-2b91-4189-aa2f-19c51e2026e7" data-bs-target="#expand_accordion_body_mw_7099af2f-2b91-4189-aa2f-19c51e2026e7" aria-controls="expand_accordion_body_mw_7099af2f-2b91-4189-aa2f-19c51e2026e7" class="accordion-button add_cursor_pointer" aria-expanded="true"><span id="inputarg_s_params" class="anchor_target"></span><h3 id="mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><code itemprop="name">s_params</code> — <span itemprop="purpose">2-port S-parameters</span><br/>
+<span class="add_font_color_general remove_bold"><span class="example_desc"><span itemprop="inputvalue">array of complex numbers</span></span></span></h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_7099af2f-2b91-4189-aa2f-19c51e2026e7" aria-labelledby="expand_accordion_heading_mw_7099af2f-2b91-4189-aa2f-19c51e2026e7" class="accordion-collapse collapse show"><div class="accordion-body"><div class="cshsummary" id="csh_mw_7099af2f-2b91-4189-aa2f-19c51e2026e7"><p>2-port S-parameters, specified as a complex 2-by-2-by-<em class="varname">N</em>
+                        array.</p></div></div></div></div></div></div><div class="accordion"><div class="accordion-item "><div itemscope="" itemprop="inputargument" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/NamedInputArgument" itemid="mw_fbe8f09c-a761-4a16-81ce-b16863344ef9"><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_fbe8f09c-a761-4a16-81ce-b16863344ef9" data-bs-target="#expand_accordion_body_mw_fbe8f09c-a761-4a16-81ce-b16863344ef9" aria-controls="expand_accordion_body_mw_fbe8f09c-a761-4a16-81ce-b16863344ef9" class="accordion-button add_cursor_pointer" aria-expanded="true"><span id="inputarg_z0" class="anchor_target"></span><h3 id="mw_fbe8f09c-a761-4a16-81ce-b16863344ef9"><code itemprop="name">z0</code> — <span itemprop="purpose">Reference impedance</span><br/> <span class="add_font_color_general remove_bold"><span class="example_desc"><span itemprop="inputvalue defaultvalue">50</span> (default) | <span itemprop="inputvalue">positive scalar</span></span></span></h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_fbe8f09c-a761-4a16-81ce-b16863344ef9" aria-labelledby="expand_accordion_heading_mw_fbe8f09c-a761-4a16-81ce-b16863344ef9" class="accordion-collapse collapse show"><div class="accordion-body"><div class="cshsummary" id="csh_mw_fbe8f09c-a761-4a16-81ce-b16863344ef9"><p>Reference impedance in ohms, specified as a positive scalar. If the first
+                        input argument is an S-parameter object <code class="literal">hs</code>, the function
+                        uses <code class="literal">hs.Impedance</code> for the reference impedance.</p></div></div></div></div></div></div><div class="accordion"><div class="accordion-item "><div itemscope="" itemprop="inputargument" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/NamedInputArgument" itemid="mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a" data-bs-target="#expand_accordion_body_mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a" aria-controls="expand_accordion_body_mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a" class="accordion-button add_cursor_pointer" aria-expanded="true"><span id="inputarg_zl" class="anchor_target"></span><h3 id="mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><code itemprop="name">zl</code> — <span itemprop="purpose">Load impedance</span><br/> <span class="add_font_color_general remove_bold"><span class="example_desc"><span itemprop="inputvalue defaultvalue">50</span> (default) | <span itemprop="inputvalue">positive scalar</span></span></span></h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a" aria-labelledby="expand_accordion_heading_mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a" class="accordion-collapse collapse show"><div class="accordion-body"><div class="cshsummary" id="csh_mw_fef551b7-75e1-4ef1-b9b6-04f4a032b49a"><p>Load impedance in ohms, specified as a positive scalar.</p></div></div></div></div></div></div><div class="accordion"><div class="accordion-item "><div itemscope="" itemprop="inputargument" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/NamedInputArgument" itemid="mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_5cba21f4-5430-4032-95fd-bac8c3f31067" data-bs-target="#expand_accordion_body_mw_5cba21f4-5430-4032-95fd-bac8c3f31067" aria-controls="expand_accordion_body_mw_5cba21f4-5430-4032-95fd-bac8c3f31067" class="accordion-button add_cursor_pointer" aria-expanded="true"><span id="inputarg_zs" class="anchor_target"></span><h3 id="mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><code itemprop="name">zs</code> — <span itemprop="purpose">Source impedance</span><br/>
+<span class="add_font_color_general remove_bold"><span class="example_desc"><span itemprop="inputvalue defaultvalue">50</span> (default) | <span itemprop="inputvalue">positive scalar</span></span></span></h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_5cba21f4-5430-4032-95fd-bac8c3f31067" aria-labelledby="expand_accordion_heading_mw_5cba21f4-5430-4032-95fd-bac8c3f31067" class="accordion-collapse collapse show"><div class="accordion-body"><div class="cshsummary" id="csh_mw_5cba21f4-5430-4032-95fd-bac8c3f31067"><p>Source impedance in ohms, specified as a positive scalar.</p></div></div></div></div></div></div></div></div></div><div class="ref_sect"><h2 id="mw_9ef952a0-8f8e-4a42-a0a0-69ac709fe89e">Output Arguments</h2><div class="expandableContent"><p class="switch "><a class="expandAllLink" data-allexpanded="true" href="javascript:void(0);">collapse all</a></p><div class="mw_ws_accordion_container" id="mw_9ef952a0-8f8e-4a42-a0a0-69ac709fe89e_accordion-group" role="tablist" aria-multiselectable="true"><div class="accordion"><div class="accordion-item "><div class="accordion-header"><button role="tab" data-bs-toggle="collapse" id="expand_accordion_heading_mw_dbe149c9-b595-45ec-be48-f317600c312d" data-bs-target="#expand_accordion_body_mw_dbe149c9-b595-45ec-be48-f317600c312d" aria-controls="expand_accordion_body_mw_dbe149c9-b595-45ec-be48-f317600c312d" class="accordion-button add_cursor_pointer" aria-expanded="true"><span id="outputarg_g" class="anchor_target"></span><h3 id="mw_dbe149c9-b595-45ec-be48-f317600c312d"><code class="name">g</code> — Power gain<br/>
+<span class="add_font_color_general remove_bold"><span class="example_desc">vector</span></span></h3></button></div><div role="tabpanel" id="expand_accordion_body_mw_dbe149c9-b595-45ec-be48-f317600c312d" aria-labelledby="expand_accordion_heading_mw_dbe149c9-b595-45ec-be48-f317600c312d" class="accordion-collapse collapse show"><div class="accordion-body"><div class="cshsummary" id="csh_mw_dbe149c9-b595-45ec-be48-f317600c312d"><p>Unit less power gain values, returned as a vector. To obtain power gain in
+                        decibels, use <code class="literal">10*log10(g)</code>.</p><p>If the specified type of power gain is undefined for one or more of the
+                        specified S-parameter values in <code class="literal">s_params</code>, the
+                            <code class="literal">powergain</code> function returns <code class="literal">NaN</code>. As
+                        a result, <code class="literal">g</code> is either <code class="literal">NaN</code> or a vector
+                        that contains one or more <code class="literal">NaN</code> entries.</p></div></div></div></div></div></div></div></div><div class="moreabout ref_sect"><h2 id="mw_44295d2b-e2ec-450f-a962-2abaa47ab457">More About</h2><div class="expandableContent"><p class="switch"><a class="expandAllLink" data-allexpanded="true2" href="javascript:void(0);">collapse all</a></p><div class="mw_ws_accordion_container"><div class="accordion -presentation_expander -presentation_condensed"><div class="accordion-item"><div class="accordion-header"><button data-bs-toggle="collapse" data-bs-target="#expand_body_mw_16970cde-f9c5-496a-8171-24f41faf4ba7" aria-controls="expand_body_mw_16970cde-f9c5-496a-8171-24f41faf4ba7" class="accordion-button" aria-expanded="true"><h3 id="mw_16970cde-f9c5-496a-8171-24f41faf4ba7">Transducer Power Gain</h3></button></div><div id="expand_body_mw_16970cde-f9c5-496a-8171-24f41faf4ba7" class="accordion-collapse collapsed collapse show"><div class="accordion-body"><p class="shortdesc"><span class="emphasis"><em>G<sub>t</sub> =
+                    P<sub>L</sub>/P</em></span><sub>avs</sub> is the ratio of
+                power delivered to the load to the power available from the source. This depends on
+                both <code class="literal">Z<sub>S</sub></code> and
+                        <code class="literal">Z<sub>L</sub></code>.</p><div class="informalfigure"><div id="d127e44965" class="mediaobject"><p><img src="powergain_gt.png" alt="Two-port network and load impedance are replaced by an impedance that is conjugately matched to the source impedance to measure the available power gain from source." height="393" width="610"/></p></div></div></div></div></div></div><div class="accordion -presentation_expander -presentation_condensed"><div class="accordion-item"><div class="accordion-header"><button data-bs-toggle="collapse" data-bs-target="#expand_body_mw_c2229957-864b-4f71-b9fe-b906800dbf23" aria-controls="expand_body_mw_c2229957-864b-4f71-b9fe-b906800dbf23" class="accordion-button" aria-expanded="true"><h3 id="mw_c2229957-864b-4f71-b9fe-b906800dbf23">Available Power Gain</h3></button></div><div id="expand_body_mw_c2229957-864b-4f71-b9fe-b906800dbf23" class="accordion-collapse collapsed collapse show"><div class="accordion-body"><p class="shortdesc"><span class="emphasis"><em>G<sub>a</sub> =
+                    P<sub>avn</sub>/P</em></span><sub>avs</sub> is the ratio
+                of the power available from the two-port network to the power available from the
+                source. Available gain is the transducer power gain when load impedance is equal to
+                output impedance. Thus <span class="emphasis"><em>G</em></span><sub>a</sub> depends only
+                on <span class="emphasis"><em>Z</em></span><sub>s</sub>.</p><div class="informalfigure"><div id="d127e44987" class="mediaobject"><p><img src="powergain_ga.png" alt="Available power gain block diagram" height="486" width="610"/></p></div></div></div></div></div></div><div class="accordion -presentation_expander -presentation_condensed"><div class="accordion-item"><div class="accordion-header"><button data-bs-toggle="collapse" data-bs-target="#expand_body_mw_c2919ebf-c006-4031-8801-ed2ceb2701b9" aria-controls="expand_body_mw_c2919ebf-c006-4031-8801-ed2ceb2701b9" class="accordion-button" aria-expanded="true"><h3 id="mw_c2919ebf-c006-4031-8801-ed2ceb2701b9">Operating Power Gain</h3></button></div><div id="expand_body_mw_c2919ebf-c006-4031-8801-ed2ceb2701b9" class="accordion-collapse collapsed collapse show"><div class="accordion-body"><p class="shortdesc"><span class="emphasis"><em>G<sub>p</sub> =
+                    P<sub>L</sub>/P</em></span><sub>in</sub> is the ratio of
+                power dissipated in the load
+                    <code class="literal">Z</code><sub><span class="emphasis"><em>L</em></span></sub> to the power
+                delivered to the input of the two-port network. This gain is independent of
+                    <code class="literal">Z</code><sub><span class="emphasis"><em>S</em></span></sub>, although some
+                active circuits are strongly dependent on the input matching conditions.</p><div class="informalfigure"><div id="d127e45011" class="mediaobject"><p><img src="powergain_gp.png" alt="Operating power gain block diagram" height="197" width="593"/></p></div></div></div></div></div></div><div class="accordion -presentation_expander -presentation_condensed"><div class="accordion-item"><div class="accordion-header"><button data-bs-toggle="collapse" data-bs-target="#expand_body_mw_0d97e3cf-7540-452a-980e-639e7120d6d4" aria-controls="expand_body_mw_0d97e3cf-7540-452a-980e-639e7120d6d4" class="accordion-button" aria-expanded="true"><h3 id="mw_0d97e3cf-7540-452a-980e-639e7120d6d4">Maximum Available Power Gain and Maximum Stable Power Gain</h3></button></div><div id="expand_body_mw_0d97e3cf-7540-452a-980e-639e7120d6d4" class="accordion-collapse collapsed collapse show"><div class="accordion-body"><p class="shortdesc">Maximum available power gain,
+                        <span class="emphasis"><em>G<sub>mag</sub></em></span> is
+                        <span class="emphasis"><em>G<sub>a</sub></em></span>with matched input that is
+                    <code class="literal">Z</code><sub><span class="emphasis"><em>S</em></span></sub> is equal to
+                    <code class="literal">Z</code><sub>in</sub>
+            </p><p>In the case of conditionally stable two-port networks
+                (<span class="emphasis"><em>K&lt;1</em></span>) where the maximum available power gain result is
+                meaningless, the maximum stable power gain,
+                    <span class="emphasis"><em>G</em></span><sub>msg</sub>, should be used.</p><div class="informalfigure"><div id="d127e45042" class="mediaobject"><p><img src="powergain_gmag.png" alt="Both the source and load impedances are replaced by impedances that are simultaneously conjugately-matched to the two-port network input and output impedances, respectively, to measure the maximum available power gain of the system." height="439" width="601"/></p></div></div></div></div></div></div></div></div></div><div class="ref_sect"><h2 id="mw_77b7bb24-288c-46d8-a8dc-b9b986699d24_vh">Version History</h2><p><strong>Introduced in R2007b</strong></p></div><div class="ref_sect"><h2 id="mw_77b7bb24-288c-46d8-a8dc-b9b986699d24_seealso">See Also</h2><p><span itemscope="" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/SeeAlso" itemprop="seealso"><a href="gammaml.html" itemprop="url"><span itemprop="name"><code class="function">gammaml</code></span></a></span> | <span itemscope="" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/SeeAlso" itemprop="seealso"><a href="gammams.html" itemprop="url"><span itemprop="name"><code class="function">gammams</code></span></a></span> | <span itemscope="" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/SeeAlso" itemprop="seealso"><a href="gammaout.html" itemprop="url"><span itemprop="name"><code class="function">gammaout</code></span></a></span> | <span itemscope="" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/SeeAlso" itemprop="seealso"><a href="gammain.html" itemprop="url"><span itemprop="name"><code class="function">gammain</code></span></a></span> | <span itemscope="" itemtype="http://www.mathworks.com/help/schema/MathWorksDocPage/SeeAlso" itemprop="seealso"><a href="z2gamma.html" itemprop="url"><span itemprop="name"><code class="function">z2gamma</code></span></a></span></p></div>
+    </div></div></section><div class="clearfix"></div>
+<div align="center" class="feedbackblock" id="mw_docsurvey"><script src="/help/includes/shared/docsurvey/docfeedback.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script nonce="67Unv+cYJaaPyeUrXvRz32IW">loadSurveyHidden();</script>
+<link rel="stylesheet" href="/help/includes/shared/docsurvey/release/index-css.css" type="text/css"/>
+<script src="/help/includes/shared/docsurvey/release/bundle.index.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script nonce="67Unv+cYJaaPyeUrXvRz32IW">initDocSurvey();</script></div>
+
+
+
+
+<div class="modal fade" id="matlab-command-dialog" tabindex="-1" role="dialog" aria-labelledby="matlabCommandDialogLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">MATLAB Command</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="dialog-body">
+        <p>You clicked a link that corresponds to this MATLAB command: </p>
+        <pre id="dialog-matlab-command"></pre>
+        <p>Run the command by entering it in the MATLAB Command Window.
+        Web browsers do not support MATLAB commands.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn_color_blue" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+	<div><div class="targetContent parsys containsResourceName resourceClass-parsys"><div class="cqColumns containsResourceName section resourceClass-columns"><div class="row  ">
+
+	
+		<div class=" col-12 "><div class="2420e633-83fe-4c2d-9b62-4248985f27d2 parsys containsResourceName resourceClass-parsys">
+</div>
+</div>
+	
+</div>
+</div>
+
+</div>
+</div>
+</div></div>
+
+</div>
+</section>
+	
+	
+	
+		
+
+<div><div class="modalParsys parsys containsResourceName resourceClass-parsys">
+</div>
+</div>
+
+		
+
+
+	<div id="location_content" style="display:none;"></div>
+
+	<div class="modal fade" id="country-unselected" tabindex="-1" aria-labelledby="domain_selector_label" style="padding-left: 0px; display:none;" aria-modal="true" role="dialog">
+		<div class="modal-dialog modal-xl">
+			<div class="modal-content">
+				<div class="modal-header">
+					<img src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/images/mathworks-logo.20260619050209678.svg" class="mw_logo theme_light" alt="MathWorks" width="173" height="35"/>
+					<img src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/resources/images/mathworks-logo-rev.20260619050209678.svg" class="mw_logo theme_dark" alt="MathWorks" width="173" height="35" style="display:none;"/>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+
+					<p class="h1 icon-globe" id="domain_selector_label">Select a Web Site</p>
+					<p>Choose a web site to get translated content where available and see local events and offers. Based on your location, we recommend that you select: <strong class="recommended-country"></strong>.</p>
+					<div class="default-recommendation">
+						<p><a class="btn btn_color_blue" data-lang="en" href="#" id="recommended_domain_button"><span class="recommended-country"></span></a></p>
+					</div>
+
+					<div class="ch-recommendation" style="display:none;">
+						<ul class="list-inline">
+							<li class="list-inline-item add_margin_5 d-block d-md-inline-block"><a class="recommendation-button btn btn-outline btn_color_blue" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="Switzerland" data-subdomain="ch" href="//ch.mathworks.com"><strong class="recommended-country"></strong> (English)</a></li>
+							<li class="list-inline-item add_margin_5 d-block d-md-inline-block"><a class="recommendation-button btn btn-outline btn_color_blue" data-do-not-rewrite="true" data-lang="de" data-recommended-text="Schweiz" data-subdomain="ch" href="//ch.mathworks.com"><strong class="recommended-country"></strong> (Deutsch)</a></li>
+							<li class="list-inline-item add_margin_5 d-block d-md-inline-block"><a class="recommendation-button btn btn-outline btn_color_blue" data-do-not-rewrite="true" data-lang="fr" data-recommended-text="Suisse" data-subdomain="ch" href="//ch.mathworks.com"><strong class="recommended-country"></strong> (Français)</a></li>
+						</ul>
+					</div>
+					<div class="zh-recommendation" style="display:none;">
+						<ul class="list-inline">
+							<li class="list-inline-item"><a class="recommendation-button btn btn-outline btn_color_blue" data-default-lang="true" data-do-not-rewrite="true" data-lang="zh" data-recommended-text="中国" data-subdomain="ww2" href="//ww2.mathworks.cn"><strong class="recommended-country"></strong>（简体中文）</a></li>
+							<li class="list-inline-item"><a class="recommendation-button btn btn-outline btn_color_blue" data-do-not-rewrite="true" data-lang="en" data-recommended-text="China" data-subdomain="ww2" href="//ww2.mathworks.cn"><strong class="recommended-country"></strong> (English)</a></li>
+						</ul>
+					</div>
+
+					<p>You can also select a web site from the following list</p>
+					<div class="alert alert-warning" role="alert" id="china_performance_alert" style="display:none;"> <span class="alert_icon icon-alert-warning"></span>
+						<p class="alert_heading"><strong>How to Get Best Site Performance</strong></p>
+						<p>Select the China site (in Chinese or English) for best site performance. Other MathWorks country sites are not optimized for visits from your location.</p>
+					</div>
+					<div class="row add_margin_30">
+						<div class="col-12 col-sm-4 col-lg-3">
+							<p class="h3 add_bottom_rule">Americas</p>
+							<ul class="list-unstyled">
+								<li><a class="domain_selector_link" data-country-code="LA" data-default-lang="true" data-do-not-rewrite="true" data-lang="es" data-recommended-text="América Latina" data-selected-text="América Latina" data-subdomain="la" href="//la.mathworks.com">América Latina</a> (Español)</li>
+								<li><a class="domain_selector_link" data-country-code="CA" data-do-not-rewrite="true" data-lang="en" data-subdomain="www" href="//www.mathworks.com">Canada</a> (English)</li>
+								<li><a class="domain_selector_link" data-country-code="US" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="United States" data-selected-text="United States" data-subdomain="www" href="//www.mathworks.com">United States</a> (English)</li>
+							</ul>
+						</div>
+						<div class="col-12 col-sm-4 col-lg-6">
+							<p class="h3 add_bottom_rule">Europe</p>
+							<div class="row">
+								<div class="col-6 col-sm-12 col-lg-6">
+									<ul class="list-unstyled">
+										<li><a class="domain_selector_link" data-country-code="BE" data-do-not-rewrite="true" data-lang="en" data-subdomain="nl" href="//nl.mathworks.com">Belgium</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="DK" data-do-not-rewrite="true" data-lang="en" data-subdomain="se" href="//se.mathworks.com">Denmark</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="DE" data-default-lang="true" data-do-not-rewrite="true" data-lang="de" data-recommended-text="Deutschland" data-selected-text="Deutschland" data-subdomain="de" href="//de.mathworks.com">Deutschland</a> (Deutsch)</li>
+										<li><a class="domain_selector_link" data-country-code="ES" data-default-lang="true" data-do-not-rewrite="true" data-lang="es" data-recommended-text="España" data-selected-text="España" data-subdomain="es" href="//es.mathworks.com">España</a> (Español)</li>
+										<li><a class="domain_selector_link" data-country-code="FI" data-do-not-rewrite="true" data-lang="en" data-subdomain="se" href="//se.mathworks.com">Finland</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="FR" data-default-lang="true" data-do-not-rewrite="true" data-lang="fr" data-recommended-text="France" data-selected-text="France" data-subdomain="fr" href="//fr.mathworks.com">France</a> (Français)</li>
+										<li><a class="domain_selector_link" data-country-code="IE" data-do-not-rewrite="true" data-lang="en" data-subdomain="uk" href="//uk.mathworks.com">Ireland</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="IT" data-default-lang="true" data-do-not-rewrite="true" data-lang="it" data-recommended-text="Italia" data-selected-text="Italia" data-subdomain="it" href="//it.mathworks.com">Italia</a> (Italiano)</li>
+										<li><a class="domain_selector_link" data-country-code="LU" data-do-not-rewrite="true" data-lang="en" data-subdomain="nl" href="//nl.mathworks.com">Luxembourg</a> (English)</li>
+									</ul>
+								</div>
+								<div class="col-6 col-sm-12 col-lg-6">
+									<ul class="list-unstyled">
+										<li><a class="domain_selector_link" data-country-code="NL" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="Netherlands" data-selected-text="Benelux" data-subdomain="nl" href="//nl.mathworks.com">Netherlands</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="NO" data-do-not-rewrite="true" data-lang="en" data-subdomain="se" href="//se.mathworks.com">Norway</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="AT" data-do-not-rewrite="true" data-lang="de" data-subdomain="de" href="//de.mathworks.com">Österreich</a> (Deutsch)</li>
+										<li><a class="domain_selector_link" data-country-code="PT" data-do-not-rewrite="true" data-lang="en" data-subdomain="www" href="//www.mathworks.com">Portugal</a> (English)</li>
+										<li><a class="domain_selector_link" data-country-code="SE" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="Sweden" data-selected-text="Nordic" data-subdomain="se" href="//se.mathworks.com">Sweden</a> (English)</li>
+										<li>Switzerland
+											<ul class="list-unstyled add_indent_20">
+												<li><a class="domain_selector_link" data-country-code="CH" data-do-not-rewrite="true" data-lang="de" data-recommended-text="Schweiz" data-selected-text="Schweiz" data-subdomain="ch" href="//ch.mathworks.com">Deutsch</a></li>
+												<li><a class="domain_selector_link" data-country-code="CH" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="Switzerland" data-selected-text="Switzerland" data-subdomain="ch" href="//ch.mathworks.com" id="swiss_english">English</a></li>
+												<li><a class="domain_selector_link" data-country-code="CH" data-do-not-rewrite="true" data-lang="fr" data-recommended-text="Suisse" data-selected-text="Suisse" data-subdomain="ch" href="//ch.mathworks.com">Français</a></li>
+											</ul>
+										</li>
+										<li><a class="domain_selector_link" data-country-code="GB" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="United Kingdom" data-selected-text="United Kingdom" data-subdomain="uk" href="//uk.mathworks.com">United Kingdom</a> (English)</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<div class="col-12 col-sm-4 col-lg-3">
+							<p class="h3 add_bottom_rule">Asia Pacific</p>
+							<ul class="list-unstyled">
+								<li><a class="domain_selector_link" data-country-code="AU" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="Australia" data-selected-text="Australia" data-subdomain="au" href="//au.mathworks.com">Australia</a> (English)</li>
+								<li><a class="domain_selector_link" data-country-code="IN" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="India" data-selected-text="India" data-subdomain="in" href="//in.mathworks.com">India</a> (English)</li>
+								<li><a class="domain_selector_link" data-country-code="NZ" data-do-not-rewrite="true" data-lang="en" data-subdomain="au" href="//au.mathworks.com">New Zealand</a> (English)</li>
+								<li>中国
+									<ul class="list-unstyled add_indent_20">
+										<li><a class="domain_selector_link" data-country-code="CN" data-default-lang="true" data-do-not-rewrite="true" data-lang="zh" data-recommended-text="中国" data-selected-text="中国" data-subdomain="ww2" href="//ww2.mathworks.cn">简体中文</a></li>
+										<li><a class="domain_selector_link" data-country-code="CN" data-default-lang="true" data-do-not-rewrite="true" data-lang="en" data-recommended-text="China" data-selected-text="China" data-subdomain="ww2" href="//ww2.mathworks.cn">English</a></li>
+									</ul>
+								</li>
+								<li><a class="domain_selector_link" data-country-code="JP" data-default-lang="true" data-do-not-rewrite="true" data-lang="ja" data-recommended-text="日本" data-selected-text="日本" data-subdomain="jp" href="//jp.mathworks.com">日本</a> (日本語)</li>
+								<li><a class="domain_selector_link" data-country-code="KR" data-default-lang="true" data-do-not-rewrite="true" data-lang="ko" data-recommended-text="한국" data-selected-text="한국" data-subdomain="kr" href="//kr.mathworks.com">한국</a> (한국어)</li>
+							</ul>
+						</div>
+					</div>
+					<p class="text-center"><a class="worldwide_link" data-do-not-rewrite="true" href="#">Contact your local office</a></p>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	
+    
+
+
+
+
+
+
+
+
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/domainselector.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+	
+</main>
+
+						</div>
+					</div>
+				</div>
+			</div>
+			
+
+<footer id="footer">
+	
+		<div class="primary_footer" id="primary_footer">
+			<div class="container-fluid container-lg">
+				<div class="row align-items-start">
+					<div class="col-12 col-md-9">
+						<nav>
+							
+							<div class="footerNavigation footernavigation containsResourceName resourceClass-footernavigation">
+
+
+
+	<ul class="list-inline " id="footernav" data-privacy="Your Privacy Choices">
+		<li class="list-inline-item" id="footernav_footernav_patents">
+			
+	
+	
+	
+
+	
+
+	<a class=" " href="/company/trust-center.html?s_tid=gf_tc">
+
+		
+
+		
+			
+			Trust Center</a>
+
+		
+		
+	
+
+		</li>
+	
+		<li class="list-inline-item" id="footernav_footernav_trademarks">
+			
+	
+	
+	
+
+	
+
+	<a class=" " href="/company/trust-center/trademarks.html?s_tid=gf_trd">
+
+		
+
+		
+			
+			Trademarks</a>
+
+		
+		
+	
+
+		</li>
+	
+		<li class="list-inline-item" id="footernav_footernav_privacy">
+			
+	
+	
+	
+
+	
+
+	<a class=" " href="/company/trust-center/privacy-policy.html?s_tid=gf_priv">
+
+		
+
+		
+			
+			Privacy Policy</a>
+
+		
+		
+	
+
+		</li>
+	
+		<li class="list-inline-item" id="footernav_footernav_piracy">
+			
+	
+	
+	
+
+	
+
+	<a class=" " href="/company/trust-center/piracy.html?s_tid=gf_pir">
+
+		
+
+		
+			
+			Preventing Piracy</a>
+
+		
+		
+	
+
+		</li>
+	
+		<li class="list-inline-item" id="footernav_footernav_status">
+			
+	
+	
+	
+
+	
+
+	<a class=" " href="https://status.mathworks.com/?s_tid=gf_application">
+
+		
+
+		
+			
+			Application Status</a>
+
+		
+		
+	
+
+		</li>
+	
+		<li class="list-inline-item" id="footernav_footernav_contactus">
+			
+	
+	
+	
+
+	
+
+	<a class=" " href="/company/aboutus/contact_us.html?s_tid=gf_contact">
+
+		
+
+		
+			
+			Contact Us</a>
+
+		
+		
+	
+
+		</li>
+	</ul>
+
+
+
+
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/footernavigation.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+</div>
+
+						</nav>
+						<p class="copyright">© 1994-2026 The MathWorks, Inc.</p>
+					</div>
+					<div class="col-12 col-md-3">
+						<div id="countrynav" class="d-flex justify-content-end">
+							<button class="btn btn-outline btn_countrynav companion_btn add_margin_20" id="domainButton" data-toggle="modal" data-bs-toggle="modal" data-target="#country-unselected" data-bs-target="#country-unselected">
+								<span class="visually-hidden sr-only">Select a Web Site</span>
+								<span class="icon-globe"></span>
+								<span id="countrySelectorButtonText">United States</span>
+							</button>
+						</div>
+					</div>
+					
+				</div>
+			</div>
+		</div>
+	
+	
+</footer>
+
+
+		</div>
+	</div>
+</div>
+
+		
+		
+		
+
+		
+			
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/button.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/downsize.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/upsize.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/tags.min.20260619050209678.css" type="text/css"/>
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/bs5-footer.min.20260619050209678.css" type="text/css"/>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/substitutepricing.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/tags.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+
+			
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/domainredirect.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+
+			
+    
+
+
+
+
+			
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/bootstrap5.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+			
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/signinanalytics.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/spotlight.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/templates/common/bs5.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+			
+			
+				
+    
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/corporatenav.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+				<div class="modal-backdrop fade show" id="corporate_nav_modal"></div>
+			
+			
+
+			
+			<a aria-hidden="true" aria-label="Back to top" class="btn btn_color_mediumgray" href="#" id="go-top" tabindex="0"><span class="icon-arrow-open-up icon_24"></span></a>
+			<div id="web-application-footer-assets"></div>
+
+			
+    
+<link rel="stylesheet" href="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/matrixmenu.min.20260619050209678.css" type="text/css"/>
+<script src="https://www.mathworks.com/etc.clientlibs/mathworks/clientlibs/customer-ui/components/matrixmenu.min.20260619050209678.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+
+
+
+
+			
+
+		
+
+	
+
+
+
+
+<script src="/help/releases/R2026a/includes/shared/scripts/saxonjs/SaxonJS2.rt.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script src="/help/releases/R2026a/includes/shared/scripts/product_group.js" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script>
+<script nonce="67Unv+cYJaaPyeUrXvRz32IW">
+        window.history.replaceState(window.location.href, null, ""); // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+        mystylesheetLocation = "/help/releases/R2026a/includes/shared/scripts/product_group-sef.json";
+        mysourceLocation = "/help/releases/R2026a/docset.xml";
+        product_help_location = "rf";
+        pagetype = "module";
+        doccentertype = "web";
+        langcode = "";
+        getProductFilteredList(mystylesheetLocation, mysourceLocation, product_help_location, pagetype, doccentertype, langcode);
+        });
+      </script>
+<script src="/help/includes/web/scripts/livecontrolpopoverhandler.js?202409" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script><script src="/help/includes/web/scripts/livetaskpopoverhandler.js?202409" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script><script src="https://matlab.mathworks.com/open/openwith.js?202403" nonce="67Unv+cYJaaPyeUrXvRz32IW"></script><style>.examples_short_list a.btn {display: none;}</style><script type="text/javascript" nonce="01fd77a712e66b9db7e8ab55850ecbc4" src="/RaqOK/fgpt/_Gx7/1sJwgn/b/iV5imrQkQfN8JruziE/EEchPA/FiVg/eRlRXiUB"></script></body></html>

@@ -167,13 +167,18 @@ Current analog support:
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix), plus active-network stability margins (`rollet_k_min`
-  and `stability_delta_magnitude_max`), from full `s_parameters.csv` data.
+  and `stability_delta_magnitude_max`) and gain ceilings/floors
+  (`maximum_available_gain_db_min` and `maximum_stable_gain_db_min`), from
+  full `s_parameters.csv` data. Maximum available gain is retained only for
+  unconditionally stable rows (`K > 1`, `|Delta| < 1`); source/load-dependent
+  transducer, available, and operating gain remain future metrics until Board
+  IR carries source and load reflection-coefficient provenance.
   Reports project retained rows into `s_parameter_summaries[]` and retained
   network-quality rows into `s_parameter_network_summaries[]`, Markdown
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
   the GUI artifact panel shows compact RF term and network sign-off rows,
   Scopes includes an RF Network Check editor for authoring two-port
-  reciprocity, passivity, Rollet K, and `|Delta|` sign-off checks without
+  reciprocity, passivity, Rollet K, `|Delta|`, MAG, and MSG sign-off checks without
   hand-editing YAML, retained network assertion failures can be loaded back
   into that editor from the report artifact panel, and Scopes derives
   return-loss, insertion-loss, VSWR, mismatch-loss,
