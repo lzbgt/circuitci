@@ -599,8 +599,10 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
    the test is skipped by default unless the variable is set and `ngspice` is
    on `PATH`.
 9. Xyce `.SENS` has fake-solver CSV adapter coverage against the same
-   normalized `sensitivity_summary` contract. Add opt-in real-Xyce conformance
-   when a Xyce executable is available on the host. Embedded ngspice remains
+   normalized `sensitivity_summary` contract. Opt-in real-Xyce conformance is
+   available through
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sensitivity_cli`; it
+   skips unless `Xyce` or `xyce` is on `PATH`. Embedded ngspice remains
    fail-closed with backend-planning evidence until it emits the same
    normalized contract.
 
@@ -684,8 +686,9 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
 8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
-   `PATH`. Xyce `.FOUR` has fake-solver `.four0` adapter coverage and should
-   add opt-in real-Xyce conformance when `Xyce`/`xyce` is available.
+   `PATH`. Opt-in real-Xyce conformance is available through
+   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_fourier_cli`; it skips
+   unless `Xyce` or `xyce` is on `PATH`.
 9. Embedded ngspice remains fail-closed with backend-planning evidence until it
    emits the same normalized `fourier_summary` contract.
 

@@ -589,8 +589,9 @@ The GUI should not become the solver.
   `sensitivity_summaries[]`, Markdown reports include a "Sensitivity Summary"
   section, and GUI Scopes shows compact sensitivity rows plus loads AC
   `sensitivity_summary.csv` as parameter-grouped frequency-axis sensitivity
-  traces. Next add opt-in real-Xyce `.SENS` conformance when a Xyce executable
-  is available, and continue non-ngspice `.TF`/`.PZ` planning/adapters.
+  traces. Opt-in real-Xyce `.SENS` conformance is covered by
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sensitivity_cli`, which
+  skips unless `Xyce` or `xyce` is on `PATH`.
 - The `.FOUR` path has external-ngspice and explicit-Xyce adapters with a
   Board IR/schema contract for transient-backed harmonic extraction,
   fundamental frequency/window validation, bound output provenance, normalized
@@ -604,8 +605,9 @@ The GUI should not become the solver.
   `fourier_summaries[]`, Markdown reports include a "Fourier Summary" section,
   GUI Scopes shows compact harmonic/THD rows, and Scopes loads
   `fourier_summary.csv` as frequency-axis magnitude/phase and normalized
-  magnitude/phase traces. Next add real-Xyce `.FOUR` conformance when a Xyce
-  executable is available on the host.
+  magnitude/phase traces. Opt-in real-Xyce `.FOUR` conformance is covered by
+  `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_fourier_cli`, which
+  skips unless `Xyce` or `xyce` is on `PATH`.
 - The first `.MEASURE` path is an external-ngspice adapter with a Board
   IR/schema contract for reviewed transient/AC scalar extraction statements or
   portable measure templates, bound output provenance checks, normalized

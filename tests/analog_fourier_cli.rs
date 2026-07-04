@@ -9,6 +9,8 @@ use std::process::Command;
 
 #[cfg(unix)]
 const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
+#[cfg(unix)]
+const REAL_XYCE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE";
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
@@ -136,6 +138,19 @@ fn real_ngspice_conformance_enabled() -> bool {
     true
 }
 
+#[cfg(unix)]
+fn real_xyce_fourier_conformance_enabled() -> bool {
+    if std::env::var(REAL_XYCE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!("skipping real-Xyce Fourier conformance; set {REAL_XYCE_CONFORMANCE_ENV}=1");
+        return false;
+    }
+    if !binary_available("Xyce") && !binary_available("xyce") {
+        eprintln!("skipping real-Xyce Fourier conformance; Xyce/xyce is not on PATH");
+        return false;
+    }
+    true
+}
+
 fn assert_fourier_summary_has_fundamental(path: &str) {
     let text = fs::read_to_string(path).unwrap();
     let mut lines = text.lines();
@@ -147,6 +162,15 @@ fn assert_fourier_summary_has_fundamental(path: &str) {
     assert!(
         lines.any(|line| line.contains(",1,1.000000000000e5,")),
         "{path} did not contain a fundamental harmonic row"
+    );
+}
+
+fn assert_selected_xyce(manifest: &Value) {
+    assert!(
+        manifest["backend"]["selected"]
+            .as_str()
+            .unwrap()
+            .eq_ignore_ascii_case("xyce")
     );
 }
 
@@ -425,6 +449,57 @@ fn real_ngspice_fourier_conformance_when_enabled() {
     .unwrap();
     assert_eq!(manifest["backend"]["selected"], "ngspice");
     assert_eq!(manifest["analysis"]["kind"], "fourier");
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_xyce_fourier_conformance_when_enabled() {
+    if !real_xyce_fourier_conformance_enabled() {
+        return;
+    }
+
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path =
+        write_fourier_project(project_dir.path(), "xyce", "V(out)", 100.0, 100_000.0, "");
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert!(artifact_path(&report, "circuitci_xyce_fourier.cir.four0").ends_with(".four0"));
+    assert_fourier_summary_has_fundamental(artifact_path(&report, "fourier_summary.csv"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_selected_xyce(&manifest);
+    assert_eq!(manifest["analysis"]["kind"], "fourier");
+    assert_eq!(manifest["outputs"]["raw"][0]["kind"], "xyce_fourier_raw");
+    assert_eq!(
+        manifest["outputs"]["normalized"][0]["kind"],
+        "fourier_summary"
+    );
     assert_report_schema_valid(&report);
 }
 

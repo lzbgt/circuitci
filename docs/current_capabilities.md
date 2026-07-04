@@ -284,9 +284,10 @@ Current analog support:
   for magnitude, real, and imaginary sensitivity. Opt-in real-ngspice
   conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
-  it skips unless `ngspice` is on `PATH`. Xyce `.SENS` currently has
-  fake-solver CSV adapter coverage; embedded ngspice remains fail-closed with
-  planning evidence for this path.
+  it skips unless `ngspice` is on `PATH`. Opt-in real-Xyce `.SENS`
+  conformance is available through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
+  analog_sensitivity_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
+  Embedded ngspice remains fail-closed with planning evidence for this path.
 - `analog_distortion` scenarios with `SPICE_DISTORTION_ANALYSIS` for
   ngspice-backed small-signal distortion analysis. The Board IR/schema can declare
   `analysis.type: disto`, `distortion_mode: harmonic|intermodulation`,
@@ -327,8 +328,10 @@ Current analog support:
   frequency-axis magnitude/phase and normalized magnitude/phase traces for
   plotting. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
-  unless `ngspice` is on `PATH`. Xyce `.FOUR` currently has fake-solver adapter
-  coverage; embedded ngspice remains fail-closed with planning evidence.
+  unless `ngspice` is on `PATH`. Opt-in real-Xyce `.FOUR` conformance is
+  available through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
+  analog_fourier_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
+  Embedded ngspice remains fail-closed with planning evidence.
 - `analog_harmonic_balance` scenarios with
   `SPICE_HARMONIC_BALANCE_ANALYSIS` for periodic steady-state spectrum
   contracts. The Board IR/schema can declare `analysis.type: hb`,

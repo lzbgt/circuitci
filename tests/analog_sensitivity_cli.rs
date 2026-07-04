@@ -9,6 +9,8 @@ use std::process::Command;
 
 #[cfg(unix)]
 const REAL_NGSPICE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_NGSPICE";
+#[cfg(unix)]
+const REAL_XYCE_CONFORMANCE_ENV: &str = "CIRCUITCI_RUN_REAL_XYCE";
 
 #[cfg(unix)]
 fn fake_executable(dir: &std::path::Path, name: &str) {
@@ -132,6 +134,19 @@ fn real_ngspice_conformance_enabled() -> bool {
     true
 }
 
+#[cfg(unix)]
+fn real_xyce_sensitivity_conformance_enabled() -> bool {
+    if std::env::var(REAL_XYCE_CONFORMANCE_ENV).as_deref() != Ok("1") {
+        eprintln!("skipping real-Xyce sensitivity conformance; set {REAL_XYCE_CONFORMANCE_ENV}=1");
+        return false;
+    }
+    if !binary_available("Xyce") && !binary_available("xyce") {
+        eprintln!("skipping real-Xyce sensitivity conformance; Xyce/xyce is not on PATH");
+        return false;
+    }
+    true
+}
+
 fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
     report["artifacts"]
         .as_array()
@@ -140,6 +155,15 @@ fn artifact_path<'a>(report: &'a Value, suffix: &str) -> &'a str {
         .filter_map(|artifact| artifact.as_str())
         .find(|artifact| artifact.ends_with(suffix))
         .unwrap_or_else(|| panic!("missing artifact with suffix {suffix}"))
+}
+
+fn assert_selected_xyce(manifest: &Value) {
+    assert!(
+        manifest["backend"]["selected"]
+            .as_str()
+            .unwrap()
+            .eq_ignore_ascii_case("xyce")
+    );
 }
 
 fn assert_sensitivity_summary_has_dc_rows(path: &str) {
@@ -314,6 +338,88 @@ fn real_ngspice_ac_sensitivity_conformance_when_enabled() {
         "sensitivity_summary"
     );
     assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_xyce_sensitivity_conformance_when_enabled() {
+    if !real_xyce_sensitivity_conformance_enabled() {
+        return;
+    }
+
+    let project_root = tempfile::tempdir().unwrap();
+
+    let dc_dir = project_root.path().join("dc");
+    fs::create_dir_all(&dc_dir).unwrap();
+    let dc_project = write_sensitivity_project(&dc_dir, "xyce", "V(out)", "dc");
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&dc_project, &validator);
+    fs::create_dir_all("out").unwrap();
+    let dc_out = tempfile::tempdir_in("out").unwrap();
+    let dc_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            dc_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            dc_out.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(dc_status.success());
+    let dc_report: Value =
+        serde_json::from_str(&fs::read_to_string(dc_out.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(dc_report["result"], "pass");
+    assert_sensitivity_summary_has_dc_rows(artifact_path(&dc_report, "sensitivity_summary.csv"));
+    let dc_manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&dc_report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_selected_xyce(&dc_manifest);
+    assert_eq!(dc_manifest["analysis"]["kind"], "sensitivity");
+    assert_eq!(
+        dc_manifest["outputs"]["raw"][0]["kind"],
+        "xyce_sensitivity_csv"
+    );
+    assert_report_schema_valid(&dc_report);
+
+    let ac_dir = project_root.path().join("ac");
+    fs::create_dir_all(&ac_dir).unwrap();
+    let ac_project = write_sensitivity_project(&ac_dir, "xyce", "V(out)", "ac");
+    assert_yaml_file_valid(&ac_project, &validator);
+    let ac_out = tempfile::tempdir_in("out").unwrap();
+    let ac_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            ac_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            ac_out.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(ac_status.success());
+    let ac_report: Value =
+        serde_json::from_str(&fs::read_to_string(ac_out.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(ac_report["result"], "pass");
+    assert_sensitivity_summary_has_ac_rows(artifact_path(&ac_report, "sensitivity_summary.csv"));
+    let ac_manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&ac_report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_selected_xyce(&ac_manifest);
+    assert_eq!(ac_manifest["analysis"]["kind"], "sensitivity");
+    assert_eq!(
+        ac_manifest["outputs"]["normalized"][0]["kind"],
+        "sensitivity_summary"
+    );
+    assert_report_schema_valid(&ac_report);
 }
 
 #[cfg(unix)]
