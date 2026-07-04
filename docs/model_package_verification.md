@@ -252,6 +252,24 @@ Validation writes each retained import under
 pass. Optional spec keys are `id`, `registry_entry`, and
 `registry_artifact_id`.
 
+Validation suites can declare the same imports per case:
+
+```yaml
+cases:
+  - id: qualified_model_case
+    project: ../examples/qualified_model/project.yaml
+    expect: pass
+    model_package_bundle_imports:
+      - id: tiny_resistor
+        bundle: ../dist/tiny_resistor_bundle
+        install_dir: ../third_party/models/tiny_resistor
+        registry_output: ../third_party/models/compact_model_registry.json
+```
+
+Suite bundle, install, and registry paths are resolved relative to the suite
+manifest. The retained import report can be listed in `required_artifacts` when
+the suite must prove that the package import pipeline ran.
+
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a

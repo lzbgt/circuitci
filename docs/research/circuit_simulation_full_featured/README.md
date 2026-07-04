@@ -831,6 +831,10 @@ The GUI should not become the solver.
   `model_package_bundle_imports[]` and fail closed with
   `MODEL_PACKAGE_BUNDLE_IMPORT_FAILED` if bundle verification, install,
   installed-package verification, or YAML repair does not pass.
+- Added validation-suite `cases[].model_package_bundle_imports[]` so CI suites
+  can request the same retained bundle import pipeline per case, resolve bundle
+  paths relative to the suite manifest, and assert retained import reports with
+  `required_artifacts`.
 
 ## Risks
 

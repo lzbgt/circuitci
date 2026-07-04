@@ -32,6 +32,8 @@ pub struct SuiteCase {
     pub project: PathBuf,
     pub expect: ExpectedResult,
     #[serde(default)]
+    pub model_package_bundle_imports: Vec<SuiteBundleImportRequest>,
+    #[serde(default)]
     pub required_findings: Vec<RequiredFinding>,
     #[serde(default)]
     pub required_artifacts: Vec<String>,
@@ -87,6 +89,17 @@ pub struct ValidationBundleImportRequest {
     pub registry_artifact_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuiteBundleImportRequest {
+    pub id: Option<String>,
+    pub bundle: PathBuf,
+    pub install_dir: PathBuf,
+    pub registry_output: Option<PathBuf>,
+    pub registry_entry: Option<String>,
+    pub registry_artifact_id: Option<String>,
+}
+
 impl SuiteManifest {
     pub fn load(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path)
@@ -123,6 +136,39 @@ impl SuiteManifest {
             }
             if case.project.as_os_str().is_empty() {
                 bail!("Suite case {} project path is required.", case.id);
+            }
+            let mut import_ids = BTreeSet::new();
+            for (index, import) in case.model_package_bundle_imports.iter().enumerate() {
+                if import.bundle.as_os_str().is_empty() {
+                    bail!(
+                        "Suite case {} model_package_bundle_imports[{}].bundle is required.",
+                        case.id,
+                        index
+                    );
+                }
+                if import.install_dir.as_os_str().is_empty() {
+                    bail!(
+                        "Suite case {} model_package_bundle_imports[{}].install_dir is required.",
+                        case.id,
+                        index
+                    );
+                }
+                if let Some(id) = import.id.as_deref() {
+                    if !safe_case_id(id) {
+                        bail!(
+                            "Suite case {} model package bundle import id {} is invalid; use ASCII letters, digits, '_' or '-'.",
+                            case.id,
+                            id
+                        );
+                    }
+                    if !import_ids.insert(id) {
+                        bail!(
+                            "Suite case {} has duplicate model package bundle import id {}.",
+                            case.id,
+                            id
+                        );
+                    }
+                }
             }
             if case.expect == ExpectedResult::Fail
                 && !case
@@ -179,7 +225,7 @@ pub fn run_suite<F>(
     mut validate_project: F,
 ) -> Result<SuiteReport>
 where
-    F: FnMut(&Path, &str, &Path) -> Result<ValidationReport>,
+    F: FnMut(&Path, &str, &Path, ValidationReportOptions) -> Result<ValidationReport>,
 {
     let manifest = SuiteManifest::load(manifest_path)?;
     let manifest_dir = manifest_path.parent().unwrap_or_else(|| Path::new("."));
@@ -190,10 +236,12 @@ where
     for case in &manifest.cases {
         let project_path = manifest_dir.join(&case.project);
         let case_output = cases_dir.join(&case.id);
+        let options = suite_case_validation_options(case, manifest_dir);
         let report = validate_project(
             &project_path,
             &manifest.suite.validation_profile,
             &case_output,
+            options,
         )
         .with_context(|| format!("Suite case {} failed to validate project.", case.id))?;
         let case_report_path = Path::new("cases").join(&case.id).join("report.json");
@@ -563,6 +611,26 @@ fn bundle_import_finding(
             .to_string(),
     );
     finding
+}
+
+fn suite_case_validation_options(case: &SuiteCase, manifest_dir: &Path) -> ValidationReportOptions {
+    ValidationReportOptions {
+        model_package_bundle_imports: case
+            .model_package_bundle_imports
+            .iter()
+            .map(|request| ValidationBundleImportRequest {
+                id: request.id.clone(),
+                bundle: manifest_dir.join(&request.bundle),
+                install_dir: manifest_dir.join(&request.install_dir),
+                registry_output: request
+                    .registry_output
+                    .as_ref()
+                    .map(|path| manifest_dir.join(path)),
+                registry_entry: request.registry_entry.clone(),
+                registry_artifact_id: request.registry_artifact_id.clone(),
+            })
+            .collect(),
+    }
 }
 
 fn evaluate_case(

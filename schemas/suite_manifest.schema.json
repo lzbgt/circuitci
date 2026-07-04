@@ -26,6 +26,22 @@
           "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
           "project": { "type": "string", "minLength": 1 },
           "expect": { "enum": ["pass", "fail"] },
+          "model_package_bundle_imports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["bundle", "install_dir"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+                "bundle": { "type": "string", "minLength": 1 },
+                "install_dir": { "type": "string", "minLength": 1 },
+                "registry_output": { "type": "string", "minLength": 1 },
+                "registry_entry": { "type": "string", "minLength": 1 },
+                "registry_artifact_id": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
           "required_findings": {
             "type": "array",
             "items": {

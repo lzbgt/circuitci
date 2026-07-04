@@ -886,6 +886,100 @@ scenarios:
             .any(|artifact| artifact.as_str()
                 == Some(retained_import_report.to_string_lossy().as_ref()))
     );
+
+    let suite_project = dir.path().join("bundle_import_suite_project.yaml");
+    fs::write(
+        &suite_project,
+        r#"
+project:
+  name: bundle_import_suite_project
+  version: 0.1.0
+
+board:
+  components: {}
+  nets: {}
+
+scenarios:
+  - name: package_import
+    type: analog_transient
+    checks: []
+    analog:
+      backend: ngspice
+      netlist_source: file
+      model_files:
+        - path: suite_installed_bundle/artifacts/runtime.osdi
+          artifact_format: osdi_shared_object
+          model_package_artifact_id: runtime_osdi
+      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: transient
+        stop_time_us: 1.0
+        max_step_us: 0.1
+      stimuli: []
+      probes: []
+      assertions: []
+"#,
+    )
+    .unwrap();
+    let suite_output = dir.path().join("suite_with_bundle_import");
+    let suite_import_report = suite_output
+        .join("cases/bundle_import_case/model_package_bundle_imports/01_suite_bundle/model_package_bundle_import.json");
+    let suite_manifest = dir.path().join("bundle_import_suite.yaml");
+    fs::write(
+        &suite_manifest,
+        format!(
+            r#"
+suite:
+  name: bundle_import_suite
+  version: 0.1.0
+  validation_profile: iot_basic_v0
+cases:
+  - id: bundle_import_case
+    project: {}
+    expect: pass
+    model_package_bundle_imports:
+      - id: suite_bundle
+        bundle: {}
+        install_dir: suite_installed_bundle
+        registry_output: suite_shared/compact_model_registry.json
+    required_artifacts:
+      - {}
+"#,
+            suite_project.display(),
+            bundle_dir.display(),
+            suite_import_report.display()
+        ),
+    )
+    .unwrap();
+    let suite_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            suite_manifest.to_str().unwrap(),
+            "--output",
+            suite_output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suite_status.success());
+    let suite_report: Value =
+        serde_json::from_str(&fs::read_to_string(suite_output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(suite_report["result"], "pass");
+    assert_eq!(
+        suite_report["cases"][0]["matched_artifacts"][0]
+            .as_str()
+            .unwrap(),
+        suite_import_report.to_string_lossy().as_ref()
+    );
+    let suite_case_report: Value = serde_json::from_str(
+        &fs::read_to_string(suite_output.join("cases/bundle_import_case/report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        suite_case_report["model_package_bundle_imports"][0]["model_package_registry_entry"],
+        "bundle_fixture_runtime"
+    );
 }
 
 #[test]

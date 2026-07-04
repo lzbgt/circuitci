@@ -63,6 +63,28 @@ cases:
 
 Paths are resolved relative to the manifest file.
 
+Cases can also request compact-model bundle imports before their report is
+assembled:
+
+```yaml
+cases:
+  - id: qualified_model_pack
+    project: ../examples/qualified_model/project.yaml
+    expect: pass
+    model_package_bundle_imports:
+      - id: generic_models
+        bundle: ../dist/generic_models_bundle
+        install_dir: ../third_party/models/generic
+        registry_output: ../third_party/models/compact_model_registry.json
+    required_artifacts:
+      - out/acceptance/cases/qualified_model_pack/model_package_bundle_imports/01_generic_models/model_package_bundle_import.json
+```
+
+The runner resolves `bundle`, `install_dir`, and `registry_output` relative to
+the suite manifest. Each requested import uses the same fail-closed pipeline as
+`circuitci validate --model-package-bundle-import`, retains the import report in
+the case artifacts, and can be asserted with `required_artifacts`.
+
 ## Result Semantics
 
 Each case runs the same validation pipeline as `circuitci validate`.

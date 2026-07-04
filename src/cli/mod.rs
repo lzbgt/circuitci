@@ -2,7 +2,7 @@ use crate::repair_yaml::{BoardYamlRepairFindingKind, BoardYamlRepairOptions};
 use crate::reports::write_suite_reports;
 use crate::suite::{
     ValidationBundleImportRequest, ValidationReportOptions, run_suite,
-    validate_and_write_project_report, validate_and_write_project_report_with_options,
+    validate_and_write_project_report_with_options,
 };
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -1812,14 +1812,20 @@ fn run_validate_suite(manifest: PathBuf, output: PathBuf) -> Result<()> {
         &manifest,
         &output,
         command,
-        |project_path, profile, case_output| {
+        |project_path, profile, case_output, options| {
             let case_command = format!(
                 "circuitci validate {} --profile {} --output {}",
                 project_path.display(),
                 profile,
                 case_output.display()
             );
-            validate_and_write_project_report(project_path, profile, case_output, case_command)
+            validate_and_write_project_report_with_options(
+                project_path,
+                profile,
+                case_output,
+                case_command,
+                options,
+            )
         },
     )?;
     write_suite_reports(&report, &output)?;
