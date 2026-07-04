@@ -168,7 +168,11 @@ fn periodic_ac_contract_is_schema_valid_and_fails_closed_with_planning_evidence(
     );
     assert_eq!(
         report["failures"][0]["measured"]["backend_research_status"]["ngspice"],
-        "small_signal_ac_supported_but_periodic_ac_pxf_requires_trusted_pss_or_hb_linearization_not_available_here"
+        "manual_mentions_pac_as_future_pss_downstream_analysis_but_pss_is_experimental_autonomous_only_and_no_pac_command_contract_is_documented"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["source_notes"]["xyce_reference"],
+        "sources/Xyce_Reference_Guide_7.8.txt"
     );
     assert_report_schema_valid(&report);
 }

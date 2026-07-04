@@ -256,7 +256,9 @@ Current analog support:
   manifest-compatible planning evidence for future `pac_response`,
   `pac_sidebands`, `pac_convergence`, and `pss_convergence` artifacts, but no
   backend is allowed to pass periodic small-signal sign-off until a trusted
-  PSS/HB linearization chain and PAC/PXF normalizer exist.
+  PSS/HB linearization chain and PAC/PXF normalizer exist. The saved
+  PAC/PXF evidence note records why Xyce HB output, experimental ngspice PSS,
+  and QUCS-COPEN papers are not yet adapter-ready.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

@@ -407,10 +407,22 @@ pub(super) fn validate_spice_periodic_ac_with_progress<F, C>(
     finding.measured.insert(
         "backend_research_status".to_string(),
         json!({
-            "xyce": "hb_supported_but_no_trusted_pac_pxf_adapter_or_normalized_output_contract_in_current_runtime",
-            "ngspice": "small_signal_ac_supported_but_periodic_ac_pxf_requires_trusted_pss_or_hb_linearization_not_available_here",
+            "xyce": "reference_guide_and_genext_note_document_hb_but_no_pac_or_pxf_command_or_output_contract",
+            "ngspice": "manual_mentions_pac_as_future_pss_downstream_analysis_but_pss_is_experimental_autonomous_only_and_no_pac_command_contract_is_documented",
             "qucs_copen": "papers_document_periodic_noise_flow_after_psssolver_but_no_public_source_repository_or_adapter_contract_found",
-            "commercial_reference": "spectre_like_pac_pxf_requires_periodic_operating_point_convergence_and sideband_response_artifacts"
+            "qucsator_rf": "qucs_technical_material_documents_hb_topics_but_no_usable_circuitci_pac_pxf_backend_contract",
+            "commercial_reference": "spectre_like_pac_pxf_requires_periodic_operating_point_convergence_and_sideband_response_artifacts"
+        }),
+    );
+    finding.measured.insert(
+        "source_notes".to_string(),
+        json!({
+            "xyce_reference": "sources/Xyce_Reference_Guide_7.8.txt",
+            "xyce_genext": "sources/Xyce_AppNote_GenExt.txt",
+            "ngspice_manual": "sources/ngspice_manual.xhtml",
+            "ngspice_pss_page": "sources/ngspice_pss_periodic_steady_state.html",
+            "qucs_copen_part2": "sources/arxiv_2603.07828_qucs_phase_noise_part2.txt",
+            "qucs_technical": "sources/qucs_technical.html"
         }),
     );
     finding.limit.insert(

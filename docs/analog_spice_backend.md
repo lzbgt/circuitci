@@ -604,10 +604,11 @@ For a scenario with check `SPICE_PERIODIC_AC_ANALYSIS`:
    outputs `pac_response`, `pac_sidebands`, `pac_convergence`, and
    `pss_convergence`.
 6. The backend-planning finding records the current source-backed boundary:
-   Xyce HB is available but not yet a trusted PAC/PXF adapter here; ngspice AC
-   is available but does not provide the required periodic operating-point
-   linearization contract in this runtime; QUCS-COPEN remains a theory source
-   until public source, build, adapter, and conformance artifacts are found.
+   Xyce HB is available but the saved Xyce primary docs do not document PAC/PXF
+   command/output artifacts; ngspice documents experimental autonomous PSS and
+   names PAC/PNoise as downstream analyses but does not provide a stable
+   PAC/PXF command/output contract; QUCS-COPEN remains a theory source until
+   public source, build, adapter, and conformance artifacts are found.
 7. CircuitCI must not present periodic small-signal sign-off as passing until a
    trusted backend emits normalized PAC/PXF response, sideband, convergence,
    raw solver output, and solver-manifest artifacts with real-solver

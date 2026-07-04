@@ -69,6 +69,8 @@ Sources saved:
 - `sources/ngspice_DEVICES`
 - `sources/ngspice_manual.xhtml`
 - `pss_backend_evidence.md` records the PSS-specific backend decision.
+- `periodic_ac_backend_evidence.md` records the PAC/PXF-specific backend
+  decision.
 
 Upstream:
 
@@ -659,6 +661,12 @@ The GUI should not become the solver.
   future artifacts `pac_response`, `pac_sidebands`, `pac_convergence`, and
   `pss_convergence`, and intentionally fails closed until a trusted periodic
   operating-point linearization chain plus real-solver conformance exists.
+- Primary-source review in `periodic_ac_backend_evidence.md` found no
+  trustworthy PAC/PXF adapter target to enable immediately: Xyce documents HB
+  but not PAC/PXF command/output artifacts; ngspice mentions PAC as downstream
+  of experimental autonomous PSS without a stable command/output contract; and
+  QUCS-COPEN remains paper-documented theory without a public source/build
+  adapter path.
 
 ### Phase 5: Model Compiler Pipeline
 
