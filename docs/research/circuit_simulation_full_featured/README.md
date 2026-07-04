@@ -966,6 +966,11 @@ The GUI should not become the solver.
   `adapter_blocker` and `evidence_sources[]` metadata generically, so `.TF`,
   `.PZ`, phase-noise, and PAC/PXF fail-closed findings explain the exact
   retained blocker provenance without requiring raw JSON inspection.
+- The GUI Run Setup editor now authors generated-from-board planning scenarios
+  for `analog_pss`, `analog_phase_noise`, and `analog_periodic_ac`. The editor
+  captures the required output net, mode, frequency/carrier/sweep settings,
+  source provenance, and sideband/period counts, but the validators still fail
+  closed until a trusted normalized PSS/PNOISE/PAC backend contract exists.
 - Primary-source review in `periodic_ac_backend_evidence.md` found no
   trustworthy PAC/PXF adapter target to enable immediately: Xyce documents HB
   but not PAC/PXF command/output artifacts; ngspice mentions PAC as downstream

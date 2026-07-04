@@ -29,6 +29,7 @@ use super::simulation_run_setup_controls::{
     measure_mode_combo, measure_operation_combo, noise_source_combo, pole_zero_mode_combo,
     sensitivity_mode_combo,
 };
+use super::simulation_run_setup_planned::render_planned_run_setup_controls;
 use super::sketch::ProjectSnapshot;
 use eframe::egui;
 use std::path::Path;
@@ -57,6 +58,9 @@ impl CircuitCiApp {
                             "disto" => "Distortion",
                             "measure" => "Measure",
                             "sparam" => "S-Parameter",
+                            "pss" => "PSS Planning",
+                            "phase_noise" => "Phase Noise Planning",
+                            "pac" => "PAC/PXF Planning",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -112,6 +116,21 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "sparam".to_string(),
                                 "S-Parameter",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "pss".to_string(),
+                                "PSS Planning",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "phase_noise".to_string(),
+                                "Phase Noise Planning",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "pac".to_string(),
+                                "PAC/PXF Planning",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -220,6 +239,7 @@ impl CircuitCiApp {
                             );
                             ui.end_row();
                         }
+                    } else if render_planned_run_setup_controls(self, ui, snapshot) {
                     } else if self.analog_run_setup_kind == "fourier" {
                         ui.label("Stop time");
                         ui.add(

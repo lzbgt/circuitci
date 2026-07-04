@@ -2,7 +2,8 @@ use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft,
     AnalogDistortionScenarioDraft, AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
-    AnalogMeasureScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
+    AnalogMeasureScenarioDraft, AnalogNoiseScenarioDraft, AnalogPeriodicAcScenarioDraft,
+    AnalogPhaseNoiseScenarioDraft, AnalogPoleZeroScenarioDraft, AnalogPssScenarioDraft,
     AnalogSParameterScenarioDraft, AnalogScenarioDraft, AnalogSensitivityScenarioDraft,
     AnalogTransferFunctionScenarioDraft, append_analog_ac_scenario_with_project_path,
     append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
@@ -11,7 +12,10 @@ use super::analog::{
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_measure_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
+    append_analog_periodic_ac_scenario_with_project_path,
+    append_analog_phase_noise_scenario_with_project_path,
     append_analog_pole_zero_scenario_with_project_path,
+    append_analog_pss_scenario_with_project_path,
     append_analog_sensitivity_scenario_with_project_path,
     append_analog_sparameter_scenario_with_project_path,
     append_analog_transfer_function_scenario_with_project_path,
@@ -253,6 +257,88 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "S-parameter run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "pss" {
+            let draft = AnalogPssScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                mode: self.analog_pss_mode.clone(),
+                frequency_guess_hz: self.analog_pss_frequency_guess_hz,
+                stabilization_time_us: self.analog_pss_stabilization_time_us,
+                periods: self.analog_pss_periods,
+                drive_source: self.analog_pss_drive_source.clone(),
+            };
+            match append_analog_pss_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "PSS planning run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "phase_noise" {
+            let draft = AnalogPhaseNoiseScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                mode: self.analog_phase_noise_mode.clone(),
+                carrier_frequency_hz: self.analog_phase_noise_carrier_frequency_hz,
+                offset_start_hz: self.analog_phase_noise_offset_start_hz,
+                offset_stop_hz: self.analog_phase_noise_offset_stop_hz,
+                points_per_decade: self.analog_points_per_decade,
+                drive_source: self.analog_phase_noise_drive_source.clone(),
+            };
+            match append_analog_phase_noise_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Phase-noise planning run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "pac" {
+            let draft = AnalogPeriodicAcScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                mode: self.analog_pac_mode.clone(),
+                carrier_frequency_hz: self.analog_pac_carrier_frequency_hz,
+                start_frequency_hz: self.analog_start_frequency_hz,
+                stop_frequency_hz: self.analog_stop_frequency_hz,
+                points_per_decade: self.analog_points_per_decade,
+                input_source: self.analog_pac_input_source.clone(),
+                sidebands: self.analog_pac_sidebands,
+                drive_source: self.analog_pac_drive_source.clone(),
+            };
+            match append_analog_periodic_ac_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Periodic AC planning run setup {} added.",
                         self.analog_scenario_name.trim()
                     ),
                 ),

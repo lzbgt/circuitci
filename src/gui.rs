@@ -61,6 +61,7 @@ mod simulation_pole_zero_assertions;
 mod simulation_probe_assertions;
 mod simulation_run_setup_actions;
 mod simulation_run_setup_controls;
+mod simulation_run_setup_planned;
 mod simulation_sensitivity_assertions;
 mod simulation_sparameter_assertions;
 mod simulation_sparameter_network_assertions;
@@ -412,6 +413,21 @@ pub struct CircuitCiApp {
     analog_measure_to: f64,
     analog_sparameter_port2_net: String,
     analog_sparameter_reference_impedance_ohm: f64,
+    analog_pss_mode: String,
+    analog_pss_frequency_guess_hz: f64,
+    analog_pss_stabilization_time_us: f64,
+    analog_pss_periods: u32,
+    analog_pss_drive_source: String,
+    analog_phase_noise_mode: String,
+    analog_phase_noise_carrier_frequency_hz: f64,
+    analog_phase_noise_offset_start_hz: f64,
+    analog_phase_noise_offset_stop_hz: f64,
+    analog_phase_noise_drive_source: String,
+    analog_pac_mode: String,
+    analog_pac_carrier_frequency_hz: f64,
+    analog_pac_input_source: String,
+    analog_pac_sidebands: u32,
+    analog_pac_drive_source: String,
     analog_fourier_fundamental_frequency_hz: f64,
     analog_fourier_harmonics: u32,
     analog_hb_fundamental_frequency_hz: f64,
@@ -764,6 +780,21 @@ impl Default for CircuitCiApp {
             analog_measure_to: 100.0,
             analog_sparameter_port2_net: String::new(),
             analog_sparameter_reference_impedance_ohm: 50.0,
+            analog_pss_mode: "driven".to_string(),
+            analog_pss_frequency_guess_hz: 100_000.0,
+            analog_pss_stabilization_time_us: 100.0,
+            analog_pss_periods: 2,
+            analog_pss_drive_source: "V1".to_string(),
+            analog_phase_noise_mode: "driven".to_string(),
+            analog_phase_noise_carrier_frequency_hz: 100_000.0,
+            analog_phase_noise_offset_start_hz: 10.0,
+            analog_phase_noise_offset_stop_hz: 1_000_000.0,
+            analog_phase_noise_drive_source: "V1".to_string(),
+            analog_pac_mode: "pac".to_string(),
+            analog_pac_carrier_frequency_hz: 100_000.0,
+            analog_pac_input_source: "V1".to_string(),
+            analog_pac_sidebands: 2,
+            analog_pac_drive_source: "V1".to_string(),
             analog_fourier_fundamental_frequency_hz: 100_000.0,
             analog_fourier_harmonics: 10,
             analog_hb_fundamental_frequency_hz: 100_000.0,

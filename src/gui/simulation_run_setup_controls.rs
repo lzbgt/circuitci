@@ -132,6 +132,38 @@ pub(super) fn measure_operation_combo(ui: &mut egui::Ui, selected: &mut String) 
         });
 }
 
+pub(super) fn periodic_mode_combo(ui: &mut egui::Ui, id: &str, selected: &mut String) {
+    if !matches!(selected.as_str(), "driven" | "autonomous") {
+        *selected = "driven".to_string();
+    }
+    let selected_label = match selected.as_str() {
+        "autonomous" => "Autonomous",
+        _ => "Driven",
+    };
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(selected_label)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected, "driven".to_string(), "Driven");
+            ui.selectable_value(selected, "autonomous".to_string(), "Autonomous");
+        });
+}
+
+pub(super) fn pac_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
+    if !matches!(selected.as_str(), "pac" | "pxf") {
+        *selected = "pac".to_string();
+    }
+    let selected_label = match selected.as_str() {
+        "pxf" => "PXF",
+        _ => "PAC",
+    };
+    egui::ComboBox::from_id_salt("analog_pac_mode")
+        .selected_text(selected_label)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected, "pac".to_string(), "PAC");
+            ui.selectable_value(selected, "pxf".to_string(), "PXF");
+        });
+}
+
 pub(super) fn initialize_sparameter_port2_default(
     snapshot: &ProjectSnapshot,
     port1_net: &str,

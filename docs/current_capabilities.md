@@ -418,6 +418,9 @@ Current analog support:
   `pss_frequency_guess_hz`, `pss_stabilization_time_us`, a bound
   `pss_output_expression`, optional `pss_periods`, optional convergence
   thresholds, and `pss_drive_sources[]` for driven generated-source
+  provenance. The GUI Run Setup editor can author generated-from-board PSS
+  planning scenarios with driven/autonomous mode, selected output net,
+  frequency guess, stabilization interval, periods, and driven-source
   provenance. This path intentionally fails closed today: it records
   manifest-compatible planning evidence for future `pss_waveform`,
   `pss_spectrum`, and `pss_convergence` artifacts, but no backend is allowed to
@@ -433,7 +436,10 @@ Current analog support:
   `analysis.type: phase_noise`, `phase_noise_mode: driven|autonomous`,
   `phase_noise_carrier_frequency_hz`, offset sweep fields,
   `phase_noise_output_expression`, optional integration window fields, and
-  `phase_noise_drive_sources[]` for driven generated-source provenance. This
+  `phase_noise_drive_sources[]` for driven generated-source provenance. The
+  GUI Run Setup editor can author generated-from-board phase-noise planning
+  scenarios with driven/autonomous mode, selected output net, carrier,
+  offset sweep, and driven-source provenance. This
   path intentionally fails closed today: it records manifest-compatible
   planning evidence for future `phase_noise_spectrum`,
   `phase_noise_integrated_jitter`, `phase_noise_convergence`, and
@@ -450,7 +456,10 @@ Current analog support:
   `pac_carrier_frequency_hz`, frequency sweep bounds, points per decade, a
   bound `pac_output_expression`, `pac_input_source`, optional
   `pac_sidebands`, and `pac_drive_sources[]` for generated large-signal source
-  provenance. This path intentionally fails closed today: it records
+  provenance. The GUI Run Setup editor can author generated-from-board
+  PAC/PXF planning scenarios with selected output net, carrier, small-signal
+  sweep, input source, drive source, and sideband count. This path
+  intentionally fails closed today: it records
   manifest-compatible planning evidence for future `pac_response`,
   `pac_sidebands`, `pac_convergence`, and `pss_convergence` artifacts, but no
   backend is allowed to pass periodic small-signal sign-off until a trusted

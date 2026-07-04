@@ -3,6 +3,14 @@ use std::path::Path;
 
 use super::analog_model_files::model_file_values_for_generated_components;
 
+mod planned;
+pub(super) use planned::{
+    AnalogPeriodicAcScenarioDraft, AnalogPhaseNoiseScenarioDraft, AnalogPssScenarioDraft,
+    append_analog_periodic_ac_scenario_with_project_path,
+    append_analog_phase_noise_scenario_with_project_path,
+    append_analog_pss_scenario_with_project_path,
+};
+
 #[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioDraft {
     pub(super) name: String,
@@ -550,6 +558,21 @@ fn append_generated_analog_scenario_with_project_path(
         if port2_net == probe_net {
             anyhow::bail!("S-parameter port 2 net must differ from port 1 net.");
         }
+    }
+    if let GeneratedAnalogScenarioKind::Pss { drive_source, .. }
+    | GeneratedAnalogScenarioKind::PhaseNoise { drive_source, .. }
+    | GeneratedAnalogScenarioKind::PeriodicAc { drive_source, .. } = &kind
+        && let Some(source) = drive_source
+        && !project.board.components.contains_key(source)
+    {
+        anyhow::bail!("Periodic drive source {source} must be an included board component.");
+    }
+    if let GeneratedAnalogScenarioKind::PeriodicAc { input_source, .. } = &kind
+        && !noise_input_source_exists(&project, input_source)
+    {
+        anyhow::bail!(
+            "Periodic AC input source {input_source} must be an included voltage or current source component."
+        );
     }
     if project.board.components.is_empty() {
         anyhow::bail!("Generated analog scenarios require at least one component.");
@@ -1099,6 +1122,31 @@ enum GeneratedAnalogScenarioKind {
         points_per_decade: u32,
         reference_impedance_ohm: f64,
     },
+    Pss {
+        mode: String,
+        frequency_guess_hz: f64,
+        stabilization_time_us: f64,
+        periods: u32,
+        drive_source: Option<String>,
+    },
+    PhaseNoise {
+        mode: String,
+        carrier_frequency_hz: f64,
+        offset_start_hz: f64,
+        offset_stop_hz: f64,
+        points_per_decade: u32,
+        drive_source: Option<String>,
+    },
+    PeriodicAc {
+        mode: String,
+        carrier_frequency_hz: f64,
+        start_frequency_hz: f64,
+        stop_frequency_hz: f64,
+        points_per_decade: u32,
+        input_source: String,
+        sidebands: u32,
+        drive_source: Option<String>,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -1132,6 +1180,9 @@ impl GeneratedAnalogScenarioKind {
             Self::Distortion { .. } => "analog_distortion",
             Self::Measure { .. } => "analog_measure",
             Self::SParameter { .. } => "analog_sparameter",
+            Self::Pss { .. } => "analog_pss",
+            Self::PhaseNoise { .. } => "analog_phase_noise",
+            Self::PeriodicAc { .. } => "analog_periodic_ac",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -1150,6 +1201,9 @@ impl GeneratedAnalogScenarioKind {
             Self::Distortion { .. } => "SPICE_DISTORTION_ANALYSIS",
             Self::Measure { .. } => "SPICE_MEASURE_ANALYSIS",
             Self::SParameter { .. } => "SPICE_S_PARAMETER_ANALYSIS",
+            Self::Pss { .. } => "SPICE_PSS_ANALYSIS",
+            Self::PhaseNoise { .. } => "SPICE_PHASE_NOISE_ANALYSIS",
+            Self::PeriodicAc { .. } => "SPICE_PERIODIC_AC_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -1476,6 +1530,128 @@ fn analog_block(
                 ]),
             );
         }
+        GeneratedAnalogScenarioKind::Pss {
+            mode,
+            frequency_guess_hz,
+            stabilization_time_us,
+            periods,
+            drive_source,
+        } => {
+            insert_string(&mut analysis, "type", "pss");
+            insert_string(&mut analysis, "pss_mode", mode);
+            insert_number(&mut analysis, "pss_frequency_guess_hz", *frequency_guess_hz)?;
+            insert_number(
+                &mut analysis,
+                "pss_stabilization_time_us",
+                *stabilization_time_us,
+            )?;
+            analysis.insert(
+                key("pss_periods"),
+                serde_yaml_ng::to_value(periods).context("Failed to encode pss_periods.")?,
+            );
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "PSS output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "pss_output_expression",
+                &format!("V({output_node})"),
+            );
+            analysis.insert(
+                key("pss_drive_sources"),
+                drive_source_sequence(drive_source),
+            );
+        }
+        GeneratedAnalogScenarioKind::PhaseNoise {
+            mode,
+            carrier_frequency_hz,
+            offset_start_hz,
+            offset_stop_hz,
+            points_per_decade,
+            drive_source,
+        } => {
+            insert_string(&mut analysis, "type", "phase_noise");
+            insert_string(&mut analysis, "phase_noise_mode", mode);
+            insert_number(
+                &mut analysis,
+                "phase_noise_carrier_frequency_hz",
+                *carrier_frequency_hz,
+            )?;
+            insert_number(
+                &mut analysis,
+                "phase_noise_offset_start_hz",
+                *offset_start_hz,
+            )?;
+            insert_number(&mut analysis, "phase_noise_offset_stop_hz", *offset_stop_hz)?;
+            analysis.insert(
+                key("phase_noise_points_per_decade"),
+                serde_yaml_ng::to_value(points_per_decade)
+                    .context("Failed to encode phase_noise_points_per_decade.")?,
+            );
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Phase-noise output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "phase_noise_output_expression",
+                &format!("V({output_node})"),
+            );
+            analysis.insert(
+                key("phase_noise_drive_sources"),
+                drive_source_sequence(drive_source),
+            );
+        }
+        GeneratedAnalogScenarioKind::PeriodicAc {
+            mode,
+            carrier_frequency_hz,
+            start_frequency_hz,
+            stop_frequency_hz,
+            points_per_decade,
+            input_source,
+            sidebands,
+            drive_source,
+        } => {
+            insert_string(&mut analysis, "type", "pac");
+            insert_string(&mut analysis, "pac_mode", mode);
+            insert_number(
+                &mut analysis,
+                "pac_carrier_frequency_hz",
+                *carrier_frequency_hz,
+            )?;
+            insert_number(&mut analysis, "pac_start_frequency_hz", *start_frequency_hz)?;
+            insert_number(&mut analysis, "pac_stop_frequency_hz", *stop_frequency_hz)?;
+            analysis.insert(
+                key("pac_points_per_decade"),
+                serde_yaml_ng::to_value(points_per_decade)
+                    .context("Failed to encode pac_points_per_decade.")?,
+            );
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Periodic AC output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "pac_output_expression",
+                &format!("V({output_node})"),
+            );
+            insert_string(&mut analysis, "pac_input_source", input_source);
+            analysis.insert(
+                key("pac_sidebands"),
+                serde_yaml_ng::to_value(sidebands).context("Failed to encode pac_sidebands.")?,
+            );
+            analysis.insert(
+                key("pac_drive_sources"),
+                drive_source_sequence(drive_source),
+            );
+        }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,
             stop_frequency_hz,
@@ -1621,6 +1797,15 @@ fn sparameter_port_value(
     Ok(serde_yaml_ng::Value::Mapping(port))
 }
 
+fn drive_source_sequence(source: &Option<String>) -> serde_yaml_ng::Value {
+    serde_yaml_ng::Value::Sequence(
+        source
+            .iter()
+            .map(|source| serde_yaml_ng::Value::String(source.clone()))
+            .collect(),
+    )
+}
+
 fn probe_value(name: &str, expression: &str) -> serde_yaml_ng::Value {
     let mut probe = serde_yaml_ng::Mapping::new();
     insert_string(&mut probe, "name", name);
@@ -1724,204 +1909,10 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod core_run_setup_tests;
 
-    #[test]
-    fn append_analog_fourier_scenario_emits_valid_yaml() {
-        let draft = AnalogFourierScenarioDraft {
-            name: "gui_fourier".to_string(),
-            ground_net: "gnd".to_string(),
-            probe_net: "out".to_string(),
-            probe_name: "out_fourier".to_string(),
-            stop_time_us: 100.0,
-            max_step_us: 0.5,
-            fundamental_frequency_hz: 100_000.0,
-            harmonics: 8,
-        };
-        let edited = append_analog_fourier_scenario_with_project_path(
-            editable_project_yaml(),
-            Path::new("examples/generated_fourier/project.yaml"),
-            &draft,
-        )
-        .unwrap();
-        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
-        let scenario = &project.scenarios[0];
-
-        assert_eq!(scenario.name, "gui_fourier");
-        assert_eq!(scenario.scenario_type, "analog_fourier");
-        assert_eq!(scenario.checks, vec!["SPICE_FOURIER_ANALYSIS".to_string()]);
-        let analog = scenario.analog.as_ref().unwrap();
-        assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
-        assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
-        assert_eq!(analog.analysis.analysis_type, "fourier");
-        assert_eq!(analog.analysis.stop_time_us, 100.0);
-        assert_eq!(analog.analysis.max_step_us, 0.5);
-        assert_eq!(
-            analog.analysis.fourier_fundamental_frequency_hz,
-            Some(100_000.0)
-        );
-        assert_eq!(analog.analysis.fourier_harmonics, Some(8));
-        assert_eq!(
-            analog.analysis.fourier_output_expression.as_deref(),
-            Some("V(out)")
-        );
-        assert_eq!(analog.probes[0].name, "out_fourier");
-        assert_eq!(analog.probes[0].expression, "V(out)");
-    }
-
-    #[test]
-    fn append_analog_measure_scenario_emits_valid_transient_yaml() {
-        let draft = AnalogMeasureScenarioDraft {
-            name: "gui_measure".to_string(),
-            ground_net: "gnd".to_string(),
-            probe_net: "out".to_string(),
-            probe_name: "out_measure".to_string(),
-            mode: "tran".to_string(),
-            template_name: "avg_out".to_string(),
-            operation: "avg".to_string(),
-            from: 10.0,
-            to: 80.0,
-            stop_time_us: 100.0,
-            max_step_us: 0.5,
-            start_frequency_hz: 10.0,
-            stop_frequency_hz: 100_000.0,
-            points_per_decade: 20,
-        };
-        let edited = append_analog_measure_scenario_with_project_path(
-            editable_project_yaml(),
-            Path::new("examples/generated_measure/project.yaml"),
-            &draft,
-        )
-        .unwrap();
-        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
-        let scenario = &project.scenarios[0];
-        assert_eq!(scenario.name, "gui_measure");
-        assert_eq!(scenario.scenario_type, "analog_measure");
-        assert_eq!(scenario.checks, vec!["SPICE_MEASURE_ANALYSIS".to_string()]);
-        let analog = scenario.analog.as_ref().unwrap();
-        assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
-        assert_eq!(analog.analysis.analysis_type, "measure");
-        assert_eq!(analog.analysis.measure_mode.as_deref(), Some("tran"));
-        assert_eq!(analog.analysis.stop_time_us, 100.0);
-        assert_eq!(analog.analysis.max_step_us, 0.5);
-        let template = &analog.analysis.measure_templates[0];
-        assert_eq!(template.name, "avg_out");
-        assert_eq!(template.operation, "avg");
-        assert_eq!(template.expression, "V(out)");
-        assert_eq!(template.from_us, Some(10.0));
-        assert_eq!(template.to_us, Some(80.0));
-        assert_eq!(template.from_hz, None);
-        assert_eq!(analog.probes[0].name, "out_measure");
-        assert_eq!(analog.probes[0].expression, "V(out)");
-    }
-
-    #[test]
-    fn append_analog_measure_scenario_emits_valid_ac_yaml() {
-        let draft = AnalogMeasureScenarioDraft {
-            name: "gui_measure_ac".to_string(),
-            ground_net: "gnd".to_string(),
-            probe_net: "out".to_string(),
-            probe_name: "out_measure_ac".to_string(),
-            mode: "ac".to_string(),
-            template_name: "max_out".to_string(),
-            operation: "max".to_string(),
-            from: 100.0,
-            to: 10_000.0,
-            stop_time_us: 100.0,
-            max_step_us: 0.5,
-            start_frequency_hz: 10.0,
-            stop_frequency_hz: 100_000.0,
-            points_per_decade: 20,
-        };
-        let edited = append_analog_measure_scenario_with_project_path(
-            editable_project_yaml(),
-            Path::new("examples/generated_measure/project.yaml"),
-            &draft,
-        )
-        .unwrap();
-        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
-        let analog = project.scenarios[0].analog.as_ref().unwrap();
-        assert_eq!(analog.analysis.measure_mode.as_deref(), Some("ac"));
-        assert_eq!(analog.analysis.start_frequency_hz, Some(10.0));
-        assert_eq!(analog.analysis.stop_frequency_hz, Some(100_000.0));
-        assert_eq!(analog.analysis.points_per_decade, Some(20));
-        let template = &analog.analysis.measure_templates[0];
-        assert_eq!(template.name, "max_out");
-        assert_eq!(template.operation, "max");
-        assert_eq!(template.from_hz, Some(100.0));
-        assert_eq!(template.to_hz, Some(10_000.0));
-        assert_eq!(template.from_us, None);
-    }
-
-    #[test]
-    fn append_analog_measure_scenario_rejects_window_outside_ac_sweep() {
-        let draft = AnalogMeasureScenarioDraft {
-            name: "gui_measure_ac".to_string(),
-            ground_net: "gnd".to_string(),
-            probe_net: "out".to_string(),
-            probe_name: "out_measure_ac".to_string(),
-            mode: "ac".to_string(),
-            template_name: "max_out".to_string(),
-            operation: "max".to_string(),
-            from: 1.0,
-            to: 10_000.0,
-            stop_time_us: 100.0,
-            max_step_us: 0.5,
-            start_frequency_hz: 10.0,
-            stop_frequency_hz: 100_000.0,
-            points_per_decade: 20,
-        };
-        let error = append_analog_measure_scenario_with_project_path(
-            editable_project_yaml(),
-            Path::new("examples/generated_measure/project.yaml"),
-            &draft,
-        )
-        .unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("AC measure window must fit inside the AC sweep range")
-        );
-    }
-
-    fn editable_project_yaml() -> &'static str {
-        r#"
-project:
-  name: fourier_run_setup_test
-  version: 0.1.0
-board:
-  components:
-    V1:
-      model: generic.analog.dc_voltage_source
-      spice:
-        primitive: pulse_voltage_source
-        initial_v: 0.0
-        pulsed_v: 1.0
-        delay_us: 0.0
-        rise_us: 0.1
-        fall_us: 0.1
-        width_us: 5.0
-        period_us: 10.0
-      pins:
-        P: out
-        N: gnd
-    R1:
-      model: generic.analog.resistor
-      spice:
-        primitive: resistor
-        value_ohm: 1000.0
-      pins:
-        A: out
-        B: gnd
-  nets:
-    out:
-      kind: digital_or_analog
-    gnd:
-      kind: ground
-"#
-    }
-}
+#[cfg(test)]
+mod planned_run_setup_tests;
 
 #[cfg(test)]
 mod sparameter_run_setup_tests;
