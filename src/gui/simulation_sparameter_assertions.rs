@@ -834,7 +834,9 @@ mod tests {
             "s_parameter_noise_summary".to_string(),
             json!("out/s_parameter_noise_summary.csv"),
         );
-        finding.limit.insert("below_dB".to_string(), json!(3.0));
+        finding
+            .limit
+            .insert("below_threshold".to_string(), json!(3.0));
 
         let rows = sparameter_failure_rows(&[finding]);
         let mut app = CircuitCiApp::default();
@@ -860,6 +862,66 @@ mod tests {
             app.status
                 .contains("Loaded RF noise check rf_noise_figure_ceiling")
         );
+    }
+
+    #[test]
+    fn sparameter_noise_failure_rows_parse_all_rf_noise_metrics() {
+        let cases = [
+            ("rf_noise_figure_ceiling", "noise_figure_db_max", 3.0),
+            (
+                "rf_min_noise_figure_ceiling",
+                "minimum_noise_figure_db_max",
+                2.0,
+            ),
+            (
+                "rf_noise_resistance_ceiling",
+                "equivalent_noise_resistance_ohm_max",
+                10.0,
+            ),
+            (
+                "rf_optimum_gamma_ceiling",
+                "optimum_source_reflection_magnitude_max",
+                0.8,
+            ),
+        ];
+
+        for (assertion, metric, threshold) in cases {
+            let mut finding = Finding::critical(
+                "SPICE_S_PARAMETER_ANALYSIS",
+                "two_port_sparameter",
+                "S-parameter noise assertion failed",
+            );
+            finding
+                .measured
+                .insert("assertion".to_string(), json!(assertion));
+            finding.measured.insert("metric".to_string(), json!(metric));
+            finding.measured.insert(
+                "s_parameter_noise_summary".to_string(),
+                json!("out/s_parameter_noise_summary.csv"),
+            );
+            finding
+                .limit
+                .insert("below_threshold".to_string(), json!(threshold));
+
+            let rows = sparameter_failure_rows(&[finding]);
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].kind, SParameterFailureKind::Noise);
+            assert_eq!(rows[0].assertion, assertion);
+            assert_eq!(rows[0].metric, metric);
+            assert_eq!(rows[0].relation.as_deref(), Some("below"));
+            assert_eq!(rows[0].threshold, Some(threshold));
+
+            let mut app = CircuitCiApp::default();
+            app.load_sparameter_failure_row(&rows[0]);
+            assert_eq!(
+                app.analog_sparameter_noise_assertion_scenario,
+                "two_port_sparameter"
+            );
+            assert_eq!(app.analog_sparameter_noise_assertion_name, assertion);
+            assert_eq!(app.analog_sparameter_noise_assertion_metric, metric);
+            assert_eq!(app.analog_sparameter_noise_assertion_relation, "below");
+            assert_eq!(app.analog_sparameter_noise_assertion_threshold, threshold);
+        }
     }
 
     #[test]
