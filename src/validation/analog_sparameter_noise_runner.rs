@@ -595,9 +595,8 @@ pub(super) fn s_parameter_noise_raw_to_summary_csv(raw: &Path) -> Result<String,
             "sopt_mag",
         ],
     );
-    let sopt_real = find_column(&columns, &["sopt_real", "sopt_re", "sopt"]);
-    let sopt_imaginary = find_column(&columns, &["sopt_imaginary", "sopt_im"]);
-    if sopt_mag.is_none() && (sopt_real.is_none() || sopt_imaginary.is_none()) {
+    let sopt_columns = find_sparameter_term_columns(&columns, "sopt", "sopt");
+    if sopt_mag.is_none() && sopt_columns.is_none() {
         return Err(
             "S-parameter noise export lacks SOpt magnitude or real/imaginary columns".into(),
         );
@@ -639,13 +638,9 @@ pub(super) fn s_parameter_noise_raw_to_summary_csv(raw: &Path) -> Result<String,
         let sopt = if let Some(index) = sopt_mag {
             parse_column(&fields, index, line_index, "SOpt magnitude")?
         } else {
-            let real = parse_column(&fields, sopt_real.unwrap(), line_index, "SOpt real")?;
-            let imaginary = parse_column(
-                &fields,
-                sopt_imaginary.unwrap_or(sopt_real.unwrap() + 1),
-                line_index,
-                "SOpt imaginary",
-            )?;
+            let columns = sopt_columns.expect("validated SOpt columns");
+            let real = parse_column(&fields, columns.real, line_index, "SOpt real")?;
+            let imaginary = parse_column(&fields, columns.imaginary, line_index, "SOpt imaginary")?;
             real.hypot(imaginary)
         };
         if sopt < 0.0 {
@@ -734,6 +729,23 @@ mod tests {
         let summary = s_parameter_noise_raw_to_summary_csv(&raw).unwrap();
 
         assert!(summary.contains("2,1.000000000000e6,1.000000000000e9"));
+        assert!(summary.contains("3.000000000000e0,1.000000000000e9"));
+        assert!(summary.contains("6.000000000000e0,1.000000000000e9"));
+        assert!(summary.contains("5.000000000000e-1,1.000000000000e6"));
+    }
+
+    #[test]
+    fn s_parameter_noise_raw_summary_accepts_repeated_sopt_complex_vector() {
+        let dir = tempfile::tempdir().unwrap();
+        let raw = dir.path().join("s_parameter_noise_raw.csv");
+        std::fs::write(
+            &raw,
+            "frequency NF NF NFmin NFmin Rn Rn SOpt SOpt\n1e6 2.0 0.0 1.0 0.0 4.0 0.0 0.3 0.4\n1e9 3.0 0.0 1.5 0.0 6.0 0.0 0.1 0.2\n",
+        )
+        .unwrap();
+
+        let summary = s_parameter_noise_raw_to_summary_csv(&raw).unwrap();
+
         assert!(summary.contains("3.000000000000e0,1.000000000000e9"));
         assert!(summary.contains("6.000000000000e0,1.000000000000e9"));
         assert!(summary.contains("5.000000000000e-1,1.000000000000e6"));

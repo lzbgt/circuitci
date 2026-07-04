@@ -487,9 +487,9 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `s_parameters` contract.
 11. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sparameter_cli`;
-   the ordinary `.SP` test skips unless `ngspice` is on `PATH` and verifies
-   real S-matrix normalization, summary projection, and solver-manifest
-   output provenance.
+   the ordinary `.SP` and `.SP ... donoise=1` tests skip unless `ngspice` is
+   on `PATH` and verify real S-matrix normalization, RF-noise normalization,
+   summary projection, and solver-manifest output provenance.
 
 For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
 

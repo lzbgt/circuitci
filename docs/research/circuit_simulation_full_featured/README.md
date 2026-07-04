@@ -761,6 +761,12 @@ The GUI should not become the solver.
   live fixture verifies retained `s_parameters_raw.csv`, normalized
   `s_parameters.csv`, `s_parameter_summary.csv`, and solver-manifest
   provenance against the installed ngspice executable.
+- 2026-07-04: Extended the same opt-in real-ngspice conformance command to
+  `.SP ... donoise=1` RF-noise output. ngspice 46 emits `SOpt` as a repeated
+  complex `wrdata` vector header, so the RF-noise parser now accepts repeated
+  `SOpt SOpt` columns as well as explicit `sopt_real`/`sopt_imaginary`
+  aliases, then verifies retained `s_parameter_noise_raw.csv`,
+  `s_parameter_noise_summary.csv`, and solver-manifest noise provenance.
 - 2026-07-04: Projected retained RF SP-noise summaries into normal validation
   reports. `s_parameter_noise_summary.csv` now appears as
   `s_parameter_noise_summaries[]`, Markdown reports include an "S-Parameter

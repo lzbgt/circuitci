@@ -82,7 +82,9 @@ fn assert_csv_has_header(path: &str, expected: &[&str]) {
     let header = lines.next().unwrap_or("");
     for column in expected {
         assert!(
-            header.split(',').any(|actual| actual == *column),
+            header
+                .split(|ch: char| ch == ',' || ch.is_whitespace())
+                .any(|actual| actual.eq_ignore_ascii_case(column)),
             "{path} header {header:?} missing column {column}"
         );
     }
@@ -1466,6 +1468,127 @@ fn real_ngspice_sparameter_conformance_normalizes_smatrix_when_enabled() {
             .iter()
             .filter_map(|artifact| artifact.as_str())
             .all(|artifact| !artifact.ends_with("s_parameter_noise_summary.csv"))
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn real_ngspice_sparameter_noise_conformance_when_enabled() {
+    if !real_ngspice_sparameter_conformance_enabled() {
+        return;
+    }
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "port1",
+        r#"        s_parameter_noise_assertions:
+          - name: nf_available
+            metric: noise_figure_db_max
+            relation: below
+            threshold: 1000000.0
+          - name: nfmin_available
+            metric: minimum_noise_figure_db_max
+            relation: below
+            threshold: 1000000.0
+          - name: rn_available
+            metric: equivalent_noise_resistance_ohm_max
+            relation: below
+            threshold: 1000000000000.0
+          - name: gamma_opt_available
+            metric: optimum_source_reflection_magnitude_max
+            relation: below
+            threshold: 1000000.0
+"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_csv_has_header(
+        waveform_path(&report, "s_parameters.csv"),
+        &["s11_mag_db", "s21_mag_db", "s12_mag_db", "s22_mag_db"],
+    );
+    assert_csv_has_header(
+        artifact_path(&report, "s_parameter_noise_raw.csv"),
+        &["nf", "nfmin", "rn", "sopt"],
+    );
+    assert_csv_has_header(
+        artifact_path(&report, "s_parameter_noise_summary.csv"),
+        &[
+            "max_noise_figure_db",
+            "max_minimum_noise_figure_db",
+            "max_equivalent_noise_resistance_ohm",
+            "max_optimum_source_reflection_magnitude",
+        ],
+    );
+    let summaries = report["s_parameter_noise_summaries"].as_array().unwrap();
+    assert_eq!(summaries.len(), 1);
+    assert!(summaries[0]["row_count"].as_u64().unwrap() > 0);
+    assert!(
+        summaries[0]["max_noise_figure_db"]
+            .as_f64()
+            .unwrap()
+            .is_finite()
+    );
+    assert!(
+        summaries[0]["max_minimum_noise_figure_db"]
+            .as_f64()
+            .unwrap()
+            .is_finite()
+    );
+    assert!(
+        summaries[0]["max_equivalent_noise_resistance_ohm"]
+            .as_f64()
+            .unwrap()
+            .is_finite()
+    );
+    assert!(
+        summaries[0]["max_optimum_source_reflection_magnitude"]
+            .as_f64()
+            .unwrap()
+            .is_finite()
+    );
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["selected"], "ngspice");
+    assert_eq!(manifest["analysis"]["kind"], "s_parameter_noise");
+    assert_eq!(
+        manifest["outputs"]["raw"][0]["kind"],
+        "ngspice_s_parameters_raw"
+    );
+    assert_eq!(
+        manifest["outputs"]["raw"][1]["kind"],
+        "ngspice_s_parameter_noise_raw"
+    );
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "s_parameters");
+    assert_eq!(
+        manifest["outputs"]["normalized"][1]["kind"],
+        "s_parameter_noise_summary"
     );
     assert_report_schema_valid(&report);
 }
