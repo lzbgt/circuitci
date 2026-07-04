@@ -1484,6 +1484,8 @@ Bundle import pipeline reports use
 `circuitci import-model-package-bundle`. The pipeline report retains the
 source bundle verification, install, installed package verification, and YAML
 repair subreport paths plus the repaired project path and scenario-import pins.
+It also records `runtime_budget_ms` and `elapsed_ms`; checkpoint budget failures
+emit `MODEL_PACKAGE_BUNDLE_IMPORT_RUNTIME_BUDGET_EXCEEDED`.
 `circuitci validate --model-package-bundle-import
 bundle=<path>,install_dir=<path>[,registry_output=<path>]` can run that same
 pipeline during validation, retain

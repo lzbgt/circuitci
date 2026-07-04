@@ -106,7 +106,7 @@ Retain compact-model bundle import evidence during validation:
 circuitci validate examples/good_power_tree_board/project.yaml \
   --output out/good_power_tree \
   --model-package-bundle-import \
-    bundle=dist/tiny_resistor_bundle,install_dir=third_party/models/tiny_resistor,registry_output=third_party/models/compact_model_registry.json
+    bundle=dist/tiny_resistor_bundle,install_dir=third_party/models/tiny_resistor,registry_output=third_party/models/compact_model_registry.json,max_runtime_ms=60000
 ```
 
 Write a scenario suggestion artifact:

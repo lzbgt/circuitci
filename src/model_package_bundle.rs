@@ -11,6 +11,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 pub const MODEL_PACKAGE_BUNDLE_VERIFICATION_SCHEMA: &str =
     "circuitci.model_package_bundle_verification.v1";
@@ -44,6 +45,7 @@ pub struct ModelPackageBundleImportOptions {
     pub registry_entry: Option<String>,
     pub registry_artifact_id: Option<String>,
     pub output: PathBuf,
+    pub max_runtime_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -63,7 +65,7 @@ pub struct ModelPackageBundleVerificationReport {
     pub findings: Vec<ModelPackageFinding>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct VerifiedBundlePackage {
     pub name: Option<String>,
     pub version: Option<String>,
@@ -113,6 +115,8 @@ pub struct ModelPackageBundleImportReport {
     pub project: String,
     pub profile: String,
     pub install_dir: String,
+    pub runtime_budget_ms: Option<u64>,
+    pub elapsed_ms: u128,
     pub package: VerifiedBundlePackage,
     pub source_bundle_verification_report: String,
     pub bundle_install_report: Option<String>,
@@ -345,6 +349,17 @@ pub fn install_model_package_bundle(
 pub fn import_model_package_bundle(
     options: &ModelPackageBundleImportOptions,
 ) -> Result<ModelPackageBundleImportReport> {
+    import_model_package_bundle_with_cancel(options, &|| false)
+}
+
+pub fn import_model_package_bundle_with_cancel<C>(
+    options: &ModelPackageBundleImportOptions,
+    should_cancel: &C,
+) -> Result<ModelPackageBundleImportReport>
+where
+    C: Fn() -> bool,
+{
+    let started = Instant::now();
     std::fs::create_dir_all(&options.output).with_context(|| {
         format!(
             "Failed to create bundle import output directory {}",
@@ -355,6 +370,17 @@ pub fn import_model_package_bundle(
     let install_report_path = options.output.join("bundle_install.json");
     let package_report_path = options.output.join("package_verification.json");
     let repair_output = options.output.join("repair_yaml");
+    if let Some(report) = bundle_import_control_report(
+        options,
+        started,
+        should_cancel,
+        "source_bundle_verification",
+        VerifiedBundlePackage::default(),
+        source_verification_path.clone(),
+        Vec::new(),
+    ) {
+        return Ok(report);
+    }
     let source_report = verify_model_package_bundle(&ModelPackageBundleVerifyOptions {
         bundle: options.bundle.clone(),
         output: source_verification_path.clone(),
@@ -372,10 +398,22 @@ pub fn import_model_package_bundle(
             package_report: None,
             repair_report_path: None,
             repair_report: None,
+            started,
             source_findings: source_report.findings,
         }));
     }
 
+    if let Some(report) = bundle_import_control_report(
+        options,
+        started,
+        should_cancel,
+        "bundle_install",
+        source_report.package.clone(),
+        source_verification_path.clone(),
+        Vec::new(),
+    ) {
+        return Ok(report);
+    }
     let install_report = install_model_package_bundle(&ModelPackageBundleInstallOptions {
         bundle: options.bundle.clone(),
         install_dir: options.install_dir.clone(),
@@ -385,11 +423,33 @@ pub fn import_model_package_bundle(
         output: install_report_path.clone(),
     })?;
     write_model_package_bundle_install_report(&install_report, &install_report_path)?;
+    if let Some(report) = bundle_import_control_report(
+        options,
+        started,
+        should_cancel,
+        "installed_package_verification",
+        install_report.package.clone(),
+        source_verification_path.clone(),
+        install_report.findings.clone(),
+    ) {
+        return Ok(report);
+    }
     let package_report = verify_installed_package(&install_report, &package_report_path)?;
     crate::model_package::write_model_package_verification_report(
         &package_report,
         &package_report_path,
     )?;
+    if let Some(report) = bundle_import_control_report(
+        options,
+        started,
+        should_cancel,
+        "yaml_repair",
+        install_report.package.clone(),
+        source_verification_path.clone(),
+        package_report.findings.clone(),
+    ) {
+        return Ok(report);
+    }
     let repair_report = crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
         project: options.project.clone(),
         profile: options.profile.clone(),
@@ -420,6 +480,7 @@ pub fn import_model_package_bundle(
         package_report: Some(package_report),
         repair_report_path: Some(repair_report_path),
         repair_report: Some(repair_report),
+        started,
         source_findings: Vec::new(),
     }))
 }
@@ -489,6 +550,7 @@ struct ImportReportParts<'a> {
     package_report: Option<ModelPackageVerificationReport>,
     repair_report_path: Option<PathBuf>,
     repair_report: Option<BoardYamlRepairReport>,
+    started: Instant,
     source_findings: Vec<ModelPackageFinding>,
 }
 
@@ -510,6 +572,8 @@ fn import_report_from_parts(parts: ImportReportParts<'_>) -> ModelPackageBundleI
         project: parts.options.project.to_string_lossy().into_owned(),
         profile: parts.options.profile.clone(),
         install_dir: parts.options.install_dir.to_string_lossy().into_owned(),
+        runtime_budget_ms: parts.options.max_runtime_ms,
+        elapsed_ms: parts.started.elapsed().as_millis(),
         package: parts.package,
         source_bundle_verification_report: parts
             .source_verification_path
@@ -551,6 +615,69 @@ fn import_report_from_parts(parts: ImportReportParts<'_>) -> ModelPackageBundleI
     }
 }
 
+fn bundle_import_control_report<C>(
+    options: &ModelPackageBundleImportOptions,
+    started: Instant,
+    should_cancel: &C,
+    stage: &str,
+    package: VerifiedBundlePackage,
+    source_verification_path: PathBuf,
+    mut findings: Vec<ModelPackageFinding>,
+) -> Option<ModelPackageBundleImportReport>
+where
+    C: Fn() -> bool,
+{
+    let elapsed = started.elapsed();
+    let exceeded_budget = options
+        .max_runtime_ms
+        .map(|budget| elapsed >= Duration::from_millis(budget))
+        .unwrap_or(false);
+    let canceled = should_cancel();
+    if !canceled && !exceeded_budget {
+        return None;
+    }
+    let (id, message) = if canceled {
+        (
+            "MODEL_PACKAGE_BUNDLE_IMPORT_CANCELED",
+            format!("Model package bundle import was canceled before stage {stage}."),
+        )
+    } else {
+        (
+            "MODEL_PACKAGE_BUNDLE_IMPORT_RUNTIME_BUDGET_EXCEEDED",
+            format!(
+                "Model package bundle import exceeded runtime budget {:?} before stage {stage} after {} ms.",
+                options.max_runtime_ms,
+                elapsed.as_millis()
+            ),
+        )
+    };
+    let expected_budget = options.max_runtime_ms.map(|value| value.to_string());
+    let actual_elapsed = elapsed.as_millis().to_string();
+    findings.push(finding(
+        id,
+        &message,
+        package.name.as_deref(),
+        None,
+        Some(&options.bundle),
+        expected_budget.as_deref(),
+        Some(&actual_elapsed),
+    ));
+    Some(import_report_from_parts(ImportReportParts {
+        options,
+        result: "fail",
+        package,
+        source_verification_path,
+        install_report_path: None,
+        install_report: None,
+        package_report_path: None,
+        package_report: None,
+        repair_report_path: None,
+        repair_report: None,
+        started,
+        source_findings: findings,
+    }))
+}
+
 fn verify_installed_package(
     install_report: &ModelPackageBundleInstallReport,
     output: &Path,
@@ -582,8 +709,17 @@ fn model_package_bundle_import_markdown(report: &ModelPackageBundleImportReport)
     let mut text = String::new();
     text.push_str("# CircuitCI Model Package Bundle Import\n\n");
     text.push_str(&format!(
-        "- Result: `{}`\n- Bundle: `{}`\n- Project: `{}`\n- Profile: `{}`\n- Install dir: `{}`\n\n",
-        report.result, report.bundle_path, report.project, report.profile, report.install_dir
+        "- Result: `{}`\n- Bundle: `{}`\n- Project: `{}`\n- Profile: `{}`\n- Install dir: `{}`\n- Runtime budget ms: `{}`\n- Elapsed ms: `{}`\n\n",
+        report.result,
+        report.bundle_path,
+        report.project,
+        report.profile,
+        report.install_dir,
+        report
+            .runtime_budget_ms
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string()),
+        report.elapsed_ms
     ));
     text.push_str("## Reports\n\n");
     text.push_str(&format!(

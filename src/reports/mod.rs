@@ -1431,6 +1431,8 @@ mod tests {
   "project": "project.yaml",
   "profile": "profile",
   "install_dir": "installed_bundle",
+  "runtime_budget_ms": null,
+  "elapsed_ms": 12,
   "package": {
     "name": "org.circuitci.test.model",
     "version": "1.0.0"

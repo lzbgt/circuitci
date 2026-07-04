@@ -10,6 +10,8 @@
     "project",
     "profile",
     "install_dir",
+    "runtime_budget_ms",
+    "elapsed_ms",
     "package",
     "source_bundle_verification_report",
     "bundle_install_report",
@@ -30,6 +32,8 @@
     "project": { "type": "string", "minLength": 1 },
     "profile": { "type": "string", "minLength": 1 },
     "install_dir": { "type": "string", "minLength": 1 },
+    "runtime_budget_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "elapsed_ms": { "type": "integer", "minimum": 0 },
     "package": {
       "type": "object",
       "required": ["name", "version"],

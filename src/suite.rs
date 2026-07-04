@@ -87,6 +87,7 @@ pub struct ValidationBundleImportRequest {
     pub registry_output: Option<PathBuf>,
     pub registry_entry: Option<String>,
     pub registry_artifact_id: Option<String>,
+    pub max_runtime_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -98,6 +99,7 @@ pub struct SuiteBundleImportRequest {
     pub registry_output: Option<PathBuf>,
     pub registry_entry: Option<String>,
     pub registry_artifact_id: Option<String>,
+    pub max_runtime_ms: Option<u64>,
 }
 
 impl SuiteManifest {
@@ -484,15 +486,6 @@ fn run_model_package_bundle_imports<F, C>(
                 import_output.display()
             ),
         );
-        if should_cancel() {
-            outcome.findings.push(bundle_import_finding(
-                request,
-                &import_output,
-                "canceled",
-                "Model package bundle import was canceled before execution.",
-            ));
-            break;
-        }
         let import_options = crate::model_package_bundle::ModelPackageBundleImportOptions {
             bundle: request.bundle.clone(),
             project: project_path.to_path_buf(),
@@ -502,16 +495,19 @@ fn run_model_package_bundle_imports<F, C>(
             registry_entry: request.registry_entry.clone(),
             registry_artifact_id: request.registry_artifact_id.clone(),
             output: import_output.clone(),
+            max_runtime_ms: request.max_runtime_ms,
         };
-        match crate::model_package_bundle::import_model_package_bundle(&import_options).and_then(
-            |report| {
-                crate::model_package_bundle::write_model_package_bundle_import_report(
-                    &report,
-                    &import_output,
-                )?;
-                Ok(report)
-            },
-        ) {
+        match crate::model_package_bundle::import_model_package_bundle_with_cancel(
+            &import_options,
+            should_cancel,
+        )
+        .and_then(|report| {
+            crate::model_package_bundle::write_model_package_bundle_import_report(
+                &report,
+                &import_output,
+            )?;
+            Ok(report)
+        }) {
             Ok(report) => {
                 let report_path = import_output.join("model_package_bundle_import.json");
                 outcome
@@ -628,6 +624,7 @@ fn suite_case_validation_options(case: &SuiteCase, manifest_dir: &Path) -> Valid
                     .map(|path| manifest_dir.join(path)),
                 registry_entry: request.registry_entry.clone(),
                 registry_artifact_id: request.registry_artifact_id.clone(),
+                max_runtime_ms: request.max_runtime_ms,
             })
             .collect(),
     }

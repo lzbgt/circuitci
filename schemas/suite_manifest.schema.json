@@ -37,7 +37,8 @@
                 "install_dir": { "type": "string", "minLength": 1 },
                 "registry_output": { "type": "string", "minLength": 1 },
                 "registry_entry": { "type": "string", "minLength": 1 },
-                "registry_artifact_id": { "type": "string", "minLength": 1 }
+                "registry_artifact_id": { "type": "string", "minLength": 1 },
+                "max_runtime_ms": { "type": "integer", "minimum": 0 }
               },
               "additionalProperties": false
             }

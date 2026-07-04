@@ -76,6 +76,7 @@ cases:
         bundle: ../dist/generic_models_bundle
         install_dir: ../third_party/models/generic
         registry_output: ../third_party/models/compact_model_registry.json
+        max_runtime_ms: 60000
     required_artifacts:
       - out/acceptance/cases/qualified_model_pack/model_package_bundle_imports/01_generic_models/model_package_bundle_import.json
 ```
@@ -83,7 +84,9 @@ cases:
 The runner resolves `bundle`, `install_dir`, and `registry_output` relative to
 the suite manifest. Each requested import uses the same fail-closed pipeline as
 `circuitci validate --model-package-bundle-import`, retains the import report in
-the case artifacts, and can be asserted with `required_artifacts`.
+the case artifacts, and can be asserted with `required_artifacts`. Optional
+`max_runtime_ms` bounds the import pipeline at stage checkpoints and produces a
+retained timeout finding if the budget is exceeded.
 
 ## Result Semantics
 

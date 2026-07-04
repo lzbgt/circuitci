@@ -887,6 +887,53 @@ scenarios:
                 == Some(retained_import_report.to_string_lossy().as_ref()))
     );
 
+    let budget_output = dir.path().join("validate_bundle_import_budget");
+    let budget_install_dir = dir.path().join("budget_installed_bundle");
+    let budget_import_spec = format!(
+        "id=budgeted,bundle={},install_dir={},max_runtime_ms=0",
+        bundle_dir.to_str().unwrap(),
+        budget_install_dir.to_str().unwrap()
+    );
+    let budget_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            import_project.to_str().unwrap(),
+            "--output",
+            budget_output.to_str().unwrap(),
+            "--model-package-bundle-import",
+            &budget_import_spec,
+        ])
+        .status()
+        .unwrap();
+    assert!(budget_status.success());
+    let budget_report: Value =
+        serde_json::from_str(&fs::read_to_string(budget_output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(budget_report["result"], "fail");
+    assert!(
+        budget_report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|finding| finding["id"] == "MODEL_PACKAGE_BUNDLE_IMPORT_FAILED")
+    );
+    let budget_import_report_path = budget_output
+        .join("model_package_bundle_imports/01_budgeted/model_package_bundle_import.json");
+    let budget_import_report: Value =
+        serde_json::from_str(&fs::read_to_string(&budget_import_report_path).unwrap()).unwrap();
+    assert_model_package_bundle_import_schema_valid(&budget_import_report);
+    assert_eq!(budget_import_report["result"], "fail");
+    assert_eq!(budget_import_report["runtime_budget_ms"], 0);
+    assert!(
+        budget_import_report["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|finding| {
+                finding["id"] == "MODEL_PACKAGE_BUNDLE_IMPORT_RUNTIME_BUDGET_EXCEEDED"
+            })
+    );
+
     let suite_project = dir.path().join("bundle_import_suite_project.yaml");
     fs::write(
         &suite_project,
@@ -943,6 +990,7 @@ cases:
         bundle: {}
         install_dir: suite_installed_bundle
         registry_output: suite_shared/compact_model_registry.json
+        max_runtime_ms: 60000
     required_artifacts:
       - {}
 "#,

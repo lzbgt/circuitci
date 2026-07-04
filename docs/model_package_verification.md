@@ -250,7 +250,12 @@ Validation writes each retained import under
 `model_package_bundle_import.json` to `artifacts[]`, and fails closed with
 `MODEL_PACKAGE_BUNDLE_IMPORT_FAILED` if the requested import pipeline does not
 pass. Optional spec keys are `id`, `registry_entry`, and
-`registry_artifact_id`.
+`registry_artifact_id`. Add `max_runtime_ms=<milliseconds>` to enforce a
+checkpoint runtime budget across bundle verification, install, installed-package
+verification, and YAML repair. The retained import report records
+`runtime_budget_ms`, `elapsed_ms`, and a
+`MODEL_PACKAGE_BUNDLE_IMPORT_RUNTIME_BUDGET_EXCEEDED` finding when the budget is
+exceeded before the next pipeline stage.
 
 Validation suites can declare the same imports per case:
 
@@ -264,6 +269,7 @@ cases:
         bundle: ../dist/tiny_resistor_bundle
         install_dir: ../third_party/models/tiny_resistor
         registry_output: ../third_party/models/compact_model_registry.json
+        max_runtime_ms: 60000
 ```
 
 Suite bundle, install, and registry paths are resolved relative to the suite

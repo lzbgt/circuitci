@@ -835,6 +835,11 @@ The GUI should not become the solver.
   can request the same retained bundle import pipeline per case, resolve bundle
   paths relative to the suite manifest, and assert retained import reports with
   `required_artifacts`.
+- Added `max_runtime_ms` checkpoint budgets for validation-time and suite-time
+  model-package bundle imports. Retained import reports now record
+  `runtime_budget_ms` and `elapsed_ms`, and fail closed with
+  `MODEL_PACKAGE_BUNDLE_IMPORT_RUNTIME_BUDGET_EXCEEDED` when the budget is
+  exceeded before a pipeline stage.
 
 ## Risks
 

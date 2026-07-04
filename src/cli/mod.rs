@@ -94,6 +94,8 @@ enum Command {
         registry_entry: Option<String>,
         #[arg(long = "registry-artifact-id")]
         registry_artifact_id: Option<String>,
+        #[arg(long = "max-runtime-ms")]
+        max_runtime_ms: Option<u64>,
         #[arg(long, short = 'o', default_value = "out/model_package_bundle_import")]
         output: PathBuf,
     },
@@ -430,6 +432,7 @@ pub fn run() -> Result<()> {
             registry_output,
             registry_entry,
             registry_artifact_id,
+            max_runtime_ms,
             output,
         }) => run_import_model_package_bundle(
             crate::model_package_bundle::ModelPackageBundleImportOptions {
@@ -441,6 +444,7 @@ pub fn run() -> Result<()> {
                 registry_entry,
                 registry_artifact_id,
                 output,
+                max_runtime_ms,
             },
         ),
         Some(Command::ExportModelPackage {
@@ -998,6 +1002,7 @@ fn parse_validation_bundle_import_spec(spec: &str) -> Result<ValidationBundleImp
     let mut registry_output = None;
     let mut registry_entry = None;
     let mut registry_artifact_id = None;
+    let mut max_runtime_ms = None;
     let mut seen = std::collections::BTreeSet::new();
     for piece in spec.split(',') {
         let Some((raw_key, raw_value)) = piece.split_once('=') else {
@@ -1017,6 +1022,7 @@ fn parse_validation_bundle_import_spec(spec: &str) -> Result<ValidationBundleImp
             "registry_output" | "registry" => "registry_output",
             "registry_entry" | "entry" => "registry_entry",
             "registry_artifact_id" | "artifact_id" => "registry_artifact_id",
+            "max_runtime_ms" | "runtime_ms" => "max_runtime_ms",
             _ => bail!("Unknown --model-package-bundle-import key {key:?}."),
         };
         if !seen.insert(canonical_key) {
@@ -1029,6 +1035,11 @@ fn parse_validation_bundle_import_spec(spec: &str) -> Result<ValidationBundleImp
             "registry_output" => registry_output = Some(PathBuf::from(value)),
             "registry_entry" => registry_entry = Some(value.to_string()),
             "registry_artifact_id" => registry_artifact_id = Some(value.to_string()),
+            "max_runtime_ms" => {
+                max_runtime_ms = Some(value.parse::<u64>().with_context(|| {
+                    format!("Invalid --model-package-bundle-import max_runtime_ms={value:?}.")
+                })?)
+            }
             _ => unreachable!(),
         }
     }
@@ -1040,6 +1051,7 @@ fn parse_validation_bundle_import_spec(spec: &str) -> Result<ValidationBundleImp
         registry_output,
         registry_entry,
         registry_artifact_id,
+        max_runtime_ms,
     })
 }
 
