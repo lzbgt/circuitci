@@ -15,6 +15,7 @@ audit the modeled facts without relying on chat history.
 | TI BQ24075 USB Li-Ion charger with power path typical use | <https://www.ti.com/lit/ds/symlink/bq24074.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/bq24074.pdf` |
 | TI TPS2115A autoswitching power mux typical application | <https://www.ti.com/lit/ds/symlink/tps2115a.pdf> | `docs/research/datasheets/ti/tps2115a.pdf` |
 | TI TPS2121 priority power mux typical use | <https://www.ti.com/lit/ds/symlink/tps2121.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/tps2121.pdf` |
+| TI TPS22918 load switch use | <https://www.ti.com/lit/gpn/TPS22918> | `docs/research/datasheets/ti/tps22918.pdf` |
 | TI TPD2EUSB30 USB ESD protection typical use | <https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf> | `docs/research/datasheets/ti/tpd2eusb30.pdf` |
 | Nexperia PRTR5V0U2X rail-to-rail USB ESD protection typical use | <https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf> | `docs/research/datasheets/nexperia/prtr5v0u2x.pdf` |
 | Nexperia PESD5V0S1UL VBUS ESD protection typical use | <https://assets.nexperia.com/documents/data-sheet/PESD5V0S1UL.pdf> | `docs/research/datasheets/nexperia/pesd5v0s1ul.pdf` |
@@ -30,6 +31,7 @@ audit the modeled facts without relying on chat history.
 | WCH CH340C USB-UART bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf` |
 | FTDI FT232R USB-UART bridge use | <https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf> plus public PDF mirror | `docs/research/datasheets/ftdi/DS_FT232R_sparkfun_mirror.pdf` |
 | WCH CH347 USB-JTAG/debug bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch347ds1_bitsavers_mirror.pdf` |
+| TI TXS0108E bidirectional level-shifter use | <https://www.ti.com/lit/ds/symlink/txs0108e.pdf> | `docs/research/datasheets/ti/txs0108e.pdf` |
 | TI TCAN3413 CAN FD transceiver use | <https://www.ti.com/lit/ds/symlink/tcan3413.pdf> | `docs/research/smart_robot/sources/tcan3413_datasheet.pdf` |
 | TI THVD1450 RS-485 transceiver use | <https://www.ti.com/lit/ds/symlink/thvd1450.pdf> | `docs/research/smart_robot/sources/thvd1450_datasheet.pdf` |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
@@ -47,8 +49,8 @@ The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
 were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
 STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
-Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI TCAN3413,
-TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and
+Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI TPS22918,
+TI TXS0108E, TI TCAN3413, TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and
 Microchip MCP131X/2X PDFs were downloaded from their official vendor URLs.
 WCH CH340C, WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
@@ -57,8 +59,8 @@ part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines thirty-eight public-reference
-passing cases and forty-six paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines forty-two public-reference
+passing cases and fifty-one paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -74,6 +76,10 @@ passing cases and forty-six paired injected-error cases:
 | `ti_tps2121_typical_power_mux_passes` | `examples/good_ti_tps2121_power_mux/project.yaml` | pass | TPS2121 USB-selected priority mux with inactive unpowered backup input. |
 | `ti_tps2121_output_overcurrent_detected` | `examples/bad_ti_tps2121_output_current/project.yaml` | fail | Detects output load above the datasheet-backed 4.5 A mux current class. |
 | `ti_tps2121_input_overvoltage_detected` | `examples/bad_ti_tps2121_input_overvoltage/project.yaml` | fail | Detects selected input voltage above the datasheet-backed 22 V operating maximum. |
+| `ti_tps22918_load_switch_passes` | `examples/good_ti_tps22918_load_switch/project.yaml` | pass | TPS22918 active-high load switch with 5 V input, powered 3.3 V output, and explicit `ON` high evidence. |
+| `ti_tps22918_load_switch_observation_passes` | `examples/good_tps22918_load_switch_observation/project.yaml` | pass | TPS22918 generated-SPICE observation with a 5 V input source, enabled `ON` drive, and light switched load. |
+| `ti_tps22918_missing_on_detected` | `examples/bad_ti_tps22918_missing_on/project.yaml` | fail | Detects a powered TPS22918 output rail without source-backed evidence that `ON` is high. |
+| `ti_tps22918_output_overcurrent_detected` | `examples/bad_ti_tps22918_output_current/project.yaml` | fail | Detects TPS22918 switched output load above the source-backed 2 A current class. |
 | `ti_tpd2eusb30_typical_usb_esd_passes` | `examples/good_ti_tpd2eusb30_usb_esd/project.yaml` | pass | TPD2EUSB30 D+/D- clamps with 5.5 V standoff and 0.7 pF line capacitance evidence. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml` | fail | Detects clamp capacitance above a stricter interface budget. |
 | `nexperia_prtr5v0u2x_typical_usb_esd_passes` | `examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml` | pass | PRTR5V0U2X rail-to-rail D+/D- clamp with 5.5 V standoff and 1.5 pF maximum I/O line capacitance evidence. |
@@ -108,6 +114,11 @@ passing cases and forty-six paired injected-error cases:
 | `ftdi_ft232r_vcc_overvoltage_detected` | `examples/bad_ftdi_ft232r_vcc_overvoltage/project.yaml` | fail | Detects FT232R `VCC` connected to a 6 V rail above the source-backed 5.25 V operating maximum. |
 | `wch_ch347_usb_jtag_observation_passes` | `examples/good_wch_ch347_usb_jtag_observation/project.yaml` | pass | CH347T USB-JTAG/debug bridge with source-backed 3.3 V supply mode and generated-SPICE UART/JTAG line-state observation. |
 | `wch_ch347_vcc_overvoltage_detected` | `examples/bad_wch_ch347_vcc_overvoltage/project.yaml` | fail | Detects CH347T `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
+| `ti_txs0108e_level_shifter_observation_passes` | `examples/good_ti_txs0108e_level_shifter_observation/project.yaml` | pass | TXS0108E generated-SPICE observation with source-backed 1.8 V to 3.3 V enabled A1-to-B1 level-shift behavior. |
+| `ti_txs0108e_oe_low_unpowered_side_passes` | `examples/good_ti_txs0108e_oe_low_unpowered_side/project.yaml` | pass | TXS0108E static review where one side is unpowered and explicit `OE` low evidence disables the channel. |
+| `ti_txs0108e_unpowered_side_detected` | `examples/bad_ti_txs0108e_unpowered_side/project.yaml` | fail | Detects powered-to-unpowered TXS0108E channel use without disabled-channel evidence. |
+| `ti_txs0108e_oe_low_unconnected_detected` | `examples/bad_ti_txs0108e_oe_low_unconnected/project.yaml` | fail | Detects that asserted `OE` low evidence cannot disable a TXS0108E channel when the required `OE` pin is unconnected. |
+| `ti_txs0108e_supply_order_detected` | `examples/bad_ti_txs0108e_supply_order/project.yaml` | fail | Detects TXS0108E `VCCA` above `VCCB`, violating the source-backed supply-order constraint. |
 | `ti_tcan3413_can_transceiver_observation_passes` | `examples/good_ti_tcan3413_can_transceiver_observation/project.yaml` | pass | TCAN3413 CAN FD transceiver generated-SPICE observation with source-backed 3.3 V `VCC`, 3.3 V `VIO`, and normal reduced bus-line snapshot. |
 | `ti_tcan3413_vcc_overvoltage_detected` | `examples/bad_ti_tcan3413_vcc_overvoltage/project.yaml` | fail | Detects TCAN3413 `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `ti_thvd1450_rs485_transceiver_observation_passes` | `examples/good_ti_thvd1450_rs485_transceiver_observation/project.yaml` | pass | THVD1450 RS-485 transceiver generated-SPICE observation with source-backed 3.3 V `VCC` and enabled driver/receiver line-state snapshot. |
@@ -158,7 +169,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=84, passed=84, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=93, passed=93, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -175,6 +186,8 @@ Observed detection details:
 | `ti_tps2115a_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `1.200000 A` exceeds mux limit `1.000000 A`. |
 | `ti_tps2121_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `5.000000 A` exceeds mux limit `4.500000 A`. |
 | `ti_tps2121_input_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `adapter_24v` supplies `UMUX.IN1` at `24.000000 V`, outside the model maximum operating voltage `22.000000 V`. |
+| `ti_tps22918_missing_on_detected` | `POWER_TREE_VALID` | Load switch `USW` output rail `sensor_3v3` is declared powered but `USW.ON` is not proven high. |
+| `ti_tps22918_output_overcurrent_detected` | `POWER_TREE_VALID` | Load switch `USW` worst-case output load `2.100000 A` exceeds switch limit `2.000000 A`. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `d1_plus` has `7.000e-13 F` line capacitance, above the `5.000e-13 F` interface limit. |
 | `nexperia_prtr5v0u2x_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` has `1.500e-12 F` line capacitance on `usb_dp`, above interface limit `1.000e-12 F`. |
 | `nexperia_prtr5v0u2x_reference_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` reference pin `VCC` is connected to digital-or-analog net `usb_dp`, expected power. |
@@ -194,6 +207,9 @@ Observed detection details:
 | `wch_ch340c_power_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `U5.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.300000 V`. |
 | `ftdi_ft232r_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `usb_6v_bad` supplies `U7.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.250000 V`. |
 | `wch_ch347_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `debug_5v_bad` supplies `U8.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
+| `ti_txs0108e_unpowered_side_detected` | `INTERFACE_PROTECTION_REVIEW` | Interface protection channel `ch1` on component `U3` connects powered/unpowered domains, but datasheet metadata says `unpowered_isolation` is false and the scenario does not prove the channel is disabled. |
+| `ti_txs0108e_oe_low_unconnected_detected` | `INTERFACE_PROTECTION_REVIEW` | Interface protection channel `ch1` on component `U3` connects powered/unpowered domains, but datasheet metadata says `unpowered_isolation` is false and the scenario does not prove the channel is disabled. |
+| `ti_txs0108e_supply_order_detected` | `INTERFACE_PROTECTION_REVIEW` | Signal-conditioning supply constraint `vcca_lte_vccb` on component `U3` requires `VCCA <= VCCB`, but `5.000000 V > 3.300000 V`. |
 | `ti_tcan3413_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `can_5v_bad` supplies `UCAN.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `ti_thvd1450_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rs485_6v_bad` supplies `UTRX.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTM8.VDD` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
@@ -212,9 +228,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All thirty-eight public-reference pass cases produced zero critical findings.
-All forty-six paired injected-error cases failed with the expected critical
-finding ID, and all forty-six repair-pair checks passed.
+All forty-two public-reference pass cases produced zero critical findings.
+All fifty-one paired injected-error cases failed with the expected critical
+finding ID, and all fifty-one repair-pair checks passed.
 
 ## Interpretation Limits
 
