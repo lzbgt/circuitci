@@ -813,6 +813,11 @@ The GUI should not become the solver.
   writes a copied repaired project under the validation output directory, and
   records the repaired project or repair report path in recent job history
   instead of replacing the loaded project.
+- Retained `repair-yaml` report artifacts now project into validation report
+  `yaml_repairs[]` rows and GUI `YAML repairs` summaries. GUI-generated bundle
+  repairs attach their `repair_report.json` to the loaded report so package
+  reviewers see repaired-project paths, applied/blocked counts, and proof
+  booleans immediately after the background job finishes.
 
 ## Risks
 

@@ -106,7 +106,11 @@ the same `repair-yaml --finding bundle-install-package-metadata` flow as the
 CLI, writes a copied repaired project under
 `<validation-output>/repair_bundle_import/<install-report-stem>/`, and records
 the repaired project or repair report path in recent job history without
-changing the loaded project path.
+changing the loaded project path. After completion the generated
+`repair_report.json` is attached to the loaded validation report artifacts, so
+the Scopes artifact panel plus the current `report.json`/`report.md` show a
+`YAML Repairs` summary with applied/blocked counts, repaired-project paths, and
+proof status.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before

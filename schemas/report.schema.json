@@ -45,6 +45,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/model_package_bundle_install" }
     },
+    "yaml_repairs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/yaml_repair" }
+    },
     "limitations": { "type": "array", "items": { "$ref": "#/$defs/limitation" } },
     "suggested_next_actions": { "type": "array" },
     "reproduction": {
@@ -260,6 +264,59 @@
         "conformance_check_count": { "type": "integer", "minimum": 0 },
         "finding_count": { "type": "integer", "minimum": 0 },
         "repair_yaml_command": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "yaml_repair": {
+      "type": "object",
+      "required": [
+        "report",
+        "result",
+        "finding",
+        "mode",
+        "original_project",
+        "repaired_project",
+        "original_report",
+        "repaired_report",
+        "proposed",
+        "selected",
+        "applied",
+        "blocked",
+        "skipped",
+        "original_matching_findings",
+        "repaired_matching_findings",
+        "original_matching_criticals",
+        "repaired_matching_criticals",
+        "new_criticals",
+        "original_finding_removed",
+        "no_new_criticals",
+        "reason_codes"
+      ],
+      "properties": {
+        "report": { "type": "string", "minLength": 1 },
+        "result": { "enum": ["pass", "fail", "dry_run"] },
+        "finding": { "type": "string", "minLength": 1 },
+        "mode": { "enum": ["apply", "dry_run", "apply_report"] },
+        "original_project": { "type": "string", "minLength": 1 },
+        "repaired_project": { "type": ["string", "null"] },
+        "original_report": { "type": "string", "minLength": 1 },
+        "repaired_report": { "type": ["string", "null"] },
+        "proposed": { "type": "integer", "minimum": 0 },
+        "selected": { "type": "integer", "minimum": 0 },
+        "applied": { "type": "integer", "minimum": 0 },
+        "blocked": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "original_matching_findings": { "type": "integer", "minimum": 0 },
+        "repaired_matching_findings": { "type": "integer", "minimum": 0 },
+        "original_matching_criticals": { "type": "integer", "minimum": 0 },
+        "repaired_matching_criticals": { "type": "integer", "minimum": 0 },
+        "new_criticals": { "type": "integer", "minimum": 0 },
+        "original_finding_removed": { "type": ["boolean", "null"] },
+        "no_new_criticals": { "type": ["boolean", "null"] },
+        "reason_codes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
       },
       "additionalProperties": false
     }

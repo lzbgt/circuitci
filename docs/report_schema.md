@@ -1443,6 +1443,13 @@ command contains a project path, install rows also include
 `repair_yaml_command`, a ready `repair-yaml --finding
 bundle-install-package-metadata --bundle-install-report ...` command for
 writing a validated repaired project copy.
+Retained `repair-yaml` report artifacts with
+`schema_version: circuitci.repair.v1` are projected into top-level
+`yaml_repairs[]`. Each row records the finding, mode, result, repaired project
+and validation report paths, proposed/selected/applied/blocked/skipped counts,
+matching-finding proof counts, `original_finding_removed`,
+`no_new_criticals`, and stable reason codes. This lets report consumers review
+GUI- or CLI-generated repair evidence without opening each raw repair JSON.
 When a lock includes an artifact with
 `artifact_format: model_conformance_report`, the verifier also validates that
 document against `schemas/model_conformance_report.schema.json` and requires it

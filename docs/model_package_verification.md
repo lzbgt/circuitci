@@ -210,7 +210,10 @@ when the report was produced by `circuitci validate`. In the GUI Scopes
 artifact panel, the `Repair YAML` button beside a bundle install row runs that
 same repair path as a background job, writes the repaired copy under the current
 validation output directory, and records the repaired project or repair report
-path in recent job history without replacing the loaded project.
+path in recent job history without replacing the loaded project. The generated
+repair report is also attached to the loaded report artifacts and projected as a
+`yaml_repairs[]` row in the current `report.json`/`report.md` with
+applied/blocked counts and proof status.
 
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.

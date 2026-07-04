@@ -362,6 +362,53 @@ impl CircuitCiApp {
                             }
                         }
                     }
+                    ui.add_space(8.0);
+                    ui.label("YAML repairs");
+                    if report.yaml_repairs.is_empty() {
+                        ui.label("No YAML repair reports were emitted.");
+                    } else {
+                        for repair in &report.yaml_repairs {
+                            ui.monospace(format!(
+                                "{} mode={} result={} proposed={} selected={} applied={} blocked={} skipped={}",
+                                repair.finding,
+                                repair.mode,
+                                repair.result,
+                                repair.proposed,
+                                repair.selected,
+                                repair.applied,
+                                repair.blocked,
+                                repair.skipped
+                            ));
+                            ui.monospace(format!(
+                                "project {} -> {}",
+                                repair.original_project,
+                                repair.repaired_project.as_deref().unwrap_or("")
+                            ));
+                            ui.monospace(format!(
+                                "report {} repaired_report={}",
+                                repair.report,
+                                repair.repaired_report.as_deref().unwrap_or("")
+                            ));
+                            ui.monospace(format!(
+                                "proof original_removed={} no_new_criticals={} new_criticals={}",
+                                repair
+                                    .original_finding_removed
+                                    .map(|value| value.to_string())
+                                    .unwrap_or_else(|| "unknown".to_string()),
+                                repair
+                                    .no_new_criticals
+                                    .map(|value| value.to_string())
+                                    .unwrap_or_else(|| "unknown".to_string()),
+                                repair.new_criticals
+                            ));
+                            if !repair.reason_codes.is_empty() {
+                                ui.monospace(format!(
+                                    "reason_codes {}",
+                                    repair.reason_codes.join(", ")
+                                ));
+                            }
+                        }
+                    }
                 });
             egui::CollapsingHeader::new("Findings")
                 .default_open(false)

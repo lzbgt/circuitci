@@ -1043,6 +1043,8 @@ impl CircuitCiApp {
         match result.result {
             Ok(output) => {
                 let repair_result = output.report.result.clone();
+                let repair_report_artifact =
+                    output.repair_report_path.to_string_lossy().into_owned();
                 let detail = format!(
                     "Bundle install metadata repair {repair_result}: applied {}, blocked {}, repaired project {}.",
                     output.report.summary.applied,
@@ -1058,6 +1060,25 @@ impl CircuitCiApp {
                     "{detail} Repair report: {}.",
                     output.repair_report_path.display()
                 ));
+                let report_write_result = if let Some(report) = &mut self.report {
+                    if !report.artifacts.contains(&repair_report_artifact) {
+                        report.artifacts.push(repair_report_artifact);
+                    }
+                    report.yaml_repairs =
+                        crate::reports::collect_yaml_repair_summaries(&report.artifacts);
+                    self.report_markdown = crate::reports::markdown_report(report);
+                    Some(crate::reports::write_reports(
+                        report,
+                        Path::new(&self.output_dir),
+                    ))
+                } else {
+                    None
+                };
+                if let Some(Err(error)) = report_write_result {
+                    self.push_diagnostic(&format!(
+                        "Failed to persist updated validation report after bundle repair: {error:#}"
+                    ));
+                }
                 self.push_background_job_record(
                     "bundle install repair",
                     repair_result.as_str(),
@@ -1535,9 +1556,30 @@ mod tests {
 
     #[test]
     fn bundle_install_repair_result_records_repaired_project() {
+        let temp = tempfile::tempdir().unwrap();
+        let repair_report_path = temp.path().join("repair_report.json");
+        std::fs::write(
+            &repair_report_path,
+            serde_json::to_string(&repair_report("pass", 1, 0)).unwrap(),
+        )
+        .unwrap();
         let mut app = CircuitCiApp {
             project_path: "active.project.yaml".to_string(),
             profile: "default".to_string(),
+            output_dir: temp
+                .path()
+                .join("validation")
+                .to_string_lossy()
+                .into_owned(),
+            report: Some(crate::reports::ValidationReport::from_parts(
+                "project".to_string(),
+                "default".to_string(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                "circuitci validate active.project.yaml".to_string(),
+            )),
             ..Default::default()
         };
 
@@ -1549,7 +1591,7 @@ mod tests {
                 install_report: PathBuf::from("install_report.json"),
                 result: Ok(BundleInstallRepairJobOutput {
                     report: repair_report("pass", 1, 0),
-                    repair_report_path: PathBuf::from("out/repair/repair_report.json"),
+                    repair_report_path: repair_report_path.clone(),
                     repaired_project: Some(PathBuf::from("out/repair/repaired.project.yaml")),
                 }),
             },
@@ -1564,6 +1606,18 @@ mod tests {
             app.background_job_history[0].output_path.as_deref(),
             Some("out/repair/repaired.project.yaml")
         );
+        let report = app.report.as_ref().expect("loaded report");
+        assert_eq!(
+            report.artifacts,
+            vec![repair_report_path.to_string_lossy().into_owned()]
+        );
+        assert_eq!(report.yaml_repairs.len(), 1);
+        assert_eq!(
+            report.yaml_repairs[0].finding,
+            "BUNDLE_INSTALL_PACKAGE_METADATA"
+        );
+        assert!(app.report_markdown.contains("## YAML Repairs"));
+        assert!(temp.path().join("validation").join("report.json").exists());
     }
 
     #[test]

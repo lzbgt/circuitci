@@ -63,6 +63,7 @@ pub struct ValidationReport {
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
     pub model_package_bundle_installs: Vec<ModelPackageBundleInstallSummary>,
+    pub yaml_repairs: Vec<YamlRepairSummary>,
     pub limitations: Vec<Limitation>,
     pub suggested_next_actions: Vec<String>,
     pub reproduction: Reproduction,
@@ -149,6 +150,31 @@ pub struct ModelPackageBundleInstallSummary {
     pub conformance_check_count: usize,
     pub finding_count: usize,
     pub repair_yaml_command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct YamlRepairSummary {
+    pub report: String,
+    pub result: String,
+    pub finding: String,
+    pub mode: String,
+    pub original_project: String,
+    pub repaired_project: Option<String>,
+    pub original_report: String,
+    pub repaired_report: Option<String>,
+    pub proposed: usize,
+    pub selected: usize,
+    pub applied: usize,
+    pub blocked: usize,
+    pub skipped: usize,
+    pub original_matching_findings: usize,
+    pub repaired_matching_findings: usize,
+    pub original_matching_criticals: usize,
+    pub repaired_matching_criticals: usize,
+    pub new_criticals: usize,
+    pub original_finding_removed: Option<bool>,
+    pub no_new_criticals: Option<bool>,
+    pub reason_codes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -340,6 +366,7 @@ impl ValidationReport {
             &reproduction.command,
             reproduction.project_path,
         );
+        let yaml_repairs = collect_yaml_repair_summaries(&artifacts);
         Self {
             schema_version: "0.1.0".to_string(),
             project,
@@ -355,6 +382,7 @@ impl ValidationReport {
             model_package_conformance_checks,
             model_package_bundle_verifications,
             model_package_bundle_installs,
+            yaml_repairs,
             limitations,
             suggested_next_actions,
             reproduction: Reproduction {
@@ -380,7 +408,7 @@ pub fn write_suite_reports(report: &SuiteReport, output: &Path) -> anyhow::Resul
     Ok(())
 }
 
-fn markdown_report(report: &ValidationReport) -> String {
+pub fn markdown_report(report: &ValidationReport) -> String {
     let mut text = String::new();
     text.push_str(&format!("# CircuitCI Report: {}\n\n", report.project));
     text.push_str("## Executive Summary\n\n");
@@ -566,6 +594,54 @@ fn markdown_report(report: &ValidationReport) -> String {
             }
             if let Some(command) = &install.repair_yaml_command {
                 text.push_str(&format!("  - Repair command: `{command}`\n"));
+            }
+        }
+        text.push('\n');
+    }
+    text.push_str("## YAML Repairs\n\n");
+    if report.yaml_repairs.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for repair in &report.yaml_repairs {
+            text.push_str(&format!(
+                "- `{}` via `{}`: `{}` proposed={} selected={} applied={} blocked={} skipped={}\n",
+                repair.finding,
+                repair.mode,
+                repair.result,
+                repair.proposed,
+                repair.selected,
+                repair.applied,
+                repair.blocked,
+                repair.skipped
+            ));
+            text.push_str(&format!(
+                "  - Project: `{}` -> `{}`\n",
+                repair.original_project,
+                repair.repaired_project.as_deref().unwrap_or("")
+            ));
+            text.push_str(&format!(
+                "  - Reports: `{}` -> `{}` repair `{}`\n",
+                repair.original_report,
+                repair.repaired_report.as_deref().unwrap_or(""),
+                repair.report
+            ));
+            text.push_str(&format!(
+                "  - Proof: original_finding_removed={} no_new_criticals={} new_criticals={}\n",
+                repair
+                    .original_finding_removed
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "unknown".to_string()),
+                repair
+                    .no_new_criticals
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "unknown".to_string()),
+                repair.new_criticals
+            ));
+            if !repair.reason_codes.is_empty() {
+                text.push_str(&format!(
+                    "  - Reason codes: `{}`\n",
+                    repair.reason_codes.join("`, `")
+                ));
             }
         }
         text.push('\n');
@@ -843,6 +919,54 @@ fn collect_model_package_bundle_installs(
     records.into_iter().collect()
 }
 
+pub fn collect_yaml_repair_summaries(artifacts: &[String]) -> Vec<YamlRepairSummary> {
+    let mut records = BTreeSet::new();
+    for artifact in artifacts {
+        let Some(report) = read_json_artifact(artifact) else {
+            continue;
+        };
+        if string_at(&report, &["schema_version"]) != "circuitci.repair.v1" {
+            continue;
+        }
+        records.insert(YamlRepairSummary {
+            report: artifact.clone(),
+            result: string_at(&report, &["result"]),
+            finding: string_at(&report, &["finding"]),
+            mode: string_at(&report, &["mode"]),
+            original_project: string_at(&report, &["original_project"]),
+            repaired_project: optional_string_at(&report, &["repaired_project"]),
+            original_report: string_at(&report, &["original_report"]),
+            repaired_report: optional_string_at(&report, &["repaired_report"]),
+            proposed: usize_at(&report, &["summary", "proposed"]),
+            selected: usize_at(&report, &["summary", "selected"]),
+            applied: usize_at(&report, &["summary", "applied"]),
+            blocked: usize_at(&report, &["summary", "blocked"]),
+            skipped: usize_at(&report, &["summary", "skipped"]),
+            original_matching_findings: usize_at(
+                &report,
+                &["summary", "original_matching_findings"],
+            ),
+            repaired_matching_findings: usize_at(
+                &report,
+                &["summary", "repaired_matching_findings"],
+            ),
+            original_matching_criticals: usize_at(
+                &report,
+                &["summary", "original_matching_criticals"],
+            ),
+            repaired_matching_criticals: usize_at(
+                &report,
+                &["summary", "repaired_matching_criticals"],
+            ),
+            new_criticals: usize_at(&report, &["summary", "new_criticals"]),
+            original_finding_removed: bool_at(&report, &["proof", "original_finding_removed"]),
+            no_new_criticals: bool_at(&report, &["proof", "no_new_criticals"]),
+            reason_codes: string_array_at(&report, &["reason_codes"]),
+        });
+    }
+    records.into_iter().collect()
+}
+
 fn bundle_install_repair_command(
     validation_command: &str,
     profile: &str,
@@ -910,6 +1034,20 @@ fn array_len_at(value: &Value, path: &[&str]) -> usize {
     current.as_array().map_or(0, Vec::len)
 }
 
+fn usize_at(value: &Value, path: &[&str]) -> usize {
+    let mut current = value;
+    for key in path {
+        let Some(next) = current.get(*key) else {
+            return 0;
+        };
+        current = next;
+    }
+    current
+        .as_u64()
+        .and_then(|value| usize::try_from(value).ok())
+        .unwrap_or_default()
+}
+
 fn optional_string_at(value: &Value, path: &[&str]) -> Option<String> {
     let text = string_at(value, path);
     if text.is_empty() { None } else { Some(text) }
@@ -953,6 +1091,7 @@ mod tests {
         let package_report = dir.path().join("model_package_verification.json");
         let bundle_verification_report = dir.path().join("bundle_verification.json");
         let bundle_install_report = dir.path().join("bundle_install.json");
+        let repair_report = dir.path().join("repair_report.json");
         fs::write(
             &package_report,
             r#"{
@@ -1099,6 +1238,48 @@ mod tests {
 "#,
         )
         .unwrap();
+        fs::write(
+            &repair_report,
+            r#"{
+  "schema_version": "circuitci.repair.v1",
+  "project": "project",
+  "profile": "profile",
+  "finding": "BUNDLE_INSTALL_PACKAGE_METADATA",
+  "mode": "apply",
+  "result": "pass",
+  "messages": [],
+  "reason_codes": [],
+  "summary": {
+    "proposed": 1,
+    "selected": 1,
+    "applied": 1,
+    "blocked": 0,
+    "skipped": 0,
+    "original_matching_findings": 0,
+    "repaired_matching_findings": 0,
+    "original_matching_criticals": 0,
+    "repaired_matching_criticals": 0,
+    "new_criticals": 0
+  },
+  "original_project": "project.yaml",
+  "repaired_project": "repair/repaired.project.yaml",
+  "original_report": "repair/original/report.json",
+  "repaired_report": "repair/repaired/report.json",
+  "proposals": [],
+  "proof": {
+    "original_finding_removed": true,
+    "no_new_criticals": true,
+    "original_matching_findings": [],
+    "repaired_matching_findings": [],
+    "new_critical_findings": []
+  },
+  "reproduction": {
+    "command": "circuitci repair-yaml project.yaml --finding bundle-install-package-metadata"
+  }
+}
+"#,
+        )
+        .unwrap();
 
         let report = ValidationReport::from_parts(
             "project".to_string(),
@@ -1109,6 +1290,7 @@ mod tests {
                 package_report.to_string_lossy().into_owned(),
                 bundle_verification_report.to_string_lossy().into_owned(),
                 bundle_install_report.to_string_lossy().into_owned(),
+                repair_report.to_string_lossy().into_owned(),
             ],
             Vec::new(),
             "circuitci validate project.yaml --profile profile --output out".to_string(),
@@ -1150,6 +1332,18 @@ mod tests {
             install.repair_yaml_command.as_deref(),
             Some(expected_repair_command.as_str())
         );
+        assert_eq!(report.yaml_repairs.len(), 1);
+        let repair = &report.yaml_repairs[0];
+        assert_eq!(repair.finding, "BUNDLE_INSTALL_PACKAGE_METADATA");
+        assert_eq!(repair.result, "pass");
+        assert_eq!(repair.applied, 1);
+        assert_eq!(repair.blocked, 0);
+        assert_eq!(
+            repair.repaired_project.as_deref(),
+            Some("repair/repaired.project.yaml")
+        );
+        assert_eq!(repair.original_finding_removed, Some(true));
+        assert_eq!(repair.no_new_criticals, Some(true));
         let markdown = markdown_report(&report);
         assert!(markdown.contains("## Model Package Conformance"));
         assert!(markdown.contains("`transient_smoke`"));
@@ -1157,5 +1351,7 @@ mod tests {
         assert!(markdown.contains("## Model Package Bundle Verification"));
         assert!(markdown.contains("## Model Package Bundle Install"));
         assert!(markdown.contains("`bundle_fixture_runtime`"));
+        assert!(markdown.contains("## YAML Repairs"));
+        assert!(markdown.contains("`BUNDLE_INSTALL_PACKAGE_METADATA`"));
     }
 }

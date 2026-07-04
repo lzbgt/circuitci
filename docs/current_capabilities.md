@@ -23,7 +23,10 @@ GUI scope usability note: the Sketch canvas opens with derived net-bundle boxes 
 Package workflow usability note: when validation reports include model-package
 bundle install evidence, Scopes shows scenario-ready registry/lock/artifact
 pins and can launch a non-destructive `Repair YAML` background job that imports
-those pins into a copied project under the validation output directory.
+those pins into a copied project under the validation output directory. The
+generated repair report is retained as a report artifact and projected into
+`yaml_repairs[]`/Scopes `YAML repairs` rows with applied/blocked counts and
+proof booleans.
 
 The Sketch canvas also supports inline component ID editing and inline scalar
 SPICE value editing for passives and DC sources; both route through the same
