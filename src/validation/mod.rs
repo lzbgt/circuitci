@@ -14,6 +14,7 @@ mod analog_fourier_assertions;
 mod analog_fourier_runner;
 mod analog_fourier_spice;
 mod analog_harmonic_balance_spice;
+mod analog_hb_assertions;
 mod analog_measure_runner;
 mod analog_measure_spice;
 mod analog_model_compiler;

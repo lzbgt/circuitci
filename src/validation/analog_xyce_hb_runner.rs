@@ -376,7 +376,7 @@ fn xyce_hb_raw_to_spectrum_csv(raw: &Path, analog: &AnalogScenario) -> Result<St
     for (harmonic, frequency_hz, real, imaginary, magnitude, phase_deg) in rows {
         output.push_str(&format!(
             "{},{:.12e},{},{:.12e},{:.12e},{:.12e},{:.12e},{:.12e}\n",
-            output_expression,
+            quote_csv_field(output_expression),
             fundamental_hz,
             harmonic,
             frequency_hz,
@@ -387,6 +387,10 @@ fn xyce_hb_raw_to_spectrum_csv(raw: &Path, analog: &AnalogScenario) -> Result<St
         ));
     }
     Ok(output)
+}
+
+fn quote_csv_field(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
 }
 
 fn split_xyce_row(line: &str) -> Vec<&str> {

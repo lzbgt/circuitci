@@ -57,6 +57,22 @@ fn write_harmonic_balance_project(
     output_expression: &str,
     drive_source: &str,
 ) -> std::path::PathBuf {
+    write_harmonic_balance_project_with_assertions(
+        dir,
+        backend,
+        output_expression,
+        drive_source,
+        "",
+    )
+}
+
+fn write_harmonic_balance_project_with_assertions(
+    dir: &std::path::Path,
+    backend: &str,
+    output_expression: &str,
+    drive_source: &str,
+    hb_assertions: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let project = dir.join("project.yaml");
     fs::write(
@@ -120,13 +136,14 @@ scenarios:
         hb_output_expression: {output_expression}
         hb_harmonics: 10
         hb_drive_sources: [{drive_source}]
-      stimuli:
+{hb_assertions}      stimuli:
         - {{ name: periodic_drive, description: Planned harmonic-balance spectrum extraction. }}
       probes:
         - {{ name: out_hb, expression: V(out) }}
       assertions: []
 "#,
-            libs = repo.join("libs/generic/analog").to_string_lossy()
+            libs = repo.join("libs/generic/analog").to_string_lossy(),
+            hb_assertions = hb_assertions
         ),
     )
     .unwrap();
@@ -320,9 +337,20 @@ fn explicit_xyce_harmonic_balance_normalizes_spectrum_and_manifest() {
         "output_expression,fundamental_frequency_hz,harmonic,frequency_hz,real,imaginary,magnitude,phase_deg"
     );
     assert!(
-        lines.any(|line| line.contains("V(out),1.000000000000e5,1,1.000000000000e5,3.000000000000e-1,-4.000000000000e-1,5.000000000000e-1")),
+        lines.any(|line| line.contains("\"V(out)\",1.000000000000e5,1,1.000000000000e5,3.000000000000e-1,-4.000000000000e-1,5.000000000000e-1")),
         "normalized HB spectrum did not contain expected first harmonic row: {text}"
     );
+    let hb_summaries = report["hb_summaries"].as_array().unwrap();
+    assert_eq!(hb_summaries.len(), 3);
+    let h1_summary = hb_summaries
+        .iter()
+        .find(|row| row["harmonic"] == 1)
+        .unwrap();
+    assert_eq!(h1_summary["output_expression"], "V(out)");
+    assert_eq!(h1_summary["magnitude"], 5.0e-1);
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("## Harmonic Balance Summary"));
+    assert!(markdown.contains("`V(out)` h1"));
     let manifest = out_dir
         .path()
         .join(artifact_path(&report, "solver_manifest.json"));
@@ -343,6 +371,103 @@ fn explicit_xyce_harmonic_balance_normalizes_spectrum_and_manifest() {
     assert!(wrapper_text.contains(".HB 1.000000000000e5"));
     assert!(wrapper_text.contains(".OPTIONS HBINT NUMFREQ=10"));
     assert!(wrapper_text.contains(".PRINT HB_FD FORMAT=CSV"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn harmonic_balance_assertions_pass_on_spectrum_metrics() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'FREQ,V(out)_REAL,V(out)_IMAG' '0,5.0e-1,0' '1.0e5,3.0e-1,-4.0e-1' '-1.0e5,3.0e-1,4.0e-1' > hb_spectrum_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_harmonic_balance_project_with_assertions(
+        project_dir.path(),
+        "xyce",
+        "V(out)",
+        "V1",
+        r#"        hb_assertions:
+          - { name: h1_magnitude_floor, harmonic: 1, metric: magnitude, relation: above, threshold: 0.49 }
+          - { name: h1_phase_ceiling, harmonic: 1, metric: phase_deg, relation: below, threshold: -50.0 }
+"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn harmonic_balance_assertion_fails_on_spectrum_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'FREQ,V(out)_REAL,V(out)_IMAG' '0,5.0e-1,0' '1.0e5,3.0e-1,-4.0e-1' '-1.0e5,3.0e-1,4.0e-1' > hb_spectrum_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_harmonic_balance_project_with_assertions(
+        project_dir.path(),
+        "xyce",
+        "V(out)",
+        "V1",
+        r#"        hb_assertions:
+          - { name: h1_magnitude_too_high, harmonic: 1, metric: magnitude, relation: above, threshold: 0.75 }
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["message"],
+        "Harmonic-balance assertion h1_magnitude_too_high failed: magnitude measured 5.000000e-1 output_unit, expected above 7.500000e-1 output_unit."
+    );
+    assert_eq!(report["failures"][0]["measured"]["metric"], "magnitude");
+    assert_eq!(report["failures"][0]["measured"]["harmonic"], 1);
+    assert_eq!(report["failures"][0]["measured"]["value"], 0.5);
+    assert_eq!(report["failures"][0]["limit"]["above_threshold"], 0.75);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn harmonic_balance_assertion_fails_closed_on_missing_harmonic() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'FREQ,V(out)_REAL,V(out)_IMAG' '0,5.0e-1,0' '1.0e5,3.0e-1,-4.0e-1' '-1.0e5,3.0e-1,4.0e-1' > hb_spectrum_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_harmonic_balance_project_with_assertions(
+        project_dir.path(),
+        "xyce",
+        "V(out)",
+        "V1",
+        r#"        hb_assertions:
+          - { name: h7_magnitude_floor, harmonic: 7, metric: magnitude, relation: above, threshold: 0.1 }
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["message"],
+        "Harmonic-balance assertion h7_magnitude_floor references missing normalized harmonic 7."
+    );
+    assert_eq!(report["failures"][0]["limit"]["required_harmonic"], 7);
     assert_report_schema_valid(&report);
 }
 

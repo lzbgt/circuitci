@@ -37,6 +37,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/fourier_summary" }
     },
+    "hb_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/hb_summary" }
+    },
     "pole_zero_summaries": {
       "type": "array",
       "items": { "$ref": "#/$defs/pole_zero_summary" }
@@ -188,6 +192,32 @@
         "normalized_magnitude": { "type": "number" },
         "normalized_phase_deg": { "type": "number" },
         "thd_percent": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "hb_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "output_expression",
+        "fundamental_frequency_hz",
+        "harmonic",
+        "frequency_hz",
+        "real",
+        "imaginary",
+        "magnitude",
+        "phase_deg"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "output_expression": { "type": "string" },
+        "fundamental_frequency_hz": { "type": "number" },
+        "harmonic": { "type": "integer" },
+        "frequency_hz": { "type": "number" },
+        "real": { "type": "number" },
+        "imaginary": { "type": "number" },
+        "magnitude": { "type": "number" },
+        "phase_deg": { "type": "number" }
       },
       "additionalProperties": false
     },

@@ -3081,6 +3081,27 @@
                     "items": { "type": "string", "minLength": 1 },
                     "uniqueItems": true
                   },
+                  "hb_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "harmonic", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "harmonic": { "type": "integer", "minimum": 0, "maximum": 1024 },
+                        "metric": { "enum": ["magnitude", "phase_deg", "real", "imaginary"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "pss_mode": { "enum": ["driven", "autonomous"] },
                   "pss_frequency_guess_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "pss_stabilization_time_us": { "type": "number", "exclusiveMinimum": 0 },

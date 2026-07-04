@@ -1334,6 +1334,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub hb_drive_sources: Vec<String>,
     #[serde(default)]
+    pub hb_assertions: Vec<AnalogHarmonicBalanceAssertion>,
+    #[serde(default)]
     pub pss_mode: Option<String>,
     #[serde(default)]
     pub pss_frequency_guess_hz: Option<f64>,

@@ -8,14 +8,16 @@ use std::path::Path;
 mod analog_summaries;
 mod findings_markdown;
 pub use analog_summaries::{
-    DistortionSummary, FourierSummary, PoleZeroSummary, SParameterNetworkSummary,
-    SParameterNoiseSummary, SParameterSummary, SensitivitySummary, TransferFunctionSummary,
+    DistortionSummary, FourierSummary, HarmonicBalanceSummary, PoleZeroSummary,
+    SParameterNetworkSummary, SParameterNoiseSummary, SParameterSummary, SensitivitySummary,
+    TransferFunctionSummary,
 };
 use analog_summaries::{
-    collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
-    collect_s_parameter_network_summaries, collect_s_parameter_noise_summaries,
-    collect_s_parameter_summaries, collect_sensitivity_summaries,
-    collect_transfer_function_summaries, render_s_parameter_network_summary_markdown,
+    collect_distortion_summaries, collect_fourier_summaries, collect_harmonic_balance_summaries,
+    collect_pole_zero_summaries, collect_s_parameter_network_summaries,
+    collect_s_parameter_noise_summaries, collect_s_parameter_summaries,
+    collect_sensitivity_summaries, collect_transfer_function_summaries,
+    render_harmonic_balance_summary_markdown, render_s_parameter_network_summary_markdown,
 };
 use findings_markdown::push_findings;
 
@@ -75,6 +77,7 @@ pub struct ValidationReport {
     pub artifacts: Vec<String>,
     pub distortion_summaries: Vec<DistortionSummary>,
     pub fourier_summaries: Vec<FourierSummary>,
+    pub hb_summaries: Vec<HarmonicBalanceSummary>,
     pub pole_zero_summaries: Vec<PoleZeroSummary>,
     pub sensitivity_summaries: Vec<SensitivitySummary>,
     pub transfer_function_summaries: Vec<TransferFunctionSummary>,
@@ -410,6 +413,7 @@ impl ValidationReport {
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
         let distortion_summaries = collect_distortion_summaries(&artifacts);
         let fourier_summaries = collect_fourier_summaries(&artifacts);
+        let hb_summaries = collect_harmonic_balance_summaries(&artifacts);
         let pole_zero_summaries = collect_pole_zero_summaries(&artifacts);
         let sensitivity_summaries = collect_sensitivity_summaries(&artifacts);
         let transfer_function_summaries = collect_transfer_function_summaries(&artifacts);
@@ -441,6 +445,7 @@ impl ValidationReport {
             artifacts,
             distortion_summaries,
             fourier_summaries,
+            hb_summaries,
             pole_zero_summaries,
             sensitivity_summaries,
             transfer_function_summaries,
@@ -543,6 +548,9 @@ pub fn markdown_report(report: &ValidationReport) -> String {
         }
         text.push('\n');
     }
+    text.push_str(&render_harmonic_balance_summary_markdown(
+        &report.hb_summaries,
+    ));
     text.push_str("## Pole-Zero Summary\n\n");
     if report.pole_zero_summaries.is_empty() {
         text.push_str("None.\n\n");

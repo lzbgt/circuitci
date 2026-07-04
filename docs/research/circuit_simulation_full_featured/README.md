@@ -706,6 +706,13 @@ The GUI should not become the solver.
   `analog_harmonic_balance` scenarios with `backend: auto`, a selected output
   probe net, fundamental frequency, harmonic count, and selected drive source,
   so users do not need to hand-edit YAML to reach the normalized Xyce HB path.
+  `analysis.hb_assertions[]` now signs off magnitude, phase, real, and
+  imaginary values by retained `hb_spectrum.csv` harmonic row; missing rows
+  fail closed. Validation reports project the retained spectrum into
+  `hb_summaries[]`, Markdown reports include a "Harmonic Balance Summary"
+  section, and the GUI report panel shows the same compact rows. The normalizer
+  now quotes the output-expression CSV field so valid expressions such as
+  `V(out,0)` remain parseable by report and assertion readers.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized

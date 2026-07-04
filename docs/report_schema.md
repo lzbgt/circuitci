@@ -1440,6 +1440,11 @@ harmonic index, frequency, magnitude, phase, normalized magnitude/phase, and
 optional solver-reported THD percent. Markdown reports include those rows in a
 "Fourier Summary" section, and the GUI report panel surfaces the same compact
 rows.
+Retained `hb_spectrum.csv` artifacts project into top-level `hb_summaries[]`
+rows with the source artifact path, output expression, fundamental frequency,
+signed harmonic index, frequency, complex real/imaginary value, magnitude, and
+phase. Markdown reports include those rows in a "Harmonic Balance Summary"
+section, and the GUI report panel surfaces the same compact rows.
 Retained `pole_zero_summary.csv` artifacts project into top-level
 `pole_zero_summaries[]` rows with the source artifact path, output/reference
 nodes, input source, mode, root kind/index, complex rad/s coordinates, and

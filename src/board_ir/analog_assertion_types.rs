@@ -151,6 +151,19 @@ pub struct AnalogFourierAssertion {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct AnalogHarmonicBalanceAssertion {
+    pub name: String,
+    pub harmonic: u32,
+    pub metric: AnalogHarmonicBalanceMetric,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct AnalogPoleZeroAssertion {
     pub name: String,
     pub root_kind: AnalogPoleZeroRootKind,
@@ -211,6 +224,15 @@ pub enum AnalogFourierMetric {
     PhaseDeg,
     NormalizedPhaseDeg,
     ThdPercent,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogHarmonicBalanceMetric {
+    Magnitude,
+    PhaseDeg,
+    Real,
+    Imaginary,
 }
 
 #[derive(Debug, Clone, Deserialize)]

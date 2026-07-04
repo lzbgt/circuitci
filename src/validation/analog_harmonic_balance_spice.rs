@@ -8,6 +8,7 @@ use std::path::Path;
 
 use super::SPICE_HARMONIC_BALANCE_ANALYSIS;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
+use super::analog_hb_assertions::{evaluate_hb_assertions, validate_hb_assertion_contract};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
     external_backend_unavailable, select_backend_for_feature,
@@ -227,6 +228,10 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
             return;
         }
     }
+    if let Err(message) = validate_hb_assertion_contract(analog) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
 
     let run_plans = match analog_run_plans(analog) {
         Ok(run_plans) => run_plans,
@@ -364,6 +369,7 @@ pub(super) fn validate_spice_harmonic_balance_with_progress<F, C>(
                     push_artifact(artifacts, artifact);
                 }
                 push_artifact(artifacts, &run.hb_spectrum);
+                evaluate_hb_assertions(scenario, &run.hb_spectrum, findings);
             }
             Err(error) => {
                 for artifact in &error.artifacts {

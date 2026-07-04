@@ -357,9 +357,14 @@ Current analog support:
   components when the deck is generated from Board IR. Explicit `backend:
   xyce` runs `.HB`, emits `hb_spectrum_raw.csv`, normalizes signed harmonic
   complex spectrum rows into `hb_spectrum.csv`, and records the run in
-  `solver_manifest.json`. The GUI Scopes loader recognizes `hb_spectrum.csv`
-  artifacts and plots non-negative harmonic rows as frequency-axis magnitude,
-  phase, real, and imaginary traces. The GUI Run Setup editor can author
+  `solver_manifest.json`. Optional `hb_assertions[]` entries sign off
+  retained spectrum magnitude, phase, real, and imaginary values by harmonic,
+  with fail-closed behavior for missing harmonic rows. Validation reports
+  project retained spectrum rows into `hb_summaries[]`, Markdown reports include
+  a "Harmonic Balance Summary" section, and the GUI report panel surfaces the
+  same rows. The GUI Scopes loader recognizes `hb_spectrum.csv` artifacts and
+  plots non-negative harmonic rows as frequency-axis magnitude, phase, real,
+  and imaginary traces. The GUI Run Setup editor can author
   generated-from-board harmonic-balance scenarios with fundamental frequency,
   harmonic count, selected output probe net, and selected drive source.
   Opt-in real-Xyce conformance is available

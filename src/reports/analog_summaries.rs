@@ -25,6 +25,19 @@ pub struct FourierSummary {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct HarmonicBalanceSummary {
+    pub artifact: String,
+    pub output_expression: String,
+    pub fundamental_frequency_hz: f64,
+    pub harmonic: i64,
+    pub frequency_hz: f64,
+    pub real: f64,
+    pub imaginary: f64,
+    pub magnitude: f64,
+    pub phase_deg: f64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct PoleZeroSummary {
     pub artifact: String,
     pub output_node: String,
@@ -224,6 +237,118 @@ pub(super) fn collect_fourier_summaries(artifacts: &[String]) -> Vec<FourierSumm
             .then_with(|| left.harmonic.cmp(&right.harmonic))
     });
     records
+}
+
+pub(super) fn collect_harmonic_balance_summaries(
+    artifacts: &[String],
+) -> Vec<HarmonicBalanceSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("hb_spectrum.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_hb_spectrum_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| {
+        left.artifact
+            .cmp(&right.artifact)
+            .then_with(|| left.output_expression.cmp(&right.output_expression))
+            .then_with(|| left.harmonic.cmp(&right.harmonic))
+    });
+    records
+}
+
+pub(super) fn render_harmonic_balance_summary_markdown(rows: &[HarmonicBalanceSummary]) -> String {
+    let mut text = String::from("## Harmonic Balance Summary\n\n");
+    if rows.is_empty() {
+        text.push_str("None.\n\n");
+        return text;
+    }
+    for row in rows {
+        text.push_str(&format!(
+            "- `{}` h{}: fundamental={:.6e} Hz frequency={:.6e} Hz magnitude={:.6e} phase={:.6e} deg real={:.6e} imaginary={:.6e}\n",
+            row.output_expression,
+            row.harmonic,
+            row.fundamental_frequency_hz,
+            row.frequency_hz,
+            row.magnitude,
+            row.phase_deg,
+            row.real,
+            row.imaginary
+        ));
+        text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+    }
+    text.push('\n');
+    text
+}
+
+fn parse_hb_spectrum_csv(artifact: &str, text: &str) -> Vec<HarmonicBalanceSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "output_expression",
+            "fundamental_frequency_hz",
+            "harmonic",
+            "frequency_hz",
+            "real",
+            "imaginary",
+            "magnitude",
+            "phase_deg",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 8 {
+            continue;
+        }
+        let Some(fundamental_frequency_hz) = parse_finite_f64(&fields[1]) else {
+            continue;
+        };
+        let Some(harmonic) = fields[2].parse::<i64>().ok() else {
+            continue;
+        };
+        let Some(frequency_hz) = parse_finite_f64(&fields[3]) else {
+            continue;
+        };
+        let Some(real) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        let Some(imaginary) = parse_finite_f64(&fields[5]) else {
+            continue;
+        };
+        let Some(magnitude) = parse_finite_f64(&fields[6]) else {
+            continue;
+        };
+        let Some(phase_deg) = parse_finite_f64(&fields[7]) else {
+            continue;
+        };
+        rows.push(HarmonicBalanceSummary {
+            artifact: artifact.to_string(),
+            output_expression: fields[0].clone(),
+            fundamental_frequency_hz,
+            harmonic,
+            frequency_hz,
+            real,
+            imaginary,
+            magnitude,
+            phase_deg,
+        });
+    }
+    rows
 }
 
 fn parse_fourier_summary_csv(artifact: &str, text: &str) -> Vec<FourierSummary> {

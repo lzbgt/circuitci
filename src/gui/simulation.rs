@@ -389,6 +389,25 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Harmonic balance summary");
+                    if report.hb_summaries.is_empty() {
+                        ui.label("No harmonic-balance summary rows were emitted.");
+                    } else {
+                        for row in &report.hb_summaries {
+                            ui.monospace(format!(
+                                "{} h{} f={:.6e}Hz mag={:.6e} phase={:.6e}deg real={:.6e} imag={:.6e} artifact={}",
+                                row.output_expression,
+                                row.harmonic,
+                                row.frequency_hz,
+                                row.magnitude,
+                                row.phase_deg,
+                                row.real,
+                                row.imaginary,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Model file provenance");
                     if report.model_file_provenance.is_empty() {
                         ui.label("No compiled model provenance was emitted.");
