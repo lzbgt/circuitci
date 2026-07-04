@@ -72,6 +72,21 @@ pub enum RequiredSeverity {
     Info,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ValidationReportOptions {
+    pub model_package_bundle_imports: Vec<ValidationBundleImportRequest>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ValidationBundleImportRequest {
+    pub id: Option<String>,
+    pub bundle: PathBuf,
+    pub install_dir: PathBuf,
+    pub registry_output: Option<PathBuf>,
+    pub registry_entry: Option<String>,
+    pub registry_artifact_id: Option<String>,
+}
+
 impl SuiteManifest {
     pub fn load(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path)
@@ -251,11 +266,28 @@ pub fn validate_and_write_project_report(
     output: &Path,
     command: String,
 ) -> Result<ValidationReport> {
+    validate_and_write_project_report_with_options(
+        project_path,
+        profile,
+        output,
+        command,
+        ValidationReportOptions::default(),
+    )
+}
+
+pub fn validate_and_write_project_report_with_options(
+    project_path: &Path,
+    profile: &str,
+    output: &Path,
+    command: String,
+    options: ValidationReportOptions,
+) -> Result<ValidationReport> {
     validate_and_write_project_report_with_progress(
         project_path,
         profile,
         output,
         command,
+        options,
         |_, _| {},
     )
 }
@@ -265,6 +297,7 @@ pub fn validate_and_write_project_report_with_progress<F>(
     profile: &str,
     output: &Path,
     command: String,
+    options: ValidationReportOptions,
     mut on_progress: F,
 ) -> Result<ValidationReport>
 where
@@ -275,6 +308,7 @@ where
         profile,
         output,
         command,
+        options,
         &mut on_progress,
         || false,
     )
@@ -285,6 +319,7 @@ pub fn validate_and_write_project_report_with_progress_and_cancel<F, C>(
     profile: &str,
     output: &Path,
     command: String,
+    options: ValidationReportOptions,
     mut on_progress: F,
     should_cancel: C,
 ) -> Result<ValidationReport>
@@ -328,7 +363,7 @@ where
         &bound,
         output,
         &mut on_progress,
-        should_cancel,
+        &should_cancel,
     );
     on_progress("Applying profile coverage", format!("Profile {profile}."));
     outcome
@@ -336,6 +371,15 @@ where
         .extend(crate::validation::profile_coverage_limitations(
             profile, &project,
         ));
+    run_model_package_bundle_imports(
+        project_path,
+        profile,
+        output,
+        &options,
+        &mut outcome,
+        &mut on_progress,
+        &should_cancel,
+    );
     on_progress(
         "Assembling report",
         format!(
@@ -363,6 +407,162 @@ where
     );
     write_reports(&report, output)?;
     Ok(report)
+}
+
+fn run_model_package_bundle_imports<F, C>(
+    project_path: &Path,
+    profile: &str,
+    output: &Path,
+    options: &ValidationReportOptions,
+    outcome: &mut crate::validation::ValidationOutcome,
+    on_progress: &mut F,
+    should_cancel: &C,
+) where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    if options.model_package_bundle_imports.is_empty() {
+        return;
+    }
+    let mut used_ids = BTreeSet::new();
+    for (index, request) in options.model_package_bundle_imports.iter().enumerate() {
+        let import_id = unique_bundle_import_id(request, index, &mut used_ids);
+        let import_output = output.join("model_package_bundle_imports").join(&import_id);
+        on_progress(
+            "Importing model package bundle",
+            format!(
+                "Running bundle import {} into {}.",
+                request.bundle.display(),
+                import_output.display()
+            ),
+        );
+        if should_cancel() {
+            outcome.findings.push(bundle_import_finding(
+                request,
+                &import_output,
+                "canceled",
+                "Model package bundle import was canceled before execution.",
+            ));
+            break;
+        }
+        let import_options = crate::model_package_bundle::ModelPackageBundleImportOptions {
+            bundle: request.bundle.clone(),
+            project: project_path.to_path_buf(),
+            profile: profile.to_string(),
+            install_dir: request.install_dir.clone(),
+            registry_output: request.registry_output.clone(),
+            registry_entry: request.registry_entry.clone(),
+            registry_artifact_id: request.registry_artifact_id.clone(),
+            output: import_output.clone(),
+        };
+        match crate::model_package_bundle::import_model_package_bundle(&import_options).and_then(
+            |report| {
+                crate::model_package_bundle::write_model_package_bundle_import_report(
+                    &report,
+                    &import_output,
+                )?;
+                Ok(report)
+            },
+        ) {
+            Ok(report) => {
+                let report_path = import_output.join("model_package_bundle_import.json");
+                outcome
+                    .artifacts
+                    .push(report_path.to_string_lossy().to_string());
+                if report.result != "pass" {
+                    outcome.findings.push(bundle_import_finding(
+                        request,
+                        &import_output,
+                        &report.result,
+                        "Model package bundle import pipeline did not pass.",
+                    ));
+                }
+            }
+            Err(error) => outcome.findings.push(bundle_import_finding(
+                request,
+                &import_output,
+                "error",
+                &format!("Model package bundle import failed: {error:#}."),
+            )),
+        }
+    }
+}
+
+fn unique_bundle_import_id(
+    request: &ValidationBundleImportRequest,
+    index: usize,
+    used_ids: &mut BTreeSet<String>,
+) -> String {
+    let candidate = request
+        .id
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            request
+                .bundle
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "bundle".to_string());
+    let base = sanitize_bundle_import_id(&candidate);
+    let mut id = format!("{:02}_{}", index + 1, base);
+    while !used_ids.insert(id.clone()) {
+        id = format!("{:02}_{}_{}", index + 1, base, used_ids.len() + 1);
+    }
+    id
+}
+
+fn sanitize_bundle_import_id(value: &str) -> String {
+    let mut sanitized = String::new();
+    for ch in value.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+    let trimmed = sanitized.trim_matches('_');
+    if trimmed.is_empty() {
+        "bundle".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn bundle_import_finding(
+    request: &ValidationBundleImportRequest,
+    import_output: &Path,
+    result: &str,
+    message: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        "MODEL_PACKAGE_BUNDLE_IMPORT_FAILED",
+        "model_package_bundle_import",
+        message,
+    );
+    finding.measured.insert(
+        "bundle".to_string(),
+        serde_json::Value::String(request.bundle.to_string_lossy().to_string()),
+    );
+    finding.measured.insert(
+        "install_dir".to_string(),
+        serde_json::Value::String(request.install_dir.to_string_lossy().to_string()),
+    );
+    finding.measured.insert(
+        "output".to_string(),
+        serde_json::Value::String(import_output.to_string_lossy().to_string()),
+    );
+    finding.measured.insert(
+        "result".to_string(),
+        serde_json::Value::String(result.to_string()),
+    );
+    finding.suggested_fixes.push(
+        "Verify the model-package bundle, install destination, registry output, and project model-file match before relying on package-qualified compact models."
+            .to_string(),
+    );
+    finding
 }
 
 fn evaluate_case(

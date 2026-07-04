@@ -235,6 +235,23 @@ YAML repair all pass. When the import report is retained as a validation
 artifact, it projects into `model_package_bundle_imports[]` with scenario pins,
 subreport paths, repaired project path, and repair counts.
 
+To retain that same pipeline evidence from a normal validation run, pass a
+repeatable bundle-import spec:
+
+```bash
+circuitci validate path/to/project.yaml \
+  --output out/project_validation \
+  --model-package-bundle-import \
+    bundle=dist/tiny_resistor_bundle,install_dir=third_party/models/tiny_resistor,registry_output=third_party/models/compact_model_registry.json
+```
+
+Validation writes each retained import under
+`<validation-output>/model_package_bundle_imports/<id>/`, adds the generated
+`model_package_bundle_import.json` to `artifacts[]`, and fails closed with
+`MODEL_PACKAGE_BUNDLE_IMPORT_FAILED` if the requested import pipeline does not
+pass. Optional spec keys are `id`, `registry_entry`, and
+`registry_artifact_id`.
+
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.
 Scenario-level `analog.model_files[]` may inline lock metadata or import a

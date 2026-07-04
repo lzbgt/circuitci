@@ -1,6 +1,9 @@
 use crate::repair_yaml::{BoardYamlRepairFindingKind, BoardYamlRepairOptions};
 use crate::reports::write_suite_reports;
-use crate::suite::{run_suite, validate_and_write_project_report};
+use crate::suite::{
+    ValidationBundleImportRequest, ValidationReportOptions, run_suite,
+    validate_and_write_project_report, validate_and_write_project_report_with_options,
+};
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_yaml_ng::{Mapping, Value};
@@ -28,6 +31,8 @@ enum Command {
         output: PathBuf,
         #[arg(long)]
         json: Option<PathBuf>,
+        #[arg(long = "model-package-bundle-import")]
+        model_package_bundle_imports: Vec<String>,
         #[arg(long)]
         no_open_ui: bool,
     },
@@ -389,8 +394,9 @@ pub fn run() -> Result<()> {
             profile,
             output,
             json,
+            model_package_bundle_imports,
             no_open_ui: _,
-        }) => run_validate(project, profile, output, json),
+        }) => run_validate(project, profile, output, json, model_package_bundle_imports),
         Some(Command::ValidateSuite { manifest, output }) => run_validate_suite(manifest, output),
         Some(Command::VerifyModelPackage {
             lock,
@@ -982,6 +988,58 @@ fn parse_model_package_artifact_spec(
         artifact_format: artifact_format
             .context("--package-artifact requires artifact_format=<format>.")?,
         compiler,
+    })
+}
+
+fn parse_validation_bundle_import_spec(spec: &str) -> Result<ValidationBundleImportRequest> {
+    let mut id = None;
+    let mut bundle = None;
+    let mut install_dir = None;
+    let mut registry_output = None;
+    let mut registry_entry = None;
+    let mut registry_artifact_id = None;
+    let mut seen = std::collections::BTreeSet::new();
+    for piece in spec.split(',') {
+        let Some((raw_key, raw_value)) = piece.split_once('=') else {
+            bail!("Invalid --model-package-bundle-import segment {piece:?}; expected key=value.");
+        };
+        let key = raw_key.trim();
+        let value = raw_value.trim();
+        if key.is_empty() || value.is_empty() {
+            bail!(
+                "Invalid --model-package-bundle-import segment {piece:?}; keys and values must be non-empty."
+            );
+        }
+        let canonical_key = match key {
+            "id" => "id",
+            "bundle" | "bundle_path" | "path" => "bundle",
+            "install_dir" | "install" => "install_dir",
+            "registry_output" | "registry" => "registry_output",
+            "registry_entry" | "entry" => "registry_entry",
+            "registry_artifact_id" | "artifact_id" => "registry_artifact_id",
+            _ => bail!("Unknown --model-package-bundle-import key {key:?}."),
+        };
+        if !seen.insert(canonical_key) {
+            bail!("Duplicate --model-package-bundle-import key {canonical_key:?}.");
+        }
+        match canonical_key {
+            "id" => id = Some(value.to_string()),
+            "bundle" => bundle = Some(PathBuf::from(value)),
+            "install_dir" => install_dir = Some(PathBuf::from(value)),
+            "registry_output" => registry_output = Some(PathBuf::from(value)),
+            "registry_entry" => registry_entry = Some(value.to_string()),
+            "registry_artifact_id" => registry_artifact_id = Some(value.to_string()),
+            _ => unreachable!(),
+        }
+    }
+    Ok(ValidationBundleImportRequest {
+        id,
+        bundle: bundle.context("--model-package-bundle-import requires bundle=<path>.")?,
+        install_dir: install_dir
+            .context("--model-package-bundle-import requires install_dir=<path>.")?,
+        registry_output,
+        registry_entry,
+        registry_artifact_id,
     })
 }
 
@@ -1694,14 +1752,30 @@ fn run_validate(
     profile: String,
     output: PathBuf,
     json: Option<PathBuf>,
+    model_package_bundle_imports: Vec<String>,
 ) -> Result<()> {
-    let command = format!(
+    let mut command = format!(
         "circuitci validate {} --profile {} --output {}",
         project_path.display(),
         profile,
         output.display()
     );
-    let report = validate_and_write_project_report(&project_path, &profile, &output, command)?;
+    let bundle_imports = model_package_bundle_imports
+        .iter()
+        .map(|spec| parse_validation_bundle_import_spec(spec))
+        .collect::<Result<Vec<_>>>()?;
+    for spec in &model_package_bundle_imports {
+        command.push_str(&format!(" --model-package-bundle-import {}", spec));
+    }
+    let report = validate_and_write_project_report_with_options(
+        &project_path,
+        &profile,
+        &output,
+        command,
+        ValidationReportOptions {
+            model_package_bundle_imports: bundle_imports,
+        },
+    )?;
     if let Some(json_path) = json {
         let source_json = output.join("report.json");
         std::fs::create_dir_all(

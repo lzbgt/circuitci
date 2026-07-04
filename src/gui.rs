@@ -1527,6 +1527,7 @@ where
         profile,
         output,
         command,
+        crate::suite::ValidationReportOptions::default(),
         &mut on_progress,
         should_cancel,
     )?;

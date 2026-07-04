@@ -1484,6 +1484,12 @@ Bundle import pipeline reports use
 `circuitci import-model-package-bundle`. The pipeline report retains the
 source bundle verification, install, installed package verification, and YAML
 repair subreport paths plus the repaired project path and scenario-import pins.
+`circuitci validate --model-package-bundle-import
+bundle=<path>,install_dir=<path>[,registry_output=<path>]` can run that same
+pipeline during validation, retain
+`model_package_bundle_imports/<id>/model_package_bundle_import.json` as a
+normal artifact, and project it into `model_package_bundle_imports[]`. Requested
+imports that do not pass emit `MODEL_PACKAGE_BUNDLE_IMPORT_FAILED`.
 
 `POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
 declare a selected power-switch budget. Stable measured keys include

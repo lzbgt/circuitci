@@ -837,6 +837,55 @@ scenarios:
             .as_str()
             .is_some_and(|path| std::path::Path::new(path).is_file())
     );
+
+    let validate_output = dir.path().join("validate_with_bundle_import");
+    let validate_install_dir = dir.path().join("validate_installed_bundle");
+    let validate_registry = dir
+        .path()
+        .join("validate_shared/compact_model_registry.json");
+    let validate_import_spec = format!(
+        "id=bundle_fixture,bundle={},install_dir={},registry_output={}",
+        bundle_dir.to_str().unwrap(),
+        validate_install_dir.to_str().unwrap(),
+        validate_registry.to_str().unwrap()
+    );
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            import_project.to_str().unwrap(),
+            "--output",
+            validate_output.to_str().unwrap(),
+            "--model-package-bundle-import",
+            &validate_import_spec,
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+    let validation_report: Value =
+        serde_json::from_str(&fs::read_to_string(validate_output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(validation_report["result"], "pass");
+    let imports = validation_report["model_package_bundle_imports"]
+        .as_array()
+        .unwrap();
+    assert_eq!(imports.len(), 1);
+    assert_eq!(imports[0]["result"], "pass");
+    assert_eq!(imports[0]["repair_applied"], 1);
+    assert_eq!(
+        imports[0]["model_package_registry_entry"],
+        "bundle_fixture_runtime"
+    );
+    let retained_import_report = validate_output
+        .join("model_package_bundle_imports/01_bundle_fixture/model_package_bundle_import.json");
+    assert!(retained_import_report.is_file());
+    assert!(
+        validation_report["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact.as_str()
+                == Some(retained_import_report.to_string_lossy().as_ref()))
+    );
 }
 
 #[test]

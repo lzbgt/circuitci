@@ -824,6 +824,13 @@ The GUI should not become the solver.
   repaired project copy, and retain all subreport paths as one reproducible
   pipeline artifact. Validation reports project retained import reports into
   `model_package_bundle_imports[]` and GUI bundle-import summary rows.
+- Added `circuitci validate --model-package-bundle-import
+  bundle=<path>,install_dir=<path>[,registry_output=<path>]` so a normal
+  validation run can execute and retain that same bundle import pipeline under
+  the validation output directory. Requested imports project through
+  `model_package_bundle_imports[]` and fail closed with
+  `MODEL_PACKAGE_BUNDLE_IMPORT_FAILED` if bundle verification, install,
+  installed-package verification, or YAML repair does not pass.
 
 ## Risks
 
