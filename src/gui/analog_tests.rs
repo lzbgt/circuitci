@@ -1,15 +1,17 @@
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
-    AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogExpressionProbeDraft,
-    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
-    AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
-    AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
-    AnalogSParameterNoiseAssertionDraft, AnalogSParameterReflectionDraft, AnalogScenarioDraft,
-    AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
-    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
-    append_analog_assertion, append_analog_current_probe,
-    append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
-    append_analog_expression_probe, append_analog_harmonic_balance_scenario_with_project_path,
+    AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogDistortionScenarioDraft,
+    AnalogExpressionProbeDraft, AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft,
+    AnalogPoleZeroScenarioDraft, AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft,
+    AnalogProbeDraft, AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft,
+    AnalogSParameterNetworkAssertionDraft, AnalogSParameterNoiseAssertionDraft,
+    AnalogSParameterReflectionDraft, AnalogScenarioDraft, AnalogSensitivityScenarioDraft,
+    AnalogTransferFunctionScenarioDraft, analog_probe_assertion_summaries,
+    append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
+    append_analog_dc_sweep_scenario_with_project_path,
+    append_analog_distortion_scenario_with_project_path, append_analog_expression_probe,
+    append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
     append_analog_pole_zero_scenario_with_project_path, append_analog_power_probe,
     append_analog_sensitivity_scenario_with_project_path, append_analog_sparameter_assertion,
@@ -686,6 +688,158 @@ fn append_analog_sensitivity_scenario_rejects_unknown_filter() {
         error
             .to_string()
             .contains("Sensitivity filter MISSING_COMPONENT")
+    );
+}
+
+#[test]
+fn append_analog_distortion_scenario_emits_valid_harmonic_yaml() {
+    let draft = AnalogDistortionScenarioDraft {
+        name: "gui_disto".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_disto".to_string(),
+        mode: "harmonic".to_string(),
+        start_frequency_hz: 10.0,
+        stop_frequency_hz: 100_000.0,
+        points_per_decade: 20,
+        f1_sources: vec!["V1".to_string()],
+        f2_sources: vec![],
+        f2_over_f1: None,
+    };
+    let edited = append_analog_distortion_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_distortion/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(project.scenarios.len(), 1);
+    let scenario = &project.scenarios[0];
+    assert_eq!(scenario.name, "gui_disto");
+    assert_eq!(scenario.scenario_type, "analog_distortion");
+    assert_eq!(
+        scenario.checks,
+        vec!["SPICE_DISTORTION_ANALYSIS".to_string()]
+    );
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
+    assert_eq!(analog.analysis.analysis_type, "disto");
+    assert_eq!(analog.analysis.distortion_mode.as_deref(), Some("harmonic"));
+    assert_eq!(analog.analysis.distortion_start_frequency_hz, Some(10.0));
+    assert_eq!(
+        analog.analysis.distortion_stop_frequency_hz,
+        Some(100_000.0)
+    );
+    assert_eq!(analog.analysis.distortion_points_per_decade, Some(20));
+    assert_eq!(
+        analog.analysis.distortion_output_expression.as_deref(),
+        Some("V(out)")
+    );
+    assert_eq!(
+        analog.analysis.distortion_f1_sources,
+        vec!["V1".to_string()]
+    );
+    assert!(analog.analysis.distortion_f2_sources.is_empty());
+    assert_eq!(analog.analysis.distortion_f2_over_f1, None);
+    assert_eq!(analog.probes[0].name, "out_disto");
+    assert_eq!(analog.probes[0].expression, "V(out)");
+}
+
+#[test]
+fn append_analog_distortion_scenario_emits_valid_intermodulation_yaml() {
+    let project_yaml = editable_project_yaml().replace(
+        "    R1:\n",
+        "    V2:\n      model: generic.analog.dc_voltage_source\n      spice:\n        primitive: dc_voltage_source\n        dc_v: 0.5\n      pins:\n        P: out\n        N: gnd\n    R1:\n",
+    );
+    let draft = AnalogDistortionScenarioDraft {
+        name: "gui_imd".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_imd".to_string(),
+        mode: "intermodulation".to_string(),
+        start_frequency_hz: 10.0,
+        stop_frequency_hz: 100_000.0,
+        points_per_decade: 20,
+        f1_sources: vec!["V1".to_string()],
+        f2_sources: vec!["V2".to_string()],
+        f2_over_f1: Some(0.9),
+    };
+    let edited = append_analog_distortion_scenario_with_project_path(
+        &project_yaml,
+        Path::new("examples/generated_distortion/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let analog = project.scenarios[0].analog.as_ref().unwrap();
+    assert_eq!(
+        analog.analysis.distortion_mode.as_deref(),
+        Some("intermodulation")
+    );
+    assert_eq!(
+        analog.analysis.distortion_f1_sources,
+        vec!["V1".to_string()]
+    );
+    assert_eq!(
+        analog.analysis.distortion_f2_sources,
+        vec!["V2".to_string()]
+    );
+    assert_eq!(analog.analysis.distortion_f2_over_f1, Some(0.9));
+}
+
+#[test]
+fn append_analog_distortion_scenario_rejects_intermodulation_without_f2() {
+    let draft = AnalogDistortionScenarioDraft {
+        name: "gui_imd".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_imd".to_string(),
+        mode: "intermodulation".to_string(),
+        start_frequency_hz: 10.0,
+        stop_frequency_hz: 100_000.0,
+        points_per_decade: 20,
+        f1_sources: vec!["V1".to_string()],
+        f2_sources: vec![],
+        f2_over_f1: Some(0.9),
+    };
+    let error = append_analog_distortion_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_distortion/project.yaml"),
+        &draft,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("Intermodulation distortion requires at least one F2 source")
+    );
+}
+
+#[test]
+fn append_analog_distortion_scenario_rejects_unknown_source() {
+    let draft = AnalogDistortionScenarioDraft {
+        name: "gui_disto".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_disto".to_string(),
+        mode: "harmonic".to_string(),
+        start_frequency_hz: 10.0,
+        stop_frequency_hz: 100_000.0,
+        points_per_decade: 20,
+        f1_sources: vec!["MISSING_SOURCE".to_string()],
+        f2_sources: vec![],
+        f2_over_f1: None,
+    };
+    let error = append_analog_distortion_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_distortion/project.yaml"),
+        &draft,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("Distortion source MISSING_SOURCE")
     );
 }
 

@@ -980,7 +980,11 @@ The GUI should not become the solver.
   `max_magnitude` limits from the normalized summary artifact, including
   fail-closed behavior for missing harmonic or intermodulation components. The
   GUI Distortion Check editor now authors and hydrates failed
-  `distortion_assertions[]` entries.
+  `distortion_assertions[]` entries. The GUI Run Setup editor now authors
+  generated-from-board `analog_distortion` scenarios with
+  harmonic/intermodulation mode, selected output probe net, frequency sweep
+  bounds, F1 source, and F2 source plus F2/F1 ratio when intermodulation mode is
+  selected.
   `distortion_backend_evidence.md` records the primary ngspice
   manual/source evidence, the real-ngspice conformance hook, and why Xyce,
   QUCS-S, and SPICE OPUS remain blocked. Non-ngspice fail-closed findings now

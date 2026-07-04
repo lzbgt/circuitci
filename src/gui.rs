@@ -59,6 +59,7 @@ mod simulation_hb_assertions;
 mod simulation_measure_assertions;
 mod simulation_pole_zero_assertions;
 mod simulation_probe_assertions;
+mod simulation_run_setup_actions;
 mod simulation_run_setup_controls;
 mod simulation_sensitivity_assertions;
 mod simulation_sparameter_assertions;
@@ -400,6 +401,10 @@ pub struct CircuitCiApp {
     analog_pole_zero_mode: String,
     analog_sensitivity_mode: String,
     analog_sensitivity_filters: String,
+    analog_distortion_mode: String,
+    analog_distortion_f1_source: String,
+    analog_distortion_f2_source: String,
+    analog_distortion_f2_over_f1: f64,
     analog_fourier_fundamental_frequency_hz: f64,
     analog_fourier_harmonics: u32,
     analog_hb_fundamental_frequency_hz: f64,
@@ -741,6 +746,10 @@ impl Default for CircuitCiApp {
             analog_pole_zero_mode: "poles_and_zeros".to_string(),
             analog_sensitivity_mode: "dc".to_string(),
             analog_sensitivity_filters: String::new(),
+            analog_distortion_mode: "harmonic".to_string(),
+            analog_distortion_f1_source: "V1".to_string(),
+            analog_distortion_f2_source: "V1".to_string(),
+            analog_distortion_f2_over_f1: 0.9,
             analog_fourier_fundamental_frequency_hz: 100_000.0,
             analog_fourier_harmonics: 10,
             analog_hb_fundamental_frequency_hz: 100_000.0,

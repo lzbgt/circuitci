@@ -86,6 +86,22 @@ pub(super) fn sensitivity_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
         });
 }
 
+pub(super) fn distortion_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
+    if !matches!(selected.as_str(), "harmonic" | "intermodulation") {
+        *selected = "harmonic".to_string();
+    }
+    let selected_label = match selected.as_str() {
+        "intermodulation" => "Intermodulation",
+        _ => "Harmonic",
+    };
+    egui::ComboBox::from_id_salt("analog_distortion_mode")
+        .selected_text(selected_label)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(selected, "harmonic".to_string(), "Harmonic");
+            ui.selectable_value(selected, "intermodulation".to_string(), "Intermodulation");
+        });
+}
+
 pub(super) fn initialize_sensitivity_filters_default(
     snapshot: &ProjectSnapshot,
     selected: &mut String,

@@ -437,6 +437,11 @@ Sensitivity creation writes a normal `analog_sensitivity` scenario with
 `analysis: {type: sens}`, selected output probe net, DC or AC sensitivity mode,
 optional AC frequency sweep bounds, explicit parameter filters, generated board
 component inclusion, ground binding, and model-file inference.
+Distortion creation writes a normal `analog_distortion` scenario with
+`analysis: {type: disto}`, selected output probe net, harmonic or
+intermodulation mode, frequency sweep bounds, selected F1 source, optional F2
+source plus F2/F1 ratio for intermodulation, generated board component
+inclusion, ground binding, and model-file inference.
 The Fourier Check editor writes `analysis.fourier_assertions[]` for harmonic
 magnitude, normalized magnitude, phase, normalized phase, or THD-percent
 limits, and Fourier report failure actions load the failed check back into that

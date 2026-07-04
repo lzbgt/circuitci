@@ -13,10 +13,12 @@ use super::analog_branches::{current_probe_expression, power_probe_expression};
 pub(super) use super::analog_run_setup::append_analog_transient_scenario;
 pub(super) use super::analog_run_setup::{
     AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft,
-    AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft,
-    AnalogPoleZeroScenarioDraft, AnalogScenarioDraft, AnalogSensitivityScenarioDraft,
-    AnalogTransferFunctionScenarioDraft, append_analog_ac_scenario_with_project_path,
-    append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
+    AnalogDistortionScenarioDraft, AnalogFourierScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
+    AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft, AnalogScenarioDraft,
+    AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
+    append_analog_ac_scenario_with_project_path, append_analog_dc_scenario_with_project_path,
+    append_analog_dc_sweep_scenario_with_project_path,
+    append_analog_distortion_scenario_with_project_path,
     append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,

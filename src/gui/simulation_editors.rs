@@ -1,18 +1,7 @@
 use super::CircuitCiApp;
 use super::analog::{
-    AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
-    AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogFourierScenarioDraft,
-    AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
-    AnalogScenarioDraft, AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
-    analog_scenario_choices, append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
-    append_analog_fourier_scenario_with_project_path,
-    append_analog_harmonic_balance_scenario_with_project_path,
-    append_analog_noise_scenario_with_project_path,
-    append_analog_pole_zero_scenario_with_project_path,
-    append_analog_sensitivity_scenario_with_project_path,
-    append_analog_transfer_function_scenario_with_project_path,
-    append_analog_transient_scenario_with_project_path, replace_analog_assertion,
+    AnalogAssertionDraft, AnalogAssertionReplaceDraft, analog_scenario_choices,
+    append_analog_assertion, replace_analog_assertion,
 };
 use super::analog_ac_presets::{analog_ac_assertion_presets, append_analog_ac_assertion_preset};
 use super::analog_dc_presets::{analog_dc_assertion_presets, append_analog_dc_assertion_preset};
@@ -35,9 +24,9 @@ use super::analog_stimulus::{
 };
 use super::simulation_forms::*;
 use super::simulation_run_setup_controls::{
-    generated_noise_source_combo, initialize_noise_source_default,
+    distortion_mode_combo, generated_noise_source_combo, initialize_noise_source_default,
     initialize_sensitivity_filters_default, noise_source_combo, pole_zero_mode_combo,
-    sensitivity_filters_from_text, sensitivity_mode_combo,
+    sensitivity_mode_combo,
 };
 use super::sketch::ProjectSnapshot;
 use eframe::egui;
@@ -64,6 +53,7 @@ impl CircuitCiApp {
                             "tf" => "Transfer Function",
                             "pz" => "Pole-Zero",
                             "sens" => "Sensitivity",
+                            "disto" => "Distortion",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -104,6 +94,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "sens".to_string(),
                                 "Sensitivity",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "disto".to_string(),
+                                "Distortion",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -320,6 +315,72 @@ impl CircuitCiApp {
                         ui.label("Parameters");
                         ui.text_edit_singleline(&mut self.analog_sensitivity_filters);
                         ui.end_row();
+                    } else if self.analog_run_setup_kind == "disto" {
+                        initialize_noise_source_default(
+                            snapshot,
+                            &mut self.analog_distortion_f1_source,
+                        );
+                        initialize_noise_source_default(
+                            snapshot,
+                            &mut self.analog_distortion_f2_source,
+                        );
+                        ui.label("Mode");
+                        distortion_mode_combo(ui, &mut self.analog_distortion_mode);
+                        ui.end_row();
+
+                        ui.label("Start frequency");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_start_frequency_hz)
+                                .speed(10.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Stop frequency");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stop_frequency_hz)
+                                .speed(100.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Points/decade");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_points_per_decade)
+                                .speed(1.0)
+                                .range(1..=1000),
+                        );
+                        ui.end_row();
+
+                        ui.label("F1 source");
+                        noise_source_combo(
+                            ui,
+                            "analog_distortion_f1_source",
+                            &mut self.analog_distortion_f1_source,
+                            snapshot,
+                        );
+                        ui.end_row();
+
+                        if self.analog_distortion_mode == "intermodulation" {
+                            ui.label("F2 source");
+                            noise_source_combo(
+                                ui,
+                                "analog_distortion_f2_source",
+                                &mut self.analog_distortion_f2_source,
+                                snapshot,
+                            );
+                            ui.end_row();
+
+                            ui.label("F2/F1");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_distortion_f2_over_f1)
+                                    .speed(0.01)
+                                    .range(1.0e-12..=0.999999),
+                            );
+                            ui.end_row();
+                        }
                     } else if self.analog_run_setup_kind == "dc_sweep" {
                         initialize_noise_source_default(snapshot, &mut self.analog_dc_sweep_source);
                         ui.label("Sweep source");
@@ -1363,247 +1424,6 @@ impl CircuitCiApp {
                 });
             }
         });
-    }
-
-    fn apply_add_analog_scenario(&mut self) {
-        if self.analog_run_setup_kind == "ac" {
-            let draft = AnalogAcScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                start_frequency_hz: self.analog_start_frequency_hz,
-                stop_frequency_hz: self.analog_stop_frequency_hz,
-                points_per_decade: self.analog_points_per_decade,
-            };
-            match append_analog_ac_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "AC/Bode run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "dc" {
-            let draft = AnalogDcScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-            };
-            match append_analog_dc_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "DC operating-point run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "dc_sweep" {
-            let draft = AnalogDcSweepScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                source: self.analog_dc_sweep_source.clone(),
-                start: self.analog_dc_sweep_start,
-                stop: self.analog_dc_sweep_stop,
-                step: self.analog_dc_sweep_step,
-            };
-            match append_analog_dc_sweep_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "DC sweep run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "tf" {
-            let draft = AnalogTransferFunctionScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                input_source: self.analog_transfer_function_input_source.clone(),
-            };
-            match append_analog_transfer_function_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Transfer-function run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "pz" {
-            let draft = AnalogPoleZeroScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                input_source: self.analog_pole_zero_input_source.clone(),
-                mode: self.analog_pole_zero_mode.clone(),
-            };
-            match append_analog_pole_zero_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Pole-zero run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "sens" {
-            let draft = AnalogSensitivityScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                mode: self.analog_sensitivity_mode.clone(),
-                start_frequency_hz: self.analog_start_frequency_hz,
-                stop_frequency_hz: self.analog_stop_frequency_hz,
-                points_per_decade: self.analog_points_per_decade,
-                filters: sensitivity_filters_from_text(&self.analog_sensitivity_filters),
-            };
-            match append_analog_sensitivity_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Sensitivity run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "noise" {
-            let input_probe = format!("{}_input", self.analog_probe_name.trim());
-            let draft = AnalogNoiseScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                output_probe_name: self.analog_probe_name.clone(),
-                input_probe_name: input_probe,
-                input_source: self.analog_noise_input_source.clone(),
-                start_frequency_hz: self.analog_start_frequency_hz,
-                stop_frequency_hz: self.analog_stop_frequency_hz,
-                points_per_decade: self.analog_points_per_decade,
-            };
-            match append_analog_noise_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Noise run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "fourier" {
-            let draft = AnalogFourierScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                stop_time_us: self.analog_stop_time_us,
-                max_step_us: self.analog_max_step_us,
-                fundamental_frequency_hz: self.analog_fourier_fundamental_frequency_hz,
-                harmonics: self.analog_fourier_harmonics,
-            };
-            match append_analog_fourier_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Fourier run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else if self.analog_run_setup_kind == "hb" {
-            let draft = AnalogHarmonicBalanceScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                fundamental_frequency_hz: self.analog_hb_fundamental_frequency_hz,
-                harmonics: self.analog_hb_harmonics,
-                drive_source: self.analog_hb_drive_source.clone(),
-            };
-            match append_analog_harmonic_balance_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Harmonic-balance run setup {} added.",
-                        self.analog_scenario_name.trim()
-                    ),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        } else {
-            let draft = AnalogScenarioDraft {
-                name: self.analog_scenario_name.clone(),
-                ground_net: self.analog_ground_net.clone(),
-                probe_net: self.analog_probe_net.clone(),
-                probe_name: self.analog_probe_name.clone(),
-                stop_time_us: self.analog_stop_time_us,
-                max_step_us: self.analog_max_step_us,
-            };
-            match append_analog_transient_scenario_with_project_path(
-                &self.project_yaml,
-                Path::new(&self.project_path),
-                &draft,
-            ) {
-                Ok(updated) => self.apply_edited_project_yaml(
-                    updated,
-                    &format!("Run setup {} added.", self.analog_scenario_name.trim()),
-                ),
-                Err(error) => self.record_error(error),
-            }
-        }
     }
 
     fn apply_add_analog_assertion(&mut self) {

@@ -338,7 +338,10 @@ Current analog support:
   is absent. Validation reports project `distortion_summary.csv` rows into
   `distortion_summaries[]`, and Scopes recognizes `distortion_spectrum.csv` as
   frequency-axis magnitude/phase/real/imaginary traces grouped by distortion
-  component. The GUI Distortion Check editor authors
+  component. The GUI Run Setup editor can author generated-from-board
+  `analog_distortion` scenarios with harmonic/intermodulation mode, frequency
+  sweep bounds, selected output probe net, F1 source, and F2 source plus
+  F2/F1 ratio for intermodulation. The GUI Distortion Check editor authors
   `analysis.distortion_assertions[]` entries and failure actions hydrate the
   component, relation, and threshold from retained findings.
   Opt-in real-ngspice conformance is available through

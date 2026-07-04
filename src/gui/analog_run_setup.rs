@@ -77,6 +77,21 @@ pub(super) struct AnalogSensitivityScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogDistortionScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) mode: String,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
+    pub(super) f1_sources: Vec<String>,
+    pub(super) f2_sources: Vec<String>,
+    pub(super) f2_over_f1: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -267,6 +282,31 @@ pub(super) fn append_analog_sensitivity_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_distortion_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogDistortionScenarioDraft,
+) -> Result<String> {
+    validate_distortion_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::Distortion {
+            mode: draft.mode.trim().to_string(),
+            start_frequency_hz: draft.start_frequency_hz,
+            stop_frequency_hz: draft.stop_frequency_hz,
+            points_per_decade: draft.points_per_decade,
+            f1_sources: trim_nonempty_values(&draft.f1_sources),
+            f2_sources: trim_nonempty_values(&draft.f2_sources),
+            f2_over_f1: draft.f2_over_f1,
+        },
+    )
+}
+
 pub(super) fn append_analog_noise_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -403,6 +443,20 @@ fn append_generated_analog_scenario_with_project_path(
             if !declared.contains(':') && !project.board.components.contains_key(declared) {
                 anyhow::bail!(
                     "Sensitivity filter {declared} must be an included board component or explicit backend parameter."
+                );
+            }
+        }
+    }
+    if let GeneratedAnalogScenarioKind::Distortion {
+        f1_sources,
+        f2_sources,
+        ..
+    } = &kind
+    {
+        for source in f1_sources.iter().chain(f2_sources.iter()) {
+            if !noise_input_source_exists(&project, source) {
+                anyhow::bail!(
+                    "Distortion source {source} must be an included voltage or current source component."
                 );
             }
         }
@@ -570,6 +624,60 @@ fn validate_sensitivity_draft(draft: &AnalogSensitivityScenarioDraft) -> Result<
     Ok(())
 }
 
+fn validate_distortion_draft(draft: &AnalogDistortionScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    validate_frequency_range(
+        draft.start_frequency_hz,
+        draft.stop_frequency_hz,
+        draft.points_per_decade,
+        "Analog distortion",
+    )?;
+    for source in trim_nonempty_values(&draft.f1_sources) {
+        validated_id(&source, "distortion F1 source")?;
+    }
+    for source in trim_nonempty_values(&draft.f2_sources) {
+        validated_id(&source, "distortion F2 source")?;
+    }
+    if draft
+        .f1_sources
+        .iter()
+        .all(|source| source.trim().is_empty())
+    {
+        anyhow::bail!("Distortion F1 sources must include at least one source.");
+    }
+    match draft.mode.trim() {
+        "harmonic" => {
+            if draft.f2_over_f1.is_some() {
+                anyhow::bail!("Harmonic distortion mode must not set f2_over_f1.");
+            }
+        }
+        "intermodulation" => {
+            if draft
+                .f2_sources
+                .iter()
+                .all(|source| source.trim().is_empty())
+            {
+                anyhow::bail!("Intermodulation distortion requires at least one F2 source.");
+            }
+            match draft.f2_over_f1 {
+                Some(ratio) if ratio.is_finite() && ratio > 0.0 && ratio < 1.0 => {}
+                _ => {
+                    anyhow::bail!("Intermodulation distortion requires finite f2_over_f1 in 0..1.")
+                }
+            }
+        }
+        _ => anyhow::bail!("Distortion mode must be harmonic or intermodulation."),
+    }
+    Ok(())
+}
+
 fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.output_probe_name, "output noise probe name")?;
@@ -671,6 +779,15 @@ fn validated_id<'a>(value: &'a str, label: &str) -> Result<&'a str> {
         anyhow::bail!("{label} {value} contains unsupported characters.");
     }
     Ok(value)
+}
+
+fn trim_nonempty_values(values: &[String]) -> Vec<String> {
+    values
+        .iter()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .collect()
 }
 
 fn node_bindings_for_project(
@@ -787,6 +904,15 @@ enum GeneratedAnalogScenarioKind {
         points_per_decade: u32,
         filters: Vec<String>,
     },
+    Distortion {
+        mode: String,
+        start_frequency_hz: f64,
+        stop_frequency_hz: f64,
+        points_per_decade: u32,
+        f1_sources: Vec<String>,
+        f2_sources: Vec<String>,
+        f2_over_f1: Option<f64>,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -817,6 +943,7 @@ impl GeneratedAnalogScenarioKind {
             Self::TransferFunction { .. } => "analog_transfer_function",
             Self::PoleZero { .. } => "analog_pole_zero",
             Self::Sensitivity { .. } => "analog_sensitivity",
+            Self::Distortion { .. } => "analog_distortion",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -832,6 +959,7 @@ impl GeneratedAnalogScenarioKind {
             Self::TransferFunction { .. } => "SPICE_TRANSFER_FUNCTION_ANALYSIS",
             Self::PoleZero { .. } => "SPICE_POLE_ZERO_ANALYSIS",
             Self::Sensitivity { .. } => "SPICE_SENSITIVITY_ANALYSIS",
+            Self::Distortion { .. } => "SPICE_DISTORTION_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -1000,6 +1128,67 @@ fn analog_block(
                         .collect(),
                 ),
             );
+        }
+        GeneratedAnalogScenarioKind::Distortion {
+            mode,
+            start_frequency_hz,
+            stop_frequency_hz,
+            points_per_decade,
+            f1_sources,
+            f2_sources,
+            f2_over_f1,
+        } => {
+            insert_string(&mut analysis, "type", "disto");
+            insert_string(&mut analysis, "distortion_mode", mode);
+            insert_number(
+                &mut analysis,
+                "distortion_start_frequency_hz",
+                *start_frequency_hz,
+            )?;
+            insert_number(
+                &mut analysis,
+                "distortion_stop_frequency_hz",
+                *stop_frequency_hz,
+            )?;
+            analysis.insert(
+                key("distortion_points_per_decade"),
+                serde_yaml_ng::to_value(points_per_decade)
+                    .context("Failed to encode distortion_points_per_decade.")?,
+            );
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Distortion output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "distortion_output_expression",
+                &format!("V({output_node})"),
+            );
+            analysis.insert(
+                key("distortion_f1_sources"),
+                serde_yaml_ng::Value::Sequence(
+                    f1_sources
+                        .iter()
+                        .map(|source| serde_yaml_ng::Value::String(source.clone()))
+                        .collect(),
+                ),
+            );
+            if !f2_sources.is_empty() {
+                analysis.insert(
+                    key("distortion_f2_sources"),
+                    serde_yaml_ng::Value::Sequence(
+                        f2_sources
+                            .iter()
+                            .map(|source| serde_yaml_ng::Value::String(source.clone()))
+                            .collect(),
+                    ),
+                );
+            }
+            if let Some(ratio) = f2_over_f1 {
+                insert_number(&mut analysis, "distortion_f2_over_f1", *ratio)?;
+            }
         }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,
