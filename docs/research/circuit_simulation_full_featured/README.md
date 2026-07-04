@@ -702,7 +702,10 @@ The GUI should not become the solver.
   metadata pointing back to the retained Xyce HB evidence. `backend: auto`
   now prefers Xyce for HB even if ngspice is also installed, so available
   normalized HB evidence is used instead of selecting an unsupported ngspice
-  path.
+  path. The GUI Run Setup editor can now author generated-from-board
+  `analog_harmonic_balance` scenarios with `backend: auto`, a selected output
+  probe net, fundamental frequency, harmonic count, and selected drive source,
+  so users do not need to hand-edit YAML to reach the normalized Xyce HB path.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
   `analysis.s_parameter_assertions[]` now signs off normalized

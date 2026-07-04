@@ -359,7 +359,10 @@ Current analog support:
   complex spectrum rows into `hb_spectrum.csv`, and records the run in
   `solver_manifest.json`. The GUI Scopes loader recognizes `hb_spectrum.csv`
   artifacts and plots non-negative harmonic rows as frequency-axis magnitude,
-  phase, real, and imaginary traces. Opt-in real-Xyce conformance is available
+  phase, real, and imaginary traces. The GUI Run Setup editor can author
+  generated-from-board harmonic-balance scenarios with fundamental frequency,
+  harmonic count, selected output probe net, and selected drive source.
+  Opt-in real-Xyce conformance is available
   through `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test
   analog_harmonic_balance_cli`; it skips unless `Xyce` or `xyce` is on `PATH`.
   `backend: auto` is Xyce-first for this analysis because Xyce is the only

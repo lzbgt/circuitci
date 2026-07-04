@@ -1,12 +1,13 @@
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
-    AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogNoiseScenarioDraft,
-    AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
-    AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
-    AnalogSParameterNoiseAssertionDraft, AnalogSParameterReflectionDraft, AnalogScenarioDraft,
-    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
-    append_analog_assertion, append_analog_current_probe,
-    append_analog_dc_scenario_with_project_path, append_analog_expression_probe,
+    AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogHarmonicBalanceScenarioDraft,
+    AnalogNoiseScenarioDraft, AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft,
+    AnalogProbeDraft, AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft,
+    AnalogSParameterNetworkAssertionDraft, AnalogSParameterNoiseAssertionDraft,
+    AnalogSParameterReflectionDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
+    append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
+    append_analog_expression_probe, append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path, append_analog_power_probe,
     append_analog_sparameter_assertion, append_analog_sparameter_network_assertion,
     append_analog_sparameter_noise_assertion, append_analog_transient_scenario,
@@ -383,6 +384,72 @@ fn append_analog_noise_scenario_emits_valid_yaml() {
     assert_eq!(analog.probes[1].name, "inoise");
     assert_eq!(analog.probes[1].expression, "V(rail_5v)");
     assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_harmonic_balance_scenario_emits_valid_yaml() {
+    let draft = AnalogHarmonicBalanceScenarioDraft {
+        name: "gui_hb".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_hb".to_string(),
+        fundamental_frequency_hz: 100_000.0,
+        harmonics: 12,
+        drive_source: "V1".to_string(),
+    };
+    let edited = append_analog_harmonic_balance_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_hb/project.yaml"),
+        &draft,
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    assert_eq!(project.scenarios.len(), 1);
+    let scenario = &project.scenarios[0];
+    assert_eq!(scenario.name, "gui_hb");
+    assert_eq!(scenario.scenario_type, "analog_harmonic_balance");
+    assert_eq!(
+        scenario.checks,
+        vec!["SPICE_HARMONIC_BALANCE_ANALYSIS".to_string()]
+    );
+    let analog = scenario.analog.as_ref().unwrap();
+    assert_eq!(analog.backend, crate::board_ir::AnalogBackend::Auto);
+    assert_eq!(analog.generated.as_ref().unwrap().ground_net, "gnd");
+    assert_eq!(analog.analysis.analysis_type, "hb");
+    assert_eq!(analog.analysis.hb_fundamental_frequency_hz, Some(100_000.0));
+    assert_eq!(analog.analysis.hb_harmonics, Some(12));
+    assert_eq!(
+        analog.analysis.hb_output_expression.as_deref(),
+        Some("V(out)")
+    );
+    assert_eq!(analog.analysis.hb_drive_sources, vec!["V1".to_string()]);
+    assert_eq!(analog.probes[0].name, "out_hb");
+    assert_eq!(analog.probes[0].expression, "V(out)");
+    assert!(analog.assertions.is_empty());
+}
+
+#[test]
+fn append_analog_harmonic_balance_scenario_rejects_missing_drive_source() {
+    let draft = AnalogHarmonicBalanceScenarioDraft {
+        name: "gui_hb".to_string(),
+        ground_net: "gnd".to_string(),
+        probe_net: "out".to_string(),
+        probe_name: "out_hb".to_string(),
+        fundamental_frequency_hz: 100_000.0,
+        harmonics: 12,
+        drive_source: "MISSING_SOURCE".to_string(),
+    };
+    let error = append_analog_harmonic_balance_scenario_with_project_path(
+        editable_project_yaml(),
+        Path::new("examples/generated_hb/project.yaml"),
+        &draft,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("Harmonic-balance drive source MISSING_SOURCE")
+    );
 }
 
 #[test]

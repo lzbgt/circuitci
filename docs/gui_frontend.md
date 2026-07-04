@@ -384,7 +384,7 @@ scope-run preparation.
 editors. `src/gui/simulation_probe_assertions.rs` owns the selected-probe check
 table and canvas-triggered assertion add/clear/quick-threshold actions.
 `src/gui/analog_run_setup.rs` owns generated transient, AC/Bode,
-DC operating-point, and noise
+DC operating-point, noise, and harmonic-balance
 run-setup YAML creation, including model-file inference and generated SPICE
 node/pin bindings. `src/gui/simulation_sweeps.rs`
 owns the user-facing Run Input Sweeps panel. Sweep creation is
@@ -404,7 +404,7 @@ targets can be added or removed while keeping at least one target. The same
 panel can set or clear minimum yield percent and P1/P5/P50/P95 margin criteria,
 all serialized as ordinary `analog.sweeps[].monte_carlo` data.
 The run-setup editor can create generated transient, AC/Bode, DC
-operating-point, or noise observations. AC/Bode creation writes a normal `analog_ac`
+operating-point, noise, or harmonic-balance observations. AC/Bode creation writes a normal `analog_ac`
 scenario with start/stop frequency, points per decade, generated board
 component inclusion, ground binding, and an initial voltage probe. DC creation
 writes a normal `analog_dc` scenario with `analysis: {type: op}`, generated
@@ -413,7 +413,11 @@ bias observations can be authored from the GUI without a hand-authored SPICE
 deck. Noise creation writes a normal `analog_noise` scenario with
 `analysis: {type: noise}`, a selected output net, selected input source,
 start/stop frequency, points per decade, output/input noise probes, generated
-board component inclusion, ground binding, and model-file inference.
+board component inclusion, ground binding, and model-file inference. Harmonic
+balance creation writes a normal `analog_harmonic_balance` scenario with
+`analysis: {type: hb}`, selected output probe net, fundamental frequency,
+harmonic count, selected drive source, generated board component inclusion,
+ground binding, and model-file inference.
 The check editor can author transient, AC/Bode, DC operating-point, and noise
 assertions. AC checks expose frequency fields for gain, phase, or group delay
 at a frequency, gain crossing-frequency limits, and threshold-only phase/gain

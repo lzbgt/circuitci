@@ -12,8 +12,10 @@ use super::analog_branches::{current_probe_expression, power_probe_expression};
 #[cfg(test)]
 pub(super) use super::analog_run_setup::append_analog_transient_scenario;
 pub(super) use super::analog_run_setup::{
-    AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogNoiseScenarioDraft, AnalogScenarioDraft,
-    append_analog_ac_scenario_with_project_path, append_analog_dc_scenario_with_project_path,
+    AnalogAcScenarioDraft, AnalogDcScenarioDraft, AnalogHarmonicBalanceScenarioDraft,
+    AnalogNoiseScenarioDraft, AnalogScenarioDraft, append_analog_ac_scenario_with_project_path,
+    append_analog_dc_scenario_with_project_path,
+    append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path,
 };

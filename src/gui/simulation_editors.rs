@@ -1,9 +1,11 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
-    AnalogDcScenarioDraft, AnalogNoiseScenarioDraft, AnalogScenarioDraft, analog_scenario_choices,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_dc_scenario_with_project_path, append_analog_noise_scenario_with_project_path,
+    AnalogDcScenarioDraft, AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft,
+    AnalogScenarioDraft, analog_scenario_choices, append_analog_ac_scenario_with_project_path,
+    append_analog_assertion, append_analog_dc_scenario_with_project_path,
+    append_analog_harmonic_balance_scenario_with_project_path,
+    append_analog_noise_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, replace_analog_assertion,
 };
 use super::analog_ac_presets::{analog_ac_assertion_presets, append_analog_ac_assertion_preset};
@@ -49,6 +51,7 @@ impl CircuitCiApp {
                             "ac" => "AC/Bode",
                             "dc" => "DC operating point",
                             "noise" => "Noise",
+                            "hb" => "Harmonic Balance",
                             _ => "Transient",
                         })
                         .show_ui(ui, |ui| {
@@ -71,6 +74,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "noise".to_string(),
                                 "Noise",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "hb".to_string(),
+                                "Harmonic Balance",
                             );
                         });
                     ui.end_row();
@@ -136,6 +144,33 @@ impl CircuitCiApp {
                             );
                             ui.end_row();
                         }
+                    } else if self.analog_run_setup_kind == "hb" {
+                        initialize_noise_source_default(snapshot, &mut self.analog_hb_drive_source);
+                        ui.label("Fundamental");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_hb_fundamental_frequency_hz)
+                                .speed(100.0)
+                                .range(1.0e-9..=1.0e15)
+                                .suffix(" Hz"),
+                        );
+                        ui.end_row();
+
+                        ui.label("Harmonics");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_hb_harmonics)
+                                .speed(1.0)
+                                .range(1..=1024),
+                        );
+                        ui.end_row();
+
+                        ui.label("Drive source");
+                        noise_source_combo(
+                            ui,
+                            "analog_hb_drive_source",
+                            &mut self.analog_hb_drive_source,
+                            snapshot,
+                        );
+                        ui.end_row();
                     } else if self.analog_run_setup_kind == "dc" {
                         ui.label("Analysis");
                         ui.label("Operating point");
@@ -1219,6 +1254,30 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "Noise run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
+        } else if self.analog_run_setup_kind == "hb" {
+            let draft = AnalogHarmonicBalanceScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                fundamental_frequency_hz: self.analog_hb_fundamental_frequency_hz,
+                harmonics: self.analog_hb_harmonics,
+                drive_source: self.analog_hb_drive_source.clone(),
+            };
+            match append_analog_harmonic_balance_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Harmonic-balance run setup {} added.",
                         self.analog_scenario_name.trim()
                     ),
                 ),

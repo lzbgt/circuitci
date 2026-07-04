@@ -45,6 +45,17 @@ pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) points_per_decade: u32,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AnalogHarmonicBalanceScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) fundamental_frequency_hz: f64,
+    pub(super) harmonics: u32,
+    pub(super) drive_source: String,
+}
+
 #[cfg(test)]
 pub(super) fn append_analog_transient_scenario(
     text: &str,
@@ -134,6 +145,27 @@ pub(super) fn append_analog_noise_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_harmonic_balance_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogHarmonicBalanceScenarioDraft,
+) -> Result<String> {
+    validate_harmonic_balance_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::HarmonicBalance {
+            fundamental_frequency_hz: draft.fundamental_frequency_hz,
+            harmonics: draft.harmonics,
+            drive_source: draft.drive_source.trim().to_string(),
+        },
+    )
+}
+
 fn append_generated_analog_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -168,6 +200,13 @@ fn append_generated_analog_scenario_with_project_path(
     {
         anyhow::bail!(
             "Noise input source {input_source} must be an included voltage or current source component."
+        );
+    }
+    if let GeneratedAnalogScenarioKind::HarmonicBalance { drive_source, .. } = &kind
+        && !project.board.components.contains_key(drive_source)
+    {
+        anyhow::bail!(
+            "Harmonic-balance drive source {drive_source} must be an included board component."
         );
     }
     if project.board.components.is_empty() {
@@ -272,6 +311,27 @@ fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
         draft.points_per_decade,
         "Analog noise",
     )
+}
+
+fn validate_harmonic_balance_draft(draft: &AnalogHarmonicBalanceScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    validated_id(&draft.drive_source, "harmonic-balance drive source")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    if !draft.fundamental_frequency_hz.is_finite()
+        || draft.fundamental_frequency_hz <= 0.0
+        || !(1..=1024).contains(&draft.harmonics)
+    {
+        anyhow::bail!(
+            "Harmonic-balance fundamental frequency must be finite and positive, and harmonics must be in 1..=1024."
+        );
+    }
+    Ok(())
 }
 
 fn validate_frequency_range(
@@ -409,6 +469,11 @@ enum GeneratedAnalogScenarioKind {
         input_source: String,
         input_probe_name: String,
     },
+    HarmonicBalance {
+        fundamental_frequency_hz: f64,
+        harmonics: u32,
+        drive_source: String,
+    },
 }
 
 impl GeneratedAnalogScenarioKind {
@@ -418,6 +483,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Ac { .. } => "analog_ac",
             Self::Dc => "analog_dc",
             Self::Noise { .. } => "analog_noise",
+            Self::HarmonicBalance { .. } => "analog_harmonic_balance",
         }
     }
 
@@ -427,6 +493,7 @@ impl GeneratedAnalogScenarioKind {
             Self::Ac { .. } => "SPICE_AC_ANALYSIS",
             Self::Dc => "SPICE_DC_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
+            Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
         }
     }
 }
@@ -531,6 +598,39 @@ fn analog_block(
             })?;
             insert_string(&mut analysis, "noise_output_node", output_node);
             insert_string(&mut analysis, "noise_input_source", input_source);
+        }
+        GeneratedAnalogScenarioKind::HarmonicBalance {
+            fundamental_frequency_hz,
+            harmonics,
+            drive_source,
+        } => {
+            insert_string(&mut analysis, "type", "hb");
+            insert_number(
+                &mut analysis,
+                "hb_fundamental_frequency_hz",
+                *fundamental_frequency_hz,
+            )?;
+            analysis.insert(
+                key("hb_harmonics"),
+                serde_yaml_ng::to_value(harmonics).context("Failed to encode hb_harmonics.")?,
+            );
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Harmonic-balance output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "hb_output_expression",
+                &format!("V({output_node})"),
+            );
+            analysis.insert(
+                key("hb_drive_sources"),
+                serde_yaml_ng::Value::Sequence(vec![serde_yaml_ng::Value::String(
+                    drive_source.clone(),
+                )]),
+            );
         }
     }
     analog.insert(key("analysis"), serde_yaml_ng::Value::Mapping(analysis));
