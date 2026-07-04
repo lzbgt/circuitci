@@ -161,6 +161,7 @@ impl CircuitCiApp {
                 self.analog_model_file_manager(ui);
                 self.selected_probe_assertions_panel(ui);
                 self.analog_assertion_editor(ui);
+                self.sparameter_network_assertion_editor(ui);
             }
             self.spice_deck_editor(ui);
             self.scope_artifacts_and_findings(ui);

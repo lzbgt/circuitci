@@ -167,8 +167,11 @@ Current analog support:
   Reports project retained rows into `s_parameter_summaries[]` and retained
   network-quality rows into `s_parameter_network_summaries[]`, Markdown
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
-  the GUI artifact panel shows compact RF term and network sign-off rows, and
-  Scopes derives return-loss, insertion-loss, VSWR, group-delay,
+  the GUI artifact panel shows compact RF term and network sign-off rows,
+  Scopes includes an RF Network Check editor for authoring two-port
+  reciprocity, passivity, Rollet K, and `|Delta|` sign-off checks without
+  hand-editing YAML, and Scopes derives return-loss, insertion-loss, VSWR,
+  group-delay,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
   and Rollet K traces from full `s_parameters.csv` artifacts.
   `backend: auto` does not select Xyce for this path until real solver

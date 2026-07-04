@@ -42,6 +42,15 @@ pub(super) struct AnalogAssertionDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogSParameterNetworkAssertionDraft {
+    pub(super) scenario_name: String,
+    pub(super) assertion_name: String,
+    pub(super) metric: String,
+    pub(super) relation: String,
+    pub(super) threshold: f64,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogProbeDraft {
     pub(super) scenario_name: String,
     pub(super) net_id: String,
@@ -302,6 +311,65 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
         serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
     let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
         .context("Edited assertion YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
+pub(super) fn append_analog_sparameter_network_assertion(
+    text: &str,
+    draft: &AnalogSParameterNetworkAssertionDraft,
+) -> Result<String> {
+    validate_sparameter_network_assertion_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    if scenario.scenario_type != "analog_sparameter" {
+        anyhow::bail!("S-parameter network assertions require an analog_sparameter scenario.");
+    }
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if analog.analysis.s_parameter_ports.len() != 2 {
+        anyhow::bail!(
+            "S-parameter network assertions require exactly two declared S-parameter ports."
+        );
+    }
+    if analog
+        .assertions
+        .iter()
+        .any(|assertion| assertion.name == draft.assertion_name)
+        || analog
+            .analysis
+            .s_parameter_network_assertions
+            .iter()
+            .any(|assertion| assertion.name == draft.assertion_name)
+    {
+        anyhow::bail!(
+            "S-parameter network assertion {} already exists in scenario {}.",
+            draft.assertion_name,
+            scenario.name
+        );
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let analysis_mapping = child_mapping_mut(analog_mapping, "analysis", "analog analysis")?;
+    let assertions = ensure_child_sequence_mut(
+        analysis_mapping,
+        "s_parameter_network_assertions",
+        "S-parameter network assertions",
+    )?;
+    assertions.push(sparameter_network_assertion_value(draft)?);
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited S-parameter network assertion YAML is not valid Board IR.")?;
     Ok(updated)
 }
 
@@ -819,6 +887,74 @@ pub(super) fn unique_analog_assertion_name(
     unreachable!("unbounded assertion suffix search must return")
 }
 
+pub(super) fn unique_analog_sparameter_network_assertion_name(
+    text: &str,
+    scenario_name: &str,
+    requested_name: &str,
+) -> Result<String> {
+    let scenario_name = validated_id(scenario_name, "scenario name")?;
+    let requested_name = validated_id(requested_name, "assertion name")?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Scenario {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {scenario_name} is not an analog scenario."))?;
+    let mut existing: std::collections::BTreeSet<&str> = analog
+        .assertions
+        .iter()
+        .map(|assertion| assertion.name.as_str())
+        .collect();
+    existing.extend(
+        analog
+            .analysis
+            .s_parameter_network_assertions
+            .iter()
+            .map(|assertion| assertion.name.as_str()),
+    );
+    if !existing.contains(requested_name) {
+        return Ok(requested_name.to_string());
+    }
+    for suffix in 2.. {
+        let candidate = format!("{requested_name}_{suffix}");
+        if !existing.contains(candidate.as_str()) {
+            return Ok(candidate);
+        }
+    }
+    unreachable!("unbounded assertion suffix search must return")
+}
+
+fn validate_sparameter_network_assertion_draft(
+    draft: &AnalogSParameterNetworkAssertionDraft,
+) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.assertion_name, "assertion name")?;
+    if !matches!(
+        draft.metric.as_str(),
+        "reciprocity_error_linear"
+            | "passivity_max_singular_value"
+            | "rollet_k_min"
+            | "stability_delta_magnitude_max"
+    ) {
+        anyhow::bail!(
+            "Unsupported S-parameter network assertion metric {}.",
+            draft.metric
+        );
+    }
+    if !matches!(draft.relation.as_str(), "above" | "below") {
+        anyhow::bail!("S-parameter network assertion relation must be above or below.");
+    }
+    if !draft.threshold.is_finite() {
+        anyhow::bail!("S-parameter network assertion threshold must be finite.");
+    }
+    Ok(())
+}
+
 fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
     validated_id(&draft.scenario_name, "scenario name")?;
     validated_id(&draft.assertion_name, "assertion name")?;
@@ -1316,6 +1452,17 @@ fn assertion_value(
             draft.threshold,
         )?;
     }
+    Ok(serde_yaml_ng::Value::Mapping(assertion))
+}
+
+fn sparameter_network_assertion_value(
+    draft: &AnalogSParameterNetworkAssertionDraft,
+) -> Result<serde_yaml_ng::Value> {
+    let mut assertion = serde_yaml_ng::Mapping::new();
+    insert_string(&mut assertion, "name", draft.assertion_name.trim());
+    insert_string(&mut assertion, "metric", draft.metric.trim());
+    insert_string(&mut assertion, "relation", draft.relation.trim());
+    insert_number(&mut assertion, "threshold", draft.threshold)?;
     Ok(serde_yaml_ng::Value::Mapping(assertion))
 }
 

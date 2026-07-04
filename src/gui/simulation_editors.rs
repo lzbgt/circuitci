@@ -1,10 +1,12 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
-    AnalogDcScenarioDraft, AnalogNoiseScenarioDraft, AnalogScenarioDraft, analog_scenario_choices,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_dc_scenario_with_project_path, append_analog_noise_scenario_with_project_path,
+    AnalogDcScenarioDraft, AnalogNoiseScenarioDraft, AnalogSParameterNetworkAssertionDraft,
+    AnalogScenarioDraft, analog_scenario_choices, append_analog_ac_scenario_with_project_path,
+    append_analog_assertion, append_analog_dc_scenario_with_project_path,
+    append_analog_noise_scenario_with_project_path, append_analog_sparameter_network_assertion,
     append_analog_transient_scenario_with_project_path, replace_analog_assertion,
+    unique_analog_sparameter_network_assertion_name,
 };
 use super::analog_ac_presets::{analog_ac_assertion_presets, append_analog_ac_assertion_preset};
 use super::analog_dc_presets::{analog_dc_assertion_presets, append_analog_dc_assertion_preset};
@@ -1151,6 +1153,122 @@ impl CircuitCiApp {
         });
     }
 
+    pub(super) fn sparameter_network_assertion_editor(&mut self, ui: &mut egui::Ui) {
+        let choices = match analog_scenario_choices(&self.project_yaml) {
+            Ok(choices) => choices
+                .into_iter()
+                .filter(|scenario| scenario.scenario_type == "analog_sparameter")
+                .collect::<Vec<_>>(),
+            Err(error) => {
+                ui.collapsing("RF Network Check", |ui| {
+                    ui.label(format!("S-parameter run setups unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("RF Network Check", |ui| {
+            if choices.is_empty() {
+                ui.label("No S-parameter run setup is available.");
+                return;
+            }
+            initialize_sparameter_network_assertion_defaults(
+                &choices,
+                &mut self.analog_sparameter_network_assertion_scenario,
+                &mut self.analog_sparameter_network_assertion_name,
+                &mut self.analog_sparameter_network_assertion_metric,
+                &mut self.analog_sparameter_network_assertion_relation,
+                &mut self.analog_sparameter_network_assertion_threshold,
+            );
+            egui::Grid::new("sparameter_network_assertion_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Run setup");
+                    analog_scenario_combo(
+                        ui,
+                        "sparameter_network_assertion_scenario",
+                        &mut self.analog_sparameter_network_assertion_scenario,
+                        &choices,
+                    );
+                    ui.end_row();
+
+                    ui.label("Check");
+                    ui.text_edit_singleline(&mut self.analog_sparameter_network_assertion_name);
+                    ui.end_row();
+
+                    ui.label("Metric");
+                    let previous_metric = self.analog_sparameter_network_assertion_metric.clone();
+                    sparameter_network_metric_combo(
+                        ui,
+                        &mut self.analog_sparameter_network_assertion_metric,
+                    );
+                    if previous_metric != self.analog_sparameter_network_assertion_metric {
+                        if self
+                            .analog_sparameter_network_assertion_name
+                            .trim()
+                            .is_empty()
+                            || self.analog_sparameter_network_assertion_name
+                                == default_sparameter_network_assertion_name(&previous_metric)
+                        {
+                            self.analog_sparameter_network_assertion_name =
+                                default_sparameter_network_assertion_name(
+                                    &self.analog_sparameter_network_assertion_metric,
+                                )
+                                .to_string();
+                        }
+                        self.analog_sparameter_network_assertion_relation =
+                            default_sparameter_network_relation(
+                                &self.analog_sparameter_network_assertion_metric,
+                            )
+                            .to_string();
+                        self.analog_sparameter_network_assertion_threshold =
+                            default_sparameter_network_threshold(
+                                &self.analog_sparameter_network_assertion_metric,
+                            );
+                    }
+                    ui.end_row();
+
+                    ui.label("Relation");
+                    string_combo(
+                        ui,
+                        "sparameter_network_assertion_relation",
+                        &mut self.analog_sparameter_network_assertion_relation,
+                        &["above", "below"],
+                    );
+                    ui.end_row();
+
+                    ui.label("Threshold");
+                    ui.add(
+                        egui::DragValue::new(
+                            &mut self.analog_sparameter_network_assertion_threshold,
+                        )
+                        .speed(0.01)
+                        .range(-1.0e12..=1.0e12)
+                        .suffix(" ratio"),
+                    );
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Use Stability Preset").clicked() {
+                    self.analog_sparameter_network_assertion_name = "stable_rollet_k".to_string();
+                    self.analog_sparameter_network_assertion_metric = "rollet_k_min".to_string();
+                    self.analog_sparameter_network_assertion_relation = "above".to_string();
+                    self.analog_sparameter_network_assertion_threshold = 1.0;
+                }
+                if ui.button("Use Delta Preset").clicked() {
+                    self.analog_sparameter_network_assertion_name = "stable_delta".to_string();
+                    self.analog_sparameter_network_assertion_metric =
+                        "stability_delta_magnitude_max".to_string();
+                    self.analog_sparameter_network_assertion_relation = "below".to_string();
+                    self.analog_sparameter_network_assertion_threshold = 1.0;
+                }
+                if ui.button("Add Network Check").clicked() {
+                    self.apply_add_sparameter_network_assertion();
+                }
+            });
+        });
+    }
+
     fn apply_add_analog_scenario(&mut self) {
         if self.analog_run_setup_kind == "ac" {
             let draft = AnalogAcScenarioDraft {
@@ -1277,6 +1395,51 @@ impl CircuitCiApp {
                     self.analog_assertion_name.trim()
                 ),
             ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_sparameter_network_assertion(&mut self) {
+        let requested_name = if self
+            .analog_sparameter_network_assertion_name
+            .trim()
+            .is_empty()
+        {
+            default_sparameter_network_assertion_name(
+                &self.analog_sparameter_network_assertion_metric,
+            )
+            .to_string()
+        } else {
+            self.analog_sparameter_network_assertion_name
+                .trim()
+                .to_string()
+        };
+        let assertion_name = match unique_analog_sparameter_network_assertion_name(
+            &self.project_yaml,
+            &self.analog_sparameter_network_assertion_scenario,
+            &requested_name,
+        ) {
+            Ok(name) => name,
+            Err(error) => {
+                self.record_error(error);
+                return;
+            }
+        };
+        let draft = AnalogSParameterNetworkAssertionDraft {
+            scenario_name: self.analog_sparameter_network_assertion_scenario.clone(),
+            assertion_name: assertion_name.clone(),
+            metric: self.analog_sparameter_network_assertion_metric.clone(),
+            relation: self.analog_sparameter_network_assertion_relation.clone(),
+            threshold: self.analog_sparameter_network_assertion_threshold,
+        };
+        match append_analog_sparameter_network_assertion(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                self.analog_sparameter_network_assertion_name = assertion_name.clone();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("RF network check {} added.", assertion_name.trim()),
+                );
+            }
             Err(error) => self.record_error(error),
         }
     }
@@ -1627,4 +1790,85 @@ fn is_noise_source_spice(spice: &super::sketch_spice::SketchComponentSpice) -> b
             | SketchSpiceKind::DcCurrentSource
             | SketchSpiceKind::PulseCurrentSource
     )
+}
+
+fn initialize_sparameter_network_assertion_defaults(
+    choices: &[super::analog::AnalogScenarioChoice],
+    scenario_name: &mut String,
+    assertion_name: &mut String,
+    metric: &mut String,
+    relation: &mut String,
+    threshold: &mut f64,
+) {
+    let scenario_missing = !choices
+        .iter()
+        .any(|scenario| scenario.name == *scenario_name);
+    if (scenario_name.is_empty() || scenario_missing)
+        && let Some(scenario) = choices.first()
+    {
+        *scenario_name = scenario.name.clone();
+    }
+    if !sparameter_network_metric_options()
+        .iter()
+        .any(|option| option.0 == metric.as_str())
+    {
+        *metric = "rollet_k_min".to_string();
+    }
+    if !matches!(relation.as_str(), "above" | "below") {
+        *relation = default_sparameter_network_relation(metric).to_string();
+    }
+    if assertion_name.trim().is_empty() {
+        *assertion_name = default_sparameter_network_assertion_name(metric).to_string();
+    }
+    if !threshold.is_finite() {
+        *threshold = default_sparameter_network_threshold(metric);
+    }
+}
+
+fn sparameter_network_metric_combo(ui: &mut egui::Ui, selected: &mut String) {
+    let selected_label = sparameter_network_metric_options()
+        .iter()
+        .find(|option| option.0 == selected.as_str())
+        .map(|option| option.1)
+        .unwrap_or(selected.as_str());
+    egui::ComboBox::from_id_salt("sparameter_network_assertion_metric")
+        .selected_text(selected_label)
+        .show_ui(ui, |ui| {
+            for (metric, label) in sparameter_network_metric_options() {
+                ui.selectable_value(selected, (*metric).to_string(), *label);
+            }
+        });
+}
+
+fn sparameter_network_metric_options() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("rollet_k_min", "Rollet K minimum"),
+        ("stability_delta_magnitude_max", "Stability |Delta| maximum"),
+        ("passivity_max_singular_value", "Passivity singular maximum"),
+        ("reciprocity_error_linear", "Reciprocity error maximum"),
+    ]
+}
+
+fn default_sparameter_network_assertion_name(metric: &str) -> &'static str {
+    match metric {
+        "stability_delta_magnitude_max" => "stable_delta",
+        "passivity_max_singular_value" => "passive_two_port",
+        "reciprocity_error_linear" => "reciprocal_two_port",
+        _ => "stable_rollet_k",
+    }
+}
+
+fn default_sparameter_network_relation(metric: &str) -> &'static str {
+    if metric == "rollet_k_min" {
+        "above"
+    } else {
+        "below"
+    }
+}
+
+fn default_sparameter_network_threshold(metric: &str) -> f64 {
+    match metric {
+        "reciprocity_error_linear" => 0.01,
+        _ => 1.0,
+    }
 }

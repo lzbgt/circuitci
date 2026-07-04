@@ -2,13 +2,15 @@ use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
     AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogNoiseScenarioDraft,
     AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
-    AnalogProbeRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
-    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
-    append_analog_expression_probe, append_analog_noise_scenario_with_project_path,
-    append_analog_power_probe, append_analog_transient_scenario,
+    AnalogProbeRemoveDraft, AnalogSParameterNetworkAssertionDraft, AnalogScenarioDraft,
+    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
+    append_analog_assertion, append_analog_current_probe,
+    append_analog_dc_scenario_with_project_path, append_analog_expression_probe,
+    append_analog_noise_scenario_with_project_path, append_analog_power_probe,
+    append_analog_sparameter_network_assertion, append_analog_transient_scenario,
     append_analog_transient_scenario_with_project_path, append_analog_voltage_probe,
     remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
+    unique_analog_sparameter_network_assertion_name,
 };
 use crate::reports::{Finding, ValidationReport};
 use std::path::Path;
@@ -79,6 +81,68 @@ fn assertion_draft() -> AnalogAssertionDraft {
         duty_limit_percent: 50.0,
         count_limit: 1.0,
         overshoot_limit_percent: 10.0,
+    }
+}
+
+fn sparameter_project_yaml() -> &'static str {
+    "project: { name: gui_sparameter_editor_test, version: 0.1.0 }
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins: { A: port1, B: port2 }
+      spice: { primitive: resistor, value_ohm: 50 }
+    R2:
+      model: generic.analog.resistor
+      pins: { A: port2, B: gnd }
+      spice: { primitive: resistor, value_ohm: 50 }
+  nets:
+    port1: { kind: digital_or_analog }
+    port2: { kind: digital_or_analog }
+    gnd: { kind: ground }
+scenarios:
+  - name: two_port_sparameter
+    type: analog_sparameter
+    checks: [SPICE_S_PARAMETER_ANALYSIS]
+    analog:
+      backend: xyce
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [R1, R2]
+      model_files: []
+      node_bindings:
+        - { node: port1, net: port1 }
+        - { node: port2, net: port2 }
+        - { node: '0', net: gnd }
+      pin_bindings:
+        - { node: port1, endpoint: { component: R1, pin: A } }
+        - { node: port2, endpoint: { component: R1, pin: B } }
+        - { node: port2, endpoint: { component: R2, pin: A } }
+        - { node: '0', endpoint: { component: R2, pin: B } }
+      analysis:
+        type: sparam
+        start_frequency_hz: 1000000.0
+        stop_frequency_hz: 1000000000.0
+        points_per_decade: 20
+        s_parameter_ports:
+          - { name: p1, positive_node: port1, negative_node: '0', reference_impedance_ohm: 50.0 }
+          - { name: p2, positive_node: port2, negative_node: '0', reference_impedance_ohm: 50.0 }
+      stimuli:
+        - { name: two_port_sweep, description: Planned two-port S-parameter sweep. }
+      probes:
+        - { name: s11, expression: 'S(p1,p1)' }
+      assertions: []
+"
+}
+
+fn sparameter_network_assertion_draft() -> AnalogSParameterNetworkAssertionDraft {
+    AnalogSParameterNetworkAssertionDraft {
+        scenario_name: "two_port_sparameter".to_string(),
+        assertion_name: "stable_rollet_k".to_string(),
+        metric: "rollet_k_min".to_string(),
+        relation: "above".to_string(),
+        threshold: 1.0,
     }
 }
 
@@ -841,6 +905,62 @@ fn unique_analog_assertion_name_suffixes_collisions() {
     let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
     let name = unique_analog_assertion_name(&edited, "gui_transient", "out_above_min").unwrap();
     assert_eq!(name, "out_above_min_2");
+}
+
+#[test]
+fn append_sparameter_network_assertion_emits_analysis_yaml() {
+    let edited = append_analog_sparameter_network_assertion(
+        sparameter_project_yaml(),
+        &sparameter_network_assertion_draft(),
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertions = &project.scenarios[0]
+        .analog
+        .as_ref()
+        .unwrap()
+        .analysis
+        .s_parameter_network_assertions;
+    assert_eq!(assertions.len(), 1);
+    assert_eq!(assertions[0].name, "stable_rollet_k");
+    assert_eq!(
+        assertions[0].metric,
+        crate::board_ir::AnalogSParameterNetworkMetric::RolletKMin
+    );
+    assert_eq!(
+        assertions[0].relation,
+        crate::board_ir::AnalogRelation::Above
+    );
+    assert_eq!(assertions[0].threshold, 1.0);
+}
+
+#[test]
+fn unique_sparameter_network_assertion_name_suffixes_collisions() {
+    let edited = append_analog_sparameter_network_assertion(
+        sparameter_project_yaml(),
+        &sparameter_network_assertion_draft(),
+    )
+    .unwrap();
+    let name = unique_analog_sparameter_network_assertion_name(
+        &edited,
+        "two_port_sparameter",
+        "stable_rollet_k",
+    )
+    .unwrap();
+    assert_eq!(name, "stable_rollet_k_2");
+}
+
+#[test]
+fn append_sparameter_network_assertion_rejects_non_sparameter_scenario() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let mut network_draft = sparameter_network_assertion_draft();
+    network_draft.scenario_name = "gui_transient".to_string();
+    let error = append_analog_sparameter_network_assertion(&edited, &network_draft).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("require an analog_sparameter scenario")
+    );
 }
 
 #[test]
