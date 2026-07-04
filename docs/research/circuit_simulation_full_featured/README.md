@@ -681,6 +681,9 @@ The GUI should not become the solver.
   `distortion_summaries[]`, Markdown reports include a "Distortion Summary"
   section, and GUI Scopes loads `distortion_spectrum.csv` as frequency-axis
   magnitude/phase/real/imaginary traces grouped by distortion component.
+  `analysis.distortion_assertions[]` can now sign off component
+  `max_magnitude` limits from the normalized summary artifact, including
+  fail-closed behavior for missing harmonic or intermodulation components.
   `distortion_backend_evidence.md` records the primary ngspice
   manual/source evidence, the real-ngspice conformance hook, and why Xyce,
   QUCS-S, and SPICE OPUS remain blocked.

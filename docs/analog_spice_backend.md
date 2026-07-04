@@ -501,14 +501,20 @@ For a scenario with check `SPICE_DISTORTION_ANALYSIS`:
    component's row count and maximum magnitude. The convergence JSON records
    backend, mode, row count, selected components, output expression, and the
    shared non-convergence detector result.
-7. Validation reports project `distortion_summary.csv` rows into top-level
+7. Optional `analysis.distortion_assertions[]` entries sign off normalized
+   component maxima from `distortion_summary.csv`. Each assertion names the
+   component label, uses `relation: below|above`, and compares the component's
+   `max_magnitude` against a non-negative threshold with optional unit and
+   suggested fixes. Missing components fail closed because the assertion is
+   bound to the normalized solver artifact, not to backend-specific raw text.
+8. Validation reports project `distortion_summary.csv` rows into top-level
    `distortion_summaries[]`, Markdown reports include a "Distortion Summary"
    section, and GUI Scopes loads `distortion_spectrum.csv` as frequency-axis
    magnitude, phase, real, and imaginary traces per distortion component.
-8. Real-solver conformance is opt-in through
+9. Real-solver conformance is opt-in through
    `CIRCUITCI_RUN_REAL_NGSPICE_DISTO=1 cargo test --test analog_distortion_cli`;
    it skips unless `ngspice` is on `PATH`.
-9. Xyce and embedded ngspice remain fail-closed with backend-planning evidence.
+10. Xyce and embedded ngspice remain fail-closed with backend-planning evidence.
    The saved Xyce 7.8 reference text does not document a matching distortion
    command; QUCS-S and SPICE OPUS references are not current CircuitCI adapter
    contracts.

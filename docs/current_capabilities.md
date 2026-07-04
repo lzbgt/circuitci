@@ -196,12 +196,15 @@ Current analog support:
   `analysis.type: disto`, `distortion_mode: harmonic|intermodulation`,
   frequency sweep bounds, points per decade, a bound
   `distortion_output_expression`, `distortion_f1_sources[]`, optional
-  `distortion_f2_sources[]`, and `distortion_f2_over_f1` for intermodulation.
+  `distortion_f2_sources[]`, `distortion_f2_over_f1` for intermodulation, and
+  optional `distortion_assertions[]` over normalized component max magnitudes.
   For `backend: ngspice`, CircuitCI annotates declared sources with explicit
   `DISTOF1`/`DISTOF2` defaults, runs `.disto dec`, and emits
   `distortion_spectrum.csv`, `distortion_summary.csv`,
   `distortion_convergence.json`, raw solver output, and `solver_manifest.json`.
-  Validation reports project `distortion_summary.csv` rows into
+  Distortion assertions fail scenarios when `distortion_summary.csv` component
+  maxima violate declared `above`/`below` limits or when a required component
+  is absent. Validation reports project `distortion_summary.csv` rows into
   `distortion_summaries[]`, and Scopes recognizes `distortion_spectrum.csv` as
   frequency-axis magnitude/phase/real/imaginary traces grouped by distortion
   component.

@@ -84,6 +84,9 @@ The enabled ngspice adapter provides:
 - convergence/numerical-failure detection through the shared ngspice log scanner
 - `solver_manifest.json` with backend version, command, model provenance, and
   normalized artifact paths
+- `analysis.distortion_assertions[]` sign-off against normalized component
+  `max_magnitude` values from `distortion_summary.csv`, with fail-closed
+  behavior when an asserted harmonic or intermodulation component is absent
 - opt-in real-ngspice conformance coverage with clean skip behavior
 
 The report/GUI surface is also covered: validation reports project

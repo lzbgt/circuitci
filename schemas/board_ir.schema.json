@@ -2956,6 +2956,26 @@
                     "uniqueItems": true
                   },
                   "distortion_f2_over_f1": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+                  "distortion_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "component", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "component": { "type": "string", "minLength": 1 },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number", "minimum": 0 },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "fourier_fundamental_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "fourier_output_expression": { "type": "string", "minLength": 1 },
                   "fourier_harmonics": { "type": "integer", "minimum": 1, "maximum": 1024 },

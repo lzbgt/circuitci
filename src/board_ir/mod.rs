@@ -1384,6 +1384,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub distortion_f2_over_f1: Option<f64>,
     #[serde(default)]
+    pub distortion_assertions: Vec<AnalogDistortionAssertion>,
+    #[serde(default)]
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,
@@ -1436,6 +1438,18 @@ pub struct AnalogMeasureTemplate {
 pub struct AnalogMeasureAssertion {
     pub name: String,
     pub measurement: String,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogDistortionAssertion {
+    pub name: String,
+    pub component: String,
     pub relation: AnalogRelation,
     pub threshold: f64,
     #[serde(default)]

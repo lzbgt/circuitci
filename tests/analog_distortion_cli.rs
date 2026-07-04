@@ -55,6 +55,7 @@ struct DistortionProjectOptions<'a> {
     f2_source: &'a str,
     f2_over_f1: Option<f64>,
     stop_frequency_hz: f64,
+    distortion_assertions: &'a str,
 }
 
 fn write_distortion_project(
@@ -141,7 +142,7 @@ scenarios:
         distortion_output_expression: {output_expression}
         distortion_f1_sources: [{f1_source}]
         distortion_f2_sources: {f2_sources}
-{ratio_line}      stimuli:
+{ratio_line}{distortion_assertions}      stimuli:
         - {{ name: distortion_intent, description: Small-signal distortion planning evidence. }}
       probes:
         - {{ name: out_disto, expression: V(out) }}
@@ -153,6 +154,7 @@ scenarios:
             stop_frequency_hz = options.stop_frequency_hz,
             output_expression = options.output_expression,
             f1_source = options.f1_source,
+            distortion_assertions = options.distortion_assertions,
         ),
     )
     .unwrap();
@@ -264,6 +266,7 @@ fn distortion_contract_runs_ngspice_and_normalizes_spectrum() {
             f2_source: "VIN2",
             f2_over_f1: Some(0.9),
             stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: "",
         },
     );
     let schema: Value =
@@ -328,6 +331,123 @@ fn distortion_contract_runs_ngspice_and_normalizes_spectrum() {
 
 #[cfg(unix)]
 #[test]
+fn distortion_assertion_passes_on_component_max_magnitude() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_ngspice_distortion(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_distortion_project(
+        project_dir.path(),
+        DistortionProjectOptions {
+            backend: "ngspice",
+            mode: "intermodulation",
+            output_expression: "V(out)",
+            f1_source: "VIN1",
+            f2_source: "VIN2",
+            f2_over_f1: Some(0.9),
+            stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: r#"        distortion_assertions:
+          - name: im_sum_below_limit
+            component: im_f1_plus_f2
+            relation: below
+            threshold: 0.01
+            unit: ratio
+"#,
+        },
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    assert!(report["failures"].as_array().unwrap().is_empty());
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn distortion_assertion_fails_on_component_max_magnitude() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_ngspice_distortion(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_distortion_project(
+        project_dir.path(),
+        DistortionProjectOptions {
+            backend: "ngspice",
+            mode: "intermodulation",
+            output_expression: "V(out)",
+            f1_source: "VIN1",
+            f2_source: "VIN2",
+            f2_over_f1: Some(0.9),
+            stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: r#"        distortion_assertions:
+          - name: im_sum_below_limit
+            component: im_f1_plus_f2
+            relation: below
+            threshold: 0.001
+            unit: ratio
+"#,
+        },
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_DISTORTION_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "im_sum_below_limit"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["component"],
+        "im_f1_plus_f2"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["max_magnitude"],
+        4.031128874149e-3
+    );
+    assert_eq!(report["failures"][0]["limit"]["below_threshold"], 0.001);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn distortion_assertion_fails_closed_on_missing_component() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_ngspice_distortion(fake_path.path());
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_distortion_project(
+        project_dir.path(),
+        DistortionProjectOptions {
+            backend: "ngspice",
+            mode: "intermodulation",
+            output_expression: "V(out)",
+            f1_source: "VIN1",
+            f2_source: "VIN2",
+            f2_over_f1: Some(0.9),
+            stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: r#"        distortion_assertions:
+          - name: no_such_component_limit
+            component: h3
+            relation: below
+            threshold: 0.001
+"#,
+        },
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_DISTORTION_ANALYSIS");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("missing normalized distortion component h3")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn distortion_xyce_fails_closed_with_planning_evidence() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "Xyce");
@@ -342,6 +462,7 @@ fn distortion_xyce_fails_closed_with_planning_evidence() {
             f2_source: "",
             f2_over_f1: None,
             stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: "",
         },
     );
 
@@ -439,6 +560,7 @@ fn distortion_rejects_unbound_output_expression() {
             f2_source: "",
             f2_over_f1: None,
             stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: "",
         },
     );
 
@@ -470,6 +592,7 @@ fn distortion_rejects_missing_generated_f1_source() {
             f2_source: "",
             f2_over_f1: None,
             stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: "",
         },
     );
 
@@ -501,6 +624,7 @@ fn distortion_rejects_intermodulation_without_f2_ratio() {
             f2_source: "VIN2",
             f2_over_f1: None,
             stop_frequency_hz: 1_000_000.0,
+            distortion_assertions: "",
         },
     );
 
@@ -532,6 +656,7 @@ fn distortion_rejects_invalid_frequency_window() {
             f2_source: "",
             f2_over_f1: None,
             stop_frequency_hz: 1.0,
+            distortion_assertions: "",
         },
     );
 
