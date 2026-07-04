@@ -669,16 +669,17 @@ The GUI should not become the solver.
   of experimental autonomous PSS without a stable command/output contract; and
   QUCS-COPEN remains paper-documented theory without a public source/build
   adapter path.
-- Added the first fail-closed small-signal distortion evidence contract for
+- Added the first ngspice-backed small-signal distortion adapter for
   `analysis.type: disto` and `SPICE_DISTORTION_ANALYSIS`. Scenarios declare
   harmonic or intermodulation mode, frequency sweep bounds, output expression,
   F1/F2 source provenance, and the F2/F1 ratio for intermodulation. The
-  validator records required future artifacts `distortion_spectrum`,
-  `distortion_summary`, and `distortion_convergence`, and intentionally fails
-  closed until an ngspice `.DISTO` wrapper/normalizer plus real-solver
-  conformance exists. `distortion_backend_evidence.md` records why ngspice is
-  the adapter target and why Xyce, QUCS-S, and SPICE OPUS are not enabled
-  today.
+  adapter annotates declared source lines with explicit `DISTOF1 1.0 0.0` and
+  `DISTOF2 1.0 0.0` defaults, runs ngspice `.disto dec`, normalizes
+  `distortion_spectrum.csv`, `distortion_summary.csv`, and
+  `distortion_convergence.json`, and writes a solver manifest.
+  `distortion_backend_evidence.md` records the primary ngspice
+  manual/source evidence, the real-ngspice conformance hook, and why Xyce,
+  QUCS-S, and SPICE OPUS remain blocked.
 
 ### Phase 5: Model Compiler Pipeline
 

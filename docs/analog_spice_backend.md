@@ -489,19 +489,25 @@ For a scenario with check `SPICE_DISTORTION_ANALYSIS`:
    all declared distortion source names must resolve to generated components.
 4. `distortion_output_expression` must be a bound `V(node)`,
    `V(node,reference)`, or `I(source)` expression.
-5. The current implementation intentionally fails closed after contract
-   validation. It emits backend-planning evidence with planned normalized
-   outputs `distortion_spectrum`, `distortion_summary`, and
-   `distortion_convergence`.
-6. The backend-planning finding records the current source-backed boundary:
-   ngspice documents `.DISTO` plus `DISTOF1`/`DISTOF2` source keywords and is
-   the future adapter target; Xyce does not document a matching distortion
-   command in the saved 7.8 reference text; QUCS-S and SPICE OPUS references
-   are not current CircuitCI adapter contracts.
-7. CircuitCI must not present small-signal distortion sign-off as passing until
-   a trusted backend emits normalized distortion spectrum, summary,
-   convergence, raw solver output, and solver-manifest artifacts with
-   real-solver conformance coverage.
+5. For `backend: ngspice`, CircuitCI writes a wrapper deck that annotates the
+   declared source lines with explicit `DISTOF1 1.0 0.0` and `DISTOF2 1.0 0.0`
+   defaults, runs `.disto dec`, selects the ngspice distortion plots, and
+   prints the requested output expression.
+6. Successful ngspice runs retain the wrapper, solver log/raw text,
+   `distortion_spectrum.csv`, `distortion_summary.csv`,
+   `distortion_convergence.json`, and
+   `solver_manifest.json`. The spectrum rows include component label,
+   frequency, complex value, magnitude, and phase. The summary records each
+   component's row count and maximum magnitude. The convergence JSON records
+   backend, mode, row count, selected components, output expression, and the
+   shared non-convergence detector result.
+7. Real-solver conformance is opt-in through
+   `CIRCUITCI_RUN_REAL_NGSPICE_DISTO=1 cargo test --test analog_distortion_cli`;
+   it skips unless `ngspice` is on `PATH`.
+8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence.
+   The saved Xyce 7.8 reference text does not document a matching distortion
+   command; QUCS-S and SPICE OPUS references are not current CircuitCI adapter
+   contracts.
 
 For a scenario with check `SPICE_FOURIER_ANALYSIS`:
 

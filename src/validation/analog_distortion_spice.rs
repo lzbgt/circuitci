@@ -8,6 +8,7 @@ use std::path::Path;
 
 use super::SPICE_DISTORTION_ANALYSIS;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
+use super::analog_distortion_runner::{NgspiceDistortionRunOptions, run_ngspice_distortion};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
     external_backend_unavailable, select_backend_for_feature,
@@ -15,6 +16,7 @@ use super::analog_runner::{
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
+use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 
@@ -311,8 +313,11 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
         ));
         return;
     }
-    match prepare_source_netlist(bound, scenario, &run_dir) {
-        Ok(source_netlist) => push_artifact(artifacts, &source_netlist),
+    let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => {
+            push_artifact(artifacts, &source_netlist);
+            source_netlist
+        }
         Err(message) => {
             let mut finding = Finding::critical(SPICE_DISTORTION_ANALYSIS, &scenario.name, message);
             finding
@@ -321,7 +326,7 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
             findings.push(finding);
             return;
         }
-    }
+    };
 
     on_progress(
         "Planning distortion backend",
@@ -344,12 +349,70 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
         return;
     };
 
+    if backend == "ngspice" {
+        for run_plan in run_plans {
+            if should_cancel() {
+                push_canceled_finding(findings, scenario);
+                return;
+            }
+            on_progress("Running distortion input corner", run_plan.progress_label());
+            let parameter_overrides = run_plan.parameter_overrides_for_solver();
+            let run_result = run_ngspice_distortion(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceDistortionRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            );
+            match run_result {
+                Ok(run) => {
+                    let finding_start = findings.len();
+                    for artifact in &run.artifacts {
+                        push_artifact(artifacts, artifact);
+                    }
+                    push_artifact(artifacts, &run.spectrum);
+                    push_artifact(artifacts, &run.summary);
+                    push_artifact(artifacts, &run.convergence);
+                    tag_corner_findings(findings, finding_start, &run_plan, false);
+                }
+                Err(error) => {
+                    for artifact in &error.artifacts {
+                        push_artifact(artifacts, artifact);
+                    }
+                    let mut finding =
+                        Finding::critical(SPICE_DISTORTION_ANALYSIS, &scenario.name, error.message);
+                    finding
+                        .measured
+                        .insert("selected_backend".to_string(), json!(backend));
+                    finding.limit.insert(
+                        "required_evidence".to_string(),
+                        json!("ngspice_distortion_spectrum_and_summary_csv"),
+                    );
+                    tag_corner_finding(&mut finding, &run_plan);
+                    finding.suggested_fixes.push(
+                        "Inspect the generated ngspice .DISTO wrapper deck and solver log artifacts."
+                            .to_string(),
+                    );
+                    findings.push(finding);
+                }
+            }
+        }
+        return;
+    }
+
     let mut finding = unsupported_backend_plan_finding(
         scenario,
         UnsupportedBackendPlan {
             check_id: SPICE_DISTORTION_ANALYSIS,
             selected_backend: backend,
-            implemented_backend: "none_yet",
+            implemented_backend: "ngspice",
             analysis_kind: "distortion",
             required_normalized_outputs: &[
                 "distortion_spectrum",
@@ -388,7 +451,7 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
     finding.measured.insert(
         "backend_research_status".to_string(),
         json!({
-            "ngspice": "manual_documents_disto_command_and_distof1_distof2_source_keywords_but_circuitci_normalizer_not_implemented_yet",
+            "ngspice": "manual_and_source_document_disto_plots_and_circuitci_ngspice_adapter_is_enabled",
             "xyce": "reference_guide_search_found_no_disto_or_distortion_analysis_command",
             "qucs_s": "homepage_lists_disto_support_via_spice_backends_but_not_a_distinct_adapter_contract",
             "spice_opus": "release_notes_document_distortion_parameters_but_no_circuitci_adapter_or_conformance_contract"
@@ -398,6 +461,8 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
         "source_notes".to_string(),
         json!({
             "ngspice_manual": "sources/ngspice_manual.xhtml",
+            "ngspice_disto_manual_page": "sources/ngspice_manual_disto_distortionanalysis.html",
+            "ngspice_disto_source": "sources/ngspice_source_distoan.c.gz",
             "ngspice_analyses": "sources/ngspice_ANALYSES",
             "xyce_reference": "sources/Xyce_Reference_Guide_7.8.txt",
             "qucs_s_home": "sources/qucs_s_home.html",
@@ -410,14 +475,10 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
     );
     finding.limit.insert(
         "current_limitation".to_string(),
-        json!("CircuitCI records small-signal distortion intent and source-frequency requirements but has no normalized .DISTO output contract or real-solver conformance yet."),
-    );
-    finding.limit.insert(
-        "trusted_backend_status".to_string(),
-        json!("none_available"),
+        json!("CircuitCI enables ngspice .DISTO only; other backends do not have a trusted distortion adapter."),
     );
     finding.suggested_fixes.push(
-        "Keep distortion sign-off blocked until an adapter emits normalized distortion spectrum, summary, convergence/raw-output, and solver-manifest artifacts with real-solver conformance coverage."
+        "Use backend: ngspice for .DISTO or keep this scenario blocked until the selected backend emits normalized distortion spectrum, summary, raw-output, and solver-manifest artifacts with conformance coverage."
             .to_string(),
     );
     findings.push(finding);
