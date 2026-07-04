@@ -49,6 +49,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/transfer_function_summary" }
     },
+    "s_parameter_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/s_parameter_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -248,6 +252,47 @@
         "transfer_function_gain": { "type": "number" },
         "input_resistance_ohm": { "type": "number" },
         "output_resistance_ohm": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "s_parameter_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "parameter",
+        "row_count",
+        "min_frequency_hz",
+        "max_frequency_hz",
+        "min_mag_db",
+        "max_mag_db",
+        "min_mag_linear",
+        "max_mag_linear",
+        "min_return_loss_db",
+        "max_return_loss_db",
+        "min_insertion_loss_db",
+        "max_insertion_loss_db",
+        "min_vswr",
+        "max_vswr"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "parameter": {
+          "type": "string",
+          "pattern": "^s[1-9][0-9]*[1-9][0-9]*$"
+        },
+        "row_count": { "type": "integer", "minimum": 0 },
+        "min_frequency_hz": { "type": "number" },
+        "max_frequency_hz": { "type": "number" },
+        "min_mag_db": { "type": "number" },
+        "max_mag_db": { "type": "number" },
+        "min_mag_linear": { "type": "number" },
+        "max_mag_linear": { "type": "number" },
+        "min_return_loss_db": { "type": ["number", "null"] },
+        "max_return_loss_db": { "type": ["number", "null"] },
+        "min_insertion_loss_db": { "type": ["number", "null"] },
+        "max_insertion_loss_db": { "type": ["number", "null"] },
+        "min_vswr": { "type": ["number", "null"] },
+        "max_vswr": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },

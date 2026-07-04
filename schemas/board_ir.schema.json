@@ -3215,6 +3215,28 @@
                       },
                       "additionalProperties": false
                     }
+                  },
+                  "s_parameter_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "parameter", "metric", "aggregation", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "parameter": { "type": "string", "pattern": "^s[1-9][0-9]*[1-9][0-9]*$" },
+                        "metric": { "enum": ["magnitude_db", "magnitude_linear", "return_loss_db", "insertion_loss_db", "vswr"] },
+                        "aggregation": { "enum": ["min", "max"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "allOf": [

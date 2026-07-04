@@ -7,11 +7,13 @@ use std::path::Path;
 
 mod analog_summaries;
 pub use analog_summaries::{
-    DistortionSummary, FourierSummary, PoleZeroSummary, SensitivitySummary, TransferFunctionSummary,
+    DistortionSummary, FourierSummary, PoleZeroSummary, SParameterSummary, SensitivitySummary,
+    TransferFunctionSummary,
 };
 use analog_summaries::{
     collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
-    collect_sensitivity_summaries, collect_transfer_function_summaries,
+    collect_s_parameter_summaries, collect_sensitivity_summaries,
+    collect_transfer_function_summaries,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -73,6 +75,7 @@ pub struct ValidationReport {
     pub pole_zero_summaries: Vec<PoleZeroSummary>,
     pub sensitivity_summaries: Vec<SensitivitySummary>,
     pub transfer_function_summaries: Vec<TransferFunctionSummary>,
+    pub s_parameter_summaries: Vec<SParameterSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -405,6 +408,7 @@ impl ValidationReport {
         let pole_zero_summaries = collect_pole_zero_summaries(&artifacts);
         let sensitivity_summaries = collect_sensitivity_summaries(&artifacts);
         let transfer_function_summaries = collect_transfer_function_summaries(&artifacts);
+        let s_parameter_summaries = collect_s_parameter_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -433,6 +437,7 @@ impl ValidationReport {
             pole_zero_summaries,
             sensitivity_summaries,
             transfer_function_summaries,
+            s_parameter_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -585,6 +590,31 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.transfer_function_gain,
                 row.input_resistance_ohm,
                 row.output_resistance_ohm
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+        }
+        text.push('\n');
+    }
+    text.push_str("## S-Parameter Summary\n\n");
+    if report.s_parameter_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.s_parameter_summaries {
+            let return_loss = format_optional_range(row.min_return_loss_db, row.max_return_loss_db);
+            let insertion_loss =
+                format_optional_range(row.min_insertion_loss_db, row.max_insertion_loss_db);
+            let vswr = format_optional_range(row.min_vswr, row.max_vswr);
+            text.push_str(&format!(
+                "- `{}`: rows={} frequency={:.6e}..{:.6e} Hz magnitude_db={:.6e}..{:.6e} return_loss_db={} insertion_loss_db={} vswr={}\n",
+                row.parameter,
+                row.row_count,
+                row.min_frequency_hz,
+                row.max_frequency_hz,
+                row.min_mag_db,
+                row.max_mag_db,
+                return_loss,
+                insertion_loss,
+                vswr
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -907,6 +937,13 @@ fn push_findings(text: &mut String, findings: &[Finding]) {
         }
     }
     text.push('\n');
+}
+
+fn format_optional_range(min: Option<f64>, max: Option<f64>) -> String {
+    match (min, max) {
+        (Some(min), Some(max)) => format!("{min:.6e}..{max:.6e}"),
+        _ => "n/a".to_string(),
+    }
 }
 
 fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenance> {
@@ -1856,5 +1893,44 @@ mod tests {
         assert!(markdown.contains("## Transfer Function Summary"));
         assert!(markdown.contains("`V(out)` from `V1`"));
         assert!(markdown.contains("gain=5.000000e-1"));
+    }
+
+    #[test]
+    fn validation_report_projects_s_parameter_summary_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let summary = dir.path().join("s_parameter_summary.csv");
+        fs::write(
+            &summary,
+            "parameter,row_count,min_frequency_hz,max_frequency_hz,min_mag_db,max_mag_db,min_mag_linear,max_mag_linear,min_return_loss_db,max_return_loss_db,min_insertion_loss_db,max_insertion_loss_db,min_vswr,max_vswr\ns11,2,1.000000000000e6,1.000000000000e9,-1.397940008672e1,-6.020599913280e0,2.000000000000e-1,5.000000000000e-1,6.020599913280e0,1.397940008672e1,,,1.500000000000e0,3.000000000000e0\ns21,2,1.000000000000e6,1.000000000000e9,3.521825181114e0,6.020599913280e0,1.500000000000e0,2.000000000000e0,,,-6.020599913280e0,-3.521825181114e0,,\n",
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![summary.to_string_lossy().into_owned()],
+            Vec::new(),
+            "circuitci validate project.yaml".to_string(),
+        );
+
+        assert_eq!(report.s_parameter_summaries.len(), 2);
+        assert_eq!(report.s_parameter_summaries[0].parameter, "s11");
+        assert_eq!(
+            report.s_parameter_summaries[0].min_return_loss_db,
+            Some(6.02059991328)
+        );
+        assert_eq!(report.s_parameter_summaries[0].max_vswr, Some(3.0));
+        assert_eq!(report.s_parameter_summaries[1].parameter, "s21");
+        assert_eq!(report.s_parameter_summaries[1].min_return_loss_db, None);
+        assert_eq!(
+            report.s_parameter_summaries[1].max_insertion_loss_db,
+            Some(-3.521825181114)
+        );
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## S-Parameter Summary"));
+        assert!(markdown.contains("`s11`"));
+        assert!(markdown.contains("vswr=1.500000e0..3.000000e0"));
     }
 }

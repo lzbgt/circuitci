@@ -636,6 +636,13 @@ The GUI should not become the solver.
   the test skips unless `Xyce` or `xyce` is on `PATH`.
 - Extend the initial explicit-Xyce S-parameter path from opt-in real-solver
   conformance coverage into supported two-port test-bench generation.
+  `analysis.s_parameter_assertions[]` now signs off normalized
+  `s_parameter_summary.csv` metrics for magnitude, return loss, insertion
+  loss, and VSWR; validation reports project retained summaries into
+  `s_parameter_summaries[]`, Markdown includes an "S-Parameter Summary"
+  section, and GUI Scopes shows compact RF sign-off rows. Next add derived
+  return-loss/insertion-loss/VSWR plot traces from S-parameter artifacts if
+  reviewers need visual RF margins alongside the existing numeric sign-off.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path

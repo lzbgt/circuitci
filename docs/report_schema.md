@@ -1450,6 +1450,12 @@ expression, input source, transfer-function gain, input resistance, and output
 resistance. Markdown reports include those rows in a "Transfer Function
 Summary" section, and the GUI report panel surfaces the same compact `.TF`
 scalar rows.
+Retained `s_parameter_summary.csv` artifacts project into top-level
+`s_parameter_summaries[]` rows with the source artifact path, S-parameter term,
+row count, frequency span, magnitude min/max, nullable return-loss min/max,
+nullable insertion-loss min/max, and nullable VSWR min/max. Markdown reports
+include those rows in an "S-Parameter Summary" section, and the GUI report
+panel surfaces the same compact RF sign-off rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

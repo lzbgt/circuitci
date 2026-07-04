@@ -60,6 +60,25 @@ pub struct TransferFunctionSummary {
     pub output_resistance_ohm: f64,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SParameterSummary {
+    pub artifact: String,
+    pub parameter: String,
+    pub row_count: usize,
+    pub min_frequency_hz: f64,
+    pub max_frequency_hz: f64,
+    pub min_mag_db: f64,
+    pub max_mag_db: f64,
+    pub min_mag_linear: f64,
+    pub max_mag_linear: f64,
+    pub min_return_loss_db: Option<f64>,
+    pub max_return_loss_db: Option<f64>,
+    pub min_insertion_loss_db: Option<f64>,
+    pub max_insertion_loss_db: Option<f64>,
+    pub min_vswr: Option<f64>,
+    pub max_vswr: Option<f64>,
+}
+
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
     let mut records = Vec::new();
     for artifact in artifacts {
@@ -400,6 +419,121 @@ fn parse_transfer_function_summary_csv(artifact: &str, text: &str) -> Vec<Transf
     rows
 }
 
+pub(super) fn collect_s_parameter_summaries(artifacts: &[String]) -> Vec<SParameterSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("s_parameter_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_s_parameter_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| {
+        left.artifact
+            .cmp(&right.artifact)
+            .then_with(|| left.parameter.cmp(&right.parameter))
+    });
+    records
+}
+
+fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "parameter",
+            "row_count",
+            "min_frequency_hz",
+            "max_frequency_hz",
+            "min_mag_db",
+            "max_mag_db",
+            "min_mag_linear",
+            "max_mag_linear",
+            "min_return_loss_db",
+            "max_return_loss_db",
+            "min_insertion_loss_db",
+            "max_insertion_loss_db",
+            "min_vswr",
+            "max_vswr",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 14 {
+            continue;
+        }
+        let Some(row_count) = fields[1].parse::<usize>().ok() else {
+            continue;
+        };
+        let Some(min_frequency_hz) = parse_finite_f64(&fields[2]) else {
+            continue;
+        };
+        let Some(max_frequency_hz) = parse_finite_f64(&fields[3]) else {
+            continue;
+        };
+        let Some(min_mag_db) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        let Some(max_mag_db) = parse_finite_f64(&fields[5]) else {
+            continue;
+        };
+        let Some(min_mag_linear) = parse_finite_f64(&fields[6]) else {
+            continue;
+        };
+        let Some(max_mag_linear) = parse_finite_f64(&fields[7]) else {
+            continue;
+        };
+        let Some(min_return_loss_db) = parse_optional_finite_f64(&fields[8]) else {
+            continue;
+        };
+        let Some(max_return_loss_db) = parse_optional_finite_f64(&fields[9]) else {
+            continue;
+        };
+        let Some(min_insertion_loss_db) = parse_optional_finite_f64(&fields[10]) else {
+            continue;
+        };
+        let Some(max_insertion_loss_db) = parse_optional_finite_f64(&fields[11]) else {
+            continue;
+        };
+        let Some(min_vswr) = parse_optional_finite_f64(&fields[12]) else {
+            continue;
+        };
+        let Some(max_vswr) = parse_optional_finite_f64(&fields[13]) else {
+            continue;
+        };
+        rows.push(SParameterSummary {
+            artifact: artifact.to_string(),
+            parameter: fields[0].clone(),
+            row_count,
+            min_frequency_hz,
+            max_frequency_hz,
+            min_mag_db,
+            max_mag_db,
+            min_mag_linear,
+            max_mag_linear,
+            min_return_loss_db,
+            max_return_loss_db,
+            min_insertion_loss_db,
+            max_insertion_loss_db,
+            min_vswr,
+            max_vswr,
+        });
+    }
+    rows
+}
+
 fn parse_pole_zero_summary_csv(artifact: &str, text: &str) -> Vec<PoleZeroSummary> {
     let mut lines = text.lines().filter(|line| !line.trim().is_empty());
     let Some(header) = lines.next() else {
@@ -491,4 +625,11 @@ fn split_csv_fields(line: &str) -> Option<Vec<String>> {
 fn parse_finite_f64(value: &str) -> Option<f64> {
     let value = value.parse::<f64>().ok()?;
     value.is_finite().then_some(value)
+}
+
+fn parse_optional_finite_f64(value: &str) -> Option<Option<f64>> {
+    if value.is_empty() {
+        return Some(None);
+    }
+    parse_finite_f64(value).map(Some)
 }

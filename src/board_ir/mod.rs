@@ -1282,6 +1282,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub s_parameter_ports: Vec<AnalogSParameterPort>,
     #[serde(default)]
+    pub s_parameter_assertions: Vec<AnalogSParameterAssertion>,
+    #[serde(default)]
     pub transfer_output_expression: Option<String>,
     #[serde(default)]
     pub transfer_input_source: Option<String>,
@@ -1484,6 +1486,37 @@ pub enum AnalogTransferFunctionMetric {
     TransferFunctionGain,
     InputResistanceOhm,
     OutputResistanceOhm,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogSParameterAssertion {
+    pub name: String,
+    pub parameter: String,
+    pub metric: AnalogSParameterMetric,
+    pub aggregation: AnalogSParameterAggregation,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogSParameterMetric {
+    MagnitudeDb,
+    MagnitudeLinear,
+    ReturnLossDb,
+    InsertionLossDb,
+    Vswr,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogSParameterAggregation {
+    Min,
+    Max,
 }
 
 #[derive(Debug, Clone, Deserialize)]

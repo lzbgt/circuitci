@@ -155,8 +155,13 @@ Current analog support:
   explicit port nodes/reference impedances. Explicit `backend: xyce` generates
   Xyce port devices, runs `.AC` plus `.LIN SPARCALC=1`, captures Touchstone RI
   output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
-  provenance. `backend: auto` does not select Xyce for this path until real
-  solver conformance coverage is enabled.
+  provenance. Validation derives `s_parameter_summary.csv`; optional
+  `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
+  insertion loss, and VSWR limits with fail-closed metric applicability checks.
+  Reports project retained rows into `s_parameter_summaries[]`, Markdown
+  includes an "S-Parameter Summary" section, and the GUI artifact panel shows
+  compact RF sign-off rows. `backend: auto` does not select Xyce for this path
+  until real solver conformance coverage is enabled.
 - `analog_transfer_function` scenarios with
   `SPICE_TRANSFER_FUNCTION_ANALYSIS` for `.TF` small-signal transfer
   contracts. The Board IR/schema can declare `analysis.type: tf`,

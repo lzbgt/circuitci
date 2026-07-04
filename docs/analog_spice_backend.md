@@ -402,7 +402,23 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    `s_parameters.csv` with magnitude, phase, and linear magnitude columns.
    The raw Touchstone file and normalized CSV are recorded in
    `solver_manifest.json`.
-5. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
+5. CircuitCI derives `s_parameter_summary.csv` from the normalized waveform
+   with per-term frequency span, magnitude min/max, return-loss min/max for
+   reflection terms, insertion-loss min/max for transmission terms, and VSWR
+   min/max for reflection terms whose linear magnitude is below unity.
+6. Optional `analysis.s_parameter_assertions[]` sign off
+   `s_parameter_summary.csv` metrics (`magnitude_db`, `magnitude_linear`,
+   `return_loss_db`, `insertion_loss_db`, or `vswr`) using `min`/`max`
+   aggregation plus `above`/`below` limits. `return_loss_db` and `vswr`
+   require reflection terms such as `s11`; `insertion_loss_db` requires
+   transmission terms such as `s21`. Missing or unavailable metrics and failed
+   limits emit `SPICE_S_PARAMETER_ANALYSIS` findings with retained summary
+   provenance.
+7. Validation reports project retained `s_parameter_summary.csv` rows into
+   top-level `s_parameter_summaries[]`, Markdown reports include an
+   "S-Parameter Summary" section, and GUI Scopes surfaces compact RF sign-off
+   rows.
+8. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
    this check and fail closed with backend-planning evidence until those
    adapters emit the same normalized `s_parameters` contract.
 

@@ -270,6 +270,27 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("S-parameter summary");
+                    if report.s_parameter_summaries.is_empty() {
+                        ui.label("No S-parameter summary rows were emitted.");
+                    } else {
+                        for row in &report.s_parameter_summaries {
+                            ui.monospace(format!(
+                                "{} rows={} f={:.6e}..{:.6e}Hz mag_db={:.6e}..{:.6e} return_loss={} insertion_loss={} vswr={} artifact={}",
+                                row.parameter,
+                                row.row_count,
+                                row.min_frequency_hz,
+                                row.max_frequency_hz,
+                                row.min_mag_db,
+                                row.max_mag_db,
+                                optional_range_label(row.min_return_loss_db, row.max_return_loss_db),
+                                optional_range_label(row.min_insertion_loss_db, row.max_insertion_loss_db),
+                                optional_range_label(row.min_vswr, row.max_vswr),
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Fourier summary");
                     if report.fourier_summaries.is_empty() {
                         ui.label("No Fourier summary rows were emitted.");
@@ -781,6 +802,13 @@ fn nonblank_id(preferred: &str, fallback: &str) -> String {
         fallback.to_string()
     } else {
         trimmed.to_string()
+    }
+}
+
+fn optional_range_label(min: Option<f64>, max: Option<f64>) -> String {
+    match (min, max) {
+        (Some(min), Some(max)) => format!("{min:.6e}..{max:.6e}"),
+        _ => "n/a".to_string(),
     }
 }
 

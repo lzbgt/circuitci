@@ -78,6 +78,15 @@ fn write_sparameter_project(
     backend: &str,
     port_positive_node: &str,
 ) -> std::path::PathBuf {
+    write_sparameter_project_with_analysis_extra(dir, backend, port_positive_node, "")
+}
+
+fn write_sparameter_project_with_analysis_extra(
+    dir: &std::path::Path,
+    backend: &str,
+    port_positive_node: &str,
+    analysis_extra: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let project = dir.join("project.yaml");
     fs::write(
@@ -128,13 +137,15 @@ scenarios:
         s_parameter_ports:
           - {{ name: p1, positive_node: {port_positive_node}, negative_node: "0", reference_impedance_ohm: 50.0 }}
           - {{ name: p2, positive_node: port2, negative_node: "0", reference_impedance_ohm: 50.0 }}
+{analysis_extra}
       stimuli:
         - {{ name: two_port_sweep, description: Planned two-port S-parameter sweep. }}
       probes:
         - {{ name: s11, expression: "S(p1,p1)" }}
       assertions: []
 "#,
-            libs = repo.join("libs/generic/analog").to_string_lossy()
+            libs = repo.join("libs/generic/analog").to_string_lossy(),
+            analysis_extra = analysis_extra
         ),
     )
     .unwrap();
@@ -271,6 +282,167 @@ fn explicit_xyce_sparameter_backend_normalizes_touchstone_and_manifest() {
         "xyce_s_parameters_touchstone"
     );
     assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "s_parameters");
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_assertions_pass_and_project_summary_rows() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 1.5 0.0 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s11_return_loss_floor
+            parameter: s11
+            metric: return_loss_db
+            aggregation: min
+            relation: above
+            threshold: 6.0
+            unit: dB
+          - name: s11_vswr_ceiling
+            parameter: s11
+            metric: vswr
+            aggregation: max
+            relation: below
+            threshold: 3.1
+          - name: s21_insertion_loss_ceiling
+            parameter: s21
+            metric: insertion_loss_db
+            aggregation: max
+            relation: below
+            threshold: 0.0
+            unit: dB
+"#,
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary_path = artifact_path(&report, "s_parameter_summary.csv");
+    assert_csv_has_header(
+        summary_path,
+        &[
+            "parameter",
+            "min_return_loss_db",
+            "max_insertion_loss_db",
+            "max_vswr",
+        ],
+    );
+    let summaries = report["s_parameter_summaries"].as_array().unwrap();
+    let s11 = summaries
+        .iter()
+        .find(|row| row["parameter"] == "s11")
+        .expect("s11 summary row");
+    assert!(s11["min_return_loss_db"].as_f64().unwrap() > 6.0);
+    assert!((s11["max_vswr"].as_f64().unwrap() - 3.0).abs() < 1.0e-9);
+    let s21 = summaries
+        .iter()
+        .find(|row| row["parameter"] == "s21")
+        .expect("s21 summary row");
+    assert!(s21["max_insertion_loss_db"].as_f64().unwrap() < 0.0);
+    assert!(s21["max_vswr"].is_null());
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("## S-Parameter Summary"));
+    assert!(markdown.contains("`s11`"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_assertion_fails_on_return_loss_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.5 0.0 2.0 0.0 0.01 0.0 0.4 0.0\\n1.0e9 0.2 0.0 1.5 0.0 0.02 0.0 0.3 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: s11_return_loss_floor
+            parameter: s11
+            metric: return_loss_db
+            aggregation: min
+            relation: above
+            threshold: 10.0
+            unit: dB
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "s11_return_loss_floor")
+        .expect("return-loss assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(failure["measured"]["metric"], "return_loss_db");
+    assert_eq!(failure["measured"]["aggregation"], "min");
+    assert_eq!(failure["limit"]["above_threshold"], 10.0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_assertion_rejects_vswr_on_transmission_term() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable(fake_path.path(), "Xyce");
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_assertions:
+          - name: invalid_vswr
+            parameter: s21
+            metric: vswr
+            aggregation: max
+            relation: below
+            threshold: 2.0
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("requires a reflection parameter")
+    );
     assert_report_schema_valid(&report);
 }
 
