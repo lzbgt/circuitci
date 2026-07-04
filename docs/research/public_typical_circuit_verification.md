@@ -16,6 +16,7 @@ audit the modeled facts without relying on chat history.
 | TI TPS2115A autoswitching power mux typical application | <https://www.ti.com/lit/ds/symlink/tps2115a.pdf> | `docs/research/datasheets/ti/tps2115a.pdf` |
 | TI TPS2121 priority power mux typical use | <https://www.ti.com/lit/ds/symlink/tps2121.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/tps2121.pdf` |
 | TI TPD2EUSB30 USB ESD protection typical use | <https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf> | `docs/research/datasheets/ti/tpd2eusb30.pdf` |
+| Nexperia PRTR5V0U2X rail-to-rail USB ESD protection typical use | <https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf> | `docs/research/datasheets/nexperia/prtr5v0u2x.pdf` |
 | Nexperia PESD5V0S1UL VBUS ESD protection typical use | <https://assets.nexperia.com/documents/data-sheet/PESD5V0S1UL.pdf> | `docs/research/datasheets/nexperia/pesd5v0s1ul.pdf` |
 | TI TPS62162 3.3 V synchronous buck typical use | <https://www.ti.com/lit/ds/symlink/tps62160.pdf> | `docs/research/datasheets/ti/tps62160.pdf` |
 | TI TPS61023 5 V synchronous boost typical use | <https://www.ti.com/lit/ds/symlink/tps61023.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/tps61023.pdf` |
@@ -41,8 +42,8 @@ audit the modeled facts without relying on chat history.
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
 were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
 STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
-The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PESD5V0S1UL,
-Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and Microchip
+The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
+Nexperia PESD5V0S1UL, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and Microchip
 MCP131X/2X PDFs were downloaded from their official vendor URLs. WCH CH340C,
 WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
@@ -51,8 +52,8 @@ part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines thirty-three public-reference
-passing cases and forty paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines thirty-four public-reference
+passing cases and forty-two paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -70,6 +71,9 @@ passing cases and forty paired injected-error cases:
 | `ti_tps2121_input_overvoltage_detected` | `examples/bad_ti_tps2121_input_overvoltage/project.yaml` | fail | Detects selected input voltage above the datasheet-backed 22 V operating maximum. |
 | `ti_tpd2eusb30_typical_usb_esd_passes` | `examples/good_ti_tpd2eusb30_usb_esd/project.yaml` | pass | TPD2EUSB30 D+/D- clamps with 5.5 V standoff and 0.7 pF line capacitance evidence. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml` | fail | Detects clamp capacitance above a stricter interface budget. |
+| `nexperia_prtr5v0u2x_typical_usb_esd_passes` | `examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml` | pass | PRTR5V0U2X rail-to-rail D+/D- clamp with 5.5 V standoff and 1.5 pF maximum I/O line capacitance evidence. |
+| `nexperia_prtr5v0u2x_capacitance_budget_detected` | `examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance/project.yaml` | fail | Detects PRTR5V0U2X capacitance above a stricter USB data-line budget. |
+| `nexperia_prtr5v0u2x_reference_detected` | `examples/bad_nexperia_prtr5v0u2x_usb_esd_reference/project.yaml` | fail | Detects PRTR5V0U2X `VCC` tied to a non-power signal net instead of a power reference. |
 | `nexperia_pesd5v0s1ul_vbus_esd_passes` | `examples/good_nexperia_pesd5v0s1ul_vbus_esd/project.yaml` | pass | PESD5V0S1UL VBUS-to-ground clamp with source-backed 5.0 V standoff and 200 pF maximum capacitance evidence. |
 | `nexperia_pesd5v0s1ul_capacitance_budget_detected` | `examples/bad_nexperia_pesd5v0s1ul_vbus_capacitance/project.yaml` | fail | Detects PESD5V0S1UL capacitance above a stricter VBUS-line budget. |
 | `ti_tps62162_typical_buck_passes` | `examples/good_ti_tps62162_3v3_buck/project.yaml` | pass | TPS62162 fixed 3.3 V synchronous buck with 12 V input, 10 uF input capacitance, 22 uF output capacitance, and 2.2 uH direct output inductance. |
@@ -141,7 +145,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=73, passed=73, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=76, passed=76, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -159,6 +163,8 @@ Observed detection details:
 | `ti_tps2121_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `5.000000 A` exceeds mux limit `4.500000 A`. |
 | `ti_tps2121_input_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `adapter_24v` supplies `UMUX.IN1` at `24.000000 V`, outside the model maximum operating voltage `22.000000 V`. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `d1_plus` has `7.000e-13 F` line capacitance, above the `5.000e-13 F` interface limit. |
+| `nexperia_prtr5v0u2x_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` has `1.500e-12 F` line capacitance on `usb_dp`, above interface limit `1.000e-12 F`. |
+| `nexperia_prtr5v0u2x_reference_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` reference pin `VCC` is connected to digital-or-analog net `usb_dp`, expected power. |
 | `nexperia_pesd5v0s1ul_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `vbus_to_ground` has `2.000e-10 F` line capacitance, above the `1.000e-10 F` interface limit. |
 | `ti_tps62162_output_overcurrent_detected` | `POWER_TREE_VALID` | Regulator `UBUCK` worst-case output load `1.200000 A` exceeds regulator limit `1.000000 A`. |
 | `ti_tps62162_output_inductance_detected` | `POWER_TREE_VALID` | Regulator `UBUCK` output inductor path `buck_sw->rail_3v3` has `1.000000e-6 H` direct inductance, outside the modeled support range. |
@@ -189,9 +195,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All thirty-three public-reference pass cases produced zero critical findings.
-All forty paired injected-error cases failed with the expected critical finding
-ID, and all forty repair-pair checks passed.
+All thirty-four public-reference pass cases produced zero critical findings.
+All forty-two paired injected-error cases failed with the expected critical
+finding ID, and all forty-two repair-pair checks passed.
 
 ## Interpretation Limits
 
