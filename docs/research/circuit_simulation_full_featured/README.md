@@ -748,6 +748,12 @@ The GUI should not become the solver.
   and evaluates RF noise assertions against the retained summary. Mixed
   S-parameter term/network sign-off remains on the existing Xyce Touchstone
   path until ngspice S-matrix normalization is added.
+- 2026-07-04: Projected retained RF SP-noise summaries into normal validation
+  reports. `s_parameter_noise_summary.csv` now appears as
+  `s_parameter_noise_summaries[]`, Markdown reports include an "S-Parameter
+  Noise Summary" section, and GUI Scopes shows compact NF/NFmin/Rn/`|SOpt|`
+  worst-case rows alongside the existing S-parameter term and network
+  summaries.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

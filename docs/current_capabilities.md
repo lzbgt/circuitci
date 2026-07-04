@@ -185,10 +185,12 @@ Current analog support:
   evidence emitted by the ngspice `.SP ... donoise=1` adapter. The Xyce
   Touchstone path still fails closed for these noise metrics because it does
   not emit NF/NFmin/Rn/SOpt evidence.
-  Reports project retained rows into `s_parameter_summaries[]` and retained
-  network-quality rows into `s_parameter_network_summaries[]`, Markdown
-  includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
-  the GUI artifact panel shows compact RF term and network sign-off rows,
+  Reports project retained rows into `s_parameter_summaries[]`, retained
+  network-quality rows into `s_parameter_network_summaries[]`, and retained RF
+  noise rows into `s_parameter_noise_summaries[]`. Markdown includes
+  "S-Parameter Summary", "S-Parameter Network Summary", and "S-Parameter Noise
+  Summary" sections, the GUI artifact panel shows compact RF term, network,
+  and RF-noise sign-off rows,
   Scopes includes an RF Network Check editor for authoring two-port
   reciprocity, passivity, Rollet K, `|Delta|`, MAG, MSG, unilateral-gain, and
   source/load gain sign-off checks without hand-editing YAML, including the

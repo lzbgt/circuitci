@@ -471,9 +471,11 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
 9. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into
-   `s_parameter_network_summaries[]`. Markdown reports include
-   "S-Parameter Summary" and "S-Parameter Network Summary" sections, and GUI
-   Scopes surfaces compact RF term plus network-quality rows.
+   `s_parameter_network_summaries[]`. Retained `s_parameter_noise_summary.csv`
+   rows project into `s_parameter_noise_summaries[]`. Markdown reports include
+   "S-Parameter Summary", "S-Parameter Network Summary", and "S-Parameter
+   Noise Summary" sections, and GUI Scopes surfaces compact RF term,
+   network-quality, and RF-noise rows.
 10. `backend: auto` may select ngspice for pure SP-noise assertions or fail
    closed when no requested solver is available. `ngspice` without
    SP-noise-only assertions and `embedded_ngspice` remain conservative for

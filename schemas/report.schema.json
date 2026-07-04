@@ -57,6 +57,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/s_parameter_network_summary" }
     },
+    "s_parameter_noise_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/s_parameter_noise_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -383,6 +387,38 @@
         "frequency_hz_at_min_available_gain": { "type": ["number", "null"] },
         "min_operating_gain_db": { "type": ["number", "null"] },
         "frequency_hz_at_min_operating_gain": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "s_parameter_noise_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "row_count",
+        "min_frequency_hz",
+        "max_frequency_hz",
+        "max_noise_figure_db",
+        "frequency_hz_at_max_noise_figure",
+        "max_minimum_noise_figure_db",
+        "frequency_hz_at_max_minimum_noise_figure",
+        "max_equivalent_noise_resistance_ohm",
+        "frequency_hz_at_max_equivalent_noise_resistance",
+        "max_optimum_source_reflection_magnitude",
+        "frequency_hz_at_max_optimum_source_reflection_magnitude"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "row_count": { "type": "integer", "minimum": 0 },
+        "min_frequency_hz": { "type": "number" },
+        "max_frequency_hz": { "type": "number" },
+        "max_noise_figure_db": { "type": "number" },
+        "frequency_hz_at_max_noise_figure": { "type": "number" },
+        "max_minimum_noise_figure_db": { "type": "number" },
+        "frequency_hz_at_max_minimum_noise_figure": { "type": "number" },
+        "max_equivalent_noise_resistance_ohm": { "type": "number" },
+        "frequency_hz_at_max_equivalent_noise_resistance": { "type": "number" },
+        "max_optimum_source_reflection_magnitude": { "type": "number" },
+        "frequency_hz_at_max_optimum_source_reflection_magnitude": { "type": "number" }
       },
       "additionalProperties": false
     },

@@ -975,6 +975,16 @@ fn ngspice_sparameter_noise_assertions_evaluate_summary_artifact() {
         manifest["outputs"]["normalized"][0]["kind"],
         "s_parameter_noise_summary"
     );
+    let summaries = report["s_parameter_noise_summaries"].as_array().unwrap();
+    assert_eq!(summaries.len(), 1);
+    assert_eq!(summaries[0]["row_count"], 2);
+    assert_eq!(summaries[0]["max_noise_figure_db"], 3.0);
+    assert_eq!(summaries[0]["max_equivalent_noise_resistance_ohm"], 6.0);
+    assert_eq!(summaries[0]["max_optimum_source_reflection_magnitude"], 0.5);
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("## S-Parameter Noise Summary"));
+    assert!(markdown.contains("noise_figure_db_max=3.000000e0"));
+    assert!(markdown.contains("optimum_source_reflection_magnitude_max=5.000000e-1"));
     assert_report_schema_valid(&report);
 }
 

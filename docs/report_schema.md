@@ -1484,6 +1484,13 @@ gain sign-off projects as nullable `min_transducer_gain_db`,
 Markdown reports include those rows in an "S-Parameter Network Summary"
 section, and the GUI report panel surfaces the same compact two-port quality
 rows.
+Retained `s_parameter_noise_summary.csv` artifacts project into top-level
+`s_parameter_noise_summaries[]` rows with the source artifact path, RF SP-noise
+row count, frequency span, maximum noise figure, maximum minimum noise figure,
+maximum equivalent noise resistance, maximum optimum-source reflection
+magnitude, and the frequency where each worst-case value occurred. Markdown
+reports include those rows in an "S-Parameter Noise Summary" section, and the
+GUI report panel surfaces the same compact RF noise sign-off rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

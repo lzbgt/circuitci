@@ -342,6 +342,29 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("S-parameter noise summary");
+                    if report.s_parameter_noise_summaries.is_empty() {
+                        ui.label("No S-parameter noise summary rows were emitted.");
+                    } else {
+                        for row in &report.s_parameter_noise_summaries {
+                            ui.monospace(format!(
+                                "rows={} f={:.6e}..{:.6e}Hz nf_max={:.6e}dB at {:.6e}Hz nfmin_max={:.6e}dB at {:.6e}Hz rn_max={:.6e}ohm at {:.6e}Hz gamma_opt_max={:.6e} at {:.6e}Hz artifact={}",
+                                row.row_count,
+                                row.min_frequency_hz,
+                                row.max_frequency_hz,
+                                row.max_noise_figure_db,
+                                row.frequency_hz_at_max_noise_figure,
+                                row.max_minimum_noise_figure_db,
+                                row.frequency_hz_at_max_minimum_noise_figure,
+                                row.max_equivalent_noise_resistance_ohm,
+                                row.frequency_hz_at_max_equivalent_noise_resistance,
+                                row.max_optimum_source_reflection_magnitude,
+                                row.frequency_hz_at_max_optimum_source_reflection_magnitude,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Fourier summary");
                     if report.fourier_summaries.is_empty() {
                         ui.label("No Fourier summary rows were emitted.");

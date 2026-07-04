@@ -122,6 +122,22 @@ pub struct SParameterNetworkSummary {
     pub frequency_hz_at_min_operating_gain: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SParameterNoiseSummary {
+    pub artifact: String,
+    pub row_count: usize,
+    pub min_frequency_hz: f64,
+    pub max_frequency_hz: f64,
+    pub max_noise_figure_db: f64,
+    pub frequency_hz_at_max_noise_figure: f64,
+    pub max_minimum_noise_figure_db: f64,
+    pub frequency_hz_at_max_minimum_noise_figure: f64,
+    pub max_equivalent_noise_resistance_ohm: f64,
+    pub frequency_hz_at_max_equivalent_noise_resistance: f64,
+    pub max_optimum_source_reflection_magnitude: f64,
+    pub frequency_hz_at_max_optimum_source_reflection_magnitude: f64,
+}
+
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
     let mut records = Vec::new();
     for artifact in artifacts {
@@ -498,6 +514,23 @@ pub(super) fn collect_s_parameter_network_summaries(
     records
 }
 
+pub(super) fn collect_s_parameter_noise_summaries(
+    artifacts: &[String],
+) -> Vec<SParameterNoiseSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("s_parameter_noise_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_s_parameter_noise_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| left.artifact.cmp(&right.artifact));
+    records
+}
+
 fn parse_s_parameter_network_summary_csv(
     artifact: &str,
     text: &str,
@@ -675,6 +708,93 @@ fn parse_s_parameter_network_summary_csv(
             frequency_hz_at_min_available_gain,
             min_operating_gain_db,
             frequency_hz_at_min_operating_gain,
+        });
+    }
+    rows
+}
+
+fn parse_s_parameter_noise_summary_csv(artifact: &str, text: &str) -> Vec<SParameterNoiseSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "row_count",
+            "min_frequency_hz",
+            "max_frequency_hz",
+            "max_noise_figure_db",
+            "frequency_hz_at_max_noise_figure",
+            "max_minimum_noise_figure_db",
+            "frequency_hz_at_max_minimum_noise_figure",
+            "max_equivalent_noise_resistance_ohm",
+            "frequency_hz_at_max_equivalent_noise_resistance",
+            "max_optimum_source_reflection_magnitude",
+            "frequency_hz_at_max_optimum_source_reflection_magnitude",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 11 {
+            continue;
+        }
+        let Some(row_count) = fields[0].parse::<usize>().ok() else {
+            continue;
+        };
+        let Some(min_frequency_hz) = parse_finite_f64(&fields[1]) else {
+            continue;
+        };
+        let Some(max_frequency_hz) = parse_finite_f64(&fields[2]) else {
+            continue;
+        };
+        let Some(max_noise_figure_db) = parse_finite_f64(&fields[3]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_noise_figure) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        let Some(max_minimum_noise_figure_db) = parse_finite_f64(&fields[5]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_minimum_noise_figure) = parse_finite_f64(&fields[6]) else {
+            continue;
+        };
+        let Some(max_equivalent_noise_resistance_ohm) = parse_finite_f64(&fields[7]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_equivalent_noise_resistance) = parse_finite_f64(&fields[8])
+        else {
+            continue;
+        };
+        let Some(max_optimum_source_reflection_magnitude) = parse_finite_f64(&fields[9]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_optimum_source_reflection_magnitude) =
+            parse_finite_f64(&fields[10])
+        else {
+            continue;
+        };
+        rows.push(SParameterNoiseSummary {
+            artifact: artifact.to_string(),
+            row_count,
+            min_frequency_hz,
+            max_frequency_hz,
+            max_noise_figure_db,
+            frequency_hz_at_max_noise_figure,
+            max_minimum_noise_figure_db,
+            frequency_hz_at_max_minimum_noise_figure,
+            max_equivalent_noise_resistance_ohm,
+            frequency_hz_at_max_equivalent_noise_resistance,
+            max_optimum_source_reflection_magnitude,
+            frequency_hz_at_max_optimum_source_reflection_magnitude,
         });
     }
     rows

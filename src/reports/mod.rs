@@ -8,13 +8,13 @@ use std::path::Path;
 mod analog_summaries;
 pub use analog_summaries::{
     DistortionSummary, FourierSummary, PoleZeroSummary, SParameterNetworkSummary,
-    SParameterSummary, SensitivitySummary, TransferFunctionSummary,
+    SParameterNoiseSummary, SParameterSummary, SensitivitySummary, TransferFunctionSummary,
 };
 use analog_summaries::{
     collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
-    collect_s_parameter_network_summaries, collect_s_parameter_summaries,
-    collect_sensitivity_summaries, collect_transfer_function_summaries,
-    render_s_parameter_network_summary_markdown,
+    collect_s_parameter_network_summaries, collect_s_parameter_noise_summaries,
+    collect_s_parameter_summaries, collect_sensitivity_summaries,
+    collect_transfer_function_summaries, render_s_parameter_network_summary_markdown,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -78,6 +78,7 @@ pub struct ValidationReport {
     pub transfer_function_summaries: Vec<TransferFunctionSummary>,
     pub s_parameter_summaries: Vec<SParameterSummary>,
     pub s_parameter_network_summaries: Vec<SParameterNetworkSummary>,
+    pub s_parameter_noise_summaries: Vec<SParameterNoiseSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -412,6 +413,7 @@ impl ValidationReport {
         let transfer_function_summaries = collect_transfer_function_summaries(&artifacts);
         let s_parameter_summaries = collect_s_parameter_summaries(&artifacts);
         let s_parameter_network_summaries = collect_s_parameter_network_summaries(&artifacts);
+        let s_parameter_noise_summaries = collect_s_parameter_noise_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -442,6 +444,7 @@ impl ValidationReport {
             transfer_function_summaries,
             s_parameter_summaries,
             s_parameter_network_summaries,
+            s_parameter_noise_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -640,6 +643,29 @@ pub fn markdown_report(report: &ValidationReport) -> String {
     } else {
         for row in &report.s_parameter_network_summaries {
             text.push_str(&render_s_parameter_network_summary_markdown(row));
+        }
+        text.push('\n');
+    }
+    text.push_str("## S-Parameter Noise Summary\n\n");
+    if report.s_parameter_noise_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.s_parameter_noise_summaries {
+            text.push_str(&format!(
+                "- rows={} frequency={:.6e}..{:.6e} Hz noise_figure_db_max={:.6e} at {:.6e} Hz minimum_noise_figure_db_max={:.6e} at {:.6e} Hz equivalent_noise_resistance_ohm_max={:.6e} at {:.6e} Hz optimum_source_reflection_magnitude_max={:.6e} at {:.6e} Hz\n",
+                row.row_count,
+                row.min_frequency_hz,
+                row.max_frequency_hz,
+                row.max_noise_figure_db,
+                row.frequency_hz_at_max_noise_figure,
+                row.max_minimum_noise_figure_db,
+                row.frequency_hz_at_max_minimum_noise_figure,
+                row.max_equivalent_noise_resistance_ohm,
+                row.frequency_hz_at_max_equivalent_noise_resistance,
+                row.max_optimum_source_reflection_magnitude,
+                row.frequency_hz_at_max_optimum_source_reflection_magnitude
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
         text.push('\n');
     }
