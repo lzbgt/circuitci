@@ -241,8 +241,10 @@ Current analog support:
   panel shows compact `.TF` scalar rows. Opt-in real-ngspice conformance
   coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
-  it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
-  fail-closed with planning evidence for this path.
+  it skips unless `ngspice` is on `PATH`. Xyce remains fail-closed with
+  `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
+  7.8 primary docs do not document a native `.TF` command or equivalent result
+  artifact; embedded ngspice remains fail-closed with planning evidence.
 - `analog_pole_zero` scenarios with `SPICE_POLE_ZERO_ANALYSIS` for `.PZ`
   small-signal pole/zero extraction contracts. The Board IR/schema can declare
   `analysis.type: pz`, output and reference nodes, an input source, and a mode
@@ -256,8 +258,10 @@ Current analog support:
   "Pole-Zero Summary" section, and the GUI artifact panel shows compact root
   rows. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`;
-  it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
-  fail-closed with planning evidence for this path.
+  it skips unless `ngspice` is on `PATH`. Xyce remains fail-closed with
+  `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
+  7.8 primary docs do not document a native `.PZ` command or equivalent result
+  artifact; embedded ngspice remains fail-closed with planning evidence.
 - `analog_sensitivity` scenarios with `SPICE_SENSITIVITY_ANALYSIS` for
   ngspice/Xyce `.SENS` sensitivity contracts. The Board IR/schema can declare
   `analysis.type: sens`, `sensitivity_output_expression`, `sensitivity_mode`

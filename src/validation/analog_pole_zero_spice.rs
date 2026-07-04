@@ -310,6 +310,16 @@ pub(super) fn validate_spice_pole_zero_with_progress<F, C>(
             .measured
             .insert("input_source".to_string(), json!(input_source));
         finding.measured.insert("mode".to_string(), json!(mode));
+        if backend.eq_ignore_ascii_case("xyce") {
+            finding.measured.insert(
+                "adapter_blocker".to_string(),
+                json!("Xyce 7.8 primary documentation in this repository does not document a native .PZ command or pole-zero result artifact."),
+            );
+            finding.measured.insert(
+                "evidence_sources".to_string(),
+                json!(["docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"]),
+            );
+        }
         finding.limit.insert(
             "required_evidence".to_string(),
             json!("pole_zero_summary_csv_or_json"),

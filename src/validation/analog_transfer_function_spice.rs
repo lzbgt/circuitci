@@ -277,6 +277,16 @@ pub(super) fn validate_spice_transfer_function_with_progress<F, C>(
         finding
             .measured
             .insert("input_source".to_string(), json!(input_source));
+        if backend.eq_ignore_ascii_case("xyce") {
+            finding.measured.insert(
+                "adapter_blocker".to_string(),
+                json!("Xyce 7.8 primary documentation in this repository does not document a native .TF command or transfer-function result artifact."),
+            );
+            finding.measured.insert(
+                "evidence_sources".to_string(),
+                json!(["docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"]),
+            );
+        }
         finding.limit.insert(
             "required_evidence".to_string(),
             json!("transfer_function_summary_csv_or_json"),

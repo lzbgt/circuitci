@@ -480,6 +480,16 @@ fn transfer_function_xyce_backend_fails_closed_with_planning_evidence() {
         report["failures"][0]["measured"]["adapter_status"],
         "planned_not_implemented"
     );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("does not document a native .TF command")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"
+    );
     assert_eq!(
         report["failures"][0]["limit"]["implemented_backend"],
         "ngspice"

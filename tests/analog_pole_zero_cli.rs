@@ -458,6 +458,16 @@ fn pole_zero_xyce_backend_fails_closed_with_planning_evidence() {
     assert_eq!(report["failures"][0]["measured"]["reference_node"], "0");
     assert_eq!(report["failures"][0]["measured"]["input_source"], "V1");
     assert_eq!(report["failures"][0]["measured"]["mode"], "poles_and_zeros");
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("does not document a native .PZ command")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt"
+    );
     assert_eq!(
         report["failures"][0]["limit"]["implemented_backend"],
         "ngspice"

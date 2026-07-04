@@ -73,6 +73,8 @@ Sources saved:
   decision.
 - `distortion_backend_evidence.md` records the small-signal distortion backend
   decision.
+- `xyce_tf_pz_backend_evidence.md` records the Xyce 7.8 `.TF`/`.PZ` backend
+  boundary and the report metadata used when those requests fail closed.
 
 Upstream:
 
@@ -560,14 +562,19 @@ The GUI should not become the solver.
   resistance, or output resistance limits from `transfer_function_summary.csv`,
   reports project retained rows into `transfer_function_summaries[]`, Markdown
   reports include a "Transfer Function Summary" section, and GUI Scopes shows
-  compact `.TF` scalar rows. Next add Xyce planning or adapter support where
-  the backend exposes equivalent output.
+  compact `.TF` scalar rows. Xyce remains fail-closed with structured
+  `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
+  7.8 primary docs do not document a native `.TF` command or equivalent result
+  artifact.
 - The first `.PZ` path is an external-ngspice adapter with a Board IR/schema
   contract for output/reference nodes, input source, mode, and normalized
   `pole_zero_summary` plus opt-in real-ngspice conformance. It now also has
   root-level sign-off assertions over real rad/s, imaginary rad/s, or derived
   frequency, report projection into `pole_zero_summaries[]`, Markdown output,
-  and GUI report-panel surfacing. Next add non-ngspice planning/adapters.
+  and GUI report-panel surfacing. Xyce remains fail-closed with structured
+  `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
+  7.8 primary docs do not document a native `.PZ` command or equivalent result
+  artifact.
 - The `.SENS` path has external-ngspice and explicit-Xyce adapters with a Board
   IR/schema contract for DC or AC output sensitivity, optional filters,
   normalized `sensitivity_summary`, solver manifests, opt-in real-ngspice

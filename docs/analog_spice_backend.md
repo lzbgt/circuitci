@@ -519,9 +519,11 @@ For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
    the test is skipped by default unless the variable is set and `ngspice` is
    on `PATH`.
-8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
-   until those adapters emit the same normalized `transfer_function_summary`
-   contract.
+8. Xyce remains fail-closed with backend-planning evidence plus structured
+   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
+   7.8 primary docs do not document a native `.TF` command or equivalent result
+   artifact. Embedded ngspice remains fail-closed until it emits the same
+   normalized `transfer_function_summary` contract.
 
 For a scenario with check `SPICE_POLE_ZERO_ANALYSIS`:
 
@@ -552,8 +554,11 @@ For a scenario with check `SPICE_POLE_ZERO_ANALYSIS`:
    top-level `pole_zero_summaries[]`, Markdown reports include a "Pole-Zero
    Summary" section, and GUI Scopes surfaces compact root rows in the report
    artifact panel.
-8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
-   until those adapters emit the same normalized `pole_zero_summary` contract.
+8. Xyce remains fail-closed with backend-planning evidence plus structured
+   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
+   7.8 primary docs do not document a native `.PZ` command or equivalent result
+   artifact. Embedded ngspice remains fail-closed until it emits the same
+   normalized `pole_zero_summary` contract.
 
 For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
 
