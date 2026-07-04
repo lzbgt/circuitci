@@ -1,0 +1,236 @@
+component_id: vendor.raspberrypi.rp2040
+version: 0.1.0
+category: mcu
+ports:
+  IOVDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.62
+      operating_voltage_max_V: 3.63
+      max_supply_current_A: 0.05
+  VREG_VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.62
+      operating_voltage_max_V: 3.63
+  VREG_VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.05
+      operating_voltage_max_V: 1.16
+      max_supply_current_A: 0.0
+  DVDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.05
+      operating_voltage_max_V: 1.16
+      max_supply_current_A: 0.1
+  USB_VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.135
+      operating_voltage_max_V: 3.63
+  ADC_AVDD:
+    kind: electrical_power
+    required: false
+    electrical:
+      operating_voltage_min_V: 1.62
+      operating_voltage_max_V: 3.63
+  GND:
+    kind: electrical_ground
+    required: true
+  RUN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  QSPI_SS:
+    kind: digital_electrical_io
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      drive_high_voltage_V: 2.62
+      source_impedance_ohm: 82.5
+      injection_current_limit_A: 0.0001
+  GPIO0:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.62
+      source_impedance_ohm: 82.5
+  GPIO1:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  SWCLK:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  SWDIO:
+    kind: digital_electrical_io
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      drive_high_voltage_V: 2.62
+      source_impedance_ohm: 82.5
+      injection_current_limit_A: 0.0001
+  USB_DP:
+    kind: passive
+    required: false
+  USB_DM:
+    kind: passive
+    required: false
+  XIN:
+    kind: passive
+    required: false
+  XOUT:
+    kind: passive
+    required: false
+power_conversion:
+  input_pin: VREG_VIN
+  output_pin: VREG_VOUT
+  max_output_current_A: 0.1
+behavior:
+  reset:
+    pin: RUN
+    active: low
+  boot:
+    sample_time_after_reset_release_us: 0
+    modes:
+      external_flash:
+        straps:
+          - pin: QSPI_SS
+            required_state: high
+      bootsel_usb:
+        straps:
+          - pin: QSPI_SS
+            required_state: low
+rules:
+  - POWER_TREE_VALID
+  - RESET_RELEASE_AFTER_POWER_VALID
+  - BOOT_STRAP_DEFINED
+  - BOOT_STRAP_BIAS_VALID
+datasheet:
+  manufacturer: Raspberry Pi
+  part_number: RP2040
+  package: QFN56
+  polarity: dual_cortex_m0_plus_mcu
+  pinout:
+    IOVDD: IOVDD
+    VREG_VIN: VREG_VIN
+    VREG_VOUT: VREG_VOUT
+    DVDD: DVDD
+    USB_VDD: USB_VDD
+    ADC_AVDD: ADC_AVDD
+    GND: exposed_pad_and_ground
+    RUN: RUN
+    QSPI_SS: QSPI_CSn
+    GPIO0: GPIO0 / UART0 TX
+    GPIO1: GPIO1 / UART0 RX
+    SWCLK: SWCLK
+    SWDIO: SWD
+    USB_DP: USB_DP
+    USB_DM: USB_DM
+    XIN: XIN
+    XOUT: XOUT
+  electrical_characteristics:
+    iovdd_supply:
+      conditions: Power supply specification, digital IO.
+      min: 1.62
+      typ: 3.3
+      max: 3.63
+      unit: V
+    dvdd_supply:
+      conditions: Power supply specification, digital core.
+      min: 1.05
+      typ: 1.1
+      max: 1.16
+      unit: V
+    vreg_vin_supply:
+      conditions: Power supply specification, internal regulator input.
+      min: 1.62
+      typ: 3.3
+      max: 3.63
+      unit: V
+    usb_vdd_supply:
+      conditions: Power supply specification, USB PHY.
+      min: 3.135
+      typ: 3.3
+      max: 3.63
+      unit: V
+    adc_avdd_supply:
+      conditions: Power supply specification, ADC supply.
+      min: 1.62
+      typ: 3.3
+      max: 3.63
+      unit: V
+    vreg_vout_current:
+      conditions: Pin description for internal regulator output.
+      max: 0.1
+      unit: A
+    gpio_input_high_3v3:
+      conditions: Digital IO characteristics at IOVDD = 3.3 V.
+      min: 2.0
+      unit: V
+    gpio_input_low_3v3:
+      conditions: Digital IO characteristics at IOVDD = 3.3 V.
+      max: 0.8
+      unit: V
+    gpio_output_high_3v3:
+      conditions: Digital IO characteristics at IOVDD = 3.3 V.
+      min: 2.62
+      unit: V
+    iovdd_total_source_current:
+      conditions: Maximum total IOVDD current sourced by GPIO and QSPI pins.
+      max: 0.05
+      unit: A
+  device_parameters:
+    qspi_ss_default_bias:
+      value: 1
+      unit: logic
+      simulation_relevance: External flash boot keeps QSPI_SS high; pulling it low during reset selects BOOTSEL USB mode.
+    internal_core_regulator:
+      value: 0.1
+      unit: A
+      simulation_relevance: VREG_VOUT is modeled as a 1.1 V, 100 mA board-visible regulator output feeding DVDD.
+  documents:
+    - title: RP2040 Datasheet
+      path: docs/research/datasheets/raspberrypi/rp2040-datasheet.pdf
+      source_url: https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf
+      sha256: be56fbb75ba0ae9e26558a73c93ac3e75c2ad4e6878d3b6703de2a76d886ea8c
+      retrieved: 2026-07-05
+    - title: Hardware design with RP2040
+      path: docs/research/datasheets/raspberrypi/hardware-design-with-rp2040.pdf
+      source_url: https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf
+      sha256: 6523a2ebf743fcfbcc69bc3901b24ca3a2d23617d8ee50beb5f606b31134f0b5
+      retrieved: 2026-07-05
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_supply_voltage
+    - internal_core_regulator_budget
+    - run_reset_polarity
+    - qspi_ss_bootsel_strap_bias
+  not_valid_for:
+    - full_usb_signal_integrity
+    - crystal_oscillator_accuracy
+    - qspi_flash_protocol_timing
+    - boot_rom_usb_protocol
+    - firmware_execution
+    - thermal_or_peak_transient_waveforms

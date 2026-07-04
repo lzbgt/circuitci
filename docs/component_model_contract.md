@@ -880,6 +880,15 @@ USART1 TX/RX, and SWDIO/SWCLK line-state observations, but not firmware
 execution, oscillator accuracy, reset timing, UART protocol timing, SWD
 transactions, flash programming side effects, exhaustive package-pin mapping,
 layout, thermal behavior, EMC, or final signal-integrity sign-off.
+`vendor.raspberrypi.rp2040` adds a source-backed static RP2040 pack without a
+generated-SPICE face yet. Official Raspberry Pi source documents back its
+IOVDD, VREG_VIN, DVDD, USB_VDD, and ADC_AVDD supply limits, internal
+VREG_VOUT-to-DVDD `100 mA` regulator budget, RUN active-low reset metadata,
+3.3 V GPIO thresholds, and QSPI_SS BOOTSEL strap contract. That model can
+exercise board-level power-tree and BOOTSEL strap checks, but not USB signal
+integrity, crystal startup/accuracy, QSPI flash protocol timing, BOOTROM USB
+protocol behavior, firmware execution, thermal behavior, or transient current
+waveforms.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

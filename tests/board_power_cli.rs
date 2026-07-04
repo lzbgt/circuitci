@@ -1072,6 +1072,30 @@ fn esp32_wroom_32e_gpio0_bootstrap_uses_datasheet_threshold() {
 }
 
 #[test]
+fn raspberrypi_rp2040_bootsel_power_board_passes_static_checks() {
+    let report = run_validation("examples/good_raspberrypi_rp2040_bootsel_power/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn raspberrypi_rp2040_iovdd_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_raspberrypi_rp2040_iovdd_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["component"] == "URP" && finding["net"] == "rail_5v")
+        .expect("expected RP2040 IOVDD voltage finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 5.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 3.63);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn esp32_s3_wroom_1u_application_board_passes_static_checks() {
     let report =
         run_validation("examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml");

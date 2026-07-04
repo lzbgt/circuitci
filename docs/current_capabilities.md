@@ -85,6 +85,15 @@ evidence.
 | Suggestions | Evidence-driven `suggest-scenarios`, including `iot_basic_v0` profile remediation and runnable/non-runnable input contracts. |
 | Reports | JSON and Markdown with findings, measurements, limits, severities, limitations, suggested fixes, and planned-backend `adapter_blocker` / `evidence_sources[]` provenance when present. |
 
+## Source-Backed Common MCU Packs
+
+Current source-backed MCU/module static packs include STM32L431, ESP32-WROOM,
+ESP32-S3-WROOM, and RP2040. The RP2040 pack uses official Raspberry Pi source
+documents to model IOVDD/VREG_VIN/DVDD/USB_VDD/ADC_AVDD supply ranges,
+internal `VREG_VOUT` `100 mA` core-regulator output, RUN active-low reset, and
+QSPI_SS external-flash versus BOOTSEL-USB strap checks. See
+`docs/raspberrypi_rp2040_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

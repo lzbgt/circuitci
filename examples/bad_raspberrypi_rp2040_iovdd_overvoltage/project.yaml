@@ -1,0 +1,73 @@
+project:
+  name: bad_raspberrypi_rp2040_iovdd_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    URP:
+      model: vendor.raspberrypi.rp2040
+      part_number: RP2040
+      power_domains:
+        IOVDD: rail_5v
+        VREG_VIN: rail_3v3
+        VREG_VOUT: core_1v1
+        DVDD: core_1v1
+        USB_VDD: rail_3v3
+        ADC_AVDD: rail_3v3
+      pins:
+        IOVDD: rail_5v
+        VREG_VIN: rail_3v3
+        VREG_VOUT: core_1v1
+        DVDD: core_1v1
+        USB_VDD: rail_3v3
+        ADC_AVDD: rail_3v3
+        GND: gnd
+        RUN: rp_run
+        QSPI_SS: qspi_ss
+    RRUN_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_3v3
+        B: rp_run
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+    RQSPI_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_3v3
+        B: qspi_ss
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    core_1v1:
+      kind: power
+      nominal_voltage: 1.1
+      powered: true
+    gnd:
+      kind: ground
+    rp_run:
+      kind: digital_or_analog
+    qspi_ss:
+      kind: digital_or_analog
+
+scenarios:
+  - name: rp2040_iovdd_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
