@@ -599,7 +599,10 @@ The GUI should not become the solver.
   section, and GUI Scopes shows compact sensitivity rows plus loads AC
   `sensitivity_summary.csv` as parameter-grouped frequency-axis sensitivity
   traces. The GUI Sensitivity Check editor now authors these assertions and
-  hydrates failed sensitivity findings back into the editor. Opt-in real-Xyce
+  hydrates failed sensitivity findings back into the editor. The GUI Run Setup
+  editor now authors generated-from-board `analog_sensitivity` scenarios with
+  DC/AC mode, selected output probe net, AC sweep bounds when needed, and
+  explicit sensitivity filters. Opt-in real-Xyce
   `.SENS` conformance is covered by
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_sensitivity_cli`, which
   skips unless `Xyce` or `xyce` is on `PATH`.

@@ -3,13 +3,14 @@ use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionReplaceDraft,
     AnalogDcScenarioDraft, AnalogDcSweepScenarioDraft, AnalogFourierScenarioDraft,
     AnalogHarmonicBalanceScenarioDraft, AnalogNoiseScenarioDraft, AnalogPoleZeroScenarioDraft,
-    AnalogScenarioDraft, AnalogTransferFunctionScenarioDraft, analog_scenario_choices,
-    append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    AnalogScenarioDraft, AnalogSensitivityScenarioDraft, AnalogTransferFunctionScenarioDraft,
+    analog_scenario_choices, append_analog_ac_scenario_with_project_path, append_analog_assertion,
     append_analog_dc_scenario_with_project_path, append_analog_dc_sweep_scenario_with_project_path,
     append_analog_fourier_scenario_with_project_path,
     append_analog_harmonic_balance_scenario_with_project_path,
     append_analog_noise_scenario_with_project_path,
     append_analog_pole_zero_scenario_with_project_path,
+    append_analog_sensitivity_scenario_with_project_path,
     append_analog_transfer_function_scenario_with_project_path,
     append_analog_transient_scenario_with_project_path, replace_analog_assertion,
 };
@@ -33,8 +34,12 @@ use super::analog_stimulus::{
     replace_analog_stimulus,
 };
 use super::simulation_forms::*;
+use super::simulation_run_setup_controls::{
+    generated_noise_source_combo, initialize_noise_source_default,
+    initialize_sensitivity_filters_default, noise_source_combo, pole_zero_mode_combo,
+    sensitivity_filters_from_text, sensitivity_mode_combo,
+};
 use super::sketch::ProjectSnapshot;
-use super::sketch_spice::SketchSpiceKind;
 use eframe::egui;
 use std::path::Path;
 
@@ -58,6 +63,7 @@ impl CircuitCiApp {
                             "dc_sweep" => "DC sweep",
                             "tf" => "Transfer Function",
                             "pz" => "Pole-Zero",
+                            "sens" => "Sensitivity",
                             "noise" => "Noise",
                             "fourier" => "Fourier",
                             "hb" => "Harmonic Balance",
@@ -93,6 +99,11 @@ impl CircuitCiApp {
                                 &mut self.analog_run_setup_kind,
                                 "pz".to_string(),
                                 "Pole-Zero",
+                            );
+                            ui.selectable_value(
+                                &mut self.analog_run_setup_kind,
+                                "sens".to_string(),
+                                "Sensitivity",
                             );
                             ui.selectable_value(
                                 &mut self.analog_run_setup_kind,
@@ -268,6 +279,46 @@ impl CircuitCiApp {
 
                         ui.label("Mode");
                         pole_zero_mode_combo(ui, &mut self.analog_pole_zero_mode);
+                        ui.end_row();
+                    } else if self.analog_run_setup_kind == "sens" {
+                        initialize_sensitivity_filters_default(
+                            snapshot,
+                            &mut self.analog_sensitivity_filters,
+                        );
+                        ui.label("Mode");
+                        sensitivity_mode_combo(ui, &mut self.analog_sensitivity_mode);
+                        ui.end_row();
+
+                        if self.analog_sensitivity_mode == "ac" {
+                            ui.label("Start frequency");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_start_frequency_hz)
+                                    .speed(10.0)
+                                    .range(1.0e-9..=1.0e15)
+                                    .suffix(" Hz"),
+                            );
+                            ui.end_row();
+
+                            ui.label("Stop frequency");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_stop_frequency_hz)
+                                    .speed(100.0)
+                                    .range(1.0e-9..=1.0e15)
+                                    .suffix(" Hz"),
+                            );
+                            ui.end_row();
+
+                            ui.label("Points/decade");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_points_per_decade)
+                                    .speed(1.0)
+                                    .range(1..=1000),
+                            );
+                            ui.end_row();
+                        }
+
+                        ui.label("Parameters");
+                        ui.text_edit_singleline(&mut self.analog_sensitivity_filters);
                         ui.end_row();
                     } else if self.analog_run_setup_kind == "dc_sweep" {
                         initialize_noise_source_default(snapshot, &mut self.analog_dc_sweep_source);
@@ -1430,6 +1481,32 @@ impl CircuitCiApp {
                 ),
                 Err(error) => self.record_error(error),
             }
+        } else if self.analog_run_setup_kind == "sens" {
+            let draft = AnalogSensitivityScenarioDraft {
+                name: self.analog_scenario_name.clone(),
+                ground_net: self.analog_ground_net.clone(),
+                probe_net: self.analog_probe_net.clone(),
+                probe_name: self.analog_probe_name.clone(),
+                mode: self.analog_sensitivity_mode.clone(),
+                start_frequency_hz: self.analog_start_frequency_hz,
+                stop_frequency_hz: self.analog_stop_frequency_hz,
+                points_per_decade: self.analog_points_per_decade,
+                filters: sensitivity_filters_from_text(&self.analog_sensitivity_filters),
+            };
+            match append_analog_sensitivity_scenario_with_project_path(
+                &self.project_yaml,
+                Path::new(&self.project_path),
+                &draft,
+            ) {
+                Ok(updated) => self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Sensitivity run setup {} added.",
+                        self.analog_scenario_name.trim()
+                    ),
+                ),
+                Err(error) => self.record_error(error),
+            }
         } else if self.analog_run_setup_kind == "noise" {
             let input_probe = format!("{}_input", self.analog_probe_name.trim());
             let draft = AnalogNoiseScenarioDraft {
@@ -1828,104 +1905,4 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
-}
-
-fn initialize_noise_source_default(snapshot: &ProjectSnapshot, selected: &mut String) {
-    if !selected.is_empty()
-        && snapshot
-            .components_detail
-            .iter()
-            .any(|component| component.id == *selected)
-    {
-        return;
-    }
-    if let Some(component) = snapshot
-        .components_detail
-        .iter()
-        .find(|component| component.spice.as_ref().is_some_and(is_noise_source_spice))
-        .or_else(|| snapshot.components_detail.first())
-    {
-        *selected = component.id.clone();
-    }
-}
-
-fn noise_source_combo(
-    ui: &mut egui::Ui,
-    id: &str,
-    selected: &mut String,
-    snapshot: &ProjectSnapshot,
-) {
-    egui::ComboBox::from_id_salt(id)
-        .selected_text(if selected.is_empty() {
-            "select source"
-        } else {
-            selected.as_str()
-        })
-        .show_ui(ui, |ui| {
-            for component in snapshot
-                .components_detail
-                .iter()
-                .filter(|component| component.spice.as_ref().is_some_and(is_noise_source_spice))
-                .chain(snapshot.components_detail.iter().filter(|component| {
-                    component
-                        .spice
-                        .as_ref()
-                        .is_none_or(|spice| !is_noise_source_spice(spice))
-                }))
-            {
-                ui.selectable_value(selected, component.id.clone(), &component.id);
-            }
-        });
-}
-
-fn pole_zero_mode_combo(ui: &mut egui::Ui, selected: &mut String) {
-    if !matches!(selected.as_str(), "poles" | "zeros" | "poles_and_zeros") {
-        *selected = "poles_and_zeros".to_string();
-    }
-    let selected_label = match selected.as_str() {
-        "poles" => "Poles",
-        "zeros" => "Zeros",
-        "poles_and_zeros" => "Poles and zeros",
-        _ => "Poles and zeros",
-    };
-    egui::ComboBox::from_id_salt("analog_pole_zero_mode")
-        .selected_text(selected_label)
-        .show_ui(ui, |ui| {
-            ui.selectable_value(selected, "poles".to_string(), "Poles");
-            ui.selectable_value(selected, "zeros".to_string(), "Zeros");
-            ui.selectable_value(selected, "poles_and_zeros".to_string(), "Poles and zeros");
-        });
-}
-
-fn generated_noise_source_combo(
-    ui: &mut egui::Ui,
-    scenario: &super::analog_generated::AnalogGeneratedScenario,
-    selected: &mut String,
-) {
-    if selected.is_empty()
-        && let Some(input_source) = &scenario.noise_input_source
-    {
-        *selected = input_source.clone();
-    }
-    egui::ComboBox::from_id_salt("analog_generated_noise_input_source")
-        .selected_text(if selected.is_empty() {
-            "select source"
-        } else {
-            selected.as_str()
-        })
-        .show_ui(ui, |ui| {
-            for component in &scenario.board_components {
-                ui.selectable_value(selected, component.id.clone(), &component.id);
-            }
-        });
-}
-
-fn is_noise_source_spice(spice: &super::sketch_spice::SketchComponentSpice) -> bool {
-    matches!(
-        spice.kind,
-        SketchSpiceKind::DcVoltageSource
-            | SketchSpiceKind::PulseVoltageSource
-            | SketchSpiceKind::DcCurrentSource
-            | SketchSpiceKind::PulseCurrentSource
-    )
 }

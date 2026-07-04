@@ -310,7 +310,10 @@ Current analog support:
   for magnitude, real, and imaginary sensitivity. The GUI Sensitivity Check
   editor authors `analysis.sensitivity_assertions[]` entries and failure
   actions hydrate parameter, optional frequency, metric, relation, and threshold
-  from retained findings. Opt-in real-ngspice
+  from retained findings. The GUI Run Setup editor can author
+  generated-from-board `analog_sensitivity` scenarios with DC/AC mode,
+  selected output probe net, AC sweep bounds when needed, and explicit
+  sensitivity filters. Opt-in real-ngspice
   conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
   it skips unless `ngspice` is on `PATH`. Opt-in real-Xyce `.SENS`
@@ -519,7 +522,8 @@ Current analog support:
   analog run setups.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
 - Generated Board IR transient, AC/Bode, DC operating-point, DC sweep,
-  transfer-function, pole-zero, and noise decks for passives, independent
+  transfer-function, pole-zero, sensitivity, and noise decks for passives,
+  independent
   voltage and current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
   GUI run-setup creation can author generated AC/Bode observations with
   frequency limits and an initial voltage probe; generated AC sources emit a
@@ -529,8 +533,10 @@ Current analog support:
   observations write `.tf` analysis setups with selected output/input source
   metadata; GUI-created generated pole-zero observations write `.pz` analysis
   setups with selected output/reference/input-source and extraction-mode
-  metadata; GUI-created generated noise observations write `.noise` analysis
-  setups with output/input noise probes. All generated
+  metadata; GUI-created generated sensitivity observations write `.sens`
+  analysis setups with selected output, mode, frequency bounds when needed, and
+  explicit parameter filters; GUI-created generated noise observations write
+  `.noise` analysis setups with output/input noise probes. All generated
   observation types reuse the same ground/node/component editors.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform, Bode, or operating-point artifact set, tagged on findings, and

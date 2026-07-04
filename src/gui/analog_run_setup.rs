@@ -64,6 +64,19 @@ pub(super) struct AnalogPoleZeroScenarioDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogSensitivityScenarioDraft {
+    pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) probe_net: String,
+    pub(super) probe_name: String,
+    pub(super) mode: String,
+    pub(super) start_frequency_hz: f64,
+    pub(super) stop_frequency_hz: f64,
+    pub(super) points_per_decade: u32,
+    pub(super) filters: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogNoiseScenarioDraft {
     pub(super) name: String,
     pub(super) ground_net: String,
@@ -226,6 +239,34 @@ pub(super) fn append_analog_pole_zero_scenario_with_project_path(
     )
 }
 
+pub(super) fn append_analog_sensitivity_scenario_with_project_path(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogSensitivityScenarioDraft,
+) -> Result<String> {
+    validate_sensitivity_draft(draft)?;
+    append_generated_analog_scenario_with_project_path(
+        text,
+        project_path,
+        &draft.name,
+        &draft.ground_net,
+        &draft.probe_net,
+        &draft.probe_name,
+        GeneratedAnalogScenarioKind::Sensitivity {
+            mode: draft.mode.trim().to_string(),
+            start_frequency_hz: draft.start_frequency_hz,
+            stop_frequency_hz: draft.stop_frequency_hz,
+            points_per_decade: draft.points_per_decade,
+            filters: draft
+                .filters
+                .iter()
+                .map(|filter| filter.trim().to_string())
+                .filter(|filter| !filter.is_empty())
+                .collect(),
+        },
+    )
+}
+
 pub(super) fn append_analog_noise_scenario_with_project_path(
     text: &str,
     project_path: &Path,
@@ -355,6 +396,16 @@ fn append_generated_analog_scenario_with_project_path(
         anyhow::bail!(
             "Pole-zero input source {input_source} must be an included voltage or current source component."
         );
+    }
+    if let GeneratedAnalogScenarioKind::Sensitivity { filters, .. } = &kind {
+        for filter in filters {
+            let declared = filter.trim();
+            if !declared.contains(':') && !project.board.components.contains_key(declared) {
+                anyhow::bail!(
+                    "Sensitivity filter {declared} must be an included board component or explicit backend parameter."
+                );
+            }
+        }
     }
     if project.board.components.is_empty() {
         anyhow::bail!("Generated analog scenarios require at least one component.");
@@ -492,6 +543,31 @@ fn validate_pole_zero_draft(draft: &AnalogPoleZeroScenarioDraft) -> Result<()> {
         "poles" | "zeros" | "poles_and_zeros" => Ok(()),
         _ => anyhow::bail!("Pole-zero mode must be poles, zeros, or poles_and_zeros."),
     }
+}
+
+fn validate_sensitivity_draft(draft: &AnalogSensitivityScenarioDraft) -> Result<()> {
+    validated_id(&draft.name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.ground_net.trim().is_empty() {
+        anyhow::bail!("Ground net must not be blank.");
+    }
+    if draft.probe_net.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
+    }
+    match draft.mode.trim() {
+        "dc" => {}
+        "ac" => validate_frequency_range(
+            draft.start_frequency_hz,
+            draft.stop_frequency_hz,
+            draft.points_per_decade,
+            "Analog sensitivity",
+        )?,
+        _ => anyhow::bail!("Sensitivity mode must be dc or ac."),
+    }
+    if draft.filters.iter().all(|filter| filter.trim().is_empty()) {
+        anyhow::bail!("Sensitivity filters must include at least one parameter.");
+    }
+    Ok(())
 }
 
 fn validate_noise_draft(draft: &AnalogNoiseScenarioDraft) -> Result<()> {
@@ -704,6 +780,13 @@ enum GeneratedAnalogScenarioKind {
         input_source: String,
         mode: String,
     },
+    Sensitivity {
+        mode: String,
+        start_frequency_hz: f64,
+        stop_frequency_hz: f64,
+        points_per_decade: u32,
+        filters: Vec<String>,
+    },
     Noise {
         start_frequency_hz: f64,
         stop_frequency_hz: f64,
@@ -733,6 +816,7 @@ impl GeneratedAnalogScenarioKind {
             Self::DcSweep { .. } => "analog_dc_sweep",
             Self::TransferFunction { .. } => "analog_transfer_function",
             Self::PoleZero { .. } => "analog_pole_zero",
+            Self::Sensitivity { .. } => "analog_sensitivity",
             Self::Noise { .. } => "analog_noise",
             Self::Fourier { .. } => "analog_fourier",
             Self::HarmonicBalance { .. } => "analog_harmonic_balance",
@@ -747,6 +831,7 @@ impl GeneratedAnalogScenarioKind {
             Self::DcSweep { .. } => "SPICE_DC_SWEEP_ANALYSIS",
             Self::TransferFunction { .. } => "SPICE_TRANSFER_FUNCTION_ANALYSIS",
             Self::PoleZero { .. } => "SPICE_POLE_ZERO_ANALYSIS",
+            Self::Sensitivity { .. } => "SPICE_SENSITIVITY_ANALYSIS",
             Self::Noise { .. } => "SPICE_NOISE_ANALYSIS",
             Self::Fourier { .. } => "SPICE_FOURIER_ANALYSIS",
             Self::HarmonicBalance { .. } => "SPICE_HARMONIC_BALANCE_ANALYSIS",
@@ -876,6 +961,45 @@ fn analog_block(
             insert_string(&mut analysis, "pole_zero_reference_node", reference_node);
             insert_string(&mut analysis, "pole_zero_input_source", input_source);
             insert_string(&mut analysis, "pole_zero_mode", mode);
+        }
+        GeneratedAnalogScenarioKind::Sensitivity {
+            mode,
+            start_frequency_hz,
+            stop_frequency_hz,
+            points_per_decade,
+            filters,
+        } => {
+            insert_string(&mut analysis, "type", "sens");
+            let output_node = node_by_net.get(scenario.probe_net).with_context(|| {
+                format!(
+                    "Sensitivity output net {} has no generated SPICE node.",
+                    scenario.probe_net
+                )
+            })?;
+            insert_string(
+                &mut analysis,
+                "sensitivity_output_expression",
+                &format!("V({output_node})"),
+            );
+            insert_string(&mut analysis, "sensitivity_mode", mode);
+            if mode == "ac" {
+                insert_number(&mut analysis, "start_frequency_hz", *start_frequency_hz)?;
+                insert_number(&mut analysis, "stop_frequency_hz", *stop_frequency_hz)?;
+                analysis.insert(
+                    key("points_per_decade"),
+                    serde_yaml_ng::to_value(points_per_decade)
+                        .context("Failed to encode sensitivity points_per_decade.")?,
+                );
+            }
+            analysis.insert(
+                key("sensitivity_filters"),
+                serde_yaml_ng::Value::Sequence(
+                    filters
+                        .iter()
+                        .map(|filter| serde_yaml_ng::Value::String(filter.clone()))
+                        .collect(),
+                ),
+            );
         }
         GeneratedAnalogScenarioKind::Noise {
             start_frequency_hz,
