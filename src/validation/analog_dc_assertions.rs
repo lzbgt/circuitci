@@ -30,6 +30,7 @@ pub(super) fn validate_dc_assertion_contract(assertion: &AnalogAssertion) -> Res
         || assertion.reference_threshold_a.is_some()
         || assertion.reference_threshold_w.is_some()
         || assertion.threshold_vs.is_some()
+        || assertion.threshold_s.is_some()
         || assertion.threshold_c.is_some()
         || assertion.threshold_j.is_some()
         || assertion.threshold_db.is_some()

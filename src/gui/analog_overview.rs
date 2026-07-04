@@ -894,6 +894,8 @@ fn assertion_threshold_label(assertion: &crate::board_ir::AnalogAssertion) -> St
         format!("{} W", compact_number(value))
     } else if let Some(value) = assertion.threshold_vs {
         format!("{} V*s", compact_number(value))
+    } else if let Some(value) = assertion.threshold_s {
+        format!("{} s", compact_number(value))
     } else if let Some(value) = assertion.threshold_c {
         format!("{} C", compact_number(value))
     } else if let Some(value) = assertion.threshold_j {
@@ -1036,6 +1038,7 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing",
         crate::board_ir::AnalogAggregation::PhaseMarginDeg => "phase margin",
         crate::board_ir::AnalogAggregation::GainMarginDb => "gain margin",
+        crate::board_ir::AnalogAggregation::GroupDelaySAtFrequency => "group delay",
         crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency => "output noise density",
         crate::board_ir::AnalogAggregation::InputNoiseDensityAtFrequency => "input noise density",
         crate::board_ir::AnalogAggregation::IntegratedOutputNoise => "integrated output noise",

@@ -108,12 +108,27 @@ fn waveform_csv_loader_maps_bode_artifacts_to_frequency_axis() {
 
     assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
     assert_eq!(waveform.time_s, vec![10.0e-6, 1000.0e-6, 10000.0e-6]);
-    assert_eq!(waveform.probes.len(), 5);
+    assert_eq!(waveform.probes.len(), 7);
     assert_eq!(waveform.probes[0].label, "v(input) magnitude dB");
     assert_eq!(waveform.probes[1].label, "v(input) phase deg");
     assert_eq!(super::probe_unit(&waveform.probes[0].label), "dB");
     assert_eq!(super::probe_unit(&waveform.probes[1].label), "deg");
     assert_eq!(super::probe_unit(&waveform.probes[4].label), "ratio");
+    let input_delay = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "v(input) group delay s")
+        .unwrap();
+    assert!(input_delay.derived);
+    assert_eq!(input_delay.values, vec![0.0, 0.0, 0.0]);
+    assert_eq!(super::probe_unit(&input_delay.label), "s");
+    let filtered_delay = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "v(filtered) group delay s")
+        .unwrap();
+    assert!(filtered_delay.derived);
+    assert!(filtered_delay.values.iter().all(|value| *value > 0.0));
 }
 
 #[test]
@@ -139,6 +154,7 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(labels.contains(&"s22 return loss dB"));
     assert!(labels.contains(&"two-port reciprocity error"));
     assert!(labels.contains(&"two-port passivity singular value"));
+    assert!(labels.contains(&"s21 group delay s"));
     let s11_return_loss = waveform
         .probes
         .iter()
@@ -184,6 +200,14 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(passivity.values[0] > 2.0);
     assert!(passivity.values[1] > 1.5);
     assert_eq!(super::probe_unit(&passivity.label), "ratio");
+    let s21_group_delay = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s21 group delay s")
+        .unwrap();
+    assert!(s21_group_delay.derived);
+    assert_eq!(s21_group_delay.values, vec![0.0, 0.0]);
+    assert_eq!(super::probe_unit(&s21_group_delay.label), "s");
 }
 
 #[test]

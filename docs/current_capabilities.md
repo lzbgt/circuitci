@@ -96,12 +96,13 @@ Current analog support:
 - `analog_ac` scenarios with `SPICE_AC_ANALYSIS` for external-ngspice and
   explicit-Xyce small-signal Bode exports. AC runs write `bode.csv` artifacts
   with frequency, per-probe magnitude in dB, phase in degrees, and linear
-  magnitude. AC assertions support gain and phase at a frequency, rising or
-  falling gain-crossing frequency checks, and loop-stability phase/gain
-  margin checks. The GUI Scopes loader treats
+  magnitude. AC assertions support gain, phase, and group delay at a
+  frequency, rising or falling gain-crossing frequency checks, and
+  loop-stability phase/gain margin checks. The GUI Scopes loader treats
   `bode.csv` as a frequency-axis artifact, shows magnitude/phase/linear
-  traces in unit-aware lanes, and reuses sweep-corner and worst-corner compare
-  pinning for Bode corners. The GUI observation-check editor also offers
+  traces plus derived group-delay traces in unit-aware lanes, and reuses
+  sweep-corner and worst-corner compare pinning for Bode corners. The GUI
+  observation-check editor also offers
   low-pass, unity-gain, and loop-stability Bode check presets that write
   normal AC assertions.
 - `analog_dc` scenarios with `SPICE_DC_ANALYSIS` for external-ngspice and
@@ -165,8 +166,9 @@ Current analog support:
   network-quality rows into `s_parameter_network_summaries[]`, Markdown
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
   the GUI artifact panel shows compact RF term and network sign-off rows, and
-  Scopes derives return-loss, insertion-loss, VSWR, two-port reciprocity error,
-  and passivity singular-value traces from full `s_parameters.csv` artifacts.
+  Scopes derives return-loss, insertion-loss, VSWR, group-delay,
+  two-port reciprocity error, and passivity singular-value traces from full
+  `s_parameters.csv` artifacts.
   `backend: auto` does not select Xyce for this path until real solver
   conformance coverage is enabled.
 - `analog_transfer_function` scenarios with

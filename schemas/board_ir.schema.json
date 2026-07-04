@@ -3517,7 +3517,7 @@
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
                     "count_limit": { "type": "number", "minimum": 0 },
                     "overshoot_limit_percent": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "operating_point", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count", "gain_db_at_frequency", "phase_deg_at_frequency", "rising_gain_crossing_frequency", "falling_gain_crossing_frequency", "phase_margin_deg", "gain_margin_db", "output_noise_density_at_frequency", "input_noise_density_at_frequency", "integrated_output_noise", "integrated_input_noise"] },
+                    "aggregation": { "enum": ["sample", "operating_point", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count", "gain_db_at_frequency", "phase_deg_at_frequency", "group_delay_s_at_frequency", "rising_gain_crossing_frequency", "falling_gain_crossing_frequency", "phase_margin_deg", "gain_margin_db", "output_noise_density_at_frequency", "input_noise_density_at_frequency", "integrated_output_noise", "integrated_input_noise"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -3527,6 +3527,7 @@
                     "threshold_j": { "type": "number" },
                     "threshold_db": { "type": "number" },
                     "threshold_deg": { "type": "number" },
+                    "threshold_s": { "type": "number" },
                     "threshold_v_per_sqrt_hz": { "type": "number" },
                     "reference_threshold_v": { "type": "number" },
                     "reference_threshold_a": { "type": "number" },
@@ -3625,7 +3626,7 @@
                               "else": {
                                 "if": {
                                   "required": ["aggregation"],
-                                  "properties": { "aggregation": { "enum": ["gain_db_at_frequency", "phase_deg_at_frequency"] } }
+                                  "properties": { "aggregation": { "enum": ["gain_db_at_frequency", "phase_deg_at_frequency", "group_delay_s_at_frequency"] } }
                                 },
                                 "then": {
                                   "required": ["at_hz"],
@@ -3704,6 +3705,7 @@
                                             { "required": ["threshold_j"] },
                                             { "required": ["threshold_db"] },
                                             { "required": ["threshold_deg"] },
+                                            { "required": ["threshold_s"] },
                                             { "required": ["reference_probe"] },
                                             { "required": ["reference_threshold_v"] },
                                             { "required": ["reference_threshold_a"] },
@@ -3741,7 +3743,8 @@
                                               { "required": ["threshold_c"] },
                                               { "required": ["threshold_j"] },
                                               { "required": ["threshold_db"] },
-                                              { "required": ["threshold_deg"] }
+                                              { "required": ["threshold_deg"] },
+                                              { "required": ["threshold_s"] }
                                             ]
                                           }
                                         },
@@ -3770,6 +3773,7 @@
                                                 { "required": ["threshold_j"] },
                                                 { "required": ["threshold_db"] },
                                                 { "required": ["threshold_deg"] },
+                                                { "required": ["threshold_s"] },
                                                 { "required": ["threshold_v_per_sqrt_hz"] }
                                               ]
                                             }
@@ -3810,6 +3814,7 @@
                         { "required": ["threshold_j"] },
                         { "required": ["threshold_db"] },
                         { "required": ["threshold_deg"] },
+                        { "required": ["threshold_s"] },
                         { "required": ["threshold_v_per_sqrt_hz"] },
                         { "required": ["target_v"] },
                         { "required": ["target_a"] },

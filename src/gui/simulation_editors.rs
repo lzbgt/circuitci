@@ -904,6 +904,7 @@ impl CircuitCiApp {
                         | "falling_gain_crossing_frequency"
                         | "gain_margin_db" => " dB",
                         "phase_deg_at_frequency" | "phase_margin_deg" => " deg",
+                        "group_delay_s_at_frequency" => " s",
                         _ => unit,
                     };
                     ui.add(
@@ -930,7 +931,9 @@ impl CircuitCiApp {
 
                     if matches!(
                         self.analog_assertion_aggregation.as_str(),
-                        "gain_db_at_frequency" | "phase_deg_at_frequency"
+                        "gain_db_at_frequency"
+                            | "phase_deg_at_frequency"
+                            | "group_delay_s_at_frequency"
                     ) {
                         ui.label("At");
                         ui.add(

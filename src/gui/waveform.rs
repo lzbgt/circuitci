@@ -918,6 +918,8 @@ fn probe_unit(label: &str) -> &'static str {
         "dB"
     } else if normalized.contains("phase_deg") || normalized.contains("phase") {
         "deg"
+    } else if normalized.contains("group delay") {
+        "s"
     } else if normalized.ends_with("_mag")
         || normalized.contains("linear magnitude")
         || normalized.contains("vswr")

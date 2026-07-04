@@ -1676,6 +1676,8 @@ pub struct AnalogAssertion {
     pub threshold_w: Option<f64>,
     #[serde(default, rename = "threshold_vs")]
     pub threshold_vs: Option<f64>,
+    #[serde(default, rename = "threshold_s")]
+    pub threshold_s: Option<f64>,
     #[serde(default, rename = "threshold_c")]
     pub threshold_c: Option<f64>,
     #[serde(default, rename = "threshold_j")]
@@ -1744,6 +1746,7 @@ pub enum AnalogAggregation {
     FallingGainCrossingFrequency,
     PhaseMarginDeg,
     GainMarginDb,
+    GroupDelaySAtFrequency,
     OutputNoiseDensityAtFrequency,
     InputNoiseDensityAtFrequency,
     IntegratedOutputNoise,

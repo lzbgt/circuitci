@@ -705,6 +705,95 @@ fn explicit_xyce_ac_backend_normalizes_bode_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn explicit_xyce_ac_backend_evaluates_group_delay_assertions() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'FREQ,Re(V(out)),Im(V(out))\\n10,1,0\\n1000,0,-1\\n100000,-1,0\\n' > ac_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_xyce_ac_rc_project(project_dir.path());
+    let text = fs::read_to_string(&project_path).unwrap().replace(
+        "        - { name: out_gain_at_1khz_below_minus_1db, probe: out, aggregation: gain_db_at_frequency, relation: below, at_hz: 1000.0, threshold_db: -1.0 }",
+        "        - { name: out_group_delay_below_10us, probe: out, aggregation: group_delay_s_at_frequency, relation: below, at_hz: 1000.0, threshold_s: 1.0e-5 }",
+    );
+    fs::write(&project_path, text).unwrap();
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn explicit_xyce_ac_backend_fails_group_delay_limits() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf 'FREQ,Re(V(out)),Im(V(out))\\n10,1,0\\n1000,0,-1\\n100000,-1,0\\n' > ac_raw.csv\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_xyce_ac_rc_project(project_dir.path());
+    let text = fs::read_to_string(&project_path).unwrap().replace(
+        "        - { name: out_gain_at_1khz_below_minus_1db, probe: out, aggregation: gain_db_at_frequency, relation: below, at_hz: 1000.0, threshold_db: -1.0 }",
+        "        - { name: out_group_delay_below_1us, probe: out, aggregation: group_delay_s_at_frequency, relation: below, at_hz: 1000.0, threshold_s: 1.0e-6 }",
+    );
+    fs::write(&project_path, text).unwrap();
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_AC_ANALYSIS");
+    assert_eq!(report["failures"][0]["measured"]["quantity"], "group_delay");
+    assert!(report["failures"][0]["measured"]["out"].as_f64().unwrap() > 1.0e-6);
+    assert_eq!(
+        report["failures"][0]["measured"]["decision_threshold_s"],
+        1.0e-6
+    );
+    assert_eq!(report["failures"][0]["limit"]["below_s"], 1.0e-6);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn explicit_xyce_dc_backend_launch_failure_reports_solver_artifacts() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "Xyce");

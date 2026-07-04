@@ -1116,7 +1116,7 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
-        "gain_db_at_frequency" | "phase_deg_at_frequency" => {
+        "gain_db_at_frequency" | "phase_deg_at_frequency" | "group_delay_s_at_frequency" => {
             if !draft.at_hz.is_finite() || draft.at_hz <= 0.0 {
                 anyhow::bail!("AC sample frequency must be finite and positive.");
             }
@@ -1259,7 +1259,7 @@ fn assertion_value(
                 draft.overshoot_limit_percent,
             )?;
         }
-        "gain_db_at_frequency" | "phase_deg_at_frequency" => {
+        "gain_db_at_frequency" | "phase_deg_at_frequency" | "group_delay_s_at_frequency" => {
             insert_number(&mut assertion, "at_hz", draft.at_hz)?;
         }
         "rising_gain_crossing_frequency" | "falling_gain_crossing_frequency" => {

@@ -433,8 +433,8 @@ when declared targets are missed.
 run-setup authoring, mapping the selected output net, input source, start/stop
 frequency, and points-per-decade controls to normal `analog_noise`
 `SPICE_NOISE_ANALYSIS` Board IR. It also owns AC check authoring for Bode
-observations, mapping gain/phase/cutoff controls to `at_hz`,
-`frequency_limit_hz`, `threshold_db`, and `threshold_deg`.
+observations, mapping gain/phase/group-delay/cutoff controls to `at_hz`,
+`frequency_limit_hz`, `threshold_db`, `threshold_deg`, and `threshold_s`.
 `src/gui/analog_overview.rs` projects completed `ANALOG_SWEEP_MARGIN_SUMMARY`
 and `ANALOG_MONTE_CARLO_YIELD_SUMMARY` findings back into the selected
 generated run-setup overview so users can see worst-corner assertion margins

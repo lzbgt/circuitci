@@ -651,6 +651,11 @@ The GUI should not become the solver.
   error and passivity singular-value traces directly from full
   `s_parameters.csv` artifacts when S11/S12/S21/S22 magnitude and phase columns
   are available.
+- AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
+  seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
+  derives group-delay traces from Bode and S-parameter phase columns so filter
+  and RF dispersion can be inspected visually from existing normalized
+  frequency-domain artifacts.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path

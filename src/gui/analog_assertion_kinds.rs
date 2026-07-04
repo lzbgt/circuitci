@@ -39,6 +39,7 @@ pub(super) fn is_ac_assertion_aggregation_name(aggregation: &str) -> bool {
         aggregation,
         "gain_db_at_frequency"
             | "phase_deg_at_frequency"
+            | "group_delay_s_at_frequency"
             | "rising_gain_crossing_frequency"
             | "falling_gain_crossing_frequency"
             | "phase_margin_deg"

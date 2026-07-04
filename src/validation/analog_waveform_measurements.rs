@@ -65,6 +65,7 @@ pub(super) fn measured_assertion_value(
         | AnalogAggregation::FallingGainCrossingFrequency
         | AnalogAggregation::PhaseMarginDeg
         | AnalogAggregation::GainMarginDb
+        | AnalogAggregation::GroupDelaySAtFrequency
         | AnalogAggregation::OutputNoiseDensityAtFrequency
         | AnalogAggregation::InputNoiseDensityAtFrequency
         | AnalogAggregation::IntegratedOutputNoise
@@ -233,6 +234,7 @@ fn aggregate_window(
         | AnalogAggregation::FallingGainCrossingFrequency
         | AnalogAggregation::PhaseMarginDeg
         | AnalogAggregation::GainMarginDb
+        | AnalogAggregation::GroupDelaySAtFrequency
         | AnalogAggregation::OutputNoiseDensityAtFrequency
         | AnalogAggregation::InputNoiseDensityAtFrequency
         | AnalogAggregation::IntegratedOutputNoise

@@ -34,6 +34,7 @@ pub(super) fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation
         }
         crate::board_ir::AnalogAggregation::PhaseMarginDeg => "phase_margin_deg",
         crate::board_ir::AnalogAggregation::GainMarginDb => "gain_margin_db",
+        crate::board_ir::AnalogAggregation::GroupDelaySAtFrequency => "group_delay_s_at_frequency",
         crate::board_ir::AnalogAggregation::OutputNoiseDensityAtFrequency => {
             "output_noise_density_at_frequency"
         }
@@ -77,6 +78,15 @@ pub(super) fn assertion_threshold_label(
             .threshold_deg
             .map(|value| format!("{value:.6} deg"))
             .unwrap_or_else(|| "missing phase threshold".to_string());
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::GroupDelaySAtFrequency
+    ) {
+        return assertion
+            .threshold_s
+            .map(|value| format!("{value:.6} s"))
+            .unwrap_or_else(|| "missing group-delay threshold".to_string());
     }
     if matches!(
         assertion.aggregation,
@@ -181,6 +191,12 @@ pub(super) fn assertion_threshold_value(
             | crate::board_ir::AnalogAggregation::PhaseMarginDeg
     ) {
         return assertion.threshold_deg;
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::GroupDelaySAtFrequency
+    ) {
+        return assertion.threshold_s;
     }
     if matches!(
         assertion.aggregation,
@@ -324,7 +340,8 @@ pub(super) fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertio
             )
         }
         crate::board_ir::AnalogAggregation::GainDbAtFrequency
-        | crate::board_ir::AnalogAggregation::PhaseDegAtFrequency => {
+        | crate::board_ir::AnalogAggregation::PhaseDegAtFrequency
+        | crate::board_ir::AnalogAggregation::GroupDelaySAtFrequency => {
             format!("{:.6} Hz", assertion.at_hz.unwrap_or_default())
         }
         crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
@@ -363,6 +380,9 @@ pub(super) fn threshold_field(
     }
     if matches!(aggregation, "phase_deg_at_frequency" | "phase_margin_deg") {
         return "threshold_deg";
+    }
+    if aggregation == "group_delay_s_at_frequency" {
+        return "threshold_s";
     }
     if matches!(
         aggregation,

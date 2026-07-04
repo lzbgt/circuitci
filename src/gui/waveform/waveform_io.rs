@@ -1246,6 +1246,7 @@ impl WaveformCsvBuilder {
             })
             .collect();
         if selected_probe_labels.is_empty() && x_axis == WaveformXAxis::FrequencyHz {
+            append_derived_group_delay_probes(&mut probes, &time_s);
             append_derived_s_parameter_probes(&mut probes);
         }
         Ok(WaveformView {
@@ -1256,6 +1257,85 @@ impl WaveformCsvBuilder {
             probes,
         })
     }
+}
+
+fn append_derived_group_delay_probes(probes: &mut Vec<WaveformProbe>, frequency_storage: &[f64]) {
+    let phase_probes: Vec<_> = probes
+        .iter()
+        .enumerate()
+        .filter_map(|(index, probe)| {
+            probe
+                .label
+                .strip_suffix(" phase deg")
+                .map(|stem| (index, stem.to_string()))
+        })
+        .collect();
+    for (phase_index, stem) in phase_probes {
+        let Some(values) = group_delay_values_s(frequency_storage, &probes[phase_index].values)
+        else {
+            continue;
+        };
+        probes.push(WaveformProbe {
+            label: format!("{stem} group delay s"),
+            values,
+            derived: true,
+            expression: Some(stem),
+            promoted_quantity: None,
+        });
+    }
+}
+
+fn group_delay_values_s(frequency_storage: &[f64], phase_deg: &[f64]) -> Option<Vec<f64>> {
+    if frequency_storage.len() != phase_deg.len() || frequency_storage.len() < 2 {
+        return None;
+    }
+    let frequency_hz: Vec<_> = frequency_storage
+        .iter()
+        .map(|value| value * 1.0e6)
+        .collect();
+    let mut phase_rad = Vec::with_capacity(phase_deg.len());
+    let mut previous = None;
+    let mut offset = 0.0;
+    for (index, value) in phase_deg.iter().enumerate() {
+        if !frequency_hz[index].is_finite()
+            || frequency_hz[index] <= 0.0
+            || index > 0 && frequency_hz[index] <= frequency_hz[index - 1]
+            || !value.is_finite()
+        {
+            return None;
+        }
+        let raw = value.to_radians();
+        if let Some(previous_unwrapped) = previous {
+            let mut delta = raw + offset - previous_unwrapped;
+            while delta > std::f64::consts::PI {
+                offset -= std::f64::consts::TAU;
+                delta -= std::f64::consts::TAU;
+            }
+            while delta < -std::f64::consts::PI {
+                offset += std::f64::consts::TAU;
+                delta += std::f64::consts::TAU;
+            }
+        }
+        let unwrapped = raw + offset;
+        previous = Some(unwrapped);
+        phase_rad.push(unwrapped);
+    }
+    let mut delay = Vec::with_capacity(frequency_hz.len());
+    for index in 0..frequency_hz.len() {
+        let (left, right) = if index == 0 {
+            (0, 1)
+        } else if index + 1 == frequency_hz.len() {
+            (index - 1, index)
+        } else {
+            (index - 1, index + 1)
+        };
+        let omega_span = std::f64::consts::TAU * (frequency_hz[right] - frequency_hz[left]);
+        if !omega_span.is_finite() || omega_span <= 0.0 {
+            return None;
+        }
+        delay.push(-(phase_rad[right] - phase_rad[left]) / omega_span);
+    }
+    Some(delay)
 }
 
 fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {

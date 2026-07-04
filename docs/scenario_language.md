@@ -3909,6 +3909,9 @@ assertions are:
   selected probe's `{probe}_mag_db` at the interpolated frequency.
 - `phase_deg_at_frequency`: requires `at_hz` and `threshold_deg`; compares
   `{probe}_phase_deg` at the interpolated frequency.
+- `group_delay_s_at_frequency`: requires `at_hz` and `threshold_s`; unwraps
+  `{probe}_phase_deg`, derives `-dphi/domega` in seconds over the frequency
+  sweep, and compares the interpolated group delay at `at_hz`.
 - `rising_gain_crossing_frequency` and `falling_gain_crossing_frequency`:
   require `threshold_db` and `frequency_limit_hz`; compare the first
   interpolated gain crossing frequency against the frequency limit.

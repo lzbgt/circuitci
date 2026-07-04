@@ -39,6 +39,7 @@ pub(super) fn validate_noise_assertion_contract(
         || assertion.threshold_a.is_some()
         || assertion.threshold_w.is_some()
         || assertion.threshold_vs.is_some()
+        || assertion.threshold_s.is_some()
         || assertion.threshold_c.is_some()
         || assertion.threshold_j.is_some()
         || assertion.threshold_db.is_some()

@@ -54,19 +54,28 @@ pub(super) fn validate_ac_assertion_contract(
         || assertion.tolerance_a.is_some()
         || assertion.tolerance_w.is_some()
     {
-        return Err("AC aggregation must use threshold_db, threshold_deg, or frequency_limit_hz instead of transient units".to_string());
+        return Err("AC aggregation must use threshold_db, threshold_deg, threshold_s, or frequency_limit_hz instead of transient units".to_string());
     }
     match assertion.aggregation {
         AnalogAggregation::GainDbAtFrequency => {
             validate_frequency_sample(assertion, start_hz, stop_hz)?;
             finite_field(assertion.threshold_db, "threshold_db")?;
             reject_field(assertion.threshold_deg, "threshold_deg")?;
+            reject_field(assertion.threshold_s, "threshold_s")?;
             reject_field(assertion.frequency_limit_hz, "frequency_limit_hz")?;
         }
         AnalogAggregation::PhaseDegAtFrequency => {
             validate_frequency_sample(assertion, start_hz, stop_hz)?;
             finite_field(assertion.threshold_deg, "threshold_deg")?;
             reject_field(assertion.threshold_db, "threshold_db")?;
+            reject_field(assertion.threshold_s, "threshold_s")?;
+            reject_field(assertion.frequency_limit_hz, "frequency_limit_hz")?;
+        }
+        AnalogAggregation::GroupDelaySAtFrequency => {
+            validate_frequency_sample(assertion, start_hz, stop_hz)?;
+            finite_field(assertion.threshold_s, "threshold_s")?;
+            reject_field(assertion.threshold_db, "threshold_db")?;
+            reject_field(assertion.threshold_deg, "threshold_deg")?;
             reject_field(assertion.frequency_limit_hz, "frequency_limit_hz")?;
         }
         AnalogAggregation::RisingGainCrossingFrequency
@@ -83,6 +92,7 @@ pub(super) fn validate_ac_assertion_contract(
                 return Err("frequency_limit_hz must be positive".to_string());
             }
             reject_field(assertion.threshold_deg, "threshold_deg")?;
+            reject_field(assertion.threshold_s, "threshold_s")?;
         }
         AnalogAggregation::PhaseMarginDeg => {
             if assertion.at_hz.is_some() || assertion.frequency_limit_hz.is_some() {
@@ -93,6 +103,7 @@ pub(super) fn validate_ac_assertion_contract(
             }
             finite_field(assertion.threshold_deg, "threshold_deg")?;
             reject_field(assertion.threshold_db, "threshold_db")?;
+            reject_field(assertion.threshold_s, "threshold_s")?;
         }
         AnalogAggregation::GainMarginDb => {
             if assertion.at_hz.is_some() || assertion.frequency_limit_hz.is_some() {
@@ -103,6 +114,7 @@ pub(super) fn validate_ac_assertion_contract(
             }
             finite_field(assertion.threshold_db, "threshold_db")?;
             reject_field(assertion.threshold_deg, "threshold_deg")?;
+            reject_field(assertion.threshold_s, "threshold_s")?;
         }
         AnalogAggregation::Sample
         | AnalogAggregation::OperatingPoint
@@ -250,6 +262,11 @@ pub(super) fn evaluate_ac_assertions(
                     .measured
                     .insert("decision_threshold_deg".to_string(), json!(threshold_deg));
             }
+            if let Some(threshold_s) = assertion.threshold_s {
+                finding
+                    .measured
+                    .insert("decision_threshold_s".to_string(), json!(threshold_s));
+            }
             finding
                 .limit
                 .insert(format!("{relation}_{unit}"), json!(limit));
@@ -309,6 +326,7 @@ fn is_ac_aggregation(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::FallingGainCrossingFrequency
             | AnalogAggregation::PhaseMarginDeg
             | AnalogAggregation::GainMarginDb
+            | AnalogAggregation::GroupDelaySAtFrequency
     )
 }
 
@@ -325,6 +343,11 @@ fn measure_ac_assertion(
             finite_field(assertion.at_hz, "at_hz")?,
         ),
         AnalogAggregation::PhaseDegAtFrequency => interpolate_log_frequency(
+            response,
+            &format!("{probe_key}_phase_deg"),
+            finite_field(assertion.at_hz, "at_hz")?,
+        ),
+        AnalogAggregation::GroupDelaySAtFrequency => group_delay_at_frequency(
             response,
             &format!("{probe_key}_phase_deg"),
             finite_field(assertion.at_hz, "at_hz")?,
@@ -402,6 +425,11 @@ fn comparison_limit(assertion: &AnalogAssertion) -> (f64, &'static str, String) 
             "dB",
             "gain_margin".to_string(),
         ),
+        AnalogAggregation::GroupDelaySAtFrequency => (
+            assertion.threshold_s.unwrap_or_default(),
+            "s",
+            "group_delay".to_string(),
+        ),
         _ => unreachable!("only AC aggregations are evaluated here"),
     }
 }
@@ -414,6 +442,7 @@ fn ac_aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing frequency",
         AnalogAggregation::PhaseMarginDeg => "phase margin",
         AnalogAggregation::GainMarginDb => "gain margin",
+        AnalogAggregation::GroupDelaySAtFrequency => "group delay at frequency",
         _ => "AC response",
     }
 }
@@ -526,6 +555,71 @@ fn interpolate_log_frequency(
         }
     }
     Err("sample frequency was not bracketed by Bode data".to_string())
+}
+
+fn group_delay_at_frequency(
+    response: &BodeResponse,
+    phase_column: &str,
+    frequency_hz: f64,
+) -> Result<f64, String> {
+    let phase_deg = response
+        .columns
+        .get(phase_column)
+        .ok_or_else(|| format!("Bode CSV is missing column {phase_column}"))?;
+    let group_delay_s = group_delay_values_s(&response.frequency_hz, phase_deg)?;
+    let response = BodeResponse {
+        frequency_hz: response.frequency_hz.clone(),
+        columns: BTreeMap::from([(phase_column.to_string(), group_delay_s)]),
+    };
+    interpolate_log_frequency(&response, phase_column, frequency_hz)
+}
+
+fn group_delay_values_s(frequency_hz: &[f64], phase_deg: &[f64]) -> Result<Vec<f64>, String> {
+    if frequency_hz.len() != phase_deg.len() {
+        return Err("group delay requires matching frequency and phase lengths".to_string());
+    }
+    if frequency_hz.len() < 2 {
+        return Err("group delay requires at least two phase samples".to_string());
+    }
+    let mut phase_rad = Vec::with_capacity(phase_deg.len());
+    let mut previous = None;
+    let mut offset = 0.0;
+    for value in phase_deg {
+        if !value.is_finite() {
+            return Err("group delay phase samples must be finite".to_string());
+        }
+        let raw = value.to_radians();
+        if let Some(previous_unwrapped) = previous {
+            let mut delta = raw + offset - previous_unwrapped;
+            while delta > std::f64::consts::PI {
+                offset -= std::f64::consts::TAU;
+                delta -= std::f64::consts::TAU;
+            }
+            while delta < -std::f64::consts::PI {
+                offset += std::f64::consts::TAU;
+                delta += std::f64::consts::TAU;
+            }
+        }
+        let unwrapped = raw + offset;
+        previous = Some(unwrapped);
+        phase_rad.push(unwrapped);
+    }
+    let mut delay = Vec::with_capacity(frequency_hz.len());
+    for index in 0..frequency_hz.len() {
+        let (left, right) = if index == 0 {
+            (0, 1)
+        } else if index + 1 == frequency_hz.len() {
+            (index - 1, index)
+        } else {
+            (index - 1, index + 1)
+        };
+        let omega_span = std::f64::consts::TAU * (frequency_hz[right] - frequency_hz[left]);
+        if !omega_span.is_finite() || omega_span <= 0.0 {
+            return Err("group delay frequency samples must be strictly increasing".to_string());
+        }
+        delay.push(-(phase_rad[right] - phase_rad[left]) / omega_span);
+    }
+    Ok(delay)
 }
 
 enum CrossingDirection {
