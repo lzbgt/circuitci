@@ -154,33 +154,59 @@ scenarios:
 
 #[cfg(unix)]
 #[test]
-fn sparameter_contract_is_schema_valid_and_fails_closed_with_planning_evidence() {
+fn ngspice_sparameter_backend_normalizes_smatrix_and_manifest() {
     let fake_path = tempfile::tempdir().unwrap();
-    fake_executable(fake_path.path(), "ngspice");
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'frequency_hz,s_1_1_real,s_1_1_imaginary,s_2_1_real,s_2_1_imaginary,s_1_2_real,s_1_2_imaginary,s_2_2_real,s_2_2_imaginary\\n1.0e6,0.5,0,0.1,0,0.1,0,0.4,0\\n1.0e9,0.2,0,0.15,0,0.15,0,0.3,0\\n' > s_parameters_raw.csv\nexit 0\n",
+    );
     let project_dir = tempfile::tempdir().unwrap();
     let project_path = write_sparameter_project(project_dir.path(), "ngspice", "port1");
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
     assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
 
-    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
 
-    assert_eq!(report["result"], "fail");
-    assert_eq!(report["failures"][0]["id"], "SPICE_S_PARAMETER_ANALYSIS");
-    assert_eq!(
-        report["failures"][0]["measured"]["adapter_status"],
-        "planned_not_implemented"
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let s_parameters_path = waveform_path(&report, "s_parameters.csv");
+    assert_csv_has_header(
+        s_parameters_path,
+        &["s11_mag_db", "s21_mag_db", "s12_mag_db", "s22_mag_db"],
     );
+    assert!(artifact_path(&report, "s_parameter_summary.csv").ends_with("s_parameter_summary.csv"));
+    assert_eq!(report["s_parameter_summaries"].as_array().unwrap().len(), 4);
+    let manifest_path = artifact_path(&report, "solver_manifest.json");
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["analysis"]["kind"], "s_parameter");
+    assert_eq!(manifest["outputs"]["normalized"][0]["kind"], "s_parameters");
     assert_eq!(
-        report["failures"][0]["measured"]["required_normalized_outputs"][0],
-        "s_parameters"
+        manifest["outputs"]["normalized"].as_array().unwrap().len(),
+        1
     );
-    assert_eq!(
-        report["failures"][0]["limit"]["required_evidence"],
-        "xyce_s_parameters_csv_or_touchstone"
-    );
-    assert_eq!(report["failures"][0]["measured"]["port_count"], 2);
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("## S-Parameter Summary"));
     assert_report_schema_valid(&report);
 }
 

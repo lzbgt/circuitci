@@ -155,10 +155,13 @@ Current analog support:
   declare `analysis.type: sparam`, frequency bounds, points per decade, and
   explicit port nodes/reference impedances. Explicit `backend: xyce` generates
   Xyce port devices, runs `.AC` plus `.LIN SPARCALC=1`, captures Touchstone RI
-  output, and normalizes it to `s_parameters.csv` with `solver_manifest.json`
-  provenance; when source/load reflection coefficients are declared, the
-  normalized CSV carries those metadata columns before manifest hashing so
-  downstream reports and Scopes traces use the retained solver artifact.
+  output, and normalizes it to `s_parameters.csv`; explicit
+  `backend: ngspice` emits RF port voltage sources, runs `.SP`, exports
+  `S_i_j` vectors, and normalizes them to the same CSV contract. Both paths
+  retain solver-manifest provenance; when source/load reflection coefficients
+  are declared, the normalized CSV carries those metadata columns before
+  manifest hashing so downstream reports and Scopes traces use the retained
+  solver artifact.
   Validation derives `s_parameter_summary.csv`; optional
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
   insertion loss, VSWR, mismatch loss, group-delay, and reflection-impedance

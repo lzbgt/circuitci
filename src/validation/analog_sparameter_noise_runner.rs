@@ -12,13 +12,13 @@ use super::analog_runner::{
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 use super::analog_xyce_runner::append_sparameter_reflection_metadata;
 
-pub(super) struct NgspiceSParameterNoiseRun {
+pub(super) struct NgspiceSParameterRun {
     pub(super) artifacts: Vec<PathBuf>,
     pub(super) s_parameters: PathBuf,
-    pub(super) noise_summary: PathBuf,
+    pub(super) noise_summary: Option<PathBuf>,
 }
 
-pub(super) struct NgspiceSParameterNoiseRunOptions<'a, F, C>
+pub(super) struct NgspiceSParameterRunOptions<'a, F, C>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
@@ -31,18 +31,47 @@ where
     pub(super) should_cancel: C,
 }
 
+pub(super) fn run_ngspice_sparameter<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    backend: &str,
+    source_netlist: &Path,
+    options: NgspiceSParameterRunOptions<'_, F, C>,
+) -> Result<NgspiceSParameterRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    run_ngspice_sparameter_impl(bound, scenario, backend, source_netlist, options, false)
+}
+
 pub(super) fn run_ngspice_sparameter_noise<F, C>(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     backend: &str,
     source_netlist: &Path,
-    options: NgspiceSParameterNoiseRunOptions<'_, F, C>,
-) -> Result<NgspiceSParameterNoiseRun, NgspiceRunError>
+    options: NgspiceSParameterRunOptions<'_, F, C>,
+) -> Result<NgspiceSParameterRun, NgspiceRunError>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
 {
-    let NgspiceSParameterNoiseRunOptions {
+    run_ngspice_sparameter_impl(bound, scenario, backend, source_netlist, options, true)
+}
+
+fn run_ngspice_sparameter_impl<F, C>(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    backend: &str,
+    source_netlist: &Path,
+    options: NgspiceSParameterRunOptions<'_, F, C>,
+    include_noise: bool,
+) -> Result<NgspiceSParameterRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let NgspiceSParameterRunOptions {
         output,
         run_subdir,
         parameter_overrides,
@@ -53,7 +82,7 @@ where
     let analog = scenario
         .analog
         .as_ref()
-        .expect("analog was validated before ngspice SP-noise run");
+        .expect("analog was validated before ngspice SP run");
     let mut run_dir = output
         .join("analog")
         .join(safe_artifact_name(&scenario.name));
@@ -63,30 +92,42 @@ where
     fs::create_dir_all(&run_dir).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to create analog S-parameter noise run directory {}: {error}",
+                "Failed to create analog S-parameter run directory {}: {error}",
                 run_dir.display()
             ),
             Vec::new(),
         )
     })?;
     let mut artifacts = vec![source_netlist.to_path_buf()];
-    let wrapper = run_dir.join("circuitci_ngspice_sparameter_noise.cir");
-    let log = run_dir.join("ngspice_sparameter_noise.log");
+    let wrapper = run_dir.join(if include_noise {
+        "circuitci_ngspice_sparameter_noise.cir"
+    } else {
+        "circuitci_ngspice_sparameter.cir"
+    });
+    let log = run_dir.join(if include_noise {
+        "ngspice_sparameter_noise.log"
+    } else {
+        "ngspice_sparameter.log"
+    });
     let raw_s_parameters = run_dir.join("s_parameters_raw.csv");
     let s_parameters = run_dir.join("s_parameters.csv");
     let raw = run_dir.join("s_parameter_noise_raw.csv");
     let noise_summary = run_dir.join("s_parameter_noise_summary.csv");
 
     on_progress(
-        "Writing analog S-parameter noise wrapper deck",
+        if include_noise {
+            "Writing analog S-parameter noise wrapper deck"
+        } else {
+            "Writing analog S-parameter wrapper deck"
+        },
         format!("Writing {}.", wrapper.to_string_lossy()),
     );
-    let wrapper_text = build_ngspice_sparameter_noise_wrapper(
+    let wrapper_text = build_ngspice_sparameter_wrapper(
         bound,
         scenario,
         source_netlist,
         Path::new("s_parameters_raw.csv"),
-        Path::new("s_parameter_noise_raw.csv"),
+        include_noise.then_some(Path::new("s_parameter_noise_raw.csv")),
         parameter_overrides,
         model_section_overrides,
     )
@@ -94,7 +135,7 @@ where
     fs::write(&wrapper, wrapper_text).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to write ngspice S-parameter noise wrapper deck {}: {error}",
+                "Failed to write ngspice S-parameter wrapper deck {}: {error}",
                 wrapper.display()
             ),
             artifacts.clone(),
@@ -103,10 +144,15 @@ where
     artifacts.push(wrapper.clone());
 
     on_progress(
-        "Running analog S-parameter noise backend",
+        if include_noise {
+            "Running analog S-parameter noise backend"
+        } else {
+            "Running analog S-parameter backend"
+        },
         format!(
-            "{} SP-noise sweep for {} port(s).",
+            "{} SP{} sweep for {} port(s).",
             backend,
+            if include_noise { "-noise" } else { "" },
             analog.analysis.s_parameter_ports.len()
         ),
     );
@@ -128,7 +174,7 @@ where
     fs::write(&log, &log_text).map_err(|error| {
         ngspice_error(
             format!(
-                "Failed to write ngspice S-parameter noise log {}: {error}",
+                "Failed to write ngspice S-parameter log {}: {error}",
                 log.display()
             ),
             artifacts.clone(),
@@ -138,7 +184,7 @@ where
     if !output.status.success() {
         return Err(ngspice_error(
             format!(
-                "ngspice S-parameter noise analysis exited with status {}.",
+                "ngspice S-parameter analysis exited with status {}.",
                 output.status
             ),
             artifacts,
@@ -184,78 +230,88 @@ where
         )
     })?;
     artifacts.push(s_parameters.clone());
-    if !raw.is_file() {
-        return Err(ngspice_error(
-            format!(
-                "ngspice completed without producing S-parameter noise export {}.",
-                raw.display()
-            ),
-            artifacts,
-        ));
+    let noise_summary = if include_noise {
+        if !raw.is_file() {
+            return Err(ngspice_error(
+                format!(
+                    "ngspice completed without producing S-parameter noise export {}.",
+                    raw.display()
+                ),
+                artifacts,
+            ));
+        }
+        artifacts.push(raw.clone());
+        let summary_csv = s_parameter_noise_raw_to_summary_csv(&raw).map_err(|message| {
+            ngspice_error(
+                format!(
+                    "Failed to normalize S-parameter noise export {}: {message}",
+                    raw.display()
+                ),
+                artifacts.clone(),
+            )
+        })?;
+        fs::write(&noise_summary, summary_csv).map_err(|error| {
+            ngspice_error(
+                format!(
+                    "Failed to write S-parameter noise summary {}: {error}",
+                    noise_summary.display()
+                ),
+                artifacts.clone(),
+            )
+        })?;
+        artifacts.push(noise_summary.clone());
+        Some(noise_summary)
+    } else {
+        None
+    };
+    let mut raw_outputs: Vec<(&str, &Path)> =
+        vec![("ngspice_s_parameters_raw", raw_s_parameters.as_path())];
+    let mut normalized_outputs: Vec<(&str, &Path)> = vec![("s_parameters", s_parameters.as_path())];
+    if let Some(noise_summary) = &noise_summary {
+        raw_outputs.push(("ngspice_s_parameter_noise_raw", raw.as_path()));
+        normalized_outputs.push(("s_parameter_noise_summary", noise_summary.as_path()));
     }
-    artifacts.push(raw.clone());
-    let summary_csv = s_parameter_noise_raw_to_summary_csv(&raw).map_err(|message| {
-        ngspice_error(
-            format!(
-                "Failed to normalize S-parameter noise export {}: {message}",
-                raw.display()
-            ),
-            artifacts.clone(),
-        )
-    })?;
-    fs::write(&noise_summary, summary_csv).map_err(|error| {
-        ngspice_error(
-            format!(
-                "Failed to write S-parameter noise summary {}: {error}",
-                noise_summary.display()
-            ),
-            artifacts.clone(),
-        )
-    })?;
-    artifacts.push(noise_summary.clone());
     let manifest = write_solver_manifest(SolverManifestIo {
         run_dir: &run_dir,
         scenario,
         requested_backend: &analog.backend,
         selected_backend: backend,
-        analysis_kind: "s_parameter_noise",
+        analysis_kind: if include_noise {
+            "s_parameter_noise"
+        } else {
+            "s_parameter"
+        },
         source_netlist,
         wrapper: &wrapper,
         log: &log,
         output: &output,
         parameter_overrides,
         model_section_overrides,
-        raw_outputs: &[
-            ("ngspice_s_parameters_raw", &raw_s_parameters),
-            ("ngspice_s_parameter_noise_raw", &raw),
-        ],
-        normalized_outputs: &[
-            ("s_parameters", &s_parameters),
-            ("s_parameter_noise_summary", &noise_summary),
-        ],
+        raw_outputs: &raw_outputs,
+        normalized_outputs: &normalized_outputs,
     })
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     artifacts.push(manifest);
-    Ok(NgspiceSParameterNoiseRun {
+    Ok(NgspiceSParameterRun {
         artifacts,
         s_parameters,
         noise_summary,
     })
 }
 
-fn build_ngspice_sparameter_noise_wrapper(
+fn build_ngspice_sparameter_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     netlist: &Path,
     s_parameters_raw: &Path,
-    raw_output: &Path,
+    noise_raw_output: Option<&Path>,
     parameter_overrides: &[ParameterOverride],
     model_section_overrides: &[ModelSectionOverride],
 ) -> Result<String, String> {
     let analog = scenario
         .analog
         .as_ref()
-        .expect("analog was validated before ngspice SP-noise wrapper generation");
+        .expect("analog was validated before ngspice SP wrapper generation");
     let source = fs::read_to_string(netlist).map_err(|error| {
         format!(
             "Failed to read SPICE netlist {}: {error}",
@@ -326,27 +382,32 @@ fn build_ngspice_sparameter_noise_wrapper(
     let start_hz = analog
         .analysis
         .start_frequency_hz
-        .ok_or_else(|| "start_frequency_hz is required for SP-noise analysis".to_string())?;
+        .ok_or_else(|| "start_frequency_hz is required for S-parameter analysis".to_string())?;
     let stop_hz = analog
         .analysis
         .stop_frequency_hz
-        .ok_or_else(|| "stop_frequency_hz is required for SP-noise analysis".to_string())?;
+        .ok_or_else(|| "stop_frequency_hz is required for S-parameter analysis".to_string())?;
     let points = analog.analysis.points_per_decade.unwrap_or(20);
     text.push_str(".control\n");
     push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
     text.push_str("set wr_vecnames\nset wr_singlescale\n");
-    text.push_str(&format!(
-        "sp dec {points} {start_hz:.12e} {stop_hz:.12e} 1\n"
-    ));
+    text.push_str(&format!("sp dec {points} {start_hz:.12e} {stop_hz:.12e}"));
+    if noise_raw_output.is_some() {
+        text.push_str(" 1");
+    }
+    text.push('\n');
     text.push_str("wrdata ");
     text.push_str(&s_parameters_raw.to_string_lossy());
     for (row, column) in sparameter_pairs(analog.analysis.s_parameter_ports.len()) {
         text.push_str(&format!(" S_{row}_{column}"));
     }
     text.push('\n');
-    text.push_str("wrdata ");
-    text.push_str(&raw_output.to_string_lossy());
-    text.push_str(" NF NFmin Rn SOpt\nquit\n.endc\n.end\n");
+    if let Some(noise_raw_output) = noise_raw_output {
+        text.push_str("wrdata ");
+        text.push_str(&noise_raw_output.to_string_lossy());
+        text.push_str(" NF NFmin Rn SOpt\n");
+    }
+    text.push_str("quit\n.endc\n.end\n");
     Ok(text)
 }
 

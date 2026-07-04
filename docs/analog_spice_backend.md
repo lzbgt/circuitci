@@ -401,7 +401,10 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
 4. Explicit `backend: xyce` generates Xyce port devices, runs `.AC` plus
    `.LIN SPARCALC=1`, captures Touchstone RI output, and normalizes it to
    `s_parameters.csv` with reference impedance, magnitude, phase, and linear
-   magnitude columns. The raw Touchstone file and normalized CSV are recorded in
+   magnitude columns. Explicit `backend: ngspice` emits RF port voltage sources
+   with `portnum`/`z0`, runs `.SP`, exports `S_i_j` vectors through `wrdata`,
+   and normalizes them to the same `s_parameters.csv` contract. The raw
+   Touchstone or ngspice S-vector export and normalized CSV are recorded in
    `solver_manifest.json`.
 5. CircuitCI derives `s_parameter_summary.csv` from the normalized waveform
    with per-term frequency span, magnitude min/max, return-loss min/max for
@@ -477,11 +480,11 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    "S-Parameter Summary", "S-Parameter Network Summary", and "S-Parameter
    Noise Summary" sections, and GUI Scopes surfaces compact RF term,
    network-quality, and RF-noise rows.
-10. `backend: auto` may select ngspice for SP-noise assertion runs or fail
-   closed when no requested solver is available. `ngspice` without RF-noise
-   assertions and `embedded_ngspice` remain conservative for this check and
-   fail closed with backend-planning evidence until those adapters emit the
-   same normalized `s_parameters` contract for ordinary S-parameter runs.
+10. `backend: auto` may select ngspice for ordinary S-parameter or SP-noise
+   assertion runs, or fail closed when no requested solver is available.
+   `embedded_ngspice` remains conservative for this check and fails closed
+   with backend-planning evidence until it emits the same normalized
+   `s_parameters` contract.
 
 For a scenario with check `SPICE_TRANSFER_FUNCTION_ANALYSIS`:
 

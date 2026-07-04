@@ -748,6 +748,13 @@ The GUI should not become the solver.
   `s_parameter_noise_summary.csv`, records both normalized outputs in the
   solver manifest, and evaluates mixed S-parameter term, network, and RF-noise
   assertions from the same retained solver run.
+- 2026-07-04: Generalized the ngspice `.SP` S-matrix adapter for ordinary
+  non-noise `analog_sparameter` runs. When RF-noise assertions are absent,
+  CircuitCI runs `.SP DEC ...`, retains `s_parameters_raw.csv`, normalizes
+  ngspice `S_i_j` vectors into `s_parameters.csv`, records
+  `analysis.kind: s_parameter` in `solver_manifest.json`, and evaluates the
+  existing term/network summaries and assertions from the same normalized CSV
+  contract used by the Xyce Touchstone path.
 - 2026-07-04: Projected retained RF SP-noise summaries into normal validation
   reports. `s_parameter_noise_summary.csv` now appears as
   `s_parameter_noise_summaries[]`, Markdown reports include an "S-Parameter
