@@ -573,7 +573,10 @@ The GUI should not become the solver.
   `analysis.fourier_assertions[]` now signs off harmonic magnitude,
   normalized magnitude, phase, normalized phase, and THD-percent limits from
   `fourier_summary.csv`, with fail-closed behavior for missing rows or
-  metadata. Next add non-ngspice planning/adapters.
+  metadata. Validation reports now project retained Fourier rows into
+  `fourier_summaries[]`, Markdown reports include a "Fourier Summary" section,
+  and GUI Scopes shows compact harmonic/THD rows. Next add non-ngspice
+  planning/adapters.
 - The first `.MEASURE` path is an external-ngspice adapter with a Board
   IR/schema contract for reviewed transient/AC scalar extraction statements or
   portable measure templates, bound output provenance checks, normalized

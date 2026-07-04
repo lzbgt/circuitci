@@ -221,8 +221,11 @@ Current analog support:
   THD-percent limits from `fourier_summary.csv`. External `ngspice` runs write
   `fourier_raw.txt`, `fourier_summary.csv`, and `solver_manifest.json`; the
   normalized summary records DC plus harmonic rows, frequency,
-  magnitude/phase, normalized magnitude/phase, and THD/grid metadata. Opt-in
-  real-ngspice conformance coverage is available through
+  magnitude/phase, normalized magnitude/phase, and THD/grid metadata.
+  Validation reports project retained Fourier rows into `fourier_summaries[]`,
+  Markdown reports include a "Fourier Summary" section, and the GUI artifact
+  panel shows compact harmonic/THD rows. Opt-in real-ngspice conformance
+  coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; it skips
   unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain fail-closed
   with planning evidence for this path.

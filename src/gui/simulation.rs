@@ -210,6 +210,29 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Fourier summary");
+                    if report.fourier_summaries.is_empty() {
+                        ui.label("No Fourier summary rows were emitted.");
+                    } else {
+                        for row in &report.fourier_summaries {
+                            let thd = row
+                                .thd_percent
+                                .map(|value| format!("{value:.6e}%"))
+                                .unwrap_or_else(|| "n/a".to_string());
+                            ui.monospace(format!(
+                                "{} h{} f={:.6e}Hz mag={:.6e} norm={:.6e} phase={:.6e}deg thd={} artifact={}",
+                                row.output_expression,
+                                row.harmonic,
+                                row.frequency_hz,
+                                row.magnitude,
+                                row.normalized_magnitude,
+                                row.phase_deg,
+                                thd,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Model file provenance");
                     if report.model_file_provenance.is_empty() {
                         ui.label("No compiled model provenance was emitted.");

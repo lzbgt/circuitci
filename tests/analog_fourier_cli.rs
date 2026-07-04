@@ -201,6 +201,14 @@ fn fourier_backend_normalizes_summary_and_manifest() {
     ));
     assert!(summary.contains("V(out),1.000000000000e5,5,1,1.000000000000e5,5.387790000000e-1"));
     assert!(summary.contains(",1.854350000000e1,200,1,1"));
+    let fourier_summaries = report["fourier_summaries"].as_array().unwrap();
+    assert_eq!(fourier_summaries.len(), 3);
+    assert_eq!(fourier_summaries[0]["output_expression"], "V(out)");
+    assert_eq!(fourier_summaries[1]["harmonic"], 1);
+    assert_eq!(fourier_summaries[1]["magnitude"], 5.38779e-1);
+    assert_eq!(fourier_summaries[2]["harmonic"], 2);
+    assert_eq!(fourier_summaries[2]["normalized_magnitude"], 2.30581e-2);
+    assert_eq!(fourier_summaries[2]["thd_percent"], 18.5435);
     assert!(artifact_path(&report, "fourier_raw.txt").ends_with("fourier_raw.txt"));
     let manifest: Value = serde_json::from_str(
         &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),

@@ -1428,6 +1428,12 @@ Retained `distortion_summary.csv` artifacts project into top-level
 component, output expression, row count, maximum magnitude, and frequency at
 that maximum. Markdown reports include those rows in a "Distortion Summary"
 section, and the GUI report panel surfaces the same compact rows.
+Retained `fourier_summary.csv` artifacts project into top-level
+`fourier_summaries[]` rows with the source artifact path, output expression,
+harmonic index, frequency, magnitude, phase, normalized magnitude/phase, and
+optional solver-reported THD percent. Markdown reports include those rows in a
+"Fourier Summary" section, and the GUI report panel surfaces the same compact
+rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

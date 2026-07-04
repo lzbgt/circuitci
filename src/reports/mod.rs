@@ -60,6 +60,7 @@ pub struct ValidationReport {
     pub waveforms: Vec<String>,
     pub artifacts: Vec<String>,
     pub distortion_summaries: Vec<DistortionSummary>,
+    pub fourier_summaries: Vec<FourierSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -109,6 +110,19 @@ pub struct DistortionSummary {
     pub row_count: usize,
     pub max_magnitude: f64,
     pub frequency_hz_at_max: f64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct FourierSummary {
+    pub artifact: String,
+    pub output_expression: String,
+    pub harmonic: u32,
+    pub frequency_hz: f64,
+    pub magnitude: f64,
+    pub phase_deg: f64,
+    pub normalized_magnitude: f64,
+    pub normalized_phase_deg: f64,
+    pub thd_percent: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -398,6 +412,7 @@ impl ValidationReport {
             .collect();
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
         let distortion_summaries = collect_distortion_summaries(&artifacts);
+        let fourier_summaries = collect_fourier_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -422,6 +437,7 @@ impl ValidationReport {
             waveforms,
             artifacts,
             distortion_summaries,
+            fourier_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -489,6 +505,30 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.row_count,
                 row.max_magnitude,
                 row.frequency_hz_at_max
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Fourier Summary\n\n");
+    if report.fourier_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.fourier_summaries {
+            let thd = row
+                .thd_percent
+                .map(|value| format!("{value:.6e}%"))
+                .unwrap_or_else(|| "n/a".to_string());
+            text.push_str(&format!(
+                "- `{}` h{}: frequency={:.6e} Hz magnitude={:.6e} phase={:.6e} deg normalized_magnitude={:.6e} normalized_phase={:.6e} deg THD={}\n",
+                row.output_expression,
+                row.harmonic,
+                row.frequency_hz,
+                row.magnitude,
+                row.phase_deg,
+                row.normalized_magnitude,
+                row.normalized_phase_deg,
+                thd
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -876,6 +916,103 @@ fn parse_distortion_summary_csv(artifact: &str, text: &str) -> Vec<DistortionSum
             row_count,
             max_magnitude,
             frequency_hz_at_max,
+        });
+    }
+    rows
+}
+
+fn collect_fourier_summaries(artifacts: &[String]) -> Vec<FourierSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("fourier_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_fourier_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| {
+        left.artifact
+            .cmp(&right.artifact)
+            .then_with(|| left.output_expression.cmp(&right.output_expression))
+            .then_with(|| left.harmonic.cmp(&right.harmonic))
+    });
+    records
+}
+
+fn parse_fourier_summary_csv(artifact: &str, text: &str) -> Vec<FourierSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "output_expression",
+            "fundamental_frequency_hz",
+            "reported_harmonics",
+            "harmonic",
+            "frequency_hz",
+            "magnitude",
+            "phase_deg",
+            "normalized_magnitude",
+            "normalized_phase_deg",
+            "thd_percent",
+            "grid_size",
+            "interpolation_degree",
+            "periods",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 13 {
+            continue;
+        }
+        let Some(harmonic) = fields[3].parse::<u32>().ok() else {
+            continue;
+        };
+        let Some(frequency_hz) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        let Some(magnitude) = parse_finite_f64(&fields[5]) else {
+            continue;
+        };
+        let Some(phase_deg) = parse_finite_f64(&fields[6]) else {
+            continue;
+        };
+        let Some(normalized_magnitude) = parse_finite_f64(&fields[7]) else {
+            continue;
+        };
+        let Some(normalized_phase_deg) = parse_finite_f64(&fields[8]) else {
+            continue;
+        };
+        let thd_percent = match fields[9].is_empty() {
+            true => None,
+            false => {
+                let Some(value) = parse_finite_f64(&fields[9]) else {
+                    continue;
+                };
+                Some(value)
+            }
+        };
+        rows.push(FourierSummary {
+            artifact: artifact.to_string(),
+            output_expression: fields[0].clone(),
+            harmonic,
+            frequency_hz,
+            magnitude,
+            phase_deg,
+            normalized_magnitude,
+            normalized_phase_deg,
+            thd_percent,
         });
     }
     rows
@@ -1717,5 +1854,37 @@ mod tests {
         assert!(markdown.contains("## Distortion Summary"));
         assert!(markdown.contains("`h2` `V(out,0)`"));
         assert!(markdown.contains("max_magnitude=5.000000e-3"));
+    }
+
+    #[test]
+    fn validation_report_projects_fourier_summary_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let summary = dir.path().join("fourier_summary.csv");
+        fs::write(
+            &summary,
+            "output_expression,fundamental_frequency_hz,reported_harmonics,harmonic,frequency_hz,magnitude,phase_deg,normalized_magnitude,normalized_phase_deg,thd_percent,grid_size,interpolation_degree,periods\n\"V(out,0)\",1.000000000000e5,5,0,0.000000000000e0,5.099860000000e-1,0.000000000000e0,0.000000000000e0,0.000000000000e0,1.854350000000e1,200,1,1\n\"V(out,0)\",1.000000000000e5,5,2,2.000000000000e5,1.242320000000e-2,3.132120000000e1,2.305810000000e-2,6.705410000000e1,1.854350000000e1,200,1,1\n",
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![summary.to_string_lossy().into_owned()],
+            Vec::new(),
+            "circuitci validate project.yaml".to_string(),
+        );
+
+        assert_eq!(report.fourier_summaries.len(), 2);
+        assert_eq!(report.fourier_summaries[0].output_expression, "V(out,0)");
+        assert_eq!(report.fourier_summaries[0].harmonic, 0);
+        assert_eq!(report.fourier_summaries[1].harmonic, 2);
+        assert_eq!(report.fourier_summaries[1].normalized_magnitude, 2.30581e-2);
+        assert_eq!(report.fourier_summaries[1].thd_percent, Some(18.5435));
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## Fourier Summary"));
+        assert!(markdown.contains("`V(out,0)` h2"));
+        assert!(markdown.contains("normalized_magnitude=2.305810e-2"));
     }
 }

@@ -33,6 +33,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/distortion_summary" }
     },
+    "fourier_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fourier_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -134,6 +138,32 @@
         "row_count": { "type": "integer", "minimum": 0 },
         "max_magnitude": { "type": "number" },
         "frequency_hz_at_max": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "fourier_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "output_expression",
+        "harmonic",
+        "frequency_hz",
+        "magnitude",
+        "phase_deg",
+        "normalized_magnitude",
+        "normalized_phase_deg",
+        "thd_percent"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "output_expression": { "type": "string" },
+        "harmonic": { "type": "integer", "minimum": 0 },
+        "frequency_hz": { "type": "number" },
+        "magnitude": { "type": "number" },
+        "phase_deg": { "type": "number" },
+        "normalized_magnitude": { "type": "number" },
+        "normalized_phase_deg": { "type": "number" },
+        "thd_percent": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },
