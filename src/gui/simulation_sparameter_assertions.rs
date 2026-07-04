@@ -627,4 +627,80 @@ mod tests {
         assert_eq!(rows[0].relation.as_deref(), Some("below"));
         assert_eq!(rows[0].threshold, Some(1.0));
     }
+
+    #[test]
+    fn sparameter_gain_failure_loads_rf_network_editor_state() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter network assertion available_gain_floor failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("available_gain_floor"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("maximum_available_gain_db_min"));
+        finding.measured.insert(
+            "s_parameter_network_summary".to_string(),
+            json!("out/s_parameter_network_summary.csv"),
+        );
+        finding
+            .limit
+            .insert("above_threshold".to_string(), json!(-1.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+        let mut app = CircuitCiApp::default();
+        app.load_sparameter_failure_row(&rows[0]);
+
+        assert_eq!(
+            app.analog_sparameter_network_assertion_scenario,
+            "two_port_sparameter"
+        );
+        assert_eq!(
+            app.analog_sparameter_network_assertion_name,
+            "available_gain_floor"
+        );
+        assert_eq!(
+            app.analog_sparameter_network_assertion_metric,
+            "maximum_available_gain_db_min"
+        );
+        assert_eq!(app.analog_sparameter_network_assertion_relation, "above");
+        assert_eq!(app.analog_sparameter_network_assertion_threshold, -1.0);
+        assert!(
+            app.status
+                .contains("Loaded RF network check available_gain_floor")
+        );
+    }
+
+    #[test]
+    fn sparameter_failure_rows_parse_stable_gain_network_limit() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter network assertion stable_gain_floor failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("stable_gain_floor"));
+        finding
+            .measured
+            .insert("metric".to_string(), json!("maximum_stable_gain_db_min"));
+        finding.measured.insert(
+            "s_parameter_network_summary".to_string(),
+            json!("out/s_parameter_network_summary.csv"),
+        );
+        finding
+            .limit
+            .insert("above_threshold".to_string(), json!(6.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, SParameterFailureKind::Network);
+        assert_eq!(rows[0].assertion, "stable_gain_floor");
+        assert_eq!(rows[0].metric, "maximum_stable_gain_db_min");
+        assert_eq!(rows[0].relation.as_deref(), Some("above"));
+        assert_eq!(rows[0].threshold, Some(6.0));
+    }
 }

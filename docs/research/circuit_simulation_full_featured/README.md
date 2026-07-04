@@ -668,7 +668,8 @@ The GUI should not become the solver.
   `s_parameter_network_assertions[]` for reciprocity, passivity, Rollet K,
   stability `|Delta|`, MAG, and MSG limits with Board IR validation before
   accepting the YAML edit, and retained network assertion failures can be
-  loaded from the report panel back into that editor.
+  loaded from the report panel back into that editor, including MAG/MSG gain
+  floor failures.
 - 2026-07-04: Added RF amplifier gain sign-off to the two-port S-parameter
   network summary contract. `s_parameter_network_summary.csv` now retains
   minimum maximum available gain (`maximum_available_gain_db_min`) and minimum
