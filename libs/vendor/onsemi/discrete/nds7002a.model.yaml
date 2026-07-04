@@ -85,7 +85,7 @@ datasheet:
       simulation_relevance: Gate charge affects drive current and switching time.
   documents:
     - title: 2N7000, 2N7002, NDS7002A - N-Channel Enhancement Mode Field Effect Transistor
-      path: docs/research/datasheets/onsemi_nds7002a-d.pdf
+      path: docs/research/datasheets/onsemi/nds7002a.pdf
       source_url: https://www.onsemi.com/download/data-sheet/pdf/nds7002a-d.pdf
       sha256: 160c0e7cdbee397ba4490112aa442e0df20f159c21519e2e17ae52456152e38e
       retrieved: "2026-06-12"

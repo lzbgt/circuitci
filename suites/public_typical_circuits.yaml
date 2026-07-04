@@ -274,6 +274,17 @@ cases:
       - id: SPICE_OPERATING_LIMIT
         severity: critical
 
+  - id: onsemi_nds7002a_low_side_switch_passes
+    project: ../examples/good_mosfet_low_side_switch/project.yaml
+    expect: pass
+
+  - id: onsemi_nds7002a_overcurrent_detected
+    project: ../examples/bad_mosfet_overcurrent/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
   - id: onsemi_2n3904_low_side_switch_passes
     project: ../examples/good_onsemi_2n3904_low_side_switch/project.yaml
     expect: pass
@@ -479,6 +490,12 @@ repairs:
   - id: fix_onsemi_1n4148ws_overcurrent
     detects_case: onsemi_1n4148ws_overcurrent_detected
     fixed_case: onsemi_1n4148ws_switching_diode_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_nds7002a_overcurrent
+    detects_case: onsemi_nds7002a_overcurrent_detected
+    fixed_case: onsemi_nds7002a_low_side_switch_passes
     fixes_findings:
       - SPICE_OPERATING_LIMIT
 

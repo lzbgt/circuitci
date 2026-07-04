@@ -93,8 +93,13 @@ small-signal switching-diode pack with normalized retained source evidence and
 generated SPICE operating-limit probes for reverse voltage, average forward
 current, and power dissipation; pulse-current derating, reverse-recovery
 variation, leakage over temperature, package thermal coupling, and production
-behavior remain outside that preliminary electrical model. onsemi 2N3904 now
-covers a first source-backed common NPN transistor pack with generated SPICE operating-limit probes for BJT
+behavior remain outside that preliminary electrical model. onsemi NDS7002A now
+covers a source-backed common small-signal N-channel MOSFET pack with
+generated SPICE operating-limit probes for terminal voltage, continuous drain
+current, and derated power dissipation; switching loss, package thermal
+coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, and
+production behavior remain outside that preliminary electrical model. onsemi
+2N3904 now covers a first source-backed common NPN transistor pack with generated SPICE operating-limit probes for BJT
 terminal voltages, collector current, and power dissipation; transistor gain
 spread, noise, switching storage time, package thermal coupling, and
 production behavior remain outside that preliminary electrical model. onsemi

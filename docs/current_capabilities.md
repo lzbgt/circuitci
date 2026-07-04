@@ -154,6 +154,17 @@ pulse-current derating, reverse-recovery behavior across process and
 temperature, leakage over temperature, package thermal coupling, or production
 hardware behavior. See `docs/onsemi_1n4148ws_model.md`.
 
+`vendor.onsemi.nds7002a` provides a source-backed static/generated-SPICE pack
+for onsemi's SOT-23 NDS7002A N-channel enhancement-mode MOSFET. It records the
+60 V drain-source limit, +/-20 V continuous gate-source limit, 280 mA
+continuous drain-current limit, 300 mW power limit at 25 C with 2.4 mW/C
+derating, SOT-23 pinout, threshold, on-resistance, capacitance, and approximate
+gate-charge metadata. The bundled SPICE card is a reduced preliminary Level-1
+fit for generated low-side switch checks and source-backed MOSFET
+operating-limit probes; it does not sign off switching loss, package thermal
+coupling, avalanche, qualified pulse-current SOA, gate-drive margin, EMI, or
+production hardware behavior. See `docs/onsemi_nds7002a_model.md`.
+
 `vendor.onsemi.npn_2n3904` provides a source-backed static/generated-SPICE
 model for onsemi's TO-92 2N3904 NPN general-purpose transistor. It records
 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`, 200 mA continuous collector current,
@@ -1005,6 +1016,9 @@ Current analog support:
 - The onsemi 1N4148WS switching-diode pack now has normalized retained source
   evidence plus public-suite generated-SPICE pass/fail coverage for diode
   forward-current and power operating-limit probes.
+- The onsemi NDS7002A MOSFET pack now has normalized retained source evidence
+  plus public-suite generated-SPICE pass/fail coverage for low-side switch
+  behavior and MOSFET drain-current/power operating-limit probes.
 - The TI TPS22918 load-switch pack now has a datasheet-backed generated SPICE
   observation face for active-high enabled load-path behavior. Datasheet
   voltage/current/ON-threshold metadata remains available for static
