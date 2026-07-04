@@ -116,6 +116,27 @@ pub enum AnalogSParameterNetworkMetric {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct AnalogSParameterNoiseAssertion {
+    pub name: String,
+    pub metric: AnalogSParameterNoiseMetric,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogSParameterNoiseMetric {
+    NoiseFigureDbMax,
+    MinimumNoiseFigureDbMax,
+    EquivalentNoiseResistanceOhmMax,
+    OptimumSourceReflectionMagnitudeMax,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct AnalogFourierAssertion {
     pub name: String,
     #[serde(default)]

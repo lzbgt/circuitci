@@ -456,13 +456,21 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    and therefore fail closed when asserted, if the required reflection
    provenance is absent or the selected source/load condition produces an
    undefined gain.
-8. Validation reports project retained `s_parameter_summary.csv` rows into
+8. Optional `analysis.s_parameter_noise_assertions[]` declares two-port RF
+   noise sign-off for `noise_figure_db_max`,
+   `minimum_noise_figure_db_max`, `equivalent_noise_resistance_ohm_max`, and
+   `optimum_source_reflection_magnitude_max`. This contract is intentionally
+   fail-closed until a backend emits normalized `s_parameter_noise_summary.csv`
+   evidence: the saved ngspice manual states that `.SP` with `donoise=1`
+   provides NF, NFmin, Rn, and SOpt for two-port SP noise, while CircuitCI's
+   current Xyce Touchstone adapter emits only S-parameter data.
+9. Validation reports project retained `s_parameter_summary.csv` rows into
    top-level `s_parameter_summaries[]` and retained
    `s_parameter_network_summary.csv` rows into
    `s_parameter_network_summaries[]`. Markdown reports include
    "S-Parameter Summary" and "S-Parameter Network Summary" sections, and GUI
    Scopes surfaces compact RF term plus network-quality rows.
-9. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
+10. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
    this check and fail closed with backend-planning evidence until those
    adapters emit the same normalized `s_parameters` contract.
 

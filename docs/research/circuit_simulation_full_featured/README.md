@@ -730,6 +730,16 @@ The GUI should not become the solver.
   artifacts now carry the declared coefficients directly in `s_parameters.csv`,
   which lets report-bundled Scopes sessions derive Gt/Ga/Gp traces without
   relying on separate project YAML state.
+- 2026-07-04: Added a fail-closed RF SP-noise sign-off contract for
+  `analysis.s_parameter_noise_assertions[]`. The contract accepts noise
+  figure, minimum noise figure, equivalent noise resistance, and optimum
+  source reflection magnitude limits, then requires future
+  `s_parameter_noise_summary.csv` evidence rather than deriving RF noise
+  figure from ordinary `.NOISE` voltage-density artifacts. The primary
+  evidence is the saved ngspice manual section in `sources/ngspice_manual.xhtml`
+  stating that `.SP` with `donoise=1` gives NF, NFmin, Rn, and SOpt for
+  two-port SP noise; the current Xyce Touchstone adapter does not emit those
+  quantities.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

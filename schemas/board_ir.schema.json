@@ -3275,6 +3275,26 @@
                       },
                       "additionalProperties": false
                     }
+                  },
+                  "s_parameter_noise_assertions": {
+                    "type": "array",
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "metric": { "enum": ["noise_figure_db_max", "minimum_noise_figure_db_max", "equivalent_noise_resistance_ohm_max", "optimum_source_reflection_magnitude_max"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "allOf": [

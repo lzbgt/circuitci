@@ -17,6 +17,9 @@ use super::analog_sparameter_assertions::{
     validate_s_parameter_assertion_contract, write_s_parameter_network_summary,
     write_s_parameter_summary,
 };
+use super::analog_sparameter_noise::{
+    evaluate_s_parameter_noise_assertion_boundary, validate_s_parameter_noise_assertion_contract,
+};
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
@@ -249,6 +252,10 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
         validation_input_missing(findings, scenario, message);
         return;
     }
+    if let Err(message) = validate_s_parameter_noise_assertion_contract(analog) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
     let run_plans = match analog_run_plans(analog) {
         Ok(run_plans) => run_plans,
         Err(message) => {
@@ -414,6 +421,11 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
                         }
                     }
                 }
+                evaluate_s_parameter_noise_assertion_boundary(
+                    scenario,
+                    &run.s_parameters,
+                    findings,
+                );
                 tag_corner_findings(findings, finding_start, &run_plan, false);
             }
             Err(error) => {

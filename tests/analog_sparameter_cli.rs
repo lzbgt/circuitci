@@ -822,6 +822,76 @@ fn sparameter_network_assertion_fails_on_passivity_limit() {
 
 #[cfg(unix)]
 #[test]
+fn sparameter_noise_assertions_fail_closed_until_sp_noise_summary_exists() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.1 0.0 0.8 0.0 0.02 0.0 0.1 0.0\\n1.0e9 0.1 0.0 0.7 0.0 0.02 0.0 0.1 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_noise_assertions:
+          - name: nf_limit
+            metric: noise_figure_db_max
+            relation: below
+            threshold: 3.0
+          - name: nfmin_limit
+            metric: minimum_noise_figure_db_max
+            relation: below
+            threshold: 1.5
+          - name: rn_limit
+            metric: equivalent_noise_resistance_ohm_max
+            relation: below
+            threshold: 10.0
+          - name: gamma_opt_limit
+            metric: optimum_source_reflection_magnitude_max
+            relation: below
+            threshold: 0.5
+"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    assert_eq!(failures.len(), 4);
+    let nf_failure = failures
+        .iter()
+        .find(|failure| failure["measured"]["assertion"] == "nf_limit")
+        .unwrap();
+    assert_eq!(nf_failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(nf_failure["measured"]["metric"], "noise_figure_db_max");
+    assert_eq!(
+        nf_failure["measured"]["backend_status"],
+        "planned_not_implemented"
+    );
+    assert!(
+        nf_failure["measured"]["s_parameters"]
+            .as_str()
+            .unwrap()
+            .ends_with("s_parameters.csv")
+    );
+    assert_eq!(
+        nf_failure["limit"]["required_normalized_output"],
+        "s_parameter_noise_summary"
+    );
+    assert_eq!(
+        nf_failure["limit"]["required_backend_feature"],
+        "ngspice_sp_donoise_two_port_noise_outputs"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn sparameter_network_assertion_fails_on_rollet_k_limit() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable_with_body(
