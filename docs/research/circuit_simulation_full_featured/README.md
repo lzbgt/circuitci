@@ -642,7 +642,10 @@ The GUI should not become the solver.
   `s_parameter_summaries[]`, Markdown includes an "S-Parameter Summary"
   section, GUI Scopes shows compact RF sign-off rows, and Scopes derives
   return-loss, insertion-loss, and VSWR traces from full `s_parameters.csv`
-  artifacts for visual RF margin review. Two-port
+  artifacts for visual RF margin review. GUI Scopes also provides an RF Port
+  Check editor that writes `s_parameter_assertions[]` for magnitude, return
+  loss, insertion loss, VSWR, and group-delay limits with Board IR validation
+  before accepting the YAML edit. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity
   (`max |S21-S12|`) and passivity (maximum singular value of the complex S
   matrix), plus active-network stability through minimum Rollet K and maximum

@@ -2,15 +2,16 @@ use super::analog::{
     AnalogAcScenarioDraft, AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogCurrentProbeDraft,
     AnalogDcScenarioDraft, AnalogExpressionProbeDraft, AnalogNoiseScenarioDraft,
     AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
-    AnalogProbeRemoveDraft, AnalogSParameterNetworkAssertionDraft, AnalogScenarioDraft,
-    analog_probe_assertion_summaries, append_analog_ac_scenario_with_project_path,
-    append_analog_assertion, append_analog_current_probe,
-    append_analog_dc_scenario_with_project_path, append_analog_expression_probe,
-    append_analog_noise_scenario_with_project_path, append_analog_power_probe,
+    AnalogProbeRemoveDraft, AnalogSParameterAssertionDraft, AnalogSParameterNetworkAssertionDraft,
+    AnalogScenarioDraft, analog_probe_assertion_summaries,
+    append_analog_ac_scenario_with_project_path, append_analog_assertion,
+    append_analog_current_probe, append_analog_dc_scenario_with_project_path,
+    append_analog_expression_probe, append_analog_noise_scenario_with_project_path,
+    append_analog_power_probe, append_analog_sparameter_assertion,
     append_analog_sparameter_network_assertion, append_analog_transient_scenario,
     append_analog_transient_scenario_with_project_path, append_analog_voltage_probe,
     remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
-    unique_analog_sparameter_network_assertion_name,
+    unique_analog_sparameter_assertion_name, unique_analog_sparameter_network_assertion_name,
 };
 use crate::reports::{Finding, ValidationReport};
 use std::path::Path;
@@ -143,6 +144,18 @@ fn sparameter_network_assertion_draft() -> AnalogSParameterNetworkAssertionDraft
         metric: "rollet_k_min".to_string(),
         relation: "above".to_string(),
         threshold: 1.0,
+    }
+}
+
+fn sparameter_assertion_draft() -> AnalogSParameterAssertionDraft {
+    AnalogSParameterAssertionDraft {
+        scenario_name: "two_port_sparameter".to_string(),
+        assertion_name: "s11_return_loss_floor".to_string(),
+        parameter: "s11".to_string(),
+        metric: "return_loss_db".to_string(),
+        aggregation: "min".to_string(),
+        relation: "above".to_string(),
+        threshold: 10.0,
     }
 }
 
@@ -948,6 +961,67 @@ fn unique_sparameter_network_assertion_name_suffixes_collisions() {
     )
     .unwrap();
     assert_eq!(name, "stable_rollet_k_2");
+}
+
+#[test]
+fn append_sparameter_assertion_emits_analysis_yaml() {
+    let edited = append_analog_sparameter_assertion(
+        sparameter_project_yaml(),
+        &sparameter_assertion_draft(),
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertions = &project.scenarios[0]
+        .analog
+        .as_ref()
+        .unwrap()
+        .analysis
+        .s_parameter_assertions;
+    assert_eq!(assertions.len(), 1);
+    assert_eq!(assertions[0].name, "s11_return_loss_floor");
+    assert_eq!(assertions[0].parameter, "s11");
+    assert_eq!(
+        assertions[0].metric,
+        crate::board_ir::AnalogSParameterMetric::ReturnLossDb
+    );
+    assert_eq!(
+        assertions[0].aggregation,
+        crate::board_ir::AnalogSParameterAggregation::Min
+    );
+    assert_eq!(
+        assertions[0].relation,
+        crate::board_ir::AnalogRelation::Above
+    );
+    assert_eq!(assertions[0].threshold, 10.0);
+}
+
+#[test]
+fn unique_sparameter_assertion_name_suffixes_collisions() {
+    let edited = append_analog_sparameter_assertion(
+        sparameter_project_yaml(),
+        &sparameter_assertion_draft(),
+    )
+    .unwrap();
+    let name = unique_analog_sparameter_assertion_name(
+        &edited,
+        "two_port_sparameter",
+        "s11_return_loss_floor",
+    )
+    .unwrap();
+    assert_eq!(name, "s11_return_loss_floor_2");
+}
+
+#[test]
+fn append_sparameter_assertion_rejects_incompatible_metric_parameter() {
+    let mut assertion = sparameter_assertion_draft();
+    assertion.parameter = "s21".to_string();
+    let error =
+        append_analog_sparameter_assertion(sparameter_project_yaml(), &assertion).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("requires a reflection parameter")
+    );
 }
 
 #[test]

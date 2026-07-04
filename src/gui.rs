@@ -45,6 +45,7 @@ mod simulation;
 mod simulation_editors;
 mod simulation_forms;
 mod simulation_probe_assertions;
+mod simulation_sparameter_assertions;
 mod simulation_sweeps;
 mod sketch;
 mod sketch_actions;
@@ -396,6 +397,13 @@ pub struct CircuitCiApp {
     analog_sparameter_network_assertion_metric: String,
     analog_sparameter_network_assertion_relation: String,
     analog_sparameter_network_assertion_threshold: f64,
+    analog_sparameter_assertion_scenario: String,
+    analog_sparameter_assertion_name: String,
+    analog_sparameter_assertion_parameter: String,
+    analog_sparameter_assertion_metric: String,
+    analog_sparameter_assertion_aggregation: String,
+    analog_sparameter_assertion_relation: String,
+    analog_sparameter_assertion_threshold: f64,
     analog_probe_scenario: String,
     scope_auto_probes_before_run: bool,
     analog_canvas_probe_name: String,
@@ -655,6 +663,13 @@ impl Default for CircuitCiApp {
             analog_sparameter_network_assertion_metric: "rollet_k_min".to_string(),
             analog_sparameter_network_assertion_relation: "above".to_string(),
             analog_sparameter_network_assertion_threshold: 1.0,
+            analog_sparameter_assertion_scenario: String::new(),
+            analog_sparameter_assertion_name: "s11_return_loss_floor".to_string(),
+            analog_sparameter_assertion_parameter: "s11".to_string(),
+            analog_sparameter_assertion_metric: "return_loss_db".to_string(),
+            analog_sparameter_assertion_aggregation: "min".to_string(),
+            analog_sparameter_assertion_relation: "above".to_string(),
+            analog_sparameter_assertion_threshold: 10.0,
             analog_probe_scenario: String::new(),
             scope_auto_probes_before_run: true,
             analog_canvas_probe_name: String::new(),

@@ -159,7 +159,8 @@ Current analog support:
   provenance. Validation derives `s_parameter_summary.csv`; optional
   `analysis.s_parameter_assertions[]` can sign off magnitude, return loss,
   insertion loss, VSWR, and group-delay limits with fail-closed metric
-  applicability checks.
+  applicability checks. Scopes includes an RF Port Check editor for authoring
+  those per-parameter checks without hand-editing YAML.
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix), plus active-network stability margins (`rollet_k_min`
