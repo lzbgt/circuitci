@@ -186,6 +186,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: silabs_cp2102n_usb_uart_observation_passes
+    project: ../examples/good_silabs_cp2102n_usb_uart_observation/project.yaml
+    expect: pass
+
+  - id: silabs_cp2102n_vdd_overvoltage_detected
+    project: ../examples/bad_silabs_cp2102n_vdd_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: st_stm8s003f3p6_power_passes
     project: ../examples/good_st_stm8s003f3p6_power/project.yaml
     expect: pass
@@ -482,6 +493,12 @@ repairs:
   - id: fix_nordic_nrf52840_vdd_overvoltage
     detects_case: nordic_nrf52840_vdd_overvoltage_detected
     fixed_case: nordic_nrf52840_normal_voltage_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_silabs_cp2102n_vdd_overvoltage
+    detects_case: silabs_cp2102n_vdd_overvoltage_detected
+    fixed_case: silabs_cp2102n_usb_uart_observation_passes
     fixes_findings:
       - POWER_TREE_VALID
 
