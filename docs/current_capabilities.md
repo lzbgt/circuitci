@@ -125,6 +125,14 @@ board-boundary pins, and memory-geometry metadata. It does not emulate SPI
 commands, JEDEC ID, SFDP tables, flash contents, XIP behavior, write-protect
 policy, or signal-integrity timing. See `docs/winbond_w25q64jv_model.md`.
 
+`vendor.bosch.bme280` provides a source-backed static model for Bosch's BME280
+humidity, pressure, and temperature sensor. It models the 1.71 V to 3.6 V
+`VDD` range, the 1.2 V to 3.6 V `VDDIO` range, I2C/SPI board-boundary pins,
+low-power current metadata, I2C/SPI clock-class metadata, and SDO-selected I2C
+address metadata. It does not validate sensor accuracy, compensation
+algorithms, register protocol, bus timing, response time, noise, drift,
+self-heating, or calibration. See `docs/bosch_bme280_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

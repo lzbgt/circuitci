@@ -1,0 +1,120 @@
+component_id: vendor.bosch.bme280
+version: 0.1.0
+category: environmental_sensor
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.71
+      operating_voltage_max_V: 3.6
+  VDDIO:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.2
+      operating_voltage_max_V: 3.6
+  GND:
+    kind: electrical_ground
+    required: true
+  CSB:
+    kind: digital_electrical_input
+    required: true
+  SDI:
+    kind: digital_electrical_io
+    required: true
+  SDO:
+    kind: digital_electrical_io
+    required: true
+  SCK:
+    kind: digital_electrical_input
+    required: true
+datasheet:
+  manufacturer: Bosch Sensortec
+  part_number: BME280
+  package: 2.5 mm x 2.5 mm x 0.93 mm metal-lid LGA
+  polarity: humidity_pressure_temperature_sensor
+  pinout:
+    VDD: Main supply for the sensor analog and digital core.
+    VDDIO: Separate digital-interface supply.
+    GND: Ground.
+    CSB: Chip select and automatic I2C/SPI interface select.
+    SDI: I2C SDA or SPI serial data input.
+    SDO: I2C address select or SPI serial data output.
+    SCK: I2C SCL or SPI serial clock.
+  electrical_characteristics:
+    vdd_supply:
+      min: 1.71
+      max: 3.6
+      unit: V
+    vddio_supply:
+      min: 1.2
+      max: 3.6
+      unit: V
+    sleep_current:
+      typ: 0.1
+      unit: uA
+    humidity_temperature_current_1hz:
+      conditions: Humidity and temperature at 1 Hz.
+      typ: 1.8
+      unit: uA
+    humidity_pressure_temperature_current_1hz:
+      conditions: Humidity, pressure, and temperature at 1 Hz.
+      typ: 3.6
+      unit: uA
+    absolute_max_supply_voltage:
+      conditions: VDD and VDDIO supply pins.
+      min: -0.3
+      max: 4.25
+      unit: V
+    absolute_max_interface_voltage:
+      conditions: SDI, SDO, SCK, and CSB relative to VDDIO.
+      min: -0.3
+      max: 0.3
+      unit: VDDIO_offset_V
+  device_parameters:
+    package_length:
+      value: 2.5
+      unit: mm
+    package_width:
+      value: 2.5
+      unit: mm
+    package_height:
+      value: 0.93
+      unit: mm
+    i2c_max_clock:
+      value: 3.4
+      unit: MHz
+      simulation_relevance: Board-level I2C timing remains out of scope for this static model.
+    spi_max_clock:
+      value: 10
+      unit: MHz
+      simulation_relevance: Board-level SPI timing remains out of scope for this static model.
+    i2c_address_sdo_low:
+      value: 118
+      unit: address_decimal
+      simulation_relevance: SDO tied low selects 0x76.
+    i2c_address_sdo_high:
+      value: 119
+      unit: address_decimal
+      simulation_relevance: SDO tied high selects 0x77.
+  documents:
+    - title: BME280 Combined Humidity and Pressure Sensor Datasheet BST-BME280-DS002
+      path: docs/research/datasheets/bosch/bme280_datasheet.pdf
+      source_url: https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf
+      sha256: a2ccdb449fec94380742fe8eec851a11d9bd4142252d332b34682b4deecd7d89
+      retrieved: "2026-07-05"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - environmental_sensor_power_tree_supply_voltage
+    - i2c_spi_pin_boundary_review
+    - low_power_sensor_board_review
+  not_valid_for:
+    - humidity_pressure_temperature_accuracy_signoff
+    - compensation_algorithm_or_register_protocol_validation
+    - i2c_spi_timing_signoff
+    - sensor_noise_response_time_or_filter_behavior
+    - condensation_long_term_drift_or_self_heating_analysis
+    - environmental_chamber_or_calibration_validation

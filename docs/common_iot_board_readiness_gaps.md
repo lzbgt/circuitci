@@ -168,6 +168,14 @@ netlists. The missing work is board-facing behavior:
 The current QEMU path requires explicit pin observations. It does not infer
 correct package-pin behavior from MCU internals.
 
+Source-backed common peripherals now include the Bosch BME280 environmental
+sensor pack. That pack moves one high-volume sensor class out of generic
+coverage by modeling the source-backed `VDD` and `VDDIO` operating ranges plus
+I2C/SPI board-boundary pins for `POWER_TREE_VALID` and pin-binding review. It
+still leaves sensor accuracy, compensation algorithms, register protocol,
+bus-timing sign-off, response time, noise, drift, self-heating, and calibration
+outside the static validator boundary.
+
 ## 4. Automatic Scenario Generation
 
 Physical proof currently requires explicit scenarios, probes, and assertions.

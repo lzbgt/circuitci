@@ -1217,6 +1217,36 @@ fn winbond_w25q64jv_vcc_overvoltage_uses_datasheet_limit() {
 }
 
 #[test]
+fn bosch_bme280_i2c_power_board_passes_static_checks() {
+    let report = run_validation("examples/good_bosch_bme280_i2c_power/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn bosch_bme280_vddio_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_bosch_bme280_vddio_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["component"] == "UBME"
+                && finding["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("UBME.VDDIO"))
+        })
+        .expect("expected BME280 VDDIO finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["net"], "rail_5v");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 5.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 3.6);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn esp32_s3_wroom_1u_application_board_passes_static_checks() {
     let report =
         run_validation("examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml");

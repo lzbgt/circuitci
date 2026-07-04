@@ -1,0 +1,44 @@
+project:
+  name: bad_bosch_bme280_vddio_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    UBME:
+      model: vendor.bosch.bme280
+      part_number: BME280
+      power_domains:
+        VDD: rail_3v3
+        VDDIO: rail_5v
+      pins:
+        VDD: rail_3v3
+        VDDIO: rail_5v
+        GND: gnd
+        CSB: rail_5v
+        SDI: i2c_sda
+        SDO: gnd
+        SCK: i2c_scl
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    i2c_sda:
+      kind: digital_or_analog
+    i2c_scl:
+      kind: digital_or_analog
+
+scenarios:
+  - name: bme280_vddio_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
