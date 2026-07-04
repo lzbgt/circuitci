@@ -474,11 +474,21 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
    `sensitivity_summary.csv`, and `solver_manifest.json`. DC sensitivity rows
    normalize scalar parameter derivatives; AC sensitivity rows normalize
    per-frequency complex sensitivity values plus magnitude.
-6. Opt-in real-ngspice conformance coverage is available through
+6. Optional `analysis.sensitivity_assertions[]` sign off
+   `sensitivity_summary.csv` rows by parameter, optional AC `frequency_hz`,
+   metric (`sensitivity_real`, `sensitivity_imaginary`, or
+   `sensitivity_magnitude`), relation, and threshold. Missing rows, ambiguous
+   AC rows without `frequency_hz`, and failed limits emit
+   `SPICE_SENSITIVITY_ANALYSIS` findings with retained summary provenance.
+7. Validation reports project retained `sensitivity_summary.csv` rows into
+   top-level `sensitivity_summaries[]`, Markdown reports include a
+   "Sensitivity Summary" section, and GUI Scopes surfaces compact sensitivity
+   rows in the report artifact panel.
+8. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
    the test is skipped by default unless the variable is set and `ngspice` is
    on `PATH`.
-7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+9. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `sensitivity_summary`
    contract.
 

@@ -38,6 +38,18 @@ pub struct PoleZeroSummary {
     pub frequency_hz: f64,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SensitivitySummary {
+    pub artifact: String,
+    pub output_expression: String,
+    pub mode: String,
+    pub parameter: String,
+    pub frequency_hz: Option<f64>,
+    pub sensitivity_real: f64,
+    pub sensitivity_imaginary: f64,
+    pub sensitivity_magnitude: f64,
+}
+
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
     let mut records = Vec::new();
     for artifact in artifacts {
@@ -221,6 +233,91 @@ pub(super) fn collect_pole_zero_summaries(artifacts: &[String]) -> Vec<PoleZeroS
             .then_with(|| left.root_index.cmp(&right.root_index))
     });
     records
+}
+
+pub(super) fn collect_sensitivity_summaries(artifacts: &[String]) -> Vec<SensitivitySummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("sensitivity_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_sensitivity_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| {
+        left.artifact
+            .cmp(&right.artifact)
+            .then_with(|| left.mode.cmp(&right.mode))
+            .then_with(|| left.parameter.cmp(&right.parameter))
+            .then_with(|| {
+                left.frequency_hz
+                    .unwrap_or(f64::NEG_INFINITY)
+                    .total_cmp(&right.frequency_hz.unwrap_or(f64::NEG_INFINITY))
+            })
+    });
+    records
+}
+
+fn parse_sensitivity_summary_csv(artifact: &str, text: &str) -> Vec<SensitivitySummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "output_expression",
+            "mode",
+            "parameter",
+            "frequency_hz",
+            "sensitivity_real",
+            "sensitivity_imaginary",
+            "sensitivity_magnitude",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 7 || !matches!(fields[1].as_str(), "dc" | "ac") {
+            continue;
+        }
+        let frequency_hz = if fields[3].is_empty() {
+            None
+        } else {
+            let Some(frequency_hz) = parse_finite_f64(&fields[3]) else {
+                continue;
+            };
+            Some(frequency_hz)
+        };
+        let Some(sensitivity_real) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        let Some(sensitivity_imaginary) = parse_finite_f64(&fields[5]) else {
+            continue;
+        };
+        let Some(sensitivity_magnitude) = parse_finite_f64(&fields[6]) else {
+            continue;
+        };
+        rows.push(SensitivitySummary {
+            artifact: artifact.to_string(),
+            output_expression: fields[0].clone(),
+            mode: fields[1].clone(),
+            parameter: fields[2].clone(),
+            frequency_hz,
+            sensitivity_real,
+            sensitivity_imaginary,
+            sensitivity_magnitude,
+        });
+    }
+    rows
 }
 
 fn parse_pole_zero_summary_csv(artifact: &str, text: &str) -> Vec<PoleZeroSummary> {

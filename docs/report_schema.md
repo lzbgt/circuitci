@@ -1439,6 +1439,11 @@ Retained `pole_zero_summary.csv` artifacts project into top-level
 nodes, input source, mode, root kind/index, complex rad/s coordinates, and
 derived frequency. Markdown reports include those rows in a "Pole-Zero
 Summary" section, and the GUI report panel surfaces the same compact root rows.
+Retained `sensitivity_summary.csv` artifacts project into top-level
+`sensitivity_summaries[]` rows with the source artifact path, output expression,
+mode, parameter, optional frequency, real sensitivity, imaginary sensitivity,
+and magnitude. Markdown reports include those rows in a "Sensitivity Summary"
+section, and the GUI report panel surfaces the same compact sensitivity rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

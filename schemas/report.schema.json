@@ -41,6 +41,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/pole_zero_summary" }
     },
+    "sensitivity_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sensitivity_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -196,6 +200,30 @@
         "real_rad_per_s": { "type": "number" },
         "imaginary_rad_per_s": { "type": "number" },
         "frequency_hz": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "sensitivity_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "output_expression",
+        "mode",
+        "parameter",
+        "frequency_hz",
+        "sensitivity_real",
+        "sensitivity_imaginary",
+        "sensitivity_magnitude"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "output_expression": { "type": "string" },
+        "mode": { "enum": ["dc", "ac"] },
+        "parameter": { "type": "string", "minLength": 1 },
+        "frequency_hz": { "type": ["number", "null"] },
+        "sensitivity_real": { "type": "number" },
+        "sensitivity_imaginary": { "type": "number" },
+        "sensitivity_magnitude": { "type": "number" }
       },
       "additionalProperties": false
     },

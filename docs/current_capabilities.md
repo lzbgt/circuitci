@@ -190,8 +190,12 @@ Current analog support:
   External `ngspice` runs write `sensitivity_raw.txt`,
   `sensitivity_summary.csv`, and `solver_manifest.json`; the normalized summary
   records DC scalar sensitivities or AC per-frequency complex sensitivity
-  values plus magnitude. Opt-in real-ngspice conformance coverage is available
-  through
+  values plus magnitude. `analysis.sensitivity_assertions[]` can sign off real,
+  imaginary, or magnitude rows by parameter and optional AC frequency, with
+  missing or ambiguous rows failing closed. Validation reports project retained
+  rows into `sensitivity_summaries[]`, Markdown includes a "Sensitivity Summary"
+  section, and the GUI artifact panel shows compact sensitivity rows. Opt-in
+  real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.

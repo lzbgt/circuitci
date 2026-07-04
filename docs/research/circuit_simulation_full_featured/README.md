@@ -567,7 +567,12 @@ The GUI should not become the solver.
 - The first `.SENS` path is an external-ngspice adapter with a Board IR/schema
   contract for DC or AC output sensitivity, optional filters, normalized
   `sensitivity_summary`, solver manifests, and opt-in real-ngspice conformance;
-  next add non-ngspice planning/adapters.
+  `analysis.sensitivity_assertions[]` now signs off real, imaginary, or
+  magnitude sensitivity limits by parameter and optional AC frequency, with
+  fail-closed behavior for missing or ambiguous rows. Validation reports now
+  project retained sensitivity rows into `sensitivity_summaries[]`, Markdown
+  reports include a "Sensitivity Summary" section, and GUI Scopes shows compact
+  sensitivity rows. Next add non-ngspice planning/adapters.
 - The first `.FOUR` path is an external-ngspice adapter with a Board IR/schema
   contract for transient-backed harmonic extraction, fundamental
   frequency/window validation, bound output provenance, normalized

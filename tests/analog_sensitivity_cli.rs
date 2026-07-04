@@ -32,6 +32,16 @@ fn write_sensitivity_project(
     output_expression: &str,
     mode: &str,
 ) -> std::path::PathBuf {
+    write_sensitivity_project_with_analysis_extra(dir, backend, output_expression, mode, "")
+}
+
+fn write_sensitivity_project_with_analysis_extra(
+    dir: &std::path::Path,
+    backend: &str,
+    output_expression: &str,
+    mode: &str,
+    analysis_extra: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let project = dir.join("project.yaml");
     let ac_fields = if mode == "ac" {
@@ -93,6 +103,7 @@ scenarios:
         sensitivity_output_expression: {output_expression}
         sensitivity_mode: {mode}{ac_fields}
         sensitivity_filters: [R1, R2]
+{analysis_extra}
       stimuli:
         - {{ name: sensitivity_probe, description: Planned sensitivity extraction. }}
       probes:
@@ -340,6 +351,193 @@ fn ac_sensitivity_backend_reports_frequency_rows() {
     let summary = fs::read_to_string(artifact_path(&report, "sensitivity_summary.csv")).unwrap();
     assert!(summary.contains("V(out),ac,r1,1.000000000000e2,-2.500000000000e-4"));
     assert!(summary.contains("V(out),ac,r2,1.000000000000e2,2.499998000000e-4"));
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sensitivity_assertions_pass_on_dc_summary_rows() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'r1 = -2.50000e-04\\nr2 = 2.499998e-04\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        "dc",
+        r#"
+        sensitivity_assertions:
+          - name: r1_sensitivity_below_limit
+            parameter: r1
+            metric: sensitivity_magnitude
+            relation: below
+            threshold: 1.0e-3
+            unit: V/ohm"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_eq!(report["sensitivity_summaries"].as_array().unwrap().len(), 2);
+    assert_eq!(report["sensitivity_summaries"][0]["parameter"], "r1");
+    assert_eq!(
+        report["sensitivity_summaries"][0]["frequency_hz"],
+        Value::Null
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sensitivity_assertions_pass_on_ac_summary_rows() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'Index   frequency       r1\\n0 1.000000e+02 -2.50000e-04, 1.000000e-06\\nIndex   frequency       r2\\n0 1.000000e+02 2.499998e-04, -0.000000e+00\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        "ac",
+        r#"
+        sensitivity_assertions:
+          - name: r1_real_below_zero
+            parameter: r1
+            frequency_hz: 100.0
+            metric: sensitivity_real
+            relation: below
+            threshold: 0.0
+            unit: V/ohm"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_eq!(report["sensitivity_summaries"][0]["frequency_hz"], 100.0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sensitivity_assertion_fails_on_limit_violation() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'r1 = -2.50000e-04\\nr2 = 2.499998e-04\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        "dc",
+        r#"
+        sensitivity_assertions:
+          - name: r1_sensitivity_too_high
+            parameter: r1
+            metric: sensitivity_magnitude
+            relation: below
+            threshold: 1.0e-5"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_SENSITIVITY_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "r1_sensitivity_too_high"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["metric"],
+        "sensitivity_magnitude"
+    );
+    assert_eq!(report["failures"][0]["limit"]["below_threshold"], 1.0e-5);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sensitivity_assertion_fails_closed_on_missing_parameter() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'r1 = -2.50000e-04\\nr2 = 2.499998e-04\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        "dc",
+        r#"
+        sensitivity_assertions:
+          - name: missing_parameter
+            parameter: r3
+            metric: sensitivity_magnitude
+            relation: below
+            threshold: 1.0"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_SENSITIVITY_ANALYSIS");
+    assert_eq!(report["failures"][0]["limit"]["required_parameter"], "r3");
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn ac_sensitivity_assertion_requires_frequency_when_parameter_is_ambiguous() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf 'Index   frequency       r1\\n0 1.000000e+02 -2.50000e-04, 1.000000e-06\\n1 1.000000e+03 -1.50000e-04, 2.000000e-06\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        "ac",
+        r#"
+        sensitivity_assertions:
+          - name: ambiguous_r1
+            parameter: r1
+            metric: sensitivity_magnitude
+            relation: below
+            threshold: 1.0"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_SENSITIVITY_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["limit"]["required_field"],
+        "frequency_hz"
+    );
     assert_report_schema_valid(&report);
 }
 

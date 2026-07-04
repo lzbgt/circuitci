@@ -230,6 +230,29 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Sensitivity summary");
+                    if report.sensitivity_summaries.is_empty() {
+                        ui.label("No sensitivity summary rows were emitted.");
+                    } else {
+                        for row in &report.sensitivity_summaries {
+                            let frequency = row
+                                .frequency_hz
+                                .map(|value| format!("{value:.6e}Hz"))
+                                .unwrap_or_else(|| "dc".to_string());
+                            ui.monospace(format!(
+                                "{} {} {} f={} real={:.6e} imag={:.6e} mag={:.6e} artifact={}",
+                                row.output_expression,
+                                row.mode,
+                                row.parameter,
+                                frequency,
+                                row.sensitivity_real,
+                                row.sensitivity_imaginary,
+                                row.sensitivity_magnitude,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Fourier summary");
                     if report.fourier_summaries.is_empty() {
                         ui.label("No Fourier summary rows were emitted.");

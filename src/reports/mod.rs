@@ -6,9 +6,12 @@ use std::fs;
 use std::path::Path;
 
 mod analog_summaries;
-pub use analog_summaries::{DistortionSummary, FourierSummary, PoleZeroSummary};
+pub use analog_summaries::{
+    DistortionSummary, FourierSummary, PoleZeroSummary, SensitivitySummary,
+};
 use analog_summaries::{
     collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
+    collect_sensitivity_summaries,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -68,6 +71,7 @@ pub struct ValidationReport {
     pub distortion_summaries: Vec<DistortionSummary>,
     pub fourier_summaries: Vec<FourierSummary>,
     pub pole_zero_summaries: Vec<PoleZeroSummary>,
+    pub sensitivity_summaries: Vec<SensitivitySummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -398,6 +402,7 @@ impl ValidationReport {
         let distortion_summaries = collect_distortion_summaries(&artifacts);
         let fourier_summaries = collect_fourier_summaries(&artifacts);
         let pole_zero_summaries = collect_pole_zero_summaries(&artifacts);
+        let sensitivity_summaries = collect_sensitivity_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -424,6 +429,7 @@ impl ValidationReport {
             distortion_summaries,
             fourier_summaries,
             pole_zero_summaries,
+            sensitivity_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -536,6 +542,29 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.reference_node,
                 row.input_source,
                 row.mode
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Sensitivity Summary\n\n");
+    if report.sensitivity_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.sensitivity_summaries {
+            let frequency = row
+                .frequency_hz
+                .map(|value| format!("{value:.6e} Hz"))
+                .unwrap_or_else(|| "dc".to_string());
+            text.push_str(&format!(
+                "- `{}` `{}` `{}`: frequency={} real={:.6e} imaginary={:.6e} magnitude={:.6e}\n",
+                row.output_expression,
+                row.mode,
+                row.parameter,
+                frequency,
+                row.sensitivity_real,
+                row.sensitivity_imaginary,
+                row.sensitivity_magnitude
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -1727,5 +1756,41 @@ mod tests {
         assert!(markdown.contains("## Pole-Zero Summary"));
         assert!(markdown.contains("`pole` 1"));
         assert!(markdown.contains("frequency=1.591549e2 Hz"));
+    }
+
+    #[test]
+    fn validation_report_projects_sensitivity_summary_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let summary = dir.path().join("sensitivity_summary.csv");
+        fs::write(
+            &summary,
+            "output_expression,mode,parameter,frequency_hz,sensitivity_real,sensitivity_imaginary,sensitivity_magnitude\nV(out),dc,r1,,-2.500000000000e-4,0.000000000000e0,2.500000000000e-4\nV(out),ac,r1,1.000000000000e2,-2.500000000000e-4,1.000000000000e-6,2.500019999920e-4\n",
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![summary.to_string_lossy().into_owned()],
+            Vec::new(),
+            "circuitci validate project.yaml".to_string(),
+        );
+
+        assert_eq!(report.sensitivity_summaries.len(), 2);
+        assert_eq!(report.sensitivity_summaries[0].output_expression, "V(out)");
+        assert_eq!(report.sensitivity_summaries[0].mode, "ac");
+        assert_eq!(report.sensitivity_summaries[0].frequency_hz, Some(100.0));
+        assert_eq!(report.sensitivity_summaries[1].mode, "dc");
+        assert_eq!(report.sensitivity_summaries[1].frequency_hz, None);
+        assert_eq!(
+            report.sensitivity_summaries[1].sensitivity_magnitude,
+            2.5e-4
+        );
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## Sensitivity Summary"));
+        assert!(markdown.contains("`V(out)` `dc` `r1`"));
+        assert!(markdown.contains("magnitude=2.500000e-4"));
     }
 }

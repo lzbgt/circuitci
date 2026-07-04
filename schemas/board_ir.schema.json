@@ -2959,6 +2959,28 @@
                     "items": { "type": "string", "minLength": 1 },
                     "uniqueItems": true
                   },
+                  "sensitivity_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "parameter", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "parameter": { "type": "string", "minLength": 1 },
+                        "frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+                        "metric": { "enum": ["sensitivity_real", "sensitivity_imaginary", "sensitivity_magnitude"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "distortion_mode": { "enum": ["harmonic", "intermodulation"] },
                   "distortion_start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "distortion_stop_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },

@@ -1302,6 +1302,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub sensitivity_filters: Vec<String>,
     #[serde(default)]
+    pub sensitivity_assertions: Vec<AnalogSensitivityAssertion>,
+    #[serde(default)]
     pub fourier_fundamental_frequency_hz: Option<f64>,
     #[serde(default)]
     pub fourier_output_expression: Option<String>,
@@ -1489,6 +1491,29 @@ pub struct AnalogPoleZeroAssertion {
     pub unit: Option<String>,
     #[serde(default)]
     pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogSensitivityAssertion {
+    pub name: String,
+    pub parameter: String,
+    #[serde(default)]
+    pub frequency_hz: Option<f64>,
+    pub metric: AnalogSensitivityMetric,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogSensitivityMetric {
+    SensitivityReal,
+    SensitivityImaginary,
+    SensitivityMagnitude,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
