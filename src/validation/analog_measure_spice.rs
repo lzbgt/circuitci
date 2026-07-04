@@ -1,4 +1,6 @@
-use crate::board_ir::{AnalogMeasureAssertion, AnalogMeasureTemplate, AnalogRelation, Scenario};
+use crate::board_ir::{
+    AnalogBackend, AnalogMeasureAssertion, AnalogMeasureTemplate, AnalogRelation, Scenario,
+};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -22,7 +24,7 @@ use super::analog_sweep_reports::{
     tag_corner_finding, tag_corner_findings,
 };
 use super::analog_util::{
-    file_sha256_hex, normalize_artifact_path, push_artifact, safe_artifact_name,
+    executable_on_path, file_sha256_hex, normalize_artifact_path, push_artifact, safe_artifact_name,
 };
 use super::analog_xyce_measure_runner::{XyceMeasureRunOptions, run_xyce_measure};
 use super::common::validation_input_missing;
@@ -327,7 +329,11 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
         "Selecting analog measure backend",
         format!("Requested backend {}.", backend_name(&analog.backend)),
     );
-    let selected = select_backend_for_feature(&analog.backend, AnalogRuntimeFeature::Measure);
+    let selected = select_measure_backend(
+        &analog.backend,
+        !analog.analysis.measure_statements.is_empty(),
+        !analog.analysis.measure_templates.is_empty(),
+    );
     let BackendSelection::Selected(backend) = selected else {
         let mut finding = match selected {
             BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),
@@ -507,6 +513,27 @@ pub(super) fn validate_spice_measure_with_progress<F, C>(
         }
     }
     push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
+}
+
+fn select_measure_backend(
+    requested: &AnalogBackend,
+    has_raw_statements: bool,
+    has_templates: bool,
+) -> BackendSelection {
+    match select_backend_for_feature(requested, AnalogRuntimeFeature::Measure) {
+        BackendSelection::Unavailable
+            if *requested == AnalogBackend::Auto && !has_raw_statements && has_templates =>
+        {
+            if executable_on_path("Xyce") {
+                BackendSelection::Selected("Xyce")
+            } else if executable_on_path("xyce") {
+                BackendSelection::Selected("xyce")
+            } else {
+                BackendSelection::Unavailable
+            }
+        }
+        selected => selected,
+    }
 }
 
 fn validate_measure_assertions(

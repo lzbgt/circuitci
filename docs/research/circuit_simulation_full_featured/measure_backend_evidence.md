@@ -29,6 +29,11 @@ has opt-in live conformance:
 CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli
 ```
 
+`backend: auto` prefers ngspice. If ngspice is absent and the scenario contains
+only portable `measure_templates[]`, CircuitCI may select Xyce/`xyce`
+automatically because that path emits the same normalized `measure_summary.csv`
+contract.
+
 Explicit Xyce scenarios that still use raw `measure_statements[]` fail closed
 with report-visible `adapter_blocker` and `evidence_sources[]` metadata until a
 trusted raw-statement translator and real-solver conformance contract exists.

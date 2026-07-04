@@ -421,8 +421,10 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_measure_cli`; it skips
   unless `ngspice` is on `PATH`. Opt-in real-Xyce template conformance uses
   `CIRCUITCI_RUN_REAL_XYCE=1 cargo test --test analog_measure_cli`; it skips
-  unless `Xyce` or `xyce` is on `PATH`. Embedded ngspice remains fail-closed
-  with planning evidence for this path.
+  unless `Xyce` or `xyce` is on `PATH`. `backend: auto` prefers ngspice, but
+  can fall back to Xyce for template-only measure scenarios when ngspice is
+  absent. Embedded ngspice remains fail-closed with planning evidence for this
+  path.
 - Successful analog solver runs write a versioned `solver_manifest.json`
   artifact beside normalized outputs. The manifest records backend selection,
   solver command/status, source deck, wrapper deck, log, model files, sweep

@@ -829,6 +829,54 @@ fn measure_xyce_template_backend_normalizes_summary_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn measure_auto_template_backend_uses_xyce_when_ngspice_is_absent() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\n{ printf '%s\\n' 'INDEX avg_out'; printf '%s\\n' '0 4.20000e-01'; } > circuitci_xyce_measure.mt0\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_measure_template_project(
+        project_dir.path(),
+        "auto",
+        "tran",
+        "          - name: avg_out\n            operation: avg\n            expression: v(out)\n            from_us: 20.0\n            to_us: 100.0\n",
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    let summary = fs::read_to_string(artifact_path(&report, "measure_summary.csv")).unwrap();
+    assert!(summary.contains("avg_out,tran,4.200000000000e-1"));
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["requested"], "auto");
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn measure_xyce_delay_template_normalizes_summary() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable_with_body(

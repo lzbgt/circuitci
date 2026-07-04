@@ -884,8 +884,9 @@ For a scenario with check `SPICE_MEASURE_ANALYSIS`:
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`.
 10. Embedded ngspice remains fail-closed with backend-planning evidence until it
-   emits the same normalized `measure_summary` contract. `backend: auto` remains
-   conservative and does not select Xyce for measure runs.
+   emits the same normalized `measure_summary` contract. `backend: auto` prefers
+   ngspice, and falls back to Xyce only for template-only measure runs when
+   ngspice is unavailable; raw `measure_statements[]` still require ngspice.
 
 Until the real-backend transient and AC contracts above are satisfied for the
 target circuit, CircuitCI must not present the UM USB downloader physical

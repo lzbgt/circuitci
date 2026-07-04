@@ -626,6 +626,11 @@ The GUI should not become the solver.
   `measure_assertions[]` so scalar simulation specs directly pass or fail
   validation, including shared worst-corner and Monte Carlo yield summaries
   across swept measure corners.
+- 2026-07-04: `backend: auto` for `analog_measure` now falls back to Xyce when
+  ngspice is absent and the scenario uses only portable `measure_templates[]`.
+  Raw `measure_statements[]` still do not auto-translate to Xyce; they retain
+  the fail-closed backend-specific syntax blocker and should use ngspice or be
+  rewritten as templates.
 - The first DC sweep path is an external-ngspice adapter with a Board
   IR/schema contract for `analysis.type: dc_sweep`, swept-source start/stop/step
   fields, normalized `dc_sweep` curve rows, solver manifests, and
