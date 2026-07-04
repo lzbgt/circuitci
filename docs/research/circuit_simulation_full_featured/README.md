@@ -68,6 +68,8 @@ Sources saved:
 - `sources/ngspice_ANALYSES`
 - `sources/ngspice_DEVICES`
 - `sources/ngspice_manual.xhtml`
+- `sources/ngspice_docs_2026_07_05.html`
+- `sources/ngspice_manual_2026_07_05.xhtml`
 - `pss_backend_evidence.md` records the PSS-specific backend decision.
 - `periodic_ac_backend_evidence.md` records the PAC/PXF-specific backend
   decision.
@@ -108,11 +110,19 @@ CircuitCI implication:
 Sources saved:
 
 - `sources/xyce_README.md`
+- `sources/xyce_README_2026_07_05.md`
+- `sources/xyce_news_2026_07_05.html`
 - `sources/xyce_INSTALL.md`
 - `sources/Xyce_Users_Guide_7.8.pdf`
 - `sources/Xyce_Users_Guide_7.8.txt`
 - `sources/Xyce_Reference_Guide_7.8.pdf`
 - `sources/Xyce_Reference_Guide_7.8.txt`
+- `sources/Xyce_Users_Guide_7.9.pdf`
+- `sources/Xyce_Users_Guide_7.9.txt`
+- `sources/Xyce_Reference_Guide_7.9.pdf`
+- `sources/Xyce_Reference_Guide_7.9.txt`
+- `sources/Xyce_Release_Notes_7.9.pdf`
+- `sources/Xyce_Release_Notes_7.9.txt`
 - `pss_backend_evidence.md` records why Xyce HB is not treated as PSS.
 
 Upstream:
@@ -128,6 +138,8 @@ Key facts:
   sensitivity, uncertainty/random sampling, `.FOUR`, and `.MEASURE`.
 - Xyce 7.8 documents HB and HB time/frequency-domain print artifacts, but the
   saved guides do not document a separate `.PSS` command.
+- A 2026-07-05 Xyce 7.9 source refresh still found HB documentation but no
+  adapter-ready PSS, PAC/PXF, PNoise, or phase-noise command/output contract.
 - Xyce was designed from scratch for parallel simulation using MPI and
   Trilinos-style solver infrastructure.
 - It supports canonical SPICE compact models and custom models through its
@@ -145,7 +157,9 @@ CircuitCI implication:
 Sources saved:
 
 - `sources/qucs_s_README.md`
+- `sources/qucs_s_README_2026_07_05.md`
 - `sources/qucs_s_home.html`
+- `sources/qucs_s_docs_2026_07_05.html`
 - `sources/qucs_rf_simulation.html`
 - `sources/qucsator_rf_README.md`
 - `sources/spiceopus_nutmeg.html`
@@ -977,6 +991,11 @@ The GUI should not become the solver.
   of experimental autonomous PSS without a stable command/output contract; and
   QUCS-COPEN remains paper-documented theory without a public source/build
   adapter path.
+- A 2026-07-05 live refresh saved current Xyce 7.9, ngspice v46, Qucs-S, and
+  GitHub repository-search artifacts. The boundary remains unchanged: Xyce
+  still exposes HB rather than PSS/PAC/PXF/PNOISE, ngspice PSS remains
+  experimental/not-publicly-available/build-gated in the saved manual, and the
+  QUCS-COPEN/psssolver/pnsolver repository searches returned zero repositories.
 - Added the first ngspice-backed small-signal distortion adapter for
   `analysis.type: disto` and `SPICE_DISTORTION_ANALYSIS`. Scenarios declare
   harmonic or intermodulation mode, frequency sweep bounds, output expression,

@@ -1,0 +1,236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+<head>
+  <meta name="generator" content=
+  "HTML Tidy for Windows (vers 25 March 2009), see www.w3.org">
+
+  <title>Ngspice, the open source Spice circuit simulator - Documentation: manual and control flow</title>
+  <link rel="stylesheet" type="text/css" href="ngstyle2.css">
+  <meta name="generator" content="screem 0.12.2">
+  <meta name="author" content="Paolo Nenzi">
+  <meta http-equiv="Content-Type" content=
+  "text/html; charset=us-ascii">
+  <meta http-equiv="Content-Script-Type" content="text/javascript">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content=
+  "Documentation for ngspice circuit simulator: manual and control flow">
+  <meta name="keywords" content=
+  "ngspice, spice3f5, circuit, EDA, simulator, electronics, semiconductor, manual , control flow">
+  </head>
+
+<body>
+  <div id="paper">
+    <div id="header">
+  <pframe>
+    <pic1>
+      <img src="./images/nglogo.jpg" alt="NGSPICE">
+    </pic1>
+    <pic2>
+      <img src="./images/ngtext2.jpg" alt="Mixed mode - mixed level circuit simulator - based on Berkeley's Spice3f5">
+    </pic2>
+    <pic3>
+     <a href="https://sourceforge.net/projects/ngspice"><img src="./images/ngsumD.jpg" alt="Developer Pages" border="0"></a>
+    </pic3>
+  </pframe>
+
+    <div id="navcontainer">
+      <ul id="navlist">
+        <li><a href="./index.html">Home</a></li>
+        <li><a href="./news.html">News</a></li>
+        <li><a href="https://sourceforge.net/projects/ngspice/">Screenshots</a></li>
+
+        <li><a href="./download.html">Download</a></li>
+
+        <li id="active"><a href="#" id="current" name=
+        "current">Documentation</a></li>
+        <li><a href="./tutorials.html">Tutorials</a></li>
+        <li><a href="./extras.html">Extras/Options</a></li>
+        <li><a href="./applic.html">Applications</a></li>
+        <li><a href="./devel.html">Development</a></li>
+        <li><a href="./resources.html">Simulation Environments</a></li>
+        <li><a href="./quality.html">Quality</a></li>
+
+      </ul>
+    </div>
+
+    <div id="left">
+      <div id="context">
+        <div id="contextcontent">
+          <p class="contextual title">Ngspice Docs</p>
+
+          <div id="menucontainer">
+            <ul id="menulist">
+              <li id="active"><a href="#" id="current" name=
+              "current">Documentation</a></li>
+
+              <li><a href="./xspice.html">XSPICE and
+              ngspice</a></li>
+
+              <li><a href="./shared.html">ngspice shared
+              library</a></li>
+
+              <li><a href="./cuspice.html">CUSPICE</a></li>
+
+              <li><a href="./osdi.html">OSDI/OpenVAF for ngspice</a></li>
+
+              <li><a href="./tclusers.html">TCLspice users
+              manual</a></li>
+
+              <li><a href="./literature.html">Links to other
+              manuals</a></li>
+
+              <li><a href="tutorials.html">Tutorials</a></li>
+
+              <li><a href="./books.html">Books</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div id="main">
+        <div id="maincontent">
+          <p class="header">Ngspice Documentation</p>
+
+          <p class="justified">A ngspice manual is available as a
+          pdf file. Here you may download the release version of
+          the</p>
+
+          <ul>
+            <li><a href="./docs/ngspice-46-manual.pdf">Ngspice
+            user's manual (version 46).</a></li>
+          </ul>
+
+          <p class="justified">The manual is under continuous
+          development and maintained at <a href=
+          "http://ngspice.git.sourceforge.net/git/gitweb.cgi?p=ngspice/ngspice-manuals;a=tree">
+          Ngspice user's manual web site</a>. Here you may download
+          the actual version as a pdf file, including all
+          modifications made available in the git sources since the
+          latest ngspice release, as the</p>
+
+          <ul>
+            <li><a href="./docs/ngspice-manual.pdf">Ngspice user's
+            manual (updated).</a></li>
+          </ul>
+
+          <p>Please remember that this manual is a "work in
+          progress": New ngspice features will be added as they
+          become available in git, there are still some minor bugs,
+          and thus the manual may be updated from time to time
+          without notice. You are welcome to contribute to this
+          documentation!</p>
+          <p class="justified">A xhtml version of this most recent manual is available here:
+          <ul>
+            <li><a href="https://ngspice.sourceforge.io/docs/ngspice-html-manual/manual.xhtml">Ngspice
+            user's xhtml manual (updated).</a></li>
+          </ul>
+
+          <p>You also may use information on spice3f and similar
+          simulators available on the Internet. One of the best
+          online manuals for spice3f4 is maintained by Charles
+          Williams (including MacSpice enhancements):</p>
+
+          <ul>
+            <li><a href=
+            "https://www.macspice.com/ug/sec1.html">
+            SPICE 3 (MacSpice) User's Manual.</a></li>
+          </ul>
+
+          <p>Manuals for previous ngspice releases are still
+          available:</p>
+
+          <ul>
+
+            <li><a href="./docs/ngspice-42-manual.pdf">Ngspice
+            user's manual (version 42).</a></li>
+
+            <li><a href="./docs/ngspice-43-manual.pdf">Ngspice
+            user's manual (version 43).</a></li>
+
+            <li><a href="./docs/ngspice-44-manual.pdf">Ngspice
+            user's manual (version 44).</a></li>
+
+            <li><a href="./docs/ngspice-45-manual.pdf">Ngspice
+            user's manual (version 45).</a></li>
+          </ul>
+
+          <p>Ngspice incorporates many models or options provided
+          by external partners. They have often provided detailed
+          information or manuals, which you may find <a href=
+          "./literature.html">here</a>.</p>
+
+          <p>Please send your comments, suggestions, and
+          corrections on the ngspice manual to the <a href=
+          "https://sourceforge.net/mailarchive/forum.php?forum_name=ngspice-devel">
+          ngspice developers' list.</a></p>
+          <div id="cf">
+          <p class="header">Ngspice Internals (Control Flow etc.)</p>
+
+          <div id="internals">
+          <p class="justified">Meanwhile ngspice has become a complex piece of software.
+          A typical simulation run may contain the following steps: Read the netlist,
+          pre-process the netlist (e.g. compatibility, sub-circuits, parameters etc),
+          create the circuit structure, create and fill in the matrix, run the simulation,
+          process the resulting data.</p>
+          <p class="justified">Below you will find a list of available
+          documents, describing the internals of ngspice. They are formatted as Excel or Word files.</p>
+          <ul>
+            <li><a href="./docs/cf/ngspice_top-level_control-flow.xlsx">
+            Ngspice top level control flow</a></li>
+
+            <li><a href="./docs/cf/op_operating_point.xlsx">
+            Ngspice command op (operating point)</a></li>
+
+            <li><a href="./docs/cf/model_parsing.xlsx">
+            Ngspice device model parsing </a></li>
+
+            <li><a href="./docs/cf/function-parsers.docx">
+            Ngspice function parsers</a></li>
+
+            <li><a href="./docs/cf/netlist-parsing.docx">
+            Ngspice: Parsing a device instance</a></li>
+
+            <li><a href="./docs/cf/matrix-setup.docx">
+            Ngspice: Setting up the matrix (Sparse 1.3)</a></li>
+
+            <li><a href="./docs/cf/time-step-control.docx">
+            Ngspice: Time step control during transient simulation</a></li>
+
+            <li><a href="./docs/cf/matrix-sparse1_3.docx">
+            Ngspice: Matrix for Sparse 1.3</a></li>
+
+            <li><a href="./docs/cf/matzrix-sparse-klu.docx">
+            Ngspice: Matrix for KLU</a></li>
+
+            <li><a href="./docs/cf/devices-input-output.docx">
+            Ngspice: Input and output of device evaluation</a></li>
+          </ul>
+          <p class="justified">These files are just a first step to document the internals of ngspice (control
+          flow etc.). More will be made available as time allows.</p>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="footer">
+  <pframe>
+    <pic1>
+      <a href="http://sourceforge.net"><img src="https://sourceforge.net/sflogo.php?group_id=38962&amp;type=1" alt="SourceForge.net Logo" border="0" height="31" width="88"></a>
+    </pic1>
+    <pic2>
+      All text is available under the terms of the <a class="internal" href="https://www.gnu.org/licenses/fdl-1.3.html">GNU Free
+Documentation License</a>
+    </pic2>
+    <pic3>
+     <img src="./images/spice.jpg" alt="">
+    </pic3>
+  </pframe>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

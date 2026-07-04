@@ -25,15 +25,59 @@ evidence without allowing false pass results.
 
 - `sources/Xyce_Reference_Guide_7.8.pdf`
 - `sources/Xyce_Reference_Guide_7.8.txt`
+- `sources/Xyce_Reference_Guide_7.9.pdf`
+- `sources/Xyce_Reference_Guide_7.9.txt`
+- `sources/Xyce_Users_Guide_7.9.pdf`
+- `sources/Xyce_Users_Guide_7.9.txt`
+- `sources/Xyce_Release_Notes_7.9.pdf`
+- `sources/Xyce_Release_Notes_7.9.txt`
+- `sources/xyce_news_2026_07_05.html`
+- `sources/xyce_README_2026_07_05.md`
 - `sources/Xyce_AppNote_GenExt.pdf`
 - `sources/Xyce_AppNote_GenExt.txt`
 - `sources/ngspice_manual.xhtml`
+- `sources/ngspice_docs_2026_07_05.html`
+- `sources/ngspice_manual_2026_07_05.xhtml`
 - `sources/ngspice_pss_periodic_steady_state.html`
 - `sources/arxiv_2512.10373_qucs_phase_noise.pdf`
 - `sources/arxiv_2512.10373_qucs_phase_noise.txt`
 - `sources/arxiv_2603.07828_qucs_phase_noise_part2.pdf`
 - `sources/arxiv_2603.07828_qucs_phase_noise_part2.txt`
 - `sources/qucs_technical.html`
+- `sources/qucs_s_docs_2026_07_05.html`
+- `sources/qucs_s_README_2026_07_05.md`
+- `sources/github_search_qucs_copen_2026_07_05.json`
+- `sources/github_search_psssolver_qucs_2026_07_05.json`
+- `sources/github_search_pnsolver_qucs_2026_07_05.json`
+- `sources/github_search_pac_pnoise_pss_2026_07_05.json`
+
+## 2026-07-05 Live Recheck
+
+The 2026-07-05 refresh did not find a trustworthy open-source PAC/PXF or
+phase-noise backend contract:
+
+- Xyce 7.9 continues to provide documented HB command and print contracts, but
+  exact searches of the saved 7.9 reference guide, user guide, release notes,
+  current README, and news page found no `PAC`, `PXF`, `PNOISE`, `PNoise`, or
+  `phase noise` command/output contract. Xyce HB remains useful for
+  `analog_harmonic_balance`; it does not supply the small-signal injection,
+  sideband mapping, and periodic-linearization evidence required by
+  `analog_periodic_ac`.
+- The current ngspice v46 manual still documents PSS as experimental and not
+  publicly available in its detailed section. It mentions PAC/PNoise as
+  analyses that would be based on PSS results, but the saved current manual
+  still does not provide a stable PAC/PXF command syntax, normalized output
+  shape, or convergence artifact contract.
+- Current Qucs-S documentation and README do not expose a new adapter-ready
+  PAC/PXF or PNoise runtime contract. The QUCS-COPEN papers remain useful
+  theory references, but the 2026-07-05 GitHub repository searches for
+  `QUCS-COPEN`, `psssolver qucs`, `pnsolver qucs`, and `PAC PNoise PSS circuit
+  simulator` all returned `total_count: 0`.
+
+Decision remains unchanged: `SPICE_PERIODIC_AC_ANALYSIS` and phase-noise
+planning paths should stay fail-closed until a versioned backend command,
+retained raw output, normalized PAC/PN artifacts, convergence evidence, and
+real-solver conformance fixtures exist.
 
 ## Xyce
 

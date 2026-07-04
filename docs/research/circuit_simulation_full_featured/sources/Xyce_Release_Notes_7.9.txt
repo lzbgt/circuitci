@@ -1,0 +1,205 @@
+
+
+--- page 1 ---
+SAND2024-14167R
+Xyce™ Parallel Electronic Simulator
+Version 7.9 Release Notes
+Sandia National Laboratories
+October 17, 2024
+The Xyce™ Parallel Electronic Simulator has been written to support the simulation needs of
+Sandia National Laboratories’ electrical designers. Xyce™ is a SPICE-compatible simulator with
+the ability to solve extremely large circuit problems on large-scale parallel computing platforms,
+but also includes support for most popular parallel and serial computers.
+For up-to-date information not available at the time these notes were produced, please visit the
+Xyce™ web page at http://xyce.sandia.gov.
+Contents
+New Features and Enhancements 2
+Defects Fixed in this Release 4
+Supported Platforms 6
+Xyce Release 7.9 Documentation 6
+External User Resources 7
+1
+
+--- page 2 ---
+New Features and Enhancements
+Important Announcements
+Xyce is now supporting Red Hat Enterprise Linux ® (RHEL) 8, x86-64 (serial and parallel). Pre-
+vious releases supported RHEL 7.
+New Devices and Device Model Improvements
+• The BSIM-CMG model version 111.2.1 has been added to Xyce as a new MOSFET level 111.
+Previous versions 107, 108 and 110 are still supported, for backward compatibility.
+• The voltage limiting in the BSIMSOI version 3 device model is improved which can lead to
+both robustness and performance improvements. The voltage limiting related calculations for
+body nodes were incorrect which led to robustness issues when body nodes (5th or 6th node)
+are used (e.g., Sandia’s CMOS PDK) and voltage limiting is activated during simulation.
+Fixing voltage limiting improves both convergence and runtime performance for these circuits.
+• The scaling of Gmin in the BSIMSOI version 3 device model can now be optionally turned
+off which can improve circuit convergence. The Gmin used in BSIMSOI version 3 model is
+scaled by 1e-6 which makes it much smaller than Gmin used in other nonlinear devices. A
+small gmin value can cause circuit convergence issue.
+• Many older hand-written devices now support the parameter DTEMP. This parameter refers
+to a device instance temperature difference relative to the circuit temperature. This is a
+compatibility enhancement. Most of the newer devices, which were generated from Verilog-
+A using ADMS, already supported DTEMP. The older devices that now support it include
+the resistor, capacitor, inductor, diode, levels 1,2,3,6 MOSFET, BSIM3, BSIM4, BSIMSOI
+version 3, level 1 BJT, JFET and MESFET.
+• User-defined netlist functions can now be specified as a special case of .PARAM. For example,
+.PARAM F(X)=’X*2’ is now a valid Xyce syntax. Historically, functions in a Xyce netlist had
+to be specified using the .FUNC keyword, so the example would have been specified as .FUNC
+F(X) {X*2}. The parser now natively supports both specifications.
+• The nonlinear voltage-controlled current source (VCCS) device now supports the multiplier
+(M=) parameter. Previously, this was only supported in linear VCCS devices, as the nonlinear
+VCCS device is turned into a behavioral (B-source) device internally. Like with other model
+supporting the M parameter, this parameter is implicitly connected to subcircuit multipliers.
+• The behavioral source model (B-source) now supports multiplier parameters, for the current
+source (I=) configuration. Like with other model supporting the M parameter, this parameter
+is implicitly connected to subcircuit multipliers.
+Enhanced Solver Stability, Performance and Features
+• The spice strategy, which is the default nonlinear solve method for DC calculations, has
+been improved. Previously, if spice strategy is used in DC sweeps and one DC solve fails,
+the solutions after a failed DC can be incorrect. The robustness of spice strategy in Xyce is
+improved and it now solves correct results after a failed DC in DC sweeps.
+2
+
+--- page 3 ---
+Interface Improvements
+• The DELIMITER parameter on the .PRINT line has been expanded. It previously only supported
+TAB and COMMA. Now it also supports SEMICOLON and COLON. It also will allow specifying
+quoted delimiter strings, such as DELIMITER=";". Previously this parameter only applied
+to the standard output format, but now it also applies to Comma-separated values (CSV)
+formatted output as well. This was primarily added to address backlog issue 613 (see fixed
+defects table).
+3
+
+--- page 4 ---
+Defects Fixed in this Release
+Table 1: Fixed Defects. The Xyce team has multiple issue trackers, and the table below indicates fixed issues
+by indentifying both the tracker and the issue number. Further, some issues are reported by open
+source users on GitHub and these issues may be tracked using multiple issue numbers.
+Defect Description
+Xyce Project Backlog/613 :
+Noise comma-separated values
+(CSV) output format should put
+quotes around variable/column
+names
+Comma-separated values (CSV) output for noise had a
+bug, in that the comma character was used as a separator
+between variables, but for noise analysis variable names
+often include commas. This has been fixed in two ways.
+One is to add quotes around variable names in the CSV
+noise output file header. The other is to expand the
+DELIMITER parameter on the PRINT line to allow other
+options, including SEMICOLON and COLON. Also, this
+parameter previously applied only to STD format files. It
+now also applies to CSV format files.
+Xyce Project Backlog/694 :
+Error in MOSFET numerical
+sensitivities, when using
+.option scale
+When using sensitivity analysis, one aspect of the
+calculation is device-level derivatives. For some device
+models, analytic derivatives are available. When they are
+not available, numerical device-level derivatives must be
+used. This is the case with several older MOSFET
+models, such as the BSIM4. The code for computing these
+device-level derivatives did not handle length scalars (set
+by the netlist command .option scale properly, so this
+produced at best nonsense results and at worst caused
+the code to exit with a fatal error. This has been fixed.
+Xyce Project Backlog/729 :
+Expression-based objective
+functions for .SENS conflate
+I(VA) with V(VA) (nodes and
+devices w/ same names)
+Sensitivity analysis had a bug related to the naming of
+circuit variables in the objective function. If a circuit had
+a voltage source and a voltage node of the same name,
+the expression capability could not differentiate between
+the two, and could choose the wrong one. This has been
+fixed.
+Xyce Project Backlog/740 :
+Adjoint, output, and
+user-provided breakpoints
+present a scaling issue for
+extremely long lists
+A user can request output using .options output in the
+form of a list of time points. If this list was very long
+(10k+ values), then processing the list would result in a
+substantial slowdown in the setup time of the simulation.
+This has been fixed.
+Xyce Project Backlog/767 :
+Location of device model
+repositories should be optional
+When building Xyce from source with CMake, the
+location of optional device model packages can now be
+specifed as configuration parameters. The new parameter
+options and their associated default values are given
+below as parameter name (default value) .
+Xyce ADMS MODELS DIR
+(${PROJECT SOURCE DIR}/src/DeviceModelPKG/ADMS)
+Xyce NEURON MODELS DIR
+(${PROJECT SOURCE DIR}/src/DeviceModelPKG/NeuronModels)
+Xyce NONFREE MODELS DIR
+(${PROJECT SOURCE DIR}/src/DeviceModelPKG/Xyce NonFree)
+Xyce RAD MODELS DIR
+(${PROJECT SOURCE DIR}/src/DeviceModelPKG/SandiaModels)
+4
+
+--- page 5 ---
+Table 1: Fixed Defects. Note that we have two multiple issue tracking systems for Sandia Users. SON and
+SRN refer to our legacy open- and restricted-network Bugzilla system, and Gitlab refers to issues
+in our gitlab repositories.
+Defect Description
+Xyce Project Backlog/752 :
+Enable Hysteresis in Switch
+Devices.
+Hysteresis in the on and off behavior of voltage, current
+and general expression based switches has been added to
+the switch device. See the reference guide for further
+details.
+5
+
+--- page 6 ---
+Supported Platforms
+Certified Support
+The following platforms have been subject to certification testing for the Xyce version 7.9 release.
+• Red Hat Enterprise Linux ® 8, x86-64 (serial and parallel)
+• Microsoft Windows 11®, x86-64 (serial)
+• Apple® macOS, x86-64 (serial and parallel)
+Build Support
+Though not certified platforms, Xyce has been known to run on the following systems.
+• FreeBSD 12.X on Intel x86-64 and AMD64 architectures (serial and parallel)
+• Distributions of Linux other than Red Hat Enterprise Linux 8
+• Microsoft Windows under Cygwin and MinGW
+Xyce Release 7.9 Documentation
+The following Xyce documentation is available on the Xyce website in pdf form.
+• Xyce Version 7.9 Release Notes (this document)
+• Xyce Users’ Guide, Version 7.9
+• Xyce Reference Guide, Version 7.9
+• Xyce Mathematical Formulation
+• Power Grid Modeling with Xyce
+• Application Note: Coupled Simulation with the Xyce General External Interface
+• Application Note: Mixed Signal Simulation with Xyce 7.2
+Also included at the Xyce website as web pages are the following.
+• Frequently Asked Questions
+• Building Guide (instructions for building Xyce from the source code)
+• Running the Xyce Regression Test Suite
+• Xyce/ADMS Users’ Guide
+• Tutorial: Adding a new compact model to Xyce
+6
+
+--- page 7 ---
+External User Resources
+• Website: http://xyce.sandia.gov
+• Google Groups discussion forum:https://groups.google.com/forum/#!forum/xyce-users
+• Email support: xyce@sandia.gov
+• Address:
+Electrical Models and Simulation Dept.
+Sandia National Laboratories
+P.O. Box 5800, M.S. 1177
+Albuquerque, NM 87185-1177
+Sandia National Laboratories is a multimission laboratory managed and operated by National
+Technology and Engineering Solutions of Sandia, LLC, a wholly owned subsidiary of Honeywell
+International, Inc., for the U.S. Department of Energy’s National Nuclear Security Administration
+under contract DE-NA0003525.
+7

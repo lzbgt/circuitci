@@ -14,9 +14,21 @@ requiring raw JSON inspection.
 
 - `sources/ngspice_ANALYSES`
 - `sources/ngspice_manual.xhtml`
+- `sources/ngspice_docs_2026_07_05.html`
+- `sources/ngspice_manual_2026_07_05.xhtml`
 - `sources/Xyce_Reference_Guide_7.8.txt`
 - `sources/Xyce_Users_Guide_7.8.txt`
+- `sources/Xyce_Reference_Guide_7.9.pdf`
+- `sources/Xyce_Reference_Guide_7.9.txt`
+- `sources/Xyce_Users_Guide_7.9.pdf`
+- `sources/Xyce_Users_Guide_7.9.txt`
+- `sources/Xyce_Release_Notes_7.9.pdf`
+- `sources/Xyce_Release_Notes_7.9.txt`
+- `sources/xyce_news_2026_07_05.html`
+- `sources/xyce_README_2026_07_05.md`
 - `sources/qucs_rf_simulation.html`
+- `sources/qucs_s_docs_2026_07_05.html`
+- `sources/qucs_s_README_2026_07_05.md`
 - `sources/spiceopus_nutmeg.html`
 - `sources/spiceopus_release.html`
 - `sources/arxiv_2512.10373_source.tar.gz`
@@ -29,9 +41,37 @@ requiring raw JSON inspection.
 - `sources/github_search_qucs_copen_repositories.json`
 - `sources/github_search_psssolver_qucs_repositories.json`
 - `sources/github_search_qucs_copen_code.json`
+- `sources/github_search_qucs_copen_2026_07_05.json`
+- `sources/github_search_psssolver_qucs_2026_07_05.json`
+- `sources/github_search_pnsolver_qucs_2026_07_05.json`
+- `sources/github_search_pac_pnoise_pss_2026_07_05.json`
 - `sources/github_repo_qucs_qucs.json`
 - `sources/github_repo_ra3xdh_qucs_s.json`
 - `sources/github_repo_ra3xdh_qucsator_rf.json`
+
+## 2026-07-05 Live Recheck
+
+The 2026-07-05 source refresh saved current Xyce 7.9, ngspice v46, Qucs-S, and
+GitHub repository-search artifacts under `sources/`. The result does not
+change CircuitCI's backend boundary:
+
+- Xyce 7.9 still documents harmonic balance (`.HB`) and HB print families, but
+  exact searches for `.PSS`, `PAC`, `PXF`, `PNOISE`, `PNoise`, and `phase
+  noise` across the saved 7.9 reference guide, user guide, release notes,
+  README, and news page did not find a distinct oscillator PSS or
+  phase-noise/PAC adapter contract. Xyce HB remains the implemented
+  `analog_harmonic_balance` backend, not a substitute for `analog_pss`.
+- The current ngspice manual still marks `.PSS` as experimental, says the
+  implementation is not yet publicly available in the detailed PSS section, and
+  keeps `--enable-pss` as an experimental configure option. That is still not a
+  stable CI-normalizable PSS output contract.
+- Qucs-S current docs/README did not add a runnable CircuitCI-ready PSS
+  adapter contract beyond the previously saved SPICE OPUS and QucsatorRF
+  evidence.
+- GitHub repository searches saved on 2026-07-05 returned `total_count: 0` for
+  `QUCS-COPEN`, `psssolver qucs`, `pnsolver qucs`, and `PAC PNoise PSS circuit
+  simulator`. No public QUCS-COPEN source package suitable for an adapter was
+  discoverable from those repository searches.
 
 ## Findings
 
