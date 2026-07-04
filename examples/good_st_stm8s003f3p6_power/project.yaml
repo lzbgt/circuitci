@@ -1,0 +1,64 @@
+project:
+  name: good_st_stm8s003f3p6_power
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    USTM8:
+      model: vendor.st.stm8s003f3p6
+      part_number: STM8S003F3P6
+      power_domains:
+        VDD: rail_5v
+      pins:
+        VDD: rail_5v
+        VSS: gnd
+        VCAP: stm8_vcap
+        NRST: stm8_nrst
+        SWIM: swim_data
+        UART1_TX: uart_tx
+        UART1_RX: uart_rx
+    CVCAP:
+      model: generic.analog.capacitor
+      part_number: 1uF
+      pins:
+        A: stm8_vcap
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
+    RNRST_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_5v
+        B: stm8_nrst
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    stm8_vcap:
+      kind: digital_or_analog
+    stm8_nrst:
+      kind: digital_or_analog
+    swim_data:
+      kind: digital_or_analog
+    uart_tx:
+      kind: digital_or_analog
+    uart_rx:
+      kind: digital_or_analog
+
+scenarios:
+  - name: stm8s003f3p6_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

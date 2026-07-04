@@ -175,6 +175,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: st_stm8s003f3p6_power_passes
+    project: ../examples/good_st_stm8s003f3p6_power/project.yaml
+    expect: pass
+
+  - id: st_stm8s003f3p6_vdd_overvoltage_detected
+    project: ../examples/bad_st_stm8s003f3p6_vdd_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: espressif_esp32_s3_wroom_1u_application_passes
     project: ../examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml
     expect: pass
@@ -293,6 +304,12 @@ repairs:
   - id: fix_nordic_nrf52840_vdd_overvoltage
     detects_case: nordic_nrf52840_vdd_overvoltage_detected
     fixed_case: nordic_nrf52840_normal_voltage_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_st_stm8s003f3p6_vdd_overvoltage
+    detects_case: st_stm8s003f3p6_vdd_overvoltage_detected
+    fixed_case: st_stm8s003f3p6_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

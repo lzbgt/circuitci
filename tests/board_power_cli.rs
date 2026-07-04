@@ -1120,6 +1120,30 @@ fn nordic_nrf52840_vdd_overvoltage_uses_datasheet_limit() {
 }
 
 #[test]
+fn st_stm8s003f3p6_power_board_passes_static_checks() {
+    let report = run_validation("examples/good_st_stm8s003f3p6_power/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn st_stm8s003f3p6_vdd_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_st_stm8s003f3p6_vdd_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["component"] == "USTM8" && finding["net"] == "rail_6v")
+        .expect("expected STM8S003F3P6 VDD voltage finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 5.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn esp32_s3_wroom_1u_application_board_passes_static_checks() {
     let report =
         run_validation("examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml");

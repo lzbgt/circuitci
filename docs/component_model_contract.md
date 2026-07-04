@@ -898,6 +898,14 @@ not high-voltage-mode regulator sequencing, GPIO threshold or drive-strength
 sign-off, DCDC support networks, USB signal integrity, antenna matching, NFC,
 RF protocol behavior, UICR reset programming, firmware execution, thermal
 behavior, or transient current waveforms.
+`vendor.st.stm8s003f3p6` adds a source-backed static STM8S003F3P6 pack without
+a generated-SPICE face yet. Official ST documentation backs its `VDD` supply
+range, required `VCAP` board pin, active-low `NRST`, `PD1/SWIM`, and
+`PD5`/`PD6` UART1 pin boundaries. That model can exercise board-level supply
+voltage checks and required pin binding, but not `VCAP` capacitance/ESR/ESL,
+formula-based GPIO thresholds, oscillator startup/accuracy, SWIM protocol
+timing, UART bootloader behavior, flash/EEPROM programming behavior, firmware
+execution, thermal behavior, or transient current waveforms.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

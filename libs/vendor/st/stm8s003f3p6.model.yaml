@@ -1,0 +1,104 @@
+component_id: vendor.st.stm8s003f3p6
+version: 0.1.0
+category: mcu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.95
+      operating_voltage_max_V: 5.5
+  VSS:
+    kind: electrical_ground
+    required: true
+  VCAP:
+    kind: passive
+    required: true
+  NRST:
+    kind: digital_electrical_input
+    required: false
+  SWIM:
+    kind: digital_electrical_io
+    required: false
+  UART1_TX:
+    kind: digital_electrical_output
+    required: false
+  UART1_RX:
+    kind: digital_electrical_input
+    required: false
+  OSCIN:
+    kind: passive
+    required: false
+  OSCOUT:
+    kind: passive
+    required: false
+behavior:
+  reset:
+    pin: NRST
+    active: low
+rules:
+  - POWER_TREE_VALID
+  - RESET_RELEASE_AFTER_POWER_VALID
+datasheet:
+  manufacturer: STMicroelectronics
+  part_number: STM8S003F3P6
+  package: TSSOP20
+  polarity: stm8s_8bit_mcu
+  pinout:
+    VDD: TSSOP20 pin 9 digital power supply
+    VSS: TSSOP20 pin 7 digital ground
+    VCAP: TSSOP20 pin 8 internal regulator capacitor
+    NRST: TSSOP20 pin 4 reset
+    SWIM: TSSOP20 pin 18 / PD1 SWIM data interface
+    UART1_TX: TSSOP20 pin 2 / PD5 UART1 data transmit
+    UART1_RX: TSSOP20 pin 3 / PD6 UART1 data receive
+    OSCIN: TSSOP20 pin 5 / PA1 oscillator input
+    OSCOUT: TSSOP20 pin 6 / PA2 oscillator output
+  electrical_characteristics:
+    vdd_supply:
+      conditions: General operating conditions, fCPU <= 16 MHz.
+      min: 2.95
+      max: 5.5
+      unit: V
+    vcap_external_capacitance:
+      conditions: General operating conditions, external regulator capacitor.
+      min: 4.7e-7
+      max: 3.3e-6
+      unit: F
+    operating_temperature:
+      conditions: Ambient temperature for suffix 6 devices.
+      min: -40
+      max: 85
+      unit: degC
+    nrst_input_low:
+      conditions: NRST pin characteristic, scales with VDD.
+      max: 0.3
+      unit: VDD_ratio
+    nrst_input_high:
+      conditions: NRST pin characteristic, scales with VDD.
+      min: 0.7
+      unit: VDD_ratio
+  documents:
+    - title: STM8S003F3/K3 datasheet
+      path: docs/research/datasheets/st/stm8s003f3_datasheet.pdf
+      source_url: https://www.st.com/resource/en/datasheet/stm8s003f3.pdf
+      sha256: 1a0775fefcda1553ffea5216b60acdb9566e487f60aad8afa5c859a32acaa8f2
+      retrieved: 2026-07-05
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - vdd_power_tree_supply_voltage
+    - vcap_pin_presence
+    - reset_pin_polarity
+    - swim_programming_pin_boundary
+    - uart1_pin_boundary
+  not_valid_for:
+    - formula_based_gpio_threshold_signoff
+    - vcap_capacitance_or_esr_esl_validation
+    - oscillator_startup_or_accuracy
+    - swim_protocol_timing
+    - uart_protocol_or_bootloader_behavior
+    - flash_or_eeprom_programming_behavior
+    - firmware_execution
+    - thermal_or_peak_current_waveforms
