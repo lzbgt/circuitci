@@ -174,6 +174,16 @@ fn periodic_ac_contract_is_schema_valid_and_fails_closed_with_planning_evidence(
         report["failures"][0]["measured"]["source_notes"]["xyce_reference"],
         "sources/Xyce_Reference_Guide_7.8.txt"
     );
+    assert!(
+        report["failures"][0]["measured"]["adapter_blocker"]
+            .as_str()
+            .unwrap()
+            .contains("No trusted open-source PAC/PXF backend path")
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["evidence_sources"][0],
+        "docs/research/circuit_simulation_full_featured/periodic_ac_backend_evidence.md"
+    );
     assert_report_schema_valid(&report);
 }
 

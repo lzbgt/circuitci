@@ -405,6 +405,18 @@ pub(super) fn validate_spice_phase_noise_with_progress<F, C>(
             "spice_opus": "ssse_shooting_exists_but_no_circuitci_phase_noise_adapter_or_conformance_contract"
         }),
     );
+    finding.measured.insert(
+        "adapter_blocker".to_string(),
+        json!("No trusted open-source PSS/PNOISE solver chain with normalized phase-noise spectrum, integrated jitter, convergence, raw-output, and solver-manifest artifacts is available in this runtime."),
+    );
+    finding.measured.insert(
+        "evidence_sources".to_string(),
+        json!([
+            "docs/research/circuit_simulation_full_featured/pss_backend_evidence.md",
+            "docs/research/circuit_simulation_full_featured/sources/arxiv_2512.10373_qucs_phase_noise.txt",
+            "docs/research/circuit_simulation_full_featured/sources/arxiv_2603.07828_qucs_phase_noise_part2.txt"
+        ]),
+    );
     finding.limit.insert(
         "required_evidence".to_string(),
         json!("phase_noise_spectrum_phase_noise_integrated_jitter_phase_noise_convergence_pss_convergence"),

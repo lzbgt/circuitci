@@ -374,7 +374,9 @@ Current analog support:
   phase-noise sign-off until a trusted PSS/PNOISE chain exists. The planning
   finding records that QUCS-COPEN is currently a theory/reference source, not
   an executable backend target, because no public source repository or adapter
-  contract was found.
+  contract was found. The finding also carries a compact `adapter_blocker` and
+  `evidence_sources[]` list pointing to the retained research notes needed to
+  unblock a future adapter.
 - `analog_periodic_ac` scenarios with `SPICE_PERIODIC_AC_ANALYSIS` for
   PAC/PXF-style periodic small-signal evidence planning. The Board IR/schema
   can declare `analysis.type: pac`, `pac_mode: pac|pxf`,
@@ -387,7 +389,9 @@ Current analog support:
   backend is allowed to pass periodic small-signal sign-off until a trusted
   PSS/HB linearization chain and PAC/PXF normalizer exist. The saved
   PAC/PXF evidence note records why Xyce HB output, experimental ngspice PSS,
-  and QUCS-COPEN papers are not yet adapter-ready.
+  and QUCS-COPEN papers are not yet adapter-ready. The finding also carries a
+  compact `adapter_blocker` and `evidence_sources[]` list pointing to the
+  retained research notes needed to unblock a future adapter.
 - `analog_measure` scenarios with `SPICE_MEASURE_ANALYSIS` for scalar
   extraction from transient or AC runs. The Board IR/schema
   can declare `analysis.type: measure`, `measure_mode`, reviewed raw

@@ -781,7 +781,10 @@ For a scenario with check `SPICE_PHASE_NOISE_ANALYSIS`:
    PSS/PNOISE; ngspice PSS/PNOISE remains experimental or build/runtime
    dependent without a trusted normalized contract here; SPICE OPUS `ssse`
    has no CircuitCI phase-noise adapter or conformance suite.
-7. CircuitCI must not present oscillator phase-noise sign-off as passing until
+7. The planning finding includes a compact `adapter_blocker` string and
+   `evidence_sources[]` paths to the retained research notes, so reports can
+   explain the blocked backend boundary without depending on chat history.
+8. CircuitCI must not present oscillator phase-noise sign-off as passing until
    a trusted backend emits normalized phase-noise spectrum, integrated jitter,
    PSS convergence, phase-noise convergence, raw solver output, and
    solver-manifest artifacts.
@@ -812,7 +815,10 @@ For a scenario with check `SPICE_PERIODIC_AC_ANALYSIS`:
    names PAC/PNoise as downstream analyses but does not provide a stable
    PAC/PXF command/output contract; QUCS-COPEN remains a theory source until
    public source, build, adapter, and conformance artifacts are found.
-7. CircuitCI must not present periodic small-signal sign-off as passing until a
+7. The planning finding includes a compact `adapter_blocker` string and
+   `evidence_sources[]` paths to the retained research notes, so reports can
+   explain the blocked backend boundary without depending on chat history.
+8. CircuitCI must not present periodic small-signal sign-off as passing until a
    trusted backend emits normalized PAC/PXF response, sideband, convergence,
    raw solver output, and solver-manifest artifacts with real-solver
    conformance coverage.

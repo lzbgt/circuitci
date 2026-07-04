@@ -425,6 +425,19 @@ pub(super) fn validate_spice_periodic_ac_with_progress<F, C>(
             "qucs_technical": "sources/qucs_technical.html"
         }),
     );
+    finding.measured.insert(
+        "adapter_blocker".to_string(),
+        json!("No trusted open-source PAC/PXF backend path with periodic operating-point convergence, sideband response, raw-output, and solver-manifest artifacts is available in this runtime."),
+    );
+    finding.measured.insert(
+        "evidence_sources".to_string(),
+        json!([
+            "docs/research/circuit_simulation_full_featured/periodic_ac_backend_evidence.md",
+            "docs/research/circuit_simulation_full_featured/sources/Xyce_Reference_Guide_7.8.txt",
+            "docs/research/circuit_simulation_full_featured/sources/Xyce_AppNote_GenExt.txt",
+            "docs/research/circuit_simulation_full_featured/sources/ngspice_manual.xhtml"
+        ]),
+    );
     finding.limit.insert(
         "required_evidence".to_string(),
         json!("pac_response_pac_sidebands_pac_convergence_pss_convergence"),

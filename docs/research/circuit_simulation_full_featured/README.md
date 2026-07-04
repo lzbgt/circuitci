@@ -849,7 +849,9 @@ The GUI should not become the solver.
   records required future artifacts `phase_noise_spectrum`,
   `phase_noise_integrated_jitter`, `phase_noise_convergence`, and
   `pss_convergence`, and intentionally fails closed until a trusted PSS/PNOISE
-  solver chain plus real-solver conformance exists.
+  solver chain plus real-solver conformance exists. The fail-closed finding now
+  also carries compact `adapter_blocker` and `evidence_sources[]` metadata that
+  points back to the retained research notes.
 - Added the first fail-closed PAC/PXF evidence contract for
   `analysis.type: pac` and `SPICE_PERIODIC_AC_ANALYSIS`. Scenarios declare
   `pac_mode: pac|pxf`, carrier frequency, sideband count, small-signal
@@ -857,7 +859,9 @@ The GUI should not become the solver.
   optional large-signal drive-source provenance. The validator records required
   future artifacts `pac_response`, `pac_sidebands`, `pac_convergence`, and
   `pss_convergence`, and intentionally fails closed until a trusted periodic
-  operating-point linearization chain plus real-solver conformance exists.
+  operating-point linearization chain plus real-solver conformance exists. The
+  fail-closed finding now also carries compact `adapter_blocker` and
+  `evidence_sources[]` metadata that points back to the retained research notes.
 - Primary-source review in `periodic_ac_backend_evidence.md` found no
   trustworthy PAC/PXF adapter target to enable immediately: Xyce documents HB
   but not PAC/PXF command/output artifacts; ngspice mentions PAC as downstream
