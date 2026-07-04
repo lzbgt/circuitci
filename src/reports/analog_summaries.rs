@@ -108,6 +108,8 @@ pub struct SParameterNetworkSummary {
     pub frequency_hz_at_min_maximum_available_gain: Option<f64>,
     pub min_maximum_stable_gain_db: Option<f64>,
     pub frequency_hz_at_min_maximum_stable_gain: Option<f64>,
+    pub min_maximum_unilateral_gain_db: Option<f64>,
+    pub frequency_hz_at_min_maximum_unilateral_gain: Option<f64>,
 }
 
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
@@ -515,6 +517,8 @@ fn parse_s_parameter_network_summary_csv(
             "frequency_hz_at_min_maximum_available_gain",
             "min_maximum_stable_gain_db",
             "frequency_hz_at_min_maximum_stable_gain",
+            "min_maximum_unilateral_gain_db",
+            "frequency_hz_at_min_maximum_unilateral_gain",
         ]
     {
         return Vec::new();
@@ -524,7 +528,7 @@ fn parse_s_parameter_network_summary_csv(
         let Some(fields) = split_csv_fields(line) else {
             continue;
         };
-        if fields.len() != 16 {
+        if fields.len() != 18 {
             continue;
         }
         let Some(port_count) = fields[0].parse::<usize>().ok() else {
@@ -580,6 +584,14 @@ fn parse_s_parameter_network_summary_csv(
         else {
             continue;
         };
+        let Some(min_maximum_unilateral_gain_db) = parse_optional_finite_f64(&fields[16]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_min_maximum_unilateral_gain) =
+            parse_optional_finite_f64(&fields[17])
+        else {
+            continue;
+        };
         rows.push(SParameterNetworkSummary {
             artifact: artifact.to_string(),
             port_count,
@@ -598,9 +610,38 @@ fn parse_s_parameter_network_summary_csv(
             frequency_hz_at_min_maximum_available_gain,
             min_maximum_stable_gain_db,
             frequency_hz_at_min_maximum_stable_gain,
+            min_maximum_unilateral_gain_db,
+            frequency_hz_at_min_maximum_unilateral_gain,
         });
     }
     rows
+}
+
+pub(super) fn render_s_parameter_network_summary_markdown(
+    row: &SParameterNetworkSummary,
+) -> String {
+    format!(
+        "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz min_rollet_k={} at {} Hz max_stability_delta_magnitude={} at {} Hz min_maximum_available_gain_db={} at {} Hz min_maximum_stable_gain_db={} at {} Hz min_maximum_unilateral_gain_db={} at {} Hz\n  - Artifact: `{}`\n",
+        row.port_count,
+        row.row_count,
+        row.min_frequency_hz,
+        row.max_frequency_hz,
+        row.max_reciprocity_error_linear,
+        row.frequency_hz_at_max_reciprocity_error,
+        row.max_passivity_singular_value,
+        row.frequency_hz_at_max_passivity,
+        format_optional_value(row.min_rollet_k),
+        format_optional_value(row.frequency_hz_at_min_rollet_k),
+        format_optional_value(row.max_stability_delta_magnitude),
+        format_optional_value(row.frequency_hz_at_max_stability_delta_magnitude),
+        format_optional_value(row.min_maximum_available_gain_db),
+        format_optional_value(row.frequency_hz_at_min_maximum_available_gain),
+        format_optional_value(row.min_maximum_stable_gain_db),
+        format_optional_value(row.frequency_hz_at_min_maximum_stable_gain),
+        format_optional_value(row.min_maximum_unilateral_gain_db),
+        format_optional_value(row.frequency_hz_at_min_maximum_unilateral_gain),
+        row.artifact
+    )
 }
 
 fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSummary> {
@@ -847,4 +888,10 @@ fn parse_optional_finite_f64(value: &str) -> Option<Option<f64>> {
         return Some(None);
     }
     parse_finite_f64(value).map(Some)
+}
+
+fn format_optional_value(value: Option<f64>) -> String {
+    value
+        .map(|number| format!("{number:.6e}"))
+        .unwrap_or_else(|| "unavailable".to_string())
 }

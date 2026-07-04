@@ -435,11 +435,16 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    minimum MAG/GMAX in dB, derived as
    `10 log10((|S21|/|S12|) * (K - sqrt(K^2 - 1)))` and retained only when
    `K > 1` and `|Delta| < 1`. `maximum_stable_gain_db_min` is the minimum MSG
-   in dB, derived as `10 log10(|S21|/|S12|)`. These assertions require exactly
+   in dB, derived as `10 log10(|S21|/|S12|)`.
+   `maximum_unilateral_gain_db_min` is the minimum unilateral transducer gain
+   floor in dB, derived as
+   `10 log10(|S21|^2 / ((1 - |S11|^2) * (1 - |S22|^2)))` and retained only
+   when both reflection magnitudes are below unity. These assertions require exactly
    two declared S-parameter ports and retain `s_parameter_network_summary.csv`
-   with the worst frequencies. Rollet K, MAG, and MSG are unavailable, and
+   with the worst frequencies. Rollet K, MAG, MSG, and unilateral gain are unavailable, and
    therefore fail closed when asserted, if the sweep has zero reverse
-   transmission or invalid stability conditions. Source/load-dependent
+   transmission, invalid stability conditions, or non-finite unilateral
+   denominator conditions. Source/load-dependent
    transducer, available, and operating gain are not exposed yet because Board
    IR does not carry source/load reflection-coefficient provenance.
 8. Validation reports project retained `s_parameter_summary.csv` rows into

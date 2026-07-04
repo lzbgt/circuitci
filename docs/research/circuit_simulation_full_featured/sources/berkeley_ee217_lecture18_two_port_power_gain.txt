@@ -1,0 +1,859 @@
+
+
+--- page 1 ---
+EECS 217
+Lecture 18: Two-Port Power Gain
+Prof. Niknejad
+University of California, Berkeley
+University of California, Berkeley EECS 217 Lecture 18 – p. 1/20
+
+--- page 2 ---
+Two-Port Power and Scattering Parameters
+• The power ﬂowing into a two-port can be represented by
+Pin = |V +
+1 |2
+2Z0
+(1 − |Γin|2)
+• The power ﬂowing to the load is likewise given by
+PL = |V −
+2 |2
+2Z0
+(1 − |ΓL|2)
+• We can solve for V +
+1 using circuit theory
+V +
+1 + V −
+1 = V +
+1 (1 + Γin) = Zin
+Zin + ZS
+VS
+• In terms of the input and source reﬂection coefﬁcient
+Zin = 1 + Γin
+1 − Γin
+Z0 ZS = 1 + ΓS
+1 − ΓS
+Z0
+University of California, Berkeley EECS 217 Lecture 18 – p. 2/20
+
+--- page 3 ---
+Two-Port Incident Wave
+• Solve for V +
+1
+V +
+1 (1 + Γin) = VS (1 + Γin)(1 − ΓS )
+(1 + Γin)(1 − ΓS ) + (1 + Γ S )(1 − Γin)
+V +
+1 = VS
+2
+1 − ΓS
+1 − ΓinΓS
+• The voltage incident on the load is given by
+V −
+2 = S21V +
+1 + S22V +
+2 = S21V +
+1 + S22ΓLV −
+2
+V −
+2 = S21V +
+1
+1 − S22ΓL
+PL =
+|S21|2
+/AC
+/AC
+/AC
+V +
+1
+/AC
+/AC
+/AC
+2
+|1 − S22ΓL|2
+1 − |ΓL|2
+2Z0
+University of California, Berkeley EECS 217 Lecture 18 – p. 3/20
+
+--- page 4 ---
+Operating Gain and Available Power
+• The operating power gain can be written in terms of the two-port s-parameters and
+the load reﬂection coefﬁcient
+Gp = PL
+Pin
+= |S21|2 (1 − |ΓL|2)
+|1 − S22ΓL|2 (1 − |Γin|2)
+• The available power can be similarly derived from V +
+1
+Pavs = Pin|Γin=Γ∗
+S
+=
+/AC
+/AC
+/AC
+V +
+1a
+/AC
+/AC
+/AC
+2
+2Z0
+(1 − |Γ∗
+S |2)
+V +
+1a = V +
+1
+/AC
+/AC
+/AC
+Γin=Γ∗
+S
+= VS
+2
+1 − Γ∗
+S
+1 − |ΓS |2
+Pavs = |VS |2
+8Z0
+|1 − ΓS |2
+1 − |ΓS |2
+University of California, Berkeley EECS 217 Lecture 18 – p. 4/20
+
+--- page 5 ---
+Transducer Gain
+• The transducer gain can be easily derived
+GT = PL
+Pavs
+= |S21|2 (1 − |ΓL|2)(1 − |ΓS |2)
+|1 − ΓinΓS |2 |1 − S22ΓL|2
+• Note that as expected, GT is a function of the two-port s-parameters and the load
+and source impedance.
+• If the two port is connected to a source and load with impedance Z0, then we have
+ΓL = Γ S = 0 and
+GT = |S21|2
+University of California, Berkeley EECS 217 Lecture 18 – p. 5/20
+
+--- page 6 ---
+Unilateral Gain
++
+vs
+−
+Z0
+M1 M2
+GS GL| S21| 2
+[S11 0
+S21 S22
+]
+Z0
+• If S12 ≈ 0, we can simplify the expression by just assuming S12 = 0. This is the
+unilateral assumption
+GT U = 1 − |ΓS |2
+|1 − S11ΓS |2 |S21|2 1 − |ΓL|2
+|1 − S22ΓL|2 = GS |S21|2 GL
+• The gain partitions into three terms, which can be interpreted as the gain from the
+source matching network, the gain of the two port, and the gain of the load.
+• In reality the source/load matching network are passive and hopefully lossless, so
+the power gain is 1 or less, but by virtue of the matching network we can change
+the gain of the two-port.
+University of California, Berkeley EECS 217 Lecture 18 – p. 6/20
+
+--- page 7 ---
+Maximum Unilateral Gain
+• We know that the maximum gain occurs for the biconjugate match
+ΓS = S∗
+11
+ΓL = S∗
+22
+GS,max = 1
+1 − |S11|2
+GL,max = 1
+1 − |S22|2
+GT U,max = |S21|2
+(1 − |S11|2)(1 − |S22|2)
+• Note that if |S11| = 1 of |S22| = 1, the maximum gain is inﬁnity. his is the unstable
+case since |Sii| > 1 is potentially unstable.
+University of California, Berkeley EECS 217 Lecture 18 – p. 7/20
+
+--- page 8 ---
+Ideal MOSFET
+roCgs gmvin
++
+vin
+−
+Cds
+• The AC equivalent circuit for a MOSFET at low to moderate frequencies is shown
+above. Since |S11| = 1, this circuit has inﬁnite power gain. This is a trivial fact
+since the gate capacitance cannot dissipate power whereas the output can deliver
+real power to the load.
+University of California, Berkeley EECS 217 Lecture 18 – p. 8/20
+
+--- page 9 ---
+Real MOSFET
+Cgs gmvin
++
+vin
+−
+RiRi
+CdsRds Rds
++
+vs
+−
+• A more realistic equivalent circuit is shown above. If we make the unilateral
+assumption, then the input and output power can be easily calculated. Assume we
+conjugate match the input/output
+Pavs = |VS |2
+8Ri
+PL = ℜ( 1
+2 ILV ∗
+L ) = 1
+2
+/AC
+/AC
+/AC
+/AC
+gmV1
+2
+/AC
+/AC
+/AC
+/AC
+2
+Rds
+GT U,max = g2
+mRdsRi
+/AC
+/AC
+/AC
+/AC
+V1
+VS
+/AC
+/AC
+/AC
+/AC
+2
+University of California, Berkeley EECS 217 Lecture 18 – p. 9/20
+
+--- page 10 ---
+Real MOSFET (cont)
+• At the center resonant frequency, the voltage at the input of the FET is given by
+V1 = 1
+jωC gs
+VS
+2Ri
+GT U,max = Rds
+Ri
+(gm/Cgs)2
+4ω2
+• This can be written in terms of the device unity gain frequency fT
+GT U,max = 1
+4
+Rds
+Ri
+/AI
+fT
+f
+/AJ
+2
+• The above expression is very insightful. To maximum power gain we should
+maximize the device fT and minimize the input ressitance while maximizing the
+output resistance.
+University of California, Berkeley EECS 217 Lecture 18 – p. 10/20
+
+--- page 11 ---
+Design for Gain
+• So far we have only discussed power gain using bi-conjugate matching. This is
+possible when the device is unconditionally stable. In many case, though, we’d like
+to design with a potentially unstable device.
+• Moreover, we would like to introduce more ﬂexibility in the design. We can trade off
+gain for
+• bandwidth
+• noise
+• gain ﬂatness
+• linearity
+• etc.
+• We can make this tradeoff by identifying a range of source/load impedances that
+can realize a given value of power gain. While maximum gain is acheived for a
+single point on the Smith Chart, we will ﬁnd that a lot more ﬂexibility if we back-off
+from the peak gain.
+University of California, Berkeley EECS 217 Lecture 18 – p. 11/20
+
+--- page 12 ---
+Unilateral Design
+• No real transistor is unilateral. But most are predominantly unilateral, or else we
+use cascades of devices (such as the cascode) to realize such a device.
+• The unilateral ﬁgure of merit can be used to test the validity of the unilateral
+assumption
+Um = |S12|2 |S21|2 |S11|2 |S22|2
+(1 − |S11|2)(1 − |S22|2)
+• It can be shown that the transducer gain satisﬁes the following inequality
+1
+(1 + U )2 < GT
+GT U
+< 1
+(1 − U )2
+• Where the actual power gain GT is compared to the power gain under the
+unilateral assumption GT U. If the inequality is tight, say on the order of 0.1 dB,
+then the ampliﬁer can be assumed to be unilateral with negligible error.
+University of California, Berkeley EECS 217 Lecture 18 – p. 12/20
+
+--- page 13 ---
+Gain Circles
+• We now can plot gain circles for the source and load. Let
+gS = GS
+GS,max
+gL = GL
+GL,max
+• By deﬁnition, 0 ≤ gS ≤ 1 and 0 ≤ gL ≤ 1. One can show that a ﬁxed value of gS
+represents a circle on the ΓS plane
+/AC
+/AC
+/AC
+/AC
+ΓS − S∗
+11gS
+|S11|2 (gS − 1) + 1
+/AC
+/AC
+/AC
+/AC
+=
+/AC
+/AC
+/AC
+/AC
+/AC
+√1 − gS (1 − |S11|2)
+|S11|2 (gS − 1) + 1
+/AC
+/AC
+/AC
+/AC
+/AC
+• More simply, |ΓS − CS | = RS. A similar equation can be derived for the load.
+Note that for gS = 1, RS = 0, and CS = S∗
+11 corresponding to the maximum gain.
+University of California, Berkeley EECS 217 Lecture 18 – p. 13/20
+
+--- page 14 ---
+Gain Circles (cont)
+0.1 0.1
+0.1
+0.2
+0.2
+0.2
+0.3
+0.3
+0.3
+0.4
+0.4
+0.4
+0.5 0.5
+0.5
+0.6 0.6
+0.6
+0.7 0.7
+0.7
+0.8 0.8
+0.80.9 0.9
+0.9
+1.0 1.01.0
+1.2 1.2
+1.2
+1.4 1.4
+1.4
+1.6 1.6
+1.6
+1.8 1.8
+1.8
+2.0 2.0
+2.0
+3.0
+3.0
+3.0
+4.0 4.0
+4.0
+5.0
+5.0
+5.0
+10
+10
+10
+20
+20
+20
+50 50
+50
+0.2
+0.20.2
+0.2
+0.4 0.40.4
+0.4
+0.6
+0.6
+0.6 0.6
+0.8
+0.8
+0.8
+0.8
+1.0
+1.01.0 1.0
+90 -90
+85 -85
+80 -80
+75 -75
+70 -70
+65 -65
+60 -60
+55 -55
+50 -50
+45
+-45
+40
+-40
+35
+-35
+30 -30
+25
+-25
+20
+-20
+15 -15
+10
+-10
+0.04
+0.04
+0.05
+0.05
+0.06
+0.0
+6
+0.07
+0.07
+0.08
+0.08
+0.09
+0.09
+0.1
+0.1
+0.11
+0.11
+0.12
+0.12
+0.13
+0.13
+0.14
+0.14
+0.15
+0.15
+0.160.16
+0.170.1
+7
+0.180.18
+0.1
+9
+0.1
+9
+0.2
+0.2
+0.21
+0.21
+0.22
+0.22 0.23
+0.23 0.24
+0.24
+0.25
+0.25
+0.26
+0.26
+0.27
+0.27
+0.28
+0.28
+0.29
+0.29
+0.3
+0.3
+0.3
+1
+0.31
+0.32
+0.32
+0.33
+0.3
+3
+0.34
+0.34
+0.35
+0.35
+0.36
+0.36
+0.37
+0.37
+0.38
+0.38
+0.39
+0.39
+0.4 0.4
+0.41 0.41
+0.42 0.42
+0.43 0.43
+0.4
+4
+0.44
+0.45 0.45
+0.46
+0.46
+0.47
+0.470.48
+0.480.49
+0.49
+0.0
+0.0
+ANGLE OF TRANSMISSION COEFFICIENT IN DEGREES
+ANGLE OF REFLECTION COEFFICIENT IN DEGREES
+—> WAVELENGTHS TOWARD GENERATOR —>
+<— WAVELENGTHS TOWARD LOAD <—
+INDUCTIVE REACTANCE COMPONENT (+jX/Zo), OR CAPACITIVE SUSCEPTANCE (+jB/Yo) CAPACITIVE REACTANCE COMPONENT (-jX/Zo), OR INDUCTIVE SUSCEPTANCE (-jB/Yo)
+RESISTANCE COMPONENT (R/Zo), OR CONDUCTANCE COMPONENT (G/Yo)
+̸ S∗
+11
+gS = −1d B
+gS = 0 dB
+gS = −2 dB
+gS = −3 dB
+• All gain circles lie on the line given by the angle of S∗
+ii. We can select any desired
+value of source/load reﬂection coefﬁcient to acheive the desired gain. To minimize
+the impedance mismatich, and thus maximize the bandwidth, we should select a
+point closes to the origin.
+University of California, Berkeley EECS 217 Lecture 18 – p. 14/20
+
+--- page 15 ---
+Extended Smith Chart
+• For |Γ| > 1, we can still employ the Smith Chart if we make the following mapping.
+The reﬂection coefﬁcient for a negative resistance is given by
+Γ(−R + jX ) = −R + jX − Z0
+−R + jX + Z0
+= (R + Z0) − jX
+(R − Z0) − jX
+1
+Γ∗ = (R − Z0) + jX
+(R + Z0) + jX
+• We see that Γ can be mapped to the unit circle by taking 1/Γ∗ and reading the
+resistance value (and noting that it’s actually negative).
+University of California, Berkeley EECS 217 Lecture 18 – p. 15/20
+
+--- page 16 ---
+Potentially Unstable Unilateral Ampliﬁer
+• For a unilateral two-port with |S11| > 1, we note that the input impedance has a
+negative real part. Thus we can still design a stable ampliﬁer as long as the source
+resistance is larger than ℜ(Zin)
+ℜ(ZS ) > |ℜ(Zin)|
+• The same is true of the load impedance if |S22| > 1. Thus the design procedure is
+identical to before as long as we avoid source or load reﬂection coefﬁcients with
+real part less than the critical value.
+University of California, Berkeley EECS 217 Lecture 18 – p. 16/20
+
+--- page 17 ---
+Pot. Unstable Unilateral Amp Example
+• Consider a transistor with the following S-Parameters
+S11 = 2.02∠ − 130.4◦
+S22 = 0.50∠ − 70◦
+S12 = 0
+S21 = 5.00∠60◦
+0.1 0.1
+0.1
+0.2
+0.2
+0.2
+0.3
+0.3
+0.3
+0.4 0.4
+0.4
+0.5 0.5
+0.5
+0.6 0.6
+0.6
+0.7 0.7
+0.7
+0.8 0.8
+0.80.9 0.9
+0.9
+1.0 1.01.0
+1.2 1.2
+1.2
+1.4 1.4
+1.4
+1.6 1.6
+1.6
+1.8 1.8
+1.8
+2.0 2.0
+2.0
+3.0
+3.0
+3.0
+4.0 4.0
+4.0
+5.0
+5.0
+5.0
+10 10
+10
+20
+20
+20
+50
+50
+50
+0.2
+0.20.2 0.2
+0.4
+0.40.4
+0.4
+0.6
+0.6
+0.6 0.6
+0.8
+0.8
+0.8
+0.8
+1.0 1.01.0 1.0
+90 -90
+85 -85
+80 -80
+75 -75
+70 -70
+65 -65
+60 -60
+55 -55
+50 -50
+45
+-45
+40
+-40
+35
+-35
+30
+-30
+25
+-25
+20
+-20
+15 -15
+10
+-10
+0.04
+0.04
+0.05
+0.05
+0.06
+0.0
+6
+0.07
+0.07
+0.08
+0.08
+0.09
+0.09
+0.1
+0.1
+0.11
+0.11
+0.12
+0.12
+0.13
+0.13
+0.14
+0.14
+0.15
+0.15
+0.160.16
+0.170.1
+7
+0.180.18
+0.1
+9
+0.1
+9
+0.2
+0.2
+0.21
+0.21
+0.22
+0.22 0.23
+0.23 0.24
+0.24
+0.25
+0.25
+0.26
+0.26
+0.27
+0.27
+0.28
+0.28
+0.29
+0.29
+0.3
+0.3
+0.3
+1
+0.31
+0.32
+0.32
+0.33
+0.3
+3
+0.34
+0.34
+0.35
+0.35
+0.36
+0.36
+0.37
+0.37
+0.38
+0.38
+0.39
+0.39
+0.4 0.4
+0.41 0.41
+0.42 0.42
+0.43 0.43
+0.44 0.44
+0.45 0.45
+0.46
+0.46
+0.47
+0.470.48
+0.480.49
+0.49
+0.0
+0.0
+ANGLE OF TRANSMISSION COEFFICIENT IN DEGREES
+ANGLE OF REFLECTION COEFFICIENT IN DEGREES
+—> WAVELENGTHS TOWARD GENERATOR —>
+<— WAVELENGTHS TOWARD LOAD <—
+INDUCTIVE REACTANCE COMPONENT (+jX/Zo), OR CAPACITIVE SUSCEPTANCE (+jB/Yo) CAPACITIVE REACTANCE COMPONENT (-jX/Zo), OR INDUCTIVE SUSCEPTANCE (-jB/Yo)
+RESISTANCE COMPONENT (R/Zo), OR CONDUCTANCE COMPONENT (G/Yo)
+CS
+RS
+stable region
+1
+S∗
+11
+GS =5 dB
+ΓS
+• Since |S11| > 1, the ampliﬁer
+is potentially unstable. We
+begin by plotting 1/S∗
+11 to ﬁnd
+the negative real input
+resistance.
+• Now any source inside this
+circle is stable, since
+ℜ(ZS ) > ℜ(Zin).
+• We also draw the source gain
+circle for GS = 5 dB.
+University of California, Berkeley EECS 217 Lecture 18 – p. 17/20
+
+--- page 18 ---
+Amp Example (cont)
+• The input impedance is read off the Smith Chart from 1/S∗
+11. Note the real part is
+interpreted as negative
+Zin = 50(−0.4 − 0.4j)
+• The GS = 5 dB gain circle is calculated as follows
+gS = 3.15(1 − |S11|2)
+RS =
+√1 − gS (1 − |S11|2)
+1 − |S11|2 (1 − gS )
+= 0.236
+CS = gSS∗
+11
+1 − |S11|2 (1 − gS )
+= −.3 + 0.35j
+• We can select any point on this circle and obtain a stable gain of 5 dB. In
+particular, we can pick a point near the origin (to maximize the BW) but with as
+large of a real impedance as possible:
+ZS = 50(0.75 + 0.4j)
+University of California, Berkeley EECS 217 Lecture 18 – p. 18/20
+
+--- page 19 ---
+Bilateral Amp Design
+• In the bilateral case, we will work with the power gain Gp. The transducer gain is
+not used since the source impedance is a function of the load impedaance. Gp, on
+the other hand, is only a function of the load.
+Gp = |S21|2 (1 − |ΓL|2)
+/AI
+1 −
+/AC
+/AC
+/AC
+S11−∆ΓL
+1−S22ΓL
+/AC
+/AC
+/AC
+2
+/AJ
+|1 − S22ΓL|2
+= |S21|2 gp
+• It can be shown that gp is a circle on the ΓL plane. The radius and center are
+given by
+RL =
+/D5
+1 − 2k|S12S21|gp − |S12S21|2g2p
+/AC
+/AC
+/AC
+−1 − |S22|2 gp + |∆|2 gp
+/AC
+/AC
+/AC
+2
+CL = gp(S∗
+22 − ∆∗S11)
+1 + gp(|S22|2 − |∆|2)
+University of California, Berkeley EECS 217 Lecture 18 – p. 19/20
+
+--- page 20 ---
+Bilateral Amp (cont)
+• We can also use this formula to ﬁnd the maximum gain. We know that this occurs
+when RL = 0, or
+1 − 2k|S12S21|gp,max + |S12S21|2g2
+p,max = 0
+gp,max = 1
+|S12S21|
+/AG
+K −
+/D4
+K2 − 1
+/AH
+Gp,max =
+/AC
+/AC
+/AC
+/AC
+S21
+S12
+/AC
+/AC
+/AC
+/AC
+/AG
+K −
+/D4
+K2 − 1
+/AH
+• The design procedure is as follows
+1. Specify gp
+2. Draw operation gain circle.
+3. Draw load stability circle. Select ΓL that is in the stable region and not too
+close to the stability circle.
+4. Draw source stability circle.
+5. To maximize gain, calculate Γin and check to see if ΓS = Γ ∗
+in is in the stable
+region. If not, iterate on ΓL or compromise.
+University of California, Berkeley EECS 217 Lecture 18 – p. 20/20

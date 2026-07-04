@@ -1849,6 +1849,10 @@ fn sparameter_network_metric_options() -> &'static [(&'static str, &'static str)
             "Maximum available gain minimum",
         ),
         ("maximum_stable_gain_db_min", "Maximum stable gain minimum"),
+        (
+            "maximum_unilateral_gain_db_min",
+            "Maximum unilateral gain minimum",
+        ),
         ("passivity_max_singular_value", "Passivity singular maximum"),
         ("reciprocity_error_linear", "Reciprocity error maximum"),
     ]
@@ -1859,6 +1863,7 @@ fn default_sparameter_network_assertion_name(metric: &str) -> &'static str {
         "stability_delta_magnitude_max" => "stable_delta",
         "maximum_available_gain_db_min" => "available_gain_floor",
         "maximum_stable_gain_db_min" => "stable_gain_floor",
+        "maximum_unilateral_gain_db_min" => "unilateral_gain_floor",
         "passivity_max_singular_value" => "passive_two_port",
         "reciprocity_error_linear" => "reciprocal_two_port",
         _ => "stable_rollet_k",
@@ -1868,7 +1873,10 @@ fn default_sparameter_network_assertion_name(metric: &str) -> &'static str {
 fn default_sparameter_network_relation(metric: &str) -> &'static str {
     if matches!(
         metric,
-        "rollet_k_min" | "maximum_available_gain_db_min" | "maximum_stable_gain_db_min"
+        "rollet_k_min"
+            | "maximum_available_gain_db_min"
+            | "maximum_stable_gain_db_min"
+            | "maximum_unilateral_gain_db_min"
     ) {
         "above"
     } else {
@@ -1879,7 +1887,9 @@ fn default_sparameter_network_relation(metric: &str) -> &'static str {
 fn default_sparameter_network_threshold(metric: &str) -> f64 {
     match metric {
         "reciprocity_error_linear" => 0.01,
-        "maximum_available_gain_db_min" | "maximum_stable_gain_db_min" => 0.0,
+        "maximum_available_gain_db_min"
+        | "maximum_stable_gain_db_min"
+        | "maximum_unilateral_gain_db_min" => 0.0,
         _ => 1.0,
     }
 }

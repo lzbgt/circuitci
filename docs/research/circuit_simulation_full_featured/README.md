@@ -659,16 +659,16 @@ The GUI should not become the solver.
   projected report rows in `s_parameter_network_summaries[]`, Markdown output,
   and GUI Scopes network-quality rows. Scopes also derives per-frequency
   reciprocity error, passivity singular-value, stability `|Delta|`, Rollet K,
-  MAG, and MSG traces directly from full `s_parameters.csv` artifacts when
+  MAG, MSG, and maximum unilateral gain traces directly from full `s_parameters.csv` artifacts when
   S11/S12/S21/S22 magnitude and phase columns are available. Rollet K, MAG,
-  and MSG traces are skipped when any sweep row lacks the required nonzero
+  MSG, and unilateral-gain traces are skipped when any sweep row lacks the required nonzero
   transmission or stability condition, matching the fail-closed assertion
   contract for unavailable metrics. GUI Scopes now also
   provides an RF Network Check editor that writes two-port
   `s_parameter_network_assertions[]` for reciprocity, passivity, Rollet K,
-  stability `|Delta|`, MAG, and MSG limits with Board IR validation before
+  stability `|Delta|`, MAG, MSG, and unilateral-gain limits with Board IR validation before
   accepting the YAML edit, and retained network assertion failures can be
-  loaded from the report panel back into that editor, including MAG/MSG gain
+  loaded from the report panel back into that editor, including MAG/MSG/unilateral gain
   floor failures.
 - 2026-07-04: Added RF amplifier gain sign-off to the two-port S-parameter
   network summary contract. `s_parameter_network_summary.csv` now retains
@@ -683,6 +683,21 @@ The GUI should not become the solver.
   `sources/libretexts_amplifier_stability.html`. Source/load-dependent
   transducer, available, and operating gain remain future work until Board IR
   carries source/load reflection-coefficient provenance.
+- 2026-07-04: Added maximum unilateral transducer gain (`GTU,max`) to the
+  two-port S-parameter network contract. `s_parameter_network_summary.csv`
+  retains `min_maximum_unilateral_gain_db` plus its worst frequency,
+  `analysis.s_parameter_network_assertions[]` accepts
+  `maximum_unilateral_gain_db_min`, GUI RF Network Check authoring and failure
+  hydration include the metric, and Scopes derives the corresponding
+  frequency trace from full `s_parameters.csv`. The formula is
+  `|S21|^2 / ((1 - |S11|^2) * (1 - |S22|^2))`, retained in dB only when both
+  reflection magnitudes are below unity and `|S21|` is positive finite. Source
+  snapshots are saved as
+  `sources/berkeley_ee217_lecture18_two_port_power_gain.pdf` and
+  `sources/berkeley_ee217_lecture18_two_port_power_gain.txt`; Mason invariant
+  gain remains out of scope for now because the current RF sign-off contract
+  needed the unilateral transducer gain floor, not a separate invariant-gain
+  definition.
 - AC/Bode assertions now include `group_delay_s_at_frequency`, deriving
   seconds from unwrapped `bode.csv` phase as `-dphi/domega`. GUI Scopes also
   derives group-delay traces from Bode and S-parameter phase columns so filter

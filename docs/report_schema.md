@@ -1471,7 +1471,10 @@ active-network stability sign-off. Rows also include nullable
 `min_maximum_available_gain_db`,
 `frequency_hz_at_min_maximum_available_gain`,
 `min_maximum_stable_gain_db`, and
-`frequency_hz_at_min_maximum_stable_gain` fields for MAG/MSG gain sign-off.
+`frequency_hz_at_min_maximum_stable_gain` fields for MAG/MSG gain sign-off,
+plus nullable `min_maximum_unilateral_gain_db` and
+`frequency_hz_at_min_maximum_unilateral_gain` fields for unilateral
+transducer-gain sign-off.
 Markdown reports include those rows in an "S-Parameter Network Summary"
 section, and the GUI report panel surfaces the same compact two-port quality
 rows.

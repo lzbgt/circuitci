@@ -163,6 +163,7 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(labels.contains(&"two-port Rollet K"));
     assert!(labels.contains(&"two-port maximum available gain dB"));
     assert!(labels.contains(&"two-port maximum stable gain dB"));
+    assert!(labels.contains(&"two-port maximum unilateral gain dB"));
     assert!(labels.contains(&"s21 group delay s"));
     let s11_return_loss = waveform
         .probes
@@ -286,6 +287,17 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!((maximum_stable_gain.values[0] - 10.0_f64 * 200.0_f64.log10()).abs() < 1.0e-12);
     assert!((maximum_stable_gain.values[1] - 10.0_f64 * 75.0_f64.log10()).abs() < 1.0e-12);
     assert_eq!(super::probe_unit(&maximum_stable_gain.label), "dB");
+    let maximum_unilateral_gain = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "two-port maximum unilateral gain dB")
+        .unwrap();
+    assert!(maximum_unilateral_gain.derived);
+    let expected_unilateral_0 = 10.0_f64 * (4.0_f64 / (0.75_f64 * 0.84_f64)).log10();
+    let expected_unilateral_1 = 10.0_f64 * (2.25_f64 / (0.96_f64 * 0.91_f64)).log10();
+    assert!((maximum_unilateral_gain.values[0] - expected_unilateral_0).abs() < 1.0e-12);
+    assert!((maximum_unilateral_gain.values[1] - expected_unilateral_1).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&maximum_unilateral_gain.label), "dB");
     let s21_group_delay = waveform
         .probes
         .iter()
@@ -318,6 +330,7 @@ fn waveform_csv_loader_skips_vswr_when_reflection_magnitude_reaches_unity() {
     assert!(!labels.contains(&"two-port Rollet K"));
     assert!(!labels.contains(&"two-port maximum available gain dB"));
     assert!(!labels.contains(&"two-port maximum stable gain dB"));
+    assert!(!labels.contains(&"two-port maximum unilateral gain dB"));
 }
 
 #[test]

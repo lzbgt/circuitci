@@ -680,6 +680,10 @@ fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
             metric: maximum_stable_gain_db_min
             relation: above
             threshold: -0.5
+          - name: unilateral_gain_floor
+            metric: maximum_unilateral_gain_db_min
+            relation: above
+            threshold: -5.0
 "#,
     );
 
@@ -733,6 +737,12 @@ fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
             > -5.0
     );
     assert!(summaries[0]["min_maximum_stable_gain_db"].as_f64().unwrap() > -0.5);
+    assert!(
+        summaries[0]["min_maximum_unilateral_gain_db"]
+            .as_f64()
+            .unwrap()
+            > -5.0
+    );
     let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
     assert!(markdown.contains("## S-Parameter Network Summary"));
     assert!(markdown.contains("max_reciprocity_error="));
@@ -741,6 +751,7 @@ fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
     assert!(markdown.contains("max_stability_delta_magnitude="));
     assert!(markdown.contains("min_maximum_available_gain_db="));
     assert!(markdown.contains("min_maximum_stable_gain_db="));
+    assert!(markdown.contains("min_maximum_unilateral_gain_db="));
     assert_report_schema_valid(&report);
 }
 
@@ -922,6 +933,100 @@ fn sparameter_network_assertion_fails_when_maximum_available_gain_unavailable() 
     );
     let summaries = report["s_parameter_network_summaries"].as_array().unwrap();
     assert!(summaries[0]["min_maximum_available_gain_db"].is_null());
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_network_assertion_fails_on_maximum_unilateral_gain_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 0.1 0.0 0.8 0.0 0.8001 0.0 0.1 0.0\\n1.0e9 0.05 0.0 0.7 0.0 0.70005 0.0 0.05 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_network_assertions:
+          - name: unilateral_gain_floor
+            metric: maximum_unilateral_gain_db_min
+            relation: above
+            threshold: -1.0
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "unilateral_gain_floor")
+        .expect("maximum unilateral gain assertion failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(
+        failure["measured"]["metric"],
+        "maximum_unilateral_gain_db_min"
+    );
+    assert_eq!(failure["measured"]["unit"], "dB");
+    assert!(failure["measured"]["value"].as_f64().unwrap() < -1.0);
+    assert_eq!(failure["limit"]["above_threshold"], -1.0);
+    let summaries = report["s_parameter_network_summaries"].as_array().unwrap();
+    assert!(
+        summaries[0]["min_maximum_unilateral_gain_db"]
+            .as_f64()
+            .unwrap()
+            < -1.0
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparameter_network_assertion_fails_when_maximum_unilateral_gain_unavailable() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '# Hz S RI R 50\\n1.0e6 1.0 0.0 0.8 0.0 0.8001 0.0 0.1 0.0\\n1.0e9 1.0 0.0 0.7 0.0 0.70005 0.0 0.05 0.0\\n' > s_parameters_raw.s2p\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_sparameter_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "port1",
+        r#"        s_parameter_network_assertions:
+          - name: unilateral_gain_floor
+            metric: maximum_unilateral_gain_db_min
+            relation: above
+            threshold: 0.0
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"]["assertion"] == "unilateral_gain_floor")
+        .expect("maximum unilateral gain unavailable failure");
+    assert_eq!(failure["id"], "SPICE_S_PARAMETER_ANALYSIS");
+    assert_eq!(
+        failure["measured"]["metric"],
+        "maximum_unilateral_gain_db_min"
+    );
+    assert_eq!(
+        failure["limit"]["required_metric"],
+        "maximum_unilateral_gain_db_min"
+    );
+    let summaries = report["s_parameter_network_summaries"].as_array().unwrap();
+    assert!(summaries[0]["min_maximum_unilateral_gain_db"].is_null());
     assert_report_schema_valid(&report);
 }
 

@@ -103,6 +103,7 @@ pub enum AnalogSParameterNetworkMetric {
     StabilityDeltaMagnitudeMax,
     MaximumAvailableGainDbMin,
     MaximumStableGainDbMin,
+    MaximumUnilateralGainDbMin,
 }
 
 #[derive(Debug, Clone, Deserialize)]

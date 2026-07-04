@@ -14,6 +14,7 @@ use analog_summaries::{
     collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
     collect_s_parameter_network_summaries, collect_s_parameter_summaries,
     collect_sensitivity_summaries, collect_transfer_function_summaries,
+    render_s_parameter_network_summary_markdown,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -638,26 +639,7 @@ pub fn markdown_report(report: &ValidationReport) -> String {
         text.push_str("None.\n\n");
     } else {
         for row in &report.s_parameter_network_summaries {
-            text.push_str(&format!(
-                "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz min_rollet_k={} at {} Hz max_stability_delta_magnitude={} at {} Hz min_maximum_available_gain_db={} at {} Hz min_maximum_stable_gain_db={} at {} Hz\n",
-                row.port_count,
-                row.row_count,
-                row.min_frequency_hz,
-                row.max_frequency_hz,
-                row.max_reciprocity_error_linear,
-                row.frequency_hz_at_max_reciprocity_error,
-                row.max_passivity_singular_value,
-                row.frequency_hz_at_max_passivity,
-                format_optional_value(row.min_rollet_k),
-                format_optional_value(row.frequency_hz_at_min_rollet_k),
-                format_optional_value(row.max_stability_delta_magnitude),
-                format_optional_value(row.frequency_hz_at_max_stability_delta_magnitude),
-                format_optional_value(row.min_maximum_available_gain_db),
-                format_optional_value(row.frequency_hz_at_min_maximum_available_gain),
-                format_optional_value(row.min_maximum_stable_gain_db),
-                format_optional_value(row.frequency_hz_at_min_maximum_stable_gain)
-            ));
-            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+            text.push_str(&render_s_parameter_network_summary_markdown(row));
         }
         text.push('\n');
     }
@@ -985,12 +967,6 @@ fn format_optional_range(min: Option<f64>, max: Option<f64>) -> String {
         (Some(min), Some(max)) => format!("{min:.6e}..{max:.6e}"),
         _ => "n/a".to_string(),
     }
-}
-
-fn format_optional_value(value: Option<f64>) -> String {
-    value
-        .map(|value| format!("{value:.6e}"))
-        .unwrap_or_else(|| "n/a".to_string())
 }
 
 fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenance> {

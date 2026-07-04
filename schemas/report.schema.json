@@ -339,7 +339,9 @@
         "min_maximum_available_gain_db",
         "frequency_hz_at_min_maximum_available_gain",
         "min_maximum_stable_gain_db",
-        "frequency_hz_at_min_maximum_stable_gain"
+        "frequency_hz_at_min_maximum_stable_gain",
+        "min_maximum_unilateral_gain_db",
+        "frequency_hz_at_min_maximum_unilateral_gain"
       ],
       "properties": {
         "artifact": { "type": "string", "minLength": 1 },
@@ -358,7 +360,9 @@
         "min_maximum_available_gain_db": { "type": ["number", "null"] },
         "frequency_hz_at_min_maximum_available_gain": { "type": ["number", "null"] },
         "min_maximum_stable_gain_db": { "type": ["number", "null"] },
-        "frequency_hz_at_min_maximum_stable_gain": { "type": ["number", "null"] }
+        "frequency_hz_at_min_maximum_stable_gain": { "type": ["number", "null"] },
+        "min_maximum_unilateral_gain_db": { "type": ["number", "null"] },
+        "frequency_hz_at_min_maximum_unilateral_gain": { "type": ["number", "null"] }
       },
       "additionalProperties": false
     },

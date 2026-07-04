@@ -1587,6 +1587,8 @@ fn append_derived_s_parameter_network_probes(
     let mut maximum_available_gain_available = true;
     let mut maximum_stable_gain_values = Vec::with_capacity(sample_count);
     let mut maximum_stable_gain_available = true;
+    let mut maximum_unilateral_gain_values = Vec::with_capacity(sample_count);
+    let mut maximum_unilateral_gain_available = true;
     for index in 0..sample_count {
         reciprocity_values.push(s21[index].subtract(s12[index]).magnitude());
         passivity_values.push(two_port_max_singular_value(
@@ -1629,6 +1631,14 @@ fn append_derived_s_parameter_network_probes(
             } else {
                 maximum_stable_gain_available = false;
                 maximum_stable_gain_values.clear();
+            }
+        }
+        if maximum_unilateral_gain_available {
+            if let Some(gain_db) = maximum_unilateral_gain_db(s11[index], s21[index], s22[index]) {
+                maximum_unilateral_gain_values.push(gain_db);
+            } else {
+                maximum_unilateral_gain_available = false;
+                maximum_unilateral_gain_values.clear();
             }
         }
     }
@@ -1677,6 +1687,15 @@ fn append_derived_s_parameter_network_probes(
             values: maximum_stable_gain_values,
             derived: true,
             expression: Some("10*log10(|S21|/|S12|)".to_string()),
+            promoted_quantity: None,
+        });
+    }
+    if maximum_unilateral_gain_available && maximum_unilateral_gain_values.len() == sample_count {
+        probes.push(WaveformProbe {
+            label: "two-port maximum unilateral gain dB".to_string(),
+            values: maximum_unilateral_gain_values,
+            derived: true,
+            expression: Some("10*log10(|S21|^2/((1-|S11|^2)*(1-|S22|^2)))".to_string()),
             promoted_quantity: None,
         });
     }
@@ -1852,6 +1871,23 @@ fn maximum_stable_gain_linear(
     }
     let gain = forward / reverse;
     (gain.is_finite() && gain > 0.0).then_some(gain)
+}
+
+fn maximum_unilateral_gain_db(
+    s11: SParameterComplexValue,
+    s21: SParameterComplexValue,
+    s22: SParameterComplexValue,
+) -> Option<f64> {
+    let denominator = (1.0 - s11.magnitude_squared()) * (1.0 - s22.magnitude_squared());
+    let forward_gain = s21.magnitude_squared();
+    if !denominator.is_finite()
+        || denominator <= f64::EPSILON
+        || !forward_gain.is_finite()
+        || forward_gain <= f64::EPSILON
+    {
+        return None;
+    }
+    finite_positive_db(forward_gain / denominator)
 }
 
 fn finite_positive_db(value: f64) -> Option<f64> {

@@ -168,7 +168,8 @@ Current analog support:
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix), plus active-network stability margins (`rollet_k_min`
   and `stability_delta_magnitude_max`) and gain ceilings/floors
-  (`maximum_available_gain_db_min` and `maximum_stable_gain_db_min`), from
+  (`maximum_available_gain_db_min`, `maximum_stable_gain_db_min`, and
+  `maximum_unilateral_gain_db_min`), from
   full `s_parameters.csv` data. Maximum available gain is retained only for
   unconditionally stable rows (`K > 1`, `|Delta| < 1`); source/load-dependent
   transducer, available, and operating gain remain future metrics until Board
@@ -178,14 +179,14 @@ Current analog support:
   includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
   the GUI artifact panel shows compact RF term and network sign-off rows,
   Scopes includes an RF Network Check editor for authoring two-port
-  reciprocity, passivity, Rollet K, `|Delta|`, MAG, and MSG sign-off checks without
-  hand-editing YAML, retained network assertion failures including MAG/MSG
+  reciprocity, passivity, Rollet K, `|Delta|`, MAG, MSG, and unilateral-gain sign-off checks without
+  hand-editing YAML, retained network assertion failures including MAG/MSG/unilateral-gain
   limits can be loaded back into that editor from the report artifact panel,
   and Scopes derives
   return-loss, insertion-loss, VSWR, mismatch-loss,
   group-delay, reflection-impedance,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
-  Rollet K, MAG, and MSG traces from full `s_parameters.csv` artifacts.
+  Rollet K, MAG, MSG, and unilateral-gain traces from full `s_parameters.csv` artifacts.
   `backend: auto` does not select Xyce for this path until real solver
   conformance coverage is enabled.
 - `analog_transfer_function` scenarios with

@@ -703,4 +703,36 @@ mod tests {
         assert_eq!(rows[0].relation.as_deref(), Some("above"));
         assert_eq!(rows[0].threshold, Some(6.0));
     }
+
+    #[test]
+    fn sparameter_failure_rows_parse_unilateral_gain_network_limit() {
+        let mut finding = Finding::critical(
+            "SPICE_S_PARAMETER_ANALYSIS",
+            "two_port_sparameter",
+            "S-parameter network assertion unilateral_gain_floor failed",
+        );
+        finding
+            .measured
+            .insert("assertion".to_string(), json!("unilateral_gain_floor"));
+        finding.measured.insert(
+            "metric".to_string(),
+            json!("maximum_unilateral_gain_db_min"),
+        );
+        finding.measured.insert(
+            "s_parameter_network_summary".to_string(),
+            json!("out/s_parameter_network_summary.csv"),
+        );
+        finding
+            .limit
+            .insert("above_threshold".to_string(), json!(3.0));
+
+        let rows = sparameter_failure_rows(&[finding]);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, SParameterFailureKind::Network);
+        assert_eq!(rows[0].assertion, "unilateral_gain_floor");
+        assert_eq!(rows[0].metric, "maximum_unilateral_gain_db_min");
+        assert_eq!(rows[0].relation.as_deref(), Some("above"));
+        assert_eq!(rows[0].threshold, Some(3.0));
+    }
 }
