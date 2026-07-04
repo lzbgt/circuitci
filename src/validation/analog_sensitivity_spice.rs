@@ -15,7 +15,10 @@ use super::analog_runner::{
 use super::analog_sensitivity_assertions::{
     evaluate_sensitivity_assertions, validate_sensitivity_assertion_contract,
 };
-use super::analog_sensitivity_runner::{NgspiceSensitivityRunOptions, run_ngspice_sensitivity};
+use super::analog_sensitivity_runner::{
+    NgspiceSensitivityRunOptions, XyceSensitivityRunOptions, run_ngspice_sensitivity,
+    run_xyce_sensitivity,
+};
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
@@ -284,13 +287,13 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
         return;
     };
 
-    if backend != "ngspice" {
+    if backend != "ngspice" && !is_xyce_backend(backend) {
         let mut finding = unsupported_backend_plan_finding(
             scenario,
             UnsupportedBackendPlan {
                 check_id: SPICE_SENSITIVITY_ANALYSIS,
                 selected_backend: backend,
-                implemented_backend: "ngspice",
+                implemented_backend: "ngspice_or_xyce",
                 analysis_kind: "sensitivity",
                 required_normalized_outputs: &["sensitivity_summary"],
             },
@@ -336,20 +339,37 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
             run_plan.progress_label(),
         );
         let parameter_overrides = run_plan.parameter_overrides_for_solver();
-        let run_result = run_ngspice_sensitivity(
-            bound,
-            scenario,
-            backend,
-            &source_netlist,
-            NgspiceSensitivityRunOptions {
-                output,
-                run_subdir: run_plan.run_subdir.as_deref(),
-                parameter_overrides: &parameter_overrides,
-                model_section_overrides: &run_plan.model_section_overrides,
-                on_progress: &mut on_progress,
-                should_cancel: &should_cancel,
-            },
-        );
+        let run_result = if is_xyce_backend(backend) {
+            run_xyce_sensitivity(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                XyceSensitivityRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        } else {
+            run_ngspice_sensitivity(
+                bound,
+                scenario,
+                backend,
+                &source_netlist,
+                NgspiceSensitivityRunOptions {
+                    output,
+                    run_subdir: run_plan.run_subdir.as_deref(),
+                    parameter_overrides: &parameter_overrides,
+                    model_section_overrides: &run_plan.model_section_overrides,
+                    on_progress: &mut on_progress,
+                    should_cancel: &should_cancel,
+                },
+            )
+        };
         match run_result {
             Ok(run) => {
                 let finding_start = findings.len();
@@ -375,13 +395,19 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
                 finding
                     .measured
                     .insert("selected_backend".to_string(), json!(backend));
-                finding.limit.insert(
-                    "required_evidence".to_string(),
-                    json!("ngspice_sensitivity_summary_csv"),
-                );
+                let required_evidence = if is_xyce_backend(backend) {
+                    "xyce_sensitivity_summary_csv"
+                } else {
+                    "ngspice_sensitivity_summary_csv"
+                };
+                finding
+                    .limit
+                    .insert("required_evidence".to_string(), json!(required_evidence));
                 tag_corner_finding(&mut finding, &run_plan);
                 finding.suggested_fixes.push(
-                    "Inspect the generated ngspice .SENS wrapper deck and solver log artifacts."
+                    format!(
+                        "Inspect the generated {backend} .SENS wrapper deck and solver log artifacts."
+                    )
                         .to_string(),
                 );
                 findings.push(finding);
@@ -440,4 +466,8 @@ fn validate_output_expression(
 
 fn nonempty(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn is_xyce_backend(backend: &str) -> bool {
+    backend.eq_ignore_ascii_case("xyce")
 }

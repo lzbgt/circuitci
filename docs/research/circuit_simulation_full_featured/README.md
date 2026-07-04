@@ -568,17 +568,22 @@ The GUI should not become the solver.
   root-level sign-off assertions over real rad/s, imaginary rad/s, or derived
   frequency, report projection into `pole_zero_summaries[]`, Markdown output,
   and GUI report-panel surfacing. Next add non-ngspice planning/adapters.
-- The first `.SENS` path is an external-ngspice adapter with a Board IR/schema
-  contract for DC or AC output sensitivity, optional filters, normalized
-  `sensitivity_summary`, solver manifests, and opt-in real-ngspice conformance;
-  `analysis.sensitivity_assertions[]` now signs off real, imaginary, or
-  magnitude sensitivity limits by parameter and optional AC frequency, with
-  fail-closed behavior for missing or ambiguous rows. Validation reports now
-  project retained sensitivity rows into `sensitivity_summaries[]`, Markdown
-  reports include a "Sensitivity Summary" section, and GUI Scopes shows compact
-  sensitivity rows plus loads AC `sensitivity_summary.csv` as
-  parameter-grouped frequency-axis sensitivity traces. Next add non-ngspice
-  planning/adapters.
+- The `.SENS` path has external-ngspice and explicit-Xyce adapters with a Board
+  IR/schema contract for DC or AC output sensitivity, optional filters,
+  normalized `sensitivity_summary`, solver manifests, opt-in real-ngspice
+  conformance, and fake-solver Xyce CSV normalization coverage. Xyce 7.8
+  documents `.SENS` plus `.PRINT SENS FORMAT=CSV` output for DC and AC
+  sensitivity; CircuitCI maps generated resistor/capacitor/inductor filter
+  names to Xyce `R`/`C`/`L` `param=` tokens while retaining declared filter
+  names in `sensitivity_summary.csv`. `analysis.sensitivity_assertions[]` now
+  signs off real, imaginary, or magnitude sensitivity limits by parameter and
+  optional AC frequency, with fail-closed behavior for missing or ambiguous
+  rows. Validation reports now project retained sensitivity rows into
+  `sensitivity_summaries[]`, Markdown reports include a "Sensitivity Summary"
+  section, and GUI Scopes shows compact sensitivity rows plus loads AC
+  `sensitivity_summary.csv` as parameter-grouped frequency-axis sensitivity
+  traces. Next add opt-in real-Xyce `.SENS` conformance when a Xyce executable
+  is available, and continue non-ngspice `.TF`/`.PZ` planning/adapters.
 - The `.FOUR` path has external-ngspice and explicit-Xyce adapters with a
   Board IR/schema contract for transient-backed harmonic extraction,
   fundamental frequency/window validation, bound output provenance, normalized

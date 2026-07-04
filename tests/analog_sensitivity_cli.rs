@@ -543,37 +543,74 @@ fn ac_sensitivity_assertion_requires_frequency_when_parameter_is_ambiguous() {
 
 #[cfg(unix)]
 #[test]
-fn sensitivity_xyce_backend_fails_closed_with_planning_evidence() {
+fn sensitivity_xyce_backend_normalizes_summary_and_manifest() {
     let fake_path = tempfile::tempdir().unwrap();
-    fake_executable(fake_path.path(), "Xyce");
+    fake_executable_with_body(
+        fake_path.path(),
+        "Xyce",
+        "#!/bin/sh\nprintf '%s\\n' 'Index,{V(out)},d_{V(out)}/d_R1:R_dir,d_{V(out)}/d_R2:R_dir' '0,5.000000e-01,-2.500000e-04,2.500000e-04' > sensitivity_raw.csv\nexit 0\n",
+    );
     let project_dir = tempfile::tempdir().unwrap();
-    let project_path = write_sensitivity_project(project_dir.path(), "xyce", "V(out)", "dc");
+    let project_path = write_sensitivity_project_with_analysis_extra(
+        project_dir.path(),
+        "xyce",
+        "V(out)",
+        "dc",
+        r#"
+        sensitivity_assertions:
+          - name: r1_sensitivity_below_limit
+            parameter: R1
+            metric: sensitivity_magnitude
+            relation: below
+            threshold: 1.0e-3"#,
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
 
-    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
 
-    assert_eq!(report["result"], "fail");
-    assert_eq!(report["failures"][0]["id"], "SPICE_SENSITIVITY_ANALYSIS");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let wrapper = fs::read_to_string(artifact_path(&report, "circuitci_xyce_sens.cir")).unwrap();
+    assert!(wrapper.contains(".SENS objfunc={V(out)} param=R1:R,R2:R"));
+    assert!(wrapper.contains(".PRINT SENS FORMAT=CSV sensitivity_raw.csv"));
+    let summary = fs::read_to_string(artifact_path(&report, "sensitivity_summary.csv")).unwrap();
+    assert!(summary.contains("V(out),dc,R1,,-2.500000000000e-4,0.000000000000e0"));
+    assert!(summary.contains("V(out),dc,R2,,2.500000000000e-4,0.000000000000e0"));
+    assert!(artifact_path(&report, "sensitivity_raw.csv").ends_with("sensitivity_raw.csv"));
+    assert_eq!(report["sensitivity_summaries"].as_array().unwrap().len(), 2);
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(artifact_path(&report, "solver_manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["backend"]["selected"], "Xyce");
+    assert_eq!(manifest["analysis"]["kind"], "sensitivity");
     assert_eq!(
-        report["failures"][0]["measured"]["adapter_status"],
-        "planned_not_implemented"
+        manifest["outputs"]["raw"][0]["kind"],
+        "xyce_sensitivity_csv"
     );
     assert_eq!(
-        report["failures"][0]["measured"]["required_normalized_outputs"][0],
+        manifest["outputs"]["normalized"][0]["kind"],
         "sensitivity_summary"
-    );
-    assert_eq!(
-        report["failures"][0]["measured"]["output_expression"],
-        "V(out)"
-    );
-    assert_eq!(report["failures"][0]["measured"]["mode"], "dc");
-    assert_eq!(report["failures"][0]["measured"]["filters"][0], "R1");
-    assert_eq!(
-        report["failures"][0]["limit"]["required_evidence"],
-        "sensitivity_summary_csv_or_json"
-    );
-    assert_eq!(
-        report["failures"][0]["limit"]["implemented_backend"],
-        "ngspice"
     );
     assert_report_schema_valid(&report);
 }

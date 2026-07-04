@@ -259,13 +259,19 @@ Current analog support:
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.
 - `analog_sensitivity` scenarios with `SPICE_SENSITIVITY_ANALYSIS` for
-  ngspice-style `.SENS` sensitivity contracts. The Board IR/schema can declare
+  ngspice/Xyce `.SENS` sensitivity contracts. The Board IR/schema can declare
   `analysis.type: sens`, `sensitivity_output_expression`, `sensitivity_mode`
   (`dc` or `ac`), optional `sensitivity_filters[]`, and AC frequency bounds.
   External `ngspice` runs write `sensitivity_raw.txt`,
   `sensitivity_summary.csv`, and `solver_manifest.json`; the normalized summary
   records DC scalar sensitivities or AC per-frequency complex sensitivity
-  values plus magnitude. `analysis.sensitivity_assertions[]` can sign off real,
+  values plus magnitude. Explicit `backend: xyce` runs write
+  `circuitci_xyce_sens.cir`, `xyce_sens.log`, `sensitivity_raw.csv`,
+  `sensitivity_summary.csv`, and `solver_manifest.json`; Xyce requires
+  `sensitivity_filters[]` because Xyce `.SENS` needs an explicit `param=`
+  list, and generated resistor/capacitor/inductor names are mapped to Xyce
+  `R`/`C`/`L` parameter tokens in the wrapper while summary rows retain the
+  declared filter names. `analysis.sensitivity_assertions[]` can sign off real,
   imaginary, or magnitude rows by parameter and optional AC frequency, with
   missing or ambiguous rows failing closed. Validation reports project retained
   rows into `sensitivity_summaries[]`, Markdown includes a "Sensitivity Summary"
@@ -274,8 +280,9 @@ Current analog support:
   for magnitude, real, and imaginary sensitivity. Opt-in real-ngspice
   conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
-  it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
-  fail-closed with planning evidence for this path.
+  it skips unless `ngspice` is on `PATH`. Xyce `.SENS` currently has
+  fake-solver CSV adapter coverage; embedded ngspice remains fail-closed with
+  planning evidence for this path.
 - `analog_distortion` scenarios with `SPICE_DISTORTION_ANALYSIS` for
   ngspice-backed small-signal distortion analysis. The Board IR/schema can declare
   `analysis.type: disto`, `distortion_mode: harmonic|intermodulation`,
