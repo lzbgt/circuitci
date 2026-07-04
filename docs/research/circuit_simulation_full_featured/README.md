@@ -560,8 +560,10 @@ The GUI should not become the solver.
   equivalent output.
 - The first `.PZ` path is an external-ngspice adapter with a Board IR/schema
   contract for output/reference nodes, input source, mode, and normalized
-  `pole_zero_summary` plus opt-in real-ngspice conformance; next add
-  non-ngspice planning/adapters.
+  `pole_zero_summary` plus opt-in real-ngspice conformance. It now also has
+  root-level sign-off assertions over real rad/s, imaginary rad/s, or derived
+  frequency, report projection into `pole_zero_summaries[]`, Markdown output,
+  and GUI report-panel surfacing. Next add non-ngspice planning/adapters.
 - The first `.SENS` path is an external-ngspice adapter with a Board IR/schema
   contract for DC or AC output sensitivity, optional filters, normalized
   `sensitivity_summary`, solver manifests, and opt-in real-ngspice conformance;

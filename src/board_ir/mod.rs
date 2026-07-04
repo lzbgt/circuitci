@@ -1294,6 +1294,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub pole_zero_mode: Option<String>,
     #[serde(default)]
+    pub pole_zero_assertions: Vec<AnalogPoleZeroAssertion>,
+    #[serde(default)]
     pub sensitivity_output_expression: Option<String>,
     #[serde(default)]
     pub sensitivity_mode: Option<String>,
@@ -1472,6 +1474,36 @@ pub struct AnalogFourierAssertion {
     pub unit: Option<String>,
     #[serde(default)]
     pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogPoleZeroAssertion {
+    pub name: String,
+    pub root_kind: AnalogPoleZeroRootKind,
+    #[serde(default)]
+    pub root_index: Option<u32>,
+    pub metric: AnalogPoleZeroMetric,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogPoleZeroRootKind {
+    Pole,
+    Zero,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogPoleZeroMetric {
+    RealRadPerS,
+    ImaginaryRadPerS,
+    FrequencyHz,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]

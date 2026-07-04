@@ -210,6 +210,26 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Pole-zero summary");
+                    if report.pole_zero_summaries.is_empty() {
+                        ui.label("No pole-zero summary rows were emitted.");
+                    } else {
+                        for row in &report.pole_zero_summaries {
+                            ui.monospace(format!(
+                                "{} {} real={:.6e}rad/s imag={:.6e}rad/s f={:.6e}Hz out={} ref={} src={} artifact={}",
+                                row.root_kind,
+                                row.root_index,
+                                row.real_rad_per_s,
+                                row.imaginary_rad_per_s,
+                                row.frequency_hz,
+                                row.output_node,
+                                row.reference_node,
+                                row.input_source,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Fourier summary");
                     if report.fourier_summaries.is_empty() {
                         ui.label("No Fourier summary rows were emitted.");

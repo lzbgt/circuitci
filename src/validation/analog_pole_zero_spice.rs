@@ -8,6 +8,9 @@ use std::path::Path;
 
 use super::SPICE_POLE_ZERO_ANALYSIS;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
+use super::analog_pole_zero_assertions::{
+    evaluate_pole_zero_assertions, validate_pole_zero_assertion_contract,
+};
 use super::analog_pole_zero_runner::{NgspicePoleZeroRunOptions, run_ngspice_pole_zero};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
@@ -16,7 +19,9 @@ use super::analog_runner::{
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
 };
-use super::analog_sweep_reports::{tag_corner_finding, tag_corner_findings};
+use super::analog_sweep_reports::{
+    push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
+};
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 
@@ -192,6 +197,10 @@ pub(super) fn validate_spice_pole_zero_with_progress<F, C>(
         );
         return;
     }
+    if let Err(message) = validate_pole_zero_assertion_contract(analog) {
+        validation_input_missing(findings, scenario, message);
+        return;
+    }
     if !bound_nodes.contains(output_node) {
         validation_input_missing(
             findings,
@@ -309,6 +318,7 @@ pub(super) fn validate_spice_pole_zero_with_progress<F, C>(
         return;
     }
 
+    let mut sweep_measurements = Vec::new();
     for run_plan in run_plans {
         if should_cancel() {
             push_canceled_finding(findings, scenario);
@@ -340,6 +350,13 @@ pub(super) fn validate_spice_pole_zero_with_progress<F, C>(
                     push_artifact(artifacts, artifact);
                 }
                 push_artifact(artifacts, &run.summary);
+                let assertion_measurements =
+                    evaluate_pole_zero_assertions(scenario, &run.summary, findings);
+                record_sweep_measurements(
+                    &mut sweep_measurements,
+                    &run_plan,
+                    assertion_measurements,
+                );
                 tag_corner_findings(findings, finding_start, &run_plan, false);
             }
             Err(error) => {
@@ -364,6 +381,7 @@ pub(super) fn validate_spice_pole_zero_with_progress<F, C>(
             }
         }
     }
+    push_sweep_margin_summaries(findings, scenario, &sweep_measurements);
 }
 
 fn nonempty(value: Option<&str>) -> Option<&str> {

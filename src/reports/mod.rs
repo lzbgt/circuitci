@@ -5,6 +5,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
+mod analog_summaries;
+pub use analog_summaries::{DistortionSummary, FourierSummary, PoleZeroSummary};
+use analog_summaries::{
+    collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
+};
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
@@ -61,6 +67,7 @@ pub struct ValidationReport {
     pub artifacts: Vec<String>,
     pub distortion_summaries: Vec<DistortionSummary>,
     pub fourier_summaries: Vec<FourierSummary>,
+    pub pole_zero_summaries: Vec<PoleZeroSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -100,29 +107,6 @@ pub struct ModelFileProvenance {
     pub build_env_enabled: Option<bool>,
     pub rebuild_mode: String,
     pub produced_by_circuitci: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct DistortionSummary {
-    pub artifact: String,
-    pub component: String,
-    pub output_expression: String,
-    pub row_count: usize,
-    pub max_magnitude: f64,
-    pub frequency_hz_at_max: f64,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct FourierSummary {
-    pub artifact: String,
-    pub output_expression: String,
-    pub harmonic: u32,
-    pub frequency_hz: f64,
-    pub magnitude: f64,
-    pub phase_deg: f64,
-    pub normalized_magnitude: f64,
-    pub normalized_phase_deg: f64,
-    pub thd_percent: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -413,6 +397,7 @@ impl ValidationReport {
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
         let distortion_summaries = collect_distortion_summaries(&artifacts);
         let fourier_summaries = collect_fourier_summaries(&artifacts);
+        let pole_zero_summaries = collect_pole_zero_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -438,6 +423,7 @@ impl ValidationReport {
             artifacts,
             distortion_summaries,
             fourier_summaries,
+            pole_zero_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -529,6 +515,27 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 row.normalized_magnitude,
                 row.normalized_phase_deg,
                 thd
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Pole-Zero Summary\n\n");
+    if report.pole_zero_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.pole_zero_summaries {
+            text.push_str(&format!(
+                "- `{}` {}: real={:.6e} rad/s imaginary={:.6e} rad/s frequency={:.6e} Hz output=`{}` reference=`{}` input=`{}` mode=`{}`\n",
+                row.root_kind,
+                row.root_index,
+                row.real_rad_per_s,
+                row.imaginary_rad_per_s,
+                row.frequency_hz,
+                row.output_node,
+                row.reference_node,
+                row.input_source,
+                row.mode
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
@@ -851,204 +858,6 @@ fn push_findings(text: &mut String, findings: &[Finding]) {
         }
     }
     text.push('\n');
-}
-
-fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
-    let mut records = Vec::new();
-    for artifact in artifacts {
-        if !artifact.ends_with("distortion_summary.csv") {
-            continue;
-        }
-        let Ok(text) = fs::read_to_string(artifact) else {
-            continue;
-        };
-        records.extend(parse_distortion_summary_csv(artifact, &text));
-    }
-    records.sort_by(|left, right| {
-        left.artifact
-            .cmp(&right.artifact)
-            .then_with(|| left.component.cmp(&right.component))
-            .then_with(|| left.output_expression.cmp(&right.output_expression))
-    });
-    records
-}
-
-fn parse_distortion_summary_csv(artifact: &str, text: &str) -> Vec<DistortionSummary> {
-    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
-    let Some(header) = lines.next() else {
-        return Vec::new();
-    };
-    let Some(header) = split_csv_fields(header) else {
-        return Vec::new();
-    };
-    if header
-        != [
-            "component",
-            "output_expression",
-            "row_count",
-            "max_magnitude",
-            "frequency_hz_at_max",
-        ]
-    {
-        return Vec::new();
-    }
-    let mut rows = Vec::new();
-    for line in lines {
-        let Some(fields) = split_csv_fields(line) else {
-            continue;
-        };
-        if fields.len() != 5 {
-            continue;
-        }
-        let Some(row_count) = fields[2].parse::<usize>().ok() else {
-            continue;
-        };
-        let Some(max_magnitude) = parse_finite_f64(&fields[3]) else {
-            continue;
-        };
-        let Some(frequency_hz_at_max) = parse_finite_f64(&fields[4]) else {
-            continue;
-        };
-        rows.push(DistortionSummary {
-            artifact: artifact.to_string(),
-            component: fields[0].clone(),
-            output_expression: fields[1].clone(),
-            row_count,
-            max_magnitude,
-            frequency_hz_at_max,
-        });
-    }
-    rows
-}
-
-fn collect_fourier_summaries(artifacts: &[String]) -> Vec<FourierSummary> {
-    let mut records = Vec::new();
-    for artifact in artifacts {
-        if !artifact.ends_with("fourier_summary.csv") {
-            continue;
-        }
-        let Ok(text) = fs::read_to_string(artifact) else {
-            continue;
-        };
-        records.extend(parse_fourier_summary_csv(artifact, &text));
-    }
-    records.sort_by(|left, right| {
-        left.artifact
-            .cmp(&right.artifact)
-            .then_with(|| left.output_expression.cmp(&right.output_expression))
-            .then_with(|| left.harmonic.cmp(&right.harmonic))
-    });
-    records
-}
-
-fn parse_fourier_summary_csv(artifact: &str, text: &str) -> Vec<FourierSummary> {
-    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
-    let Some(header) = lines.next() else {
-        return Vec::new();
-    };
-    let Some(header) = split_csv_fields(header) else {
-        return Vec::new();
-    };
-    if header
-        != [
-            "output_expression",
-            "fundamental_frequency_hz",
-            "reported_harmonics",
-            "harmonic",
-            "frequency_hz",
-            "magnitude",
-            "phase_deg",
-            "normalized_magnitude",
-            "normalized_phase_deg",
-            "thd_percent",
-            "grid_size",
-            "interpolation_degree",
-            "periods",
-        ]
-    {
-        return Vec::new();
-    }
-    let mut rows = Vec::new();
-    for line in lines {
-        let Some(fields) = split_csv_fields(line) else {
-            continue;
-        };
-        if fields.len() != 13 {
-            continue;
-        }
-        let Some(harmonic) = fields[3].parse::<u32>().ok() else {
-            continue;
-        };
-        let Some(frequency_hz) = parse_finite_f64(&fields[4]) else {
-            continue;
-        };
-        let Some(magnitude) = parse_finite_f64(&fields[5]) else {
-            continue;
-        };
-        let Some(phase_deg) = parse_finite_f64(&fields[6]) else {
-            continue;
-        };
-        let Some(normalized_magnitude) = parse_finite_f64(&fields[7]) else {
-            continue;
-        };
-        let Some(normalized_phase_deg) = parse_finite_f64(&fields[8]) else {
-            continue;
-        };
-        let thd_percent = match fields[9].is_empty() {
-            true => None,
-            false => {
-                let Some(value) = parse_finite_f64(&fields[9]) else {
-                    continue;
-                };
-                Some(value)
-            }
-        };
-        rows.push(FourierSummary {
-            artifact: artifact.to_string(),
-            output_expression: fields[0].clone(),
-            harmonic,
-            frequency_hz,
-            magnitude,
-            phase_deg,
-            normalized_magnitude,
-            normalized_phase_deg,
-            thd_percent,
-        });
-    }
-    rows
-}
-
-fn split_csv_fields(line: &str) -> Option<Vec<String>> {
-    let mut fields = Vec::new();
-    let mut field = String::new();
-    let mut chars = line.chars().peekable();
-    let mut in_quotes = false;
-    while let Some(ch) = chars.next() {
-        match ch {
-            '"' if in_quotes && chars.peek() == Some(&'"') => {
-                field.push('"');
-                chars.next();
-            }
-            '"' => in_quotes = !in_quotes,
-            ',' if !in_quotes => {
-                fields.push(field.trim().to_string());
-                field.clear();
-            }
-            _ => field.push(ch),
-        }
-    }
-    if in_quotes {
-        return None;
-    }
-    fields.push(field.trim().to_string());
-    Some(fields)
-}
-
-fn parse_finite_f64(value: &str) -> Option<f64> {
-    value
-        .parse::<f64>()
-        .ok()
-        .filter(|number| number.is_finite())
 }
 
 fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenance> {
@@ -1886,5 +1695,37 @@ mod tests {
         assert!(markdown.contains("## Fourier Summary"));
         assert!(markdown.contains("`V(out,0)` h2"));
         assert!(markdown.contains("normalized_magnitude=2.305810e-2"));
+    }
+
+    #[test]
+    fn validation_report_projects_pole_zero_summary_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let summary = dir.path().join("pole_zero_summary.csv");
+        fs::write(
+            &summary,
+            "output_node,reference_node,input_source,mode,root_kind,root_index,real_rad_per_s,imaginary_rad_per_s,frequency_hz\nout,0,V1,poles_and_zeros,pole,1,-1.000000000000e3,0.000000000000e0,1.591549430919e2\nout,0,V1,poles_and_zeros,zero,1,-2.000000000000e3,5.000000000000e2,3.281149852721e2\n",
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![summary.to_string_lossy().into_owned()],
+            Vec::new(),
+            "circuitci validate project.yaml".to_string(),
+        );
+
+        assert_eq!(report.pole_zero_summaries.len(), 2);
+        assert_eq!(report.pole_zero_summaries[0].root_kind, "pole");
+        assert_eq!(report.pole_zero_summaries[0].root_index, 1);
+        assert_eq!(report.pole_zero_summaries[0].real_rad_per_s, -1.0e3);
+        assert_eq!(report.pole_zero_summaries[1].root_kind, "zero");
+        assert_eq!(report.pole_zero_summaries[1].imaginary_rad_per_s, 5.0e2);
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## Pole-Zero Summary"));
+        assert!(markdown.contains("`pole` 1"));
+        assert!(markdown.contains("frequency=1.591549e2 Hz"));
     }
 }

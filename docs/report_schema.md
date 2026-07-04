@@ -1434,6 +1434,11 @@ harmonic index, frequency, magnitude, phase, normalized magnitude/phase, and
 optional solver-reported THD percent. Markdown reports include those rows in a
 "Fourier Summary" section, and the GUI report panel surfaces the same compact
 rows.
+Retained `pole_zero_summary.csv` artifacts project into top-level
+`pole_zero_summaries[]` rows with the source artifact path, output/reference
+nodes, input source, mode, root kind/index, complex rad/s coordinates, and
+derived frequency. Markdown reports include those rows in a "Pole-Zero
+Summary" section, and the GUI report panel surfaces the same compact root rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

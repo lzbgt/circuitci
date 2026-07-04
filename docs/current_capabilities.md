@@ -174,8 +174,12 @@ Current analog support:
   of `poles`, `zeros`, or `poles_and_zeros`. External `ngspice` runs write
   `pole_zero_raw.txt`, `pole_zero_summary.csv`, and `solver_manifest.json`;
   the normalized summary records each pole/zero as complex rad/s coordinates
-  plus derived frequency. Opt-in real-ngspice conformance coverage is
-  available through
+  plus derived frequency. Pole-zero assertions can sign off root real part,
+  imaginary part, or derived frequency by root kind and optional root index;
+  missing or ambiguous roots fail closed. Validation reports project retained
+  root rows into `pole_zero_summaries[]`, Markdown reports include a
+  "Pole-Zero Summary" section, and the GUI artifact panel shows compact root
+  rows. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.

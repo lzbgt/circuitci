@@ -2930,6 +2930,28 @@
                   "pole_zero_reference_node": { "type": "string", "minLength": 1 },
                   "pole_zero_input_source": { "type": "string", "minLength": 1 },
                   "pole_zero_mode": { "enum": ["poles", "zeros", "poles_and_zeros"] },
+                  "pole_zero_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "root_kind", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "root_kind": { "enum": ["pole", "zero"] },
+                        "root_index": { "type": "integer", "minimum": 1 },
+                        "metric": { "enum": ["real_rad_per_s", "imaginary_rad_per_s", "frequency_hz"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "sensitivity_output_expression": { "type": "string", "minLength": 1 },
                   "sensitivity_mode": { "enum": ["dc", "ac"] },
                   "sensitivity_filters": {

@@ -23,6 +23,7 @@ mod analog_noise_spice;
 mod analog_operating_limits;
 mod analog_periodic_ac_spice;
 mod analog_phase_noise_spice;
+mod analog_pole_zero_assertions;
 mod analog_pole_zero_runner;
 mod analog_pole_zero_spice;
 mod analog_pss_spice;

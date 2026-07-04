@@ -447,7 +447,16 @@ For a scenario with check `SPICE_POLE_ZERO_ANALYSIS`:
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`.
-6. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+6. Optional `analysis.pole_zero_assertions[]` entries sign off normalized
+   `pole_zero_summary.csv` rows. Each assertion names `root_kind`, optional
+   `root_index`, `metric` (`real_rad_per_s`, `imaginary_rad_per_s`, or
+   `frequency_hz`), `relation`, and `threshold`. Missing or ambiguous roots
+   fail closed with the retained summary artifact path.
+7. Validation reports project retained `pole_zero_summary.csv` rows into
+   top-level `pole_zero_summaries[]`, Markdown reports include a "Pole-Zero
+   Summary" section, and GUI Scopes surfaces compact root rows in the report
+   artifact panel.
+8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `pole_zero_summary` contract.
 
 For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:

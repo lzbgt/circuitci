@@ -37,6 +37,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/fourier_summary" }
     },
+    "pole_zero_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pole_zero_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -164,6 +168,34 @@
         "normalized_magnitude": { "type": "number" },
         "normalized_phase_deg": { "type": "number" },
         "thd_percent": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "pole_zero_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "output_node",
+        "reference_node",
+        "input_source",
+        "mode",
+        "root_kind",
+        "root_index",
+        "real_rad_per_s",
+        "imaginary_rad_per_s",
+        "frequency_hz"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "output_node": { "type": "string", "minLength": 1 },
+        "reference_node": { "type": "string", "minLength": 1 },
+        "input_source": { "type": "string", "minLength": 1 },
+        "mode": { "enum": ["poles", "zeros", "poles_and_zeros"] },
+        "root_kind": { "enum": ["pole", "zero"] },
+        "root_index": { "type": "integer", "minimum": 1 },
+        "real_rad_per_s": { "type": "number" },
+        "imaginary_rad_per_s": { "type": "number" },
+        "frequency_hz": { "type": "number" }
       },
       "additionalProperties": false
     },

@@ -31,6 +31,16 @@ fn write_pole_zero_project(
     output_node: &str,
     input_source: &str,
 ) -> std::path::PathBuf {
+    write_pole_zero_project_with_analysis_extra(dir, backend, output_node, input_source, "")
+}
+
+fn write_pole_zero_project_with_analysis_extra(
+    dir: &std::path::Path,
+    backend: &str,
+    output_node: &str,
+    input_source: &str,
+    analysis_extra: &str,
+) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let project = dir.join("project.yaml");
     fs::write(
@@ -85,6 +95,7 @@ scenarios:
         pole_zero_reference_node: "0"
         pole_zero_input_source: {input_source}
         pole_zero_mode: poles_and_zeros
+{analysis_extra}
       stimuli:
         - {{ name: pz_probe, description: Planned RC pole-zero extraction. }}
       probes:
@@ -192,6 +203,151 @@ fn pole_zero_backend_normalizes_summary_and_manifest() {
         manifest["outputs"]["normalized"][0]["kind"],
         "pole_zero_summary"
     );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn pole_zero_assertions_pass_on_stable_pole_and_zero_frequency() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '    pole(1)             : voltage, complex, 1 long [default scale]\\nall = -1.00000e+03,0.000000e+00\\n    zero(1)             : voltage, complex, 1 long\\nall = -2.00000e+03,5.000000e+02\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_pole_zero_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "out",
+        "V1",
+        "        pole_zero_assertions:\n        - { name: stable_pole, root_kind: pole, root_index: 1, metric: real_rad_per_s, relation: below, threshold: -5.0e2 }\n        - { name: zero_frequency_visible, root_kind: zero, root_index: 1, metric: frequency_hz, relation: above, threshold: 1.0e2 }\n",
+    );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&project_path, &validator);
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_eq!(report["pole_zero_summaries"].as_array().unwrap().len(), 2);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn pole_zero_assertion_fails_on_root_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '    pole(1)             : voltage, complex, 1 long [default scale]\\nall = -1.00000e+03,0.000000e+00\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_pole_zero_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "out",
+        "V1",
+        "        pole_zero_assertions:\n        - { name: pole_too_slow, root_kind: pole, root_index: 1, metric: real_rad_per_s, relation: below, threshold: -1.5e3 }\n",
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_POLE_ZERO_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "pole_too_slow"
+    );
+    assert_eq!(
+        report["failures"][0]["measured"]["metric"],
+        "real_rad_per_s"
+    );
+    assert_eq!(report["failures"][0]["limit"]["below_threshold"], -1.5e3);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn pole_zero_assertion_fails_closed_on_missing_root() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '    pole(1)             : voltage, complex, 1 long [default scale]\\nall = -1.00000e+03,0.000000e+00\\n'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_pole_zero_project_with_analysis_extra(
+        project_dir.path(),
+        "ngspice",
+        "out",
+        "V1",
+        "        pole_zero_assertions:\n        - { name: second_pole_required, root_kind: pole, root_index: 2, metric: frequency_hz, relation: below, threshold: 1.0e4 }\n",
+    );
+    fs::create_dir_all("out").unwrap();
+    let out_dir = tempfile::tempdir_in("out").unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_POLE_ZERO_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "second_pole_required"
+    );
+    assert_eq!(report["failures"][0]["limit"]["required_root_index"], 2);
     assert_report_schema_valid(&report);
 }
 
