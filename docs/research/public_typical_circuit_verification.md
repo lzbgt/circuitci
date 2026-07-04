@@ -26,6 +26,7 @@ audit the modeled facts without relying on chat history.
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
 | STC15W408AS 1T 8051-family MCU power use | <https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf> and <https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf> | `docs/research/datasheets/stc/stc15w408as_features.pdf` and `docs/research/datasheets/stc/stc15f2k60s2_en.pdf` |
 | TI NE555 astable timer power use | <https://www.ti.com/lit/ds/symlink/ne555.pdf> | `docs/research/datasheets/ti/ne555.pdf` |
+| Microchip MCP1316T-29LE/OT reset-supervisor use | <https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP131X-2X-Voltage-Supervisor-DS20001985.pdf> | `docs/research/datasheets/microchip/mcp131x_2x_voltage_supervisor.pdf` |
 | Abracon ABM3 8 MHz crystal support network | <https://abracon.com/Resonators/ABM3.pdf> | `docs/research/datasheets/abracon/abm3.pdf` |
 | Winbond W25Q64JV SPI/QSPI NOR flash power use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
 | Bosch BME280 environmental sensor I2C power use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
@@ -33,16 +34,16 @@ audit the modeled facts without relying on chat history.
 
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
 were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
-STM8S003F3P6, STC15W408AS, and NE555 URLs were checked on 2026-07-05. The
-Abracon ABM3, Winbond W25Q64JV, Bosch BME280, and Nexperia PESD5V0S1UL PDFs
-were downloaded from their official vendor URLs on 2026-07-05. The local PDF
-copies and SHA-256 hashes are also listed in the part-specific research notes
-under `docs/research/datasheets/`.
+STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
+The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PESD5V0S1UL, and
+Microchip MCP131X/2X PDFs were downloaded from their official vendor URLs on
+2026-07-05. The local PDF copies and SHA-256 hashes are also listed in the
+part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines twenty-three public-reference
-passing cases and twenty-nine paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines twenty-four public-reference
+passing cases and thirty paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -83,6 +84,8 @@ passing cases and twenty-nine paired injected-error cases:
 | `stc_stc15w408as_vcc_overvoltage_detected` | `examples/bad_stc_stc15w408as_vcc_overvoltage/project.yaml` | fail | Detects `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `ti_ne555_astable_power_passes` | `examples/good_ti_ne555_astable_power/project.yaml` | pass | NE555 in a source-backed astable-style board connection on a 5 V `VCC` rail with VCC and CONT bypass capacitors. |
 | `ti_ne555_vcc_overvoltage_detected` | `examples/bad_ti_ne555_vcc_overvoltage/project.yaml` | fail | Detects NE555 `VCC` connected to an 18 V rail above the source-backed 16 V maximum for NA555/NE555/SA555. |
+| `microchip_mcp1316_reset_supervisor_passes` | `examples/good_microchip_mcp1316_reset_supervisor/project.yaml` | pass | MCP1316T-29LE/OT monitors a 3.3 V rail and drives an MCU reset net with source-backed 2.90 V threshold and 280 ms reset-timeout metadata. |
+| `microchip_mcp1316_nominal_rail_detected` | `examples/bad_microchip_mcp1316_nominal_rail/project.yaml` | fail | Detects a 2.9 V monitored rail below the MCP1316 worst-case 2.973 V threshold maximum. |
 | `abracon_abm3_8mhz_clock_passes` | `examples/good_clock_source_crystal/project.yaml` | pass | ABM3 8 MHz crystal between MCU oscillator pins with 32 pF leg capacitors and modeled 2 pF stray capacitance, producing the source-backed 18 pF load target. |
 | `abracon_abm3_8mhz_load_capacitance_detected` | `examples/bad_clock_source_load_capacitance/project.yaml` | fail | Detects 8 pF leg capacitors that produce only 6 pF effective load against the ABM3 18 pF target. |
 | `winbond_w25q64jv_spi_flash_power_passes` | `examples/good_winbond_w25q64jv_spi_flash_power/project.yaml` | pass | W25Q64JV SPI/QSPI NOR flash on a 3.3 V VCC rail with every 8-pin SPI/QSPI board-boundary pin bound. |
@@ -110,7 +113,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=52, passed=52, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=54, passed=54, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -141,15 +144,16 @@ Observed detection details:
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTM8.VDD` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `stc_stc15w408as_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTC.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `ti_ne555_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_18v` supplies `U555.VCC` at `18.000000 V`, outside the model maximum operating voltage `16.000000 V`. |
+| `microchip_mcp1316_nominal_rail_detected` | `POWER_TREE_VALID` | Reset supervisor `USUP` monitored rail `rail_2v9` nominal voltage `2.900000 V` is not above worst-case release threshold `2.973000 V`. |
 | `abracon_abm3_8mhz_load_capacitance_detected` | `CLOCK_SOURCE_VALID` | Clock source `U1` uses crystal `Y1` with effective load capacitance `6.000000e-12 F`, outside the modeled crystal load range. |
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UFLASH.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UBME.VDDIO` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All twenty-three public-reference pass cases produced zero critical findings.
-All twenty-nine paired injected-error cases failed with the expected critical
-finding ID, and all twenty-nine repair-pair checks passed.
+All twenty-four public-reference pass cases produced zero critical findings.
+All thirty paired injected-error cases failed with the expected critical
+finding ID, and all thirty repair-pair checks passed.
 
 ## Interpretation Limits
 

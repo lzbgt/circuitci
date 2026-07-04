@@ -1,0 +1,151 @@
+component_id: vendor.microchip.mcp1316t_29le_ot
+version: 0.1.0
+category: reset_supervisor
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.00001
+  VSS:
+    kind: electrical_ground
+    required: true
+  RST_N:
+    kind: digital_electrical_output
+    required: true
+  MR_N:
+    kind: digital_electrical_input
+    required: false
+  WDI:
+    kind: digital_electrical_input
+    required: false
+reset_supervisor:
+  monitored_pin: VDD
+  reset_output_pin: RST_N
+  active: low
+  threshold_min_V: 2.828
+  threshold_max_V: 2.973
+  reset_release_delay_us: 280000
+simulation:
+  spice:
+    model_name: CIRCUITCI_MCP1316T_29LE_OT_RESET_SUPERVISOR
+    model_type: subckt
+    model_path: models/spice/generic/analog_behavioral.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VSS, RST_N, MR_N, WDI]
+    valid_operating_notes:
+      - Uses MCP1316T-29LE/OT datasheet pinout, active-low push-pull reset topology, and 2.90 V trip-point option.
+      - Suitable for static rail-threshold screening and generated reset-observation plumbing.
+      - Omits reset waveform shape, hysteresis dynamics, VDD glitch immunity, watchdog behavior, manual-reset debounce, low-VDD output-valid external circuitry, and propagation-delay sign-off.
+datasheet:
+  manufacturer: Microchip Technology
+  part_number: MCP1316T-29LE/OT
+  package: 5-lead SOT-23
+  polarity: active_low_push_pull_reset_supervisor
+  pinout:
+    VDD: Supply voltage
+    VSS: Ground
+    RST_N: Active-low push-pull reset output
+    MR_N: Active-low manual reset input
+    WDI: Watchdog timer input
+  electrical_characteristics:
+    operating_voltage:
+      conditions: Recommended operating range.
+      min: 1.0
+      max: 5.5
+      unit: V
+    operating_current_watchdog_active:
+      conditions: Watchdog timer active.
+      typ: 5
+      max: 10
+      unit: uA
+    operating_current_watchdog_inactive:
+      conditions: Watchdog timer inactive.
+      typ: 1
+      max: 2
+      unit: uA
+    trip_point_29:
+      conditions: MCP13XX-29, TA = -40 C to +125 C.
+      min: 2.828
+      typ: 2.90
+      max: 2.973
+      unit: V
+    reset_delay_standard:
+      conditions: Standard reset active time, tRST.
+      min: 140
+      typ: 200
+      max: 280
+      unit: ms
+    manual_reset_input_low_threshold:
+      conditions: MR_N pin.
+      max: 0.3
+      unit: VDD_ratio
+    manual_reset_input_high_threshold:
+      conditions: MR_N pin.
+      min: 0.7
+      unit: VDD_ratio
+    watchdog_input_low_threshold:
+      conditions: WDI pin.
+      max: 0.3
+      unit: VDD_ratio
+    watchdog_input_high_threshold:
+      conditions: WDI pin.
+      min: 0.7
+      unit: VDD_ratio
+  absolute_maximum_ratings:
+    VDD:
+      value: 7.0
+      unit: V
+      conditions: Supply voltage VDD to VSS.
+    input_current_vdd:
+      value: 0.01
+      unit: A
+    output_current_rst:
+      value: 0.01
+      unit: A
+    storage_temperature_min:
+      value: -65
+      unit: C
+    storage_temperature_max:
+      value: 150
+      unit: C
+    ambient_temperature_min:
+      value: -40
+      unit: C
+      conditions: Ambient temperature with power applied.
+    ambient_temperature_max:
+      value: 125
+      unit: C
+      conditions: Ambient temperature with power applied.
+    junction_temperature:
+      value: 150
+      unit: C
+    power_dissipation_sot23a:
+      value: 0.24
+      unit: W
+      conditions: 5-pin SOT-23A, TA <= 70 C.
+    ESD_all_pins:
+      value: 4
+      unit: kV
+  documents:
+    - title: MCP131X/2X Voltage Supervisor
+      path: docs/research/datasheets/microchip/mcp131x_2x_voltage_supervisor.pdf
+      source_url: https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP131X-2X-Voltage-Supervisor-DS20001985.pdf
+      sha256: 234c38794c2dc0e5bfbedd521d1705af020129a21a3c3574392bdc86e780c21e
+      retrieved: "2026-07-05"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - reset_supervisor_threshold_screening
+    - reset_release_timing_screening
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - reset_output_waveform_shape
+    - vdd_glitch_immunity_signoff
+    - watchdog_behavior_signoff
+    - manual_reset_debounce_signoff
+    - propagation_delay_signoff

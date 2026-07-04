@@ -676,6 +676,36 @@ fn ti_tlv803ea29_threshold_above_nominal_rail_fails() {
 }
 
 #[test]
+fn microchip_mcp1316_reset_supervisor_threshold_passes() {
+    let report = run_validation("examples/good_microchip_mcp1316_reset_supervisor/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn microchip_mcp1316_threshold_above_nominal_rail_fails() {
+    let report = run_validation("examples/bad_microchip_mcp1316_nominal_rail/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("reset_supervisor_threshold_max_V")
+                .is_some()
+        })
+        .expect("expected MCP1316 threshold finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "USUP");
+    assert_eq!(failure["net"], "rail_2v9");
+    assert_eq!(failure["measured"]["monitored_nominal_voltage_V"], 2.9);
+    assert_eq!(failure["limit"]["reset_supervisor_threshold_max_V"], 2.973);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn reset_supervisor_threshold_below_load_minimum_fails() {
     let report = run_validation("examples/bad_reset_supervisor_threshold_too_low/project.yaml");
     assert_eq!(report["result"], "fail");

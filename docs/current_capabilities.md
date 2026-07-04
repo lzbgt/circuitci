@@ -183,6 +183,16 @@ over temperature, USB inrush, placement, return-path quality, and final
 hardware robustness remain outside the model. See
 `docs/nexperia_pesd5v0s1ul_model.md`.
 
+`vendor.microchip.mcp1316t_29le_ot` provides a source-backed static
+reset-supervisor pack for Microchip's 2.90 V MCP1316 active-low push-pull
+supervisor. It records the 1.0 V to 5.5 V VDD range, 2.828 V to 2.973 V
+threshold span, 280 ms conservative reset-release timeout, MR_N/WDI board
+boundary pins, and 10 uA active current class. It supports `POWER_TREE_VALID`
+reset-threshold screening and reset-release timing suggestions; reset waveform
+shape, VDD glitch immunity, watchdog behavior, manual-reset debounce,
+low-VDD output-valid external circuitry, propagation delay, and final reset
+robustness remain outside the model. See `docs/microchip_mcp1316_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully
@@ -978,6 +988,9 @@ Current analog support:
   external pull-up. Datasheet delay and threshold metadata remain available for
   static reset timing suggestions, while the transient face stays explicitly
   reduced-fidelity.
+- The Microchip MCP1316T-29LE/OT reset-supervisor pack now adds a
+  source-backed active-low push-pull 2.90 V threshold option with static
+  power-tree threshold screening and conservative reset-timeout metadata.
 - The TI TPS22918 load-switch pack now has a datasheet-backed generated SPICE
   observation face for active-high enabled load-path behavior. Datasheet
   voltage/current/ON-threshold metadata remains available for static

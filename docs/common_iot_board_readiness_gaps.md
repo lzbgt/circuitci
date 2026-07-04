@@ -42,7 +42,9 @@ PROG-current and battery-node checks. TI TPS2115A and TI TPS2121 now cover
 datasheet-backed power-mux source-selection, reverse-blocking, rail-range, and
 output-current packs, and TPS2121 also has a reduced generated-SPICE observation
 face for selected IN1/IN2 to OUT/load-current checks. TI TLV803EA29 covers a first datasheet-backed reset supervisor
-threshold/delay pack, and Diodes AP2112K-3.3 covers a common fixed 3.3 V LDO.
+threshold/delay pack, and Microchip MCP1316T-29LE/OT now covers a common
+active-low push-pull 2.90 V reset-supervisor threshold and reset-timeout pack.
+Diodes AP2112K-3.3 covers a common fixed 3.3 V LDO.
 Advanced Monolithic Systems AMS1117-3.3 now covers a common 1117-style 3.3 V
 LDO with its larger dropout and output-capacitance requirements. TI TPD2EUSB30
 now covers a first datasheet-backed clamp-only USB ESD array for static

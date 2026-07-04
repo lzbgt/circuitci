@@ -797,6 +797,11 @@ pin metadata remain source-backed, while its generated-SPICE face points at a
 reduced nominal-threshold open-drain behavioral subcircuit. That model can
 exercise reset pull-up wiring and assertions, but not reset-delay, hysteresis,
 glitch-immunity, propagation-delay, or leakage sign-off.
+`vendor.microchip.mcp1316t_29le_ot` uses the same static reset-supervisor
+contract for an active-low push-pull 2.90 V supervisor with optional MR_N and
+WDI board-boundary pins. Its `reset_release_delay_us` uses the conservative
+standard timeout maximum; watchdog behavior and manual-reset debounce remain
+outside the static contract.
 `vendor.ti.tps22918` follows the same pattern for active-high load-switch
 observation: its datasheet voltage, ON threshold, current, pinout, and static
 power-switch metadata remain source-backed, while its generated-SPICE face uses
