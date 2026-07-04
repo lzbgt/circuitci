@@ -28,6 +28,7 @@ mod analog_sweeps;
 mod analog_sweeps_tests;
 #[cfg(test)]
 mod analog_tests;
+mod analog_transfer_function_assertions;
 mod file_dialogs;
 #[cfg(test)]
 mod gui_core_tests;
@@ -55,6 +56,7 @@ mod simulation_sparameter_assertions;
 mod simulation_sparameter_network_assertions;
 mod simulation_sparameter_noise_assertions;
 mod simulation_sweeps;
+mod simulation_transfer_function_assertions;
 mod sketch;
 mod sketch_actions;
 mod sketch_alignment;
@@ -429,6 +431,11 @@ pub struct CircuitCiApp {
     analog_sensitivity_assertion_metric: String,
     analog_sensitivity_assertion_relation: String,
     analog_sensitivity_assertion_threshold: f64,
+    analog_transfer_function_assertion_scenario: String,
+    analog_transfer_function_assertion_name: String,
+    analog_transfer_function_assertion_metric: String,
+    analog_transfer_function_assertion_relation: String,
+    analog_transfer_function_assertion_threshold: f64,
     analog_fourier_assertion_scenario: String,
     analog_fourier_assertion_name: String,
     analog_fourier_assertion_harmonic: u32,
@@ -731,6 +738,11 @@ impl Default for CircuitCiApp {
             analog_sensitivity_assertion_metric: "sensitivity_magnitude".to_string(),
             analog_sensitivity_assertion_relation: "below".to_string(),
             analog_sensitivity_assertion_threshold: 0.001,
+            analog_transfer_function_assertion_scenario: String::new(),
+            analog_transfer_function_assertion_name: "transfer_gain_floor".to_string(),
+            analog_transfer_function_assertion_metric: "transfer_function_gain".to_string(),
+            analog_transfer_function_assertion_relation: "above".to_string(),
+            analog_transfer_function_assertion_threshold: 0.5,
             analog_fourier_assertion_scenario: String::new(),
             analog_fourier_assertion_name: "h1_magnitude_floor".to_string(),
             analog_fourier_assertion_harmonic: 1,

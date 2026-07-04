@@ -249,7 +249,10 @@ Current analog support:
   limits, with malformed summaries and failed limits failing closed.
   Validation reports project retained rows into `transfer_function_summaries[]`,
   Markdown includes a "Transfer Function Summary" section, and the GUI artifact
-  panel shows compact `.TF` scalar rows. Opt-in real-ngspice conformance
+  panel shows compact `.TF` scalar rows. The GUI Transfer Function Check editor
+  authors `analysis.transfer_function_assertions[]` entries and failure actions
+  hydrate metric, relation, and threshold from retained findings.
+  Opt-in real-ngspice conformance
   coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_transfer_function_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce remains fail-closed with

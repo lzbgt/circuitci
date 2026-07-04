@@ -429,6 +429,10 @@ editor.
 The Sensitivity Check editor writes `analysis.sensitivity_assertions[]` for
 real, imaginary, or magnitude limits by parameter and optional AC frequency, and
 sensitivity report failure actions load the failed check back into that editor.
+The Transfer Function Check editor writes
+`analysis.transfer_function_assertions[]` for transfer gain, input resistance,
+or output resistance limits, and `.TF` report failure actions load the failed
+check back into that editor.
 The HB Check editor writes `analysis.hb_assertions[]` for magnitude, phase,
 real, or imaginary limits at a selected harmonic, and HB report failure actions
 load the failed check back into that editor.
