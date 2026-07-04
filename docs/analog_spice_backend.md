@@ -64,7 +64,9 @@ contract for `.TF` gain and resistance exports. An `analog_pole_zero` scenario
 owns a small-signal output/reference/input-source contract for `.PZ` pole and
 zero extraction. An `analog_sensitivity` scenario owns a DC or AC
 output-variable sensitivity contract with optional ngspice parameter filters
-for `.SENS` exports. An `analog_fourier` scenario owns a transient-backed
+for `.SENS` exports. An `analog_distortion` scenario owns a small-signal
+distortion contract for ngspice `.DISTO`-style harmonic and intermodulation
+products. An `analog_fourier` scenario owns a transient-backed
 `.FOUR` harmonic extraction contract for a bound output expression and
 fundamental frequency. An `analog_harmonic_balance` scenario owns a periodic
 steady-state harmonic-balance contract for drive sources, a fundamental
@@ -178,7 +180,13 @@ Required fields:
   `pole_zero_input_source`, and `pole_zero_mode`. Sensitivity contracts use
   `type: sens`, `sensitivity_output_expression`, `sensitivity_mode`, optional
   `sensitivity_filters`, and AC frequency fields when `sensitivity_mode: ac`.
-  Fourier contracts use `type: fourier`, transient `stop_time_us` and
+  Distortion contracts use `type: disto`,
+  `distortion_mode: harmonic|intermodulation`, frequency sweep fields
+  `distortion_start_frequency_hz`, `distortion_stop_frequency_hz`, and
+  `distortion_points_per_decade`, a bound `distortion_output_expression`,
+  `distortion_f1_sources[]`, optional `distortion_f2_sources[]`, and
+  `distortion_f2_over_f1` for intermodulation. Fourier contracts use `type:
+  fourier`, transient `stop_time_us` and
   `max_step_us`, `fourier_fundamental_frequency_hz`,
   `fourier_output_expression`, and optional `fourier_harmonics`. PSS contracts
   use `type: pss`, `pss_frequency_guess_hz`,
@@ -464,6 +472,36 @@ For a scenario with check `SPICE_SENSITIVITY_ANALYSIS`:
 7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `sensitivity_summary`
    contract.
+
+For a scenario with check `SPICE_DISTORTION_ANALYSIS`:
+
+1. Resolve and bind the scenario netlist and model files the same way as other
+   analog validations.
+2. Require `analysis.type: disto`, positive finite
+   `distortion_start_frequency_hz`, `distortion_stop_frequency_hz` greater
+   than the start frequency, `distortion_points_per_decade` in `1..=1000`, a
+   bound `distortion_output_expression`, and at least one
+   `distortion_f1_sources[]` entry.
+3. `distortion_mode` defaults to `harmonic` and may be `harmonic` or
+   `intermodulation`. Harmonic mode must omit `distortion_f2_over_f1`;
+   intermodulation mode requires finite `distortion_f2_over_f1` in `0..1` and
+   at least one `distortion_f2_sources[]` entry. For generated Board IR decks,
+   all declared distortion source names must resolve to generated components.
+4. `distortion_output_expression` must be a bound `V(node)`,
+   `V(node,reference)`, or `I(source)` expression.
+5. The current implementation intentionally fails closed after contract
+   validation. It emits backend-planning evidence with planned normalized
+   outputs `distortion_spectrum`, `distortion_summary`, and
+   `distortion_convergence`.
+6. The backend-planning finding records the current source-backed boundary:
+   ngspice documents `.DISTO` plus `DISTOF1`/`DISTOF2` source keywords and is
+   the future adapter target; Xyce does not document a matching distortion
+   command in the saved 7.8 reference text; QUCS-S and SPICE OPUS references
+   are not current CircuitCI adapter contracts.
+7. CircuitCI must not present small-signal distortion sign-off as passing until
+   a trusted backend emits normalized distortion spectrum, summary,
+   convergence, raw solver output, and solver-manifest artifacts with
+   real-solver conformance coverage.
 
 For a scenario with check `SPICE_FOURIER_ANALYSIS`:
 

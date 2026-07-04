@@ -1443,6 +1443,7 @@ pub(super) enum AnalogRuntimeFeature {
     TransferFunction,
     PoleZero,
     Sensitivity,
+    Distortion,
     Fourier,
     HarmonicBalance,
     PeriodicSteadyState,

@@ -191,6 +191,19 @@ Current analog support:
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_sensitivity_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce and embedded ngspice remain
   fail-closed with planning evidence for this path.
+- `analog_distortion` scenarios with `SPICE_DISTORTION_ANALYSIS` for
+  small-signal distortion evidence planning. The Board IR/schema can declare
+  `analysis.type: disto`, `distortion_mode: harmonic|intermodulation`,
+  frequency sweep bounds, points per decade, a bound
+  `distortion_output_expression`, `distortion_f1_sources[]`, optional
+  `distortion_f2_sources[]`, and `distortion_f2_over_f1` for intermodulation.
+  This path intentionally fails closed today: it records future
+  `distortion_spectrum`, `distortion_summary`, and `distortion_convergence`
+  artifact requirements. The saved ngspice manual documents `.DISTO` and
+  `DISTOF1`/`DISTOF2`, but no CircuitCI distortion wrapper/normalizer or
+  real-ngspice conformance path is enabled yet. Xyce remains fail-closed
+  because the saved Xyce reference text does not document a matching
+  distortion analysis command.
 - `analog_fourier` scenarios with `SPICE_FOURIER_ANALYSIS` for
   transient-backed `.FOUR` harmonic extraction contracts. The Board IR/schema
   can declare `analysis.type: fourier`, transient stop/max-step timing, a

@@ -71,6 +71,8 @@ Sources saved:
 - `pss_backend_evidence.md` records the PSS-specific backend decision.
 - `periodic_ac_backend_evidence.md` records the PAC/PXF-specific backend
   decision.
+- `distortion_backend_evidence.md` records the small-signal distortion backend
+  decision.
 
 Upstream:
 
@@ -667,6 +669,16 @@ The GUI should not become the solver.
   of experimental autonomous PSS without a stable command/output contract; and
   QUCS-COPEN remains paper-documented theory without a public source/build
   adapter path.
+- Added the first fail-closed small-signal distortion evidence contract for
+  `analysis.type: disto` and `SPICE_DISTORTION_ANALYSIS`. Scenarios declare
+  harmonic or intermodulation mode, frequency sweep bounds, output expression,
+  F1/F2 source provenance, and the F2/F1 ratio for intermodulation. The
+  validator records required future artifacts `distortion_spectrum`,
+  `distortion_summary`, and `distortion_convergence`, and intentionally fails
+  closed until an ngspice `.DISTO` wrapper/normalizer plus real-solver
+  conformance exists. `distortion_backend_evidence.md` records why ngspice is
+  the adapter target and why Xyce, QUCS-S, and SPICE OPUS are not enabled
+  today.
 
 ### Phase 5: Model Compiler Pipeline
 

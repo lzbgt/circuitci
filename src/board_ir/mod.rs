@@ -1368,6 +1368,22 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub pac_drive_sources: Vec<String>,
     #[serde(default)]
+    pub distortion_mode: Option<String>,
+    #[serde(default)]
+    pub distortion_start_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub distortion_stop_frequency_hz: Option<f64>,
+    #[serde(default)]
+    pub distortion_points_per_decade: Option<u32>,
+    #[serde(default)]
+    pub distortion_output_expression: Option<String>,
+    #[serde(default)]
+    pub distortion_f1_sources: Vec<String>,
+    #[serde(default)]
+    pub distortion_f2_sources: Vec<String>,
+    #[serde(default)]
+    pub distortion_f2_over_f1: Option<f64>,
+    #[serde(default)]
     pub measure_mode: Option<String>,
     #[serde(default)]
     pub measure_statements: Vec<AnalogMeasureStatement>,

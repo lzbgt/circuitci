@@ -7,6 +7,7 @@ mod analog_dc_spice;
 mod analog_dc_sweep_runner;
 mod analog_dc_sweep_spice;
 mod analog_dc_sweep_xyce_runner;
+mod analog_distortion_spice;
 mod analog_fourier_runner;
 mod analog_fourier_spice;
 mod analog_harmonic_balance_spice;
@@ -149,6 +150,7 @@ pub(super) const SPICE_S_PARAMETER_ANALYSIS: &str = "SPICE_S_PARAMETER_ANALYSIS"
 pub(super) const SPICE_TRANSFER_FUNCTION_ANALYSIS: &str = "SPICE_TRANSFER_FUNCTION_ANALYSIS";
 pub(super) const SPICE_POLE_ZERO_ANALYSIS: &str = "SPICE_POLE_ZERO_ANALYSIS";
 pub(super) const SPICE_SENSITIVITY_ANALYSIS: &str = "SPICE_SENSITIVITY_ANALYSIS";
+pub(super) const SPICE_DISTORTION_ANALYSIS: &str = "SPICE_DISTORTION_ANALYSIS";
 pub(super) const SPICE_FOURIER_ANALYSIS: &str = "SPICE_FOURIER_ANALYSIS";
 pub(super) const SPICE_HARMONIC_BALANCE_ANALYSIS: &str = "SPICE_HARMONIC_BALANCE_ANALYSIS";
 pub(super) const SPICE_PSS_ANALYSIS: &str = "SPICE_PSS_ANALYSIS";
@@ -193,6 +195,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_transfer_function",
     "analog_pole_zero",
     "analog_sensitivity",
+    "analog_distortion",
     "analog_fourier",
     "analog_harmonic_balance",
     "analog_pss",
@@ -873,6 +876,20 @@ where
                         artifacts: &mut artifacts,
                     };
                     analog_sensitivity_spice::validate_spice_sensitivity_with_progress(
+                        bound,
+                        scenario,
+                        &mut sinks,
+                        output,
+                        &mut on_progress,
+                        &should_cancel,
+                    )
+                }
+                SPICE_DISTORTION_ANALYSIS if scenario.scenario_type == "analog_distortion" => {
+                    let mut sinks = analog_distortion_spice::AnalogDistortionSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                    };
+                    analog_distortion_spice::validate_spice_distortion_with_progress(
                         bound,
                         scenario,
                         &mut sinks,
