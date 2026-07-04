@@ -423,9 +423,11 @@ For a scenario with check `SPICE_S_PARAMETER_ANALYSIS`:
    exactly two declared S-parameter ports and retain
    `s_parameter_network_summary.csv` with the worst frequencies.
 8. Validation reports project retained `s_parameter_summary.csv` rows into
-   top-level `s_parameter_summaries[]`, Markdown reports include an
-   "S-Parameter Summary" section, and GUI Scopes surfaces compact RF sign-off
-   rows.
+   top-level `s_parameter_summaries[]` and retained
+   `s_parameter_network_summary.csv` rows into
+   `s_parameter_network_summaries[]`. Markdown reports include
+   "S-Parameter Summary" and "S-Parameter Network Summary" sections, and GUI
+   Scopes surfaces compact RF term plus network-quality rows.
 9. `backend: auto`, `ngspice`, and `embedded_ngspice` remain conservative for
    this check and fail closed with backend-planning evidence until those
    adapters emit the same normalized `s_parameters` contract.

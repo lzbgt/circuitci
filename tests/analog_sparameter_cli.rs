@@ -472,10 +472,46 @@ fn sparameter_network_assertions_pass_with_reciprocal_passive_two_port() {
 "#,
     );
 
-    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+    let out_dir = tempfile::tempdir().unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", fake_path.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
 
     assert_eq!(report["result"], "pass");
     artifact_path(&report, "s_parameter_network_summary.csv");
+    let summaries = report["s_parameter_network_summaries"].as_array().unwrap();
+    assert_eq!(summaries.len(), 1);
+    assert_eq!(summaries[0]["port_count"], 2);
+    assert_eq!(summaries[0]["row_count"], 2);
+    assert!(
+        summaries[0]["max_reciprocity_error_linear"]
+            .as_f64()
+            .unwrap()
+            < 1.0e-3
+    );
+    assert!(
+        summaries[0]["max_passivity_singular_value"]
+            .as_f64()
+            .unwrap()
+            < 0.91
+    );
+    let markdown = fs::read_to_string(out_dir.path().join("report.md")).unwrap();
+    assert!(markdown.contains("## S-Parameter Network Summary"));
+    assert!(markdown.contains("max_reciprocity_error="));
+    assert!(markdown.contains("max_passivity_singular_value="));
     assert_report_schema_valid(&report);
 }
 

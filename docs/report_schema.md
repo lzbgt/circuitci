@@ -1456,6 +1456,12 @@ row count, frequency span, magnitude min/max, nullable return-loss min/max,
 nullable insertion-loss min/max, and nullable VSWR min/max. Markdown reports
 include those rows in an "S-Parameter Summary" section, and the GUI report
 panel surfaces the same compact RF sign-off rows.
+Retained `s_parameter_network_summary.csv` artifacts project into top-level
+`s_parameter_network_summaries[]` rows with the source artifact path, port
+count, row count, frequency span, maximum reciprocity error and frequency, and
+maximum passivity singular value and frequency. Markdown reports include those
+rows in an "S-Parameter Network Summary" section, and the GUI report panel
+surfaces the same compact two-port quality rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

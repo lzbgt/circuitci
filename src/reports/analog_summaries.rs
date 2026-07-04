@@ -79,6 +79,19 @@ pub struct SParameterSummary {
     pub max_vswr: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SParameterNetworkSummary {
+    pub artifact: String,
+    pub port_count: usize,
+    pub row_count: usize,
+    pub min_frequency_hz: f64,
+    pub max_frequency_hz: f64,
+    pub max_reciprocity_error_linear: f64,
+    pub frequency_hz_at_max_reciprocity_error: f64,
+    pub max_passivity_singular_value: f64,
+    pub frequency_hz_at_max_passivity: f64,
+}
+
 pub(super) fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
     let mut records = Vec::new();
     for artifact in artifacts {
@@ -436,6 +449,95 @@ pub(super) fn collect_s_parameter_summaries(artifacts: &[String]) -> Vec<SParame
             .then_with(|| left.parameter.cmp(&right.parameter))
     });
     records
+}
+
+pub(super) fn collect_s_parameter_network_summaries(
+    artifacts: &[String],
+) -> Vec<SParameterNetworkSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("s_parameter_network_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_s_parameter_network_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| left.artifact.cmp(&right.artifact));
+    records
+}
+
+fn parse_s_parameter_network_summary_csv(
+    artifact: &str,
+    text: &str,
+) -> Vec<SParameterNetworkSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "port_count",
+            "row_count",
+            "min_frequency_hz",
+            "max_frequency_hz",
+            "max_reciprocity_error_linear",
+            "frequency_hz_at_max_reciprocity_error",
+            "max_passivity_singular_value",
+            "frequency_hz_at_max_passivity",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 8 {
+            continue;
+        }
+        let Some(port_count) = fields[0].parse::<usize>().ok() else {
+            continue;
+        };
+        let Some(row_count) = fields[1].parse::<usize>().ok() else {
+            continue;
+        };
+        let Some(min_frequency_hz) = parse_finite_f64(&fields[2]) else {
+            continue;
+        };
+        let Some(max_frequency_hz) = parse_finite_f64(&fields[3]) else {
+            continue;
+        };
+        let Some(max_reciprocity_error_linear) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_reciprocity_error) = parse_finite_f64(&fields[5]) else {
+            continue;
+        };
+        let Some(max_passivity_singular_value) = parse_finite_f64(&fields[6]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max_passivity) = parse_finite_f64(&fields[7]) else {
+            continue;
+        };
+        rows.push(SParameterNetworkSummary {
+            artifact: artifact.to_string(),
+            port_count,
+            row_count,
+            min_frequency_hz,
+            max_frequency_hz,
+            max_reciprocity_error_linear,
+            frequency_hz_at_max_reciprocity_error,
+            max_passivity_singular_value,
+            frequency_hz_at_max_passivity,
+        });
+    }
+    rows
 }
 
 fn parse_s_parameter_summary_csv(artifact: &str, text: &str) -> Vec<SParameterSummary> {

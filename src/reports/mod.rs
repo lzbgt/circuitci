@@ -7,13 +7,13 @@ use std::path::Path;
 
 mod analog_summaries;
 pub use analog_summaries::{
-    DistortionSummary, FourierSummary, PoleZeroSummary, SParameterSummary, SensitivitySummary,
-    TransferFunctionSummary,
+    DistortionSummary, FourierSummary, PoleZeroSummary, SParameterNetworkSummary,
+    SParameterSummary, SensitivitySummary, TransferFunctionSummary,
 };
 use analog_summaries::{
     collect_distortion_summaries, collect_fourier_summaries, collect_pole_zero_summaries,
-    collect_s_parameter_summaries, collect_sensitivity_summaries,
-    collect_transfer_function_summaries,
+    collect_s_parameter_network_summaries, collect_s_parameter_summaries,
+    collect_sensitivity_summaries, collect_transfer_function_summaries,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -76,6 +76,7 @@ pub struct ValidationReport {
     pub sensitivity_summaries: Vec<SensitivitySummary>,
     pub transfer_function_summaries: Vec<TransferFunctionSummary>,
     pub s_parameter_summaries: Vec<SParameterSummary>,
+    pub s_parameter_network_summaries: Vec<SParameterNetworkSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -409,6 +410,7 @@ impl ValidationReport {
         let sensitivity_summaries = collect_sensitivity_summaries(&artifacts);
         let transfer_function_summaries = collect_transfer_function_summaries(&artifacts);
         let s_parameter_summaries = collect_s_parameter_summaries(&artifacts);
+        let s_parameter_network_summaries = collect_s_parameter_network_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -438,6 +440,7 @@ impl ValidationReport {
             sensitivity_summaries,
             transfer_function_summaries,
             s_parameter_summaries,
+            s_parameter_network_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -615,6 +618,26 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 return_loss,
                 insertion_loss,
                 vswr
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
+        }
+        text.push('\n');
+    }
+    text.push_str("## S-Parameter Network Summary\n\n");
+    if report.s_parameter_network_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.s_parameter_network_summaries {
+            text.push_str(&format!(
+                "- ports={} rows={} frequency={:.6e}..{:.6e} Hz max_reciprocity_error={:.6e} at {:.6e} Hz max_passivity_singular_value={:.6e} at {:.6e} Hz\n",
+                row.port_count,
+                row.row_count,
+                row.min_frequency_hz,
+                row.max_frequency_hz,
+                row.max_reciprocity_error_linear,
+                row.frequency_hz_at_max_reciprocity_error,
+                row.max_passivity_singular_value,
+                row.frequency_hz_at_max_passivity
             ));
             text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }

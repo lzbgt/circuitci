@@ -161,12 +161,13 @@ Current analog support:
   Optional `analysis.s_parameter_network_assertions[]` can sign off two-port
   reciprocity (`max |S21-S12|`) and passivity (maximum singular value of the
   complex S matrix) from full `s_parameters.csv` data.
-  Reports project retained rows into `s_parameter_summaries[]`, Markdown
-  includes an "S-Parameter Summary" section, the GUI artifact panel shows
-  compact RF sign-off rows, and Scopes derives return-loss, insertion-loss,
-  and VSWR traces from full `s_parameters.csv` artifacts. `backend: auto` does
-  not select Xyce for this path until real solver conformance coverage is
-  enabled.
+  Reports project retained rows into `s_parameter_summaries[]` and retained
+  network-quality rows into `s_parameter_network_summaries[]`, Markdown
+  includes "S-Parameter Summary" and "S-Parameter Network Summary" sections,
+  the GUI artifact panel shows compact RF term and network sign-off rows, and
+  Scopes derives return-loss, insertion-loss, and VSWR traces from full
+  `s_parameters.csv` artifacts. `backend: auto` does not select Xyce for this
+  path until real solver conformance coverage is enabled.
 - `analog_transfer_function` scenarios with
   `SPICE_TRANSFER_FUNCTION_ANALYSIS` for `.TF` small-signal transfer
   contracts. The Board IR/schema can declare `analysis.type: tf`,

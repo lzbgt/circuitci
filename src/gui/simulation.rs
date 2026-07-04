@@ -291,6 +291,26 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("S-parameter network summary");
+                    if report.s_parameter_network_summaries.is_empty() {
+                        ui.label("No S-parameter network summary rows were emitted.");
+                    } else {
+                        for row in &report.s_parameter_network_summaries {
+                            ui.monospace(format!(
+                                "ports={} rows={} f={:.6e}..{:.6e}Hz reciprocity_error={:.6e} at {:.6e}Hz passivity_singular={:.6e} at {:.6e}Hz artifact={}",
+                                row.port_count,
+                                row.row_count,
+                                row.min_frequency_hz,
+                                row.max_frequency_hz,
+                                row.max_reciprocity_error_linear,
+                                row.frequency_hz_at_max_reciprocity_error,
+                                row.max_passivity_singular_value,
+                                row.frequency_hz_at_max_passivity,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Fourier summary");
                     if report.fourier_summaries.is_empty() {
                         ui.label("No Fourier summary rows were emitted.");

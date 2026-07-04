@@ -645,7 +645,9 @@ The GUI should not become the solver.
   artifacts for visual RF margin review. Two-port
   `analysis.s_parameter_network_assertions[]` now signs off reciprocity
   (`max |S21-S12|`) and passivity (maximum singular value of the complex S
-  matrix) with retained `s_parameter_network_summary.csv` evidence.
+  matrix) with retained `s_parameter_network_summary.csv` evidence, projected
+  report rows in `s_parameter_network_summaries[]`, Markdown output, and GUI
+  Scopes network-quality rows.
 - Add report limitations for backend-specific gaps.
 
 ### Phase 3: Xyce HB Path

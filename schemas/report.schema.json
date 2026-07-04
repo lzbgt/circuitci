@@ -53,6 +53,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/s_parameter_summary" }
     },
+    "s_parameter_network_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/s_parameter_network_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -293,6 +297,32 @@
         "max_insertion_loss_db": { "type": ["number", "null"] },
         "min_vswr": { "type": ["number", "null"] },
         "max_vswr": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "s_parameter_network_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "port_count",
+        "row_count",
+        "min_frequency_hz",
+        "max_frequency_hz",
+        "max_reciprocity_error_linear",
+        "frequency_hz_at_max_reciprocity_error",
+        "max_passivity_singular_value",
+        "frequency_hz_at_max_passivity"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "port_count": { "type": "integer", "minimum": 2 },
+        "row_count": { "type": "integer", "minimum": 0 },
+        "min_frequency_hz": { "type": "number" },
+        "max_frequency_hz": { "type": "number" },
+        "max_reciprocity_error_linear": { "type": "number" },
+        "frequency_hz_at_max_reciprocity_error": { "type": "number" },
+        "max_passivity_singular_value": { "type": "number" },
+        "frequency_hz_at_max_passivity": { "type": "number" }
       },
       "additionalProperties": false
     },
