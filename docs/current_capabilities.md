@@ -152,6 +152,15 @@ card for generated-transient plumbing and operating-limit probes. It does not
 sign off gain spread, noise, storage time, thermal board coupling, or
 production hardware behavior. See `docs/onsemi_2n3904_model.md`.
 
+`vendor.onsemi.pnp_2n3906` provides the matching source-backed
+static/generated-SPICE pack for onsemi's TO-92 2N3906 PNP transistor. It
+records signed PNP `VCEO`, `VCBO`, `VEBO`, and `IC` limits equivalent to
+40 V, 40 V, 5 V, and 200 mA magnitudes, plus 625 mW ambient power derating,
+TO-92 pinout, gain/saturation/capacitance metadata, and a reduced preliminary
+SPICE card for generated high-side switch checks. It does not sign off gain
+spread, noise, storage time, thermal board coupling, or production hardware
+behavior. See `docs/onsemi_2n3906_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

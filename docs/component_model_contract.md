@@ -966,6 +966,13 @@ frequency metadata. Generated SPICE uses the same BJT operating-limit probes
 as the existing SS8050/SS8550 packs, but the bundled electrical card is a
 reduced preliminary fit and does not validate gain spread, storage time, noise,
 package thermal coupling, or production hardware behavior.
+`vendor.onsemi.pnp_2n3906` adds the matching source-backed common PNP
+transistor pack. Official onsemi documentation backs its 40 V `VCEO`, 40 V
+`VCBO`, 5 V `VEBO`, 200 mA continuous collector-current magnitude, 625 mW
+ambient power limit with 5 mW/C derating, TO-92 pinout, gain/saturation,
+capacitance, and transition-frequency metadata. The model stores PNP terminal
+voltage and collector-current ratings with negative signs so reports preserve
+polarity while operating-limit probes evaluate absolute magnitude.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

@@ -454,6 +454,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   `examples/bad_onsemi_2n3904_collector_overcurrent` prove a source-backed
   common NPN transistor model can pass normal generated-SPICE switching and
   fail closed on datasheet collector-current stress.
+- `examples/good_onsemi_2n3906_high_side_switch` and
+  `examples/bad_onsemi_2n3906_collector_overcurrent` prove the matching PNP
+  polarity path can pass generated-SPICE high-side switching and fail closed
+  while preserving signed collector-current ratings in the report.
 - `examples/bad_diode_overcurrent`, `examples/bad_diode_reverse_voltage`, and
   `examples/bad_kingbright_apt1608surck_led_overcurrent` prove generated diode
   and LED forward-current, reverse-voltage, and power stress can be checked
