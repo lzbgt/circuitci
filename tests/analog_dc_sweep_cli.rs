@@ -378,6 +378,7 @@ fn dc_sweep_assertion_failure_reports_normalized_curve() {
     assert_eq!(failure["id"], "SPICE_DC_SWEEP_ANALYSIS");
     assert_eq!(failure["measured"]["assertion"], "out_max_below_limit");
     assert_eq!(failure["measured"]["probe"], "out_voltage");
+    assert_eq!(failure["measured"]["aggregation"], "max");
     assert!(
         failure["measured"]["dc_sweep"]
             .as_str()

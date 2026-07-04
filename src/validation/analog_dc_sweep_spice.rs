@@ -559,12 +559,21 @@ fn evaluate_dc_sweep_assertions(
             finding
                 .measured
                 .insert("probe".to_string(), json!(&assertion.probe));
+            finding.measured.insert(
+                "aggregation".to_string(),
+                json!(aggregation_name(assertion.aggregation)),
+            );
             finding
                 .measured
                 .insert("value".to_string(), json!(measured.value));
             finding
                 .measured
                 .insert("sweep_value".to_string(), json!(measured.sweep_value));
+            if let Some(at_sweep_value) = assertion.at_sweep_value {
+                finding
+                    .measured
+                    .insert("at_sweep_value".to_string(), json!(at_sweep_value));
+            }
             finding.measured.insert("unit".to_string(), json!(unit));
             finding.measured.insert(
                 "dc_sweep".to_string(),

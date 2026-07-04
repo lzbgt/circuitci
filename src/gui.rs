@@ -12,6 +12,7 @@ mod analog_assertion_fields;
 mod analog_assertion_kinds;
 mod analog_branches;
 mod analog_dc_presets;
+mod analog_dc_sweep_assertions;
 mod analog_distortion_assertions;
 mod analog_fourier_assertions;
 mod analog_generated;
@@ -49,6 +50,7 @@ mod project_example_workflow_tests;
 mod scope_auto_probes;
 mod shell;
 mod simulation;
+mod simulation_dc_sweep_assertions;
 mod simulation_distortion_assertions;
 mod simulation_editors;
 mod simulation_forms;
@@ -418,6 +420,13 @@ pub struct CircuitCiApp {
     analog_distortion_assertion_component: String,
     analog_distortion_assertion_relation: String,
     analog_distortion_assertion_threshold: f64,
+    analog_dc_sweep_assertion_scenario: String,
+    analog_dc_sweep_assertion_name: String,
+    analog_dc_sweep_assertion_probe: String,
+    analog_dc_sweep_assertion_aggregation: String,
+    analog_dc_sweep_assertion_relation: String,
+    analog_dc_sweep_assertion_threshold: f64,
+    analog_dc_sweep_assertion_at_sweep_value: f64,
     analog_measure_assertion_scenario: String,
     analog_measure_assertion_name: String,
     analog_measure_assertion_measurement: String,
@@ -743,6 +752,13 @@ impl Default for CircuitCiApp {
             analog_distortion_assertion_component: "im_f1_plus_f2".to_string(),
             analog_distortion_assertion_relation: "below".to_string(),
             analog_distortion_assertion_threshold: 0.001,
+            analog_dc_sweep_assertion_scenario: String::new(),
+            analog_dc_sweep_assertion_name: "out_voltage_max_below_limit".to_string(),
+            analog_dc_sweep_assertion_probe: "out_voltage".to_string(),
+            analog_dc_sweep_assertion_aggregation: "max".to_string(),
+            analog_dc_sweep_assertion_relation: "below".to_string(),
+            analog_dc_sweep_assertion_threshold: 0.4,
+            analog_dc_sweep_assertion_at_sweep_value: 1.0,
             analog_measure_assertion_scenario: String::new(),
             analog_measure_assertion_name: "avg_out_below_limit".to_string(),
             analog_measure_assertion_measurement: "avg_out".to_string(),

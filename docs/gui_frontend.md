@@ -440,6 +440,9 @@ into that editor.
 The Distortion Check editor writes `analysis.distortion_assertions[]` for
 normalized distortion component max-magnitude limits, and distortion report
 failure actions load the failed check back into that editor.
+The DC Sweep Check editor writes `analysis.dc_sweep_assertions[]` for min,
+max, mean, or sample limits on declared sweep probes, and DC sweep report
+failure actions load the failed check back into that editor.
 The Measure Check editor writes `measure_assertions[]` for declared
 measurement scalar limits, and `.MEASURE` report failure actions load the
 failed check back into that editor.

@@ -362,7 +362,7 @@ For a scenario with check `SPICE_DC_SWEEP_ANALYSIS`:
 5. Optional `dc_sweep_assertions[]` evaluate `min`, `max`, `mean`, or `sample`
    values from the normalized curve. Failed assertions emit critical
    `SPICE_DC_SWEEP_ANALYSIS` findings with measured value, sweep point, limit,
-   relation, and artifact path.
+   relation, aggregation, optional declared sample point, and artifact path.
 6. Swept input-corner and Monte Carlo summaries reuse the same worst-corner and
    yield report machinery used by waveform, AC, operating-point, noise, and
    measure assertions.
