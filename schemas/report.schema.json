@@ -29,6 +29,10 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
+    "distortion_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/distortion_summary" }
+    },
     "model_file_provenance": {
       "type": "array",
       "items": { "$ref": "#/$defs/model_file_provenance" }
@@ -110,6 +114,26 @@
         "confidence": { "enum": ["high", "medium", "low"] },
         "blocking": { "type": "boolean" },
         "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "distortion_summary": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "component",
+        "output_expression",
+        "row_count",
+        "max_magnitude",
+        "frequency_hz_at_max"
+      ],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "component": { "type": "string", "minLength": 1 },
+        "output_expression": { "type": "string" },
+        "row_count": { "type": "integer", "minimum": 0 },
+        "max_magnitude": { "type": "number" },
+        "frequency_hz_at_max": { "type": "number" }
       },
       "additionalProperties": false
     },

@@ -4,6 +4,7 @@ use super::{
 };
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Instant;
 
@@ -167,7 +168,9 @@ where
 fn report_waveform_paths(report: &ValidationReport) -> Vec<String> {
     let mut paths = report.waveforms.clone();
     for artifact in &report.artifacts {
-        if is_hb_spectrum_path(artifact) && !paths.iter().any(|path| path == artifact) {
+        if (is_hb_spectrum_path(artifact) || is_distortion_spectrum_path(artifact))
+            && !paths.iter().any(|path| path == artifact)
+        {
             paths.push(artifact.clone());
         }
     }
@@ -234,6 +237,12 @@ where
         let text = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read HB spectrum CSV {}.", path.display()))?;
         return parse_hb_spectrum_csv_rows(&text, label);
+    }
+    if selected_probe_labels.is_empty() && is_distortion_spectrum_path(label) {
+        let text = std::fs::read_to_string(path).with_context(|| {
+            format!("Failed to read distortion spectrum CSV {}.", path.display())
+        })?;
+        return parse_distortion_spectrum_csv_rows(&text, label);
     }
 
     let file = std::fs::File::open(path)
@@ -304,8 +313,17 @@ pub(super) fn parse_hb_spectrum_csv_text(text: &str, label: &str) -> Result<Wave
     parse_hb_spectrum_csv_rows(text, label)
 }
 
+#[cfg(test)]
+pub(super) fn parse_distortion_spectrum_csv_text(text: &str, label: &str) -> Result<WaveformView> {
+    parse_distortion_spectrum_csv_rows(text, label)
+}
+
 fn is_hb_spectrum_path(path: &str) -> bool {
     path.ends_with("/hb_spectrum.csv") || path == "hb_spectrum.csv"
+}
+
+fn is_distortion_spectrum_path(path: &str) -> bool {
+    path.ends_with("/distortion_spectrum.csv") || path == "distortion_spectrum.csv"
 }
 
 fn parse_hb_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
@@ -445,6 +463,214 @@ fn parse_hb_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
             },
         ],
     })
+}
+
+fn parse_distortion_spectrum_csv_rows(text: &str, label: &str) -> Result<WaveformView> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let header = lines
+        .next()
+        .context("Distortion spectrum CSV has no header row.")?;
+    let header = split_distortion_csv_fields(header)?;
+    if header
+        != [
+            "component",
+            "frequency_hz",
+            "output_expression",
+            "real",
+            "imaginary",
+            "magnitude",
+            "phase_degrees",
+        ]
+    {
+        anyhow::bail!(
+            "Distortion spectrum CSV header must be component,frequency_hz,output_expression,real,imaginary,magnitude,phase_degrees."
+        );
+    }
+
+    let mut by_component: BTreeMap<String, Vec<DistortionSpectrumPoint>> = BTreeMap::new();
+    for (line_index, line) in lines.enumerate() {
+        let fields = split_distortion_csv_fields(line)?;
+        if fields.len() != 7 {
+            anyhow::bail!(
+                "Distortion spectrum row {} has {} fields, expected 7.",
+                line_index + 2,
+                fields.len()
+            );
+        }
+        let frequency_hz = parse_waveform_float(&fields[1]).with_context(|| {
+            format!(
+                "Distortion spectrum row {} has invalid frequency.",
+                line_index + 2
+            )
+        })?;
+        let real = parse_waveform_float(&fields[3]).with_context(|| {
+            format!(
+                "Distortion spectrum row {} has invalid real value.",
+                line_index + 2
+            )
+        })?;
+        let imaginary = parse_waveform_float(&fields[4]).with_context(|| {
+            format!(
+                "Distortion spectrum row {} has invalid imaginary value.",
+                line_index + 2
+            )
+        })?;
+        let magnitude = parse_waveform_float(&fields[5]).with_context(|| {
+            format!(
+                "Distortion spectrum row {} has invalid magnitude value.",
+                line_index + 2
+            )
+        })?;
+        let phase_deg = parse_waveform_float(&fields[6]).with_context(|| {
+            format!(
+                "Distortion spectrum row {} has invalid phase value.",
+                line_index + 2
+            )
+        })?;
+        by_component
+            .entry(fields[0].clone())
+            .or_default()
+            .push(DistortionSpectrumPoint {
+                frequency_hz,
+                output_expression: fields[2].clone(),
+                real,
+                imaginary,
+                magnitude,
+                phase_deg,
+            });
+    }
+
+    if by_component.is_empty() {
+        anyhow::bail!("Distortion spectrum CSV has no numeric rows.");
+    }
+    let mut time_s = Vec::new();
+    let mut probes = Vec::new();
+    let mut reference_expression: Option<String> = None;
+    for (component, mut rows) in by_component {
+        rows.sort_by(|left, right| left.frequency_hz.total_cmp(&right.frequency_hz));
+        let expression = rows[0].output_expression.clone();
+        if rows.iter().any(|row| row.output_expression != expression) {
+            anyhow::bail!(
+                "Distortion spectrum component {component} must contain one output expression."
+            );
+        }
+        match &reference_expression {
+            Some(reference) if reference != &expression => {
+                anyhow::bail!("Distortion spectrum CSV must contain one output expression.")
+            }
+            Some(_) => {}
+            None => reference_expression = Some(expression.clone()),
+        }
+        let component_frequencies: Vec<_> = rows.iter().map(|row| row.frequency_hz).collect();
+        if time_s.is_empty() {
+            let mut previous = None;
+            for frequency_hz in &component_frequencies {
+                if previous.is_some_and(|value| frequency_hz <= &value) {
+                    anyhow::bail!(
+                        "Distortion spectrum component {component} has duplicate or non-increasing frequency {frequency_hz}."
+                    );
+                }
+                previous = Some(*frequency_hz);
+            }
+            time_s = component_frequencies
+                .iter()
+                .map(|frequency_hz| {
+                    WaveformXAxis::FrequencyHz.storage_from_csv_value(*frequency_hz)
+                })
+                .collect();
+        } else {
+            let comparable: Vec<_> = component_frequencies
+                .iter()
+                .map(|frequency_hz| {
+                    WaveformXAxis::FrequencyHz.storage_from_csv_value(*frequency_hz)
+                })
+                .collect();
+            if comparable != time_s {
+                anyhow::bail!("Distortion spectrum components must share the same frequency grid.");
+            }
+        }
+        let mut real_values = Vec::with_capacity(rows.len());
+        let mut imaginary_values = Vec::with_capacity(rows.len());
+        let mut magnitude_values = Vec::with_capacity(rows.len());
+        let mut phase_values = Vec::with_capacity(rows.len());
+        for row in rows {
+            real_values.push(row.real);
+            imaginary_values.push(row.imaginary);
+            magnitude_values.push(row.magnitude);
+            phase_values.push(row.phase_deg);
+        }
+        probes.push(WaveformProbe {
+            label: format!("{expression} {component} magnitude"),
+            values: magnitude_values,
+            derived: false,
+            expression: Some(expression.clone()),
+            promoted_quantity: waveform_probe_quantity_from_label(&expression),
+        });
+        probes.push(WaveformProbe {
+            label: format!("{expression} {component} phase deg"),
+            values: phase_values,
+            derived: false,
+            expression: Some(expression.clone()),
+            promoted_quantity: None,
+        });
+        probes.push(WaveformProbe {
+            label: format!("{expression} {component} real"),
+            values: real_values,
+            derived: false,
+            expression: Some(expression.clone()),
+            promoted_quantity: waveform_probe_quantity_from_label(&expression),
+        });
+        probes.push(WaveformProbe {
+            label: format!("{expression} {component} imaginary"),
+            values: imaginary_values,
+            derived: false,
+            expression: Some(expression),
+            promoted_quantity: None,
+        });
+    }
+
+    Ok(WaveformView {
+        label: label.to_string(),
+        path: label.to_string(),
+        x_axis: WaveformXAxis::FrequencyHz,
+        time_s,
+        probes,
+    })
+}
+
+struct DistortionSpectrumPoint {
+    frequency_hz: f64,
+    output_expression: String,
+    real: f64,
+    imaginary: f64,
+    magnitude: f64,
+    phase_deg: f64,
+}
+
+fn split_distortion_csv_fields(line: &str) -> Result<Vec<String>> {
+    let mut fields = Vec::new();
+    let mut field = String::new();
+    let mut chars = line.chars().peekable();
+    let mut in_quotes = false;
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' if in_quotes && chars.peek() == Some(&'"') => {
+                field.push('"');
+                chars.next();
+            }
+            '"' => in_quotes = !in_quotes,
+            ',' if !in_quotes => {
+                fields.push(field.trim().to_string());
+                field.clear();
+            }
+            _ => field.push(ch),
+        }
+    }
+    if in_quotes {
+        anyhow::bail!("Distortion spectrum CSV row has an unterminated quoted field.");
+    }
+    fields.push(field.trim().to_string());
+    Ok(fields)
 }
 
 #[derive(Default)]

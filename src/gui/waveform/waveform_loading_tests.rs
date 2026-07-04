@@ -1,4 +1,5 @@
 use super::merge_waveform_load_diagnostics;
+use super::waveform_io::parse_distortion_spectrum_csv_text;
 use super::{
     WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformLoadDiagnostic,
     WaveformLoadPreviewFilter, WaveformLoadRequest, WaveformLoadStatusFilter, WaveformTraceColor,
@@ -517,6 +518,51 @@ fn report_loader_includes_harmonic_balance_spectrum_artifacts() {
     assert!(diagnostics[0].loaded);
     assert_eq!(diagnostics[0].samples, 2);
     assert_eq!(diagnostics[0].probes, 4);
+}
+
+#[test]
+fn report_loader_includes_distortion_spectrum_artifacts() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let spectrum_path = temp_dir.path().join("distortion_spectrum.csv");
+    std::fs::write(
+        &spectrum_path,
+        "component,frequency_hz,output_expression,real,imaginary,magnitude,phase_degrees\nh2,1e3,\"V(out,0)\",1e-3,0,1e-3,0\nh2,2e3,\"V(out,0)\",2e-3,0,2e-3,0\nh3,1e3,\"V(out,0)\",3e-4,4e-4,5e-4,53.13\nh3,2e3,\"V(out,0)\",6e-4,8e-4,1e-3,53.13\n",
+    )
+    .unwrap();
+    let report = crate::reports::ValidationReport::from_parts(
+        "project".to_string(),
+        "default".to_string(),
+        Vec::new(),
+        Vec::new(),
+        vec![spectrum_path.to_string_lossy().into_owned()],
+        Vec::new(),
+        "validate".to_string(),
+    );
+
+    let (waveforms, diagnostics) =
+        load_report_waveforms_with_progress_and_cancel(&report, |_, _| {}, || false, false)
+            .unwrap();
+
+    assert_eq!(waveforms.len(), 1);
+    assert_eq!(waveforms[0].x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveforms[0].time_s, vec![0.001, 0.002]);
+    assert_eq!(waveforms[0].probes[0].label, "V(out,0) h2 magnitude");
+    assert_eq!(waveforms[0].probes[4].label, "V(out,0) h3 magnitude");
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0].loaded);
+    assert_eq!(diagnostics[0].samples, 2);
+    assert_eq!(diagnostics[0].probes, 8);
+}
+
+#[test]
+fn distortion_spectrum_parser_rejects_mismatched_frequency_grids() {
+    let error = parse_distortion_spectrum_csv_text(
+        "component,frequency_hz,output_expression,real,imaginary,magnitude,phase_degrees\nh2,1e3,\"V(out,0)\",1e-3,0,1e-3,0\nh3,2e3,\"V(out,0)\",6e-4,8e-4,1e-3,53.13\n",
+        "distortion_spectrum.csv",
+    )
+    .unwrap_err();
+
+    assert!(format!("{error:#}").contains("same frequency grid"));
 }
 
 #[test]

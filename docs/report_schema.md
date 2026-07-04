@@ -1423,6 +1423,11 @@ package-lock fields `model_package_name`, `model_package_version`,
 `backend`, and `manifest` path, so report consumers can inspect compiled-model
 provenance without opening `solver_manifest.json` first. Markdown reports
 include the same information in the "Model File Provenance" section.
+Retained `distortion_summary.csv` artifacts project into top-level
+`distortion_summaries[]` rows with the source artifact path, distortion
+component, output expression, row count, maximum magnitude, and frequency at
+that maximum. Markdown reports include those rows in a "Distortion Summary"
+section, and the GUI report panel surfaces the same compact rows.
 Standalone compact-model package preflights use
 `schemas/model_package_verification_report.schema.json`, written by
 `circuitci verify-model-package`. That report records lock and optional registry

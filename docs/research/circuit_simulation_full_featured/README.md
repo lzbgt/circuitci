@@ -677,6 +677,10 @@ The GUI should not become the solver.
   `DISTOF2 1.0 0.0` defaults, runs ngspice `.disto dec`, normalizes
   `distortion_spectrum.csv`, `distortion_summary.csv`, and
   `distortion_convergence.json`, and writes a solver manifest.
+  Validation reports now project `distortion_summary.csv` into
+  `distortion_summaries[]`, Markdown reports include a "Distortion Summary"
+  section, and GUI Scopes loads `distortion_spectrum.csv` as frequency-axis
+  magnitude/phase/real/imaginary traces grouped by distortion component.
   `distortion_backend_evidence.md` records the primary ngspice
   manual/source evidence, the real-ngspice conformance hook, and why Xyce,
   QUCS-S, and SPICE OPUS remain blocked.

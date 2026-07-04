@@ -59,6 +59,7 @@ pub struct ValidationReport {
     pub infos: Vec<Finding>,
     pub waveforms: Vec<String>,
     pub artifacts: Vec<String>,
+    pub distortion_summaries: Vec<DistortionSummary>,
     pub model_file_provenance: Vec<ModelFileProvenance>,
     pub model_package_conformance_checks: Vec<ModelPackageConformanceCheck>,
     pub model_package_bundle_verifications: Vec<ModelPackageBundleVerificationSummary>,
@@ -98,6 +99,16 @@ pub struct ModelFileProvenance {
     pub build_env_enabled: Option<bool>,
     pub rebuild_mode: String,
     pub produced_by_circuitci: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct DistortionSummary {
+    pub artifact: String,
+    pub component: String,
+    pub output_expression: String,
+    pub row_count: usize,
+    pub max_magnitude: f64,
+    pub frequency_hz_at_max: f64,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -386,6 +397,7 @@ impl ValidationReport {
             .flat_map(|finding| finding.suggested_fixes.iter().cloned())
             .collect();
         let result = if summary.critical > 0 { "fail" } else { "pass" }.to_string();
+        let distortion_summaries = collect_distortion_summaries(&artifacts);
         let model_file_provenance = collect_model_file_provenance(&artifacts);
         let model_package_conformance_checks = collect_model_package_conformance_checks(&artifacts);
         let model_package_bundle_verifications =
@@ -409,6 +421,7 @@ impl ValidationReport {
             infos,
             waveforms,
             artifacts,
+            distortion_summaries,
             model_file_provenance,
             model_package_conformance_checks,
             model_package_bundle_verifications,
@@ -461,6 +474,23 @@ pub fn markdown_report(report: &ValidationReport) -> String {
                 "- `{}` [{}]: {}\n",
                 limitation.id, limitation.confidence, limitation.message
             ));
+        }
+        text.push('\n');
+    }
+    text.push_str("## Distortion Summary\n\n");
+    if report.distortion_summaries.is_empty() {
+        text.push_str("None.\n\n");
+    } else {
+        for row in &report.distortion_summaries {
+            text.push_str(&format!(
+                "- `{}` `{}`: rows={} max_magnitude={:.6e} at {:.6e} Hz\n",
+                row.component,
+                row.output_expression,
+                row.row_count,
+                row.max_magnitude,
+                row.frequency_hz_at_max
+            ));
+            text.push_str(&format!("  - Artifact: `{}`\n", row.artifact));
         }
         text.push('\n');
     }
@@ -781,6 +811,107 @@ fn push_findings(text: &mut String, findings: &[Finding]) {
         }
     }
     text.push('\n');
+}
+
+fn collect_distortion_summaries(artifacts: &[String]) -> Vec<DistortionSummary> {
+    let mut records = Vec::new();
+    for artifact in artifacts {
+        if !artifact.ends_with("distortion_summary.csv") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(artifact) else {
+            continue;
+        };
+        records.extend(parse_distortion_summary_csv(artifact, &text));
+    }
+    records.sort_by(|left, right| {
+        left.artifact
+            .cmp(&right.artifact)
+            .then_with(|| left.component.cmp(&right.component))
+            .then_with(|| left.output_expression.cmp(&right.output_expression))
+    });
+    records
+}
+
+fn parse_distortion_summary_csv(artifact: &str, text: &str) -> Vec<DistortionSummary> {
+    let mut lines = text.lines().filter(|line| !line.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return Vec::new();
+    };
+    let Some(header) = split_csv_fields(header) else {
+        return Vec::new();
+    };
+    if header
+        != [
+            "component",
+            "output_expression",
+            "row_count",
+            "max_magnitude",
+            "frequency_hz_at_max",
+        ]
+    {
+        return Vec::new();
+    }
+    let mut rows = Vec::new();
+    for line in lines {
+        let Some(fields) = split_csv_fields(line) else {
+            continue;
+        };
+        if fields.len() != 5 {
+            continue;
+        }
+        let Some(row_count) = fields[2].parse::<usize>().ok() else {
+            continue;
+        };
+        let Some(max_magnitude) = parse_finite_f64(&fields[3]) else {
+            continue;
+        };
+        let Some(frequency_hz_at_max) = parse_finite_f64(&fields[4]) else {
+            continue;
+        };
+        rows.push(DistortionSummary {
+            artifact: artifact.to_string(),
+            component: fields[0].clone(),
+            output_expression: fields[1].clone(),
+            row_count,
+            max_magnitude,
+            frequency_hz_at_max,
+        });
+    }
+    rows
+}
+
+fn split_csv_fields(line: &str) -> Option<Vec<String>> {
+    let mut fields = Vec::new();
+    let mut field = String::new();
+    let mut chars = line.chars().peekable();
+    let mut in_quotes = false;
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' if in_quotes && chars.peek() == Some(&'"') => {
+                field.push('"');
+                chars.next();
+            }
+            '"' => in_quotes = !in_quotes,
+            ',' if !in_quotes => {
+                fields.push(field.trim().to_string());
+                field.clear();
+            }
+            _ => field.push(ch),
+        }
+    }
+    if in_quotes {
+        return None;
+    }
+    fields.push(field.trim().to_string());
+    Some(fields)
+}
+
+fn parse_finite_f64(value: &str) -> Option<f64> {
+    value
+        .parse::<f64>()
+        .ok()
+        .filter(|number| number.is_finite())
 }
 
 fn collect_model_file_provenance(artifacts: &[String]) -> Vec<ModelFileProvenance> {
@@ -1486,6 +1617,7 @@ mod tests {
             "circuitci validate project.yaml --profile profile --output out".to_string(),
         );
 
+        assert!(report.distortion_summaries.is_empty());
         assert_eq!(report.model_package_conformance_checks.len(), 1);
         let check = &report.model_package_conformance_checks[0];
         assert_eq!(check.check_name, "transient_smoke");
@@ -1554,5 +1686,36 @@ mod tests {
         assert!(markdown.contains("`bundle_fixture_runtime`"));
         assert!(markdown.contains("## YAML Repairs"));
         assert!(markdown.contains("`BUNDLE_INSTALL_PACKAGE_METADATA`"));
+    }
+
+    #[test]
+    fn validation_report_projects_distortion_summary_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let summary = dir.path().join("distortion_summary.csv");
+        fs::write(
+            &summary,
+            "component,output_expression,row_count,max_magnitude,frequency_hz_at_max\nh2,\"V(out,0)\",2,5.000000000000e-3,1.000000000000e+3\nh3,\"V(out,0)\",2,1.000000000000e-3,2.000000000000e+3\n",
+        )
+        .unwrap();
+
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            vec![summary.to_string_lossy().into_owned()],
+            Vec::new(),
+            "circuitci validate project.yaml".to_string(),
+        );
+
+        assert_eq!(report.distortion_summaries.len(), 2);
+        assert_eq!(report.distortion_summaries[0].component, "h2");
+        assert_eq!(report.distortion_summaries[0].output_expression, "V(out,0)");
+        assert_eq!(report.distortion_summaries[0].row_count, 2);
+        assert_eq!(report.distortion_summaries[0].max_magnitude, 5.0e-3);
+        let markdown = markdown_report(&report);
+        assert!(markdown.contains("## Distortion Summary"));
+        assert!(markdown.contains("`h2` `V(out,0)`"));
+        assert!(markdown.contains("max_magnitude=5.000000e-3"));
     }
 }

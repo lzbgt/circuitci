@@ -193,6 +193,23 @@ impl CircuitCiApp {
                         }
                     }
                     ui.add_space(8.0);
+                    ui.label("Distortion summary");
+                    if report.distortion_summaries.is_empty() {
+                        ui.label("No distortion summary rows were emitted.");
+                    } else {
+                        for row in &report.distortion_summaries {
+                            ui.monospace(format!(
+                                "{} {} rows={} max={:.6e} at {:.6e} Hz artifact={}",
+                                row.component,
+                                row.output_expression,
+                                row.row_count,
+                                row.max_magnitude,
+                                row.frequency_hz_at_max,
+                                row.artifact
+                            ));
+                        }
+                    }
+                    ui.add_space(8.0);
                     ui.label("Model file provenance");
                     if report.model_file_provenance.is_empty() {
                         ui.label("No compiled model provenance was emitted.");

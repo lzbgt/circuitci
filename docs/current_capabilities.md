@@ -201,6 +201,10 @@ Current analog support:
   `DISTOF1`/`DISTOF2` defaults, runs `.disto dec`, and emits
   `distortion_spectrum.csv`, `distortion_summary.csv`,
   `distortion_convergence.json`, raw solver output, and `solver_manifest.json`.
+  Validation reports project `distortion_summary.csv` rows into
+  `distortion_summaries[]`, and Scopes recognizes `distortion_spectrum.csv` as
+  frequency-axis magnitude/phase/real/imaginary traces grouped by distortion
+  component.
   Opt-in real-ngspice conformance is available through
   `CIRCUITCI_RUN_REAL_NGSPICE_DISTO=1 cargo test --test analog_distortion_cli`.
   Xyce remains fail-closed because the saved Xyce reference text does not

@@ -85,3 +85,9 @@ The enabled ngspice adapter provides:
 - `solver_manifest.json` with backend version, command, model provenance, and
   normalized artifact paths
 - opt-in real-ngspice conformance coverage with clean skip behavior
+
+The report/GUI surface is also covered: validation reports project
+`distortion_summary.csv` rows into top-level `distortion_summaries[]`,
+Markdown reports include a "Distortion Summary" section, and GUI Scopes loads
+`distortion_spectrum.csv` as frequency-axis magnitude, phase, real, and
+imaginary traces per distortion component.

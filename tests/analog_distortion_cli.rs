@@ -301,6 +301,14 @@ fn distortion_contract_runs_ngspice_and_normalizes_spectrum() {
     let summary = artifact_path(&report, "distortion_summary.csv");
     let summary_text = fs::read_to_string(summary).unwrap();
     assert!(summary_text.contains("im_f1_plus_f2,V(out),2,4.031128874149e-3,1.000000000000e4"));
+    let summaries = report["distortion_summaries"].as_array().unwrap();
+    assert_eq!(summaries.len(), 3);
+    assert_eq!(summaries[0]["component"], "im_2f1_minus_f2");
+    assert_eq!(summaries[1]["component"], "im_f1_minus_f2");
+    assert_eq!(summaries[2]["component"], "im_f1_plus_f2");
+    assert_eq!(summaries[2]["output_expression"], "V(out)");
+    assert_eq!(summaries[2]["row_count"], 2);
+    assert_eq!(summaries[2]["max_magnitude"], 4.031128874149e-3);
     let convergence: Value = serde_json::from_str(
         &fs::read_to_string(artifact_path(&report, "distortion_convergence.json")).unwrap(),
     )
