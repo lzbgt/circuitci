@@ -166,6 +166,7 @@ impl CircuitCiApp {
                 self.sparameter_noise_assertion_editor(ui);
                 self.sensitivity_assertion_editor(ui);
                 self.transfer_function_assertion_editor(ui);
+                self.pole_zero_assertion_editor(ui);
                 self.fourier_assertion_editor(ui);
                 self.hb_assertion_editor(ui);
             }
@@ -216,6 +217,8 @@ impl CircuitCiApp {
                             ));
                         }
                     }
+                    ui.add_space(8.0);
+                    self.pole_zero_assertion_failure_actions(ui, &report.failures);
                     ui.add_space(8.0);
                     ui.label("Pole-zero summary");
                     if report.pole_zero_summaries.is_empty() {

@@ -573,7 +573,9 @@ The GUI should not become the solver.
   `pole_zero_summary` plus opt-in real-ngspice conformance. It now also has
   root-level sign-off assertions over real rad/s, imaginary rad/s, or derived
   frequency, report projection into `pole_zero_summaries[]`, Markdown output,
-  and GUI report-panel surfacing. Xyce remains fail-closed with structured
+  GUI report-panel surfacing, and a GUI Pole-Zero Check editor that authors and
+  hydrates failed `pole_zero_assertions[]`. Xyce remains fail-closed with
+  structured
   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
   7.8 primary docs do not document a native `.PZ` command or equivalent result
   artifact.

@@ -19,6 +19,7 @@ mod analog_model_files;
 mod analog_models;
 mod analog_noise_presets;
 mod analog_overview;
+mod analog_pole_zero_assertions;
 mod analog_run_setup;
 mod analog_sensitivity_assertions;
 mod analog_stimulus;
@@ -50,6 +51,7 @@ mod simulation_editors;
 mod simulation_forms;
 mod simulation_fourier_assertions;
 mod simulation_hb_assertions;
+mod simulation_pole_zero_assertions;
 mod simulation_probe_assertions;
 mod simulation_sensitivity_assertions;
 mod simulation_sparameter_assertions;
@@ -436,6 +438,14 @@ pub struct CircuitCiApp {
     analog_transfer_function_assertion_metric: String,
     analog_transfer_function_assertion_relation: String,
     analog_transfer_function_assertion_threshold: f64,
+    analog_pole_zero_assertion_scenario: String,
+    analog_pole_zero_assertion_name: String,
+    analog_pole_zero_assertion_root_kind: String,
+    analog_pole_zero_assertion_root_index_enabled: bool,
+    analog_pole_zero_assertion_root_index: u32,
+    analog_pole_zero_assertion_metric: String,
+    analog_pole_zero_assertion_relation: String,
+    analog_pole_zero_assertion_threshold: f64,
     analog_fourier_assertion_scenario: String,
     analog_fourier_assertion_name: String,
     analog_fourier_assertion_harmonic: u32,
@@ -743,6 +753,14 @@ impl Default for CircuitCiApp {
             analog_transfer_function_assertion_metric: "transfer_function_gain".to_string(),
             analog_transfer_function_assertion_relation: "above".to_string(),
             analog_transfer_function_assertion_threshold: 0.5,
+            analog_pole_zero_assertion_scenario: String::new(),
+            analog_pole_zero_assertion_name: "stable_pole_real_ceiling".to_string(),
+            analog_pole_zero_assertion_root_kind: "pole".to_string(),
+            analog_pole_zero_assertion_root_index_enabled: true,
+            analog_pole_zero_assertion_root_index: 1,
+            analog_pole_zero_assertion_metric: "real_rad_per_s".to_string(),
+            analog_pole_zero_assertion_relation: "below".to_string(),
+            analog_pole_zero_assertion_threshold: -500.0,
             analog_fourier_assertion_scenario: String::new(),
             analog_fourier_assertion_name: "h1_magnitude_floor".to_string(),
             analog_fourier_assertion_harmonic: 1,

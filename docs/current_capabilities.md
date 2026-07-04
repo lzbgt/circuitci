@@ -270,7 +270,10 @@ Current analog support:
   missing or ambiguous roots fail closed. Validation reports project retained
   root rows into `pole_zero_summaries[]`, Markdown reports include a
   "Pole-Zero Summary" section, and the GUI artifact panel shows compact root
-  rows. Opt-in real-ngspice conformance coverage is available through
+  rows. The GUI Pole-Zero Check editor authors
+  `analysis.pole_zero_assertions[]` entries and failure actions hydrate root
+  kind, optional root index, metric, relation, and threshold from retained
+  findings. Opt-in real-ngspice conformance coverage is available through
   `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_pole_zero_cli`;
   it skips unless `ngspice` is on `PATH`. Xyce remains fail-closed with
   `adapter_blocker` and `evidence_sources[]` metadata because the saved Xyce
