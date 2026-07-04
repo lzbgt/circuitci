@@ -1,0 +1,134 @@
+component_id: vendor.nordic.nrf52840
+version: 0.1.0
+category: mcu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.7
+      operating_voltage_max_V: 3.6
+  VDDH:
+    kind: electrical_power
+    required: false
+    electrical:
+      operating_voltage_min_V: 2.5
+      operating_voltage_max_V: 5.5
+  VBUS:
+    kind: electrical_power
+    required: false
+    electrical:
+      operating_voltage_min_V: 4.35
+      operating_voltage_max_V: 5.5
+  VSS:
+    kind: electrical_ground
+    required: true
+  nRESET:
+    kind: digital_electrical_input
+    required: false
+  SWDCLK:
+    kind: digital_electrical_input
+    required: false
+  SWDIO:
+    kind: digital_electrical_io
+    required: false
+  P0_06:
+    kind: digital_electrical_output
+    required: false
+  P0_08:
+    kind: digital_electrical_input
+    required: false
+  USB_DP:
+    kind: passive
+    required: false
+  USB_DM:
+    kind: passive
+    required: false
+  ANT:
+    kind: passive
+    required: false
+behavior:
+  reset:
+    pin: nRESET
+    active: low
+rules:
+  - POWER_TREE_VALID
+  - RESET_RELEASE_AFTER_POWER_VALID
+datasheet:
+  manufacturer: Nordic Semiconductor
+  part_number: nRF52840
+  package: aQFN73
+  polarity: arm_cortex_m4f_multiprotocol_soc
+  pinout:
+    VDD: A22/B1/W1/AD14/AD23 VDD supplies
+    VDDH: Y2 high-voltage regulator supply
+    VBUS: AD2 USB 5 V regulator input
+    VSS: exposed die pad and ground pins
+    nRESET: P0.18 configurable reset / GPIO / QSPI CSN
+    SWDCLK: AA24 SWD clock
+    SWDIO: AC24 SWD data
+    P0_06: P0.06 GPIO / UART-capable digital I/O
+    P0_08: P0.08 GPIO / UART-capable digital I/O
+    USB_DP: AD6 USB D+
+    USB_DM: AD4 USB D-
+    ANT: H23 2.4 GHz RF antenna port
+  electrical_characteristics:
+    vdd_supply:
+      conditions: Recommended operating conditions, normal-voltage supply.
+      min: 1.7
+      typ: 3.0
+      max: 3.6
+      unit: V
+    vddh_supply:
+      conditions: Recommended operating conditions, high-voltage regulator supply.
+      min: 2.5
+      typ: 3.7
+      max: 5.5
+      unit: V
+    vbus_supply:
+      conditions: Recommended operating conditions, USB regulator input.
+      min: 4.35
+      typ: 5.0
+      max: 5.5
+      unit: V
+    operating_temperature:
+      conditions: Recommended operating conditions.
+      min: -40
+      max: 85
+      unit: degC
+  device_parameters:
+    usb_supply:
+      value: 5.0
+      unit: V
+      simulation_relevance: Optional VBUS checks use the recommended USB regulator input range, not USB signal-integrity sign-off.
+  documents:
+    - title: nRF52840 Product Specification, current Nordic HTML
+      path: docs/research/datasheets/nordic/nrf52840_sources.md
+      source_url: https://docs.nordicsemi.com/bundle/ps_nrf52840/page/keyfeatures_html5.html
+      sha256: 6d28e83bab842d7eff298892235ac59694f0ac2fc80c7d046e28201c3c1b8a65
+      retrieved: 2026-07-05
+    - title: nRF52840 Product Specification PDF mirror
+      path: docs/research/datasheets/nordic/nrf52840-product-spec-farnell.pdf
+      source_url: https://www.farnell.com/datasheets/2577974.pdf
+      sha256: abf1271580b9d25920607abd05e4ad39d1d89dcb3bde5f5f04f4e34091a76fa0
+      retrieved: 2026-07-05
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - vdd_normal_voltage_power_tree
+    - optional_vddh_high_voltage_supply_range
+    - optional_usb_vbus_supply_range
+    - reset_pin_polarity
+    - swd_usb_gpio_pin_boundary
+  not_valid_for:
+    - high_voltage_mode_regulator_sequencing
+    - gpio_threshold_or_drive_strength_signoff
+    - bluetooth_thread_zigbee_ant_protocol_or_rf_layout
+    - usb_signal_integrity
+    - antenna_matching
+    - nfc_behavior
+    - dc_dc_inductor_or_decoupling_network_signoff
+    - uicr_reset_configuration_programming
+    - firmware_execution
+    - thermal_or_peak_current_waveforms

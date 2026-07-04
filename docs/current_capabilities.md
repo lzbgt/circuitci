@@ -88,11 +88,14 @@ evidence.
 ## Source-Backed Common MCU Packs
 
 Current source-backed MCU/module static packs include STM32L431, ESP32-WROOM,
-ESP32-S3-WROOM, and RP2040. The RP2040 pack uses official Raspberry Pi source
-documents to model IOVDD/VREG_VIN/DVDD/USB_VDD/ADC_AVDD supply ranges,
-internal `VREG_VOUT` `100 mA` core-regulator output, RUN active-low reset, and
-QSPI_SS external-flash versus BOOTSEL-USB strap checks. See
-`docs/raspberrypi_rp2040_model.md`.
+ESP32-S3-WROOM, RP2040, and nRF52840. The RP2040 pack uses official Raspberry
+Pi source documents to model IOVDD/VREG_VIN/DVDD/USB_VDD/ADC_AVDD supply
+ranges, internal `VREG_VOUT` `100 mA` core-regulator output, RUN active-low
+reset, and QSPI_SS external-flash versus BOOTSEL-USB strap checks. The
+nRF52840 pack uses official Nordic documentation and a retained product-spec
+PDF mirror to model `VDD`, optional `VDDH`, optional `VBUS`, reset, SWD, USB,
+and RF antenna board-boundary pins. See `docs/raspberrypi_rp2040_model.md` and
+`docs/nordic_nrf52840_model.md`.
 
 ## Analog Simulation Status
 

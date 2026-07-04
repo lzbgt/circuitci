@@ -1,0 +1,72 @@
+project:
+  name: good_nordic_nrf52840_normal_voltage_power
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UNRF:
+      model: vendor.nordic.nrf52840
+      part_number: NRF52840-QIAA
+      power_domains:
+        VDD: rail_3v3
+        VDDH: rail_3v3
+        VBUS: usb_5v
+      pins:
+        VDD: rail_3v3
+        VDDH: rail_3v3
+        VBUS: usb_5v
+        VSS: gnd
+        nRESET: nrf_reset
+        SWDCLK: swdclk
+        SWDIO: swdio
+        P0_06: uart0_tx
+        P0_08: uart0_rx
+        USB_DP: usb_dp
+        USB_DM: usb_dm
+        ANT: antenna_feed
+    RRESET_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_3v3
+        B: nrf_reset
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    nrf_reset:
+      kind: digital_or_analog
+    swdclk:
+      kind: digital_or_analog
+    swdio:
+      kind: digital_or_analog
+    uart0_tx:
+      kind: digital_or_analog
+    uart0_rx:
+      kind: digital_or_analog
+    usb_dp:
+      kind: digital_or_analog
+    usb_dm:
+      kind: digital_or_analog
+    antenna_feed:
+      kind: digital_or_analog
+
+scenarios:
+  - name: nrf52840_normal_voltage_power
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

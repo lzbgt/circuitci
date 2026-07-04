@@ -889,6 +889,15 @@ exercise board-level power-tree and BOOTSEL strap checks, but not USB signal
 integrity, crystal startup/accuracy, QSPI flash protocol timing, BOOTROM USB
 protocol behavior, firmware execution, thermal behavior, or transient current
 waveforms.
+`vendor.nordic.nrf52840` adds a source-backed static nRF52-class pack without
+a generated-SPICE face yet. Official Nordic documentation backs its `VDD`
+normal-voltage range, optional `VDDH` high-voltage range, optional USB `VBUS`
+range, configurable `P0.18` reset boundary, SWD pins, USB pins, and antenna
+pin identity. That model can exercise board-level supply voltage checks, but
+not high-voltage-mode regulator sequencing, GPIO threshold or drive-strength
+sign-off, DCDC support networks, USB signal integrity, antenna matching, NFC,
+RF protocol behavior, UICR reset programming, firmware execution, thermal
+behavior, or transient current waveforms.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

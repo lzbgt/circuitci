@@ -216,11 +216,16 @@ charger programmed-current evidence is missing, or when power-mux
 selected-source evidence is missing and cannot be derived from an explicit
 board state with exactly one powered mux input.
 
-Common source-backed MCU/module packs now include RP2040 alongside the existing
-STM32L431 and Espressif packs. The RP2040 slice proves supply ranges, the
-internal VREG_VOUT-to-DVDD regulator budget, RUN reset polarity, and QSPI_SS
-BOOTSEL bias; USB signal integrity, oscillator accuracy, flash timing, BOOTROM
-protocol behavior, firmware execution, and transient current waveforms remain
+Common source-backed MCU/module packs now include RP2040 and nRF52840
+alongside the existing STM32L431 and Espressif packs. The RP2040 slice proves
+supply ranges, the internal VREG_VOUT-to-DVDD regulator budget, RUN reset
+polarity, and QSPI_SS BOOTSEL bias; USB signal integrity, oscillator accuracy,
+flash timing, BOOTROM protocol behavior, firmware execution, and transient
+current waveforms remain outside the static model. The nRF52840 slice proves
+normal-voltage `VDD`, optional `VDDH`, optional USB `VBUS`, reset/SWD/USB/RF
+pin boundaries, and a VDD-overvoltage public fixture; GPIO thresholds, DCDC
+support networks, antenna matching, RF protocol behavior, UICR reset
+programming, firmware execution, and thermal/transient-current behavior remain
 outside the static model.
 `INTERFACE_PROTECTION_REVIEW` now also has an executable clamp-only path for
 USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,

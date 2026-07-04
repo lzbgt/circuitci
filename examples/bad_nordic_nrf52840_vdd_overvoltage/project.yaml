@@ -1,0 +1,47 @@
+project:
+  name: bad_nordic_nrf52840_vdd_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UNRF:
+      model: vendor.nordic.nrf52840
+      part_number: NRF52840-QIAA
+      power_domains:
+        VDD: rail_5v
+        VDDH: rail_5v
+        VBUS: rail_5v
+      pins:
+        VDD: rail_5v
+        VDDH: rail_5v
+        VBUS: rail_5v
+        VSS: gnd
+        nRESET: nrf_reset
+    RRESET_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_5v
+        B: nrf_reset
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+    nrf_reset:
+      kind: digital_or_analog
+
+scenarios:
+  - name: nrf52840_vdd_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
