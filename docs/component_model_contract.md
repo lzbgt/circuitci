@@ -958,6 +958,14 @@ small-signal diodes, but the bundled electrical card is a reduced preliminary
 fit and does not validate optical output, lifetime, thermal board coupling,
 pulse-current derating, reflow-process exposure, or production hardware
 behavior.
+`vendor.onsemi.npn_2n3904` adds a source-backed common NPN transistor pack.
+Official onsemi documentation backs its 40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`,
+200 mA continuous collector-current limit, 625 mW ambient power limit with
+5 mW/C derating, TO-92 pinout, gain/saturation, capacitance, and transition
+frequency metadata. Generated SPICE uses the same BJT operating-limit probes
+as the existing SS8050/SS8550 packs, but the bundled electrical card is a
+reduced preliminary fit and does not validate gain spread, storage time, noise,
+package thermal coupling, or production hardware behavior.
 `vendor.artery.at32f435_motion_core` follows the same pattern for MCU
 board-boundary observation: its Artery source-backed MCU class, project VDD
 range, current-budget class, UART/CAN/RS-485/control GPIO threshold metadata,

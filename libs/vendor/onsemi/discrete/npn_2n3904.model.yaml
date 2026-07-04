@@ -1,0 +1,121 @@
+component_id: vendor.onsemi.npn_2n3904
+version: 0.1.0
+category: bjt_npn
+ports:
+  C:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+  E:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: onsemi
+  part_number: 2N3904
+  package: TO-92-3
+  polarity: npn
+  pinout:
+    "1": E
+    "2": B
+    "3": C
+  absolute_maximum_ratings:
+    VCEO:
+      value: 40
+      unit: V
+    VCBO:
+      value: 60
+      unit: V
+    VEBO:
+      value: 6
+      unit: V
+    IC:
+      value: 0.2
+      unit: A
+    PD:
+      value: 0.625
+      unit: W
+      reference_temperature_c: 25
+      derating_per_c: 0.005
+      conditions: Total device dissipation at TA = 25 C.
+    TJ:
+      value: 150
+      unit: C
+      conditions: Operating junction maximum; storage range is retained in device metadata.
+  electrical_characteristics:
+    collector_emitter_breakdown_voltage:
+      conditions: IC = 1 mA, IB = 0.
+      min: 40
+      unit: V
+    collector_base_breakdown_voltage:
+      conditions: IC = 10 uA, IE = 0.
+      min: 60
+      unit: V
+    emitter_base_breakdown_voltage:
+      conditions: IE = 10 uA, IC = 0.
+      min: 6
+      unit: V
+    dc_current_gain_10ma:
+      conditions: IC = 10 mA, VCE = 1 V, TA = 25 C.
+      min: 100
+      max: 300
+      unit: ratio
+    dc_current_gain_50ma:
+      conditions: IC = 50 mA, VCE = 1 V, TA = 25 C.
+      min: 60
+      unit: ratio
+    collector_emitter_saturation_voltage:
+      conditions: IC = 50 mA, IB = 5 mA.
+      max: 0.3
+      unit: V
+    base_emitter_saturation_voltage:
+      conditions: IC = 50 mA, IB = 5 mA.
+      max: 0.95
+      unit: V
+    transition_frequency:
+      conditions: IC = 10 mA, VCE = 20 V, f = 100 MHz.
+      min: 300
+      unit: MHz
+    output_capacitance:
+      conditions: VCB = 5 V, IE = 0, f = 1 MHz.
+      max: 4
+      unit: pF
+    input_capacitance:
+      conditions: VEB = 0.5 V, IC = 0, f = 1 MHz.
+      max: 8
+      unit: pF
+  device_parameters:
+    storage_temperature_min:
+      value: -55
+      unit: C
+    storage_temperature_max:
+      value: 150
+      unit: C
+  documents:
+    - title: 2N3903, 2N3904 General Purpose Transistors NPN Silicon
+      path: docs/research/datasheets/onsemi/2n3903_2n3904.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/2n3903-d.pdf
+      sha256: 5e36f5a5c3e5c2b42be84b234ec256386cedc27240859b4744d88e9d42ccafa4
+      retrieved: "2026-07-05"
+simulation:
+  spice:
+    model_name: ONSEMI_2N3904
+    model_type: bjt_npn
+    model_path: models/spice/onsemi/2n3904.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Reduced electrical BJT fit for generated board-level transient checks.
+      - Source-backed operating-limit probes enforce 40 V VCEO, 60 V VCBO, 6 V VEBO, 200 mA collector current, and 625 mW TA=25 C power limits.
+      - Gain, saturation, capacitance, switching, noise, and thermal behavior require vendor or bench-calibrated modeling before physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - bjt_low_side_switch_generated_spice_plumbing
+    - bjt_operating_limit_validation
+    - preliminary_2n3904_small_signal_switch_screening
+  not_valid_for:
+    - gain_or_noise_or_switching_time_signoff
+    - thermal_board_coupling_or_package_temperature_signoff
+    - final_hardware_signoff_without_vendor_or_bench_calibration

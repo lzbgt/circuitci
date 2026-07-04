@@ -450,6 +450,10 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
 - `examples/bad_bjt_overcurrent` proves generated BJT collector current can be
   checked automatically against datasheet absolute maximum ratings without a
   hand-authored transistor-limit assertion.
+- `examples/good_onsemi_2n3904_low_side_switch` and
+  `examples/bad_onsemi_2n3904_collector_overcurrent` prove a source-backed
+  common NPN transistor model can pass normal generated-SPICE switching and
+  fail closed on datasheet collector-current stress.
 - `examples/bad_diode_overcurrent`, `examples/bad_diode_reverse_voltage`, and
   `examples/bad_kingbright_apt1608surck_led_overcurrent` prove generated diode
   and LED forward-current, reverse-voltage, and power stress can be checked

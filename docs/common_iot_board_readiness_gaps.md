@@ -83,7 +83,11 @@ APT1608SURCK now covers a first source-backed common indicator LED pack with
 generated SPICE operating-limit probes for forward current, reverse voltage,
 and power dissipation; optical output, color bins, pulse-drive derating,
 thermal board coupling, lifetime, and production behavior remain outside that
-preliminary electrical model. TI
+preliminary electrical model. onsemi 2N3904 now covers a first source-backed
+common NPN transistor pack with generated SPICE operating-limit probes for BJT
+terminal voltages, collector current, and power dissipation; transistor gain
+spread, noise, switching storage time, package thermal coupling, and
+production behavior remain outside that preliminary electrical model. TI
 TPS54331-5V now covers a 3.5 V to 28 V, 3 A 5 V step-down regulator pack for
 static input/output current screening plus a reduced generated-SPICE observation
 face for VIN/EN/VSENSE/load-current checks. TI

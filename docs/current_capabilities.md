@@ -143,6 +143,15 @@ operating-limit probes; it does not sign off brightness, color bins, lifetime,
 thermal board coupling, pulse-drive derating, or production behavior. See
 `docs/kingbright_apt1608surck_model.md`.
 
+`vendor.onsemi.npn_2n3904` provides a source-backed static/generated-SPICE
+model for onsemi's TO-92 2N3904 NPN general-purpose transistor. It records
+40 V `VCEO`, 60 V `VCBO`, 6 V `VEBO`, 200 mA continuous collector current,
+625 mW total device dissipation at 25 C ambient with 5 mW/C derating, TO-92
+pinout, gain/saturation/capacitance metadata, and a reduced preliminary SPICE
+card for generated-transient plumbing and operating-limit probes. It does not
+sign off gain spread, noise, storage time, thermal board coupling, or
+production hardware behavior. See `docs/onsemi_2n3904_model.md`.
+
 ## Analog Simulation Status
 
 CircuitCI supports bounded SPICE-backed analog validation. It does not fully

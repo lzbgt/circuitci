@@ -1,0 +1,5 @@
+* Reduced preliminary SPICE card for onsemi 2N3904 generated-fixture checks.
+* Source-backed operating limits live in libs/vendor/onsemi/discrete/npn_2n3904.model.yaml.
+* Replace with a vendor or bench-calibrated card before production sign-off.
+
+.model ONSEMI_2N3904 NPN(Is=6.7f Bf=220 Vaf=100 Ikf=0.1 Xtb=1.5 Br=4 Cjc=4p Cje=8p Tf=350p Tr=50n Rb=10 Rc=1 Re=0.5)
