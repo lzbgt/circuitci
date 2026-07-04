@@ -1193,20 +1193,8 @@ impl WaveformCsvBuilder {
 
     fn apply_header_labels(&mut self, labels: Vec<String>) -> Result<()> {
         if self.selected_probe_labels.is_empty() {
-            let mut columns = Vec::new();
-            let mut selected_labels = Vec::new();
-            for (index, label) in labels.into_iter().enumerate() {
-                if is_waveform_metadata_label(&label) {
-                    continue;
-                }
-                columns.push(index);
-                selected_labels.push(label);
-            }
-            if selected_labels.is_empty() {
-                anyhow::bail!("Waveform header contains no plottable probe columns.");
-            }
-            self.probe_labels = selected_labels;
-            self.selected_probe_columns = Some(columns);
+            self.probe_labels = labels;
+            self.selected_probe_columns = None;
             return Ok(());
         }
         let mut columns = Vec::new();
@@ -1263,6 +1251,7 @@ impl WaveformCsvBuilder {
         if selected_probe_labels.is_empty() && x_axis == WaveformXAxis::FrequencyHz {
             append_derived_group_delay_probes(&mut probes, &time_s);
             append_derived_s_parameter_probes(&mut probes);
+            probes.retain(|probe| !is_waveform_metadata_label(&probe.label));
         }
         Ok(WaveformView {
             label: label.to_string(),
@@ -1361,6 +1350,9 @@ fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
     let mut magnitude_db_by_parameter = BTreeMap::new();
     let mut magnitude_linear_by_parameter = BTreeMap::new();
     let mut phase_deg_by_parameter = BTreeMap::new();
+    let reference_impedance_index = probes
+        .iter()
+        .position(|probe| probe.label == "reference_impedance_ohm");
     for (index, probe) in probes.iter().enumerate() {
         if let Some(parameter) = probe.label.strip_suffix(" magnitude dB")
             && parse_s_parameter_term(parameter).is_some()
@@ -1410,6 +1402,46 @@ fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
                         promoted_quantity: None,
                     });
                 }
+                if let Some(phase_index) = phase_deg_by_parameter.get(&parameter)
+                    && let Some(impedance_values) = reflection_impedance_values_ohm(
+                        probes,
+                        *linear_index,
+                        *phase_index,
+                        reference_impedance_index,
+                    )
+                {
+                    let real_values: Vec<_> =
+                        impedance_values.iter().map(|value| value.real).collect();
+                    let imaginary_values: Vec<_> = impedance_values
+                        .iter()
+                        .map(|value| value.imaginary)
+                        .collect();
+                    let magnitude_values: Vec<_> = impedance_values
+                        .iter()
+                        .map(|value| value.magnitude())
+                        .collect();
+                    probes.push(WaveformProbe {
+                        label: format!("{parameter} impedance real ohm"),
+                        values: real_values,
+                        derived: true,
+                        expression: Some(parameter.clone()),
+                        promoted_quantity: None,
+                    });
+                    probes.push(WaveformProbe {
+                        label: format!("{parameter} impedance imaginary ohm"),
+                        values: imaginary_values,
+                        derived: true,
+                        expression: Some(parameter.clone()),
+                        promoted_quantity: None,
+                    });
+                    probes.push(WaveformProbe {
+                        label: format!("{parameter} impedance magnitude ohm"),
+                        values: magnitude_values,
+                        derived: true,
+                        expression: Some(parameter.clone()),
+                        promoted_quantity: None,
+                    });
+                }
             }
         } else {
             let insertion_loss_values = db_values.iter().map(|value| -value).collect();
@@ -1427,6 +1459,54 @@ fn append_derived_s_parameter_probes(probes: &mut Vec<WaveformProbe>) {
         &magnitude_linear_by_parameter,
         &phase_deg_by_parameter,
     );
+}
+
+fn reflection_impedance_values_ohm(
+    probes: &[WaveformProbe],
+    magnitude_linear_index: usize,
+    phase_deg_index: usize,
+    reference_impedance_index: Option<usize>,
+) -> Option<Vec<SParameterComplexValue>> {
+    let magnitude_values = &probes.get(magnitude_linear_index)?.values;
+    let phase_values = &probes.get(phase_deg_index)?.values;
+    if magnitude_values.len() != phase_values.len() {
+        return None;
+    }
+    let reference_values = reference_impedance_index
+        .and_then(|index| probes.get(index))
+        .map(|probe| probe.values.as_slice());
+    if let Some(values) = reference_values
+        && values.len() != magnitude_values.len()
+    {
+        return None;
+    }
+    let mut values = Vec::with_capacity(magnitude_values.len());
+    for (index, (magnitude, phase_deg)) in magnitude_values.iter().zip(phase_values).enumerate() {
+        if !magnitude.is_finite() || *magnitude < 0.0 || !phase_deg.is_finite() {
+            return None;
+        }
+        let reference_impedance_ohm = reference_values.map_or(50.0, |values| values[index]);
+        if !reference_impedance_ohm.is_finite() || reference_impedance_ohm <= 0.0 {
+            return None;
+        }
+        let gamma = SParameterComplexValue::from_polar_degrees(*magnitude, *phase_deg);
+        let numerator = SParameterComplexValue {
+            real: 1.0 + gamma.real,
+            imaginary: gamma.imaginary,
+        };
+        let denominator = SParameterComplexValue {
+            real: 1.0 - gamma.real,
+            imaginary: -gamma.imaginary,
+        };
+        let impedance = numerator
+            .divide(denominator)?
+            .scale(reference_impedance_ohm);
+        if !impedance.real.is_finite() || !impedance.imaginary.is_finite() {
+            return None;
+        }
+        values.push(impedance);
+    }
+    Some(values)
 }
 
 fn parse_s_parameter_term(parameter: &str) -> Option<(usize, usize)> {
@@ -1614,6 +1694,24 @@ impl SParameterComplexValue {
         Self {
             real: self.real * other.real - self.imaginary * other.imaginary,
             imaginary: self.real * other.imaginary + self.imaginary * other.real,
+        }
+    }
+
+    fn divide(self, other: Self) -> Option<Self> {
+        let denominator = other.magnitude_squared();
+        if !denominator.is_finite() || denominator <= f64::EPSILON {
+            return None;
+        }
+        Some(Self {
+            real: (self.real * other.real + self.imaginary * other.imaginary) / denominator,
+            imaginary: (self.imaginary * other.real - self.real * other.imaginary) / denominator,
+        })
+    }
+
+    fn scale(self, factor: f64) -> Self {
+        Self {
+            real: self.real * factor,
+            imaginary: self.imaginary * factor,
         }
     }
 

@@ -176,7 +176,7 @@ Current analog support:
   hand-editing YAML, retained network assertion failures can be loaded back
   into that editor from the report artifact panel, and Scopes derives
   return-loss, insertion-loss, VSWR,
-  group-delay,
+  group-delay, reflection-impedance,
   two-port reciprocity error, passivity singular-value, stability `|Delta|`,
   and Rollet K traces from full `s_parameters.csv` artifacts.
   `backend: auto` does not select Xyce for this path until real solver

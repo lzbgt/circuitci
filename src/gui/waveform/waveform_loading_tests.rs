@@ -150,6 +150,9 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!(!labels.contains(&"reference_impedance_ohm"));
     assert!(labels.contains(&"s11 return loss dB"));
     assert!(labels.contains(&"s11 VSWR"));
+    assert!(labels.contains(&"s11 impedance real ohm"));
+    assert!(labels.contains(&"s11 impedance imaginary ohm"));
+    assert!(labels.contains(&"s11 impedance magnitude ohm"));
     assert!(labels.contains(&"s21 insertion loss dB"));
     assert!(labels.contains(&"s12 insertion loss dB"));
     assert!(labels.contains(&"s22 return loss dB"));
@@ -175,6 +178,32 @@ fn waveform_csv_loader_adds_derived_s_parameter_margin_traces() {
     assert!((s11_vswr.values[0] - 3.0).abs() < 1.0e-12);
     assert!((s11_vswr.values[1] - 1.5).abs() < 1.0e-12);
     assert_eq!(super::probe_unit(&s11_vswr.label), "ratio");
+    let s11_impedance_real = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s11 impedance real ohm")
+        .unwrap();
+    assert!(s11_impedance_real.derived);
+    assert!((s11_impedance_real.values[0] - 150.0).abs() < 1.0e-12);
+    assert!((s11_impedance_real.values[1] - 75.0).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&s11_impedance_real.label), "ohm");
+    let s11_impedance_imaginary = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s11 impedance imaginary ohm")
+        .unwrap();
+    assert!(s11_impedance_imaginary.derived);
+    assert_eq!(s11_impedance_imaginary.values, vec![0.0, 0.0]);
+    assert_eq!(super::probe_unit(&s11_impedance_imaginary.label), "ohm");
+    let s11_impedance_magnitude = waveform
+        .probes
+        .iter()
+        .find(|probe| probe.label == "s11 impedance magnitude ohm")
+        .unwrap();
+    assert!(s11_impedance_magnitude.derived);
+    assert!((s11_impedance_magnitude.values[0] - 150.0).abs() < 1.0e-12);
+    assert!((s11_impedance_magnitude.values[1] - 75.0).abs() < 1.0e-12);
+    assert_eq!(super::probe_unit(&s11_impedance_magnitude.label), "ohm");
     let s21_insertion_loss = waveform
         .probes
         .iter()

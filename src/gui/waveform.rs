@@ -920,6 +920,11 @@ fn probe_unit(label: &str) -> &'static str {
         "deg"
     } else if normalized.contains("group delay") {
         "s"
+    } else if normalized.contains("impedance")
+        || normalized.ends_with("_ohm")
+        || normalized.contains(" ohm")
+    {
+        "ohm"
     } else if normalized.ends_with("_mag")
         || normalized.contains("linear magnitude")
         || normalized.contains("vswr")
