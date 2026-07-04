@@ -31,6 +31,7 @@ fn write_fourier_project(
     output_expression: &str,
     stop_time_us: f64,
     fundamental_frequency_hz: f64,
+    fourier_assertions: &str,
 ) -> std::path::PathBuf {
     let repo = std::env::current_dir().unwrap();
     let project = dir.join("project.yaml");
@@ -96,13 +97,14 @@ scenarios:
         fourier_fundamental_frequency_hz: {fundamental_frequency_hz}
         fourier_output_expression: {output_expression}
         fourier_harmonics: 10
-      stimuli:
+{fourier_assertions}      stimuli:
         - {{ name: square_wave, description: RC pulse response harmonic extraction. }}
       probes:
         - {{ name: out_fourier, expression: V(out) }}
       assertions: []
 "#,
-            libs = repo.join("libs/generic/analog").to_string_lossy()
+            libs = repo.join("libs/generic/analog").to_string_lossy(),
+            fourier_assertions = fourier_assertions,
         ),
     )
     .unwrap();
@@ -158,8 +160,14 @@ fn fourier_backend_normalizes_summary_and_manifest() {
         "#!/bin/sh\nprintf '%s\\n' 'Fourier analysis for v(out):' '  No. Harmonics: 5, THD: 18.5435 %, Gridsize: 200, Interpolation Degree: 1, No. Periods: 1' '' 'Harmonic Frequency   Magnitude   Phase       Norm. Mag   Norm. Phase' '-------- ---------   ---------   -----       ---------   -----------' ' 0       0           0.509986    0           0           0' ' 1       100000      0.538779    -35.733     1           0' ' 2       200000      0.0124232   31.3212     0.0230581   67.0541'\nexit 0\n",
     );
     let project_dir = tempfile::tempdir().unwrap();
-    let project_path =
-        write_fourier_project(project_dir.path(), "ngspice", "V(out)", 100.0, 100_000.0);
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        100.0,
+        100_000.0,
+        "",
+    );
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
@@ -209,14 +217,140 @@ fn fourier_backend_normalizes_summary_and_manifest() {
 
 #[cfg(unix)]
 #[test]
+fn fourier_assertions_pass_on_harmonic_and_thd_metrics() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'Fourier analysis for v(out):' '  No. Harmonics: 5, THD: 18.5435 %, Gridsize: 200, Interpolation Degree: 1, No. Periods: 1' '' 'Harmonic Frequency   Magnitude   Phase       Norm. Mag   Norm. Phase' '-------- ---------   ---------   -----       ---------   -----------' ' 0       0           0.509986    0           0           0' ' 1       100000      0.538779    -35.733     1           0' ' 2       200000      0.0124232   31.3212     0.0230581   67.0541'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        100.0,
+        100_000.0,
+        r#"        fourier_assertions:
+          - name: second_harmonic_ratio_below_limit
+            harmonic: 2
+            metric: normalized_magnitude
+            relation: below
+            threshold: 0.03
+            unit: ratio
+          - name: thd_below_limit
+            metric: thd_percent
+            relation: below
+            threshold: 20.0
+            unit: percent
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn fourier_assertion_fails_on_normalized_harmonic_limit() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'Fourier analysis for v(out):' '  No. Harmonics: 5, THD: 18.5435 %, Gridsize: 200, Interpolation Degree: 1, No. Periods: 1' '' 'Harmonic Frequency   Magnitude   Phase       Norm. Mag   Norm. Phase' '-------- ---------   ---------   -----       ---------   -----------' ' 0       0           0.509986    0           0           0' ' 1       100000      0.538779    -35.733     1           0' ' 2       200000      0.0124232   31.3212     0.0230581   67.0541'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        100.0,
+        100_000.0,
+        r#"        fourier_assertions:
+          - name: second_harmonic_ratio_below_limit
+            harmonic: 2
+            metric: normalized_magnitude
+            relation: below
+            threshold: 0.01
+            unit: ratio
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_FOURIER_ANALYSIS");
+    assert_eq!(
+        report["failures"][0]["measured"]["assertion"],
+        "second_harmonic_ratio_below_limit"
+    );
+    assert_eq!(report["failures"][0]["measured"]["harmonic"], 2);
+    assert_eq!(
+        report["failures"][0]["measured"]["metric"],
+        "normalized_magnitude"
+    );
+    assert_eq!(report["failures"][0]["measured"]["value"], 2.30581e-2);
+    assert_eq!(report["failures"][0]["limit"]["below_threshold"], 0.01);
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
+fn fourier_assertion_fails_closed_on_missing_harmonic() {
+    let fake_path = tempfile::tempdir().unwrap();
+    fake_executable_with_body(
+        fake_path.path(),
+        "ngspice",
+        "#!/bin/sh\nprintf '%s\\n' 'Fourier analysis for v(out):' '  No. Harmonics: 5, THD: 18.5435 %, Gridsize: 200, Interpolation Degree: 1, No. Periods: 1' '' 'Harmonic Frequency   Magnitude   Phase       Norm. Mag   Norm. Phase' '-------- ---------   ---------   -----       ---------   -----------' ' 0       0           0.509986    0           0           0' ' 1       100000      0.538779    -35.733     1           0' ' 2       200000      0.0124232   31.3212     0.0230581   67.0541'\nexit 0\n",
+    );
+    let project_dir = tempfile::tempdir().unwrap();
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        100.0,
+        100_000.0,
+        r#"        fourier_assertions:
+          - name: tenth_harmonic_below_limit
+            harmonic: 10
+            metric: magnitude
+            relation: below
+            threshold: 0.001
+"#,
+    );
+
+    let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
+
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "SPICE_FOURIER_ANALYSIS");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("missing normalized harmonic 10")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[cfg(unix)]
+#[test]
 fn real_ngspice_fourier_conformance_when_enabled() {
     if !real_ngspice_conformance_enabled() {
         return;
     }
 
     let project_dir = tempfile::tempdir().unwrap();
-    let project_path =
-        write_fourier_project(project_dir.path(), "ngspice", "V(out)", 100.0, 100_000.0);
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        100.0,
+        100_000.0,
+        "",
+    );
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
@@ -259,7 +393,7 @@ fn fourier_xyce_backend_fails_closed_with_planning_evidence() {
     fake_executable(fake_path.path(), "Xyce");
     let project_dir = tempfile::tempdir().unwrap();
     let project_path =
-        write_fourier_project(project_dir.path(), "xyce", "V(out)", 100.0, 100_000.0);
+        write_fourier_project(project_dir.path(), "xyce", "V(out)", 100.0, 100_000.0, "");
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
@@ -294,8 +428,14 @@ fn fourier_backend_launch_failure_reports_solver_artifacts() {
     let fake_path = tempfile::tempdir().unwrap();
     fake_executable(fake_path.path(), "ngspice");
     let project_dir = tempfile::tempdir().unwrap();
-    let project_path =
-        write_fourier_project(project_dir.path(), "ngspice", "V(out)", 100.0, 100_000.0);
+    let project_path = write_fourier_project(
+        project_dir.path(),
+        "ngspice",
+        "V(out)",
+        100.0,
+        100_000.0,
+        "",
+    );
 
     let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
 
@@ -336,6 +476,7 @@ fn fourier_contract_rejects_unbound_output_node_before_backend_planning() {
         "V(missing_node)",
         100.0,
         100_000.0,
+        "",
     );
 
     let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
@@ -358,7 +499,7 @@ fn fourier_contract_requires_transient_window_to_cover_period() {
     fake_executable(fake_path.path(), "ngspice");
     let project_dir = tempfile::tempdir().unwrap();
     let project_path =
-        write_fourier_project(project_dir.path(), "ngspice", "V(out)", 1.0, 100_000.0);
+        write_fourier_project(project_dir.path(), "ngspice", "V(out)", 1.0, 100_000.0, "");
 
     let report = run_validation_with_path(project_path.to_str().unwrap(), fake_path.path());
 

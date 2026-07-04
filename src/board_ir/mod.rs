@@ -1306,6 +1306,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub fourier_harmonics: Option<u32>,
     #[serde(default)]
+    pub fourier_assertions: Vec<AnalogFourierAssertion>,
+    #[serde(default)]
     pub hb_fundamental_frequency_hz: Option<f64>,
     #[serde(default)]
     pub hb_output_expression: Option<String>,
@@ -1456,6 +1458,30 @@ pub struct AnalogDistortionAssertion {
     pub unit: Option<String>,
     #[serde(default)]
     pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogFourierAssertion {
+    pub name: String,
+    #[serde(default)]
+    pub harmonic: Option<u32>,
+    pub metric: AnalogFourierMetric,
+    pub relation: AnalogRelation,
+    pub threshold: f64,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogFourierMetric {
+    Magnitude,
+    NormalizedMagnitude,
+    PhaseDeg,
+    NormalizedPhaseDeg,
+    ThdPercent,
 }
 
 #[derive(Debug, Clone, Deserialize)]

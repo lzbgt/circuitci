@@ -536,11 +536,16 @@ For a scenario with check `SPICE_FOURIER_ANALYSIS`:
    `solver_manifest.json`. The normalized summary records the DC row,
    harmonic number, frequency, magnitude, phase, normalized magnitude/phase,
    and solver-reported THD/grid metadata.
-6. Opt-in real-ngspice conformance coverage is available through
+6. Optional `analysis.fourier_assertions[]` entries sign off normalized
+   `fourier_summary.csv` metrics. Non-THD assertions require a `harmonic` and
+   may check `magnitude`, `normalized_magnitude`, `phase_deg`, or
+   `normalized_phase_deg`. `thd_percent` assertions omit `harmonic` and bind to
+   solver-reported THD metadata. Missing harmonics or metrics fail closed.
+7. Opt-in real-ngspice conformance coverage is available through
    `CIRCUITCI_RUN_REAL_NGSPICE=1 cargo test --test analog_fourier_cli`; the
    test is skipped by default unless the variable is set and `ngspice` is on
    `PATH`.
-7. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
+8. Xyce and embedded ngspice remain fail-closed with backend-planning evidence
    until those adapters emit the same normalized `fourier_summary` contract.
 
 For a scenario with check `SPICE_HARMONIC_BALANCE_ANALYSIS`:

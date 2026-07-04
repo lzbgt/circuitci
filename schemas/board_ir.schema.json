@@ -2979,6 +2979,34 @@
                   "fourier_fundamental_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "fourier_output_expression": { "type": "string", "minLength": 1 },
                   "fourier_harmonics": { "type": "integer", "minimum": 1, "maximum": 1024 },
+                  "fourier_assertions": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "metric", "relation", "threshold"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "harmonic": { "type": "integer", "minimum": 0, "maximum": 1024 },
+                        "metric": { "enum": ["magnitude", "normalized_magnitude", "phase_deg", "normalized_phase_deg", "thd_percent"] },
+                        "relation": { "enum": ["above", "below"] },
+                        "threshold": { "type": "number" },
+                        "unit": { "type": "string", "minLength": 1 },
+                        "suggested_fixes": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "if": { "properties": { "metric": { "const": "thd_percent" } } },
+                          "then": { "not": { "required": ["harmonic"] } },
+                          "else": { "required": ["harmonic"] }
+                        }
+                      ]
+                    }
+                  },
                   "hb_fundamental_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "hb_output_expression": { "type": "string", "minLength": 1 },
                   "hb_harmonics": { "type": "integer", "minimum": 1, "maximum": 1024 },
