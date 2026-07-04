@@ -206,7 +206,11 @@ The repair matches `analog.model_files[]` entries by
 missing package fields, blocks on conflicting existing metadata, writes a
 repaired project copy, and validates that copy. Normal validation reports and
 the GUI artifact panel project the same repair command as `repair_yaml_command`
-when the report was produced by `circuitci validate`.
+when the report was produced by `circuitci validate`. In the GUI Scopes
+artifact panel, the `Repair YAML` button beside a bundle install row runs that
+same repair path as a background job, writes the repaired copy under the current
+validation output directory, and records the repaired project or repair report
+path in recent job history without replacing the loaded project.
 
 Supported artifact formats include ordinary SPICE includes, Verilog-A source,
 OpenVAF/OSDI shared objects, Xyce/ADMS plugins, and model conformance reports.

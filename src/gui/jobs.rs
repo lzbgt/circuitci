@@ -9,6 +9,9 @@ use super::waveform::{
 };
 use super::{CircuitCiApp, Stage, validate_from_gui};
 use crate::cancellation;
+use crate::repair_yaml::{
+    BoardYamlRepairFindingKind, BoardYamlRepairOptions, BoardYamlRepairReport,
+};
 use crate::reports::ValidationReport;
 use anyhow::Result;
 use eframe::egui;
@@ -61,6 +64,7 @@ enum BackgroundJobResult {
     WaveformLoad(Box<WaveformLoadJobResult>),
     Suggestions(Box<SuggestionJobResult>),
     ImportProject(Box<ImportProjectJobResult>),
+    BundleInstallRepair(Box<BundleInstallRepairJobResult>),
 }
 
 struct ValidationJobResult {
@@ -114,6 +118,20 @@ struct ImportProjectJobResult {
     success_status: &'static str,
     success_diagnostic: String,
     result: Result<()>,
+}
+
+struct BundleInstallRepairJobResult {
+    project_path: PathBuf,
+    profile: String,
+    output_dir: PathBuf,
+    install_report: PathBuf,
+    result: Result<BundleInstallRepairJobOutput>,
+}
+
+struct BundleInstallRepairJobOutput {
+    report: BoardYamlRepairReport,
+    repair_report_path: PathBuf,
+    repaired_project: Option<PathBuf>,
 }
 
 impl CircuitCiApp {
@@ -457,6 +475,83 @@ impl CircuitCiApp {
         });
     }
 
+    pub(super) fn repair_bundle_install_package_metadata(&mut self, bundle_install_report: String) {
+        if self.project_yaml_dirty {
+            self.save_project_yaml();
+            if self.project_yaml_dirty {
+                return;
+            }
+        }
+        let project_path = PathBuf::from(self.project_path.clone());
+        let profile = self.profile.clone();
+        let output_root = PathBuf::from(self.output_dir.clone());
+        let install_report = PathBuf::from(bundle_install_report);
+        let output_dir = bundle_install_repair_output_dir(&output_root, &install_report);
+        let target = format!(
+            "{} + {} -> {}",
+            project_path.display(),
+            install_report.display(),
+            output_dir.display()
+        );
+        self.start_background_job(
+            "bundle install repair",
+            target,
+            move |sender, _cancel_token| {
+                let thread_project_path = project_path.clone();
+                let thread_profile = profile.clone();
+                let thread_output_dir = output_dir.clone();
+                let thread_install_report = install_report.clone();
+                thread::spawn(move || {
+                    send_background_progress(
+                        &sender,
+                        "Preparing bundle install repair",
+                        format!(
+                            "{} + {}",
+                            thread_project_path.display(),
+                            thread_install_report.display()
+                        ),
+                    );
+                    let result =
+                        crate::repair_yaml::run_board_yaml_repair(BoardYamlRepairOptions {
+                            project: thread_project_path.clone(),
+                            profile: thread_profile.clone(),
+                            output: thread_output_dir.clone(),
+                            finding: BoardYamlRepairFindingKind::BundleInstallPackageMetadata,
+                            dry_run: false,
+                            apply_report: None,
+                            proposal_ids: Vec::new(),
+                            bundle_install_report: Some(thread_install_report.clone()),
+                        })
+                        .map(|report| {
+                            let repaired_project =
+                                report.repaired_project.as_ref().map(PathBuf::from);
+                            BundleInstallRepairJobOutput {
+                                report,
+                                repair_report_path: thread_output_dir.join("repair_report.json"),
+                                repaired_project,
+                            }
+                        });
+                    send_background_progress(
+                        &sender,
+                        "Bundle install repair finished",
+                        "Applying generated repair evidence.".to_string(),
+                    );
+                    let _ = sender.send(BackgroundJobMessage::Finished(
+                        BackgroundJobResult::BundleInstallRepair(Box::new(
+                            BundleInstallRepairJobResult {
+                                project_path: thread_project_path,
+                                profile: thread_profile,
+                                output_dir: thread_output_dir,
+                                install_report: thread_install_report,
+                                result,
+                            },
+                        )),
+                    ));
+                });
+            },
+        );
+    }
+
     pub(super) fn cancel_background_job(&mut self) {
         let Some(job) = &mut self.background_job else {
             return;
@@ -600,6 +695,9 @@ impl CircuitCiApp {
             }
             BackgroundJobResult::ImportProject(result) => {
                 self.apply_import_project_result(*result, elapsed_secs)
+            }
+            BackgroundJobResult::BundleInstallRepair(result) => {
+                self.apply_bundle_install_repair_result(*result, elapsed_secs)
             }
         }
     }
@@ -917,6 +1015,81 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_bundle_install_repair_result(
+        &mut self,
+        result: BundleInstallRepairJobResult,
+        elapsed_secs: f32,
+    ) {
+        if PathBuf::from(self.project_path.clone()) != result.project_path
+            || self.profile != result.profile
+        {
+            self.status = "Ignored stale bundle install repair result.".to_string();
+            self.push_diagnostic(
+                "Ignored a bundle install metadata repair because project/profile changed.",
+            );
+            self.push_background_job_record(
+                "bundle install repair",
+                "stale",
+                elapsed_secs,
+                format!(
+                    "Ignored bundle install repair for {} using {} because project/profile changed.",
+                    result.project_path.display(),
+                    result.install_report.display()
+                ),
+                Some(result.output_dir.to_string_lossy().into_owned()),
+            );
+            return;
+        }
+        match result.result {
+            Ok(output) => {
+                let repair_result = output.report.result.clone();
+                let detail = format!(
+                    "Bundle install metadata repair {repair_result}: applied {}, blocked {}, repaired project {}.",
+                    output.report.summary.applied,
+                    output.report.summary.blocked,
+                    output
+                        .repaired_project
+                        .as_ref()
+                        .map(|path| path.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| "<none>".to_string())
+                );
+                self.status = format!("Bundle install metadata repair {repair_result}.");
+                self.push_diagnostic(&format!(
+                    "{detail} Repair report: {}.",
+                    output.repair_report_path.display()
+                ));
+                self.push_background_job_record(
+                    "bundle install repair",
+                    repair_result.as_str(),
+                    elapsed_secs,
+                    detail,
+                    Some(
+                        output
+                            .repaired_project
+                            .unwrap_or(output.repair_report_path)
+                            .to_string_lossy()
+                            .into_owned(),
+                    ),
+                );
+            }
+            Err(error) => {
+                let detail = format!(
+                    "Bundle install metadata repair failed for {} using {}.\n{error:#}",
+                    result.project_path.display(),
+                    result.install_report.display()
+                );
+                self.push_background_job_record(
+                    "bundle install repair",
+                    "failed",
+                    elapsed_secs,
+                    detail,
+                    Some(result.output_dir.to_string_lossy().into_owned()),
+                );
+                self.record_error(error);
+            }
+        }
+    }
+
     fn import_state_key(&self, kind: ImportProjectKind) -> String {
         match kind {
             ImportProjectKind::KiCadSchematic => self.kicad_schematic_import_key(),
@@ -1055,6 +1228,7 @@ fn canceled_job_detail(result: &BackgroundJobResult) -> Option<String> {
             .err()
             .filter(|error| cancellation::is_canceled(error))
             .map(|error| format!("{error:#}")),
+        BackgroundJobResult::BundleInstallRepair(_) => None,
     }
 }
 
@@ -1069,7 +1243,37 @@ fn background_job_output_path(result: &BackgroundJobResult) -> Option<String> {
         BackgroundJobResult::ImportProject(result) => {
             Some(result.output_project_path.to_string_lossy().into_owned())
         }
+        BackgroundJobResult::BundleInstallRepair(result) => {
+            Some(result.output_dir.to_string_lossy().into_owned())
+        }
         BackgroundJobResult::Suggestions(_) => None,
+    }
+}
+
+fn bundle_install_repair_output_dir(output_root: &Path, install_report: &Path) -> PathBuf {
+    output_root
+        .join("repair_bundle_import")
+        .join(sanitized_repair_report_stem(install_report))
+}
+
+fn sanitized_repair_report_stem(path: &Path) -> String {
+    let raw = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .filter(|stem| !stem.trim().is_empty())
+        .unwrap_or("bundle_install_report");
+    let mut sanitized = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-') {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+    if sanitized.is_empty() {
+        "bundle_install_report".to_string()
+    } else {
+        sanitized
     }
 }
 
@@ -1077,8 +1281,13 @@ fn background_job_output_path(result: &BackgroundJobResult) -> Option<String> {
 mod tests {
     use super::{
         BACKGROUND_JOB_EVENT_LIMIT, BACKGROUND_JOB_HISTORY_LIMIT, BackgroundJobProgress,
-        CircuitCiApp, ImportProjectJobResult, ImportProjectKind, SuggestionJobResult,
-        ValidationJobResult,
+        BundleInstallRepairJobOutput, BundleInstallRepairJobResult, CircuitCiApp,
+        ImportProjectJobResult, ImportProjectKind, SuggestionJobResult, ValidationJobResult,
+        bundle_install_repair_output_dir,
+    };
+    use crate::repair_yaml::{
+        BoardYamlFindingEvidence, BoardYamlRepairProof, BoardYamlRepairReport,
+        BoardYamlRepairReproduction, BoardYamlRepairSummary,
     };
     use std::path::PathBuf;
     use std::sync::atomic::Ordering;
@@ -1284,6 +1493,80 @@ mod tests {
     }
 
     #[test]
+    fn bundle_install_repair_output_dir_uses_report_stem() {
+        let output = bundle_install_repair_output_dir(
+            std::path::Path::new("out/gui"),
+            std::path::Path::new("bundle reports/install report.json"),
+        );
+        assert_eq!(
+            output,
+            PathBuf::from("out/gui/repair_bundle_import/install_report")
+        );
+    }
+
+    #[test]
+    fn stale_bundle_install_repair_result_is_ignored() {
+        let mut app = CircuitCiApp {
+            project_path: "active.project.yaml".to_string(),
+            profile: "default".to_string(),
+            ..Default::default()
+        };
+
+        app.apply_bundle_install_repair_result(
+            BundleInstallRepairJobResult {
+                project_path: PathBuf::from("old.project.yaml"),
+                profile: "default".to_string(),
+                output_dir: PathBuf::from("out/repair"),
+                install_report: PathBuf::from("install_report.json"),
+                result: Ok(BundleInstallRepairJobOutput {
+                    report: repair_report("pass", 1, 0),
+                    repair_report_path: PathBuf::from("out/repair/repair_report.json"),
+                    repaired_project: Some(PathBuf::from("out/repair/repaired.project.yaml")),
+                }),
+            },
+            0.5,
+        );
+
+        assert_eq!(app.status, "Ignored stale bundle install repair result.");
+        assert_eq!(app.background_job_history.len(), 1);
+        assert_eq!(app.background_job_history[0].label, "bundle install repair");
+        assert_eq!(app.background_job_history[0].outcome, "stale");
+    }
+
+    #[test]
+    fn bundle_install_repair_result_records_repaired_project() {
+        let mut app = CircuitCiApp {
+            project_path: "active.project.yaml".to_string(),
+            profile: "default".to_string(),
+            ..Default::default()
+        };
+
+        app.apply_bundle_install_repair_result(
+            BundleInstallRepairJobResult {
+                project_path: PathBuf::from("active.project.yaml"),
+                profile: "default".to_string(),
+                output_dir: PathBuf::from("out/repair"),
+                install_report: PathBuf::from("install_report.json"),
+                result: Ok(BundleInstallRepairJobOutput {
+                    report: repair_report("pass", 1, 0),
+                    repair_report_path: PathBuf::from("out/repair/repair_report.json"),
+                    repaired_project: Some(PathBuf::from("out/repair/repaired.project.yaml")),
+                }),
+            },
+            0.5,
+        );
+
+        assert_eq!(app.status, "Bundle install metadata repair pass.");
+        assert_eq!(app.background_job_history.len(), 1);
+        assert_eq!(app.background_job_history[0].label, "bundle install repair");
+        assert_eq!(app.background_job_history[0].outcome, "pass");
+        assert_eq!(
+            app.background_job_history[0].output_path.as_deref(),
+            Some("out/repair/repaired.project.yaml")
+        );
+    }
+
+    #[test]
     fn job_history_is_capped() {
         let mut app = CircuitCiApp::default();
         for index in 0..(BACKGROUND_JOB_HISTORY_LIMIT + 3) {
@@ -1301,5 +1584,45 @@ mod tests {
             BACKGROUND_JOB_HISTORY_LIMIT
         );
         assert_eq!(app.background_job_history[0].detail, "detail 3");
+    }
+
+    fn repair_report(result: &str, applied: usize, blocked: usize) -> BoardYamlRepairReport {
+        BoardYamlRepairReport {
+            schema_version: "circuitci.repair.v1".to_string(),
+            project: "project".to_string(),
+            profile: "default".to_string(),
+            finding: "BUNDLE_INSTALL_PACKAGE_METADATA".to_string(),
+            mode: "proposal".to_string(),
+            result: result.to_string(),
+            messages: Vec::new(),
+            reason_codes: Vec::new(),
+            summary: BoardYamlRepairSummary {
+                proposed: applied + blocked,
+                selected: applied,
+                applied,
+                blocked,
+                skipped: 0,
+                original_matching_findings: 0,
+                repaired_matching_findings: 0,
+                original_matching_criticals: 0,
+                repaired_matching_criticals: 0,
+                new_criticals: 0,
+            },
+            original_project: "active.project.yaml".to_string(),
+            repaired_project: Some("out/repair/repaired.project.yaml".to_string()),
+            original_report: "out/repair/original/report.json".to_string(),
+            repaired_report: Some("out/repair/repaired/report.json".to_string()),
+            proposals: Vec::new(),
+            proof: BoardYamlRepairProof {
+                original_finding_removed: Some(true),
+                no_new_criticals: Some(true),
+                original_matching_findings: Vec::<BoardYamlFindingEvidence>::new(),
+                repaired_matching_findings: Vec::<BoardYamlFindingEvidence>::new(),
+                new_critical_findings: Vec::<BoardYamlFindingEvidence>::new(),
+            },
+            reproduction: BoardYamlRepairReproduction {
+                command: "circuitci repair-yaml active.project.yaml --finding bundle-install-package-metadata".to_string(),
+            },
+        }
     }
 }

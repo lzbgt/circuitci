@@ -808,6 +808,11 @@ The GUI should not become the solver.
   `circuitci validate`, and the GUI artifact panel displays that command beside
   the scenario-import pins. Added negative repair coverage for conflicting
   existing metadata and failed bundle install reports.
+- The GUI artifact panel now has a `Repair YAML` action for bundle install
+  rows. It runs the bundle-install package metadata repair as a background job,
+  writes a copied repaired project under the validation output directory, and
+  records the repaired project or repair report path in recent job history
+  instead of replacing the loaded project.
 
 ## Risks
 

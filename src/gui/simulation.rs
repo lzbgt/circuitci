@@ -168,6 +168,7 @@ impl CircuitCiApp {
     }
 
     fn scope_artifacts_and_findings(&mut self, ui: &mut egui::Ui) {
+        let mut bundle_install_repair_report: Option<String> = None;
         if self.report.is_some() {
             ui.separator();
             let report = self.report.clone().expect("checked above");
@@ -349,6 +350,15 @@ impl CircuitCiApp {
                             }
                             if let Some(command) = &install.repair_yaml_command {
                                 ui.monospace(format!("repair_command {command}"));
+                                if ui
+                                    .add_enabled(
+                                        self.background_job_elapsed_secs().is_none(),
+                                        egui::Button::new("Repair YAML"),
+                                    )
+                                    .clicked()
+                                {
+                                    bundle_install_repair_report = Some(install.report.clone());
+                                }
                             }
                         }
                     }
@@ -361,6 +371,9 @@ impl CircuitCiApp {
         } else {
             ui.separator();
             ui.label("Run validation to observe SPICE waveforms, generated decks, and findings.");
+        }
+        if let Some(report) = bundle_install_repair_report {
+            self.repair_bundle_install_package_metadata(report);
         }
     }
 }

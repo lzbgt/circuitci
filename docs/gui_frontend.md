@@ -90,17 +90,23 @@ command wiring.
 project, import, and output path fields. The dialogs are compiled only with the
 optional GUI feature and do not affect the default CLI build.
 `src/gui/jobs.rs` owns GUI background jobs for validation, scenario
-suggestions, and KiCad/SPICE import actions. Long-running work runs on a worker
-thread and reports back to the UI through a channel; cancel requests set a
-shared worker flag, terminate external ngspice validation processes where
-possible, stop scenario suggestions and KiCad/SPICE import jobs at safe
-phase-boundary checkpoints, and still mark any late in-flight result to be
-ignored when a worker returns. It also owns lightweight progress events for the
-active job and the capped recent-job history used by the status panel to show
-final outcome, elapsed time, diagnostics, and output paths for completed,
-failed, stale, or canceled background actions. Supported early-stop paths use a
-typed operation-canceled error so checkpoint cancellation is shown as
-`canceled`, not as an ordinary failure.
+suggestions, KiCad/SPICE import actions, and bundle-install metadata repair.
+Long-running work runs on a worker thread and reports back to the UI through a
+channel; cancel requests set a shared worker flag, terminate external ngspice
+validation processes where possible, stop scenario suggestions and KiCad/SPICE
+import jobs at safe phase-boundary checkpoints, and still mark any late
+in-flight result to be ignored when a worker returns. It also owns lightweight
+progress events for the active job and the capped recent-job history used by
+the status panel to show final outcome, elapsed time, diagnostics, and output
+paths for completed, failed, stale, or canceled background actions. Supported
+early-stop paths use a typed operation-canceled error so checkpoint cancellation
+is shown as `canceled`, not as an ordinary failure. Bundle-install metadata
+repair is intentionally non-destructive: the Scopes artifact panel button runs
+the same `repair-yaml --finding bundle-install-package-metadata` flow as the
+CLI, writes a copied repaired project under
+`<validation-output>/repair_bundle_import/<install-report-stem>/`, and records
+the repaired project or repair report path in recent job history without
+changing the loaded project path.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
