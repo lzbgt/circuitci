@@ -449,8 +449,19 @@ cases:
     project: ../examples/good_usb_connector_edge_proximity/project.yaml
     expect: pass
 
+  - id: usb_connector_edge_proximity_footprint_passes
+    project: ../examples/good_usb_connector_edge_proximity_footprint/project.yaml
+    expect: pass
+
   - id: usb_connector_edge_proximity_detected
     project: ../examples/bad_usb_connector_edge_proximity/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_EDGE_PROXIMITY_VALID
+        severity: critical
+
+  - id: usb_connector_edge_proximity_footprint_detected
+    project: ../examples/bad_usb_connector_edge_proximity_footprint/project.yaml
     expect: fail
     required_findings:
       - id: USB_CONNECTOR_EDGE_PROXIMITY_VALID
@@ -462,6 +473,13 @@ cases:
 
   - id: usb_connector_body_overhang_detected
     project: ../examples/bad_usb_connector_body_overhang/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_BODY_OVERHANG_VALID
+        severity: critical
+
+  - id: usb_connector_body_overhang_circle_detected
+    project: ../examples/bad_usb_connector_body_overhang_circle/project.yaml
     expect: fail
     required_findings:
       - id: USB_CONNECTOR_BODY_OVERHANG_VALID
@@ -484,6 +502,20 @@ cases:
 
   - id: usb_connector_entry_clearance_detected
     project: ../examples/bad_usb_connector_entry_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+        severity: critical
+
+  - id: usb_connector_entry_clearance_aperture_detected
+    project: ../examples/bad_usb_connector_entry_clearance_aperture/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+        severity: critical
+
+  - id: usb_connector_entry_clearance_model_offset_detected
+    project: ../examples/bad_usb_connector_entry_clearance_model_offset/project.yaml
     expect: fail
     required_findings:
       - id: USB_CONNECTOR_ENTRY_CLEARANCE_VALID
@@ -1935,8 +1967,20 @@ repairs:
     fixes_findings:
       - USB_CONNECTOR_EDGE_PROXIMITY_VALID
 
+  - id: fix_usb_connector_edge_proximity_footprint
+    detects_case: usb_connector_edge_proximity_footprint_detected
+    fixed_case: usb_connector_edge_proximity_footprint_passes
+    fixes_findings:
+      - USB_CONNECTOR_EDGE_PROXIMITY_VALID
+
   - id: fix_usb_connector_body_overhang
     detects_case: usb_connector_body_overhang_detected
+    fixed_case: usb_connector_body_overhang_passes
+    fixes_findings:
+      - USB_CONNECTOR_BODY_OVERHANG_VALID
+
+  - id: fix_usb_connector_body_overhang_circle
+    detects_case: usb_connector_body_overhang_circle_detected
     fixed_case: usb_connector_body_overhang_passes
     fixes_findings:
       - USB_CONNECTOR_BODY_OVERHANG_VALID
@@ -1949,6 +1993,18 @@ repairs:
 
   - id: fix_usb_connector_entry_clearance
     detects_case: usb_connector_entry_clearance_detected
+    fixed_case: usb_connector_entry_clearance_passes
+    fixes_findings:
+      - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+
+  - id: fix_usb_connector_entry_clearance_aperture
+    detects_case: usb_connector_entry_clearance_aperture_detected
+    fixed_case: usb_connector_entry_clearance_passes
+    fixes_findings:
+      - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+
+  - id: fix_usb_connector_entry_clearance_model_offset
+    detects_case: usb_connector_entry_clearance_model_offset_detected
     fixed_case: usb_connector_entry_clearance_passes
     fixes_findings:
       - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
