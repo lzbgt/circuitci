@@ -77,8 +77,8 @@ Useful next slices:
   manifest,
 - broader EasyEDA schematic/PCB import,
 - BOM and pick-and-place package/footprint semantics beyond the current
-  source/row-hash/component/side-confidence/orientation-confidence assembly
-  manifest,
+  source/row-hash/component/footprint-key/side-confidence/orientation-confidence
+  assembly manifest,
 - vendor reference-design adapters,
 - package/footprint semantics beyond the current KiCad footprint-property,
   pin-1, body/courtyard-bounds, connector-entry, raw pad-level mask/paste

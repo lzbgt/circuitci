@@ -232,6 +232,8 @@ struct BomFieldManifest {
     #[serde(skip_serializing_if = "Option::is_none")]
     footprint: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    footprint_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     value: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     manufacturer_part: Option<String>,
@@ -257,6 +259,8 @@ struct PlacementFieldManifest {
     device: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     footprint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    footprint_key: Option<String>,
     x_mm: f64,
     y_mm: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -292,6 +296,8 @@ struct ComponentManifest {
     part_number: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     footprint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    footprint_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     manufacturer_part: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -478,7 +484,7 @@ fn write_manifest(
         })?;
     }
     let manifest = AssemblyManifest {
-        schema_version: "0.3.0".to_string(),
+        schema_version: "0.4.0".to_string(),
         sources: AssemblySourceManifest {
             bom: source_csv_manifest(&options.bom, &bom.headers, bom.data_rows)?,
             placement: source_csv_manifest(
@@ -542,6 +548,7 @@ fn bom_row_manifests(bom: &ParsedBom) -> Vec<BomRowManifest> {
                 fields: BomFieldManifest {
                     comment: first.comment.clone(),
                     footprint: first.footprint.clone(),
+                    footprint_key: normalized_footprint_key(first.footprint.as_deref()),
                     value: first.value.clone(),
                     manufacturer_part: first.manufacturer_part.clone(),
                     manufacturer: first.manufacturer.clone(),
@@ -564,6 +571,7 @@ fn placement_row_manifests(placements: &ParsedPlacements) -> Vec<PlacementRowMan
             fields: PlacementFieldManifest {
                 device: entry.device.clone(),
                 footprint: entry.footprint.clone(),
+                footprint_key: normalized_footprint_key(entry.footprint.as_deref()),
                 x_mm: entry.x_mm,
                 y_mm: entry.y_mm,
                 layer: entry.layer.clone(),
@@ -600,6 +608,9 @@ fn component_manifests(
         .map(|designator| {
             let bom = bom_by_designator.get(designator.as_str()).copied();
             let placement = placements.entries.get(designator);
+            let footprint = bom
+                .and_then(|entry| entry.footprint.clone())
+                .or_else(|| placement.and_then(|entry| entry.footprint.clone()));
             ComponentManifest {
                 designator: designator.clone(),
                 has_bom: bom.is_some(),
@@ -607,9 +618,8 @@ fn component_manifests(
                 bom_row: bom.map(|entry| entry.row_number),
                 placement_row: placement.map(|entry| entry.row_number),
                 part_number: component_part_number(bom, placement),
-                footprint: bom
-                    .and_then(|entry| entry.footprint.clone())
-                    .or_else(|| placement.and_then(|entry| entry.footprint.clone())),
+                footprint_key: normalized_footprint_key(footprint.as_deref()),
+                footprint,
                 manufacturer_part: bom.and_then(|entry| entry.manufacturer_part.clone()),
                 supplier_part: bom.and_then(|entry| entry.supplier_part.clone()),
                 x_mm: placement.map(|entry| entry.x_mm),
@@ -648,6 +658,18 @@ fn csv_row_sha256(row: &[String]) -> String {
     }
     let digest = hasher.finalize();
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn normalized_footprint_key(value: Option<&str>) -> Option<String> {
+    let raw = value?.trim();
+    let key = raw
+        .rsplit_once(':')
+        .map_or(raw, |(_, tail)| tail)
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+    (!key.is_empty()).then_some(key)
 }
 
 fn parse_bom(path: &Path) -> Result<ParsedBom> {

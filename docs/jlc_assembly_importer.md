@@ -33,11 +33,11 @@ records:
   data-row counts,
 - accepted BOM rows with source row number, row SHA-256 fingerprint,
   designator group, split designators, quantity, manufacturer, supplier,
-  value, and footprint fields,
+  value, raw footprint, and normalized `footprint_key` fields,
 - accepted placement rows with source row number, designator, coordinates,
-  row SHA-256 fingerprint, raw layer, normalized side, side confidence, raw
-  rotation, normalized rotation, orientation confidence, SMD flag,
-  comment/name, and pin count,
+  row SHA-256 fingerprint, raw footprint, normalized `footprint_key`, raw
+  layer, normalized side, side confidence, raw rotation, normalized rotation,
+  orientation confidence, SMD flag, comment/name, and pin count,
 - one component join row per generated component showing whether BOM and/or
   placement evidence was present, the source row numbers, selected part number,
   selected footprint, placement coordinates, side confidence, and orientation

@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "bom_rows", "placement_rows", "components"],
   "properties": {
-    "schema_version": { "const": "0.3.0" },
+    "schema_version": { "const": "0.4.0" },
     "sources": {
       "type": "object",
       "required": ["bom", "placement"],
@@ -56,6 +56,10 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
+    "footprint_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+$"
+    },
     "source_csv": {
       "type": "object",
       "required": ["path", "size_bytes", "sha256", "columns", "data_rows"],
@@ -100,6 +104,7 @@
       "properties": {
         "comment": { "type": "string", "minLength": 1 },
         "footprint": { "type": "string", "minLength": 1 },
+        "footprint_key": { "$ref": "#/$defs/footprint_key" },
         "value": { "type": "string", "minLength": 1 },
         "manufacturer_part": { "type": "string", "minLength": 1 },
         "manufacturer": { "type": "string", "minLength": 1 },
@@ -125,6 +130,7 @@
       "properties": {
         "device": { "type": "string", "minLength": 1 },
         "footprint": { "type": "string", "minLength": 1 },
+        "footprint_key": { "$ref": "#/$defs/footprint_key" },
         "x_mm": { "type": "number" },
         "y_mm": { "type": "number" },
         "layer": { "type": "string", "minLength": 1 },
@@ -159,6 +165,7 @@
         "placement_row": { "type": "integer", "minimum": 2 },
         "part_number": { "type": "string", "minLength": 1 },
         "footprint": { "type": "string", "minLength": 1 },
+        "footprint_key": { "$ref": "#/$defs/footprint_key" },
         "manufacturer_part": { "type": "string", "minLength": 1 },
         "supplier_part": { "type": "string", "minLength": 1 },
         "x_mm": { "type": "number" },

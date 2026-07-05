@@ -44,9 +44,12 @@ Board IR assembly evidence:
   `board.layout.placements`.
 - `Layer: T` maps to `side: top`; `B` maps to `side: bottom`.
 - Component `source` metadata preserves BOM and placement fields.
-- The JSON manifest schema `0.3.0` records deterministic `row_sha256`
-  fingerprints for each accepted BOM and placement row, so downstream review
-  can detect source-row drift without inferring additional semantics.
+- The JSON manifest schema `0.4.0` records deterministic `row_sha256`
+  fingerprints for each accepted BOM and placement row plus normalized
+  lowercase-alphanumeric `footprint_key` values for BOM, placement, and
+  component join rows. These keys mirror the conservative package-token
+  comparison used by assembly-footprint alignment and do not infer package
+  compatibility.
 
 No nets or pins are inferred from assembly data. This avoids false electrical
 confidence and leaves connectivity to schematic/layout importers.
