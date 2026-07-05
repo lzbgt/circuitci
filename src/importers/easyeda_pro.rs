@@ -89,6 +89,7 @@ struct SqliteManifest {
 struct TableManifest {
     name: String,
     row_count: usize,
+    content_sha256: String,
     columns: Vec<ColumnManifest>,
 }
 
@@ -178,6 +179,17 @@ struct ImportabilityManifest {
     notes: Vec<String>,
 }
 
+struct InspectionMarkdownInput<'a> {
+    path: &'a Path,
+    projects: &'a [ProjectRow],
+    branches: &'a [BranchRow],
+    latest_structure: Option<&'a StructureSummary>,
+    payload_rows: &'a [PayloadRowManifest],
+    tables: &'a [TableManifest],
+    summary: &'a EasyedaProInspectSummary,
+    max_history_payload_len: usize,
+}
+
 impl From<&StructureManifest> for StructureSummary {
     fn from(structure: &StructureManifest) -> Self {
         Self {
@@ -224,6 +236,7 @@ pub fn inspect_easyeda_pro_project(
         "max history_data length",
     )?;
     let payload_rows = history_payload_rows(&options.eprj2)?;
+    let table_manifests = table_manifests(&options.eprj2)?;
 
     let summary = EasyedaProInspectSummary {
         projects: projects.len(),
@@ -264,15 +277,16 @@ pub fn inspect_easyeda_pro_project(
     }
     fs::write(
         &options.output,
-        inspection_markdown(
-            &options.eprj2,
-            &projects,
-            &branches,
-            latest_structure.as_ref(),
-            &payload_rows,
-            &summary,
+        inspection_markdown(InspectionMarkdownInput {
+            path: &options.eprj2,
+            projects: &projects,
+            branches: &branches,
+            latest_structure: latest_structure.as_ref(),
+            payload_rows: &payload_rows,
+            tables: &table_manifests,
+            summary: &summary,
             max_history_payload_len,
-        ),
+        }),
     )
     .with_context(|| {
         format!(
@@ -281,7 +295,7 @@ pub fn inspect_easyeda_pro_project(
         )
     })?;
     let manifest = InspectionManifest {
-        schema_version: "0.3.0".to_string(),
+        schema_version: "0.4.0".to_string(),
         source: SourceManifest {
             path: options.eprj2.display().to_string(),
             size_bytes: fs::metadata(&options.eprj2)
@@ -290,7 +304,7 @@ pub fn inspect_easyeda_pro_project(
             sha256: file_sha256_hex(&options.eprj2)?,
         },
         sqlite: SqliteManifest {
-            tables: table_manifests(&options.eprj2)?,
+            tables: table_manifests,
         },
         easyeda_pro: EasyedaProManifest {
             projects,
@@ -594,13 +608,51 @@ fn table_manifests(path: &Path) -> Result<Vec<TableManifest>> {
             &format!("SELECT count(*) FROM \"{}\";", sqlite_identifier(name)),
             &format!("{name} row count"),
         )?;
+        let columns = column_manifests(path, name)?;
+        let content_sha256 = table_content_sha256(path, name, &columns)?;
         tables.push(TableManifest {
             name: name.clone(),
             row_count,
-            columns: column_manifests(path, name)?,
+            content_sha256,
+            columns,
         });
     }
     Ok(tables)
+}
+
+fn table_content_sha256(path: &Path, table: &str, columns: &[ColumnManifest]) -> Result<String> {
+    let mut hasher = Sha256::new();
+    hasher.update(table.as_bytes());
+    hasher.update(b"\n");
+    for column in columns {
+        hasher.update(column.name.as_bytes());
+        hasher.update(b"\x1e");
+    }
+    hasher.update(b"\n");
+    if columns.is_empty() {
+        let digest = hasher.finalize();
+        return Ok(hex_digest(&digest));
+    }
+    let quoted_columns = columns
+        .iter()
+        .map(|column| format!("quote(\"{}\")", sqlite_identifier(&column.name)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    for row in sqlite_rows(
+        path,
+        &format!(
+            "SELECT {quoted_columns} FROM \"{}\" ORDER BY rowid;",
+            sqlite_identifier(table)
+        ),
+    )? {
+        for cell in row {
+            hasher.update(cell.as_bytes());
+            hasher.update(b"\x1f");
+        }
+        hasher.update(b"\n");
+    }
+    let digest = hasher.finalize();
+    Ok(hex_digest(&digest))
 }
 
 fn column_manifests(path: &Path, table: &str) -> Result<Vec<ColumnManifest>> {
@@ -727,7 +779,11 @@ fn file_sha256_hex(path: &Path) -> Result<String> {
 
 fn sha256_hex(bytes: &[u8]) -> String {
     let digest = Sha256::digest(bytes);
-    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+    hex_digest(&digest)
+}
+
+fn hex_digest(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 fn bytes_from_sqlite_hex(hex: &str, label: &str) -> Result<Vec<u8>> {
@@ -747,31 +803,25 @@ fn non_empty(value: String) -> Option<String> {
     (!value.is_empty()).then_some(value)
 }
 
-fn inspection_markdown(
-    path: &Path,
-    projects: &[ProjectRow],
-    branches: &[BranchRow],
-    latest_structure: Option<&StructureSummary>,
-    payload_rows: &[PayloadRowManifest],
-    summary: &EasyedaProInspectSummary,
-    max_history_payload_len: usize,
-) -> String {
+fn inspection_markdown(input: InspectionMarkdownInput<'_>) -> String {
     let mut markdown = String::new();
     markdown.push_str("# EasyEDA Pro Project Inspection\n\n");
-    markdown.push_str(&format!("- Source: `{}`\n", path.display()));
-    markdown.push_str(&format!("- Projects: `{}`\n", summary.projects));
-    markdown.push_str(&format!("- Branches: `{}`\n", summary.branches));
+    markdown.push_str(&format!("- Source: `{}`\n", input.path.display()));
+    markdown.push_str(&format!("- Projects: `{}`\n", input.summary.projects));
+    markdown.push_str(&format!("- Branches: `{}`\n", input.summary.branches));
     markdown.push_str(&format!(
         "- Project structure snapshots: `{}`\n",
-        summary.project_structures
+        input.summary.project_structures
     ));
     markdown.push_str(&format!(
         "- History payloads: `{}` total, `{}` encoded/non-JSON, max payload length `{}` bytes\n\n",
-        summary.history_payloads, summary.encoded_history_payloads, max_history_payload_len
+        input.summary.history_payloads,
+        input.summary.encoded_history_payloads,
+        input.max_history_payload_len
     ));
 
     markdown.push_str("## Projects\n\n");
-    for project in projects {
+    for project in input.projects {
         markdown.push_str(&format!(
             "- `{}`: `{}`",
             project.uuid,
@@ -785,12 +835,12 @@ fn inspection_markdown(
         }
         markdown.push('\n');
     }
-    if projects.is_empty() {
+    if input.projects.is_empty() {
         markdown.push_str("- No rows in `projects`.\n");
     }
 
     markdown.push_str("\n## Branches\n\n");
-    for branch in branches {
+    for branch in input.branches {
         markdown.push_str(&format!(
             "- `{}`: `{}`",
             branch.uuid,
@@ -801,12 +851,14 @@ fn inspection_markdown(
         }
         markdown.push('\n');
     }
-    if branches.is_empty() {
+    if input.branches.is_empty() {
         markdown.push_str("- No rows in `branches`.\n");
     }
 
+    append_sqlite_table_evidence(&mut markdown, input.tables);
+
     markdown.push_str("\n## Latest Structure\n\n");
-    if let Some(structure) = latest_structure {
+    if let Some(structure) = input.latest_structure {
         markdown.push_str(&format!("- Ticket: `{}`\n", structure.ticket));
         append_named_objects(&mut markdown, "Boards", &structure.boards);
         append_named_objects(&mut markdown, "Schematics", &structure.schematics);
@@ -817,10 +869,10 @@ fn inspection_markdown(
         markdown.push_str("- No rows in `project_structures`.\n");
     }
 
-    append_payload_shape_evidence(&mut markdown, payload_rows);
+    append_payload_shape_evidence(&mut markdown, input.payload_rows);
 
     markdown.push_str("\n## Importability\n\n");
-    if summary.encoded_history_payloads > 0 {
+    if input.summary.encoded_history_payloads > 0 {
         markdown.push_str(
             "The project structure metadata is plaintext JSON, but design-object history payloads are encoded/non-JSON in this `.eprj2` file. CircuitCI therefore treats pad, via, route, zone, and net geometry as unavailable from this source until an exported unencoded EasyEDA layout artifact or a documented decoder is provided.\n",
         );
@@ -830,6 +882,23 @@ fn inspection_markdown(
         );
     }
     markdown
+}
+
+fn append_sqlite_table_evidence(markdown: &mut String, tables: &[TableManifest]) {
+    markdown.push_str("\n## SQLite Tables\n\n");
+    if tables.is_empty() {
+        markdown.push_str("- No tables.\n");
+        return;
+    }
+    for table in tables {
+        markdown.push_str(&format!(
+            "- `{}`: `{}` rows; `{}` columns; content sha256 `{}`\n",
+            table.name,
+            table.row_count,
+            table.columns.len(),
+            table.content_sha256
+        ));
+    }
 }
 
 fn append_payload_shape_evidence(markdown: &mut String, rows: &[PayloadRowManifest]) {

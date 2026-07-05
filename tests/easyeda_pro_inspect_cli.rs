@@ -62,6 +62,8 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
 
     let report = std::fs::read_to_string(output).unwrap();
     assert!(report.contains("Demo Project"));
+    assert!(report.contains("SQLite Tables"));
+    assert!(report.contains("content sha256"));
     assert!(report.contains("Board A"));
     assert!(report.contains("Main Schematic"));
     assert!(report.contains("PCB A"));
@@ -85,7 +87,7 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
     if let Err(error) = validator.validate(&manifest) {
         panic!("EasyEDA Pro manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.3.0");
+    assert_eq!(manifest["schema_version"], "0.4.0");
     assert_eq!(manifest["source"]["sha256"].as_str().unwrap().len(), 64);
     assert_eq!(manifest["sqlite"]["tables"].as_array().unwrap().len(), 4);
     assert!(
@@ -93,9 +95,12 @@ fn inspect_easyeda_pro_reports_structure_and_encoded_payloads() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|table| table["name"] == "history_data"
-                && table["row_count"] == 4
-                && table["columns"].as_array().unwrap().len() == 2)
+            .any(|table| {
+                table["name"] == "history_data"
+                    && table["row_count"] == 4
+                    && table["content_sha256"].as_str().unwrap().len() == 64
+                    && table["columns"].as_array().unwrap().len() == 2
+            })
     );
     assert_eq!(manifest["easyeda_pro"]["latest_structure"]["ticket"], 42);
     assert_eq!(

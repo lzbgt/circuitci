@@ -74,6 +74,9 @@ can prove without decoding private design-object payloads. On
 - Latest structure ticket `183013`.
 - `1` board, `1` schematic, `11` sheets, and `1` PCB.
 - `642` encoded/non-JSON history payloads.
+- Schema `0.4.0` manifests additionally retain deterministic SQLite table
+  content hashes, giving future importer work a stable table-level provenance
+  check before any decoded geometry is trusted.
 
 The plaintext latest structure identifies board `dd654e1cf9b905cf`
 (`UM-STM32L4_V01`) and PCB `f5d31030bb8dd7c8`

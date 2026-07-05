@@ -38,6 +38,8 @@ The JSON manifest conforms to
 
 - the source `.eprj2` size and SHA-256,
 - SQLite table names, column metadata, and row counts,
+- deterministic per-table content SHA-256 fingerprints derived from table
+  name, column order, and row values in SQLite `quote()` form,
 - project and branch rows,
 - the latest plaintext project-structure object with length and SHA-256,
 - latest-structure object rows with canonical JSON hashes and reference-field
