@@ -13,6 +13,7 @@ audit the modeled facts without relying on chat history.
 | Diodes AP2112K 3.3 V LDO typical application | <https://www.diodes.com/datasheet/download/AP2112.pdf> | `docs/research/datasheets/diodes/ap2112.pdf` |
 | Microchip MCP73831 USB Li-Ion charger typical application | <https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf> | `docs/research/datasheets/microchip/mcp73831-family-datasheet.pdf` |
 | TI BQ24075 USB Li-Ion charger with power path typical use | <https://www.ti.com/lit/ds/symlink/bq24074.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/bq24074.pdf` |
+| TI BQ25798 NVDC buck-boost charger use | <https://www.ti.com/lit/ds/symlink/bq25798.pdf> | `docs/research/smart_robot/sources/bq25798_datasheet.pdf` |
 | TI TPS2115A autoswitching power mux typical application | <https://www.ti.com/lit/ds/symlink/tps2115a.pdf> | `docs/research/datasheets/ti/tps2115a.pdf` |
 | TI TPS2121 priority power mux typical use | <https://www.ti.com/lit/ds/symlink/tps2121.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/tps2121.pdf` |
 | TI TPS22918 load switch use | <https://www.ti.com/lit/gpn/TPS22918> | `docs/research/datasheets/ti/tps22918.pdf` |
@@ -41,22 +42,24 @@ audit the modeled facts without relying on chat history.
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
 | STC15W408AS 1T 8051-family MCU power use | <https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf> and <https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf> | `docs/research/datasheets/stc/stc15w408as_features.pdf` and `docs/research/datasheets/stc/stc15f2k60s2_en.pdf` |
 | TI NE555 astable timer power use | <https://www.ti.com/lit/ds/symlink/ne555.pdf> | `docs/research/datasheets/ti/ne555.pdf` |
+| TI TLV803EA29 reset-supervisor use | <https://www.ti.com/lit/ds/symlink/tlv803e.pdf> | `docs/research/datasheets/ti/tlv803e-tlv809e-tlv810e.pdf` |
 | Microchip MCP1316T-29LE/OT reset-supervisor use | <https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP131X-2X-Voltage-Supervisor-DS20001985.pdf> | `docs/research/datasheets/microchip/mcp131x_2x_voltage_supervisor.pdf` |
 | Abracon ABM3 8 MHz crystal support network | <https://abracon.com/Resonators/ABM3.pdf> | `docs/research/datasheets/abracon/abm3.pdf` |
 | Winbond W25Q64JV SPI/QSPI NOR flash power use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
 | Bosch BME280 environmental sensor I2C power use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
 | onsemi 1N4148WS switching diode use | <https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf> | `docs/research/datasheets/onsemi/1n4148ws.pdf` |
 | onsemi NDS7002A low-side MOSFET switch use | <https://www.onsemi.com/download/data-sheet/pdf/nds7002a-d.pdf> | `docs/research/datasheets/onsemi/nds7002a.pdf` |
+| onsemi NL27WZ17 dual non-inverting Schmitt-trigger buffer use | <https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf> | `docs/research/datasheets/onsemi/nl27wz17.pdf` |
 | Espressif ESP32-S3-WROOM-1U-N16R8 application boot module use | <https://documentation.espressif.com/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/espressif/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf` |
 
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
 were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
 STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
-Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI TPS22918,
-TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TXS0108E,
+Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI BQ25798, TI TPS22918,
+TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI TXS0108E,
 TI TCAN3413, TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and
-Microchip MCP131X/2X PDFs were downloaded from their official vendor URLs.
+onsemi NL27WZ17, and Microchip MCP131X/2X PDFs were downloaded from their official vendor URLs.
 WCH CH340C, WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
 vendor endpoints. The local PDF copies and SHA-256 hashes are listed in the
@@ -64,8 +67,8 @@ part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines forty-six public-reference
-passing cases and fifty-five paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines fifty public-reference
+passing cases and fifty-eight paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -76,6 +79,8 @@ passing cases and fifty-five paired injected-error cases:
 | `ti_bq24075_typical_usb_charger_passes` | `examples/good_ti_bq24075_usb_charger/project.yaml` | pass | BQ24075 USB-powered 4.2 V Li-Ion charger with 450 mA programmed current and 5.5 V system output evidence. |
 | `ti_bq24075_usb_budget_detected` | `examples/bad_ti_bq24075_usb_budget/project.yaml` | fail | Detects programmed charge current above declared USB input budget. |
 | `ti_bq24075_charge_current_detected` | `examples/bad_ti_bq24075_charge_current/project.yaml` | fail | Detects programmed charge current above the datasheet-backed 1.5 A charger maximum. |
+| `ti_bq25798_nvdc_observation_passes` | `examples/good_bq25798_nvdc_observation/project.yaml` | pass | BQ25798 generated-SPICE NVDC buck-boost charger observation with 20 V adapter input, 12 V SYS target, battery node, and 2 A programmed charge current. |
+| `ti_bq25798_charge_current_detected` | `examples/bad_bq25798_charge_current/project.yaml` | fail | Detects programmed charge current above the datasheet-backed 5 A BQ25798 charger maximum. |
 | `ti_tps2115a_typical_power_mux_passes` | `examples/good_ti_tps2115a_power_mux/project.yaml` | pass | TPS2115A USB-selected mux with inactive unpowered battery input. |
 | `ti_tps2115a_output_overcurrent_detected` | `examples/bad_ti_tps2115a_output_current/project.yaml` | fail | Detects output load above modeled mux current limit. |
 | `ti_tps2121_typical_power_mux_passes` | `examples/good_ti_tps2121_power_mux/project.yaml` | pass | TPS2121 USB-selected priority mux with inactive unpowered backup input. |
@@ -144,6 +149,9 @@ passing cases and fifty-five paired injected-error cases:
 | `ti_ne555_vcc_overvoltage_detected` | `examples/bad_ti_ne555_vcc_overvoltage/project.yaml` | fail | Detects NE555 `VCC` connected to an 18 V rail above the source-backed 16 V maximum for NA555/NE555/SA555. |
 | `microchip_mcp1316_reset_supervisor_passes` | `examples/good_microchip_mcp1316_reset_supervisor/project.yaml` | pass | MCP1316T-29LE/OT monitors a 3.3 V rail and drives an MCU reset net with source-backed 2.90 V threshold and 280 ms reset-timeout metadata. |
 | `microchip_mcp1316_nominal_rail_detected` | `examples/bad_microchip_mcp1316_nominal_rail/project.yaml` | fail | Detects a 2.9 V monitored rail below the MCP1316 worst-case 2.973 V threshold maximum. |
+| `ti_tlv803ea29_reset_supervisor_passes` | `examples/good_ti_tlv803ea29_reset_supervisor/project.yaml` | pass | TLV803EA29 active-low open-drain reset supervisor monitors a 3.3 V rail and drives an MCU reset net. |
+| `ti_tlv803ea29_reset_observation_passes` | `examples/good_tlv803ea29_reset_observation/project.yaml` | pass | TLV803EA29 generated-SPICE reset-threshold observation with a pulsed 3.3 V rail and reset pull-up. |
+| `ti_tlv803ea29_nominal_rail_detected` | `examples/bad_ti_tlv803ea29_nominal_rail/project.yaml` | fail | Detects a 2.9 V monitored rail below the TLV803EA29 worst-case 2.9886 V release-threshold maximum. |
 | `abracon_abm3_8mhz_clock_passes` | `examples/good_clock_source_crystal/project.yaml` | pass | ABM3 8 MHz crystal between MCU oscillator pins with 32 pF leg capacitors and modeled 2 pF stray capacitance, producing the source-backed 18 pF load target. |
 | `abracon_abm3_8mhz_load_capacitance_detected` | `examples/bad_clock_source_load_capacitance/project.yaml` | fail | Detects 8 pF leg capacitors that produce only 6 pF effective load against the ABM3 18 pF target. |
 | `winbond_w25q64jv_spi_flash_power_passes` | `examples/good_winbond_w25q64jv_spi_flash_power/project.yaml` | pass | W25Q64JV SPI/QSPI NOR flash on a 3.3 V VCC rail with every 8-pin SPI/QSPI board-boundary pin bound. |
@@ -167,6 +175,8 @@ passing cases and fifty-five paired injected-error cases:
 | `onsemi_2n3906_collector_overcurrent_detected` | `examples/bad_onsemi_2n3906_collector_overcurrent/project.yaml` | fail | Detects a 2N3906 collector-current violation above the source-backed 200 mA continuous magnitude while preserving the signed rating value. |
 | `onsemi_1n5819_schottky_rectifier_passes` | `examples/good_onsemi_1n5819_schottky_rectifier/project.yaml` | pass | 1N5819 Schottky rectifier feeds a light 5 V load while retaining the source-backed generated-SPICE model and diode operating-limit probes. |
 | `onsemi_1n5819_overcurrent_detected` | `examples/bad_onsemi_1n5819_overcurrent/project.yaml` | fail | Detects 1N5819 forward current above the source-backed 1 A average rectified-current rating. |
+| `onsemi_nl27wz17_logic_buffer_observation_passes` | `examples/good_onsemi_nl27wz17_logic_buffer_observation/project.yaml` | pass | NL27WZ17 generated-SPICE logic-buffer observation with 3.3 V VCC, one high input mirrored high, and one low input mirrored low. |
+| `onsemi_nl27wz17_vcc_overvoltage_detected` | `examples/bad_onsemi_nl27wz17_vcc_overvoltage/project.yaml` | fail | Detects NL27WZ17 `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `espressif_esp32_s3_wroom_1u_application_passes` | `examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml` | pass | ESP32-S3-WROOM-1U-N16R8 on a 3.3 V rail with enough source-current budget and GPIO0 biased high for SPI flash boot. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `examples/bad_espressif_esp32_s3_wroom_1u_supply_current/project.yaml` | fail | Detects a 3.3 V source-current budget below the datasheet-backed 0.5 A IVDD requirement. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `examples/bad_espressif_esp32_s3_wroom_1u_download_bootstrap/project.yaml` | fail | Detects GPIO46 biased high when joint download boot requires GPIO0 low and GPIO46 low. |
@@ -182,7 +192,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=101, passed=101, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=108, passed=108, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -196,6 +206,7 @@ Observed detection details:
 | `microchip_mcp73831_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `0.500000 A` exceeds input rail `usb_5v` current budget `0.100000 A`. |
 | `ti_bq24075_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.000000 A` exceeds input rail `usb_5v` current budget `0.500000 A`. |
 | `ti_bq24075_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.800000 A` exceeds model maximum `1.500000 A`. |
+| `ti_bq25798_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `6.000000 A` exceeds model maximum `5.000000 A`. |
 | `ti_tps2115a_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `1.200000 A` exceeds mux limit `1.000000 A`. |
 | `ti_tps2121_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `5.000000 A` exceeds mux limit `4.500000 A`. |
 | `ti_tps2121_input_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `adapter_24v` supplies `UMUX.IN1` at `24.000000 V`, outside the model maximum operating voltage `22.000000 V`. |
@@ -233,6 +244,7 @@ Observed detection details:
 | `stc_stc15w408as_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USTC.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `ti_ne555_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_18v` supplies `U555.VCC` at `18.000000 V`, outside the model maximum operating voltage `16.000000 V`. |
 | `microchip_mcp1316_nominal_rail_detected` | `POWER_TREE_VALID` | Reset supervisor `USUP` monitored rail `rail_2v9` nominal voltage `2.900000 V` is not above worst-case release threshold `2.973000 V`. |
+| `ti_tlv803ea29_nominal_rail_detected` | `POWER_TREE_VALID` | Reset supervisor `USUP` monitored rail `rail_2v9` nominal voltage `2.900000 V` is not above worst-case release threshold `2.988600 V`. |
 | `abracon_abm3_8mhz_load_capacitance_detected` | `CLOCK_SOURCE_VALID` | Clock source `U1` uses crystal `Y1` with effective load capacitance `6.000000e-12 F`, outside the modeled crystal load range. |
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UFLASH.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UBME.VDDIO` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
@@ -242,12 +254,13 @@ Observed detection details:
 | `onsemi_fdmc86184_pulse_duty_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `16.607301 A`, limit is `12.000000 A`; measured pulse duration was about `500.17 us` and duty cycle about `0.250085`, above the encoded `300 us` / `0.02` pulse-rating envelope. |
 | `onsemi_fdmc86184_soa_violation_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `PD`: maximum simulated power was `650.235557 W`, limit is `2.300000 W`; it also exceeded digitized SOA curve `forward_bias_100us` with `ID 15.040721 A` at `VDS 43.231676 V` against `14.801354 A` allowed. |
 | `onsemi_ss8050_collector_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `Q1` exceeded datasheet `IC`: maximum simulated current was `2.224090 A`, limit is `1.500000 A`; it also exceeded `PD` at `3.124999 W` against `1.000000 W`. |
+| `onsemi_nl27wz17_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `logic_6v` supplies `UBUF.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All forty-six public-reference pass cases produced zero critical findings.
-All fifty-five paired injected-error cases failed with the expected critical
-finding ID, and all fifty-five repair-pair checks passed.
+All fifty public-reference pass cases produced zero critical findings.
+All fifty-eight paired injected-error cases failed with the expected critical
+finding ID, and all fifty-eight repair-pair checks passed.
 
 ## Interpretation Limits
 

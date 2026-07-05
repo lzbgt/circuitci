@@ -1,0 +1,45 @@
+project:
+  name: bad_bq25798_charge_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/chargers
+
+board:
+  components:
+    UCHG:
+      model: vendor.ti.bq25798
+      part_number: BQ25798
+      parameters:
+        programmed_charge_current_A: 6.0
+      power_domains:
+        VBUS: adapter_20v
+        SYS: sys_out
+        BAT: battery
+      pins:
+        VBUS: adapter_20v
+        SYS: sys_out
+        BAT: battery
+        GND: gnd
+  nets:
+    adapter_20v:
+      kind: power
+      nominal_voltage: 20.0
+      powered: true
+      supply_current_limit_A: 8.0
+    sys_out:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+    battery:
+      kind: power
+      nominal_voltage: 16.8
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: bq25798_charge_current_over_limit
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

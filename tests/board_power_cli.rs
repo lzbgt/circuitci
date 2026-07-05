@@ -919,6 +919,47 @@ fn ti_bq24075_charge_current_uses_datasheet_limit() {
 }
 
 #[test]
+fn ti_bq25798_charge_current_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_bq25798_charge_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("battery_charger_max_charge_current_A")
+                .is_some()
+        })
+        .expect("expected BQ25798 charge-current limit finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UCHG");
+    assert_eq!(failure["net"], "battery");
+    assert_eq!(failure["measured"]["programmed_charge_current_A"], 6.0);
+    assert_eq!(
+        failure["limit"]["battery_charger_max_charge_current_A"],
+        5.0
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn onsemi_nl27wz17_vcc_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_onsemi_nl27wz17_vcc_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["component"] == "UBUF" && finding["net"] == "logic_6v")
+        .expect("expected NL27WZ17 VCC voltage finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 5.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn diodes_ap2112k_3v3_regulator_passes_static_power_tree() {
     let report = run_validation("examples/good_diodes_ap2112k_3v3_regulator/project.yaml");
     assert_eq!(report["result"], "pass");

@@ -48,6 +48,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_bq25798_nvdc_observation_passes
+    project: ../examples/good_bq25798_nvdc_observation/project.yaml
+    expect: pass
+
+  - id: ti_bq25798_charge_current_detected
+    project: ../examples/bad_bq25798_charge_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: ti_tps2115a_typical_power_mux_passes
     project: ../examples/good_ti_tps2115a_power_mux/project.yaml
     expect: pass
@@ -431,6 +442,21 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_tlv803ea29_reset_supervisor_passes
+    project: ../examples/good_ti_tlv803ea29_reset_supervisor/project.yaml
+    expect: pass
+
+  - id: ti_tlv803ea29_reset_observation_passes
+    project: ../examples/good_tlv803ea29_reset_observation/project.yaml
+    expect: pass
+
+  - id: ti_tlv803ea29_nominal_rail_detected
+    project: ../examples/bad_ti_tlv803ea29_nominal_rail/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: abracon_abm3_8mhz_clock_passes
     project: ../examples/good_clock_source_crystal/project.yaml
     expect: pass
@@ -559,6 +585,17 @@ cases:
       - id: SPICE_OPERATING_LIMIT
         severity: critical
 
+  - id: onsemi_nl27wz17_logic_buffer_observation_passes
+    project: ../examples/good_onsemi_nl27wz17_logic_buffer_observation/project.yaml
+    expect: pass
+
+  - id: onsemi_nl27wz17_vcc_overvoltage_detected
+    project: ../examples/bad_onsemi_nl27wz17_vcc_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: espressif_esp32_s3_wroom_1u_application_passes
     project: ../examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml
     expect: pass
@@ -599,6 +636,12 @@ repairs:
   - id: fix_bq24075_charge_current
     detects_case: ti_bq24075_charge_current_detected
     fixed_case: ti_bq24075_typical_usb_charger_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_bq25798_charge_current
+    detects_case: ti_bq25798_charge_current_detected
+    fixed_case: ti_bq25798_nvdc_observation_passes
     fixes_findings:
       - POWER_TREE_VALID
 
@@ -824,6 +867,12 @@ repairs:
     fixes_findings:
       - POWER_TREE_VALID
 
+  - id: fix_tlv803ea29_nominal_rail
+    detects_case: ti_tlv803ea29_nominal_rail_detected
+    fixed_case: ti_tlv803ea29_reset_supervisor_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
   - id: fix_abracon_abm3_8mhz_load_capacitance
     detects_case: abracon_abm3_8mhz_load_capacitance_detected
     fixed_case: abracon_abm3_8mhz_clock_passes
@@ -895,6 +944,12 @@ repairs:
     fixed_case: onsemi_1n5819_schottky_rectifier_passes
     fixes_findings:
       - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_nl27wz17_vcc_overvoltage
+    detects_case: onsemi_nl27wz17_vcc_overvoltage_detected
+    fixed_case: onsemi_nl27wz17_logic_buffer_observation_passes
+    fixes_findings:
+      - POWER_TREE_VALID
 
   - id: fix_esp32_s3_wroom_1u_supply_current
     detects_case: espressif_esp32_s3_wroom_1u_supply_current_detected

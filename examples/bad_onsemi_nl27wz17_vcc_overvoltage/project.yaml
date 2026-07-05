@@ -1,0 +1,42 @@
+project:
+  name: bad_onsemi_nl27wz17_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/onsemi/logic
+
+board:
+  components:
+    UBUF:
+      model: vendor.onsemi.nl27wz17
+      part_number: NL27WZ17
+      power_domains:
+        VCC: logic_6v
+      pins:
+        VCC: logic_6v
+        GND: gnd
+        "1A": logic_1a
+        "1Y": logic_1y
+        "2A": logic_2a
+        "2Y": logic_2y
+  nets:
+    logic_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    logic_1a:
+      kind: digital_or_analog
+    logic_1y:
+      kind: digital_or_analog
+    logic_2a:
+      kind: digital_or_analog
+    logic_2y:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: nl27wz17_vcc_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
