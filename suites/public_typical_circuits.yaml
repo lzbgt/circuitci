@@ -151,6 +151,61 @@ cases:
       - id: PIN_1_ORIENTATION_VALID
         severity: critical
 
+  - id: usb_connector_orientation_passes
+    project: ../examples/good_usb_connector_orientation/project.yaml
+    expect: pass
+
+  - id: usb_connector_orientation_detected
+    project: ../examples/bad_usb_connector_orientation/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_ORIENTATION_VALID
+        severity: critical
+
+  - id: usb_connector_edge_proximity_passes
+    project: ../examples/good_usb_connector_edge_proximity/project.yaml
+    expect: pass
+
+  - id: usb_connector_edge_proximity_detected
+    project: ../examples/bad_usb_connector_edge_proximity/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_EDGE_PROXIMITY_VALID
+        severity: critical
+
+  - id: usb_connector_body_overhang_passes
+    project: ../examples/good_usb_connector_body_overhang/project.yaml
+    expect: pass
+
+  - id: usb_connector_body_overhang_detected
+    project: ../examples/bad_usb_connector_body_overhang/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_BODY_OVERHANG_VALID
+        severity: critical
+
+  - id: usb_connector_component_clearance_passes
+    project: ../examples/good_usb_connector_component_clearance/project.yaml
+    expect: pass
+
+  - id: usb_connector_component_clearance_detected
+    project: ../examples/bad_usb_connector_component_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
+        severity: critical
+
+  - id: usb_connector_entry_clearance_passes
+    project: ../examples/good_usb_connector_entry_clearance/project.yaml
+    expect: pass
+
+  - id: usb_connector_entry_clearance_detected
+    project: ../examples/bad_usb_connector_entry_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+        severity: critical
+
   - id: diodes_ap2112k_typical_ldo_passes
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
@@ -1062,6 +1117,36 @@ repairs:
     fixed_case: pin_1_orientation_passes
     fixes_findings:
       - PIN_1_ORIENTATION_VALID
+
+  - id: fix_usb_connector_orientation
+    detects_case: usb_connector_orientation_detected
+    fixed_case: usb_connector_orientation_passes
+    fixes_findings:
+      - USB_CONNECTOR_ORIENTATION_VALID
+
+  - id: fix_usb_connector_edge_proximity
+    detects_case: usb_connector_edge_proximity_detected
+    fixed_case: usb_connector_edge_proximity_passes
+    fixes_findings:
+      - USB_CONNECTOR_EDGE_PROXIMITY_VALID
+
+  - id: fix_usb_connector_body_overhang
+    detects_case: usb_connector_body_overhang_detected
+    fixed_case: usb_connector_body_overhang_passes
+    fixes_findings:
+      - USB_CONNECTOR_BODY_OVERHANG_VALID
+
+  - id: fix_usb_connector_component_clearance
+    detects_case: usb_connector_component_clearance_detected
+    fixed_case: usb_connector_component_clearance_passes
+    fixes_findings:
+      - USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
+
+  - id: fix_usb_connector_entry_clearance
+    detects_case: usb_connector_entry_clearance_detected
+    fixed_case: usb_connector_entry_clearance_passes
+    fixes_findings:
+      - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
 
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected

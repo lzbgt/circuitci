@@ -64,6 +64,7 @@ audit the modeled facts without relying on chat history.
 | onsemi NL27WZ17 dual non-inverting Schmitt-trigger buffer use | <https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf> | `docs/research/datasheets/onsemi/nl27wz17.pdf` |
 | JLC/EasyEDA BOM/CPL and KiCad footprint-property consistency | committed Board IR fixtures with `source.format: jlc_assembly` plus imported KiCad footprint properties | `examples/good_assembly_footprint_alignment/project.yaml` and `examples/bad_assembly_footprint_alignment/project.yaml` |
 | KiCad footprint pin-1 orientation evidence | committed Board IR fixtures with imported `semantics.body_bounds` and `semantics.pin_1` plus explicit reviewed expected direction | `examples/good_pin_1_orientation/project.yaml` and `examples/bad_pin_1_orientation/project.yaml` |
+| USB connector mechanical placement and footprint evidence | committed Board IR fixtures with USB connector placement, board-edge, body/courtyard, nearby-component, and cable-entry metadata | `examples/good_usb_connector_orientation/project.yaml`, `examples/bad_usb_connector_orientation/project.yaml`, `examples/good_usb_connector_edge_proximity/project.yaml`, `examples/bad_usb_connector_edge_proximity/project.yaml`, `examples/good_usb_connector_body_overhang/project.yaml`, `examples/bad_usb_connector_body_overhang/project.yaml`, `examples/good_usb_connector_component_clearance/project.yaml`, `examples/bad_usb_connector_component_clearance/project.yaml`, `examples/good_usb_connector_entry_clearance/project.yaml`, and `examples/bad_usb_connector_entry_clearance/project.yaml` |
 | Espressif ESP32-S3-WROOM-1U-N16R8 application boot module use | <https://documentation.espressif.com/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/espressif/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf` |
 
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
@@ -87,8 +88,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines ninety public-reference passing
-cases and eighty-eight paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines ninety-five public-reference
+passing cases and ninety-three paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -118,6 +119,16 @@ cases and eighty-eight paired injected-error cases:
 | `assembly_footprint_alignment_detected` | `examples/bad_assembly_footprint_alignment/project.yaml` | fail | Detects direct contradictions between JLC/EasyEDA BOM/CPL evidence and imported KiCad footprint properties, placement side, and rotation. |
 | `pin_1_orientation_passes` | `examples/good_pin_1_orientation/project.yaml` | pass | Imported KiCad footprint body bounds and pad-1 marker agree with explicit reviewed expected pin-1 direction evidence. |
 | `pin_1_orientation_detected` | `examples/bad_pin_1_orientation/project.yaml` | fail | Detects a pin-1 marker direction that contradicts explicit reviewed expected pin-1 direction evidence. |
+| `usb_connector_orientation_passes` | `examples/good_usb_connector_orientation/project.yaml` | pass | USB connector placement rotation is within the explicit board-edge/enclosure orientation tolerance. |
+| `usb_connector_orientation_detected` | `examples/bad_usb_connector_orientation/project.yaml` | fail | Detects USB connector placement rotation outside the explicit orientation tolerance. |
+| `usb_connector_edge_proximity_passes` | `examples/good_usb_connector_edge_proximity/project.yaml` | pass | USB connector placement is close enough to imported board-edge evidence. |
+| `usb_connector_edge_proximity_detected` | `examples/bad_usb_connector_edge_proximity/project.yaml` | fail | Detects a USB connector too far from imported board-edge evidence. |
+| `usb_connector_body_overhang_passes` | `examples/good_usb_connector_body_overhang/project.yaml` | pass | USB connector body/courtyard evidence stays within the declared allowed board-edge overhang. |
+| `usb_connector_body_overhang_detected` | `examples/bad_usb_connector_body_overhang/project.yaml` | fail | Detects USB connector body/courtyard evidence extending too far beyond the board edge. |
+| `usb_connector_component_clearance_passes` | `examples/good_usb_connector_component_clearance/project.yaml` | pass | USB connector courtyard/body evidence has enough clearance to nearby component footprint evidence. |
+| `usb_connector_component_clearance_detected` | `examples/bad_usb_connector_component_clearance/project.yaml` | fail | Detects nearby component footprint evidence inside the declared USB connector clearance. |
+| `usb_connector_entry_clearance_passes` | `examples/good_usb_connector_entry_clearance/project.yaml` | pass | USB connector cable-entry corridor evidence is clear for the declared depth and width. |
+| `usb_connector_entry_clearance_detected` | `examples/bad_usb_connector_entry_clearance/project.yaml` | fail | Detects footprint evidence obstructing the declared USB connector cable-entry corridor. |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
@@ -282,7 +293,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=178, passed=178, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=188, passed=188, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -305,6 +316,11 @@ Observed detection details:
 | `jlcpcb_solder_paste_area_ratio_process_detected` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | Solder-paste feature opening on `F.Paste` has stencil aperture area ratio `0.300000`; JLCPCB/IPC guidance requires at least `0.660000`. |
 | `assembly_footprint_alignment_detected` | `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` | Component U1 assembly source.footprint 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm' does not match any imported KiCad footprint property value. |
 | `pin_1_orientation_detected` | `PIN_1_ORIENTATION_VALID` | Component U1 imported pin-1 marker direction 180.000 deg differs from expected 0.000 deg by 180.000 deg. |
+| `usb_connector_orientation_detected` | `USB_CONNECTOR_ORIENTATION_VALID` | USB connector J1 placement rotation 180.000 deg differs from expected 0.000 deg by 180.000 deg, exceeding limit 5.000 deg. |
+| `usb_connector_edge_proximity_detected` | `USB_CONNECTOR_EDGE_PROXIMITY_VALID` | USB connector J1 is 1.400 mm from the nearest board edge, exceeding limit 0.500 mm. |
+| `usb_connector_body_overhang_detected` | `USB_CONNECTOR_BODY_OVERHANG_VALID` | USB connector J1 body overhang 0.050 mm past the nearest board edge exceeds limit 0.020 mm. |
+| `usb_connector_component_clearance_detected` | `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` | USB connector J1 clearance to component R1 is 0.300 mm, below required 0.500 mm. |
+| `usb_connector_entry_clearance_detected` | `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` | USB connector J1 cable-entry corridor is obstructed by component R1 at 0.750 mm into the required 2.000 mm depth. |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
 | `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
@@ -378,9 +394,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All ninety public-reference pass cases produced zero critical findings.
-All eighty-eight paired injected-error cases failed with the expected critical
-finding ID, and all eighty-eight repair-pair checks passed.
+All ninety-five public-reference pass cases produced zero critical findings.
+All ninety-three paired injected-error cases failed with the expected critical
+finding ID, and all ninety-three repair-pair checks passed.
 
 ## Interpretation Limits
 
