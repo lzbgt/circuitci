@@ -206,6 +206,46 @@ cases:
       - id: USB_CONNECTOR_ENTRY_CLEARANCE_VALID
         severity: critical
 
+  - id: usb_connector_protection_passes
+    project: ../examples/good_usb_connector_protection/project.yaml
+    expect: pass
+
+  - id: usb_connector_missing_data_protection_detected
+    project: ../examples/bad_usb_connector_missing_data_protection/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_PROTECTION_VALID
+        severity: critical
+
+  - id: usb_connector_missing_vbus_protection_detected
+    project: ../examples/bad_usb_connector_missing_vbus_protection/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_PROTECTION_VALID
+        severity: critical
+
+  - id: usb_connector_shield_ground_passes
+    project: ../examples/good_usb_connector_shield_ground/project.yaml
+    expect: pass
+
+  - id: usb_connector_shield_ground_detected
+    project: ../examples/bad_usb_connector_shield_not_ground/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_CONNECTOR_PROTECTION_VALID
+        severity: critical
+
+  - id: usb_protection_placement_passes
+    project: ../examples/good_usb_connector_protection_placement/project.yaml
+    expect: pass
+
+  - id: usb_protection_placement_detected
+    project: ../examples/bad_usb_connector_protection_placement_distance/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_PROTECTION_PLACEMENT_VALID
+        severity: critical
+
   - id: usb_route_geometry_passes
     project: ../examples/good_usb_connector_route_geometry/project.yaml
     expect: pass
@@ -1219,6 +1259,30 @@ repairs:
     fixed_case: usb_connector_entry_clearance_passes
     fixes_findings:
       - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+
+  - id: fix_usb_connector_missing_data_protection
+    detects_case: usb_connector_missing_data_protection_detected
+    fixed_case: usb_connector_protection_passes
+    fixes_findings:
+      - USB_CONNECTOR_PROTECTION_VALID
+
+  - id: fix_usb_connector_missing_vbus_protection
+    detects_case: usb_connector_missing_vbus_protection_detected
+    fixed_case: usb_connector_protection_passes
+    fixes_findings:
+      - USB_CONNECTOR_PROTECTION_VALID
+
+  - id: fix_usb_connector_shield_ground
+    detects_case: usb_connector_shield_ground_detected
+    fixed_case: usb_connector_shield_ground_passes
+    fixes_findings:
+      - USB_CONNECTOR_PROTECTION_VALID
+
+  - id: fix_usb_protection_placement
+    detects_case: usb_protection_placement_detected
+    fixed_case: usb_protection_placement_passes
+    fixes_findings:
+      - USB_PROTECTION_PLACEMENT_VALID
 
   - id: fix_usb_route_geometry
     detects_case: usb_route_geometry_detected

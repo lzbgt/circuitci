@@ -65,6 +65,7 @@ audit the modeled facts without relying on chat history.
 | JLC/EasyEDA BOM/CPL and KiCad footprint-property consistency | committed Board IR fixtures with `source.format: jlc_assembly` plus imported KiCad footprint properties | `examples/good_assembly_footprint_alignment/project.yaml` and `examples/bad_assembly_footprint_alignment/project.yaml` |
 | KiCad footprint pin-1 orientation evidence | committed Board IR fixtures with imported `semantics.body_bounds` and `semantics.pin_1` plus explicit reviewed expected direction | `examples/good_pin_1_orientation/project.yaml` and `examples/bad_pin_1_orientation/project.yaml` |
 | USB connector mechanical placement and footprint evidence | committed Board IR fixtures with USB connector placement, board-edge, body/courtyard, nearby-component, and cable-entry metadata | `examples/good_usb_connector_orientation/project.yaml`, `examples/bad_usb_connector_orientation/project.yaml`, `examples/good_usb_connector_edge_proximity/project.yaml`, `examples/bad_usb_connector_edge_proximity/project.yaml`, `examples/good_usb_connector_body_overhang/project.yaml`, `examples/bad_usb_connector_body_overhang/project.yaml`, `examples/good_usb_connector_component_clearance/project.yaml`, `examples/bad_usb_connector_component_clearance/project.yaml`, `examples/good_usb_connector_entry_clearance/project.yaml`, and `examples/bad_usb_connector_entry_clearance/project.yaml` |
+| USB connector protection and protection-placement evidence | committed Board IR fixtures with USB connector pin metadata, connected clamp model metadata, shield-grounding metadata, and connector-to-protection placement metadata | `examples/good_usb_connector_protection/project.yaml`, `examples/bad_usb_connector_missing_data_protection/project.yaml`, `examples/bad_usb_connector_missing_vbus_protection/project.yaml`, `examples/good_usb_connector_shield_ground/project.yaml`, `examples/bad_usb_connector_shield_not_ground/project.yaml`, `examples/good_usb_connector_protection_placement/project.yaml`, and `examples/bad_usb_connector_protection_placement_distance/project.yaml` |
 | USB route, VBUS route, and return-path layout evidence | committed Board IR fixtures with USB connector pin metadata, imported route/via/zone geometry, VBUS protection routing, filled-zone contact, and stitching-via metadata | `examples/good_usb_connector_route_geometry/project.yaml`, `examples/bad_usb_connector_route_geometry/project.yaml`, `examples/good_usb_vbus_route_geometry/project.yaml`, `examples/bad_usb_vbus_route_geometry/project.yaml`, `examples/good_usb_return_path/project.yaml`, `examples/good_usb_return_path_pad_contact/project.yaml`, `examples/bad_usb_return_path/project.yaml`, `examples/bad_usb_return_path_filled_zone_gap/project.yaml`, `examples/bad_usb_return_path_floating_zone/project.yaml`, `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml`, `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml`, and `examples/bad_usb_return_path_stitching_via/project.yaml` |
 | Espressif ESP32-S3-WROOM-1U-N16R8 application boot module use | <https://documentation.espressif.com/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/espressif/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf` |
 
@@ -89,8 +90,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines ninety-nine public-reference
-passing cases and one hundred one paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines one hundred two public-reference
+passing cases and one hundred five paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -130,6 +131,13 @@ passing cases and one hundred one paired injected-error cases:
 | `usb_connector_component_clearance_detected` | `examples/bad_usb_connector_component_clearance/project.yaml` | fail | Detects nearby component footprint evidence inside the declared USB connector clearance. |
 | `usb_connector_entry_clearance_passes` | `examples/good_usb_connector_entry_clearance/project.yaml` | pass | USB connector cable-entry corridor evidence is clear for the declared depth and width. |
 | `usb_connector_entry_clearance_detected` | `examples/bad_usb_connector_entry_clearance/project.yaml` | fail | Detects footprint evidence obstructing the declared USB connector cable-entry corridor. |
+| `usb_connector_protection_passes` | `examples/good_usb_connector_protection/project.yaml` | pass | USB D+/D-/VBUS connector pins have connected clamp metadata satisfying connector-level protection requirements. |
+| `usb_connector_missing_data_protection_detected` | `examples/bad_usb_connector_missing_data_protection/project.yaml` | fail | Detects missing required D+/D- connector clamp coverage. |
+| `usb_connector_missing_vbus_protection_detected` | `examples/bad_usb_connector_missing_vbus_protection/project.yaml` | fail | Detects missing required VBUS connector clamp coverage. |
+| `usb_connector_shield_ground_passes` | `examples/good_usb_connector_shield_ground/project.yaml` | pass | USB connector shield metadata is tied to a ground net when shield grounding is required. |
+| `usb_connector_shield_ground_detected` | `examples/bad_usb_connector_shield_not_ground/project.yaml` | fail | Detects USB connector shield metadata tied to a non-ground net when grounding is required. |
+| `usb_protection_placement_passes` | `examples/good_usb_connector_protection_placement/project.yaml` | pass | USB connector data-line clamp placement evidence satisfies the connector-to-protection distance rule. |
+| `usb_protection_placement_detected` | `examples/bad_usb_connector_protection_placement_distance/project.yaml` | fail | Detects USB connector data-line clamp placement beyond the reviewed distance limit. |
 | `usb_route_geometry_passes` | `examples/good_usb_connector_route_geometry/project.yaml` | pass | USB D+/D- route length, via-count, width, pair mismatch, pair via symmetry, gap, and protection-order evidence satisfy reviewed limits. |
 | `usb_route_geometry_detected` | `examples/bad_usb_connector_route_geometry/project.yaml` | fail | Detects USB data route length, protection-order, via-count, width, pair mismatch, via symmetry, and pair-gap violations. |
 | `usb_vbus_route_geometry_passes` | `examples/good_usb_vbus_route_geometry/project.yaml` | pass | USB VBUS route length, via-count, width, and protection-order evidence satisfy reviewed limits. |
@@ -306,7 +314,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=200, passed=200, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=207, passed=207, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -334,6 +342,10 @@ Observed detection details:
 | `usb_connector_body_overhang_detected` | `USB_CONNECTOR_BODY_OVERHANG_VALID` | USB connector J1 body overhang 0.050 mm past the nearest board edge exceeds limit 0.020 mm. |
 | `usb_connector_component_clearance_detected` | `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` | USB connector J1 clearance to component R1 is 0.300 mm, below required 0.500 mm. |
 | `usb_connector_entry_clearance_detected` | `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` | USB connector J1 cable-entry corridor is obstructed by component R1 at 0.750 mm into the required 2.000 mm depth. |
+| `usb_connector_missing_data_protection_detected` | `USB_CONNECTOR_PROTECTION_VALID` | USB connector J1 D+ pin D+ on net usb_dp has no valid protection clamp coverage. |
+| `usb_connector_missing_vbus_protection_detected` | `USB_CONNECTOR_PROTECTION_VALID` | USB connector J1 VBUS pin VBUS on net usb_vbus has no valid protection clamp coverage. |
+| `usb_connector_shield_ground_detected` | `USB_CONNECTOR_PROTECTION_VALID` | USB connector J1 shield pin SHIELD is connected to digital_or_analog net usb_shield, expected ground because require_shield_ground is true. |
+| `usb_protection_placement_detected` | `USB_PROTECTION_PLACEMENT_VALID` | USB connector J1 D+ net usb_dp is protected by UESD.dp, but placement distance 6.000 mm exceeds limit 2.000 mm. |
 | `usb_route_geometry_detected` | `USB_ROUTE_GEOMETRY_VALID` | USB connector J1 D+ net usb_dp route length 6.000 mm exceeds limit 5.000 mm. |
 | `usb_vbus_route_geometry_detected` | `USB_VBUS_ROUTE_VALID` | USB connector J1 VBUS net usb_vbus route length 6.000 mm exceeds limit 5.000 mm. |
 | `usb_return_path_unreferenced_route_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp has 1.000 mm of routed data-line length without same-layer ground-zone outline coverage, above limit 0.000 mm. |
@@ -415,9 +427,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All ninety-nine public-reference pass cases produced zero critical findings.
-All one hundred one paired injected-error cases failed with the expected
-critical finding ID, and all one hundred one repair-pair checks passed.
+All one hundred two public-reference pass cases produced zero critical findings.
+All one hundred five paired injected-error cases failed with the expected
+critical finding ID, and all one hundred five repair-pair checks passed.
 
 ## Interpretation Limits
 
