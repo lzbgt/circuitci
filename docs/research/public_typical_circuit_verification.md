@@ -71,6 +71,7 @@ audit the modeled facts without relying on chat history.
 | USB connector mechanical placement and footprint evidence | committed Board IR fixtures with USB connector placement, board-edge, body/courtyard, nearby-component, and cable-entry metadata | `examples/good_usb_connector_orientation/project.yaml`, `examples/bad_usb_connector_orientation/project.yaml`, `examples/good_usb_connector_edge_proximity/project.yaml`, `examples/bad_usb_connector_edge_proximity/project.yaml`, `examples/good_usb_connector_body_overhang/project.yaml`, `examples/bad_usb_connector_body_overhang/project.yaml`, `examples/good_usb_connector_component_clearance/project.yaml`, `examples/bad_usb_connector_component_clearance/project.yaml`, `examples/good_usb_connector_entry_clearance/project.yaml`, and `examples/bad_usb_connector_entry_clearance/project.yaml` |
 | USB connector protection and protection-placement evidence | committed Board IR fixtures with USB connector pin metadata, connected clamp model metadata, shield-grounding metadata, and connector-to-protection placement metadata | `examples/good_usb_connector_protection/project.yaml`, `examples/bad_usb_connector_missing_data_protection/project.yaml`, `examples/bad_usb_connector_missing_vbus_protection/project.yaml`, `examples/good_usb_connector_shield_ground/project.yaml`, `examples/bad_usb_connector_shield_not_ground/project.yaml`, `examples/good_usb_connector_protection_placement/project.yaml`, and `examples/bad_usb_connector_protection_placement_distance/project.yaml` |
 | USB route, VBUS route, and return-path layout evidence | committed Board IR fixtures with USB connector pin metadata, imported route/via/zone geometry, VBUS protection routing, filled-zone contact, and stitching-via metadata | `examples/good_usb_connector_route_geometry/project.yaml`, `examples/bad_usb_connector_route_geometry/project.yaml`, `examples/good_usb_vbus_route_geometry/project.yaml`, `examples/bad_usb_vbus_route_geometry/project.yaml`, `examples/good_usb_return_path/project.yaml`, `examples/good_usb_return_path_pad_contact/project.yaml`, `examples/bad_usb_return_path/project.yaml`, `examples/bad_usb_return_path_filled_zone_gap/project.yaml`, `examples/bad_usb_return_path_floating_zone/project.yaml`, `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml`, `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml`, and `examples/bad_usb_return_path_stitching_via/project.yaml` |
+| Generic power, reset, and boot validation fixtures | committed Board IR fixtures with generic MCU, regulator, load-switch, power-mux, reset-supervisor, strap, UART bootloader, and UM STM32L4 boot metadata | `examples/good_power_tree_board/project.yaml`, `examples/bad_power_tree_overvoltage/project.yaml`, `examples/bad_power_tree_current_budget/project.yaml`, `examples/good_load_switch_power_tree/project.yaml`, `examples/bad_load_switch_missing_enable/project.yaml`, `examples/bad_load_switch_disabled_output_powered/project.yaml`, `examples/bad_load_switch_output_current/project.yaml`, `examples/good_power_mux_usb_selected/project.yaml`, `examples/good_power_mux_derived_selection/project.yaml`, `examples/bad_power_mux_missing_selection/project.yaml`, `examples/bad_power_mux_selected_unpowered/project.yaml`, `examples/bad_power_mux_backfeed/project.yaml`, `examples/good_regulator_power_tree/project.yaml`, `examples/bad_regulator_dropout/project.yaml`, `examples/bad_regulator_output_current/project.yaml`, `examples/bad_regulator_conversion_pin/project.yaml`, `examples/bad_regulator_startup_sequence/project.yaml`, `examples/bad_regulator_startup_missing_timing/project.yaml`, `examples/good_reset_supervisor_threshold/project.yaml`, `examples/bad_reset_supervisor_threshold_too_low/project.yaml`, `examples/good_bootstrap_bias_divider/project.yaml`, `examples/bad_bootstrap_bias_threshold/project.yaml`, `examples/bad_bootstrap_bias_current/project.yaml`, `examples/good_bootloader_board/project.yaml`, `examples/good_c51_isp_board/project.yaml`, `examples/bad_bootstrap_board/project.yaml`, `examples/bad_uart_bootloader_sync_board/project.yaml`, `examples/bad_reset_release_board/project.yaml`, `examples/bad_reset_power_timing_mismatch/project.yaml`, `examples/bad_reset_supervisor_delay/project.yaml`, `examples/bad_reset_pin_board/project.yaml`, `examples/um_stm32l4_rom_download_entry/project.yaml`, `examples/um_stm32l4_rom_download_wrong_uart/project.yaml`, `examples/um_stm32l4_app_boot_fixed_release/project.yaml`, and `examples/um_stm32l4_app_boot_bad_release/project.yaml` |
 | Espressif ESP32-S3-WROOM-1U-N16R8 application boot module use | <https://documentation.espressif.com/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/espressif/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf` |
 
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
@@ -94,8 +95,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines one hundred fifteen
-public-reference passing cases and one hundred thirty-eight paired injected-error
+`suites/public_typical_circuits.yaml` combines one hundred twenty-six
+public-reference passing cases and one hundred sixty-two paired injected-error
 cases:
 
 | Case | Fixture | Expected result | Purpose |
@@ -201,6 +202,41 @@ cases:
 | `usb_return_path_split_zone_detected` | `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml` | fail | Detects a filled-zone return path where the available contact is on a different zone island. |
 | `usb_return_path_zone_edge_clearance_detected` | `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml` | fail | Detects USB data route clearance to filled-zone edge below the reviewed limit. |
 | `usb_return_path_stitching_via_detected` | `examples/bad_usb_return_path_stitching_via/project.yaml` | fail | Detects a USB data via too far from the nearest acceptable ground stitching via. |
+| `generic_power_tree_passes` | `examples/good_power_tree_board/project.yaml` | pass | Generic MCU and USB-UART rail powered within operating limits and current budget. |
+| `generic_power_tree_overvoltage_detected` | `examples/bad_power_tree_overvoltage/project.yaml` | fail | Detects a generic MCU powered above its model maximum voltage. |
+| `generic_power_tree_current_budget_detected` | `examples/bad_power_tree_current_budget/project.yaml` | fail | Detects generic 3.3 V rail declared load above its supply-current budget. |
+| `generic_load_switch_passes` | `examples/good_load_switch_power_tree/project.yaml` | pass | Generic load switch output rail is powered with explicit enabled-control evidence. |
+| `generic_load_switch_missing_enable_detected` | `examples/bad_load_switch_missing_enable/project.yaml` | fail | Detects a powered switched output without enable-state evidence. |
+| `generic_load_switch_disabled_output_detected` | `examples/bad_load_switch_disabled_output_powered/project.yaml` | fail | Detects a powered switched output while the enable pin is explicitly low. |
+| `generic_load_switch_output_current_detected` | `examples/bad_load_switch_output_current/project.yaml` | fail | Detects switched output load above the generic load-switch current limit. |
+| `generic_power_mux_usb_selected_passes` | `examples/good_power_mux_usb_selected/project.yaml` | pass | Generic power mux uses a selected powered USB input with reverse-blocked inactive battery input. |
+| `generic_power_mux_derived_selection_passes` | `examples/good_power_mux_derived_selection/project.yaml` | pass | Generic power mux selected input is derived from the only powered source. |
+| `generic_power_mux_missing_selection_detected` | `examples/bad_power_mux_missing_selection/project.yaml` | fail | Detects missing selected-input evidence when multiple mux inputs are powered. |
+| `generic_power_mux_selected_unpowered_detected` | `examples/bad_power_mux_selected_unpowered/project.yaml` | fail | Detects selected mux input whose rail is not powered. |
+| `generic_power_mux_backfeed_detected` | `examples/bad_power_mux_backfeed/project.yaml` | fail | Detects powered mux output backfeeding an inactive unpowered input without reverse blocking. |
+| `generic_regulator_power_tree_passes` | `examples/good_regulator_power_tree/project.yaml` | pass | Generic regulator has adequate input, output, dropout, and load evidence. |
+| `generic_regulator_dropout_detected` | `examples/bad_regulator_dropout/project.yaml` | fail | Detects regulator dropout margin below the model requirement. |
+| `generic_regulator_output_current_detected` | `examples/bad_regulator_output_current/project.yaml` | fail | Detects generic regulator output load above its current limit. |
+| `generic_regulator_conversion_pin_detected` | `examples/bad_regulator_conversion_pin/project.yaml` | fail | Detects invalid regulator power-conversion model metadata. |
+| `generic_regulator_startup_sequence_detected` | `examples/bad_regulator_startup_sequence/project.yaml` | fail | Detects regulator output rail valid before input-valid plus startup delay. |
+| `generic_regulator_startup_missing_timing_detected` | `examples/bad_regulator_startup_missing_timing/project.yaml` | fail | Detects missing output power-valid timing required by regulator startup-delay metadata. |
+| `generic_reset_supervisor_threshold_passes` | `examples/good_reset_supervisor_threshold/project.yaml` | pass | Generic reset supervisor threshold releases after monitored rail is safely valid. |
+| `generic_reset_supervisor_threshold_too_low_detected` | `examples/bad_reset_supervisor_threshold_too_low/project.yaml` | fail | Detects reset-supervisor threshold below the monitored load minimum operating voltage. |
+| `generic_bootstrap_bias_divider_passes` | `examples/good_bootstrap_bias_divider/project.yaml` | pass | Generic boot-strap resistor divider satisfies required boot state and bias-current limit. |
+| `generic_bootstrap_bias_threshold_detected` | `examples/bad_bootstrap_bias_threshold/project.yaml` | fail | Detects boot-strap voltage below the required high threshold. |
+| `generic_bootstrap_bias_current_detected` | `examples/bad_bootstrap_bias_current/project.yaml` | fail | Detects boot-strap resistor-network current above the reviewed limit. |
+| `generic_bootloader_board_passes` | `examples/good_bootloader_board/project.yaml` | pass | Generic MCU reset, boot-strap, and UART bootloader sync checks all pass. |
+| `generic_c51_isp_board_passes` | `examples/good_c51_isp_board/project.yaml` | pass | C51-style ISP bootloader metadata passes reset, boot-strap, and UART sync checks. |
+| `generic_bootstrap_defined_detected` | `examples/bad_bootstrap_board/project.yaml` | fail | Detects boot-strap state that does not satisfy the required bootloader mode. |
+| `generic_uart_bootloader_sync_detected` | `examples/bad_uart_bootloader_sync_board/project.yaml` | fail | Detects missing UART bootloader sync-byte evidence. |
+| `generic_reset_release_before_power_detected` | `examples/bad_reset_release_board/project.yaml` | fail | Detects reset release before power-valid timing. |
+| `generic_reset_power_timing_mismatch_detected` | `examples/bad_reset_power_timing_mismatch/project.yaml` | fail | Detects reset scenario power-valid timing that contradicts the target rail timing. |
+| `generic_reset_supervisor_delay_detected` | `examples/bad_reset_supervisor_delay/project.yaml` | fail | Detects reset-supervisor release delay that is too short for the declared power-valid timing. |
+| `generic_reset_pin_mismatch_detected` | `examples/bad_reset_pin_board/project.yaml` | fail | Detects a reset scenario targeting a pin that is not the model reset pin. |
+| `um_stm32l4_rom_download_entry_passes` | `examples/um_stm32l4_rom_download_entry/project.yaml` | pass | UM STM32L4 ROM download entry passes reset, BOOT0, and UART sync evidence checks. |
+| `um_stm32l4_wrong_uart_detected` | `examples/um_stm32l4_rom_download_wrong_uart/project.yaml` | fail | Detects UART bootloader sync sent from a transmitter not connected to the target RX pin. |
+| `um_stm32l4_app_boot_fixed_release_passes` | `examples/um_stm32l4_app_boot_fixed_release/project.yaml` | pass | UM STM32L4 application boot release fixture proves BOOT0 low at application boot. |
+| `um_stm32l4_app_boot_bad_release_detected` | `examples/um_stm32l4_app_boot_bad_release/project.yaml` | fail | Detects BOOT0 state invalid for application boot mode. |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
@@ -365,7 +401,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=253, passed=253, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=288, passed=288, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -438,6 +474,30 @@ Observed detection details:
 | `usb_return_path_split_zone_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp has 1.000 mm of routed data-line length without same-layer ground-zone filled-polygon coverage with same-net pad/via contact evidence, above limit 0.000 mm. |
 | `usb_return_path_zone_edge_clearance_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp segment 0 has 0.020 mm filled ground-zone edge clearance, below required 0.100 mm. |
 | `usb_return_path_stitching_via_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp data via 0 is 1.500 mm from the nearest matching ground stitch via, above limit 0.200 mm. |
+| `generic_power_tree_overvoltage_detected` | `POWER_TREE_VALID` | Power rail rail_5v supplies U1.VDD at 5.000000 V, outside the model maximum operating voltage 3.600000 V. |
+| `generic_power_tree_current_budget_detected` | `POWER_TREE_VALID` | Power rail rail_3v3 worst-case declared load 0.050000 A exceeds supply limit 0.040000 A. |
+| `generic_load_switch_missing_enable_detected` | `POWER_TREE_VALID` | Load switch USW output rail sensor_3v3 is declared powered but USW.EN is not proven high. |
+| `generic_load_switch_disabled_output_detected` | `POWER_TREE_VALID` | Load switch USW output rail sensor_3v3 is declared powered but USW.EN is not proven high. |
+| `generic_load_switch_output_current_detected` | `POWER_TREE_VALID` | Load switch USW worst-case output load 0.070000 A exceeds switch limit 0.050000 A. |
+| `generic_power_mux_missing_selection_detected` | `POWER_TREE_VALID` | Power mux UMUX requires component parameter selected_input for source-selection validation. |
+| `generic_power_mux_selected_unpowered_detected` | `POWER_TREE_VALID` | Power rail battery for UMUX.BAT_IN is not declared powered. |
+| `generic_power_mux_backfeed_detected` | `POWER_TREE_VALID` | Power mux UMUX output rail sys is powered while inactive input battery on battery is unpowered and lacks reverse-blocking evidence. |
+| `generic_regulator_dropout_detected` | `POWER_TREE_VALID` | Regulator UREG dropout margin 0.100000 V is below required dropout 0.300000 V. |
+| `generic_regulator_output_current_detected` | `POWER_TREE_VALID` | Regulator UREG worst-case output load 0.050000 A exceeds regulator limit 0.040000 A. |
+| `generic_regulator_conversion_pin_detected` | `POWER_TREE_VALID` | power_conversion output_pin OUT is not declared in model ports. |
+| `generic_regulator_startup_sequence_detected` | `POWER_TREE_VALID` | Regulator UREG output rail rail_3v3 is declared valid at 1200.000000 us before input-valid plus startup delay 1800.000000 us. |
+| `generic_regulator_startup_missing_timing_detected` | `POWER_TREE_VALID` | Regulator UREG declares startup_delay_us but rail rail_3v3 has no power_valid_at_us timing. |
+| `generic_reset_supervisor_threshold_too_low_detected` | `POWER_TREE_VALID` | Reset supervisor USUP_LOW_THRESHOLD can release nrst at 2.400000 V, below U1.VDD minimum operating voltage 2.700000 V. |
+| `generic_bootstrap_bias_threshold_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap U1.BOOT0 resistor network produces 1.650000 V on net boot0, not valid for required high state in boot mode bootloader. |
+| `generic_bootstrap_bias_current_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap U1.BOOT0 resistor network draws 0.000300 A on net boot0, above limit 0.000100 A. |
+| `generic_bootstrap_defined_detected` | `BOOT_STRAP_DEFINED` | Boot strap U1.BOOT0 is not valid for boot mode bootloader. |
+| `generic_uart_bootloader_sync_detected` | `UART_BOOTLOADER_SYNC` | No UART bootloader sync byte was sent to U1.RX. |
+| `generic_reset_release_before_power_detected` | `RESET_RELEASE_AFTER_POWER_VALID` | Reset releases before power is valid for component U1. |
+| `generic_reset_power_timing_mismatch_detected` | `RESET_RELEASE_AFTER_POWER_VALID` | Scenario power_valid_at_us does not match target power rail mcu_3v3 timing. |
+| `generic_reset_supervisor_delay_detected` | `RESET_RELEASE_AFTER_POWER_VALID` | Reset releases before power is valid for component U1. |
+| `generic_reset_pin_mismatch_detected` | `TARGET_RESET_PIN_MISMATCH` | Scenario reset pin U1.BOOT0 does not match model reset pin NRST. |
+| `um_stm32l4_wrong_uart_detected` | `UART_BOOTLOADER_SYNC` | Sender U5.TXD is not connected to target RX U1.PA10. |
+| `um_stm32l4_app_boot_bad_release_detected` | `BOOT_STRAP_DEFINED` | Boot strap U1.BOOT0 is not valid for boot mode application. |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
 | `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
@@ -511,10 +571,10 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred fifteen public-reference pass cases produced zero critical
+All one hundred twenty-six public-reference pass cases produced zero critical
 findings.
-All one hundred thirty-eight paired injected-error cases failed with the expected
-critical finding ID, and all one hundred thirty-eight repair-pair checks passed.
+All one hundred sixty-two paired injected-error cases failed with the expected
+critical finding ID, and all one hundred sixty-two repair-pair checks passed.
 
 ## Interpretation Limits
 

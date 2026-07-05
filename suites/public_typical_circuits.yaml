@@ -601,6 +601,218 @@ cases:
       - id: USB_RETURN_PATH_VALID
         severity: critical
 
+  - id: generic_power_tree_passes
+    project: ../examples/good_power_tree_board/project.yaml
+    expect: pass
+
+  - id: generic_power_tree_overvoltage_detected
+    project: ../examples/bad_power_tree_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_power_tree_current_budget_detected
+    project: ../examples/bad_power_tree_current_budget/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_load_switch_passes
+    project: ../examples/good_load_switch_power_tree/project.yaml
+    expect: pass
+
+  - id: generic_load_switch_missing_enable_detected
+    project: ../examples/bad_load_switch_missing_enable/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_load_switch_disabled_output_detected
+    project: ../examples/bad_load_switch_disabled_output_powered/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_load_switch_output_current_detected
+    project: ../examples/bad_load_switch_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_power_mux_usb_selected_passes
+    project: ../examples/good_power_mux_usb_selected/project.yaml
+    expect: pass
+
+  - id: generic_power_mux_derived_selection_passes
+    project: ../examples/good_power_mux_derived_selection/project.yaml
+    expect: pass
+
+  - id: generic_power_mux_missing_selection_detected
+    project: ../examples/bad_power_mux_missing_selection/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_power_mux_selected_unpowered_detected
+    project: ../examples/bad_power_mux_selected_unpowered/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_power_mux_backfeed_detected
+    project: ../examples/bad_power_mux_backfeed/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_regulator_power_tree_passes
+    project: ../examples/good_regulator_power_tree/project.yaml
+    expect: pass
+
+  - id: generic_regulator_dropout_detected
+    project: ../examples/bad_regulator_dropout/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_regulator_output_current_detected
+    project: ../examples/bad_regulator_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_regulator_conversion_pin_detected
+    project: ../examples/bad_regulator_conversion_pin/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_regulator_startup_sequence_detected
+    project: ../examples/bad_regulator_startup_sequence/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_regulator_startup_missing_timing_detected
+    project: ../examples/bad_regulator_startup_missing_timing/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_reset_supervisor_threshold_passes
+    project: ../examples/good_reset_supervisor_threshold/project.yaml
+    expect: pass
+
+  - id: generic_reset_supervisor_threshold_too_low_detected
+    project: ../examples/bad_reset_supervisor_threshold_too_low/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: generic_bootstrap_bias_divider_passes
+    project: ../examples/good_bootstrap_bias_divider/project.yaml
+    expect: pass
+
+  - id: generic_bootstrap_bias_threshold_detected
+    project: ../examples/bad_bootstrap_bias_threshold/project.yaml
+    expect: fail
+    required_findings:
+      - id: BOOT_STRAP_BIAS_VALID
+        severity: critical
+
+  - id: generic_bootstrap_bias_current_detected
+    project: ../examples/bad_bootstrap_bias_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: BOOT_STRAP_BIAS_VALID
+        severity: critical
+
+  - id: generic_bootloader_board_passes
+    project: ../examples/good_bootloader_board/project.yaml
+    expect: pass
+
+  - id: generic_c51_isp_board_passes
+    project: ../examples/good_c51_isp_board/project.yaml
+    expect: pass
+
+  - id: generic_bootstrap_defined_detected
+    project: ../examples/bad_bootstrap_board/project.yaml
+    expect: fail
+    required_findings:
+      - id: BOOT_STRAP_DEFINED
+        severity: critical
+
+  - id: generic_uart_bootloader_sync_detected
+    project: ../examples/bad_uart_bootloader_sync_board/project.yaml
+    expect: fail
+    required_findings:
+      - id: UART_BOOTLOADER_SYNC
+        severity: critical
+
+  - id: generic_reset_release_before_power_detected
+    project: ../examples/bad_reset_release_board/project.yaml
+    expect: fail
+    required_findings:
+      - id: RESET_RELEASE_AFTER_POWER_VALID
+        severity: critical
+
+  - id: generic_reset_power_timing_mismatch_detected
+    project: ../examples/bad_reset_power_timing_mismatch/project.yaml
+    expect: fail
+    required_findings:
+      - id: RESET_RELEASE_AFTER_POWER_VALID
+        severity: critical
+
+  - id: generic_reset_supervisor_delay_detected
+    project: ../examples/bad_reset_supervisor_delay/project.yaml
+    expect: fail
+    required_findings:
+      - id: RESET_RELEASE_AFTER_POWER_VALID
+        severity: critical
+
+  - id: generic_reset_pin_mismatch_detected
+    project: ../examples/bad_reset_pin_board/project.yaml
+    expect: fail
+    required_findings:
+      - id: TARGET_RESET_PIN_MISMATCH
+        severity: critical
+
+  - id: um_stm32l4_rom_download_entry_passes
+    project: ../examples/um_stm32l4_rom_download_entry/project.yaml
+    expect: pass
+
+  - id: um_stm32l4_wrong_uart_detected
+    project: ../examples/um_stm32l4_rom_download_wrong_uart/project.yaml
+    expect: fail
+    required_findings:
+      - id: UART_BOOTLOADER_SYNC
+        severity: critical
+
+  - id: um_stm32l4_app_boot_fixed_release_passes
+    project: ../examples/um_stm32l4_app_boot_fixed_release/project.yaml
+    expect: pass
+
+  - id: um_stm32l4_app_boot_bad_release_detected
+    project: ../examples/um_stm32l4_app_boot_bad_release/project.yaml
+    expect: fail
+    required_findings:
+      - id: BOOT_STRAP_DEFINED
+        severity: critical
+
   - id: diodes_ap2112k_typical_ldo_passes
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
@@ -1812,6 +2024,150 @@ repairs:
     fixed_case: usb_return_path_passes
     fixes_findings:
       - USB_RETURN_PATH_VALID
+
+  - id: fix_generic_power_tree_overvoltage
+    detects_case: generic_power_tree_overvoltage_detected
+    fixed_case: generic_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_power_tree_current_budget
+    detects_case: generic_power_tree_current_budget_detected
+    fixed_case: generic_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_load_switch_missing_enable
+    detects_case: generic_load_switch_missing_enable_detected
+    fixed_case: generic_load_switch_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_load_switch_disabled_output
+    detects_case: generic_load_switch_disabled_output_detected
+    fixed_case: generic_load_switch_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_load_switch_output_current
+    detects_case: generic_load_switch_output_current_detected
+    fixed_case: generic_load_switch_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_power_mux_missing_selection
+    detects_case: generic_power_mux_missing_selection_detected
+    fixed_case: generic_power_mux_usb_selected_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_power_mux_selected_unpowered
+    detects_case: generic_power_mux_selected_unpowered_detected
+    fixed_case: generic_power_mux_usb_selected_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_power_mux_backfeed
+    detects_case: generic_power_mux_backfeed_detected
+    fixed_case: generic_power_mux_usb_selected_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_regulator_dropout
+    detects_case: generic_regulator_dropout_detected
+    fixed_case: generic_regulator_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_regulator_output_current
+    detects_case: generic_regulator_output_current_detected
+    fixed_case: generic_regulator_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_regulator_conversion_pin
+    detects_case: generic_regulator_conversion_pin_detected
+    fixed_case: generic_regulator_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_regulator_startup_sequence
+    detects_case: generic_regulator_startup_sequence_detected
+    fixed_case: generic_regulator_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_regulator_startup_missing_timing
+    detects_case: generic_regulator_startup_missing_timing_detected
+    fixed_case: generic_regulator_power_tree_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_reset_supervisor_threshold_too_low
+    detects_case: generic_reset_supervisor_threshold_too_low_detected
+    fixed_case: generic_reset_supervisor_threshold_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_generic_bootstrap_bias_threshold
+    detects_case: generic_bootstrap_bias_threshold_detected
+    fixed_case: generic_bootstrap_bias_divider_passes
+    fixes_findings:
+      - BOOT_STRAP_BIAS_VALID
+
+  - id: fix_generic_bootstrap_bias_current
+    detects_case: generic_bootstrap_bias_current_detected
+    fixed_case: generic_bootstrap_bias_divider_passes
+    fixes_findings:
+      - BOOT_STRAP_BIAS_VALID
+
+  - id: fix_generic_bootstrap_defined
+    detects_case: generic_bootstrap_defined_detected
+    fixed_case: generic_bootloader_board_passes
+    fixes_findings:
+      - BOOT_STRAP_DEFINED
+
+  - id: fix_generic_uart_bootloader_sync
+    detects_case: generic_uart_bootloader_sync_detected
+    fixed_case: generic_bootloader_board_passes
+    fixes_findings:
+      - UART_BOOTLOADER_SYNC
+
+  - id: fix_generic_reset_release_before_power
+    detects_case: generic_reset_release_before_power_detected
+    fixed_case: generic_bootloader_board_passes
+    fixes_findings:
+      - RESET_RELEASE_AFTER_POWER_VALID
+
+  - id: fix_generic_reset_power_timing_mismatch
+    detects_case: generic_reset_power_timing_mismatch_detected
+    fixed_case: generic_bootloader_board_passes
+    fixes_findings:
+      - RESET_RELEASE_AFTER_POWER_VALID
+
+  - id: fix_generic_reset_supervisor_delay
+    detects_case: generic_reset_supervisor_delay_detected
+    fixed_case: generic_bootloader_board_passes
+    fixes_findings:
+      - RESET_RELEASE_AFTER_POWER_VALID
+
+  - id: fix_generic_reset_pin_mismatch
+    detects_case: generic_reset_pin_mismatch_detected
+    fixed_case: generic_bootloader_board_passes
+    fixes_findings:
+      - TARGET_RESET_PIN_MISMATCH
+
+  - id: fix_um_stm32l4_wrong_uart
+    detects_case: um_stm32l4_wrong_uart_detected
+    fixed_case: um_stm32l4_rom_download_entry_passes
+    fixes_findings:
+      - UART_BOOTLOADER_SYNC
+
+  - id: fix_um_stm32l4_app_boot_bad_release
+    detects_case: um_stm32l4_app_boot_bad_release_detected
+    fixed_case: um_stm32l4_app_boot_fixed_release_passes
+    fixes_findings:
+      - BOOT_STRAP_DEFINED
 
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected
