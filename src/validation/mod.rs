@@ -39,6 +39,7 @@ mod analog_sparameter_assertions;
 mod analog_sparameter_noise;
 mod analog_sparameter_noise_runner;
 mod analog_sparameter_spice;
+mod analog_sparameter_summary;
 mod analog_spice;
 mod analog_sweep_reports;
 mod analog_sweep_sampling;
