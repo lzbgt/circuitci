@@ -78,8 +78,40 @@ cases:
     project: ../examples/good_drill_annular_ring/project.yaml
     expect: pass
 
+  - id: manufacturing_drill_annular_required_layers_passes
+    project: ../examples/good_drill_annular_ring_required_layers/project.yaml
+    expect: pass
+
   - id: jlcpcb_drill_annular_ring_process_detected
     project: ../examples/bad_drill_annular_ring_jlc_via_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: DRILL_ANNULAR_RING_VALID
+        severity: critical
+
+  - id: manufacturing_drill_annular_missing_copper_detected
+    project: ../examples/bad_drill_annular_ring_missing_copper/project.yaml
+    expect: fail
+    required_findings:
+      - id: DRILL_ANNULAR_RING_VALID
+        severity: critical
+
+  - id: manufacturing_drill_annular_missing_required_layer_detected
+    project: ../examples/bad_drill_annular_ring_missing_required_layer/project.yaml
+    expect: fail
+    required_findings:
+      - id: DRILL_ANNULAR_RING_VALID
+        severity: critical
+
+  - id: manufacturing_drill_annular_owner_mismatch_detected
+    project: ../examples/bad_drill_annular_ring_owner_mismatch/project.yaml
+    expect: fail
+    required_findings:
+      - id: DRILL_ANNULAR_RING_VALID
+        severity: critical
+
+  - id: manufacturing_drill_annular_same_net_owner_mismatch_detected
+    project: ../examples/bad_drill_annular_ring_same_net_owner_mismatch/project.yaml
     expect: fail
     required_findings:
       - id: DRILL_ANNULAR_RING_VALID
@@ -111,8 +143,19 @@ cases:
     project: ../examples/good_solder_mask_opening_explicit_override/project.yaml
     expect: pass
 
+  - id: manufacturing_solder_mask_opening_segment_passes
+    project: ../examples/good_solder_mask_opening_segment/project.yaml
+    expect: pass
+
   - id: jlcpcb_solder_mask_opening_process_detected
     project: ../examples/bad_solder_mask_opening_jlc_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_MASK_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_mask_opening_region_detected
+    project: ../examples/bad_solder_mask_opening_region_undersized/project.yaml
     expect: fail
     required_findings:
       - id: SOLDER_MASK_OPENING_VALID
@@ -124,6 +167,13 @@ cases:
 
   - id: jlcpcb_solder_mask_dam_process_detected
     project: ../examples/bad_solder_mask_dam_jlc_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_MASK_DAM_VALID
+        severity: critical
+
+  - id: manufacturing_solder_mask_dam_segment_region_detected
+    project: ../examples/bad_solder_mask_dam_segment_region/project.yaml
     expect: fail
     required_findings:
       - id: SOLDER_MASK_DAM_VALID
@@ -155,8 +205,30 @@ cases:
     project: ../examples/good_solder_paste_opening/project.yaml
     expect: pass
 
+  - id: manufacturing_solder_paste_opening_segment_passes
+    project: ../examples/good_solder_paste_opening_segment/project.yaml
+    expect: pass
+
+  - id: manufacturing_solder_paste_opening_windowed_passes
+    project: ../examples/good_solder_paste_opening_windowed/project.yaml
+    expect: pass
+
   - id: manufacturing_solder_paste_opening_metadata_detected
     project: ../examples/bad_solder_paste_opening_undersized_board_metadata/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_paste_opening_region_detected
+    project: ../examples/bad_solder_paste_opening_region_oversized/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_paste_opening_windowed_detected
+    project: ../examples/bad_solder_paste_opening_windowed_oversized/project.yaml
     expect: fail
     required_findings:
       - id: SOLDER_PASTE_OPENING_VALID
@@ -168,6 +240,13 @@ cases:
 
   - id: manufacturing_solder_paste_spacing_metadata_detected
     project: ../examples/bad_solder_paste_spacing_board_metadata/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_paste_spacing_segment_region_detected
+    project: ../examples/bad_solder_paste_spacing_segment_region/project.yaml
     expect: fail
     required_findings:
       - id: SOLDER_PASTE_SPACING_VALID
@@ -1238,6 +1317,30 @@ repairs:
     fixes_findings:
       - DRILL_ANNULAR_RING_VALID
 
+  - id: fix_manufacturing_drill_annular_missing_copper
+    detects_case: manufacturing_drill_annular_missing_copper_detected
+    fixed_case: manufacturing_drill_annular_ring_passes
+    fixes_findings:
+      - DRILL_ANNULAR_RING_VALID
+
+  - id: fix_manufacturing_drill_annular_missing_required_layer
+    detects_case: manufacturing_drill_annular_missing_required_layer_detected
+    fixed_case: manufacturing_drill_annular_required_layers_passes
+    fixes_findings:
+      - DRILL_ANNULAR_RING_VALID
+
+  - id: fix_manufacturing_drill_annular_owner_mismatch
+    detects_case: manufacturing_drill_annular_owner_mismatch_detected
+    fixed_case: manufacturing_drill_annular_ring_passes
+    fixes_findings:
+      - DRILL_ANNULAR_RING_VALID
+
+  - id: fix_manufacturing_drill_annular_same_net_owner_mismatch
+    detects_case: manufacturing_drill_annular_same_net_owner_mismatch_detected
+    fixed_case: manufacturing_drill_annular_ring_passes
+    fixes_findings:
+      - DRILL_ANNULAR_RING_VALID
+
   - id: fix_jlcpcb_copper_to_board_edge_process
     detects_case: jlcpcb_copper_to_board_edge_process_detected
     fixed_case: manufacturing_copper_to_board_edge_passes
@@ -1256,8 +1359,20 @@ repairs:
     fixes_findings:
       - SOLDER_MASK_OPENING_VALID
 
+  - id: fix_manufacturing_solder_mask_opening_region
+    detects_case: manufacturing_solder_mask_opening_region_detected
+    fixed_case: manufacturing_solder_mask_opening_segment_passes
+    fixes_findings:
+      - SOLDER_MASK_OPENING_VALID
+
   - id: fix_jlcpcb_solder_mask_dam_process
     detects_case: jlcpcb_solder_mask_dam_process_detected
+    fixed_case: manufacturing_solder_mask_dam_passes
+    fixes_findings:
+      - SOLDER_MASK_DAM_VALID
+
+  - id: fix_manufacturing_solder_mask_dam_segment_region
+    detects_case: manufacturing_solder_mask_dam_segment_region_detected
     fixed_case: manufacturing_solder_mask_dam_passes
     fixes_findings:
       - SOLDER_MASK_DAM_VALID
@@ -1280,8 +1395,26 @@ repairs:
     fixes_findings:
       - SOLDER_PASTE_OPENING_VALID
 
+  - id: fix_manufacturing_solder_paste_opening_region
+    detects_case: manufacturing_solder_paste_opening_region_detected
+    fixed_case: manufacturing_solder_paste_opening_passes
+    fixes_findings:
+      - SOLDER_PASTE_OPENING_VALID
+
+  - id: fix_manufacturing_solder_paste_opening_windowed
+    detects_case: manufacturing_solder_paste_opening_windowed_detected
+    fixed_case: manufacturing_solder_paste_opening_windowed_passes
+    fixes_findings:
+      - SOLDER_PASTE_OPENING_VALID
+
   - id: fix_manufacturing_solder_paste_spacing_metadata
     detects_case: manufacturing_solder_paste_spacing_metadata_detected
+    fixed_case: manufacturing_solder_paste_spacing_passes
+    fixes_findings:
+      - SOLDER_PASTE_SPACING_VALID
+
+  - id: fix_manufacturing_solder_paste_spacing_segment_region
+    detects_case: manufacturing_solder_paste_spacing_segment_region_detected
     fixed_case: manufacturing_solder_paste_spacing_passes
     fixes_findings:
       - SOLDER_PASTE_SPACING_VALID
