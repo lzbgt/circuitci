@@ -40,6 +40,7 @@ audit the modeled facts without relying on chat history.
 | TI THVD1450 RS-485 transceiver use | <https://www.ti.com/lit/ds/symlink/thvd1450.pdf> | `docs/research/smart_robot/sources/thvd1450_datasheet.pdf` |
 | TI DRV8323 gate-driver use | <https://www.ti.com/lit/ds/symlink/drv8323.pdf> | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
+| ST STM32L431 boot and UART/SWD use | <https://www.st.com/resource/en/datasheet/stm32l431rb.pdf> | `docs/research/datasheets/st/stm32l431xx_datasheet.pdf` |
 | STC15W408AS 1T 8051-family MCU power use | <https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf> and <https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf> | `docs/research/datasheets/stc/stc15w408as_features.pdf` and `docs/research/datasheets/stc/stc15f2k60s2_en.pdf` |
 | TI NE555 astable timer power use | <https://www.ti.com/lit/ds/symlink/ne555.pdf> | `docs/research/datasheets/ti/ne555.pdf` |
 | TI TLV803EA29 reset-supervisor use | <https://www.ti.com/lit/ds/symlink/tlv803e.pdf> | `docs/research/datasheets/ti/tlv803e-tlv809e-tlv810e.pdf` |
@@ -47,6 +48,7 @@ audit the modeled facts without relying on chat history.
 | Abracon ABM3 8 MHz crystal support network | <https://abracon.com/Resonators/ABM3.pdf> | `docs/research/datasheets/abracon/abm3.pdf` |
 | Winbond W25Q64JV SPI/QSPI NOR flash power use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
 | Bosch BME280 environmental sensor I2C power use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
+| TI CSD17484F4 N-channel MOSFET switching/discharge use | <https://www.ti.com/lit/gpn/CSD17484F4> | `docs/research/datasheets/ti/csd17484f4.pdf` |
 | onsemi 1N4148WS switching diode use | <https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf> | `docs/research/datasheets/onsemi/1n4148ws.pdf` |
 | onsemi NDS7002A low-side MOSFET switch use | <https://www.onsemi.com/download/data-sheet/pdf/nds7002a-d.pdf> | `docs/research/datasheets/onsemi/nds7002a.pdf` |
 | onsemi NL27WZ17 dual non-inverting Schmitt-trigger buffer use | <https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf> | `docs/research/datasheets/onsemi/nl27wz17.pdf` |
@@ -57,8 +59,8 @@ were re-checked with web search on 2026-06-13; the RP2040, nRF52840,
 STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
 Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI BQ25798, TI TPS22918,
-TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI TXS0108E,
-TI TCAN3413, TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS,
+TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI CSD17484F4,
+TI TXS0108E, TI TCAN3413, TI THVD1450, ST STM32L431, Silicon Labs CP2102N, onsemi 1N4148WS,
 onsemi NDS7002A, onsemi NL27WZ17, and Microchip MCP131X/2X PDFs were
 downloaded from their official vendor URLs.
 WCH CH340C, WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
@@ -68,7 +70,7 @@ part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines sixty public-reference
+`suites/public_typical_circuits.yaml` combines sixty-six public-reference
 passing cases and fifty-eight paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
@@ -78,6 +80,7 @@ passing cases and fifty-eight paired injected-error cases:
 | `diodes_ap2112k_dropout_detected` | `examples/bad_diodes_ap2112k_3v3_dropout/project.yaml` | fail | Detects insufficient nominal dropout margin. |
 | `microchip_mcp73831_typical_usb_charger_passes` | `examples/good_microchip_mcp73831_usb_charger/project.yaml` | pass | MCP73831 USB-powered 4.2 V Li-Ion charger with 100 mA programmed current. |
 | `microchip_mcp73831_charger_observation_passes` | `examples/good_mcp73831_charger_observation/project.yaml` | pass | MCP73831 generated-SPICE charger observation with USB input, battery node, and source-backed programmed current. |
+| `microchip_mcp73831_prog_resistor_passes` | `examples/good_microchip_mcp73831_prog_resistor/project.yaml` | pass | MCP73831 static PROG-resistor fixture deriving charge current from a 10 kOhm programming resistor. |
 | `microchip_mcp73831_usb_budget_detected` | `examples/bad_microchip_mcp73831_usb_budget/project.yaml` | fail | Detects charge current above declared USB input budget. |
 | `ti_bq24075_typical_usb_charger_passes` | `examples/good_ti_bq24075_usb_charger/project.yaml` | pass | BQ24075 USB-powered 4.2 V Li-Ion charger with 450 mA programmed current and 5.5 V system output evidence. |
 | `ti_bq24075_power_path_observation_passes` | `examples/good_bq24075_power_path_observation/project.yaml` | pass | BQ24075 generated-SPICE power-path charger observation with USB input, SYS output, battery node, and programmed charge current. |
@@ -127,6 +130,7 @@ passing cases and fifty-eight paired injected-error cases:
 | `ti_tps63802_switch_inductance_detected` | `examples/bad_ti_tps63802_3v3_switch_inductance/project.yaml` | fail | Detects direct L1-to-L2 buck-boost switch inductance below the datasheet-backed minimum. |
 | `ti_tps63802_output_overcurrent_detected` | `examples/bad_ti_tps63802_3v3_output_current/project.yaml` | fail | Detects output load above the datasheet-backed 2 A output-current condition. |
 | `espressif_esp32_wroom_32e_application_passes` | `examples/good_espressif_esp32_wroom_32e_application/project.yaml` | pass | ESP32-WROOM-32E on a 3.3 V rail with enough source-current budget and GPIO0 biased high for SPI flash boot. |
+| `espressif_esp32_wroom_32e_boot_uart_observation_passes` | `examples/good_esp32_wroom_32e_boot_uart_observation/project.yaml` | pass | ESP32-WROOM-32E generated-SPICE boot/UART observation with source-backed boot strap and UART line-state metadata. |
 | `espressif_esp32_wroom_32e_supply_current_detected` | `examples/bad_espressif_esp32_wroom_32e_supply_current/project.yaml` | fail | Detects a 3.3 V source-current budget below the datasheet-backed 0.5 A external-supply requirement. |
 | `espressif_esp32_wroom_32e_gpio0_bootstrap_detected` | `examples/bad_espressif_esp32_wroom_32e_bootstrap/project.yaml` | fail | Detects GPIO0 biased below the high threshold required for SPI flash boot. |
 | `raspberrypi_rp2040_bootsel_power_board_passes` | `examples/good_raspberrypi_rp2040_bootsel_power/project.yaml` | pass | RP2040 with 3.3 V IOVDD/VREG_VIN/USB_VDD/ADC_AVDD, internal 1.1 V VREG_VOUT feeding DVDD, RUN pulled high, and QSPI_SS pulled high for external-flash boot. |
@@ -154,6 +158,7 @@ passing cases and fifty-eight paired injected-error cases:
 | `ti_drv8323_vm_overvoltage_detected` | `examples/bad_drv8323_vm_overvoltage/project.yaml` | fail | Detects DRV8323 `VM` connected to a 70 V motor rail above the source-backed 60 V maximum. |
 | `st_stm8s003f3p6_power_passes` | `examples/good_st_stm8s003f3p6_power/project.yaml` | pass | STM8S003F3P6 with 5 V `VDD`, `VCAP` pin support capacitor, active-low reset, SWIM, and UART1 TX/RX boundaries. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `examples/bad_st_stm8s003f3p6_vdd_overvoltage/project.yaml` | fail | Detects `VDD` connected to a 6 V rail above the source-backed 5.5 V maximum. |
+| `st_stm32l431_boot_uart_swd_observation_passes` | `examples/good_stm32l431_boot_uart_swd_observation/project.yaml` | pass | STM32L431 generated-SPICE boot UART/SWD observation with source-backed power, reset, BOOT0, UART, and SWD pin metadata. |
 | `stc_stc15w408as_power_passes` | `examples/good_stc_stc15w408as_power/project.yaml` | pass | STC15W408AS with 5 V `VCC`, active-high reset boundary, and primary UART/ISP RX/TX pin boundaries. |
 | `stc_stc15w408as_vcc_overvoltage_detected` | `examples/bad_stc_stc15w408as_vcc_overvoltage/project.yaml` | fail | Detects `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `ti_ne555_astable_power_passes` | `examples/good_ti_ne555_astable_power/project.yaml` | pass | NE555 in a source-backed astable-style board connection on a 5 V `VCC` rail with VCC and CONT bypass capacitors. |
@@ -186,9 +191,12 @@ passing cases and fifty-eight paired injected-error cases:
 | `onsemi_2n3906_collector_overcurrent_detected` | `examples/bad_onsemi_2n3906_collector_overcurrent/project.yaml` | fail | Detects a 2N3906 collector-current violation above the source-backed 200 mA continuous magnitude while preserving the signed rating value. |
 | `onsemi_1n5819_schottky_rectifier_passes` | `examples/good_onsemi_1n5819_schottky_rectifier/project.yaml` | pass | 1N5819 Schottky rectifier feeds a light 5 V load while retaining the source-backed generated-SPICE model and diode operating-limit probes. |
 | `onsemi_1n5819_overcurrent_detected` | `examples/bad_onsemi_1n5819_overcurrent/project.yaml` | fail | Detects 1N5819 forward current above the source-backed 1 A average rectified-current rating. |
+| `ti_csd17484f4_low_side_switch_passes` | `examples/good_csd17484f4_low_side_switch/project.yaml` | pass | CSD17484F4 generated-SPICE low-side MOSFET switch observation with the retained TI SPICE card. |
+| `ti_csd17484f4_vcsel_capacitor_discharge_passes` | `examples/good_csd17484f4_vcsel_capacitor_discharge/project.yaml` | pass | CSD17484F4 generated-SPICE capacitor-discharge observation with an initial-condition VCSEL-style load path. |
 | `onsemi_nl27wz17_logic_buffer_observation_passes` | `examples/good_onsemi_nl27wz17_logic_buffer_observation/project.yaml` | pass | NL27WZ17 generated-SPICE logic-buffer observation with 3.3 V VCC, one high input mirrored high, and one low input mirrored low. |
 | `onsemi_nl27wz17_vcc_overvoltage_detected` | `examples/bad_onsemi_nl27wz17_vcc_overvoltage/project.yaml` | fail | Detects NL27WZ17 `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `espressif_esp32_s3_wroom_1u_application_passes` | `examples/good_espressif_esp32_s3_wroom_1u_application/project.yaml` | pass | ESP32-S3-WROOM-1U-N16R8 on a 3.3 V rail with enough source-current budget and GPIO0 biased high for SPI flash boot. |
+| `espressif_esp32_s3_wroom_1u_boot_usb_observation_passes` | `examples/good_esp32_s3_wroom_boot_usb_observation/project.yaml` | pass | ESP32-S3-WROOM-1U generated-SPICE boot/USB observation with source-backed boot strap and USB line-state metadata. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `examples/bad_espressif_esp32_s3_wroom_1u_supply_current/project.yaml` | fail | Detects a 3.3 V source-current budget below the datasheet-backed 0.5 A IVDD requirement. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `examples/bad_espressif_esp32_s3_wroom_1u_download_bootstrap/project.yaml` | fail | Detects GPIO46 biased high when joint download boot requires GPIO0 low and GPIO46 low. |
 
@@ -203,7 +211,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=118, passed=118, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=124, passed=124, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -269,7 +277,7 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All sixty public-reference pass cases produced zero critical findings.
+All sixty-six public-reference pass cases produced zero critical findings.
 All fifty-eight paired injected-error cases failed with the expected critical
 finding ID, and all fifty-eight repair-pair checks passed.
 
