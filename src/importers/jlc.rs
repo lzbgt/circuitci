@@ -27,6 +27,7 @@ pub struct JlcAssemblyImportSummary {
 #[derive(Debug, Clone)]
 struct BomEntry {
     row_number: usize,
+    row_sha256: String,
     designator_group: String,
     quantity: usize,
     comment: Option<String>,
@@ -41,6 +42,7 @@ struct BomEntry {
 #[derive(Debug, Clone)]
 struct PlacementEntry {
     row_number: usize,
+    row_sha256: String,
     designator: String,
     device: Option<String>,
     footprint: Option<String>,
@@ -216,6 +218,7 @@ struct AssemblyImportManifest {
 #[derive(Debug, Serialize)]
 struct BomRowManifest {
     row_number: usize,
+    row_sha256: String,
     designator_group: String,
     designators: Vec<String>,
     quantity: usize,
@@ -243,6 +246,7 @@ struct BomFieldManifest {
 #[derive(Debug, Serialize)]
 struct PlacementRowManifest {
     row_number: usize,
+    row_sha256: String,
     designator: String,
     fields: PlacementFieldManifest,
 }
@@ -474,7 +478,7 @@ fn write_manifest(
         })?;
     }
     let manifest = AssemblyManifest {
-        schema_version: "0.2.0".to_string(),
+        schema_version: "0.3.0".to_string(),
         sources: AssemblySourceManifest {
             bom: source_csv_manifest(&options.bom, &bom.headers, bom.data_rows)?,
             placement: source_csv_manifest(
@@ -531,6 +535,7 @@ fn bom_row_manifests(bom: &ParsedBom) -> Vec<BomRowManifest> {
             let first = entries.values().next()?;
             Some(BomRowManifest {
                 row_number: *row_number,
+                row_sha256: first.row_sha256.clone(),
                 designator_group: first.designator_group.clone(),
                 designators: entries.keys().cloned().collect(),
                 quantity: first.quantity,
@@ -554,6 +559,7 @@ fn placement_row_manifests(placements: &ParsedPlacements) -> Vec<PlacementRowMan
         .values()
         .map(|entry| PlacementRowManifest {
             row_number: entry.row_number,
+            row_sha256: entry.row_sha256.clone(),
             designator: entry.designator.clone(),
             fields: PlacementFieldManifest {
                 device: entry.device.clone(),
@@ -632,6 +638,18 @@ fn sha256_hex(bytes: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+fn csv_row_sha256(row: &[String]) -> String {
+    let mut hasher = Sha256::new();
+    for cell in row {
+        hasher.update(cell.len().to_string().as_bytes());
+        hasher.update(b":");
+        hasher.update(cell.as_bytes());
+        hasher.update(b"\x1f");
+    }
+    let digest = hasher.finalize();
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 fn parse_bom(path: &Path) -> Result<ParsedBom> {
     let table = read_csv_table(path)?;
     let (headers, rows) = table
@@ -667,6 +685,7 @@ fn parse_bom(path: &Path) -> Result<ParsedBom> {
         }
         let entry = BomEntry {
             row_number,
+            row_sha256: csv_row_sha256(row),
             designator_group: designator_group.clone(),
             quantity,
             comment: optional_string(row, columns.optional("Comment")),
@@ -733,6 +752,7 @@ fn parse_placements(path: &Path) -> Result<ParsedPlacements> {
         }
         let entry = PlacementEntry {
             row_number,
+            row_sha256: csv_row_sha256(row),
             designator: designator.to_string(),
             device: optional_string(row, columns.optional("Device")),
             footprint: optional_string(row, columns.optional("Footprint")),

@@ -112,7 +112,7 @@ fn import_jlc_assembly_generates_schema_valid_board_ir() {
     if let Err(error) = manifest_validator.validate(&manifest) {
         panic!("JLC/EasyEDA assembly manifest failed schema validation: {error}");
     }
-    assert_eq!(manifest["schema_version"], "0.2.0");
+    assert_eq!(manifest["schema_version"], "0.3.0");
     assert_eq!(
         manifest["sources"]["bom"]["sha256"].as_str().unwrap().len(),
         64
@@ -146,11 +146,25 @@ fn import_jlc_assembly_generates_schema_valid_board_ir() {
     assert_eq!(manifest["import"]["placements"], 4);
     assert_eq!(manifest["bom_rows"][0]["row_number"], 2);
     assert_eq!(
+        manifest["bom_rows"][0]["row_sha256"]
+            .as_str()
+            .unwrap()
+            .len(),
+        64
+    );
+    assert_eq!(
         manifest["bom_rows"][0]["designators"],
         serde_json::json!(["C1", "C3"])
     );
     assert_eq!(manifest["bom_rows"][0]["fields"]["supplier_part"], "C1713");
     assert_eq!(manifest["placement_rows"][0]["row_number"], 3);
+    assert_eq!(
+        manifest["placement_rows"][0]["row_sha256"]
+            .as_str()
+            .unwrap()
+            .len(),
+        64
+    );
     assert_eq!(manifest["placement_rows"][0]["designator"], "C1");
     assert_eq!(manifest["placement_rows"][0]["fields"]["layer"], "T");
     assert_eq!(manifest["placement_rows"][0]["fields"]["side"], "top");

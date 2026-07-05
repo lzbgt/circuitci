@@ -676,12 +676,13 @@ limit, and missing rotation evidence fails closed for orientation rules.
 
 `import-jlc-assembly` can populate `board.layout.placements` from JLC/EasyEDA
 placement CSV files. It also preserves BOM and CPL evidence in each component's
-`source` map, including designator group, quantity, value/comment, footprint,
-manufacturer part, supplier part, placement device, pin count, SMD flag, raw
-layer, normalized side, side confidence, raw rotation, normalized rotation, and
-orientation confidence. This is assembly traceability only: BOM/CPL files do
-not prove net connectivity, pin names, schematic intent, routing, final
-assembly polarity, or electrical correctness by themselves.
+`source` map, and its JSON manifest records accepted BOM/CPL source row hashes,
+designator group, quantity, value/comment, footprint, manufacturer part,
+supplier part, placement device, pin count, SMD flag, raw layer, normalized
+side, side confidence, raw rotation, normalized rotation, and orientation
+confidence. This is assembly traceability only: BOM/CPL files do not prove net
+connectivity, pin names, schematic intent, routing, final assembly polarity, or
+electrical correctness by themselves.
 
 `import-gerber-outline` can populate `board.layout.outline.segments` from a
 Gerber board-outline layer. This is fabrication outline evidence only: a Gerber

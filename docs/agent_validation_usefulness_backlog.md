@@ -76,8 +76,8 @@ Useful next slices:
   envelope/table-content-hash/object-hash/payload-hash/plaintext-shape
   manifest,
 - broader EasyEDA schematic/PCB import,
-- BOM and pick-and-place normalization beyond the current
-  source/row/component/side-confidence/orientation-confidence assembly
+- BOM and pick-and-place package/footprint semantics beyond the current
+  source/row-hash/component/side-confidence/orientation-confidence assembly
   manifest,
 - vendor reference-design adapters,
 - package/footprint semantics beyond the current KiCad footprint-property,

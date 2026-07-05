@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schema_version", "sources", "import", "bom_rows", "placement_rows", "components"],
   "properties": {
-    "schema_version": { "const": "0.2.0" },
+    "schema_version": { "const": "0.3.0" },
     "sources": {
       "type": "object",
       "required": ["bom", "placement"],
@@ -73,9 +73,17 @@
     },
     "bom_row": {
       "type": "object",
-      "required": ["row_number", "designator_group", "designators", "quantity", "fields"],
+      "required": [
+        "row_number",
+        "row_sha256",
+        "designator_group",
+        "designators",
+        "quantity",
+        "fields"
+      ],
       "properties": {
         "row_number": { "type": "integer", "minimum": 2 },
+        "row_sha256": { "$ref": "#/$defs/sha256" },
         "designator_group": { "type": "string", "minLength": 1 },
         "designators": {
           "type": "array",
@@ -102,9 +110,10 @@
     },
     "placement_row": {
       "type": "object",
-      "required": ["row_number", "designator", "fields"],
+      "required": ["row_number", "row_sha256", "designator", "fields"],
       "properties": {
         "row_number": { "type": "integer", "minimum": 2 },
+        "row_sha256": { "$ref": "#/$defs/sha256" },
         "designator": { "type": "string", "minLength": 1 },
         "fields": { "$ref": "#/$defs/placement_fields" }
       },

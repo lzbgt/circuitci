@@ -31,11 +31,13 @@ records:
 
 - BOM and placement source paths, sizes, SHA-256 hashes, raw column names, and
   data-row counts,
-- accepted BOM rows with source row number, designator group, split
-  designators, quantity, manufacturer, supplier, value, and footprint fields,
+- accepted BOM rows with source row number, row SHA-256 fingerprint,
+  designator group, split designators, quantity, manufacturer, supplier,
+  value, and footprint fields,
 - accepted placement rows with source row number, designator, coordinates,
-  raw layer, normalized side, side confidence, raw rotation, normalized
-  rotation, orientation confidence, SMD flag, comment/name, and pin count,
+  row SHA-256 fingerprint, raw layer, normalized side, side confidence, raw
+  rotation, normalized rotation, orientation confidence, SMD flag,
+  comment/name, and pin count,
 - one component join row per generated component showing whether BOM and/or
   placement evidence was present, the source row numbers, selected part number,
   selected footprint, placement coordinates, side confidence, and orientation

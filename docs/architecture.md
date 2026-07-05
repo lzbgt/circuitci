@@ -194,8 +194,8 @@ helpers return no value for ambiguous evidence.
 Importers append evidence instead of guessing missing intent. Examples:
 
 - JLC/EasyEDA BOM+CPL import adds components and placements plus a JSON
-  source/row/component manifest, but does not infer nets or pins from assembly
-  files.
+  source/row-hash/component manifest, but does not infer nets or pins from
+  assembly files.
 - Reviewed manufacturing metadata CSV import can create or replace reviewed
   `board.manufacturing` fields plus reviewed `board.layout.stackup.layers[]`
   entries, RF antenna layout/topology/measurement/limit/condition constraints
