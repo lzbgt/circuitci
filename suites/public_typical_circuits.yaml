@@ -16,6 +16,10 @@ cases:
     project: ../examples/good_ap2112k_3v3_ldo_observation/project.yaml
     expect: pass
 
+  - id: ams_ams1117_3v3_ldo_observation_passes
+    project: ../examples/good_ams1117_3v3_ldo_observation/project.yaml
+    expect: pass
+
   - id: diodes_ap2112k_dropout_detected
     project: ../examples/bad_diodes_ap2112k_3v3_dropout/project.yaml
     expect: fail
@@ -377,6 +381,10 @@ cases:
     project: ../examples/good_wch_ch347_usb_jtag_observation/project.yaml
     expect: pass
 
+  - id: cmsis_dap_swd_probe_observation_passes
+    project: ../examples/good_cmsis_dap_swd_probe_observation/project.yaml
+    expect: pass
+
   - id: wch_ch347_vcc_overvoltage_detected
     project: ../examples/bad_wch_ch347_vcc_overvoltage/project.yaml
     expect: fail
@@ -446,6 +454,22 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: nxp_pca9685_pwm_driver_observation_passes
+    project: ../examples/good_pca9685_pwm_driver_observation/project.yaml
+    expect: pass
+
+  - id: tdk_icm42688p_imu_observation_passes
+    project: ../examples/good_tdk_icm42688p_imu_observation/project.yaml
+    expect: pass
+
+  - id: jst_xh_servo_connector_observation_passes
+    project: ../examples/good_jst_xh_servo_connector_observation/project.yaml
+    expect: pass
+
+  - id: jst_vh_actuator_bus_connector_observation_passes
+    project: ../examples/good_jst_vh_actuator_bus_connector_observation/project.yaml
+    expect: pass
+
   - id: st_stm8s003f3p6_power_passes
     project: ../examples/good_st_stm8s003f3p6_power/project.yaml
     expect: pass
@@ -459,6 +483,18 @@ cases:
 
   - id: st_stm32l431_boot_uart_swd_observation_passes
     project: ../examples/good_stm32l431_boot_uart_swd_observation/project.yaml
+    expect: pass
+
+  - id: sipeed_licheerv_nano_w_observation_passes
+    project: ../examples/good_sipeed_licheerv_nano_w_observation/project.yaml
+    expect: pass
+
+  - id: artery_at32f435_motion_core_observation_passes
+    project: ../examples/good_artery_at32f435_motion_core_observation/project.yaml
+    expect: pass
+
+  - id: artery_at32m416_motor_control_observation_passes
+    project: ../examples/good_artery_at32m416_motor_control_observation/project.yaml
     expect: pass
 
   - id: stc_stc15w408as_power_passes

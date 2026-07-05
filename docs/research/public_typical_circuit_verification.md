@@ -11,6 +11,7 @@ audit the modeled facts without relying on chat history.
 | Circuit family | Public source | Local original |
 | --- | --- | --- |
 | Diodes AP2112K 3.3 V LDO typical application | <https://www.diodes.com/datasheet/download/AP2112.pdf> | `docs/research/datasheets/diodes/ap2112.pdf` |
+| AMS1117-3.3 LDO use | <http://www.advanced-monolithic.com/pdf/ds1117.pdf> | `docs/research/datasheets/ams/ams1117.pdf` |
 | Microchip MCP73831 USB Li-Ion charger typical application | <https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf> | `docs/research/datasheets/microchip/mcp73831-family-datasheet.pdf` |
 | TI BQ24075 USB Li-Ion charger with power path typical use | <https://www.ti.com/lit/ds/symlink/bq24074.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/bq24074.pdf` |
 | TI BQ25798 NVDC buck-boost charger use | <https://www.ti.com/lit/ds/symlink/bq25798.pdf> | `docs/research/smart_robot/sources/bq25798_datasheet.pdf` |
@@ -35,12 +36,19 @@ audit the modeled facts without relying on chat history.
 | WCH CH340C USB-UART bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf` |
 | FTDI FT232R USB-UART bridge use | <https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf> plus public PDF mirror | `docs/research/datasheets/ftdi/DS_FT232R_sparkfun_mirror.pdf` |
 | WCH CH347 USB-JTAG/debug bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch347ds1_bitsavers_mirror.pdf` |
+| CMSIS-DAP SWD probe use | <https://github.com/ARM-software/CMSIS-DAP> and retained upstream documentation sources | `docs/research/debug/cmsis_dap/` |
 | TI TXS0108E bidirectional level-shifter use | <https://www.ti.com/lit/ds/symlink/txs0108e.pdf> | `docs/research/datasheets/ti/txs0108e.pdf` |
 | TI TCAN3413 CAN FD transceiver use | <https://www.ti.com/lit/ds/symlink/tcan3413.pdf> | `docs/research/smart_robot/sources/tcan3413_datasheet.pdf` |
 | TI THVD1450 RS-485 transceiver use | <https://www.ti.com/lit/ds/symlink/thvd1450.pdf> | `docs/research/smart_robot/sources/thvd1450_datasheet.pdf` |
 | TI DRV8323 gate-driver use | <https://www.ti.com/lit/ds/symlink/drv8323.pdf> | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` |
+| NXP PCA9685 PWM-driver use | <https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf> and NXP product page | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` and `docs/research/smart_robot/sources/pca9685_product.html` |
+| TDK InvenSense ICM-42688-P IMU use | <https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/ds-000347-icm-42688-p-v1.6.pdf> | `docs/research/smart_robot/sources/icm42688p_datasheet.pdf` |
+| JST XH/VH connector contact use | JST connector datasheets plus retained handling precautions | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf`, `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf`, and `docs/research/smart_robot/sources/jst_handling_precautions_terminals_connectors.pdf` |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
 | ST STM32L431 boot and UART/SWD use | <https://www.st.com/resource/en/datasheet/stm32l431rb.pdf> | `docs/research/datasheets/st/stm32l431xx_datasheet.pdf` |
+| Sipeed LicheeRV-Nano-W module use | <https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html> and Sipeed schematic PDF | `docs/research/smart_robot/sources/licheerv_nano_intro.html` and `docs/research/smart_robot/sources/licheerv_nano_70405_schematic.pdf` |
+| Artery AT32F435 motion-core MCU use | <https://www.arterytek.com/cn/product/AT32F435.jsp> | `docs/research/smart_robot/sources/at32f435_product.html` |
+| Artery AT32M416 motor-control MCU use | <https://www.arterytek.com/cn/product/AT32M416.jsp> | `docs/research/smart_robot/sources/at32m416_product.html` |
 | STC15W408AS 1T 8051-family MCU power use | <https://www.stcmicro.com/datasheet/STC15W408AS_Features.pdf> and <https://www.stcmicro.com/datasheet/STC15F2K60S2-en.pdf> | `docs/research/datasheets/stc/stc15w408as_features.pdf` and `docs/research/datasheets/stc/stc15f2k60s2_en.pdf` |
 | TI NE555 astable timer power use | <https://www.ti.com/lit/ds/symlink/ne555.pdf> | `docs/research/datasheets/ti/ne555.pdf` |
 | TI TLV803EA29 reset-supervisor use | <https://www.ti.com/lit/ds/symlink/tlv803e.pdf> | `docs/research/datasheets/ti/tlv803e-tlv809e-tlv810e.pdf` |
@@ -60,23 +68,28 @@ STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
 Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI BQ25798, TI TPS22918,
 TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI CSD17484F4,
-TI TXS0108E, TI TCAN3413, TI THVD1450, ST STM32L431, Silicon Labs CP2102N, onsemi 1N4148WS,
-onsemi NDS7002A, onsemi NL27WZ17, and Microchip MCP131X/2X PDFs were
-downloaded from their official vendor URLs.
-WCH CH340C, WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
+TI TXS0108E, TI TCAN3413, TI THVD1450, ST STM32L431, Silicon Labs CP2102N,
+AMS1117, NXP PCA9685, TDK ICM-42688-P, Sipeed LicheeRV-Nano-W, Artery
+AT32F435, Artery AT32M416, JST XH/VH, onsemi 1N4148WS, onsemi NDS7002A,
+onsemi NL27WZ17, and Microchip MCP131X/2X source artifacts were downloaded or
+retained from their official vendor URLs.
+CMSIS-DAP retains Arm's upstream repository documentation sources. WCH CH340C,
+WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
 vendor endpoints. The local PDF copies and SHA-256 hashes are listed in the
-part-specific research notes under `docs/research/datasheets/`.
+part-specific research notes under `docs/research/datasheets/` and
+`docs/research/smart_robot/source_review.md`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines sixty-six public-reference
+`suites/public_typical_circuits.yaml` combines seventy-five public-reference
 passing cases and fifty-eight paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
+| `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
 | `diodes_ap2112k_dropout_detected` | `examples/bad_diodes_ap2112k_3v3_dropout/project.yaml` | fail | Detects insufficient nominal dropout margin. |
 | `microchip_mcp73831_typical_usb_charger_passes` | `examples/good_microchip_mcp73831_usb_charger/project.yaml` | pass | MCP73831 USB-powered 4.2 V Li-Ion charger with 100 mA programmed current. |
 | `microchip_mcp73831_charger_observation_passes` | `examples/good_mcp73831_charger_observation/project.yaml` | pass | MCP73831 generated-SPICE charger observation with USB input, battery node, and source-backed programmed current. |
@@ -144,6 +157,7 @@ passing cases and fifty-eight paired injected-error cases:
 | `ftdi_ft232r_usb_uart_observation_passes` | `examples/good_ftdi_ft232r_usb_uart_observation/project.yaml` | pass | FT232R USB-UART bridge with 5 V `VCC`, generated 3.3 V `3V3OUT`/`VCCIO`, reset pull-up, and generated-SPICE UART/modem output-state observation. |
 | `ftdi_ft232r_vcc_overvoltage_detected` | `examples/bad_ftdi_ft232r_vcc_overvoltage/project.yaml` | fail | Detects FT232R `VCC` connected to a 6 V rail above the source-backed 5.25 V operating maximum. |
 | `wch_ch347_usb_jtag_observation_passes` | `examples/good_wch_ch347_usb_jtag_observation/project.yaml` | pass | CH347T USB-JTAG/debug bridge with source-backed 3.3 V supply mode and generated-SPICE UART/JTAG line-state observation. |
+| `cmsis_dap_swd_probe_observation_passes` | `examples/good_cmsis_dap_swd_probe_observation/project.yaml` | pass | CMSIS-DAP SWD generated-SPICE probe observation with VTREF, SWCLK/SWDIO high, nRESET released, and SWO pulled low. |
 | `wch_ch347_vcc_overvoltage_detected` | `examples/bad_wch_ch347_vcc_overvoltage/project.yaml` | fail | Detects CH347T `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `ti_txs0108e_level_shifter_observation_passes` | `examples/good_ti_txs0108e_level_shifter_observation/project.yaml` | pass | TXS0108E generated-SPICE observation with source-backed 1.8 V to 3.3 V enabled A1-to-B1 level-shift behavior. |
 | `ti_txs0108e_oe_low_unpowered_side_passes` | `examples/good_ti_txs0108e_oe_low_unpowered_side/project.yaml` | pass | TXS0108E static review where one side is unpowered and explicit `OE` low evidence disables the channel. |
@@ -156,9 +170,16 @@ passing cases and fifty-eight paired injected-error cases:
 | `ti_thvd1450_vcc_overvoltage_detected` | `examples/bad_ti_thvd1450_vcc_overvoltage/project.yaml` | fail | Detects THVD1450 `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `ti_drv8323_gate_driver_observation_passes` | `examples/good_drv8323_gate_driver_observation/project.yaml` | pass | DRV8323 gate-driver/generated-SPICE observation with source-backed motor-bus `VM`, `DVDD`, SPI/control pins, and enabled line-state snapshot. |
 | `ti_drv8323_vm_overvoltage_detected` | `examples/bad_drv8323_vm_overvoltage/project.yaml` | fail | Detects DRV8323 `VM` connected to a 70 V motor rail above the source-backed 60 V maximum. |
+| `nxp_pca9685_pwm_driver_observation_passes` | `examples/good_pca9685_pwm_driver_observation/project.yaml` | pass | PCA9685 generated-SPICE PWM-driver observation with source-backed VDD, OE low, I2C idle states, and four representative PWM output samples. |
+| `tdk_icm42688p_imu_observation_passes` | `examples/good_tdk_icm42688p_imu_observation/project.yaml` | pass | ICM-42688-P generated-SPICE IMU observation with source-backed VDD/VDDIO, SPI idle inputs, SDO, and INT1 line states. |
+| `jst_xh_servo_connector_observation_passes` | `examples/good_jst_xh_servo_connector_observation/project.yaml` | pass | JST XH generated-SPICE servo connector observation with source-backed contact-resistance pass-through on power, ground, and PWM signal pins. |
+| `jst_vh_actuator_bus_connector_observation_passes` | `examples/good_jst_vh_actuator_bus_connector_observation/project.yaml` | pass | JST VH generated-SPICE actuator-bus connector observation with source-backed contact-resistance pass-through on power, CAN, enable, fault, and sync pins. |
 | `st_stm8s003f3p6_power_passes` | `examples/good_st_stm8s003f3p6_power/project.yaml` | pass | STM8S003F3P6 with 5 V `VDD`, `VCAP` pin support capacitor, active-low reset, SWIM, and UART1 TX/RX boundaries. |
 | `st_stm8s003f3p6_vdd_overvoltage_detected` | `examples/bad_st_stm8s003f3p6_vdd_overvoltage/project.yaml` | fail | Detects `VDD` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `st_stm32l431_boot_uart_swd_observation_passes` | `examples/good_stm32l431_boot_uart_swd_observation/project.yaml` | pass | STM32L431 generated-SPICE boot UART/SWD observation with source-backed power, reset, BOOT0, UART, and SWD pin metadata. |
+| `sipeed_licheerv_nano_w_observation_passes` | `examples/good_sipeed_licheerv_nano_w_observation/project.yaml` | pass | LicheeRV-Nano-W generated-SPICE module observation with source-backed 5 V rail, UART0 TX/RX, motion-enable, and fault-IRQ line-state metadata. |
+| `artery_at32f435_motion_core_observation_passes` | `examples/good_artery_at32f435_motion_core_observation/project.yaml` | pass | AT32F435 generated-SPICE motion-core observation with source-backed VDD and UART, motion-control, CAN, RS-485, and servo-enable line states. |
+| `artery_at32m416_motor_control_observation_passes` | `examples/good_artery_at32m416_motor_control_observation/project.yaml` | pass | AT32M416 generated-SPICE motor-control observation with source-backed VDD, CAN, PWM, gate-driver, SPI, current-sense, encoder, enable, and fault line states. |
 | `stc_stc15w408as_power_passes` | `examples/good_stc_stc15w408as_power/project.yaml` | pass | STC15W408AS with 5 V `VCC`, active-high reset boundary, and primary UART/ISP RX/TX pin boundaries. |
 | `stc_stc15w408as_vcc_overvoltage_detected` | `examples/bad_stc_stc15w408as_vcc_overvoltage/project.yaml` | fail | Detects `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `ti_ne555_astable_power_passes` | `examples/good_ti_ne555_astable_power/project.yaml` | pass | NE555 in a source-backed astable-style board connection on a 5 V `VCC` rail with VCC and CONT bypass capacitors. |
@@ -211,7 +232,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=124, passed=124, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=133, passed=133, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -277,7 +298,7 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All sixty-six public-reference pass cases produced zero critical findings.
+All seventy-five public-reference pass cases produced zero critical findings.
 All fifty-eight paired injected-error cases failed with the expected critical
 finding ID, and all fifty-eight repair-pair checks passed.
 
