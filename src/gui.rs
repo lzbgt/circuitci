@@ -25,6 +25,7 @@ mod analog_overview;
 mod analog_pole_zero_assertions;
 mod analog_run_setup;
 mod analog_sensitivity_assertions;
+mod analog_sparameter_edits;
 mod analog_stimulus;
 mod analog_sweep_monte_carlo;
 mod analog_sweeps;
@@ -33,6 +34,7 @@ mod analog_sweeps_tests;
 #[cfg(test)]
 mod analog_tests;
 mod analog_transfer_function_assertions;
+mod analog_yaml_edit;
 mod file_dialogs;
 #[cfg(test)]
 mod gui_core_tests;
