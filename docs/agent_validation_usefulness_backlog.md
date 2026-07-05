@@ -73,7 +73,8 @@ adapters and richer evidence normalization.
 Useful next slices:
 
 - EasyEDA Pro `.eprj2` evidence normalization beyond the current SQLite
-  envelope/table/object-hash/payload-hash/plaintext-shape manifest,
+  envelope/table-content-hash/object-hash/payload-hash/plaintext-shape
+  manifest,
 - broader EasyEDA schematic/PCB import,
 - BOM and pick-and-place normalization beyond the current
   source/row/component/side-confidence/orientation-confidence assembly
