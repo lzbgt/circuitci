@@ -64,6 +64,7 @@ audit the modeled facts without relying on chat history.
 | onsemi NL27WZ17 dual non-inverting Schmitt-trigger buffer use | <https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf> | `docs/research/datasheets/onsemi/nl27wz17.pdf` |
 | JLC/EasyEDA BOM/CPL and KiCad footprint-property consistency | committed Board IR fixtures with `source.format: jlc_assembly` plus imported KiCad footprint properties | `examples/good_assembly_footprint_alignment/project.yaml` and `examples/bad_assembly_footprint_alignment/project.yaml` |
 | KiCad footprint pin-1 orientation evidence | committed Board IR fixtures with imported `semantics.body_bounds` and `semantics.pin_1` plus explicit reviewed expected direction | `examples/good_pin_1_orientation/project.yaml` and `examples/bad_pin_1_orientation/project.yaml` |
+| Reviewed manufacturing metadata limits | committed Board IR fixtures with explicit `board.manufacturing` drill/slot edge-clearance, solder-paste opening ratio, and solder-paste spacing metadata | `examples/good_drill_to_board_edge_clearance/project.yaml`, `examples/bad_drill_to_board_edge_clearance_board_metadata/project.yaml`, `examples/good_slot_to_board_edge_clearance/project.yaml`, `examples/bad_slot_to_board_edge_clearance_board_metadata/project.yaml`, `examples/good_solder_paste_opening/project.yaml`, `examples/bad_solder_paste_opening_undersized_board_metadata/project.yaml`, `examples/good_solder_paste_spacing/project.yaml`, and `examples/bad_solder_paste_spacing_board_metadata/project.yaml` |
 | USB connector mechanical placement and footprint evidence | committed Board IR fixtures with USB connector placement, board-edge, body/courtyard, nearby-component, and cable-entry metadata | `examples/good_usb_connector_orientation/project.yaml`, `examples/bad_usb_connector_orientation/project.yaml`, `examples/good_usb_connector_edge_proximity/project.yaml`, `examples/bad_usb_connector_edge_proximity/project.yaml`, `examples/good_usb_connector_body_overhang/project.yaml`, `examples/bad_usb_connector_body_overhang/project.yaml`, `examples/good_usb_connector_component_clearance/project.yaml`, `examples/bad_usb_connector_component_clearance/project.yaml`, `examples/good_usb_connector_entry_clearance/project.yaml`, and `examples/bad_usb_connector_entry_clearance/project.yaml` |
 | USB connector protection and protection-placement evidence | committed Board IR fixtures with USB connector pin metadata, connected clamp model metadata, shield-grounding metadata, and connector-to-protection placement metadata | `examples/good_usb_connector_protection/project.yaml`, `examples/bad_usb_connector_missing_data_protection/project.yaml`, `examples/bad_usb_connector_missing_vbus_protection/project.yaml`, `examples/good_usb_connector_shield_ground/project.yaml`, `examples/bad_usb_connector_shield_not_ground/project.yaml`, `examples/good_usb_connector_protection_placement/project.yaml`, and `examples/bad_usb_connector_protection_placement_distance/project.yaml` |
 | USB route, VBUS route, and return-path layout evidence | committed Board IR fixtures with USB connector pin metadata, imported route/via/zone geometry, VBUS protection routing, filled-zone contact, and stitching-via metadata | `examples/good_usb_connector_route_geometry/project.yaml`, `examples/bad_usb_connector_route_geometry/project.yaml`, `examples/good_usb_vbus_route_geometry/project.yaml`, `examples/bad_usb_vbus_route_geometry/project.yaml`, `examples/good_usb_return_path/project.yaml`, `examples/good_usb_return_path_pad_contact/project.yaml`, `examples/bad_usb_return_path/project.yaml`, `examples/bad_usb_return_path_filled_zone_gap/project.yaml`, `examples/bad_usb_return_path_floating_zone/project.yaml`, `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml`, `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml`, and `examples/bad_usb_return_path_stitching_via/project.yaml` |
@@ -90,15 +91,19 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines one hundred two public-reference
-passing cases and one hundred five paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines one hundred six public-reference
+passing cases and one hundred nine paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
 | `jlcpcb_drill_diameter_process_passes` | `examples/good_drill_diameter_jlc_process/project.yaml` | pass | JLCPCB circular drill examples at the source-backed 0.15 mm minimum, 6.3 mm maximum, and a nominal interior size. |
 | `jlcpcb_drill_diameter_process_detected` | `examples/bad_drill_diameter_jlc_process/project.yaml` | fail | Detects circular drill diameters below the JLCPCB 0.15 mm minimum and above the 6.3 mm maximum. |
+| `manufacturing_drill_to_board_edge_passes` | `examples/good_drill_to_board_edge_clearance/project.yaml` | pass | Drill-to-board-edge clearance satisfies explicit reviewed board metadata. |
+| `manufacturing_drill_to_board_edge_metadata_detected` | `examples/bad_drill_to_board_edge_clearance_board_metadata/project.yaml` | fail | Detects drill-to-board-edge clearance below explicit reviewed board metadata. |
 | `jlcpcb_slot_width_process_passes` | `examples/good_slot_width_jlc_process/project.yaml` | pass | JLCPCB slot-width examples at the source-backed plated and non-plated slot limits. |
 | `jlcpcb_slot_width_process_detected` | `examples/bad_slot_width_jlc_process/project.yaml` | fail | Detects plated, non-plated, and unknown-plating slots below the JLCPCB process limits. |
+| `manufacturing_slot_to_board_edge_passes` | `examples/good_slot_to_board_edge_clearance/project.yaml` | pass | Slot-to-board-edge clearance satisfies explicit reviewed board metadata. |
+| `manufacturing_slot_to_board_edge_metadata_detected` | `examples/bad_slot_to_board_edge_clearance_board_metadata/project.yaml` | fail | Detects slot-to-board-edge clearance below explicit reviewed board metadata. |
 | `jlcpcb_slot_aspect_ratio_process_passes` | `examples/good_slot_aspect_ratio_jlc_process/project.yaml` | pass | JLCPCB slot aspect-ratio example above the source-backed minimum ratio. |
 | `jlcpcb_slot_aspect_ratio_process_detected` | `examples/bad_slot_aspect_ratio_jlc_process/project.yaml` | fail | Detects a JLCPCB slot whose length-to-width ratio is below the source-backed minimum. |
 | `jlcpcb_castellated_hole_process_passes` | `examples/good_castellated_hole_jlc_process/project.yaml` | pass | JLCPCB castellated-hole examples satisfying diameter, edge-clearance, and hole-spacing process limits. |
@@ -117,6 +122,10 @@ passing cases and one hundred five paired injected-error cases:
 | `jlcpcb_solder_paste_aperture_size_process_detected` | `examples/bad_solder_paste_aperture_size_jlc_process/project.yaml` | fail | Detects JLCPCB stencil feature and segment apertures below the process minimum size. |
 | `jlcpcb_solder_paste_area_ratio_process_passes` | `examples/good_solder_paste_aperture_area_ratio_jlc/project.yaml` | pass | JLCPCB stencil aperture area-ratio fixture satisfying the source-backed minimum area ratio. |
 | `jlcpcb_solder_paste_area_ratio_process_detected` | `examples/bad_solder_paste_aperture_area_ratio_jlc/project.yaml` | fail | Detects a JLCPCB stencil aperture area ratio below the source-backed process minimum. |
+| `manufacturing_solder_paste_opening_passes` | `examples/good_solder_paste_opening/project.yaml` | pass | Solder-paste opening area ratio satisfies explicit reviewed board metadata. |
+| `manufacturing_solder_paste_opening_metadata_detected` | `examples/bad_solder_paste_opening_undersized_board_metadata/project.yaml` | fail | Detects solder-paste opening area ratio below explicit reviewed board metadata. |
+| `manufacturing_solder_paste_spacing_passes` | `examples/good_solder_paste_spacing/project.yaml` | pass | Solder-paste opening spacing satisfies explicit reviewed board metadata. |
+| `manufacturing_solder_paste_spacing_metadata_detected` | `examples/bad_solder_paste_spacing_board_metadata/project.yaml` | fail | Detects solder-paste opening spacing below explicit reviewed board metadata. |
 | `assembly_footprint_alignment_passes` | `examples/good_assembly_footprint_alignment/project.yaml` | pass | JLC/EasyEDA BOM/CPL footprint, part-number, side, and rotation evidence matches imported KiCad footprint properties and placement evidence. |
 | `assembly_footprint_alignment_detected` | `examples/bad_assembly_footprint_alignment/project.yaml` | fail | Detects direct contradictions between JLC/EasyEDA BOM/CPL evidence and imported KiCad footprint properties, placement side, and rotation. |
 | `pin_1_orientation_passes` | `examples/good_pin_1_orientation/project.yaml` | pass | Imported KiCad footprint body bounds and pad-1 marker agree with explicit reviewed expected pin-1 direction evidence. |
@@ -314,7 +323,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=207, passed=207, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=215, passed=215, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -325,7 +334,9 @@ Observed detection details:
 | Detection case | Finding | Observed message |
 | --- | --- | --- |
 | `jlcpcb_drill_diameter_process_detected` | `DRILL_DIAMETER_VALID` | Drill hit `0` is `0.100 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. Drill hit `1` is `6.400 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. |
+| `manufacturing_drill_to_board_edge_metadata_detected` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | Drill hit 0 has 0.300 mm edge-to-board clearance, below 0.500 mm minimum. |
 | `jlcpcb_slot_width_process_detected` | `SLOT_WIDTH_VALID` | Routed slot `0` is `0.600 mm` wide for plated process evidence; required at least `0.650 mm`. Routed slot `1` is `0.900 mm` wide for non-plated process evidence; required at least `1.000 mm`. Routed slot `2` is `0.900 mm` wide for unknown-plating process evidence; required at least `1.000 mm`. |
+| `manufacturing_slot_to_board_edge_metadata_detected` | `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` | Routed slot 0 has 0.300 mm edge-to-board clearance, below 0.500 mm minimum. |
 | `jlcpcb_slot_aspect_ratio_process_detected` | `SLOT_ASPECT_RATIO_VALID` | Routed slot `0` has length-to-width ratio `2.000`; selected process requires at least `2.500`. |
 | `jlcpcb_castellated_hole_process_detected` | `CASTELLATED_HOLE_VALID` | Castellated drill hit `0` is `0.250 mm`; selected castellated-hole process requires at least `0.300 mm`. Castellated drill hit `1` has `0.750 mm` hole-edge-to-board-edge clearance, below `1.000 mm` minimum. Castellated drill hits `2` and `3` have `0.200 mm` hole-to-hole spacing, below `0.400 mm` minimum. |
 | `jlcpcb_drill_annular_ring_process_detected` | `DRILL_ANNULAR_RING_VALID` | Drill hit `0` has `0.045 mm` annular ring, below `0.050 mm` minimum. |
@@ -335,6 +346,8 @@ Observed detection details:
 | `jlcpcb_solder_mask_dam_process_detected` | `SOLDER_MASK_DAM_VALID` | Solder-mask feature and feature openings on `F.Mask` leave only `0.080000 mm` mask dam; required at least `0.100000 mm`. |
 | `jlcpcb_solder_paste_aperture_size_process_detected` | `SOLDER_PASTE_APERTURE_SIZE_VALID` | Solder-paste feature opening on `F.Paste` has minimum aperture size `0.080000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. Solder-paste segment opening on `F.Paste` has minimum aperture size `0.070000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. |
 | `jlcpcb_solder_paste_area_ratio_process_detected` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | Solder-paste feature opening on `F.Paste` has stencil aperture area ratio `0.300000`; JLCPCB/IPC guidance requires at least `0.660000`. |
+| `manufacturing_solder_paste_opening_metadata_detected` | `SOLDER_PASTE_OPENING_VALID` | Solder-paste feature opening on F.Paste has area ratio 0.437500 against copper flash 0; allowed range is 0.700000..=1.000000. |
+| `manufacturing_solder_paste_spacing_metadata_detected` | `SOLDER_PASTE_SPACING_VALID` | Solder-paste feature and feature openings on F.Paste leave only 0.080000 mm spacing; required at least 0.150000 mm. |
 | `assembly_footprint_alignment_detected` | `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` | Component U1 assembly source.footprint 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm' does not match any imported KiCad footprint property value. |
 | `pin_1_orientation_detected` | `PIN_1_ORIENTATION_VALID` | Component U1 imported pin-1 marker direction 180.000 deg differs from expected 0.000 deg by 180.000 deg. |
 | `usb_connector_orientation_detected` | `USB_CONNECTOR_ORIENTATION_VALID` | USB connector J1 placement rotation 180.000 deg differs from expected 0.000 deg by 180.000 deg, exceeding limit 5.000 deg. |
@@ -427,9 +440,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred two public-reference pass cases produced zero critical findings.
-All one hundred five paired injected-error cases failed with the expected
-critical finding ID, and all one hundred five repair-pair checks passed.
+All one hundred six public-reference pass cases produced zero critical findings.
+All one hundred nine paired injected-error cases failed with the expected
+critical finding ID, and all one hundred nine repair-pair checks passed.
 
 ## Interpretation Limits
 
