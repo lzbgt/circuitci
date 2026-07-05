@@ -30,6 +30,13 @@ cases:
       - id: DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
         severity: critical
 
+  - id: manufacturing_drill_to_cutout_edge_detected
+    project: ../examples/bad_drill_to_cutout_edge_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
+        severity: critical
+
   - id: jlcpcb_slot_width_process_passes
     project: ../examples/good_slot_width_jlc_process/project.yaml
     expect: pass
@@ -228,6 +235,27 @@ cases:
       - id: SOLDER_MASK_OPENING_VALID
         severity: critical
 
+  - id: manufacturing_solder_mask_opening_missing_detected
+    project: ../examples/bad_solder_mask_opening_missing/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_MASK_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_mask_opening_undersized_detected
+    project: ../examples/bad_solder_mask_opening_undersized/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_MASK_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_unknown_fabrication_process_detected
+    project: ../examples/bad_unknown_fabrication_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: VALIDATION_INPUT_MISSING
+        severity: critical
+
   - id: manufacturing_solder_mask_dam_passes
     project: ../examples/good_solder_mask_dam/project.yaml
     expect: pass
@@ -296,6 +324,20 @@ cases:
 
   - id: manufacturing_solder_paste_opening_windowed_detected
     project: ../examples/bad_solder_paste_opening_windowed_oversized/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_paste_opening_missing_detected
+    project: ../examples/bad_solder_paste_opening_missing/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_OPENING_VALID
+        severity: critical
+
+  - id: manufacturing_solder_paste_opening_oversized_detected
+    project: ../examples/bad_solder_paste_opening_oversized/project.yaml
     expect: fail
     required_findings:
       - id: SOLDER_PASTE_OPENING_VALID
@@ -1405,6 +1447,12 @@ repairs:
     fixes_findings:
       - DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
 
+  - id: fix_manufacturing_drill_to_cutout_edge
+    detects_case: manufacturing_drill_to_cutout_edge_detected
+    fixed_case: manufacturing_drill_to_board_edge_passes
+    fixes_findings:
+      - DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
+
   - id: fix_jlcpcb_slot_width_process
     detects_case: jlcpcb_slot_width_process_detected
     fixed_case: jlcpcb_slot_width_process_passes
@@ -1537,6 +1585,24 @@ repairs:
     fixes_findings:
       - SOLDER_MASK_OPENING_VALID
 
+  - id: fix_manufacturing_solder_mask_opening_missing
+    detects_case: manufacturing_solder_mask_opening_missing_detected
+    fixed_case: jlcpcb_solder_mask_opening_process_passes
+    fixes_findings:
+      - SOLDER_MASK_OPENING_VALID
+
+  - id: fix_manufacturing_solder_mask_opening_undersized
+    detects_case: manufacturing_solder_mask_opening_undersized_detected
+    fixed_case: jlcpcb_solder_mask_opening_process_passes
+    fixes_findings:
+      - SOLDER_MASK_OPENING_VALID
+
+  - id: fix_manufacturing_unknown_fabrication_process
+    detects_case: manufacturing_unknown_fabrication_process_detected
+    fixed_case: jlcpcb_solder_mask_opening_process_passes
+    fixes_findings:
+      - VALIDATION_INPUT_MISSING
+
   - id: fix_jlcpcb_solder_mask_dam_process
     detects_case: jlcpcb_solder_mask_dam_process_detected
     fixed_case: manufacturing_solder_mask_dam_passes
@@ -1576,6 +1642,18 @@ repairs:
   - id: fix_manufacturing_solder_paste_opening_windowed
     detects_case: manufacturing_solder_paste_opening_windowed_detected
     fixed_case: manufacturing_solder_paste_opening_windowed_passes
+    fixes_findings:
+      - SOLDER_PASTE_OPENING_VALID
+
+  - id: fix_manufacturing_solder_paste_opening_missing
+    detects_case: manufacturing_solder_paste_opening_missing_detected
+    fixed_case: manufacturing_solder_paste_opening_passes
+    fixes_findings:
+      - SOLDER_PASTE_OPENING_VALID
+
+  - id: fix_manufacturing_solder_paste_opening_oversized
+    detects_case: manufacturing_solder_paste_opening_oversized_detected
+    fixed_case: manufacturing_solder_paste_opening_passes
     fixes_findings:
       - SOLDER_PASTE_OPENING_VALID
 

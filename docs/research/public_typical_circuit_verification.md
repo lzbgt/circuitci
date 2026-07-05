@@ -67,6 +67,7 @@ audit the modeled facts without relying on chat history.
 | Reviewed manufacturing metadata limits | committed Board IR fixtures with explicit `board.manufacturing` drill/slot edge-clearance, solder-paste opening ratio, and solder-paste spacing metadata | `examples/good_drill_to_board_edge_clearance/project.yaml`, `examples/bad_drill_to_board_edge_clearance_board_metadata/project.yaml`, `examples/good_slot_to_board_edge_clearance/project.yaml`, `examples/bad_slot_to_board_edge_clearance_board_metadata/project.yaml`, `examples/good_solder_paste_opening/project.yaml`, `examples/bad_solder_paste_opening_undersized_board_metadata/project.yaml`, `examples/good_solder_paste_spacing/project.yaml`, and `examples/bad_solder_paste_spacing_board_metadata/project.yaml` |
 | Manufacturing geometry ownership and segment/region variants | committed Board IR fixtures with drill/copper ownership, required copper-layer, solder-mask segment/region, and solder-paste segment/region/window metadata | `examples/good_drill_annular_ring_required_layers/project.yaml`, `examples/bad_drill_annular_ring_missing_copper/project.yaml`, `examples/bad_drill_annular_ring_missing_required_layer/project.yaml`, `examples/bad_drill_annular_ring_owner_mismatch/project.yaml`, `examples/bad_drill_annular_ring_same_net_owner_mismatch/project.yaml`, `examples/good_solder_mask_opening_segment/project.yaml`, `examples/bad_solder_mask_opening_region_undersized/project.yaml`, `examples/bad_solder_mask_dam_segment_region/project.yaml`, `examples/good_solder_paste_opening_segment/project.yaml`, `examples/good_solder_paste_opening_windowed/project.yaml`, `examples/bad_solder_paste_opening_region_oversized/project.yaml`, `examples/bad_solder_paste_opening_windowed_oversized/project.yaml`, and `examples/bad_solder_paste_spacing_segment_region/project.yaml` |
 | Manufacturing copper geometry and IC/BGA paste aperture variants | committed Board IR fixtures with copper feature/segment/region edge and spacing metadata plus JLCPCB IC/BGA paste-aperture metadata | `examples/good_copper_same_net_touching/project.yaml`, `examples/bad_copper_feature_to_board_edge_clearance/project.yaml`, `examples/bad_copper_segment_to_board_edge_clearance/project.yaml`, `examples/bad_copper_region_to_board_edge_clearance/project.yaml`, `examples/bad_copper_feature_spacing/project.yaml`, `examples/bad_copper_segment_spacing/project.yaml`, `examples/bad_copper_region_spacing/project.yaml`, `examples/bad_copper_feature_segment_spacing/project.yaml`, `examples/bad_copper_different_net_overlap/project.yaml`, `examples/bad_copper_different_island_overlap/project.yaml`, `examples/good_solder_paste_ic_pin_aperture_jlc/project.yaml`, `examples/bad_solder_paste_ic_pin_aperture_jlc/project.yaml`, `examples/good_solder_paste_ic_pin_aperture_length_jlc/project.yaml`, `examples/bad_solder_paste_ic_pin_aperture_length_jlc/project.yaml`, `examples/good_solder_paste_ic_pin_aperture_extension_jlc/project.yaml`, `examples/bad_solder_paste_ic_pin_aperture_extension_jlc/project.yaml`, `examples/good_solder_paste_bga_aperture_jlc/project.yaml`, `examples/bad_solder_paste_bga_aperture_jlc/project.yaml`, and `examples/bad_solder_paste_bga_pitch_grid_jlc/project.yaml` |
+| Manufacturing edge/mask/paste failure remainders | committed Board IR fixtures with cutout-edge drill clearance, missing or undersized mask/paste openings, oversized paste openings, and unsupported fabrication-process metadata | `examples/bad_drill_to_cutout_edge_clearance/project.yaml`, `examples/bad_solder_mask_opening_missing/project.yaml`, `examples/bad_solder_mask_opening_undersized/project.yaml`, `examples/bad_unknown_fabrication_process/project.yaml`, `examples/bad_solder_paste_opening_missing/project.yaml`, and `examples/bad_solder_paste_opening_oversized/project.yaml` |
 | USB connector mechanical placement and footprint evidence | committed Board IR fixtures with USB connector placement, board-edge, body/courtyard, nearby-component, and cable-entry metadata | `examples/good_usb_connector_orientation/project.yaml`, `examples/bad_usb_connector_orientation/project.yaml`, `examples/good_usb_connector_edge_proximity/project.yaml`, `examples/bad_usb_connector_edge_proximity/project.yaml`, `examples/good_usb_connector_body_overhang/project.yaml`, `examples/bad_usb_connector_body_overhang/project.yaml`, `examples/good_usb_connector_component_clearance/project.yaml`, `examples/bad_usb_connector_component_clearance/project.yaml`, `examples/good_usb_connector_entry_clearance/project.yaml`, and `examples/bad_usb_connector_entry_clearance/project.yaml` |
 | USB connector protection and protection-placement evidence | committed Board IR fixtures with USB connector pin metadata, connected clamp model metadata, shield-grounding metadata, and connector-to-protection placement metadata | `examples/good_usb_connector_protection/project.yaml`, `examples/bad_usb_connector_missing_data_protection/project.yaml`, `examples/bad_usb_connector_missing_vbus_protection/project.yaml`, `examples/good_usb_connector_shield_ground/project.yaml`, `examples/bad_usb_connector_shield_not_ground/project.yaml`, `examples/good_usb_connector_protection_placement/project.yaml`, and `examples/bad_usb_connector_protection_placement_distance/project.yaml` |
 | USB route, VBUS route, and return-path layout evidence | committed Board IR fixtures with USB connector pin metadata, imported route/via/zone geometry, VBUS protection routing, filled-zone contact, and stitching-via metadata | `examples/good_usb_connector_route_geometry/project.yaml`, `examples/bad_usb_connector_route_geometry/project.yaml`, `examples/good_usb_vbus_route_geometry/project.yaml`, `examples/bad_usb_vbus_route_geometry/project.yaml`, `examples/good_usb_return_path/project.yaml`, `examples/good_usb_return_path_pad_contact/project.yaml`, `examples/bad_usb_return_path/project.yaml`, `examples/bad_usb_return_path_filled_zone_gap/project.yaml`, `examples/bad_usb_return_path_floating_zone/project.yaml`, `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml`, `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml`, and `examples/bad_usb_return_path_stitching_via/project.yaml` |
@@ -94,7 +95,7 @@ part-specific research notes under `docs/research/datasheets/` and
 ## Executed Suite
 
 `suites/public_typical_circuits.yaml` combines one hundred fifteen
-public-reference passing cases and one hundred thirty-two paired injected-error
+public-reference passing cases and one hundred thirty-eight paired injected-error
 cases:
 
 | Case | Fixture | Expected result | Purpose |
@@ -103,6 +104,7 @@ cases:
 | `jlcpcb_drill_diameter_process_detected` | `examples/bad_drill_diameter_jlc_process/project.yaml` | fail | Detects circular drill diameters below the JLCPCB 0.15 mm minimum and above the 6.3 mm maximum. |
 | `manufacturing_drill_to_board_edge_passes` | `examples/good_drill_to_board_edge_clearance/project.yaml` | pass | Drill-to-board-edge clearance satisfies explicit reviewed board metadata. |
 | `manufacturing_drill_to_board_edge_metadata_detected` | `examples/bad_drill_to_board_edge_clearance_board_metadata/project.yaml` | fail | Detects drill-to-board-edge clearance below explicit reviewed board metadata. |
+| `manufacturing_drill_to_cutout_edge_detected` | `examples/bad_drill_to_cutout_edge_clearance/project.yaml` | fail | Detects drill clearance below the reviewed limit to a board cutout edge. |
 | `jlcpcb_slot_width_process_passes` | `examples/good_slot_width_jlc_process/project.yaml` | pass | JLCPCB slot-width examples at the source-backed plated and non-plated slot limits. |
 | `jlcpcb_slot_width_process_detected` | `examples/bad_slot_width_jlc_process/project.yaml` | fail | Detects plated, non-plated, and unknown-plating slots below the JLCPCB process limits. |
 | `manufacturing_slot_to_board_edge_passes` | `examples/good_slot_to_board_edge_clearance/project.yaml` | pass | Slot-to-board-edge clearance satisfies explicit reviewed board metadata. |
@@ -136,6 +138,9 @@ cases:
 | `manufacturing_solder_mask_opening_segment_passes` | `examples/good_solder_mask_opening_segment/project.yaml` | pass | Solder-mask segment opening expands matching copper evidence enough for the declared limit. |
 | `jlcpcb_solder_mask_opening_process_detected` | `examples/bad_solder_mask_opening_jlc_process/project.yaml` | fail | Detects a JLCPCB solder-mask opening below the process-derived expansion/offset requirements. |
 | `manufacturing_solder_mask_opening_region_detected` | `examples/bad_solder_mask_opening_region_undersized/project.yaml` | fail | Detects an undersized solder-mask region opening around copper evidence. |
+| `manufacturing_solder_mask_opening_missing_detected` | `examples/bad_solder_mask_opening_missing/project.yaml` | fail | Detects missing solder-mask opening evidence for copper that requires an opening. |
+| `manufacturing_solder_mask_opening_undersized_detected` | `examples/bad_solder_mask_opening_undersized/project.yaml` | fail | Detects an undersized solder-mask feature opening around copper evidence. |
+| `manufacturing_unknown_fabrication_process_detected` | `examples/bad_unknown_fabrication_process/project.yaml` | fail | Detects unsupported fabrication process preset metadata before applying process-derived defaults. |
 | `manufacturing_solder_mask_dam_passes` | `examples/good_solder_mask_dam/project.yaml` | pass | Solder-mask dam fixture whose adjacent openings leave enough web for the declared dam limit. |
 | `jlcpcb_solder_mask_dam_process_detected` | `examples/bad_solder_mask_dam_jlc_process/project.yaml` | fail | Detects a JLCPCB solder-mask dam narrower than the source-backed process floor. |
 | `manufacturing_solder_mask_dam_segment_region_detected` | `examples/bad_solder_mask_dam_segment_region/project.yaml` | fail | Detects a solder-mask dam violation between non-flash segment and region openings. |
@@ -149,6 +154,8 @@ cases:
 | `manufacturing_solder_paste_opening_metadata_detected` | `examples/bad_solder_paste_opening_undersized_board_metadata/project.yaml` | fail | Detects solder-paste opening area ratio below explicit reviewed board metadata. |
 | `manufacturing_solder_paste_opening_region_detected` | `examples/bad_solder_paste_opening_region_oversized/project.yaml` | fail | Detects solder-paste region opening area ratio outside the reviewed range. |
 | `manufacturing_solder_paste_opening_windowed_detected` | `examples/bad_solder_paste_opening_windowed_oversized/project.yaml` | fail | Detects aggregate windowed solder-paste opening area ratio outside the reviewed range. |
+| `manufacturing_solder_paste_opening_missing_detected` | `examples/bad_solder_paste_opening_missing/project.yaml` | fail | Detects missing solder-paste opening evidence for a pad-owned copper flash. |
+| `manufacturing_solder_paste_opening_oversized_detected` | `examples/bad_solder_paste_opening_oversized/project.yaml` | fail | Detects solder-paste opening area ratio above the reviewed maximum. |
 | `manufacturing_solder_paste_spacing_passes` | `examples/good_solder_paste_spacing/project.yaml` | pass | Solder-paste opening spacing satisfies explicit reviewed board metadata. |
 | `manufacturing_solder_paste_spacing_metadata_detected` | `examples/bad_solder_paste_spacing_board_metadata/project.yaml` | fail | Detects solder-paste opening spacing below explicit reviewed board metadata. |
 | `manufacturing_solder_paste_spacing_segment_region_detected` | `examples/bad_solder_paste_spacing_segment_region/project.yaml` | fail | Detects solder-paste spacing violation between non-flash segment and region openings. |
@@ -358,7 +365,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=247, passed=247, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=253, passed=253, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -370,6 +377,7 @@ Observed detection details:
 | --- | --- | --- |
 | `jlcpcb_drill_diameter_process_detected` | `DRILL_DIAMETER_VALID` | Drill hit `0` is `0.100 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. Drill hit `1` is `6.400 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. |
 | `manufacturing_drill_to_board_edge_metadata_detected` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | Drill hit 0 has 0.300 mm edge-to-board clearance, below 0.500 mm minimum. |
+| `manufacturing_drill_to_cutout_edge_detected` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | Drill hit 0 has 0.200 mm edge-to-board clearance, below 0.400 mm minimum. |
 | `jlcpcb_slot_width_process_detected` | `SLOT_WIDTH_VALID` | Routed slot `0` is `0.600 mm` wide for plated process evidence; required at least `0.650 mm`. Routed slot `1` is `0.900 mm` wide for non-plated process evidence; required at least `1.000 mm`. Routed slot `2` is `0.900 mm` wide for unknown-plating process evidence; required at least `1.000 mm`. |
 | `manufacturing_slot_to_board_edge_metadata_detected` | `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` | Routed slot 0 has 0.300 mm edge-to-board clearance, below 0.500 mm minimum. |
 | `jlcpcb_slot_aspect_ratio_process_detected` | `SLOT_ASPECT_RATIO_VALID` | Routed slot `0` has length-to-width ratio `2.000`; selected process requires at least `2.500`. |
@@ -392,6 +400,9 @@ Observed detection details:
 | `manufacturing_copper_different_island_overlap_detected` | `COPPER_SPACING_VALID` | Gerber copper feature and feature have 0.000 mm same-layer spacing, below 0.250 mm minimum. |
 | `jlcpcb_solder_mask_opening_process_detected` | `SOLDER_MASK_OPENING_VALID` | Solder-mask opening feature on `B.Mask` expands copper flash `0` by only `0.030000 mm`; required at least `0.050000 mm`. |
 | `manufacturing_solder_mask_opening_region_detected` | `SOLDER_MASK_OPENING_VALID` | Solder-mask opening region on F.Mask expands copper flash 0 by only -0.056569 mm; required at least 0.050000 mm. |
+| `manufacturing_solder_mask_opening_missing_detected` | `SOLDER_MASK_OPENING_VALID` | Copper flash 0 on F.Cu has no co-located solder-mask opening on F.Mask. |
+| `manufacturing_solder_mask_opening_undersized_detected` | `SOLDER_MASK_OPENING_VALID` | Solder-mask opening feature on B.Mask expands copper flash 0 by only 0.030000 mm; required at least 0.050000 mm. |
+| `manufacturing_unknown_fabrication_process_detected` | `VALIDATION_INPUT_MISSING` | manufacturing parameters.fabrication_process references unsupported process preset 'unknown_fab_process'. |
 | `jlcpcb_solder_mask_dam_process_detected` | `SOLDER_MASK_DAM_VALID` | Solder-mask feature and feature openings on `F.Mask` leave only `0.080000 mm` mask dam; required at least `0.100000 mm`. |
 | `manufacturing_solder_mask_dam_segment_region_detected` | `SOLDER_MASK_DAM_VALID` | Solder-mask segment and region openings on F.Mask leave only 0.120000 mm mask dam; required at least 0.150000 mm. |
 | `jlcpcb_solder_paste_aperture_size_process_detected` | `SOLDER_PASTE_APERTURE_SIZE_VALID` | Solder-paste feature opening on `F.Paste` has minimum aperture size `0.080000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. Solder-paste segment opening on `F.Paste` has minimum aperture size `0.070000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. |
@@ -399,6 +410,8 @@ Observed detection details:
 | `manufacturing_solder_paste_opening_metadata_detected` | `SOLDER_PASTE_OPENING_VALID` | Solder-paste feature opening on F.Paste has area ratio 0.437500 against copper flash 0; allowed range is 0.700000..=1.000000. |
 | `manufacturing_solder_paste_opening_region_detected` | `SOLDER_PASTE_OPENING_VALID` | Solder-paste region opening on F.Paste has area ratio 1.500000 against copper flash 0; allowed range is 0.700000..=1.000000. |
 | `manufacturing_solder_paste_opening_windowed_detected` | `SOLDER_PASTE_OPENING_VALID` | Solder-paste feature opening on F.Paste has area ratio 0.250000 against copper flash 0; allowed range is 0.200000..=0.240000. |
+| `manufacturing_solder_paste_opening_missing_detected` | `SOLDER_PASTE_OPENING_VALID` | Copper flash 0 on F.Cu has no co-located solder-paste opening on F.Paste. |
+| `manufacturing_solder_paste_opening_oversized_detected` | `SOLDER_PASTE_OPENING_VALID` | Solder-paste feature opening on F.Paste has area ratio 1.237500 against copper flash 0; allowed range is 0.700000..=1.000000. |
 | `manufacturing_solder_paste_spacing_metadata_detected` | `SOLDER_PASTE_SPACING_VALID` | Solder-paste feature and feature openings on F.Paste leave only 0.080000 mm spacing; required at least 0.150000 mm. |
 | `manufacturing_solder_paste_spacing_segment_region_detected` | `SOLDER_PASTE_SPACING_VALID` | Solder-paste segment and region openings on F.Paste leave only 0.120000 mm spacing; required at least 0.150000 mm. |
 | `jlcpcb_solder_paste_ic_pin_aperture_detected` | `SOLDER_PASTE_IC_PIN_APERTURE_VALID` | Solder-paste feature opening on F.Paste has IC pin aperture width 0.300000 mm; JLCPCB pitch-conditioned range for 0.500 mm pitch is 0.240000..=0.240000 mm. |
@@ -500,8 +513,8 @@ Observed detection details:
 
 All one hundred fifteen public-reference pass cases produced zero critical
 findings.
-All one hundred thirty-two paired injected-error cases failed with the expected
-critical finding ID, and all one hundred thirty-two repair-pair checks passed.
+All one hundred thirty-eight paired injected-error cases failed with the expected
+critical finding ID, and all one hundred thirty-eight repair-pair checks passed.
 
 ## Interpretation Limits
 
