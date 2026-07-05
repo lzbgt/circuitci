@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 mod controlled_impedance;
 mod controlled_impedance_solver;
+mod controlled_impedance_solver_runtime;
 mod rf_antenna;
 mod route_physics;
 mod thermal;
