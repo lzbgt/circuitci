@@ -1,4 +1,4 @@
-use super::{
+use super::parse::{
     FootprintAt, PcbPoint, coordinate_points, footprint_at, footprint_reference,
     non_empty_child_string, transform_footprint_point,
 };

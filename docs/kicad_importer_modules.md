@@ -14,8 +14,11 @@ inside the smallest module that owns the behavior:
   connectivity extraction before handing the parsed netlist to the shared KiCad
   builder.
 - `src/importers/kicad_pcb.rs` owns the `import-kicad-pcb` orchestration,
-  project enrichment, shared footprint placement/pad coordinate transforms,
-  routed geometry, zones, and KiCad routing-rule import.
+  project enrichment, Board IR layout YAML serialization, and board-net
+  matching.
+- `src/importers/kicad_pcb/parse.rs` owns raw `.kicad_pcb` S-expression
+  extraction for placements, pads, routed geometry, copper zones, KiCad routing
+  rules, shared coordinate transforms, and parser-local data types.
 - `src/importers/kicad_pcb/footprints.rs` owns matched footprint drawing
   evidence import and serialization for `fp_line`, `fp_rect`, `fp_poly`,
   `fp_circle`, and `fp_arc` items.

@@ -1,4 +1,4 @@
-use super::{PcbPoint, coordinate_points, non_empty_child_string, route_point};
+use super::parse::{PcbPoint, coordinate_points, non_empty_child_string, route_point};
 use crate::importers::kicad_sch::sexp::{Sexp, child_list, list_children};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
