@@ -57,6 +57,7 @@ mod simulation_distortion_assertions;
 mod simulation_editors;
 mod simulation_forms;
 mod simulation_fourier_assertions;
+mod simulation_generated_editors;
 mod simulation_hb_assertions;
 mod simulation_measure_assertions;
 mod simulation_pole_zero_assertions;
