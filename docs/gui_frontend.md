@@ -121,8 +121,10 @@ pin/net seeding for library-backed component insertion. `src/gui/sketch_layout.r
 owns graph layout helpers, view-state transforms, schematic grid/snap helpers,
 fit-all and fit-selection bounds, bounded full-list logical layout for pannable
 imported designs, layered circuit-flow fallback placement for projects without
-persisted schematic coordinates, orthogonal wire geometry, wire hit-testing,
-and model-aware pin-anchor layout primitives. The fallback follows a
+persisted schematic coordinates, orthogonal wire geometry, and wire hit-testing.
+`src/gui/sketch_layout_pins.rs` owns model-aware pin-anchor layout primitives,
+KiCad symbol pin projection, high-pin label lane spreading, and component/net
+node sizing. The fallback follows a
 classical schematic shape using the same graph-drawing primitives used by ELK,
 Graphviz, and OGDF: source-seeded signal-flow ranks, explicit KiCad pin-anchor
 ports, bounded barycentric ordering inside each rank to reduce sibling branch

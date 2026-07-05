@@ -88,9 +88,10 @@ metadata, shared sketch YAML helpers, and model-port default pin/net seeding
 for library-backed component insertion. `src/gui/sketch_layout.rs` owns graph
 layout helpers, bounded full-list logical layout for pannable imported designs,
 view-state transforms, schematic grid/snap helpers, orthogonal wire geometry,
-wire hit-testing, fit bounds, and model-aware pin-anchor layout primitives.
-Focused classical-layout regressions live beside it in
-`src/gui/sketch_layout_tests.rs`.
+wire hit-testing, and fit bounds. `src/gui/sketch_layout_pins.rs` owns
+model-aware pin-anchor layout primitives, KiCad symbol pin projection,
+high-pin label lane spreading, and component/net node sizing. Focused
+classical-layout regressions live beside it in `src/gui/sketch_layout_tests.rs`.
 `src/gui/sketch_routes.rs` owns shared
 orthogonal wire-route geometry helpers so display, hit-testing, insertion,
 active wire preview, and drag preview all use the same route semantics.
