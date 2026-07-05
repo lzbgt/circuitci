@@ -1,0 +1,38 @@
+project:
+  name: good_pin_1_orientation
+  version: 0.1.0
+libraries:
+  - ../../libs/generic/analog
+board:
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: NET1
+        B: GND
+  nets:
+    NET1:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+    footprints:
+      U1:
+        semantics:
+          body_bounds:
+            min: { x_mm: -1.0, y_mm: -1.0 }
+            max: { x_mm: 1.0, y_mm: 1.0 }
+            source: kicad_footprint_graphics
+          pin_1:
+            at: { x_mm: -0.6, y_mm: 0.0 }
+            source: kicad_pad_1
+scenarios:
+  - name: pin_1_orientation
+    type: manufacturing
+    checks:
+      - PIN_1_ORIENTATION_VALID
+    target:
+      component: U1
+    parameters:
+      expected_pin_1_direction_deg: 180.0
+      max_pin_1_direction_error_deg: 2.0

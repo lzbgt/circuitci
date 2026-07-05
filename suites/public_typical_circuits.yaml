@@ -140,6 +140,17 @@ cases:
       - id: ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
         severity: critical
 
+  - id: pin_1_orientation_passes
+    project: ../examples/good_pin_1_orientation/project.yaml
+    expect: pass
+
+  - id: pin_1_orientation_detected
+    project: ../examples/bad_pin_1_orientation/project.yaml
+    expect: fail
+    required_findings:
+      - id: PIN_1_ORIENTATION_VALID
+        severity: critical
+
   - id: diodes_ap2112k_typical_ldo_passes
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
@@ -1045,6 +1056,12 @@ repairs:
     fixed_case: assembly_footprint_alignment_passes
     fixes_findings:
       - ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
+
+  - id: fix_pin_1_orientation
+    detects_case: pin_1_orientation_detected
+    fixed_case: pin_1_orientation_passes
+    fixes_findings:
+      - PIN_1_ORIENTATION_VALID
 
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected
