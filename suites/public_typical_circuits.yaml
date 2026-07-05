@@ -206,6 +206,78 @@ cases:
       - id: USB_CONNECTOR_ENTRY_CLEARANCE_VALID
         severity: critical
 
+  - id: usb_route_geometry_passes
+    project: ../examples/good_usb_connector_route_geometry/project.yaml
+    expect: pass
+
+  - id: usb_route_geometry_detected
+    project: ../examples/bad_usb_connector_route_geometry/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_ROUTE_GEOMETRY_VALID
+        severity: critical
+
+  - id: usb_vbus_route_geometry_passes
+    project: ../examples/good_usb_vbus_route_geometry/project.yaml
+    expect: pass
+
+  - id: usb_vbus_route_geometry_detected
+    project: ../examples/bad_usb_vbus_route_geometry/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_VBUS_ROUTE_VALID
+        severity: critical
+
+  - id: usb_return_path_passes
+    project: ../examples/good_usb_return_path/project.yaml
+    expect: pass
+
+  - id: usb_return_path_pad_contact_passes
+    project: ../examples/good_usb_return_path_pad_contact/project.yaml
+    expect: pass
+
+  - id: usb_return_path_unreferenced_route_detected
+    project: ../examples/bad_usb_return_path/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_RETURN_PATH_VALID
+        severity: critical
+
+  - id: usb_return_path_filled_zone_gap_detected
+    project: ../examples/bad_usb_return_path_filled_zone_gap/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_RETURN_PATH_VALID
+        severity: critical
+
+  - id: usb_return_path_floating_zone_detected
+    project: ../examples/bad_usb_return_path_floating_zone/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_RETURN_PATH_VALID
+        severity: critical
+
+  - id: usb_return_path_split_zone_detected
+    project: ../examples/bad_usb_return_path_split_filled_zone_contact/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_RETURN_PATH_VALID
+        severity: critical
+
+  - id: usb_return_path_zone_edge_clearance_detected
+    project: ../examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_RETURN_PATH_VALID
+        severity: critical
+
+  - id: usb_return_path_stitching_via_detected
+    project: ../examples/bad_usb_return_path_stitching_via/project.yaml
+    expect: fail
+    required_findings:
+      - id: USB_RETURN_PATH_VALID
+        severity: critical
+
   - id: diodes_ap2112k_typical_ldo_passes
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
@@ -1147,6 +1219,54 @@ repairs:
     fixed_case: usb_connector_entry_clearance_passes
     fixes_findings:
       - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+
+  - id: fix_usb_route_geometry
+    detects_case: usb_route_geometry_detected
+    fixed_case: usb_route_geometry_passes
+    fixes_findings:
+      - USB_ROUTE_GEOMETRY_VALID
+
+  - id: fix_usb_vbus_route_geometry
+    detects_case: usb_vbus_route_geometry_detected
+    fixed_case: usb_vbus_route_geometry_passes
+    fixes_findings:
+      - USB_VBUS_ROUTE_VALID
+
+  - id: fix_usb_return_path_unreferenced_route
+    detects_case: usb_return_path_unreferenced_route_detected
+    fixed_case: usb_return_path_passes
+    fixes_findings:
+      - USB_RETURN_PATH_VALID
+
+  - id: fix_usb_return_path_filled_zone_gap
+    detects_case: usb_return_path_filled_zone_gap_detected
+    fixed_case: usb_return_path_passes
+    fixes_findings:
+      - USB_RETURN_PATH_VALID
+
+  - id: fix_usb_return_path_floating_zone
+    detects_case: usb_return_path_floating_zone_detected
+    fixed_case: usb_return_path_pad_contact_passes
+    fixes_findings:
+      - USB_RETURN_PATH_VALID
+
+  - id: fix_usb_return_path_split_zone
+    detects_case: usb_return_path_split_zone_detected
+    fixed_case: usb_return_path_pad_contact_passes
+    fixes_findings:
+      - USB_RETURN_PATH_VALID
+
+  - id: fix_usb_return_path_zone_edge_clearance
+    detects_case: usb_return_path_zone_edge_clearance_detected
+    fixed_case: usb_return_path_passes
+    fixes_findings:
+      - USB_RETURN_PATH_VALID
+
+  - id: fix_usb_return_path_stitching_via
+    detects_case: usb_return_path_stitching_via_detected
+    fixed_case: usb_return_path_passes
+    fixes_findings:
+      - USB_RETURN_PATH_VALID
 
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected

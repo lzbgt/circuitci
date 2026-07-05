@@ -65,6 +65,7 @@ audit the modeled facts without relying on chat history.
 | JLC/EasyEDA BOM/CPL and KiCad footprint-property consistency | committed Board IR fixtures with `source.format: jlc_assembly` plus imported KiCad footprint properties | `examples/good_assembly_footprint_alignment/project.yaml` and `examples/bad_assembly_footprint_alignment/project.yaml` |
 | KiCad footprint pin-1 orientation evidence | committed Board IR fixtures with imported `semantics.body_bounds` and `semantics.pin_1` plus explicit reviewed expected direction | `examples/good_pin_1_orientation/project.yaml` and `examples/bad_pin_1_orientation/project.yaml` |
 | USB connector mechanical placement and footprint evidence | committed Board IR fixtures with USB connector placement, board-edge, body/courtyard, nearby-component, and cable-entry metadata | `examples/good_usb_connector_orientation/project.yaml`, `examples/bad_usb_connector_orientation/project.yaml`, `examples/good_usb_connector_edge_proximity/project.yaml`, `examples/bad_usb_connector_edge_proximity/project.yaml`, `examples/good_usb_connector_body_overhang/project.yaml`, `examples/bad_usb_connector_body_overhang/project.yaml`, `examples/good_usb_connector_component_clearance/project.yaml`, `examples/bad_usb_connector_component_clearance/project.yaml`, `examples/good_usb_connector_entry_clearance/project.yaml`, and `examples/bad_usb_connector_entry_clearance/project.yaml` |
+| USB route, VBUS route, and return-path layout evidence | committed Board IR fixtures with USB connector pin metadata, imported route/via/zone geometry, VBUS protection routing, filled-zone contact, and stitching-via metadata | `examples/good_usb_connector_route_geometry/project.yaml`, `examples/bad_usb_connector_route_geometry/project.yaml`, `examples/good_usb_vbus_route_geometry/project.yaml`, `examples/bad_usb_vbus_route_geometry/project.yaml`, `examples/good_usb_return_path/project.yaml`, `examples/good_usb_return_path_pad_contact/project.yaml`, `examples/bad_usb_return_path/project.yaml`, `examples/bad_usb_return_path_filled_zone_gap/project.yaml`, `examples/bad_usb_return_path_floating_zone/project.yaml`, `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml`, `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml`, and `examples/bad_usb_return_path_stitching_via/project.yaml` |
 | Espressif ESP32-S3-WROOM-1U-N16R8 application boot module use | <https://documentation.espressif.com/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/espressif/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf` |
 
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
@@ -88,8 +89,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines ninety-five public-reference
-passing cases and ninety-three paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines ninety-nine public-reference
+passing cases and one hundred one paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -129,6 +130,18 @@ passing cases and ninety-three paired injected-error cases:
 | `usb_connector_component_clearance_detected` | `examples/bad_usb_connector_component_clearance/project.yaml` | fail | Detects nearby component footprint evidence inside the declared USB connector clearance. |
 | `usb_connector_entry_clearance_passes` | `examples/good_usb_connector_entry_clearance/project.yaml` | pass | USB connector cable-entry corridor evidence is clear for the declared depth and width. |
 | `usb_connector_entry_clearance_detected` | `examples/bad_usb_connector_entry_clearance/project.yaml` | fail | Detects footprint evidence obstructing the declared USB connector cable-entry corridor. |
+| `usb_route_geometry_passes` | `examples/good_usb_connector_route_geometry/project.yaml` | pass | USB D+/D- route length, via-count, width, pair mismatch, pair via symmetry, gap, and protection-order evidence satisfy reviewed limits. |
+| `usb_route_geometry_detected` | `examples/bad_usb_connector_route_geometry/project.yaml` | fail | Detects USB data route length, protection-order, via-count, width, pair mismatch, via symmetry, and pair-gap violations. |
+| `usb_vbus_route_geometry_passes` | `examples/good_usb_vbus_route_geometry/project.yaml` | pass | USB VBUS route length, via-count, width, and protection-order evidence satisfy reviewed limits. |
+| `usb_vbus_route_geometry_detected` | `examples/bad_usb_vbus_route_geometry/project.yaml` | fail | Detects USB VBUS route length, via-count, width, and protection-order violations. |
+| `usb_return_path_passes` | `examples/good_usb_return_path/project.yaml` | pass | USB data routes have source-backed same-layer ground-zone return-path coverage. |
+| `usb_return_path_pad_contact_passes` | `examples/good_usb_return_path_pad_contact/project.yaml` | pass | Imported filled-zone return-path evidence includes required same-net pad or via contact. |
+| `usb_return_path_unreferenced_route_detected` | `examples/bad_usb_return_path/project.yaml` | fail | Detects USB data route length without the required ground reference coverage. |
+| `usb_return_path_filled_zone_gap_detected` | `examples/bad_usb_return_path_filled_zone_gap/project.yaml` | fail | Detects a same-layer filled-zone gap under the USB data route. |
+| `usb_return_path_floating_zone_detected` | `examples/bad_usb_return_path_floating_zone/project.yaml` | fail | Detects filled-zone return-path evidence that lacks the required same-net pad or via contact. |
+| `usb_return_path_split_zone_detected` | `examples/bad_usb_return_path_split_filled_zone_contact/project.yaml` | fail | Detects a filled-zone return path where the available contact is on a different zone island. |
+| `usb_return_path_zone_edge_clearance_detected` | `examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml` | fail | Detects USB data route clearance to filled-zone edge below the reviewed limit. |
+| `usb_return_path_stitching_via_detected` | `examples/bad_usb_return_path_stitching_via/project.yaml` | fail | Detects a USB data via too far from the nearest acceptable ground stitching via. |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
@@ -293,7 +306,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=188, passed=188, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=200, passed=200, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -321,6 +334,14 @@ Observed detection details:
 | `usb_connector_body_overhang_detected` | `USB_CONNECTOR_BODY_OVERHANG_VALID` | USB connector J1 body overhang 0.050 mm past the nearest board edge exceeds limit 0.020 mm. |
 | `usb_connector_component_clearance_detected` | `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` | USB connector J1 clearance to component R1 is 0.300 mm, below required 0.500 mm. |
 | `usb_connector_entry_clearance_detected` | `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` | USB connector J1 cable-entry corridor is obstructed by component R1 at 0.750 mm into the required 2.000 mm depth. |
+| `usb_route_geometry_detected` | `USB_ROUTE_GEOMETRY_VALID` | USB connector J1 D+ net usb_dp route length 6.000 mm exceeds limit 5.000 mm. |
+| `usb_vbus_route_geometry_detected` | `USB_VBUS_ROUTE_VALID` | USB connector J1 VBUS net usb_vbus route length 6.000 mm exceeds limit 5.000 mm. |
+| `usb_return_path_unreferenced_route_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp has 1.000 mm of routed data-line length without same-layer ground-zone outline coverage, above limit 0.000 mm. |
+| `usb_return_path_filled_zone_gap_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp has 1.000 mm of routed data-line length without same-layer ground-zone filled-polygon coverage, above limit 0.000 mm. |
+| `usb_return_path_floating_zone_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp has 1.000 mm of routed data-line length without same-layer ground-zone filled-polygon coverage with same-net pad/via contact evidence, above limit 0.000 mm. |
+| `usb_return_path_split_zone_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp has 1.000 mm of routed data-line length without same-layer ground-zone filled-polygon coverage with same-net pad/via contact evidence, above limit 0.000 mm. |
+| `usb_return_path_zone_edge_clearance_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp segment 0 has 0.020 mm filled ground-zone edge clearance, below required 0.100 mm. |
+| `usb_return_path_stitching_via_detected` | `USB_RETURN_PATH_VALID` | USB connector J1 D+ net usb_dp data via 0 is 1.500 mm from the nearest matching ground stitch via, above limit 0.200 mm. |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
 | `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
@@ -394,9 +415,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All ninety-five public-reference pass cases produced zero critical findings.
-All ninety-three paired injected-error cases failed with the expected critical
-finding ID, and all ninety-three repair-pair checks passed.
+All ninety-nine public-reference pass cases produced zero critical findings.
+All one hundred one paired injected-error cases failed with the expected
+critical finding ID, and all one hundred one repair-pair checks passed.
 
 ## Interpretation Limits
 
