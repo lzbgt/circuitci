@@ -58,8 +58,9 @@ STM8S003F3P6, STC15W408AS, NE555, and MCP1316 URLs were checked on 2026-07-05.
 The Abracon ABM3, Winbond W25Q64JV, Bosch BME280, Nexperia PRTR5V0U2X,
 Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI BQ25798, TI TPS22918,
 TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI TXS0108E,
-TI TCAN3413, TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS, onsemi NDS7002A, and
-onsemi NL27WZ17, and Microchip MCP131X/2X PDFs were downloaded from their official vendor URLs.
+TI TCAN3413, TI THVD1450, Silicon Labs CP2102N, onsemi 1N4148WS,
+onsemi NDS7002A, onsemi NL27WZ17, and Microchip MCP131X/2X PDFs were
+downloaded from their official vendor URLs.
 WCH CH340C, WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
 vendor endpoints. The local PDF copies and SHA-256 hashes are listed in the
