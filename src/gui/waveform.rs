@@ -1657,6 +1657,8 @@ pub(super) fn format_value(value: f64) -> String {
 #[cfg(test)]
 mod waveform_bundle_tests;
 #[cfg(test)]
+mod waveform_footprint_tests;
+#[cfg(test)]
 mod waveform_loading_tests;
 #[cfg(test)]
 mod waveform_measurement_tests;
