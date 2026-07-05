@@ -51,6 +51,7 @@ mod analog_waveform_measurements;
 mod analog_xyce_hb_runner;
 mod analog_xyce_measure_runner;
 mod analog_xyce_runner;
+mod analog_xyce_wrappers;
 mod backdrive;
 mod clock_source;
 mod common;
