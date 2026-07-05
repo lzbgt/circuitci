@@ -121,8 +121,33 @@ cases:
     project: ../examples/good_copper_to_board_edge_clearance/project.yaml
     expect: pass
 
+  - id: manufacturing_copper_same_net_touching_passes
+    project: ../examples/good_copper_same_net_touching/project.yaml
+    expect: pass
+
   - id: jlcpcb_copper_to_board_edge_process_detected
     project: ../examples/bad_copper_to_board_edge_jlc_routed_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+        severity: critical
+
+  - id: manufacturing_copper_feature_to_board_edge_detected
+    project: ../examples/bad_copper_feature_to_board_edge_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+        severity: critical
+
+  - id: manufacturing_copper_segment_to_board_edge_detected
+    project: ../examples/bad_copper_segment_to_board_edge_clearance/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+        severity: critical
+
+  - id: manufacturing_copper_region_to_board_edge_detected
+    project: ../examples/bad_copper_region_to_board_edge_clearance/project.yaml
     expect: fail
     required_findings:
       - id: COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
@@ -134,6 +159,48 @@ cases:
 
   - id: jlcpcb_copper_spacing_process_detected
     project: ../examples/bad_copper_spacing_jlc_1oz_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_copper_feature_spacing_detected
+    project: ../examples/bad_copper_feature_spacing/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_copper_segment_spacing_detected
+    project: ../examples/bad_copper_segment_spacing/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_copper_region_spacing_detected
+    project: ../examples/bad_copper_region_spacing/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_copper_feature_segment_spacing_detected
+    project: ../examples/bad_copper_feature_segment_spacing/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_copper_different_net_overlap_detected
+    project: ../examples/bad_copper_different_net_overlap/project.yaml
+    expect: fail
+    required_findings:
+      - id: COPPER_SPACING_VALID
+        severity: critical
+
+  - id: manufacturing_copper_different_island_overlap_detected
+    project: ../examples/bad_copper_different_island_overlap/project.yaml
     expect: fail
     required_findings:
       - id: COPPER_SPACING_VALID
@@ -250,6 +317,57 @@ cases:
     expect: fail
     required_findings:
       - id: SOLDER_PASTE_SPACING_VALID
+        severity: critical
+
+  - id: jlcpcb_solder_paste_ic_pin_aperture_passes
+    project: ../examples/good_solder_paste_ic_pin_aperture_jlc/project.yaml
+    expect: pass
+
+  - id: jlcpcb_solder_paste_ic_pin_aperture_detected
+    project: ../examples/bad_solder_paste_ic_pin_aperture_jlc/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_IC_PIN_APERTURE_VALID
+        severity: critical
+
+  - id: jlcpcb_solder_paste_ic_pin_aperture_length_passes
+    project: ../examples/good_solder_paste_ic_pin_aperture_length_jlc/project.yaml
+    expect: pass
+
+  - id: jlcpcb_solder_paste_ic_pin_aperture_length_detected
+    project: ../examples/bad_solder_paste_ic_pin_aperture_length_jlc/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_IC_PIN_APERTURE_VALID
+        severity: critical
+
+  - id: jlcpcb_solder_paste_ic_pin_aperture_extension_passes
+    project: ../examples/good_solder_paste_ic_pin_aperture_extension_jlc/project.yaml
+    expect: pass
+
+  - id: jlcpcb_solder_paste_ic_pin_aperture_extension_detected
+    project: ../examples/bad_solder_paste_ic_pin_aperture_extension_jlc/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_IC_PIN_APERTURE_VALID
+        severity: critical
+
+  - id: jlcpcb_solder_paste_bga_aperture_passes
+    project: ../examples/good_solder_paste_bga_aperture_jlc/project.yaml
+    expect: pass
+
+  - id: jlcpcb_solder_paste_bga_aperture_detected
+    project: ../examples/bad_solder_paste_bga_aperture_jlc/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_BGA_APERTURE_VALID
+        severity: critical
+
+  - id: jlcpcb_solder_paste_bga_pitch_grid_detected
+    project: ../examples/bad_solder_paste_bga_pitch_grid_jlc/project.yaml
+    expect: fail
+    required_findings:
+      - id: SOLDER_PASTE_BGA_APERTURE_VALID
         severity: critical
 
   - id: assembly_footprint_alignment_passes
@@ -1347,9 +1465,63 @@ repairs:
     fixes_findings:
       - COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
 
+  - id: fix_manufacturing_copper_feature_to_board_edge
+    detects_case: manufacturing_copper_feature_to_board_edge_detected
+    fixed_case: manufacturing_copper_to_board_edge_passes
+    fixes_findings:
+      - COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+
+  - id: fix_manufacturing_copper_segment_to_board_edge
+    detects_case: manufacturing_copper_segment_to_board_edge_detected
+    fixed_case: manufacturing_copper_to_board_edge_passes
+    fixes_findings:
+      - COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+
+  - id: fix_manufacturing_copper_region_to_board_edge
+    detects_case: manufacturing_copper_region_to_board_edge_detected
+    fixed_case: manufacturing_copper_to_board_edge_passes
+    fixes_findings:
+      - COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+
   - id: fix_jlcpcb_copper_spacing_process
     detects_case: jlcpcb_copper_spacing_process_detected
     fixed_case: manufacturing_copper_spacing_passes
+    fixes_findings:
+      - COPPER_SPACING_VALID
+
+  - id: fix_manufacturing_copper_feature_spacing
+    detects_case: manufacturing_copper_feature_spacing_detected
+    fixed_case: manufacturing_copper_spacing_passes
+    fixes_findings:
+      - COPPER_SPACING_VALID
+
+  - id: fix_manufacturing_copper_segment_spacing
+    detects_case: manufacturing_copper_segment_spacing_detected
+    fixed_case: manufacturing_copper_spacing_passes
+    fixes_findings:
+      - COPPER_SPACING_VALID
+
+  - id: fix_manufacturing_copper_region_spacing
+    detects_case: manufacturing_copper_region_spacing_detected
+    fixed_case: manufacturing_copper_spacing_passes
+    fixes_findings:
+      - COPPER_SPACING_VALID
+
+  - id: fix_manufacturing_copper_feature_segment_spacing
+    detects_case: manufacturing_copper_feature_segment_spacing_detected
+    fixed_case: manufacturing_copper_spacing_passes
+    fixes_findings:
+      - COPPER_SPACING_VALID
+
+  - id: fix_manufacturing_copper_different_net_overlap
+    detects_case: manufacturing_copper_different_net_overlap_detected
+    fixed_case: manufacturing_copper_spacing_passes
+    fixes_findings:
+      - COPPER_SPACING_VALID
+
+  - id: fix_manufacturing_copper_different_island_overlap
+    detects_case: manufacturing_copper_different_island_overlap_detected
+    fixed_case: manufacturing_copper_same_net_touching_passes
     fixes_findings:
       - COPPER_SPACING_VALID
 
@@ -1418,6 +1590,36 @@ repairs:
     fixed_case: manufacturing_solder_paste_spacing_passes
     fixes_findings:
       - SOLDER_PASTE_SPACING_VALID
+
+  - id: fix_jlcpcb_solder_paste_ic_pin_aperture
+    detects_case: jlcpcb_solder_paste_ic_pin_aperture_detected
+    fixed_case: jlcpcb_solder_paste_ic_pin_aperture_passes
+    fixes_findings:
+      - SOLDER_PASTE_IC_PIN_APERTURE_VALID
+
+  - id: fix_jlcpcb_solder_paste_ic_pin_aperture_length
+    detects_case: jlcpcb_solder_paste_ic_pin_aperture_length_detected
+    fixed_case: jlcpcb_solder_paste_ic_pin_aperture_length_passes
+    fixes_findings:
+      - SOLDER_PASTE_IC_PIN_APERTURE_VALID
+
+  - id: fix_jlcpcb_solder_paste_ic_pin_aperture_extension
+    detects_case: jlcpcb_solder_paste_ic_pin_aperture_extension_detected
+    fixed_case: jlcpcb_solder_paste_ic_pin_aperture_extension_passes
+    fixes_findings:
+      - SOLDER_PASTE_IC_PIN_APERTURE_VALID
+
+  - id: fix_jlcpcb_solder_paste_bga_aperture
+    detects_case: jlcpcb_solder_paste_bga_aperture_detected
+    fixed_case: jlcpcb_solder_paste_bga_aperture_passes
+    fixes_findings:
+      - SOLDER_PASTE_BGA_APERTURE_VALID
+
+  - id: fix_jlcpcb_solder_paste_bga_pitch_grid
+    detects_case: jlcpcb_solder_paste_bga_pitch_grid_detected
+    fixed_case: jlcpcb_solder_paste_bga_aperture_passes
+    fixes_findings:
+      - SOLDER_PASTE_BGA_APERTURE_VALID
 
   - id: fix_assembly_footprint_alignment
     detects_case: assembly_footprint_alignment_detected
