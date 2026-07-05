@@ -85,13 +85,33 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines seventy-eight public-reference
-passing cases and seventy-six paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines eighty-eight public-reference
+passing cases and eighty-six paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
 | `jlcpcb_drill_diameter_process_passes` | `examples/good_drill_diameter_jlc_process/project.yaml` | pass | JLCPCB circular drill examples at the source-backed 0.15 mm minimum, 6.3 mm maximum, and a nominal interior size. |
 | `jlcpcb_drill_diameter_process_detected` | `examples/bad_drill_diameter_jlc_process/project.yaml` | fail | Detects circular drill diameters below the JLCPCB 0.15 mm minimum and above the 6.3 mm maximum. |
+| `jlcpcb_slot_width_process_passes` | `examples/good_slot_width_jlc_process/project.yaml` | pass | JLCPCB slot-width examples at the source-backed plated and non-plated slot limits. |
+| `jlcpcb_slot_width_process_detected` | `examples/bad_slot_width_jlc_process/project.yaml` | fail | Detects plated, non-plated, and unknown-plating slots below the JLCPCB process limits. |
+| `jlcpcb_slot_aspect_ratio_process_passes` | `examples/good_slot_aspect_ratio_jlc_process/project.yaml` | pass | JLCPCB slot aspect-ratio example above the source-backed minimum ratio. |
+| `jlcpcb_slot_aspect_ratio_process_detected` | `examples/bad_slot_aspect_ratio_jlc_process/project.yaml` | fail | Detects a JLCPCB slot whose length-to-width ratio is below the source-backed minimum. |
+| `jlcpcb_castellated_hole_process_passes` | `examples/good_castellated_hole_jlc_process/project.yaml` | pass | JLCPCB castellated-hole examples satisfying diameter, edge-clearance, and hole-spacing process limits. |
+| `jlcpcb_castellated_hole_process_detected` | `examples/bad_castellated_hole_jlc_process/project.yaml` | fail | Detects JLCPCB castellated-hole diameter, edge-clearance, and spacing violations. |
+| `manufacturing_drill_annular_ring_passes` | `examples/good_drill_annular_ring/project.yaml` | pass | Drill annular-ring example with copper flash large enough for the declared drill and offset limits. |
+| `jlcpcb_drill_annular_ring_process_detected` | `examples/bad_drill_annular_ring_jlc_via_process/project.yaml` | fail | Detects a JLCPCB via annular ring below the process-derived minimum. |
+| `manufacturing_copper_to_board_edge_passes` | `examples/good_copper_to_board_edge_clearance/project.yaml` | pass | Copper-to-board-edge fixture with flash and trace features beyond the declared clearance limit. |
+| `jlcpcb_copper_to_board_edge_process_detected` | `examples/bad_copper_to_board_edge_jlc_routed_process/project.yaml` | fail | Detects copper too close to a routed JLCPCB board edge. |
+| `manufacturing_copper_spacing_passes` | `examples/good_copper_spacing/project.yaml` | pass | Copper-spacing fixture with same-net touching allowed and different-layer copper separated from the checked same-layer feature. |
+| `jlcpcb_copper_spacing_process_detected` | `examples/bad_copper_spacing_jlc_1oz_process/project.yaml` | fail | Detects same-layer different-net copper spacing below the JLCPCB 1 oz copper process limit. |
+| `jlcpcb_solder_mask_opening_process_passes` | `examples/good_solder_mask_opening_explicit_override/project.yaml` | pass | JLCPCB solder-mask opening example with explicit override limits and adequate mask expansion. |
+| `jlcpcb_solder_mask_opening_process_detected` | `examples/bad_solder_mask_opening_jlc_process/project.yaml` | fail | Detects a JLCPCB solder-mask opening below the process-derived expansion/offset requirements. |
+| `manufacturing_solder_mask_dam_passes` | `examples/good_solder_mask_dam/project.yaml` | pass | Solder-mask dam fixture whose adjacent openings leave enough web for the declared dam limit. |
+| `jlcpcb_solder_mask_dam_process_detected` | `examples/bad_solder_mask_dam_jlc_process/project.yaml` | fail | Detects a JLCPCB solder-mask dam narrower than the source-backed process floor. |
+| `jlcpcb_solder_paste_aperture_size_process_passes` | `examples/good_solder_paste_aperture_size_jlc_process/project.yaml` | pass | JLCPCB stencil aperture-size fixture above the source-backed minimum aperture dimension. |
+| `jlcpcb_solder_paste_aperture_size_process_detected` | `examples/bad_solder_paste_aperture_size_jlc_process/project.yaml` | fail | Detects JLCPCB stencil feature and segment apertures below the process minimum size. |
+| `jlcpcb_solder_paste_area_ratio_process_passes` | `examples/good_solder_paste_aperture_area_ratio_jlc/project.yaml` | pass | JLCPCB stencil aperture area-ratio fixture satisfying the source-backed minimum area ratio. |
+| `jlcpcb_solder_paste_area_ratio_process_detected` | `examples/bad_solder_paste_aperture_area_ratio_jlc/project.yaml` | fail | Detects a JLCPCB stencil aperture area ratio below the source-backed process minimum. |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
@@ -256,7 +276,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=154, passed=154, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=174, passed=174, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -267,6 +287,16 @@ Observed detection details:
 | Detection case | Finding | Observed message |
 | --- | --- | --- |
 | `jlcpcb_drill_diameter_process_detected` | `DRILL_DIAMETER_VALID` | Drill hit `0` is `0.100 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. Drill hit `1` is `6.400 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. |
+| `jlcpcb_slot_width_process_detected` | `SLOT_WIDTH_VALID` | Routed slot `0` is `0.600 mm` wide for plated process evidence; required at least `0.650 mm`. Routed slot `1` is `0.900 mm` wide for non-plated process evidence; required at least `1.000 mm`. Routed slot `2` is `0.900 mm` wide for unknown-plating process evidence; required at least `1.000 mm`. |
+| `jlcpcb_slot_aspect_ratio_process_detected` | `SLOT_ASPECT_RATIO_VALID` | Routed slot `0` has length-to-width ratio `2.000`; selected process requires at least `2.500`. |
+| `jlcpcb_castellated_hole_process_detected` | `CASTELLATED_HOLE_VALID` | Castellated drill hit `0` is `0.250 mm`; selected castellated-hole process requires at least `0.300 mm`. Castellated drill hit `1` has `0.750 mm` hole-edge-to-board-edge clearance, below `1.000 mm` minimum. Castellated drill hits `2` and `3` have `0.200 mm` hole-to-hole spacing, below `0.400 mm` minimum. |
+| `jlcpcb_drill_annular_ring_process_detected` | `DRILL_ANNULAR_RING_VALID` | Drill hit `0` has `0.045 mm` annular ring, below `0.050 mm` minimum. |
+| `jlcpcb_copper_to_board_edge_process_detected` | `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` | Gerber copper segment `0` has `0.150 mm` board-edge clearance, below `0.200 mm` minimum. |
+| `jlcpcb_copper_spacing_process_detected` | `COPPER_SPACING_VALID` | Gerber copper feature and feature have `0.050 mm` same-layer spacing, below `0.100 mm` minimum. |
+| `jlcpcb_solder_mask_opening_process_detected` | `SOLDER_MASK_OPENING_VALID` | Solder-mask opening feature on `B.Mask` expands copper flash `0` by only `0.030000 mm`; required at least `0.050000 mm`. |
+| `jlcpcb_solder_mask_dam_process_detected` | `SOLDER_MASK_DAM_VALID` | Solder-mask feature and feature openings on `F.Mask` leave only `0.080000 mm` mask dam; required at least `0.100000 mm`. |
+| `jlcpcb_solder_paste_aperture_size_process_detected` | `SOLDER_PASTE_APERTURE_SIZE_VALID` | Solder-paste feature opening on `F.Paste` has minimum aperture size `0.080000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. Solder-paste segment opening on `F.Paste` has minimum aperture size `0.070000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. |
+| `jlcpcb_solder_paste_area_ratio_process_detected` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | Solder-paste feature opening on `F.Paste` has stencil aperture area ratio `0.300000`; JLCPCB/IPC guidance requires at least `0.660000`. |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
 | `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
@@ -340,9 +370,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All seventy-eight public-reference pass cases produced zero critical findings.
-All seventy-six paired injected-error cases failed with the expected critical
-finding ID, and all seventy-six repair-pair checks passed.
+All eighty-eight public-reference pass cases produced zero critical findings.
+All eighty-six paired injected-error cases failed with the expected critical
+finding ID, and all eighty-six repair-pair checks passed.
 
 ## Interpretation Limits
 
@@ -350,7 +380,7 @@ This suite assesses the validator slices that are currently modeled:
 
 - static power-tree range, dropout, current-budget, support capacitance,
   support inductance, and reference checks,
-- source-backed manufacturing drill-diameter process checks,
+- source-backed manufacturing process geometry checks,
 - expected-failure detection through suite `required_findings`,
 - repair-pair accounting from bad variants to public-reference passing cases.
 
