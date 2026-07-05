@@ -20,8 +20,54 @@ cases:
     project: ../examples/good_ams1117_3v3_ldo_observation/project.yaml
     expect: pass
 
+  - id: ams_ams1117_3v3_static_regulator_passes
+    project: ../examples/good_ams1117_3v3_regulator/project.yaml
+    expect: pass
+
   - id: diodes_ap2112k_dropout_detected
     project: ../examples/bad_diodes_ap2112k_3v3_dropout/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: diodes_ap2112k_output_current_detected
+    project: ../examples/bad_diodes_ap2112k_3v3_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: diodes_ap2112k_output_capacitance_detected
+    project: ../examples/bad_diodes_ap2112k_3v3_output_capacitance/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ams_ams1117_3v3_dropout_detected
+    project: ../examples/bad_ams1117_3v3_dropout/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ams_ams1117_3v3_minimum_load_detected
+    project: ../examples/bad_ams1117_3v3_minimum_load/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ams_ams1117_3v3_output_current_detected
+    project: ../examples/bad_ams1117_3v3_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ams_ams1117_3v3_output_capacitance_detected
+    project: ../examples/bad_ams1117_3v3_output_capacitance/project.yaml
     expect: fail
     required_findings:
       - id: POWER_TREE_VALID
@@ -718,6 +764,42 @@ repairs:
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected
     fixed_case: diodes_ap2112k_typical_ldo_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ap2112k_output_current
+    detects_case: diodes_ap2112k_output_current_detected
+    fixed_case: diodes_ap2112k_typical_ldo_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ap2112k_output_capacitance
+    detects_case: diodes_ap2112k_output_capacitance_detected
+    fixed_case: diodes_ap2112k_typical_ldo_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ams1117_dropout_margin
+    detects_case: ams_ams1117_3v3_dropout_detected
+    fixed_case: ams_ams1117_3v3_static_regulator_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ams1117_minimum_load
+    detects_case: ams_ams1117_3v3_minimum_load_detected
+    fixed_case: ams_ams1117_3v3_static_regulator_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ams1117_output_current
+    detects_case: ams_ams1117_3v3_output_current_detected
+    fixed_case: ams_ams1117_3v3_static_regulator_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_ams1117_output_capacitance
+    detects_case: ams_ams1117_3v3_output_capacitance_detected
+    fixed_case: ams_ams1117_3v3_static_regulator_passes
     fixes_findings:
       - POWER_TREE_VALID
 

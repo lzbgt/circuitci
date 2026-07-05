@@ -82,15 +82,22 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines seventy-five public-reference
-passing cases and fifty-eight paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines seventy-six public-reference
+passing cases and sixty-four paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
+| `ams_ams1117_3v3_static_regulator_passes` | `examples/good_ams1117_3v3_regulator/project.yaml` | pass | AMS1117-3.3 static regulator fixture with 5 V input, 22 uF output support capacitance, and enough minimum load. |
 | `diodes_ap2112k_dropout_detected` | `examples/bad_diodes_ap2112k_3v3_dropout/project.yaml` | fail | Detects insufficient nominal dropout margin. |
+| `diodes_ap2112k_output_current_detected` | `examples/bad_diodes_ap2112k_3v3_output_current/project.yaml` | fail | Detects AP2112K output load above the datasheet-backed 600 mA output-current class. |
+| `diodes_ap2112k_output_capacitance_detected` | `examples/bad_diodes_ap2112k_3v3_output_capacitance/project.yaml` | fail | Detects AP2112K output support capacitance below the datasheet-backed 1 uF requirement. |
+| `ams_ams1117_3v3_dropout_detected` | `examples/bad_ams1117_3v3_dropout/project.yaml` | fail | Detects AMS1117 nominal dropout margin below the datasheet-backed 1.3 V limit. |
+| `ams_ams1117_3v3_minimum_load_detected` | `examples/bad_ams1117_3v3_minimum_load/project.yaml` | fail | Detects AMS1117 proven minimum load below the datasheet-backed 10 mA requirement. |
+| `ams_ams1117_3v3_output_current_detected` | `examples/bad_ams1117_3v3_output_current/project.yaml` | fail | Detects AMS1117 output load above the source-backed 800 mA regulation-screen limit. |
+| `ams_ams1117_3v3_output_capacitance_detected` | `examples/bad_ams1117_3v3_output_capacitance/project.yaml` | fail | Detects AMS1117 output support capacitance below the datasheet-backed 22 uF requirement. |
 | `microchip_mcp73831_typical_usb_charger_passes` | `examples/good_microchip_mcp73831_usb_charger/project.yaml` | pass | MCP73831 USB-powered 4.2 V Li-Ion charger with 100 mA programmed current. |
 | `microchip_mcp73831_charger_observation_passes` | `examples/good_mcp73831_charger_observation/project.yaml` | pass | MCP73831 generated-SPICE charger observation with USB input, battery node, and source-backed programmed current. |
 | `microchip_mcp73831_prog_resistor_passes` | `examples/good_microchip_mcp73831_prog_resistor/project.yaml` | pass | MCP73831 static PROG-resistor fixture deriving charge current from a 10 kOhm programming resistor. |
@@ -232,7 +239,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=133, passed=133, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=140, passed=140, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -243,6 +250,12 @@ Observed detection details:
 | Detection case | Finding | Observed message |
 | --- | --- | --- |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
+| `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
+| `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
+| `ams_ams1117_3v3_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.900000 V` is below required dropout `1.300000 V`. |
+| `ams_ams1117_3v3_minimum_load_detected` | `POWER_TREE_VALID` | Regulator `UREG` proven minimum output load `0.002000 A` is below required minimum load `0.010000 A`. |
+| `ams_ams1117_3v3_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.850000 A` exceeds regulator limit `0.800000 A`. |
+| `ams_ams1117_3v3_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `1.000000e-5 F` support capacitance to ground, below required `2.200000e-5 F`. |
 | `microchip_mcp73831_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `0.500000 A` exceeds input rail `usb_5v` current budget `0.100000 A`. |
 | `ti_bq24075_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.000000 A` exceeds input rail `usb_5v` current budget `0.500000 A`. |
 | `ti_bq24075_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.800000 A` exceeds model maximum `1.500000 A`. |
@@ -298,9 +311,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All seventy-five public-reference pass cases produced zero critical findings.
-All fifty-eight paired injected-error cases failed with the expected critical
-finding ID, and all fifty-eight repair-pair checks passed.
+All seventy-six public-reference pass cases produced zero critical findings.
+All sixty-four paired injected-error cases failed with the expected critical
+finding ID, and all sixty-four repair-pair checks passed.
 
 ## Interpretation Limits
 
