@@ -57,6 +57,7 @@ audit the modeled facts without relying on chat history.
 | Winbond W25Q64JV SPI/QSPI NOR flash power use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
 | Bosch BME280 environmental sensor I2C power use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
 | TI CSD17484F4 N-channel MOSFET switching/discharge use | <https://www.ti.com/lit/gpn/CSD17484F4> | `docs/research/datasheets/ti/csd17484f4.pdf` |
+| Kingbright APT1608SURCK red 0603 LED indicator use | <https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf> | `docs/research/datasheets/kingbright/apt1608surck.pdf` |
 | onsemi 1N4148WS switching diode use | <https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf> | `docs/research/datasheets/onsemi/1n4148ws.pdf` |
 | onsemi NDS7002A low-side MOSFET switch use | <https://www.onsemi.com/download/data-sheet/pdf/nds7002a-d.pdf> | `docs/research/datasheets/onsemi/nds7002a.pdf` |
 | onsemi NL27WZ17 dual non-inverting Schmitt-trigger buffer use | <https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf> | `docs/research/datasheets/onsemi/nl27wz17.pdf` |
@@ -71,8 +72,8 @@ TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI CSD17484F4,
 TI TXS0108E, TI TCAN3413, TI THVD1450, ST STM32L431, Silicon Labs CP2102N,
 AMS1117, NXP PCA9685, TDK ICM-42688-P, Sipeed LicheeRV-Nano-W, Artery
 AT32F435, Artery AT32M416, JST XH/VH, onsemi 1N4148WS, onsemi NDS7002A,
-onsemi NL27WZ17, and Microchip MCP131X/2X source artifacts were downloaded or
-retained from their official vendor URLs.
+onsemi NL27WZ17, Kingbright APT1608SURCK, and Microchip MCP131X/2X source
+artifacts were downloaded or retained from their official vendor URLs.
 CMSIS-DAP retains Arm's upstream repository documentation sources. WCH CH340C,
 WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
@@ -82,8 +83,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines seventy-six public-reference
-passing cases and sixty-eight paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines seventy-seven public-reference
+passing cases and seventy-five paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -208,8 +209,14 @@ passing cases and sixty-eight paired injected-error cases:
 | `bosch_bme280_vddio_overvoltage_detected` | `examples/bad_bosch_bme280_vddio_overvoltage/project.yaml` | fail | Detects BME280 `VDDIO` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `onsemi_1n4148ws_switching_diode_passes` | `examples/good_diode_switching/project.yaml` | pass | 1N4148WS switching diode feeds a 1 k load while retaining the source-backed generated-SPICE model and diode operating-limit probes. |
 | `onsemi_1n4148ws_overcurrent_detected` | `examples/bad_diode_overcurrent/project.yaml` | fail | Detects 1N4148WS forward current above the source-backed 150 mA average rectified-current rating. |
+| `onsemi_1n4148ws_reverse_voltage_detected` | `examples/bad_diode_reverse_voltage/project.yaml` | fail | Detects 1N4148WS reverse voltage above the source-backed 100 V repetitive peak reverse-voltage rating. |
+| `onsemi_1n4148ws_offset_reverse_voltage_detected` | `examples/bad_diode_reverse_voltage_offset/project.yaml` | fail | Detects reverse-voltage stress using the diode terminal voltage difference rather than node-to-ground voltage. |
+| `onsemi_1n4148ws_missing_derating_detected` | `examples/bad_diode_missing_derating/project.yaml` | fail | Detects temperature-derating requests when the diode model lacks power-derating metadata. |
 | `onsemi_nds7002a_low_side_switch_passes` | `examples/good_mosfet_low_side_switch/project.yaml` | pass | NDS7002A low-side MOSFET switch pulls a 100 ohm load while retaining the source-backed generated-SPICE model and MOSFET operating-limit probes. |
 | `onsemi_nds7002a_overcurrent_detected` | `examples/bad_mosfet_overcurrent/project.yaml` | fail | Detects NDS7002A drain current above the source-backed 280 mA continuous rating and power above the 300 mW limit. |
+| `onsemi_nds7002a_high_ambient_derating_detected` | `examples/bad_mosfet_high_ambient_derating/project.yaml` | fail | Detects NDS7002A power dissipation above the source-backed temperature-derated limit at high ambient temperature. |
+| `onsemi_nds7002a_unqualified_pulse_detected` | `examples/bad_mosfet_unqualified_pulse_rating/project.yaml` | fail | Detects pulsed-current use when the MOSFET model lacks pulse width and duty-cycle qualification metadata. |
+| `onsemi_nds7002a_model_missing_sha_detected` | `examples/bad_mosfet_model_missing_sha/project.yaml` | fail | Detects an external MOSFET model file without a pinned SHA-256 digest. |
 | `onsemi_bss84_high_side_switch_passes` | `examples/good_pmos_high_side_switch/project.yaml` | pass | BSS84 high-side PMOS switch pulls a 200 ohm load from a 5 V rail while retaining the source-backed generated-SPICE model and MOSFET operating-limit probes. |
 | `onsemi_bss84_overcurrent_detected` | `examples/bad_pmos_overcurrent/project.yaml` | fail | Detects BSS84 drain current above the source-backed 130 mA continuous magnitude. |
 | `onsemi_fdmc86184_qualified_pulse_passes` | `examples/good_mosfet_qualified_pulse_current/project.yaml` | pass | FDMC86184 low-side pulse switch exercises source-backed pulsed-current width and duty metadata without exceeding the qualified pulse envelope. |
@@ -223,6 +230,8 @@ passing cases and sixty-eight paired injected-error cases:
 | `onsemi_2n3906_collector_overcurrent_detected` | `examples/bad_onsemi_2n3906_collector_overcurrent/project.yaml` | fail | Detects a 2N3906 collector-current violation above the source-backed 200 mA continuous magnitude while preserving the signed rating value. |
 | `onsemi_1n5819_schottky_rectifier_passes` | `examples/good_onsemi_1n5819_schottky_rectifier/project.yaml` | pass | 1N5819 Schottky rectifier feeds a light 5 V load while retaining the source-backed generated-SPICE model and diode operating-limit probes. |
 | `onsemi_1n5819_overcurrent_detected` | `examples/bad_onsemi_1n5819_overcurrent/project.yaml` | fail | Detects 1N5819 forward current above the source-backed 1 A average rectified-current rating. |
+| `kingbright_apt1608surck_led_indicator_passes` | `examples/good_kingbright_apt1608surck_led_indicator/project.yaml` | pass | APT1608SURCK red LED indicator driven from 3.3 V through 1 kOhm while retaining the source-backed generated-SPICE card and LED operating-limit probes. |
+| `kingbright_apt1608surck_overcurrent_detected` | `examples/bad_kingbright_apt1608surck_led_overcurrent/project.yaml` | fail | Detects APT1608SURCK LED forward current and power above the source-backed 30 mA / 75 mW ratings. |
 | `ti_csd17484f4_low_side_switch_passes` | `examples/good_csd17484f4_low_side_switch/project.yaml` | pass | CSD17484F4 generated-SPICE low-side MOSFET switch observation with the retained TI SPICE card. |
 | `ti_csd17484f4_vcsel_capacitor_discharge_passes` | `examples/good_csd17484f4_vcsel_capacitor_discharge/project.yaml` | pass | CSD17484F4 generated-SPICE capacitor-discharge observation with an initial-condition VCSEL-style load path. |
 | `onsemi_nl27wz17_logic_buffer_observation_passes` | `examples/good_onsemi_nl27wz17_logic_buffer_observation/project.yaml` | pass | NL27WZ17 generated-SPICE logic-buffer observation with 3.3 V VCC, one high input mirrored high, and one low input mirrored low. |
@@ -243,7 +252,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=144, passed=144, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=152, passed=152, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -310,18 +319,25 @@ Observed detection details:
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UFLASH.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UBME.VDDIO` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `onsemi_1n4148ws_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `IF_AV`: maximum simulated current was `0.384935 A`, limit is `0.150000 A`; it also exceeded `PD` at `0.443047 W` against `0.200000 W`. |
+| `onsemi_1n4148ws_reverse_voltage_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `VRRM`: maximum simulated voltage was `119.995528 V`, limit is `100.000000 V`. |
+| `onsemi_1n4148ws_offset_reverse_voltage_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `VRRM`: maximum simulated voltage was `119.995528 V`, limit is `100.000000 V`. |
+| `onsemi_1n4148ws_missing_derating_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` model `vendor.onsemi.1n4148ws` has `PD` or `Ptot` but lacks linear temperature derating metadata required by scenario ambient temperature. |
 | `onsemi_nds7002a_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `0.703265 A`, limit is `0.280000 A`; it also exceeded `PD` at `1.248291 W` against `0.300000 W`. |
+| `onsemi_nds7002a_high_ambient_derating_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `PD`: maximum simulated power was `0.139956 W`, limit is `0.120000 W`. |
+| `onsemi_nds7002a_unqualified_pulse_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` model `vendor.onsemi.nds7002a` enables pulse current checks but lacks qualified pulse rating metadata for `ID_pulsed`. |
+| `onsemi_nds7002a_model_missing_sha_detected` | `SPICE_TRANSIENT_ANALYSIS` | Generated SPICE component `M1` requires model file `models/spice/onsemi/nds7002a.lib`, but the matching `analog.model_files` entry has no SHA-256 pin. |
 | `onsemi_bss84_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `0.210814 A`, limit is `0.130000 A`. |
 | `onsemi_fdmc86184_pulse_duty_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `ID_continuous`: maximum simulated current was `16.607301 A`, limit is `12.000000 A`; measured pulse duration was about `500.17 us` and duty cycle about `0.250085`, above the encoded `300 us` / `0.02` pulse-rating envelope. |
 | `onsemi_fdmc86184_soa_violation_detected` | `SPICE_OPERATING_LIMIT` | Component `M1` exceeded datasheet `PD`: maximum simulated power was `650.235557 W`, limit is `2.300000 W`; it also exceeded digitized SOA curve `forward_bias_100us` with `ID 15.040721 A` at `VDS 43.231676 V` against `14.801354 A` allowed. |
 | `onsemi_ss8050_collector_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `Q1` exceeded datasheet `IC`: maximum simulated current was `2.224090 A`, limit is `1.500000 A`; it also exceeded `PD` at `3.124999 W` against `1.000000 W`. |
+| `kingbright_apt1608surck_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `DLED` exceeded datasheet `IF`: maximum simulated current was `0.071788 A`, limit is `0.030000 A`; it also exceeded `PD` at `0.188874 W` against `0.075000 W`. |
 | `onsemi_nl27wz17_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `logic_6v` supplies `UBUF.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All seventy-six public-reference pass cases produced zero critical findings.
-All sixty-eight paired injected-error cases failed with the expected critical
-finding ID, and all sixty-eight repair-pair checks passed.
+All seventy-seven public-reference pass cases produced zero critical findings.
+All seventy-five paired injected-error cases failed with the expected critical
+finding ID, and all seventy-five repair-pair checks passed.
 
 ## Interpretation Limits
 

@@ -663,6 +663,27 @@ cases:
       - id: SPICE_OPERATING_LIMIT
         severity: critical
 
+  - id: onsemi_1n4148ws_reverse_voltage_detected
+    project: ../examples/bad_diode_reverse_voltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
+  - id: onsemi_1n4148ws_offset_reverse_voltage_detected
+    project: ../examples/bad_diode_reverse_voltage_offset/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
+  - id: onsemi_1n4148ws_missing_derating_detected
+    project: ../examples/bad_diode_missing_derating/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
   - id: onsemi_nds7002a_low_side_switch_passes
     project: ../examples/good_mosfet_low_side_switch/project.yaml
     expect: pass
@@ -672,6 +693,27 @@ cases:
     expect: fail
     required_findings:
       - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
+  - id: onsemi_nds7002a_high_ambient_derating_detected
+    project: ../examples/bad_mosfet_high_ambient_derating/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
+  - id: onsemi_nds7002a_unqualified_pulse_detected
+    project: ../examples/bad_mosfet_unqualified_pulse_rating/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
+  - id: onsemi_nds7002a_model_missing_sha_detected
+    project: ../examples/bad_mosfet_model_missing_sha/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_TRANSIENT_ANALYSIS
         severity: critical
 
   - id: onsemi_bss84_high_side_switch_passes
@@ -742,6 +784,17 @@ cases:
 
   - id: onsemi_1n5819_overcurrent_detected
     project: ../examples/bad_onsemi_1n5819_overcurrent/project.yaml
+    expect: fail
+    required_findings:
+      - id: SPICE_OPERATING_LIMIT
+        severity: critical
+
+  - id: kingbright_apt1608surck_led_indicator_passes
+    project: ../examples/good_kingbright_apt1608surck_led_indicator/project.yaml
+    expect: pass
+
+  - id: kingbright_apt1608surck_overcurrent_detected
+    project: ../examples/bad_kingbright_apt1608surck_led_overcurrent/project.yaml
     expect: fail
     required_findings:
       - id: SPICE_OPERATING_LIMIT
@@ -1131,11 +1184,47 @@ repairs:
     fixes_findings:
       - SPICE_OPERATING_LIMIT
 
+  - id: fix_onsemi_1n4148ws_reverse_voltage
+    detects_case: onsemi_1n4148ws_reverse_voltage_detected
+    fixed_case: onsemi_1n4148ws_switching_diode_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_1n4148ws_offset_reverse_voltage
+    detects_case: onsemi_1n4148ws_offset_reverse_voltage_detected
+    fixed_case: onsemi_1n4148ws_switching_diode_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_1n4148ws_missing_derating
+    detects_case: onsemi_1n4148ws_missing_derating_detected
+    fixed_case: onsemi_1n4148ws_switching_diode_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
   - id: fix_onsemi_nds7002a_overcurrent
     detects_case: onsemi_nds7002a_overcurrent_detected
     fixed_case: onsemi_nds7002a_low_side_switch_passes
     fixes_findings:
       - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_nds7002a_high_ambient_derating
+    detects_case: onsemi_nds7002a_high_ambient_derating_detected
+    fixed_case: onsemi_nds7002a_low_side_switch_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_nds7002a_unqualified_pulse
+    detects_case: onsemi_nds7002a_unqualified_pulse_detected
+    fixed_case: onsemi_nds7002a_low_side_switch_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
+  - id: fix_onsemi_nds7002a_model_missing_sha
+    detects_case: onsemi_nds7002a_model_missing_sha_detected
+    fixed_case: onsemi_nds7002a_low_side_switch_passes
+    fixes_findings:
+      - SPICE_TRANSIENT_ANALYSIS
 
   - id: fix_onsemi_bss84_overcurrent
     detects_case: onsemi_bss84_overcurrent_detected
@@ -1176,6 +1265,12 @@ repairs:
   - id: fix_onsemi_1n5819_overcurrent
     detects_case: onsemi_1n5819_overcurrent_detected
     fixed_case: onsemi_1n5819_schottky_rectifier_passes
+    fixes_findings:
+      - SPICE_OPERATING_LIMIT
+
+  - id: fix_kingbright_apt1608surck_overcurrent
+    detects_case: kingbright_apt1608surck_overcurrent_detected
+    fixed_case: kingbright_apt1608surck_led_indicator_passes
     fixes_findings:
       - SPICE_OPERATING_LIMIT
 
