@@ -62,6 +62,7 @@ audit the modeled facts without relying on chat history.
 | onsemi 1N4148WS switching diode use | <https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf> | `docs/research/datasheets/onsemi/1n4148ws.pdf` |
 | onsemi NDS7002A low-side MOSFET switch use | <https://www.onsemi.com/download/data-sheet/pdf/nds7002a-d.pdf> | `docs/research/datasheets/onsemi/nds7002a.pdf` |
 | onsemi NL27WZ17 dual non-inverting Schmitt-trigger buffer use | <https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf> | `docs/research/datasheets/onsemi/nl27wz17.pdf` |
+| JLC/EasyEDA BOM/CPL and KiCad footprint-property consistency | committed Board IR fixtures with `source.format: jlc_assembly` plus imported KiCad footprint properties | `examples/good_assembly_footprint_alignment/project.yaml` and `examples/bad_assembly_footprint_alignment/project.yaml` |
 | Espressif ESP32-S3-WROOM-1U-N16R8 application boot module use | <https://documentation.espressif.com/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/espressif/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf` |
 
 The earlier source URLs through the ESP32-WROOM-32E row and the ESP32-S3 row
@@ -85,8 +86,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines eighty-eight public-reference
-passing cases and eighty-six paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines eighty-nine public-reference
+passing cases and eighty-seven paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -112,6 +113,8 @@ passing cases and eighty-six paired injected-error cases:
 | `jlcpcb_solder_paste_aperture_size_process_detected` | `examples/bad_solder_paste_aperture_size_jlc_process/project.yaml` | fail | Detects JLCPCB stencil feature and segment apertures below the process minimum size. |
 | `jlcpcb_solder_paste_area_ratio_process_passes` | `examples/good_solder_paste_aperture_area_ratio_jlc/project.yaml` | pass | JLCPCB stencil aperture area-ratio fixture satisfying the source-backed minimum area ratio. |
 | `jlcpcb_solder_paste_area_ratio_process_detected` | `examples/bad_solder_paste_aperture_area_ratio_jlc/project.yaml` | fail | Detects a JLCPCB stencil aperture area ratio below the source-backed process minimum. |
+| `assembly_footprint_alignment_passes` | `examples/good_assembly_footprint_alignment/project.yaml` | pass | JLC/EasyEDA BOM/CPL footprint, part-number, side, and rotation evidence matches imported KiCad footprint properties and placement evidence. |
+| `assembly_footprint_alignment_detected` | `examples/bad_assembly_footprint_alignment/project.yaml` | fail | Detects direct contradictions between JLC/EasyEDA BOM/CPL evidence and imported KiCad footprint properties, placement side, and rotation. |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
@@ -276,7 +279,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=174, passed=174, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=176, passed=176, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -297,6 +300,7 @@ Observed detection details:
 | `jlcpcb_solder_mask_dam_process_detected` | `SOLDER_MASK_DAM_VALID` | Solder-mask feature and feature openings on `F.Mask` leave only `0.080000 mm` mask dam; required at least `0.100000 mm`. |
 | `jlcpcb_solder_paste_aperture_size_process_detected` | `SOLDER_PASTE_APERTURE_SIZE_VALID` | Solder-paste feature opening on `F.Paste` has minimum aperture size `0.080000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. Solder-paste segment opening on `F.Paste` has minimum aperture size `0.070000 mm`; JLCPCB stencil process requires greater than `0.080000 mm`. |
 | `jlcpcb_solder_paste_area_ratio_process_detected` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | Solder-paste feature opening on `F.Paste` has stencil aperture area ratio `0.300000`; JLCPCB/IPC guidance requires at least `0.660000`. |
+| `assembly_footprint_alignment_detected` | `ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID` | Component U1 assembly source.footprint 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm' does not match any imported KiCad footprint property value. |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
 | `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
@@ -370,9 +374,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All eighty-eight public-reference pass cases produced zero critical findings.
-All eighty-six paired injected-error cases failed with the expected critical
-finding ID, and all eighty-six repair-pair checks passed.
+All eighty-nine public-reference pass cases produced zero critical findings.
+All eighty-seven paired injected-error cases failed with the expected critical
+finding ID, and all eighty-seven repair-pair checks passed.
 
 ## Interpretation Limits
 

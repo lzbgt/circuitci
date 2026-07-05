@@ -129,6 +129,17 @@ cases:
       - id: SOLDER_PASTE_APERTURE_AREA_RATIO_VALID
         severity: critical
 
+  - id: assembly_footprint_alignment_passes
+    project: ../examples/good_assembly_footprint_alignment/project.yaml
+    expect: pass
+
+  - id: assembly_footprint_alignment_detected
+    project: ../examples/bad_assembly_footprint_alignment/project.yaml
+    expect: fail
+    required_findings:
+      - id: ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
+        severity: critical
+
   - id: diodes_ap2112k_typical_ldo_passes
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
@@ -1028,6 +1039,12 @@ repairs:
     fixed_case: jlcpcb_solder_paste_area_ratio_process_passes
     fixes_findings:
       - SOLDER_PASTE_APERTURE_AREA_RATIO_VALID
+
+  - id: fix_assembly_footprint_alignment
+    detects_case: assembly_footprint_alignment_detected
+    fixed_case: assembly_footprint_alignment_passes
+    fixes_findings:
+      - ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
 
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected

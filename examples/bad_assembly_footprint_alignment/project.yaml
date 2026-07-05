@@ -1,0 +1,54 @@
+project:
+  name: bad_assembly_footprint_alignment
+  version: 0.1.0
+libraries:
+  - ../../libs/generic/analog
+board:
+  components:
+    U1:
+      model: generic.analog.resistor
+      pins:
+        A: NET1
+        B: GND
+      source:
+        format: jlc_assembly
+        footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+        manufacturer_part: NE555D
+        supplier_part: C12345
+        placement_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+        placement_side: top
+        placement_side_confidence: source_explicit
+        placement_rotation_deg: 90
+        placement_orientation_confidence: source_explicit
+  nets:
+    NET1:
+      kind: digital_or_analog
+    GND:
+      kind: ground
+  layout:
+    placements:
+      U1:
+        x_mm: 0.0
+        y_mm: 0.0
+        side: bottom
+        rotation_deg: 180.0
+    footprints:
+      U1:
+        properties:
+          - name: Footprint
+            value: Package_SO:TSSOP-8_3x3mm_P0.65mm
+            source: kicad_footprint_identifier
+          - name: JLCPCB Part
+            value: C99999
+            source: kicad_footprint_property
+          - name: MPN
+            value: TLC555ID
+            source: kicad_footprint_property
+scenarios:
+  - name: assembly_alignment
+    type: manufacturing
+    checks:
+      - ASSEMBLY_FOOTPRINT_ALIGNMENT_VALID
+    parameters:
+      components: [U1]
+      rotation_tolerance_deg: 0.01
