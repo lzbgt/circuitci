@@ -12,6 +12,10 @@ cases:
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
 
+  - id: diodes_ap2112k_ldo_observation_passes
+    project: ../examples/good_ap2112k_3v3_ldo_observation/project.yaml
+    expect: pass
+
   - id: diodes_ap2112k_dropout_detected
     project: ../examples/bad_diodes_ap2112k_3v3_dropout/project.yaml
     expect: fail
@@ -23,6 +27,10 @@ cases:
     project: ../examples/good_microchip_mcp73831_usb_charger/project.yaml
     expect: pass
 
+  - id: microchip_mcp73831_charger_observation_passes
+    project: ../examples/good_mcp73831_charger_observation/project.yaml
+    expect: pass
+
   - id: microchip_mcp73831_usb_budget_detected
     project: ../examples/bad_microchip_mcp73831_usb_budget/project.yaml
     expect: fail
@@ -32,6 +40,10 @@ cases:
 
   - id: ti_bq24075_typical_usb_charger_passes
     project: ../examples/good_ti_bq24075_usb_charger/project.yaml
+    expect: pass
+
+  - id: ti_bq24075_power_path_observation_passes
+    project: ../examples/good_bq24075_power_path_observation/project.yaml
     expect: pass
 
   - id: ti_bq24075_usb_budget_detected
@@ -63,6 +75,10 @@ cases:
     project: ../examples/good_ti_tps2115a_power_mux/project.yaml
     expect: pass
 
+  - id: ti_tps2115a_power_mux_observation_passes
+    project: ../examples/good_tps2115a_power_mux_observation/project.yaml
+    expect: pass
+
   - id: ti_tps2115a_output_overcurrent_detected
     project: ../examples/bad_ti_tps2115a_output_current/project.yaml
     expect: fail
@@ -72,6 +88,10 @@ cases:
 
   - id: ti_tps2121_typical_power_mux_passes
     project: ../examples/good_ti_tps2121_power_mux/project.yaml
+    expect: pass
+
+  - id: ti_tps2121_power_mux_observation_passes
+    project: ../examples/good_tps2121_power_mux_observation/project.yaml
     expect: pass
 
   - id: ti_tps2121_output_overcurrent_detected
@@ -136,6 +156,10 @@ cases:
     project: ../examples/good_ti_tpd2eusb30_usb_esd/project.yaml
     expect: pass
 
+  - id: ti_tpd2eusb30_usb_esd_observation_passes
+    project: ../examples/good_tpd2eusb30_usb_esd_observation/project.yaml
+    expect: pass
+
   - id: ti_tpd2eusb30_capacitance_budget_detected
     project: ../examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml
     expect: fail
@@ -145,6 +169,10 @@ cases:
 
   - id: nexperia_prtr5v0u2x_typical_usb_esd_passes
     project: ../examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml
+    expect: pass
+
+  - id: nexperia_prtr5v0u2x_usb_esd_observation_passes
+    project: ../examples/good_nexperia_prtr5v0u2x_usb_esd_observation/project.yaml
     expect: pass
 
   - id: nexperia_prtr5v0u2x_capacitance_budget_detected
@@ -198,6 +226,10 @@ cases:
     project: ../examples/good_ti_tps62162_3v3_buck/project.yaml
     expect: pass
 
+  - id: ti_tps62162_buck_observation_passes
+    project: ../examples/good_tps62162_3v3_buck_observation/project.yaml
+    expect: pass
+
   - id: ti_tps62162_output_overcurrent_detected
     project: ../examples/bad_ti_tps62162_3v3_output_current/project.yaml
     expect: fail
@@ -227,6 +259,10 @@ cases:
     project: ../examples/good_ti_tps61023_5v_boost/project.yaml
     expect: pass
 
+  - id: ti_tps61023_boost_observation_passes
+    project: ../examples/good_tps61023_5v_boost_observation/project.yaml
+    expect: pass
+
   - id: ti_tps61023_input_inductance_detected
     project: ../examples/bad_ti_tps61023_5v_input_inductance/project.yaml
     expect: fail
@@ -236,6 +272,10 @@ cases:
 
   - id: ti_tps63802_typical_3v3_buck_boost_passes
     project: ../examples/good_ti_tps63802_3v3_buck_boost/project.yaml
+    expect: pass
+
+  - id: ti_tps63802_buck_boost_observation_passes
+    project: ../examples/good_tps63802_3v3_buck_boost_observation/project.yaml
     expect: pass
 
   - id: ti_tps63802_switch_inductance_detected

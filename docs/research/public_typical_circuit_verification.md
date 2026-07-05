@@ -68,23 +68,28 @@ part-specific research notes under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines fifty public-reference
+`suites/public_typical_circuits.yaml` combines sixty public-reference
 passing cases and fifty-eight paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
+| `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `diodes_ap2112k_dropout_detected` | `examples/bad_diodes_ap2112k_3v3_dropout/project.yaml` | fail | Detects insufficient nominal dropout margin. |
 | `microchip_mcp73831_typical_usb_charger_passes` | `examples/good_microchip_mcp73831_usb_charger/project.yaml` | pass | MCP73831 USB-powered 4.2 V Li-Ion charger with 100 mA programmed current. |
+| `microchip_mcp73831_charger_observation_passes` | `examples/good_mcp73831_charger_observation/project.yaml` | pass | MCP73831 generated-SPICE charger observation with USB input, battery node, and source-backed programmed current. |
 | `microchip_mcp73831_usb_budget_detected` | `examples/bad_microchip_mcp73831_usb_budget/project.yaml` | fail | Detects charge current above declared USB input budget. |
 | `ti_bq24075_typical_usb_charger_passes` | `examples/good_ti_bq24075_usb_charger/project.yaml` | pass | BQ24075 USB-powered 4.2 V Li-Ion charger with 450 mA programmed current and 5.5 V system output evidence. |
+| `ti_bq24075_power_path_observation_passes` | `examples/good_bq24075_power_path_observation/project.yaml` | pass | BQ24075 generated-SPICE power-path charger observation with USB input, SYS output, battery node, and programmed charge current. |
 | `ti_bq24075_usb_budget_detected` | `examples/bad_ti_bq24075_usb_budget/project.yaml` | fail | Detects programmed charge current above declared USB input budget. |
 | `ti_bq24075_charge_current_detected` | `examples/bad_ti_bq24075_charge_current/project.yaml` | fail | Detects programmed charge current above the datasheet-backed 1.5 A charger maximum. |
 | `ti_bq25798_nvdc_observation_passes` | `examples/good_bq25798_nvdc_observation/project.yaml` | pass | BQ25798 generated-SPICE NVDC buck-boost charger observation with 20 V adapter input, 12 V SYS target, battery node, and 2 A programmed charge current. |
 | `ti_bq25798_charge_current_detected` | `examples/bad_bq25798_charge_current/project.yaml` | fail | Detects programmed charge current above the datasheet-backed 5 A BQ25798 charger maximum. |
 | `ti_tps2115a_typical_power_mux_passes` | `examples/good_ti_tps2115a_power_mux/project.yaml` | pass | TPS2115A USB-selected mux with inactive unpowered battery input. |
+| `ti_tps2115a_power_mux_observation_passes` | `examples/good_tps2115a_power_mux_observation/project.yaml` | pass | TPS2115A generated-SPICE power-mux observation with selected USB input and protected output rail. |
 | `ti_tps2115a_output_overcurrent_detected` | `examples/bad_ti_tps2115a_output_current/project.yaml` | fail | Detects output load above modeled mux current limit. |
 | `ti_tps2121_typical_power_mux_passes` | `examples/good_ti_tps2121_power_mux/project.yaml` | pass | TPS2121 USB-selected priority mux with inactive unpowered backup input. |
+| `ti_tps2121_power_mux_observation_passes` | `examples/good_tps2121_power_mux_observation/project.yaml` | pass | TPS2121 generated-SPICE priority-mux observation with selected adapter input and protected output rail. |
 | `ti_tps2121_output_overcurrent_detected` | `examples/bad_ti_tps2121_output_current/project.yaml` | fail | Detects output load above the datasheet-backed 4.5 A mux current class. |
 | `ti_tps2121_input_overvoltage_detected` | `examples/bad_ti_tps2121_input_overvoltage/project.yaml` | fail | Detects selected input voltage above the datasheet-backed 22 V operating maximum. |
 | `ti_tps22918_load_switch_passes` | `examples/good_ti_tps22918_load_switch/project.yaml` | pass | TPS22918 active-high load switch with 5 V input, powered 3.3 V output, and explicit `ON` high evidence. |
@@ -96,8 +101,10 @@ passing cases and fifty-eight paired injected-error cases:
 | `ti_tps24751_hot_swap_observation_passes` | `examples/good_tps24751_hot_swap_observation/project.yaml` | pass | TPS24751/CSD17501Q5A hot-swap/generated-SPICE observation with 12 V input, protected output rail, explicit enabled `EN` evidence, and a light load. |
 | `ti_tps24751_missing_enable_detected` | `examples/bad_tps24751_missing_enable/project.yaml` | fail | Detects a powered TPS24751 protected output without source-backed evidence that `EN` is high. |
 | `ti_tpd2eusb30_typical_usb_esd_passes` | `examples/good_ti_tpd2eusb30_usb_esd/project.yaml` | pass | TPD2EUSB30 D+/D- clamps with 5.5 V standoff and 0.7 pF line capacitance evidence. |
+| `ti_tpd2eusb30_usb_esd_observation_passes` | `examples/good_tpd2eusb30_usb_esd_observation/project.yaml` | pass | TPD2EUSB30 generated-SPICE USB D+/D- clamp observation with normal data-line voltages below source-backed standoff. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml` | fail | Detects clamp capacitance above a stricter interface budget. |
 | `nexperia_prtr5v0u2x_typical_usb_esd_passes` | `examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml` | pass | PRTR5V0U2X rail-to-rail D+/D- clamp with 5.5 V standoff and 1.5 pF maximum I/O line capacitance evidence. |
+| `nexperia_prtr5v0u2x_usb_esd_observation_passes` | `examples/good_nexperia_prtr5v0u2x_usb_esd_observation/project.yaml` | pass | PRTR5V0U2X generated-SPICE USB D+/D- clamp observation with rail-to-rail reference pins and normal line voltages. |
 | `nexperia_prtr5v0u2x_capacitance_budget_detected` | `examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance/project.yaml` | fail | Detects PRTR5V0U2X capacitance above a stricter USB data-line budget. |
 | `nexperia_prtr5v0u2x_reference_detected` | `examples/bad_nexperia_prtr5v0u2x_usb_esd_reference/project.yaml` | fail | Detects PRTR5V0U2X `VCC` tied to a non-power signal net instead of a power reference. |
 | `nexperia_pesd5v0s1ul_vbus_esd_passes` | `examples/good_nexperia_pesd5v0s1ul_vbus_esd/project.yaml` | pass | PESD5V0S1UL VBUS-to-ground clamp with source-backed 5.0 V standoff and 200 pF maximum capacitance evidence. |
@@ -107,13 +114,16 @@ passing cases and fifty-eight paired injected-error cases:
 | `ti_esds552_rs485_esd_observation_passes` | `examples/good_ti_esds552_rs485_esd_observation/project.yaml` | pass | ESDS552 RS-485 A/B generated-SPICE observation with normal line voltages below the 12 V standoff limit. |
 | `ti_esds552_reference_detected` | `examples/bad_ti_esds552_rs485_esd_reference/project.yaml` | fail | Detects ESDS552 `GND` tied to the RS-485 A signal net instead of a ground reference. |
 | `ti_tps62162_typical_buck_passes` | `examples/good_ti_tps62162_3v3_buck/project.yaml` | pass | TPS62162 fixed 3.3 V synchronous buck with 12 V input, 10 uF input capacitance, 22 uF output capacitance, and 2.2 uH direct output inductance. |
+| `ti_tps62162_buck_observation_passes` | `examples/good_tps62162_3v3_buck_observation/project.yaml` | pass | TPS62162 generated-SPICE buck observation with 12 V input, source-backed 3.3 V output target, and light load. |
 | `ti_tps62162_output_overcurrent_detected` | `examples/bad_ti_tps62162_3v3_output_current/project.yaml` | fail | Detects output load above modeled buck current limit. |
 | `ti_tps62162_output_inductance_detected` | `examples/bad_ti_tps62162_3v3_output_inductance/project.yaml` | fail | Detects direct SW-to-output inductance below the datasheet-backed minimum. |
 | `ti_tps54331_5v_buck_observation_passes` | `examples/good_tps54331_5v_buck_observation/project.yaml` | pass | TPS54331 5 V buck/generated-SPICE observation with source-backed 12 V input, 5 V output feedback, and light load. |
 | `ti_tps54331_5v_output_overcurrent_detected` | `examples/bad_tps54331_5v_output_current/project.yaml` | fail | Detects TPS54331 5 V buck output load above the source-backed 3 A regulator output-current class. |
 | `ti_tps61023_typical_5v_boost_passes` | `examples/good_ti_tps61023_5v_boost/project.yaml` | pass | TPS61023 5 V boost with Li-ion input, 10 uF input capacitance, 2 x 22 uF output capacitance, and 1 uH direct input inductance. |
+| `ti_tps61023_boost_observation_passes` | `examples/good_tps61023_5v_boost_observation/project.yaml` | pass | TPS61023 generated-SPICE boost observation with Li-ion input, 5 V output target, and source-backed support network. |
 | `ti_tps61023_input_inductance_detected` | `examples/bad_ti_tps61023_5v_input_inductance/project.yaml` | fail | Detects direct VIN-to-SW boost inductance below the datasheet-backed minimum. |
 | `ti_tps63802_typical_3v3_buck_boost_passes` | `examples/good_ti_tps63802_3v3_buck_boost/project.yaml` | pass | TPS63802 3.3 V buck-boost with Li-ion input, 10 uF input capacitance, 22 uF output capacitance, and 0.47 uH direct L1-L2 switch inductance. |
+| `ti_tps63802_buck_boost_observation_passes` | `examples/good_tps63802_3v3_buck_boost_observation/project.yaml` | pass | TPS63802 generated-SPICE buck-boost observation with Li-ion input, 3.3 V output target, and source-backed switch inductance. |
 | `ti_tps63802_switch_inductance_detected` | `examples/bad_ti_tps63802_3v3_switch_inductance/project.yaml` | fail | Detects direct L1-to-L2 buck-boost switch inductance below the datasheet-backed minimum. |
 | `ti_tps63802_output_overcurrent_detected` | `examples/bad_ti_tps63802_3v3_output_current/project.yaml` | fail | Detects output load above the datasheet-backed 2 A output-current condition. |
 | `espressif_esp32_wroom_32e_application_passes` | `examples/good_espressif_esp32_wroom_32e_application/project.yaml` | pass | ESP32-WROOM-32E on a 3.3 V rail with enough source-current budget and GPIO0 biased high for SPI flash boot. |
@@ -193,7 +203,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=108, passed=108, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=118, passed=118, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -259,7 +269,7 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All fifty public-reference pass cases produced zero critical findings.
+All sixty public-reference pass cases produced zero critical findings.
 All fifty-eight paired injected-error cases failed with the expected critical
 finding ID, and all fifty-eight repair-pair checks passed.
 
