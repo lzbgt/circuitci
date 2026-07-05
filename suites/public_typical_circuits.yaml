@@ -8,6 +8,17 @@ suite:
     failing cases inject one constrained design error to measure detector
     behavior against the same public component facts.
 cases:
+  - id: jlcpcb_drill_diameter_process_passes
+    project: ../examples/good_drill_diameter_jlc_process/project.yaml
+    expect: pass
+
+  - id: jlcpcb_drill_diameter_process_detected
+    project: ../examples/bad_drill_diameter_jlc_process/project.yaml
+    expect: fail
+    required_findings:
+      - id: DRILL_DIAMETER_VALID
+        severity: critical
+
   - id: diodes_ap2112k_typical_ldo_passes
     project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
     expect: pass
@@ -842,6 +853,12 @@ cases:
         severity: critical
 
 repairs:
+  - id: fix_jlcpcb_drill_diameter_process
+    detects_case: jlcpcb_drill_diameter_process_detected
+    fixed_case: jlcpcb_drill_diameter_process_passes
+    fixes_findings:
+      - DRILL_DIAMETER_VALID
+
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected
     fixed_case: diodes_ap2112k_typical_ldo_passes

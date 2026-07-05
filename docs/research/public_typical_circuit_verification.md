@@ -44,6 +44,7 @@ audit the modeled facts without relying on chat history.
 | NXP PCA9685 PWM-driver use | <https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf> and NXP product page | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` and `docs/research/smart_robot/sources/pca9685_product.html` |
 | TDK InvenSense ICM-42688-P IMU use | <https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/ds-000347-icm-42688-p-v1.6.pdf> | `docs/research/smart_robot/sources/icm42688p_datasheet.pdf` |
 | JST XH/VH connector contact use | JST connector datasheets plus retained handling precautions | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf`, `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf`, and `docs/research/smart_robot/sources/jst_handling_precautions_terminals_connectors.pdf` |
+| JLCPCB circular drill diameter process use | <https://jlcpcb.com/capabilities/pcb-capabilities> | `docs/research/fabrication/jlcpcb/pcb_capabilities.html` and retained Nuxt page assets |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
 | ST STM32L431 boot and UART/SWD use | <https://www.st.com/resource/en/datasheet/stm32l431rb.pdf> | `docs/research/datasheets/st/stm32l431xx_datasheet.pdf` |
 | Sipeed LicheeRV-Nano-W module use | <https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html> and Sipeed schematic PDF | `docs/research/smart_robot/sources/licheerv_nano_intro.html` and `docs/research/smart_robot/sources/licheerv_nano_70405_schematic.pdf` |
@@ -71,9 +72,10 @@ Nexperia PESD5V0S1UL, TI ESD2CAN24-Q1, TI ESDS552, TI BQ25798, TI TPS22918,
 TI TPS25948, TI TPS24751, TI TPS54331, TI DRV8323, TI TLV803E, TI CSD17484F4,
 TI TXS0108E, TI TCAN3413, TI THVD1450, ST STM32L431, Silicon Labs CP2102N,
 AMS1117, NXP PCA9685, TDK ICM-42688-P, Sipeed LicheeRV-Nano-W, Artery
-AT32F435, Artery AT32M416, JST XH/VH, onsemi 1N4148WS, onsemi NDS7002A,
-onsemi NL27WZ17, Kingbright APT1608SURCK, and Microchip MCP131X/2X source
-artifacts were downloaded or retained from their official vendor URLs.
+AT32F435, Artery AT32M416, JST XH/VH, JLCPCB PCB capabilities, onsemi 1N4148WS,
+onsemi NDS7002A, onsemi NL27WZ17, Kingbright APT1608SURCK, and Microchip
+MCP131X/2X source artifacts were downloaded or retained from their official
+vendor URLs.
 CMSIS-DAP retains Arm's upstream repository documentation sources. WCH CH340C,
 WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
@@ -83,11 +85,13 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines seventy-seven public-reference
-passing cases and seventy-five paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines seventy-eight public-reference
+passing cases and seventy-six paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
+| `jlcpcb_drill_diameter_process_passes` | `examples/good_drill_diameter_jlc_process/project.yaml` | pass | JLCPCB circular drill examples at the source-backed 0.15 mm minimum, 6.3 mm maximum, and a nominal interior size. |
+| `jlcpcb_drill_diameter_process_detected` | `examples/bad_drill_diameter_jlc_process/project.yaml` | fail | Detects circular drill diameters below the JLCPCB 0.15 mm minimum and above the 6.3 mm maximum. |
 | `diodes_ap2112k_typical_ldo_passes` | `examples/good_diodes_ap2112k_3v3_regulator/project.yaml` | pass | AP2112K 3.3 V regulator with 5 V input and 1 uF input/output capacitors. |
 | `diodes_ap2112k_ldo_observation_passes` | `examples/good_ap2112k_3v3_ldo_observation/project.yaml` | pass | AP2112K generated-SPICE LDO observation with 5 V input, 3.3 V regulated output, and light output load. |
 | `ams_ams1117_3v3_ldo_observation_passes` | `examples/good_ams1117_3v3_ldo_observation/project.yaml` | pass | AMS1117-3.3 generated-SPICE LDO observation with 5 V input, 22 uF output support capacitance, and a minimum-load resistor. |
@@ -252,7 +256,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=152, passed=152, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=154, passed=154, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -262,6 +266,7 @@ Observed detection details:
 
 | Detection case | Finding | Observed message |
 | --- | --- | --- |
+| `jlcpcb_drill_diameter_process_detected` | `DRILL_DIAMETER_VALID` | Drill hit `0` is `0.100 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. Drill hit `1` is `6.400 mm`; selected fabrication process supports `0.150 mm` to `6.300 mm` circular drills. |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `diodes_ap2112k_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.650000 A` exceeds regulator limit `0.600000 A`. |
 | `diodes_ap2112k_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `4.700000e-7 F` support capacitance to ground, below required `1.000000e-6 F`. |
@@ -335,9 +340,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All seventy-seven public-reference pass cases produced zero critical findings.
-All seventy-five paired injected-error cases failed with the expected critical
-finding ID, and all seventy-five repair-pair checks passed.
+All seventy-eight public-reference pass cases produced zero critical findings.
+All seventy-six paired injected-error cases failed with the expected critical
+finding ID, and all seventy-six repair-pair checks passed.
 
 ## Interpretation Limits
 
@@ -345,6 +350,7 @@ This suite assesses the validator slices that are currently modeled:
 
 - static power-tree range, dropout, current-budget, support capacitance,
   support inductance, and reference checks,
+- source-backed manufacturing drill-diameter process checks,
 - expected-failure detection through suite `required_findings`,
 - repair-pair accounting from bad variants to public-reference passing cases.
 
