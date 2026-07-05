@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardYamlRepairFindingKind {
     InvalidPowerDomain,
+    ModelNotFound,
     NetNotFound,
     PowerDomainNotFound,
     PinNotDeclared,
@@ -153,6 +154,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
     let mut proposals = match options.finding {
         BoardYamlRepairFindingKind::InvalidPowerDomain => {
             proposals::invalid_power_domain_proposals(&project, &library)?
+        }
+        BoardYamlRepairFindingKind::ModelNotFound => {
+            proposals::model_not_found_proposals(&project, &library)?
         }
         BoardYamlRepairFindingKind::NetNotFound => {
             proposals::net_not_found_proposals(&project, &library)?
@@ -1043,6 +1047,13 @@ fn apply_proposals(
                     continue;
                 }
             }
+        } else if let Some(component_id) = component_model_path(&proposal.yaml_path) {
+            let Some(model_id) = proposal.edits.first().and_then(|edit| edit.to.as_str()) else {
+                proposal.status = "skipped".to_string();
+                proposal.reason_code = Some("unapplicable_yaml_path".to_string());
+                continue;
+            };
+            replace_component_model(project_yaml, component_id, model_id)?;
         } else if proposal.yaml_path.starts_with("/scenarios/")
             && proposal.yaml_path.contains("/analog/model_files/")
         {
@@ -1088,6 +1099,16 @@ fn component_pin_path(path: &str) -> Option<(&str, &str)> {
         return None;
     }
     Some((component_id, pin_path))
+}
+
+fn component_model_path(path: &str) -> Option<&str> {
+    let component_id = path
+        .strip_prefix("/board/components/")?
+        .strip_suffix("/model")?;
+    if component_id.is_empty() || component_id.contains('/') {
+        return None;
+    }
+    Some(component_id)
 }
 
 fn analog_model_file_metadata_path(path: &str) -> Option<(usize, usize, &str)> {
@@ -1206,6 +1227,28 @@ fn add_component_pin(
         bail!("Board IR pin binding {component_id}.{pin_name} already exists.");
     }
     pins.insert(pin_key, Value::String(net_name.to_string()));
+    Ok(())
+}
+
+fn replace_component_model(
+    project_yaml: &mut Value,
+    component_id: &str,
+    model_id: &str,
+) -> Result<()> {
+    let root = project_yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?;
+    let board = get_mapping_field_mut(root, "board")?;
+    let components = get_mapping_field_mut(board, "components")?;
+    let component = components
+        .get_mut(Value::String(component_id.to_string()))
+        .with_context(|| format!("Board IR component {component_id} is missing."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR component {component_id} must be an object."))?;
+    component.insert(
+        Value::String("model".to_string()),
+        Value::String(model_id.to_string()),
+    );
     Ok(())
 }
 
@@ -1607,6 +1650,7 @@ impl BoardYamlRepairFindingKind {
     pub fn finding_id(self) -> &'static str {
         match self {
             Self::InvalidPowerDomain => "INVALID_POWER_DOMAIN",
+            Self::ModelNotFound => "MODEL_NOT_FOUND",
             Self::NetNotFound => "NET_NOT_FOUND",
             Self::PowerDomainNotFound => "POWER_DOMAIN_NOT_FOUND",
             Self::PinNotDeclared => "PIN_NOT_DECLARED",
@@ -1619,6 +1663,7 @@ impl BoardYamlRepairFindingKind {
     pub fn as_cli_value(self) -> &'static str {
         match self {
             Self::InvalidPowerDomain => "invalid-power-domain",
+            Self::ModelNotFound => "model-not-found",
             Self::NetNotFound => "net-not-found",
             Self::PowerDomainNotFound => "power-domain-not-found",
             Self::PinNotDeclared => "pin-not-declared",

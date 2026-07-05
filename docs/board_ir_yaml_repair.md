@@ -12,6 +12,10 @@ Supported repair classes:
 - `invalid-power-domain`: fixes `INVALID_POWER_DOMAIN` by changing the affected
   `board.nets.<net>.kind` value to `power` when a declared model power pin is
   connected to an existing non-power net.
+- `model-not-found`: fixes `MODEL_NOT_FOUND` only when the unresolved
+  `board.components.<component>.model` value maps to exactly one loaded
+  component model id after trimming surrounding whitespace and case-folding. It
+  does not infer models from part numbers, footprints, or manufacturer names.
 - `net-not-found`: fixes `NET_NOT_FOUND` by adding an existing pin reference's
   missing net when the pin is declared by the component model. The new net kind
   is inferred from the model port kind: power ports become `power`, ground ports

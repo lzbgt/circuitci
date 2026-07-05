@@ -74,6 +74,112 @@ pub(super) fn invalid_power_domain_proposals(
         .collect()
 }
 
+pub(super) fn model_not_found_proposals(
+    project: &BoardProject,
+    library: &ComponentLibrary,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let mut proposals = Vec::new();
+    for (component_id, component) in &project.board.components {
+        if library.get(&component.model).is_some() {
+            continue;
+        }
+        let yaml_path = format!("/board/components/{component_id}/model");
+        let affected_pins = component
+            .pins
+            .keys()
+            .map(|pin| format!("{component_id}.{pin}"))
+            .collect::<Vec<_>>();
+        let trimmed_model = component.model.trim();
+        if trimmed_model.is_empty() {
+            proposals.push(blocked_model_not_found_proposal(
+                proposals.len() + 1,
+                &component.model,
+                &yaml_path,
+                affected_pins,
+                "empty_model_id",
+                "Not repairing unresolved model because the component model id is empty after trimming.",
+            ));
+            continue;
+        }
+
+        let exact_trimmed_match = library
+            .get(trimmed_model)
+            .map(|model| model.component_id.as_str());
+        let case_folded_matches = library
+            .iter()
+            .filter_map(|(model_id, _)| {
+                model_id
+                    .eq_ignore_ascii_case(trimmed_model)
+                    .then_some(model_id)
+            })
+            .collect::<Vec<_>>();
+        let candidate = exact_trimmed_match.or_else(|| {
+            if case_folded_matches.len() == 1 {
+                Some(case_folded_matches[0])
+            } else {
+                None
+            }
+        });
+        let Some(model_id) = candidate else {
+            let (reason_code, description) = if case_folded_matches.len() > 1 {
+                (
+                    "ambiguous_model_id_canonicalization",
+                    format!(
+                        "Not repairing unresolved model {} because case-insensitive matching found multiple loaded model ids: {}.",
+                        component.model,
+                        case_folded_matches.join(", ")
+                    ),
+                )
+            } else {
+                (
+                    "unresolved_model_id",
+                    format!(
+                        "Not repairing unresolved model {} because no loaded model id matches after trimming and case-folding.",
+                        component.model
+                    ),
+                )
+            };
+            proposals.push(blocked_model_not_found_proposal(
+                proposals.len() + 1,
+                &component.model,
+                &yaml_path,
+                affected_pins,
+                reason_code,
+                &description,
+            ));
+            continue;
+        };
+        if model_id == component.model {
+            continue;
+        }
+
+        proposals.push(BoardYamlRepairProposal {
+            id: format!("model_not_found_{}", proposals.len() + 1),
+            finding_id: BoardYamlRepairFindingKind::ModelNotFound
+                .finding_id()
+                .to_string(),
+            status: "proposed".to_string(),
+            reason_code: None,
+            description: format!(
+                "Replace unresolved component model {} with canonical loaded model id {model_id}.",
+                component.model
+            ),
+            yaml_path: yaml_path.clone(),
+            affected_pins,
+            edits: vec![BoardYamlRepairEdit {
+                op: "replace".to_string(),
+                path: yaml_path,
+                from: serde_json::Value::String(component.model.clone()),
+                to: serde_json::Value::String(model_id.to_string()),
+                reason:
+                    "MODEL_NOT_FOUND can be repaired only when the unresolved id has one canonical loaded model-id match after trimming and case-folding."
+                        .to_string(),
+            }],
+        });
+    }
+    Ok(proposals)
+}
+
 pub(super) fn net_not_found_proposals(
     project: &BoardProject,
     library: &ComponentLibrary,
@@ -322,6 +428,36 @@ fn required_pin_candidate_net<'a>(
                 None
             }
         })
+}
+
+fn blocked_model_not_found_proposal(
+    index: usize,
+    model_id: &str,
+    yaml_path: &str,
+    affected_pins: Vec<String>,
+    reason_code: &str,
+    description: &str,
+) -> BoardYamlRepairProposal {
+    BoardYamlRepairProposal {
+        id: format!("model_not_found_{index}"),
+        finding_id: BoardYamlRepairFindingKind::ModelNotFound
+            .finding_id()
+            .to_string(),
+        status: "blocked".to_string(),
+        reason_code: Some(reason_code.to_string()),
+        description: description.to_string(),
+        yaml_path: yaml_path.to_string(),
+        affected_pins,
+        edits: vec![BoardYamlRepairEdit {
+            op: "replace".to_string(),
+            path: yaml_path.to_string(),
+            from: serde_json::Value::String(model_id.to_string()),
+            to: serde_json::Value::Null,
+            reason:
+                "Unresolved models are not repaired unless the existing model string proves exactly one loaded canonical model id."
+                    .to_string(),
+        }],
+    }
 }
 
 #[derive(Debug, Default)]
