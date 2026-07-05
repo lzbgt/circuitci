@@ -52,6 +52,7 @@ mod project;
 mod project_example_tests;
 #[cfg(test)]
 mod project_example_workflow_tests;
+mod project_examples;
 mod scope_auto_probes;
 mod shell;
 mod simulation;

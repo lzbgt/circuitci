@@ -114,7 +114,9 @@ proof status.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
-load/import/quit actions. `src/gui/sketch.rs` owns the Board IR graph snapshot,
+load/import/quit actions. `src/gui/project_examples.rs` owns the scope-ready
+GUI example catalog, expected trace/frequency copy, and workflow metadata used
+by Project/Sketch example actions. `src/gui/sketch.rs` owns the Board IR graph snapshot,
 sketch data types, persisted schematic node positions/styles, schematic wire
 route waypoint metadata, shared sketch YAML helpers, and model-port default
 pin/net seeding for library-backed component insertion. `src/gui/sketch_layout.rs`

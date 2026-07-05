@@ -78,11 +78,12 @@ example loading exercises readable connected Sketch layouts without changing
 solver connectivity.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
-helpers, the GUI direct-open example registry with picker metadata, guarded
-example load and load-then-run-Scopes shortcuts, contextual scope-example
-workflow status/action projection, workflow-panel launchers for Run + Scopes
-and Scope Activity in both Project and Sketch docks, deferred Sketch Fit All
-after normal example opens, and the shared Board IR edit history. `src/gui/sketch.rs`
+helpers, guarded example load and load-then-run-Scopes shortcuts,
+workflow-panel launchers for Run + Scopes and Scope Activity in both Project
+and Sketch docks, deferred Sketch Fit All after normal example opens, and the
+shared Board IR edit history. `src/gui/project_examples.rs` owns the GUI
+direct-open example registry, picker metadata, expected trace/frequency copy,
+and contextual scope-example workflow status/action projection. `src/gui/sketch.rs`
 owns Board IR graph snapshots, sketch data types, schematic wire route waypoint
 metadata, shared sketch YAML helpers, and model-port default pin/net seeding
 for library-backed component insertion. `src/gui/sketch_layout.rs` owns graph
