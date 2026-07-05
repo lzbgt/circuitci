@@ -742,6 +742,184 @@ board:
 }
 
 #[test]
+fn repair_yaml_adds_missing_explicit_power_domain_net_on_project_copy() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: missing_explicit_power_domain_net
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      power_domains:
+        P: vin
+      pins:
+        P: vin
+        N: gnd
+  nets:
+    gnd:
+      kind: ground
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+    let output = temp.path().join("repair");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--finding",
+            "power-domain-not-found",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("repair_report.json")).unwrap())
+            .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "pass");
+    assert_eq!(repair_report["finding"], "POWER_DOMAIN_NOT_FOUND");
+    assert_eq!(repair_report["summary"]["proposed"], 1);
+    assert_eq!(repair_report["summary"]["applied"], 1);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 0);
+    assert_eq!(repair_report["summary"]["new_criticals"], 0);
+    assert_eq!(repair_report["proof"]["original_finding_removed"], true);
+    assert_eq!(
+        repair_report["proposals"][0]["yaml_path"],
+        "/board/nets/vin"
+    );
+    assert_eq!(
+        repair_report["proposals"][0]["affected_pins"][0],
+        "V1.P via component power_domains"
+    );
+    assert_eq!(repair_report["proposals"][0]["edits"][0]["op"], "add");
+    assert_eq!(
+        repair_report["proposals"][0]["edits"][0]["to"]["kind"],
+        "power"
+    );
+
+    let original_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(output.join("original/report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_report_schema_valid(&original_report);
+    assert!(
+        original_report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|failure| failure["id"] == "POWER_DOMAIN_NOT_FOUND")
+    );
+
+    let repaired_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(output.join("repaired/report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_report_schema_valid(&repaired_report);
+    assert_eq!(repaired_report["result"], "pass");
+    assert_eq!(repaired_report["summary"]["critical"], 0);
+
+    let repaired_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(output.join("repaired/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(repaired_yaml["board"]["nets"]["vin"]["kind"], "power");
+}
+
+#[test]
+fn repair_yaml_power_domain_not_found_does_not_invent_unnamed_power_net() {
+    let temp = tempfile::tempdir().unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let project = temp.path().join("project.yaml");
+    std::fs::write(
+        &project,
+        format!(
+            r#"
+project:
+  name: missing_unnamed_power_domain
+  version: 0.1.0
+
+libraries:
+  - {}
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      pins:
+        N: gnd
+  nets:
+    gnd:
+      kind: ground
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+    let output = temp.path().join("repair");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "repair-yaml",
+            project.to_str().unwrap(),
+            "--finding",
+            "power-domain-not-found",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let repair_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("repair_report.json")).unwrap())
+            .unwrap();
+    assert_repair_report_schema_valid(&repair_report);
+    assert_eq!(repair_report["result"], "fail");
+    assert_eq!(repair_report["finding"], "POWER_DOMAIN_NOT_FOUND");
+    assert_eq!(repair_report["summary"]["proposed"], 0);
+    assert_eq!(repair_report["summary"]["applied"], 0);
+    assert_eq!(repair_report["summary"]["original_matching_findings"], 1);
+    assert_eq!(repair_report["summary"]["repaired_matching_findings"], 1);
+    assert!(repair_report["proposals"].as_array().unwrap().is_empty());
+    assert!(
+        repair_report["reason_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|code| code == "no_supported_proposal")
+    );
+    assert!(
+        repair_report["reason_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|code| code == "target_finding_remains")
+    );
+
+    let repaired_yaml: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(output.join("repaired/project.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert!(repaired_yaml["board"]["nets"]["vin"].is_null());
+}
+
+#[test]
 fn repair_yaml_removes_pin_not_declared_warning_on_project_copy() {
     let temp = tempfile::tempdir().unwrap();
     let repo = std::env::current_dir().unwrap();

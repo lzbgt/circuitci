@@ -16,6 +16,10 @@ Supported repair classes:
   missing net when the pin is declared by the component model. The new net kind
   is inferred from the model port kind: power ports become `power`, ground ports
   become `ground`, and passive or digital ports become `digital_or_analog`.
+- `power-domain-not-found`: fixes `POWER_DOMAIN_NOT_FOUND` by adding a missing
+  `board.nets.<net>` entry with `kind: power` only when explicit component
+  metadata already names that rail through `power_domains.<pin>` or
+  `power_domain` for a declared model power pin.
 - `pin-not-declared`: fixes warning-level `PIN_NOT_DECLARED` findings by
   removing a copied project's stray `board.components.<component>.pins.<pin>`
   binding when the resolved component model does not declare that pin.

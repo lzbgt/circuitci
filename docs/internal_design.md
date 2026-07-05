@@ -762,7 +762,9 @@ findings visible in repaired proof. Supported repair classes are intentionally
 narrow: `INVALID_POWER_DOMAIN` changes an existing non-power net to `power` when
 a model power pin proves that role,
 `NET_NOT_FOUND` adds a missing net only when declared model pins infer a single
-unambiguous net kind, `PIN_NOT_DECLARED` removes only copied-project pin
+unambiguous net kind, `POWER_DOMAIN_NOT_FOUND` adds a missing power net only
+when explicit component power-domain metadata already names that rail for a
+declared model power pin, `PIN_NOT_DECLARED` removes only copied-project pin
 bindings that the resolved model does not declare, and
 `REQUIRED_PIN_FLOATING` connects a missing required pin only when existing
 component power-domain metadata already names a compatible existing net for

@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 pub enum BoardYamlRepairFindingKind {
     InvalidPowerDomain,
     NetNotFound,
+    PowerDomainNotFound,
     PinNotDeclared,
     RequiredPinFloating,
     AnalogModelPackageMetadata,
@@ -152,6 +153,9 @@ pub fn run_board_yaml_repair(options: BoardYamlRepairOptions) -> Result<BoardYam
             invalid_power_domain_proposals(&project, &library)?
         }
         BoardYamlRepairFindingKind::NetNotFound => net_not_found_proposals(&project, &library)?,
+        BoardYamlRepairFindingKind::PowerDomainNotFound => {
+            power_domain_not_found_proposals(&project, &library)?
+        }
         BoardYamlRepairFindingKind::PinNotDeclared => {
             pin_not_declared_proposals(&project, &library)?
         }
@@ -659,6 +663,66 @@ fn net_not_found_proposals(
         });
     }
     Ok(proposals)
+}
+
+fn power_domain_not_found_proposals(
+    project: &BoardProject,
+    library: &crate::library::ComponentLibrary,
+) -> Result<Vec<BoardYamlRepairProposal>> {
+    let mut by_net: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    for (component_id, component) in &project.board.components {
+        let Some(model) = library.get(&component.model) else {
+            continue;
+        };
+        for (pin_name, port) in &model.ports {
+            if port.kind != PortKind::ElectricalPower {
+                continue;
+            }
+            let Some((net_name, source)) = required_pin_candidate_net(component, pin_name, port)
+            else {
+                continue;
+            };
+            if project.board.nets.contains_key(net_name) {
+                continue;
+            }
+            by_net
+                .entry(net_name.clone())
+                .or_default()
+                .push(format!("{component_id}.{pin_name} via {source}"));
+        }
+    }
+
+    Ok(by_net
+        .into_iter()
+        .enumerate()
+        .map(|(index, (net, affected_pins))| {
+            let yaml_path = format!("/board/nets/{net}");
+            BoardYamlRepairProposal {
+                id: format!("power_domain_not_found_{}", index + 1),
+                finding_id: BoardYamlRepairFindingKind::PowerDomainNotFound
+                    .finding_id()
+                    .to_string(),
+                status: "proposed".to_string(),
+                reason_code: None,
+                description: format!(
+                    "Add missing power net {net} because explicit component power-domain metadata names it for model power pin(s) {}.",
+                    affected_pins.join(", ")
+                ),
+                yaml_path: yaml_path.clone(),
+                affected_pins,
+                edits: vec![BoardYamlRepairEdit {
+                    op: "add".to_string(),
+                    path: yaml_path,
+                    from: serde_json::Value::Null,
+                    to: serde_json::json!({ "kind": "power" }),
+                    reason:
+                        "Missing power-domain nets can be added only when explicit component power-domain metadata names the net for a model power pin."
+                            .to_string(),
+                }],
+            }
+        })
+        .collect())
 }
 
 fn pin_not_declared_proposals(
@@ -1880,6 +1944,7 @@ impl BoardYamlRepairFindingKind {
         match self {
             Self::InvalidPowerDomain => "INVALID_POWER_DOMAIN",
             Self::NetNotFound => "NET_NOT_FOUND",
+            Self::PowerDomainNotFound => "POWER_DOMAIN_NOT_FOUND",
             Self::PinNotDeclared => "PIN_NOT_DECLARED",
             Self::RequiredPinFloating => "REQUIRED_PIN_FLOATING",
             Self::AnalogModelPackageMetadata => "ANALOG_MODEL_PACKAGE_METADATA",
@@ -1891,6 +1956,7 @@ impl BoardYamlRepairFindingKind {
         match self {
             Self::InvalidPowerDomain => "invalid-power-domain",
             Self::NetNotFound => "net-not-found",
+            Self::PowerDomainNotFound => "power-domain-not-found",
             Self::PinNotDeclared => "pin-not-declared",
             Self::RequiredPinFloating => "required-pin-floating",
             Self::AnalogModelPackageMetadata => "analog-model-package-metadata",
