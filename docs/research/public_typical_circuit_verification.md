@@ -83,7 +83,7 @@ part-specific research notes under `docs/research/datasheets/` and
 ## Executed Suite
 
 `suites/public_typical_circuits.yaml` combines seventy-six public-reference
-passing cases and sixty-four paired injected-error cases:
+passing cases and sixty-eight paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -102,6 +102,9 @@ passing cases and sixty-four paired injected-error cases:
 | `microchip_mcp73831_charger_observation_passes` | `examples/good_mcp73831_charger_observation/project.yaml` | pass | MCP73831 generated-SPICE charger observation with USB input, battery node, and source-backed programmed current. |
 | `microchip_mcp73831_prog_resistor_passes` | `examples/good_microchip_mcp73831_prog_resistor/project.yaml` | pass | MCP73831 static PROG-resistor fixture deriving charge current from a 10 kOhm programming resistor. |
 | `microchip_mcp73831_usb_budget_detected` | `examples/bad_microchip_mcp73831_usb_budget/project.yaml` | fail | Detects charge current above declared USB input budget. |
+| `microchip_mcp73831_charge_current_detected` | `examples/bad_microchip_mcp73831_charge_current/project.yaml` | fail | Detects programmed charge current above the datasheet-backed 500 mA charger maximum. |
+| `microchip_mcp73831_prog_resistor_charge_current_detected` | `examples/bad_microchip_mcp73831_prog_resistor_charge_current/project.yaml` | fail | Detects PROG-resistor-derived charge current above the datasheet-backed 500 mA charger maximum. |
+| `microchip_mcp73831_missing_current_detected` | `examples/bad_microchip_mcp73831_missing_current/project.yaml` | fail | Detects missing explicit or PROG-resistor-derived programmed charge current evidence. |
 | `ti_bq24075_typical_usb_charger_passes` | `examples/good_ti_bq24075_usb_charger/project.yaml` | pass | BQ24075 USB-powered 4.2 V Li-Ion charger with 450 mA programmed current and 5.5 V system output evidence. |
 | `ti_bq24075_power_path_observation_passes` | `examples/good_bq24075_power_path_observation/project.yaml` | pass | BQ24075 generated-SPICE power-path charger observation with USB input, SYS output, battery node, and programmed charge current. |
 | `ti_bq24075_usb_budget_detected` | `examples/bad_ti_bq24075_usb_budget/project.yaml` | fail | Detects programmed charge current above declared USB input budget. |
@@ -126,6 +129,7 @@ passing cases and sixty-four paired injected-error cases:
 | `ti_tpd2eusb30_typical_usb_esd_passes` | `examples/good_ti_tpd2eusb30_usb_esd/project.yaml` | pass | TPD2EUSB30 D+/D- clamps with 5.5 V standoff and 0.7 pF line capacitance evidence. |
 | `ti_tpd2eusb30_usb_esd_observation_passes` | `examples/good_tpd2eusb30_usb_esd_observation/project.yaml` | pass | TPD2EUSB30 generated-SPICE USB D+/D- clamp observation with normal data-line voltages below source-backed standoff. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml` | fail | Detects clamp capacitance above a stricter interface budget. |
+| `ti_tpd2eusb30_standoff_detected` | `examples/bad_ti_tpd2eusb30_usb_esd_standoff/project.yaml` | fail | Detects a USB data-line voltage above the TPD2EUSB30 source-backed 5.5 V standoff rating. |
 | `nexperia_prtr5v0u2x_typical_usb_esd_passes` | `examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml` | pass | PRTR5V0U2X rail-to-rail D+/D- clamp with 5.5 V standoff and 1.5 pF maximum I/O line capacitance evidence. |
 | `nexperia_prtr5v0u2x_usb_esd_observation_passes` | `examples/good_nexperia_prtr5v0u2x_usb_esd_observation/project.yaml` | pass | PRTR5V0U2X generated-SPICE USB D+/D- clamp observation with rail-to-rail reference pins and normal line voltages. |
 | `nexperia_prtr5v0u2x_capacitance_budget_detected` | `examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance/project.yaml` | fail | Detects PRTR5V0U2X capacitance above a stricter USB data-line budget. |
@@ -239,7 +243,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=140, passed=140, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=144, passed=144, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -257,6 +261,9 @@ Observed detection details:
 | `ams_ams1117_3v3_output_current_detected` | `POWER_TREE_VALID` | Regulator `UREG` worst-case output load `0.850000 A` exceeds regulator limit `0.800000 A`. |
 | `ams_ams1117_3v3_output_capacitance_detected` | `POWER_TREE_VALID` | Regulator `UREG` output rail `rail_3v3` has `1.000000e-5 F` support capacitance to ground, below required `2.200000e-5 F`. |
 | `microchip_mcp73831_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `0.500000 A` exceeds input rail `usb_5v` current budget `0.100000 A`. |
+| `microchip_mcp73831_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `0.600000 A` exceeds model maximum `0.500000 A`. |
+| `microchip_mcp73831_prog_resistor_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.000000 A` exceeds model maximum `0.500000 A`. |
+| `microchip_mcp73831_missing_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` requires component parameter `programmed_charge_current_A` for programmed charge-current validation. |
 | `ti_bq24075_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.000000 A` exceeds input rail `usb_5v` current budget `0.500000 A`. |
 | `ti_bq24075_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.800000 A` exceeds model maximum `1.500000 A`. |
 | `ti_bq25798_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `6.000000 A` exceeds model maximum `5.000000 A`. |
@@ -268,6 +275,7 @@ Observed detection details:
 | `ti_tps25948_missing_enable_detected` | `POWER_TREE_VALID` | Load switch `UEFUSE` output rail `protected_12v` is declared powered but `UEFUSE.EN` is not proven high. |
 | `ti_tps24751_missing_enable_detected` | `POWER_TREE_VALID` | Load switch `UHOTSWAP` output rail `protected_12v` is declared powered but `UHOTSWAP.EN` is not proven high. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `d1_plus` has `7.000e-13 F` line capacitance, above the `5.000e-13 F` interface limit. |
+| `ti_tpd2eusb30_standoff_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `d1_plus` on component `UESD` sees protected net `usb_dp` at `6.000000 V`, above standoff limit `5.500000 V`. |
 | `nexperia_prtr5v0u2x_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` has `1.500e-12 F` line capacitance on `usb_dp`, above interface limit `1.000e-12 F`. |
 | `nexperia_prtr5v0u2x_reference_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `io1_to_vcc` on component `UESD` reference pin `VCC` is connected to digital-or-analog net `usb_dp`, expected power. |
 | `nexperia_pesd5v0s1ul_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `vbus_to_ground` has `2.000e-10 F` line capacitance, above the `1.000e-10 F` interface limit. |
@@ -312,8 +320,8 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
 All seventy-six public-reference pass cases produced zero critical findings.
-All sixty-four paired injected-error cases failed with the expected critical
-finding ID, and all sixty-four repair-pair checks passed.
+All sixty-eight paired injected-error cases failed with the expected critical
+finding ID, and all sixty-eight repair-pair checks passed.
 
 ## Interpretation Limits
 
