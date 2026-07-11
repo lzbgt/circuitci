@@ -314,6 +314,18 @@ fn draw_node_labels(
 ) {
     if is_device_symbol {
         let label = compact_label(&node.label, 18);
+        if matches!(node.symbol, SketchSymbolKind::Source) {
+            draw_text(
+                svg,
+                node.rect.left() - 6.0,
+                node.rect.center().y + 4.0,
+                "end",
+                text_fill,
+                12.0,
+                &label,
+            );
+            return;
+        }
         draw_text(
             svg,
             node.rect.center().x,

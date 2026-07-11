@@ -89,6 +89,16 @@ fn draw_net_label(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
 }
 
 fn draw_kicad_device_labels(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
+    if matches!(node.symbol, SketchSymbolKind::Source) {
+        painter.text(
+            node.rect.left_center() + egui::vec2(-6.0, 0.0),
+            egui::Align2::RIGHT_CENTER,
+            compact_label(&node.label, 18),
+            egui::FontId::monospace(12.0),
+            with_opacity(egui::Color32::WHITE, opacity),
+        );
+        return;
+    }
     let label_pos = node.rect.center_top() + egui::vec2(0.0, -8.0);
     painter.text(
         label_pos,

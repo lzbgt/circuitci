@@ -3,6 +3,7 @@ use crate::gui::sketch::{ProjectSnapshot, SketchNet, SketchPin};
 use crate::gui::sketch_probes::{
     SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
 };
+use crate::gui::sketch_spice::{SketchComponentSpice, SketchSpiceKind, SketchSpicePulse};
 
 fn test_component() -> SketchComponent {
     SketchComponent {
@@ -256,6 +257,25 @@ fn crossing_reduction_snapshot() -> ProjectSnapshot {
     }
 }
 
+fn test_spice(kind: SketchSpiceKind, value: f64) -> SketchComponentSpice {
+    SketchComponentSpice {
+        kind,
+        value,
+        initial_v: None,
+        pulse: SketchSpicePulse::default_for(kind),
+    }
+}
+
+fn component_detail<'a>(graph: &'a SketchGraph, component_id: &str) -> &'a str {
+    graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component(component_id.to_string()))
+        .unwrap()
+        .detail
+        .as_str()
+}
+
 #[test]
 fn default_layout_uses_classical_power_signal_ground_roles() {
     let graph = layout_sketch_graph(
@@ -291,6 +311,45 @@ fn default_layout_uses_classical_power_signal_ground_roles() {
     assert!(source.rect.center().x < resistor.rect.center().x);
     assert!(power.rect.center().y < signal.rect.center().y);
     assert!(signal.rect.center().y < ground.rect.center().y);
+}
+
+#[test]
+fn component_details_use_schematic_style_values() {
+    let mut snapshot = layout_test_snapshot();
+    for component in &mut snapshot.components_detail {
+        component.spice = match component.id.as_str() {
+            "V1" => Some(test_spice(SketchSpiceKind::DcVoltageSource, 3.3)),
+            "R1" => Some(test_spice(SketchSpiceKind::Resistor, 2_200.0)),
+            "C1" => Some(test_spice(SketchSpiceKind::Capacitor, 47.0e-9)),
+            _ => None,
+        };
+    }
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(720.0, 420.0)),
+        &snapshot,
+    );
+
+    assert_eq!(component_detail(&graph, "V1"), "3.3 V");
+    assert_eq!(component_detail(&graph, "R1"), "2.2 kOhm");
+    assert_eq!(component_detail(&graph, "C1"), "47 nF");
+}
+
+#[test]
+fn component_details_prefer_part_numbers_over_model_paths() {
+    let mut snapshot = layout_test_snapshot();
+    let component = snapshot
+        .components_detail
+        .iter_mut()
+        .find(|component| component.id == "R1")
+        .unwrap();
+    component.part_number = Some("USB2_CONNECTOR".to_string());
+    component.model = "generic.connector.usb2".to_string();
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(720.0, 420.0)),
+        &snapshot,
+    );
+
+    assert_eq!(component_detail(&graph, "R1"), "USB2_CONNECTOR");
 }
 
 #[test]

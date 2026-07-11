@@ -90,10 +90,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         nodes.push(SketchNode {
             selection: SketchSelection::Component(component.id.clone()),
             label: component.id.clone(),
-            detail: compact_label(
-                &format!("{} / {} pins", component.model, component.pins.len()),
-                34,
-            ),
+            detail: schematic_component_detail(component),
             symbol,
             kicad_symbol_id: component.kicad_symbol_id.clone(),
             style: component.style,
@@ -237,6 +234,95 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         edges,
         probe_badges,
     }
+}
+
+fn schematic_component_detail(component: &SketchComponent) -> String {
+    if let Some(part_number) = component.part_number.as_deref().map(str::trim)
+        && !part_number.is_empty()
+    {
+        return compact_label(part_number, 34);
+    }
+    if let Some(spice) = &component.spice {
+        return compact_label(&schematic_spice_detail(spice), 34);
+    }
+    let model_leaf = component
+        .model
+        .rsplit('.')
+        .next()
+        .filter(|leaf| !leaf.is_empty())
+        .unwrap_or(component.model.as_str());
+    if component.pins.len() > 4 {
+        compact_label(&format!("{model_leaf} / {} pins", component.pins.len()), 34)
+    } else {
+        compact_label(model_leaf, 34)
+    }
+}
+
+fn schematic_spice_detail(spice: &super::sketch_spice::SketchComponentSpice) -> String {
+    use super::sketch_spice::SketchSpiceKind;
+
+    match spice.kind {
+        SketchSpiceKind::Resistor => engineering_value(spice.value, "Ohm"),
+        SketchSpiceKind::Capacitor => engineering_value(spice.value, "F"),
+        SketchSpiceKind::Inductor => engineering_value(spice.value, "H"),
+        SketchSpiceKind::DcVoltageSource => engineering_value(spice.value, "V"),
+        SketchSpiceKind::DcCurrentSource => engineering_value(spice.value, "A"),
+        SketchSpiceKind::PulseVoltageSource => format!(
+            "pulse {}..{} V",
+            compact_decimal(spice.pulse.initial),
+            compact_decimal(spice.pulse.pulsed)
+        ),
+        SketchSpiceKind::PulseCurrentSource => format!(
+            "pulse {}..{} A",
+            compact_decimal(spice.pulse.initial),
+            compact_decimal(spice.pulse.pulsed)
+        ),
+    }
+}
+
+fn engineering_value(value: f64, unit: &str) -> String {
+    if !value.is_finite() {
+        return format!("{value} {unit}");
+    }
+    if value == 0.0 {
+        return format!("0 {unit}");
+    }
+    let abs = value.abs();
+    let (factor, prefix) = [
+        (1.0e9, "G"),
+        (1.0e6, "M"),
+        (1.0e3, "k"),
+        (1.0, ""),
+        (1.0e-3, "m"),
+        (1.0e-6, "u"),
+        (1.0e-9, "n"),
+        (1.0e-12, "p"),
+    ]
+    .into_iter()
+    .find(|(factor, _)| abs >= *factor)
+    .unwrap_or((1.0e-12, "p"));
+    format!("{} {prefix}{unit}", compact_decimal(value / factor))
+}
+
+fn compact_decimal(value: f64) -> String {
+    let abs = value.abs();
+    let precision = if abs >= 100.0 {
+        0
+    } else if abs >= 10.0 {
+        1
+    } else {
+        2
+    };
+    let mut text = format!("{value:.precision$}");
+    if text.contains('.') {
+        while text.ends_with('0') {
+            text.pop();
+        }
+        if text.ends_with('.') {
+            text.pop();
+        }
+    }
+    text
 }
 
 pub(super) fn classical_sketch_auto_layout(

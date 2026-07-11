@@ -81,6 +81,9 @@ pin anchors, and visible block/IC/connector pin labels without depending on OS
 screenshot permissions. Compact passive and source symbols keep pin metadata on
 their anchors but omit default pin-name text so generated schematic snapshots
 stay readable.
+Sketch graph layout also derives compact schematic detail text from explicit
+part numbers, SPICE primitive values, or the final model-id segment, so canvas
+and SVG labels avoid long internal model paths.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
 bar, project overlay, status panel, permanent Sketch central canvas,
 secondary overlay windows, Project landing view, Reports view, and
@@ -140,7 +143,8 @@ shunts land vertically between signal and rail. Imported high-pin block and IC
 fallback symbols scale their rectangle height from the visible pin count, while
 simple KiCad device symbols stay compact and suppress default pin-name text, so
 anchors do not collapse into a KiCad-like unreadable cluster before a user
-saves explicit schematic coordinates. The Sketch `Auto Layout` action
+saves explicit schematic coordinates. Source references are side-placed to stay
+clear of vertical rail terminals. The Sketch `Auto Layout` action
 persists that same classical placement into `board.schematic.node_positions`
 and writes standard two-terminal orientation metadata, including vertical
 shunts to ground and horizontal signal-path parts. It also derives display-only
