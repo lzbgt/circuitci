@@ -33,7 +33,7 @@ audit the modeled facts without relying on chat history.
 | Raspberry Pi RP2040 MCU boot and power use | <https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf> and <https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf> | `docs/research/datasheets/raspberrypi/rp2040-datasheet.pdf` and `docs/research/datasheets/raspberrypi/hardware-design-with-rp2040.pdf` |
 | Nordic nRF52840 normal-voltage MCU use | <https://docs.nordicsemi.com/bundle/ps_nrf52840/page/keyfeatures_html5.html> plus retained PDF mirror | `docs/research/datasheets/nordic/nrf52840-product-spec-farnell.pdf` |
 | Silicon Labs CP2102N USB-UART bridge use | <https://www.silabs.com/documents/public/data-sheets/cp2102n-datasheet.pdf> | `docs/research/datasheets/silabs/cp2102n-datasheet.pdf` |
-| WCH CH340C USB-UART bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf` |
+| WCH CH340C/CH340N USB-UART bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf` |
 | FTDI FT232R USB-UART bridge use | <https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf> plus public PDF mirror | `docs/research/datasheets/ftdi/DS_FT232R_sparkfun_mirror.pdf` |
 | WCH CH347 USB-JTAG/debug bridge use | official WCH metadata endpoints plus public PDF mirror | `docs/research/datasheets/wch/ch347ds1_bitsavers_mirror.pdf` |
 | CMSIS-DAP SWD probe use | <https://github.com/ARM-software/CMSIS-DAP> and retained upstream documentation sources | `docs/research/debug/cmsis_dap/` |
@@ -86,7 +86,7 @@ AT32F435, Artery AT32M416, JST XH/VH, JLCPCB PCB capabilities, onsemi 1N4148WS,
 onsemi NDS7002A, onsemi NL27WZ17, Kingbright APT1608SURCK, and Microchip
 MCP131X/2X source artifacts were downloaded or retained from their official
 vendor URLs.
-CMSIS-DAP retains Arm's upstream repository documentation sources. WCH CH340C,
+CMSIS-DAP retains Arm's upstream repository documentation sources. WCH CH340C/N,
 WCH CH347, and FTDI FT232R retain official vendor metadata or URL evidence plus
 public PDF mirrors because direct automated binary retrieval was blocked by the
 vendor endpoints. The local PDF copies and SHA-256 hashes are listed in the
@@ -320,6 +320,8 @@ cases:
 | `silabs_cp2102n_vdd_overvoltage_detected` | `examples/bad_silabs_cp2102n_vdd_overvoltage/project.yaml` | fail | Detects CP2102N `VDD` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `wch_ch340c_usb_uart_observation_passes` | `examples/good_wch_ch340c_usb_uart_observation/project.yaml` | pass | CH340C USB-UART bridge with source-backed 3.3 V supply mode and generated-SPICE idle/control-line output observation. |
 | `wch_ch340c_power_overvoltage_detected` | `examples/bad_wch_ch340c_power_overvoltage/project.yaml` | fail | Detects CH340C `VCC` connected to a 6 V rail above the source-backed 5.3 V maximum. |
+| `wch_ch340n_usb_uart_observation_passes` | `examples/good_wch_ch340n_usb_uart_observation/project.yaml` | pass | CH340N SOP-8 USB-UART bridge with source-backed 3.3 V supply mode and generated-SPICE TXD/RTS# output-state observation. |
+| `wch_ch340n_power_overvoltage_detected` | `examples/bad_wch_ch340n_power_overvoltage/project.yaml` | fail | Detects CH340N `VCC` connected to a 6 V rail above the source-backed 5.3 V maximum. |
 | `ftdi_ft232r_usb_uart_observation_passes` | `examples/good_ftdi_ft232r_usb_uart_observation/project.yaml` | pass | FT232R USB-UART bridge with 5 V `VCC`, generated 3.3 V `3V3OUT`/`VCCIO`, reset pull-up, and generated-SPICE UART/modem output-state observation. |
 | `ftdi_ft232r_vcc_overvoltage_detected` | `examples/bad_ftdi_ft232r_vcc_overvoltage/project.yaml` | fail | Detects FT232R `VCC` connected to a 6 V rail above the source-backed 5.25 V operating maximum. |
 | `wch_ch347_usb_jtag_observation_passes` | `examples/good_wch_ch347_usb_jtag_observation/project.yaml` | pass | CH347T USB-JTAG/debug bridge with source-backed 3.3 V supply mode and generated-SPICE UART/JTAG line-state observation. |
@@ -406,7 +408,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=293, passed=293, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=295, passed=295, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -547,6 +549,7 @@ Observed detection details:
 | `nordic_nrf52840_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UNRF.VDD` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `silabs_cp2102n_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `cp2102n_vdd_bad_5v` supplies `U6.VDD` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `wch_ch340c_power_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `U5.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.300000 V`. |
+| `wch_ch340n_power_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `U5.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.300000 V`. |
 | `ftdi_ft232r_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `usb_6v_bad` supplies `U7.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.250000 V`. |
 | `wch_ch347_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `debug_5v_bad` supplies `U8.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `ti_txs0108e_unpowered_side_detected` | `INTERFACE_PROTECTION_REVIEW` | Interface protection channel `ch1` on component `U3` connects powered/unpowered domains, but datasheet metadata says `unpowered_isolation` is false and the scenario does not prove the channel is disabled. |
@@ -580,10 +583,10 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred twenty-seven public-reference pass cases produced zero critical
+All one hundred twenty-eight public-reference pass cases produced zero critical
 findings.
-All one hundred sixty-six paired injected-error cases failed with the expected
-critical finding ID, and all one hundred sixty-six repair-pair checks passed.
+All one hundred sixty-seven paired injected-error cases failed with the expected
+critical finding ID, and all one hundred sixty-seven repair-pair checks passed.
 
 ## Interpretation Limits
 

@@ -770,7 +770,8 @@ Current analog support:
 - Generic reusable behavioral macro-model pack entries for preliminary
   generated-board simulation of op-amp buffers, comparator threshold behavior,
   enabled 3.3 V regulator rails, CH340C-style USB-UART output-state
-  observations, CP2102N-style USB-UART VREGIN/VDD and output-state
+  observations, SOP-8 CH340N TXD/RTS# output-state observations,
+  CP2102N-style USB-UART VREGIN/VDD and output-state
   observations, FT232R-style USB-UART 3V3OUT/VCCIO and output-state
   observations, CH347-style USB-JTAG debug bridge line-state observations,
   CMSIS-DAP-style SWD probe line-state observations,
@@ -814,8 +815,8 @@ Current analog support:
   subcircuits. These models are low-confidence
   workflow/topology aids, not vendor sign-off evidence. The GUI Examples picker
   includes direct-open observation fixtures for NE555, RC low-pass, comparator
-  threshold, op-amp buffer, CH340C USB-UART bridge, CP2102N USB-UART bridge,
-  FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
+  threshold, op-amp buffer, CH340C USB-UART bridge, CH340N USB-UART bridge,
+  CP2102N USB-UART bridge, FT232R USB-UART bridge, CH347 USB-JTAG debug bridge, CMSIS-DAP SWD probe,
   STM32L431 boot/UART/SWD, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB,
   LicheeRV-Nano-W module, AT32F435 motion core, AT32M416 motor control,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,

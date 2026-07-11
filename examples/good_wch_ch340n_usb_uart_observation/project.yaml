@@ -1,0 +1,198 @@
+project:
+  name: good_wch_ch340n_usb_uart_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/wch
+
+board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      UUSB: Interface_USB:CH340N
+      RTXLOAD: Device:R
+      RRTSLOAD: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UUSB: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RTXLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RRTSLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 64.0, y: 160.0 }
+      component:UUSB: { x: 336.0, y: 192.0 }
+      component:RTXLOAD: { x: 608.0, y: 128.0 }
+      component:RRTSLOAD: { x: 608.0, y: 320.0 }
+      net:usb_uart_3v3: { x: 176.0, y: 144.0 }
+      net:uart_txd: { x: 496.0, y: 128.0 }
+      net:uart_rxd: { x: 496.0, y: 200.0 }
+      net:ch340_rts_n: { x: 496.0, y: 320.0 }
+      net:gnd: { x: 336.0, y: 480.0 }
+    wire_routes:
+      VCC.P->usb_uart_3v3:
+        points:
+          - { x: 144.0, y: 160.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 112.0, y: 480.0 }
+      UUSB.VCC->usb_uart_3v3:
+        points:
+          - { x: 256.0, y: 144.0 }
+      UUSB.GND->gnd:
+        points:
+          - { x: 336.0, y: 480.0 }
+      UUSB.TXD->uart_txd:
+        points:
+          - { x: 496.0, y: 128.0 }
+      UUSB.RXD->uart_rxd:
+        points:
+          - { x: 496.0, y: 200.0 }
+      UUSB.RTS_N->ch340_rts_n:
+        points:
+          - { x: 496.0, y: 320.0 }
+      RTXLOAD.A->uart_txd:
+        points:
+          - { x: 608.0, y: 128.0 }
+      RTXLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 480.0 }
+      RRTSLOAD.A->ch340_rts_n:
+        points:
+          - { x: 608.0, y: 320.0 }
+      RRTSLOAD.B->gnd:
+        points:
+          - { x: 608.0, y: 480.0 }
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_UART_3V3_SOURCE
+      pins:
+        P: usb_uart_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UUSB:
+      model: vendor.wch.ch340n
+      part_number: CH340N
+      parameters:
+        observation_txd_state: 1.0
+        observation_rts_n_state: 1.0
+      pins:
+        VCC: usb_uart_3v3
+        GND: gnd
+        TXD: uart_txd
+        RXD: uart_rxd
+        RTS_N: ch340_rts_n
+    RTXLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: uart_txd
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RRTSLOAD:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: ch340_rts_n
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+  nets:
+    usb_uart_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    uart_txd:
+      kind: digital_or_analog
+    uart_rxd:
+      kind: digital_or_analog
+    ch340_rts_n:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ch340n_usb_uart_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCC
+          - UUSB
+          - RTXLOAD
+          - RRTSLOAD
+      model_files:
+        - path: ../../models/spice/wch/ch340n_usb_uart.lib
+          sha256: 65f4724c8bdad8c57adf6cdf3d07c8484717798ab58c28a8b99eb0ae4c973e09
+      node_bindings:
+        - { node: vcc, net: usb_uart_3v3 }
+        - { node: txd, net: uart_txd }
+        - { node: rxd, net: uart_rxd }
+        - { node: rts_n, net: ch340_rts_n }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VCC, pin: P } }
+        - { node: "0", endpoint: { component: VCC, pin: N } }
+        - { node: vcc, endpoint: { component: UUSB, pin: VCC } }
+        - { node: "0", endpoint: { component: UUSB, pin: GND } }
+        - { node: txd, endpoint: { component: UUSB, pin: TXD } }
+        - { node: rxd, endpoint: { component: UUSB, pin: RXD } }
+        - { node: rts_n, endpoint: { component: UUSB, pin: RTS_N } }
+        - { node: txd, endpoint: { component: RTXLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RTXLOAD, pin: B } }
+        - { node: rts_n, endpoint: { component: RRTSLOAD, pin: A } }
+        - { node: "0", endpoint: { component: RRTSLOAD, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: host_line_snapshot
+          description: CH340N TXD and RTS# idle high in the source-backed SOP-8 USB-UART observation model.
+      probes:
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_txd
+          expression: V(txd)
+        - name: v_rts_n
+          expression: V(rts_n)
+      assertions:
+        - name: vcc_within_3v3_mode_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 3.1
+        - name: vcc_within_3v3_mode_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: txd_idle_high
+          probe: v_txd
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: rts_idle_high
+          probe: v_rts_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7

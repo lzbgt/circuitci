@@ -26,8 +26,8 @@ A passing rule on generic metadata is useful evidence, but not full board
 sign-off.
 
 Initial datasheet-backed packs now exist for selected parts used by common IoT
-bring-up paths, including WCH CH340C board-level USB-UART metadata plus a
-reduced generated-SPICE output-state observation face, Silicon Labs CP2102N
+bring-up paths, including WCH CH340C and SOP-8 CH340N board-level USB-UART
+metadata plus reduced generated-SPICE output-state observation faces, Silicon Labs CP2102N
 board-level USB-UART metadata plus a reduced generated-SPICE VREGIN/VDD and
 output-state observation face, FTDI FT232R board-level USB-UART metadata plus a
 reduced generated-SPICE 3V3OUT/VCCIO and output-state observation face, WCH

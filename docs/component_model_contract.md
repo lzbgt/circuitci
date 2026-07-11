@@ -738,6 +738,11 @@ not USB PHY behavior, enumeration, baud-rate timing, oscillator accuracy,
 transistor-level auto-download circuits, or final I/O injection-current
 sign-off.
 
+`vendor.wch.ch340n` uses the same CH340 source family but intentionally exposes
+the SOP-8 pin surface. Its generated-SPICE face binds `TXD_STATE` and
+`RTS_N_STATE` only; the CH340DS1 SOP-8 column does not assign `DTR#`, so the
+model does not offer `DTR_N`.
+
 `vendor.silabs.cp2102n` extends that USB-UART generated-observation pattern to
 parts with a VREGIN-fed internal regulator. Its Silicon Labs source-pinned
 VREGIN/VDD/VIO rail limits, regulator output-current class, reset pull-up note,

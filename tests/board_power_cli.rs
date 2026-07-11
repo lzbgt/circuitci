@@ -546,6 +546,24 @@ fn wch_ch340c_power_overvoltage_uses_datasheet_limit() {
 }
 
 #[test]
+fn wch_ch340n_power_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_wch_ch340n_power_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["component"] == "U5" && finding["limit"]["operating_voltage_maximum_V"] == 5.3
+        })
+        .expect("CH340N VCC finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 5.3);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn silabs_cp2102n_vdd_overvoltage_uses_datasheet_limit() {
     let report = run_validation("examples/bad_silabs_cp2102n_vdd_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

@@ -1277,6 +1277,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: wch_ch340n_usb_uart_observation_passes
+    project: ../examples/good_wch_ch340n_usb_uart_observation/project.yaml
+    expect: pass
+
+  - id: wch_ch340n_power_overvoltage_detected
+    project: ../examples/bad_wch_ch340n_power_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: ftdi_ft232r_usb_uart_observation_passes
     project: ../examples/good_ftdi_ft232r_usb_uart_observation/project.yaml
     expect: pass
@@ -2462,6 +2473,12 @@ repairs:
   - id: fix_wch_ch340c_power_overvoltage
     detects_case: wch_ch340c_power_overvoltage_detected
     fixed_case: wch_ch340c_usb_uart_observation_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_wch_ch340n_power_overvoltage
+    detects_case: wch_ch340n_power_overvoltage_detected
+    fixed_case: wch_ch340n_usb_uart_observation_passes
     fixes_findings:
       - POWER_TREE_VALID
 

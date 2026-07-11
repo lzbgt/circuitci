@@ -245,6 +245,9 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   for VCC, TXD, DTR#, and RTS# output-state observations. The model-state
   inputs are explicit Board IR component parameters, not inferred USB protocol
   behavior.
+- `examples/good_wch_ch340n_usb_uart_observation` proves the WCH CH340N SOP-8
+  variant can use its own reduced generated-SPICE face for VCC, TXD, and RTS#
+  output-state observations without exposing DTR#.
 - `examples/good_silabs_cp2102n_usb_uart_observation` proves the Silicon Labs
   CP2102N datasheet-backed USB-UART bridge model can use a reduced
   generated-SPICE face for VREGIN, generated VDD/VIO, TXD, RTS, and DTR

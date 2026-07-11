@@ -1,0 +1,16 @@
+* Reduced WCH CH340N USB-UART bridge observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level VCC, TXD idle-high, and RTS# output-state checks.
+
+.subckt CIRCUITCI_CH340N_USB_UART VCC GND TXD RXD RTS_N PARAMS: TXD_STATE=1 RTS_N_STATE=1
+* TXD and RTS_N are preliminary voltage drivers with source impedance inferred
+* from the CH340 3.3 V-mode VOH condition. RXD is represented as a
+* high-impedance input. USB protocol, enumeration, oscillator accuracy, suspend
+* behavior, UART baud timing, and transistor-level modem behavior are out of
+* scope.
+BTXD NTXD GND V={v(VCC,GND)*TXD_STATE}
+RTXD NTXD TXD 300
+BRTS NRTS GND V={v(VCC,GND)*RTS_N_STATE}
+RRTS NRTS RTS_N 300
+RRXD RXD GND 1G
+.ends CIRCUITCI_CH340N_USB_UART

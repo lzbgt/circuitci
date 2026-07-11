@@ -26,10 +26,13 @@ extraction.
 - SHA-256:
   `f4b76c52222358bec25f328517d9801036e606d57648e62e2ac59e3027a6c050`
 
-Extracted facts used in `vendor.wch.ch340c`:
+Extracted facts used in `vendor.wch.ch340c` and `vendor.wch.ch340n`:
 
 - CH340C/N/K/E/X/B have integrated clock generator and need no external
   crystal.
+- The package table lists CH340N as the SOP-8 member. In the SOP-8 column,
+  `VCC`, `GND`, `V3`, `UD+`, `UD-`, `TXD`, `RXD`, and `RTS#` are present;
+  `DTR#` is not assigned to SOP-8.
 - CH340 supports 5 V and 3.3 V supply.
 - In 5 V mode, VCC range is `4.0 V` to `5.3 V`, and CH340G/C/N/K/E/X/T/R
   operating current maximum is `20 mA`.
@@ -38,7 +41,8 @@ Extracted facts used in `vendor.wch.ch340c`:
   2 mA source current.
 - `TXD` stays high when UART transmission is idle, and `RXD` stays high when
   UART reception is idle.
-- `DTR#` and `RTS#` are active-low MODEM output signals.
+- `DTR#` and `RTS#` are active-low MODEM output signals, where exposed by the
+  selected CH340 package.
 - WCH reference text warns that shared CH340/MCU power avoids I/O current
   between CH340 and MCU; separate supply designs must avoid bidirectional
   current poured backwards.

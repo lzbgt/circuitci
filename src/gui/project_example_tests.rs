@@ -102,6 +102,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UUSB"),
         },
         ExpectedProjectExample {
+            id: "ch340n_usb_uart_scope",
+            category: "USB-UART",
+            open_label: "Open CH340N USB-UART Example",
+            run_label: "Open CH340N + Run Scopes",
+            summary: "Source-backed SOP-8 CH340N bridge output-state observation.",
+            project_path: "examples/good_wch_ch340n_usb_uart_observation/project.yaml",
+            project_name: "good_wch_ch340n_usb_uart_observation",
+            expected_traces: &["v_vcc", "v_txd", "v_rts_n"],
+            expected_frequency: "3.3 V CH340N SOP-8 observation with TXD high and RTS# high",
+            observation_preset_component: Some("UUSB"),
+        },
+        ExpectedProjectExample {
             id: "cp2102n_usb_uart_scope",
             category: "USB-UART",
             open_label: "Open CP2102N USB-UART Example",
