@@ -364,6 +364,7 @@ impl CircuitCiApp {
                 .is_some_and(|hovered| hovered.bundle.label == badge.bundle.label);
             sketch_bundles::draw_net_bundle_overlay(&painter, badge, hovered, opacity);
         }
+        let net_label_y_offsets = super::sketch_render::sketch_net_label_y_offsets(&graph);
         for node in &graph.nodes {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.interaction_visible(&node.selection) {
@@ -388,12 +389,19 @@ impl CircuitCiApp {
                 .flatten();
             let runtime_scope_chip_hovered = self.sketch_runtime_scope_overlay_visible
                 && hover_targets.runtime_scope_chip_hovered(&node.selection);
+            let label_y_offset = match &node.selection {
+                SketchSelection::Net(net_id) => {
+                    net_label_y_offsets.get(net_id).copied().unwrap_or_default()
+                }
+                _ => 0.0,
+            };
             draw_sketch_node(
                 &painter,
                 node,
                 selected,
                 runtime_activity,
                 runtime_scope_chip_hovered,
+                label_y_offset,
                 opacity,
             );
         }

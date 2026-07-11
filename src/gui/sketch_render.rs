@@ -1,6 +1,7 @@
 use eframe::egui;
+use std::collections::BTreeMap;
 
-use super::sketch::{SketchNode, SketchPinAnchor, SketchSelection, compact_label};
+use super::sketch::{SketchGraph, SketchNode, SketchPinAnchor, SketchSelection, compact_label};
 use super::sketch_symbols::{SketchSymbolKind, draw_symbol_glyph};
 
 pub(super) fn draw_sketch_node(
@@ -9,6 +10,7 @@ pub(super) fn draw_sketch_node(
     selected: bool,
     runtime_activity: Option<f64>,
     runtime_scope_chip_hovered: bool,
+    label_y_offset: f32,
     opacity: f32,
 ) {
     let opacity = normalized_opacity(opacity);
@@ -56,7 +58,7 @@ pub(super) fn draw_sketch_node(
     if kicad_device_symbol {
         draw_kicad_device_labels(painter, node, opacity);
     } else if matches!(node.selection, SketchSelection::Net(_)) {
-        draw_net_label(painter, node, opacity);
+        draw_net_label(painter, node, label_y_offset, opacity);
     } else {
         painter.text(
             node.rect.left_top() + egui::vec2(8.0, 9.0),
@@ -78,14 +80,96 @@ pub(super) fn draw_sketch_node(
     }
 }
 
-fn draw_net_label(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
+fn draw_net_label(painter: &egui::Painter, node: &SketchNode, label_y_offset: f32, opacity: f32) {
     painter.text(
-        node.rect.center_top() + egui::vec2(0.0, -3.0),
+        node.rect.center_top() + egui::vec2(0.0, -3.0 + label_y_offset),
         egui::Align2::CENTER_BOTTOM,
         compact_label(&node.label, 18),
         egui::FontId::monospace(11.0),
         with_opacity(egui::Color32::from_rgb(182, 235, 191), opacity),
     );
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LabelBox {
+    min_x: f32,
+    max_x: f32,
+    min_y: f32,
+    max_y: f32,
+}
+
+impl LabelBox {
+    fn intersects(self, other: Self) -> bool {
+        self.min_x <= other.max_x
+            && self.max_x >= other.min_x
+            && self.min_y <= other.max_y
+            && self.max_y >= other.min_y
+    }
+}
+
+#[derive(Debug)]
+struct NetLabelEntry {
+    id: String,
+    x: f32,
+    y: f32,
+    width: f32,
+}
+
+pub(super) fn sketch_net_label_y_offsets(graph: &SketchGraph) -> BTreeMap<String, f32> {
+    let mut entries = graph
+        .nodes
+        .iter()
+        .filter_map(|node| match &node.selection {
+            SketchSelection::Net(net_id) => {
+                let label = compact_label(net_id, 18);
+                Some(NetLabelEntry {
+                    id: net_id.clone(),
+                    x: node.rect.center().x,
+                    y: node.rect.top() - 6.0,
+                    width: label.len() as f32 * 11.0 * 0.62 + 10.0,
+                })
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by(|left, right| {
+        left.y
+            .total_cmp(&right.y)
+            .then_with(|| left.x.total_cmp(&right.x))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    let lane_offsets = [0.0, -14.0, 14.0, -28.0, 28.0, -42.0, 42.0];
+    let mut placed = Vec::new();
+    let mut offsets = BTreeMap::new();
+    for entry in entries {
+        let mut chosen_offset = 0.0;
+        let mut chosen_box = net_label_box(&entry, chosen_offset);
+        for offset in lane_offsets {
+            let candidate = net_label_box(&entry, offset);
+            if !placed
+                .iter()
+                .any(|placed_box| candidate.intersects(*placed_box))
+            {
+                chosen_offset = offset;
+                chosen_box = candidate;
+                break;
+            }
+        }
+        placed.push(chosen_box);
+        offsets.insert(entry.id, chosen_offset);
+    }
+    offsets
+}
+
+fn net_label_box(entry: &NetLabelEntry, y_offset: f32) -> LabelBox {
+    let y = entry.y + y_offset;
+    LabelBox {
+        min_x: entry.x - entry.width / 2.0,
+        max_x: entry.x + entry.width / 2.0,
+        min_y: y - 7.0,
+        max_y: y + 5.0,
+    }
 }
 
 fn draw_kicad_device_labels(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
@@ -272,4 +356,51 @@ fn draw_runtime_scope_chip(
 
 fn normalized_opacity(opacity: f32) -> f32 {
     opacity.clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gui::sketch::{SketchGraph, SketchNodeStyle};
+
+    fn net_node(id: &str, rect: egui::Rect) -> SketchNode {
+        SketchNode {
+            selection: SketchSelection::Net(id.to_string()),
+            label: id.to_string(),
+            detail: String::new(),
+            symbol: SketchSymbolKind::Net,
+            kicad_symbol_id: None,
+            style: SketchNodeStyle::default(),
+            rect,
+        }
+    }
+
+    #[test]
+    fn net_label_offsets_lane_colliding_labels() {
+        let graph = SketchGraph {
+            nodes: vec![
+                net_node(
+                    "usb_dm",
+                    egui::Rect::from_min_size(egui::pos2(0.0, 20.0), egui::vec2(80.0, 40.0)),
+                ),
+                net_node(
+                    "usb_dp",
+                    egui::Rect::from_min_size(egui::pos2(8.0, 20.0), egui::vec2(80.0, 40.0)),
+                ),
+                net_node(
+                    "gnd",
+                    egui::Rect::from_min_size(egui::pos2(240.0, 160.0), egui::vec2(80.0, 40.0)),
+                ),
+            ],
+            pin_anchors: Vec::new(),
+            edges: Vec::new(),
+            probe_badges: Vec::new(),
+        };
+
+        let offsets = sketch_net_label_y_offsets(&graph);
+
+        assert_eq!(offsets.get("usb_dm").copied(), Some(0.0));
+        assert_ne!(offsets.get("usb_dp").copied(), Some(0.0));
+        assert_eq!(offsets.get("gnd").copied(), Some(0.0));
+    }
 }

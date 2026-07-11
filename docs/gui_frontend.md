@@ -144,7 +144,9 @@ fallback symbols scale their rectangle height from the visible pin count, while
 simple KiCad device symbols stay compact and suppress default pin-name text, so
 anchors do not collapse into a KiCad-like unreadable cluster before a user
 saves explicit schematic coordinates. Source references are side-placed to stay
-clear of vertical rail terminals. The Sketch `Auto Layout` action
+clear of vertical rail terminals, and base net labels share deterministic
+collision lanes between the live canvas and SVG export. The Sketch
+`Auto Layout` action
 persists that same classical placement into `board.schematic.node_positions`
 and writes standard two-terminal orientation metadata, including vertical
 shunts to ground and horizontal signal-path parts. It also derives display-only

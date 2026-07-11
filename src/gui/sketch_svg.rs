@@ -1,12 +1,13 @@
 use anyhow::{Context, Result, bail};
 use eframe::egui;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use super::sketch::{
     ProjectSnapshot, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection, compact_label,
     layout_sketch_graph, load_project_snapshot, sketch_graph_bounds, sketch_wire_points,
 };
+use super::sketch_render::sketch_net_label_y_offsets;
 use super::sketch_symbols::SketchSymbolKind;
 
 const EXPORT_CANVAS_MIN_WIDTH: f32 = 720.0;
@@ -105,7 +106,7 @@ fn sketch_svg(
     ));
     svg.push('\n');
     draw_edges(&mut svg, &graph);
-    let net_label_y_offsets = net_label_y_offsets(&graph);
+    let net_label_y_offsets = sketch_net_label_y_offsets(&graph);
     for node in &graph.nodes {
         let label_y_offset = match &node.selection {
             SketchSelection::Net(net_id) => net_label_y_offsets.get(net_id).copied().unwrap_or(0.0),
@@ -141,88 +142,6 @@ fn device_symbol_component_ids(graph: &SketchGraph) -> BTreeSet<&str> {
             _ => None,
         })
         .collect()
-}
-
-#[derive(Debug, Clone, Copy)]
-struct LabelBox {
-    min_x: f32,
-    max_x: f32,
-    min_y: f32,
-    max_y: f32,
-}
-
-impl LabelBox {
-    fn intersects(self, other: Self) -> bool {
-        self.min_x <= other.max_x
-            && self.max_x >= other.min_x
-            && self.min_y <= other.max_y
-            && self.max_y >= other.min_y
-    }
-}
-
-#[derive(Debug)]
-struct NetLabelEntry {
-    id: String,
-    x: f32,
-    y: f32,
-    width: f32,
-}
-
-fn net_label_y_offsets(graph: &SketchGraph) -> BTreeMap<String, f32> {
-    let mut entries = graph
-        .nodes
-        .iter()
-        .filter_map(|node| match &node.selection {
-            SketchSelection::Net(net_id) => {
-                let label = compact_label(net_id, 18);
-                Some(NetLabelEntry {
-                    id: net_id.clone(),
-                    x: node.rect.center().x,
-                    y: node.rect.top() - 6.0,
-                    width: label.len() as f32 * 11.0 * 0.62 + 10.0,
-                })
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    entries.sort_by(|left, right| {
-        left.y
-            .total_cmp(&right.y)
-            .then_with(|| left.x.total_cmp(&right.x))
-            .then_with(|| left.id.cmp(&right.id))
-    });
-
-    let lane_offsets = [0.0, -14.0, 14.0, -28.0, 28.0, -42.0, 42.0];
-    let mut placed = Vec::new();
-    let mut offsets = BTreeMap::new();
-    for entry in entries {
-        let mut chosen_offset = 0.0;
-        let mut chosen_box = net_label_box(&entry, chosen_offset);
-        for offset in lane_offsets {
-            let candidate = net_label_box(&entry, offset);
-            if !placed
-                .iter()
-                .any(|placed_box| candidate.intersects(*placed_box))
-            {
-                chosen_offset = offset;
-                chosen_box = candidate;
-                break;
-            }
-        }
-        placed.push(chosen_box);
-        offsets.insert(entry.id, chosen_offset);
-    }
-    offsets
-}
-
-fn net_label_box(entry: &NetLabelEntry, y_offset: f32) -> LabelBox {
-    let y = entry.y + y_offset;
-    LabelBox {
-        min_x: entry.x - entry.width / 2.0,
-        max_x: entry.x + entry.width / 2.0,
-        min_y: y - 7.0,
-        max_y: y + 5.0,
-    }
 }
 
 fn draw_grid(svg: &mut String, view: egui::Rect) {
