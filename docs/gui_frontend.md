@@ -76,8 +76,11 @@ into a KiCad-like text cluster.
 For headless visual QA, prefer
 `cargo run --features gui --bin circuitci -- export-sketch-svg project.yaml -o out/sketch.svg`.
 The command uses the same Sketch graph layout and Fit All bounds as the GUI,
-then writes a deterministic SVG with nodes, wires, pin anchors, and pin labels
-without depending on OS screenshot permissions.
+then writes a deterministic SVG with schematic symbols, wires, metadata-backed
+pin anchors, and visible block/IC/connector pin labels without depending on OS
+screenshot permissions. Compact passive and source symbols keep pin metadata on
+their anchors but omit default pin-name text so generated schematic snapshots
+stay readable.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
 bar, project overlay, status panel, permanent Sketch central canvas,
 secondary overlay windows, Project landing view, Reports view, and
@@ -135,9 +138,9 @@ the top rail, ground nets near the bottom rail, source components stay on the
 left, series signal-path components/nets advance left-to-right by rank, and
 shunts land vertically between signal and rail. Imported high-pin block and IC
 fallback symbols scale their rectangle height from the visible pin count, while
-simple KiCad device symbols stay compact, so imported pin labels and anchors do
-not collapse into a KiCad-like unreadable cluster before a user saves explicit
-schematic coordinates. The Sketch `Auto Layout` action
+simple KiCad device symbols stay compact and suppress default pin-name text, so
+anchors do not collapse into a KiCad-like unreadable cluster before a user
+saves explicit schematic coordinates. The Sketch `Auto Layout` action
 persists that same classical placement into `board.schematic.node_positions`
 and writes standard two-terminal orientation metadata, including vertical
 shunts to ground and horizontal signal-path parts. It also derives display-only

@@ -48,9 +48,11 @@ normalized board, layout, library, scenario, and process evidence.
 
 `gui::sketch_svg` owns deterministic Sketch SVG export for headless visual QA.
 The feature-gated `export-sketch-svg` command loads Board IR, runs the same
-Sketch graph layout and Fit All bounds used by the GUI, and writes nodes,
-wires, pin anchors, and pin labels without relying on desktop screenshot
-permissions.
+Sketch graph layout and Fit All bounds used by the GUI, and writes schematic
+symbols, wires, metadata-backed pin anchors, and visible block/IC/connector pin
+labels without relying on desktop screenshot permissions. Compact passive and
+source symbols retain pin metadata on their anchors but suppress default pin
+name text to avoid schematic-view clutter.
 
 Sketch Auto Layout uses the same layered circuit-flow placement engine as the
 view fallback, but persists its result through normal Board IR schematic

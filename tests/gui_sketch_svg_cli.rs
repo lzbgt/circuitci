@@ -32,6 +32,8 @@ fn export_sketch_svg_writes_headless_visual_artifact() {
     assert!(svg.contains(r#"role="img""#));
     assert!(svg.contains(r#"data-kind="component" data-id="RTIM""#));
     assert!(svg.contains(r#"data-net="out""#));
-    assert!(svg.contains(r#"data-pin-label="RTIM:A""#));
+    assert!(svg.contains(r#"data-component="RTIM" data-pin="A""#));
+    assert!(!svg.contains(r#"data-pin-label="RTIM:A""#));
+    assert!(svg.contains(r#"data-symbol="resistor""#));
     assert!(svg.contains(r#"<circle "#));
 }
