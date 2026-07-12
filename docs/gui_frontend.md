@@ -340,7 +340,10 @@ observation preset: it infers the ground net, creates a generated-from-board
 run setup, voltage-probes the component's non-ground pin nets in SPICE pin
 order, reuses the generated model-file inference path for SHA-pinned
 `analog.model_files`, and adds model-aware default checks when metadata supports
-them. The op-amp buffer and comparator scope examples expose the same generator
+them. When two modeled pins intentionally share one Board IR net, such as
+nRF52840 `VDD` and `VDDH`, the preset reuses one voltage probe but keeps
+pin-qualified assertion names so both pin limits remain visible and
+non-duplicated. The op-amp buffer and comparator scope examples expose the same generator
 as a compact `Create Checks` workflow action, so users can regenerate useful
 observations from the example schematic without navigating the full model
 browser. Regulator presets check output min/max voltage from the output port

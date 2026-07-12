@@ -133,7 +133,7 @@ fn ams1117_scope_example_workflow_creates_model_aware_observation_checks() {
     assert!(
         app.create_scope_example_observation_preset(),
         "{}",
-        app.status
+        app.diagnostics.last().unwrap_or(&app.status)
     );
     assert_eq!(
         app.selected_sketch_item,
@@ -398,7 +398,7 @@ fn stm32l431_boot_uart_swd_scope_example_workflow_creates_model_aware_observatio
     assert!(
         app.create_scope_example_observation_preset(),
         "{}",
-        app.status
+        app.diagnostics.last().unwrap_or(&app.status)
     );
     assert_eq!(
         app.selected_sketch_item,
@@ -450,6 +450,87 @@ fn stm32l431_boot_uart_swd_scope_example_workflow_creates_model_aware_observatio
             .assertions
             .iter()
             .any(|assertion| assertion.name == "v_umcu_pa14_swclk_idle_low")
+    );
+}
+
+#[test]
+fn nrf52840_board_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("nrf52840_board_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.diagnostics.last().unwrap_or(&app.status)
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UNRF".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "unrf_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "unrf_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_unrf_vdd"));
+    assert!(
+        analog
+            .probes
+            .iter()
+            .any(|probe| probe.name == "v_unrf_vbus")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_vdd_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_vdd_vddh_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_vbus_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_nreset_released_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_swdio_swdio_idle_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_swdclk_swdclk_idle_low")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_p0_06_uart_tx_idle_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_unrf_usb_dp_usb_dp_idle_low")
     );
 }
 

@@ -584,6 +584,17 @@ pub(super) fn add_mcu_observation_assertions(
         stop_time_us,
         assertions,
     );
+    for pin in ["VDDH", "VBUS"] {
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            pin,
+            stop_time_us,
+            assertions,
+        );
+    }
     let logic_high_v = voltage_for_component_pin(project, component, "3V3")
         .or_else(|| voltage_for_component_pin(project, component, "VDD"))
         .unwrap_or(3.3);
@@ -594,6 +605,62 @@ pub(super) fn add_mcu_observation_assertions(
             1.0,
             "released_high",
             "held_low",
+        ),
+        (
+            "nRESET",
+            "observation_nreset_state",
+            1.0,
+            "released_high",
+            "held_low",
+        ),
+        (
+            "SWDIO",
+            "observation_swdio_state",
+            1.0,
+            "swdio_idle_high",
+            "swdio_low",
+        ),
+        (
+            "SWDCLK",
+            "observation_swdclk_state",
+            0.0,
+            "swdclk_high",
+            "swdclk_idle_low",
+        ),
+        (
+            "P0_06",
+            "observation_p0_06_state",
+            1.0,
+            "uart_tx_idle_high",
+            "uart_tx_low",
+        ),
+        (
+            "P0_08",
+            "observation_p0_08_state",
+            1.0,
+            "uart_rx_idle_high",
+            "uart_rx_low",
+        ),
+        (
+            "USB_DP",
+            "observation_usb_dp_state",
+            0.0,
+            "usb_dp_high",
+            "usb_dp_idle_low",
+        ),
+        (
+            "USB_DM",
+            "observation_usb_dm_state",
+            0.0,
+            "usb_dm_high",
+            "usb_dm_idle_low",
+        ),
+        (
+            "ANT",
+            "observation_ant_state",
+            0.0,
+            "antenna_feed_high",
+            "antenna_feed_low",
         ),
         ("IO0", "observation_io0_state", 1.0, "boot_high", "boot_low"),
         (
@@ -929,10 +996,11 @@ fn add_port_voltage_window_assertions(
     let Some(port) = model.ports.get(pin) else {
         return;
     };
+    let assertion_stem = voltage_window_assertion_stem(&probe.probe_name, pin);
     if let Some(min_v) = port.electrical.operating_voltage_min_v {
         assertions.push(default_voltage_assertion(
             scenario_name,
-            &format!("{}_min_voltage", probe.probe_name),
+            &format!("{assertion_stem}_min_voltage"),
             &probe.probe_name,
             "mean",
             "above",
@@ -943,13 +1011,39 @@ fn add_port_voltage_window_assertions(
     if let Some(max_v) = port.electrical.operating_voltage_max_v {
         assertions.push(default_voltage_assertion(
             scenario_name,
-            &format!("{}_max_voltage", probe.probe_name),
+            &format!("{assertion_stem}_max_voltage"),
             &probe.probe_name,
             "mean",
             "below",
             max_v,
             (0.0, stop_time_us),
         ));
+    }
+}
+
+fn voltage_window_assertion_stem(probe_name: &str, pin: &str) -> String {
+    let pin_stem = normalized_pin_stem(pin);
+    if probe_name.ends_with(&format!("_{pin_stem}")) {
+        probe_name.to_string()
+    } else {
+        format!("{probe_name}_{pin_stem}")
+    }
+}
+
+fn normalized_pin_stem(pin: &str) -> String {
+    let mut stem = String::new();
+    for character in pin.chars() {
+        if character.is_ascii_alphanumeric() {
+            stem.push(character.to_ascii_lowercase());
+        } else if !stem.ends_with('_') {
+            stem.push('_');
+        }
+    }
+    let stem = stem.trim_matches('_');
+    if stem.is_empty() {
+        "pin".to_string()
+    } else {
+        stem.to_string()
     }
 }
 
