@@ -1493,6 +1493,10 @@ cases:
     project: ../examples/good_bosch_bme280_i2c_power/project.yaml
     expect: pass
 
+  - id: bosch_bme280_i2c_observation_passes
+    project: ../examples/good_bosch_bme280_i2c_observation/project.yaml
+    expect: pass
+
   - id: bosch_bme280_vddio_overvoltage_detected
     project: ../examples/bad_bosch_bme280_vddio_overvoltage/project.yaml
     expect: fail

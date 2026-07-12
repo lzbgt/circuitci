@@ -360,6 +360,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   SPI input states are explicit source components, not inferred register
   protocol, sampling, FIFO, sensor-dynamics, noise, or final SPI timing
   behavior.
+- `examples/good_bosch_bme280_i2c_observation` proves the Bosch BME280
+  source-backed environmental sensor model can use a reduced high-impedance
+  generated-SPICE face for VDD/VDDIO, I2C pull-up, `CSB` interface-select, and
+  `SDO` address-select observations. The macro observes board wiring and does
+  not emulate measurements, registers, compensation formulas, bus transactions,
+  timing, noise, or calibration.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

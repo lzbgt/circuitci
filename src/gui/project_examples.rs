@@ -223,6 +223,13 @@ const ICM42688P_IMU_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const ICM42688P_IMU_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V ICM-42688-P IMU rails, SPI idle line states, SDO low, and INT1 high";
+const BME280_I2C_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_bosch_bme280_i2c_observation/project.yaml";
+const BME280_I2C_SCOPE_EXAMPLE_NAME: &str = "good_bosch_bme280_i2c_observation";
+const BME280_I2C_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vdd", "v_vddio", "v_csb", "v_sda", "v_scl", "v_sdo"];
+const BME280_I2C_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V BME280 I2C rails, pull-ups, CSB high, and SDO low address select";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -747,6 +754,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: ICM42688P_IMU_SCOPE_EXPECTED_TRACES,
         expected_frequency: ICM42688P_IMU_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UIMU"),
+    },
+    GuiProjectExample {
+        id: "bme280_i2c_scope",
+        category: "Sensor",
+        open_label: "Open BME280 I2C Example",
+        run_label: "Open BME280 + Run Scopes",
+        workflow_title: "BME280 I2C Workflow",
+        summary: "Source-backed BME280 rail, I2C pull-up, and address-select observation.",
+        project_path: BME280_I2C_SCOPE_EXAMPLE_PROJECT,
+        project_name: BME280_I2C_SCOPE_EXAMPLE_NAME,
+        expected_traces: BME280_I2C_SCOPE_EXPECTED_TRACES,
+        expected_frequency: BME280_I2C_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("USENS"),
     },
     GuiProjectExample {
         id: "esds552_scope",

@@ -433,6 +433,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UIMU"),
         },
         ExpectedProjectExample {
+            id: "bme280_i2c_scope",
+            category: "Sensor",
+            open_label: "Open BME280 I2C Example",
+            run_label: "Open BME280 + Run Scopes",
+            summary: "Source-backed BME280 rail, I2C pull-up, and address-select observation.",
+            project_path: "examples/good_bosch_bme280_i2c_observation/project.yaml",
+            project_name: "good_bosch_bme280_i2c_observation",
+            expected_traces: &["v_vdd", "v_vddio", "v_csb", "v_sda", "v_scl", "v_sdo"],
+            expected_frequency: "3.3 V BME280 I2C rails, pull-ups, CSB high, and SDO low address select",
+            observation_preset_component: Some("USENS"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

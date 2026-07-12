@@ -1,0 +1,16 @@
+* Reduced Bosch BME280 I2C board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level rail, I2C pull-up, CSB interface-select, and SDO address-select
+* checks. It does not model humidity, pressure, temperature, compensation
+* formulas, registers, bus protocol, timing, noise, or calibration.
+
+.subckt CIRCUITCI_BME280_I2C_OBSERVATION VDD VDDIO GND CSB SDI SDO SCK
+* All non-supply interface pins are high impedance. External pull-ups,
+* pull-downs, sources, and board metadata define the observable state.
+RVDD VDD GND 1G
+RVDDIO VDDIO GND 1G
+RCSB CSB GND 1G
+RSDI SDI GND 1G
+RSDO SDO GND 1G
+RSCK SCK GND 1G
+.ends CIRCUITCI_BME280_I2C_OBSERVATION

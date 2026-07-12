@@ -1,0 +1,276 @@
+project:
+  name: good_bosch_bme280_i2c_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      USENS: Sensor:BME280
+      RSDA: Device:R
+      RSCL: Device:R
+      RSDO: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:USENS: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSDA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSCL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSDO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 168.0 }
+      component:USENS: { x: 376.0, y: 280.0 }
+      component:RSDA: { x: 760.0, y: 144.0 }
+      component:RSCL: { x: 760.0, y: 280.0 }
+      component:RSDO: { x: 760.0, y: 464.0 }
+      net:bme280_3v3: { x: 224.0, y: 104.0 }
+      net:i2c_sda: { x: 672.0, y: 144.0 }
+      net:i2c_scl: { x: 672.0, y: 280.0 }
+      net:bme280_sdo_low: { x: 672.0, y: 464.0 }
+      net:gnd: { x: 376.0, y: 592.0 }
+    wire_routes:
+      VDD.P->bme280_3v3:
+        points:
+          - { x: 160.0, y: 168.0 }
+          - { x: 224.0, y: 104.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 120.0, y: 592.0 }
+      USENS.VDD->bme280_3v3:
+        points:
+          - { x: 296.0, y: 144.0 }
+          - { x: 224.0, y: 104.0 }
+      USENS.VDDIO->bme280_3v3:
+        points:
+          - { x: 296.0, y: 200.0 }
+          - { x: 224.0, y: 104.0 }
+      USENS.CSB->bme280_3v3:
+        points:
+          - { x: 608.0, y: 264.0 }
+          - { x: 608.0, y: 104.0 }
+          - { x: 224.0, y: 104.0 }
+      USENS.GND->gnd:
+        points:
+          - { x: 376.0, y: 592.0 }
+      USENS.SDI->i2c_sda:
+        points:
+          - { x: 608.0, y: 176.0 }
+          - { x: 672.0, y: 144.0 }
+      USENS.SCK->i2c_scl:
+        points:
+          - { x: 608.0, y: 312.0 }
+          - { x: 672.0, y: 280.0 }
+      USENS.SDO->bme280_sdo_low:
+        points:
+          - { x: 608.0, y: 408.0 }
+          - { x: 672.0, y: 464.0 }
+      RSDA.A->bme280_3v3:
+        points:
+          - { x: 760.0, y: 104.0 }
+          - { x: 224.0, y: 104.0 }
+      RSDA.B->i2c_sda:
+        points:
+          - { x: 760.0, y: 144.0 }
+      RSCL.A->bme280_3v3:
+        points:
+          - { x: 760.0, y: 104.0 }
+          - { x: 224.0, y: 104.0 }
+      RSCL.B->i2c_scl:
+        points:
+          - { x: 760.0, y: 280.0 }
+      RSDO.A->bme280_sdo_low:
+        points:
+          - { x: 760.0, y: 464.0 }
+      RSDO.B->gnd:
+        points:
+          - { x: 760.0, y: 592.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: BME280_3V3_SOURCE
+      pins:
+        P: bme280_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    USENS:
+      model: vendor.bosch.bme280
+      part_number: BME280
+      power_domains:
+        VDD: bme280_3v3
+        VDDIO: bme280_3v3
+      pins:
+        VDD: bme280_3v3
+        VDDIO: bme280_3v3
+        GND: gnd
+        CSB: bme280_3v3
+        SDI: i2c_sda
+        SDO: bme280_sdo_low
+        SCK: i2c_scl
+    RSDA:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: bme280_3v3
+        B: i2c_sda
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSCL:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: bme280_3v3
+        B: i2c_scl
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSDO:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: bme280_sdo_low
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    bme280_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.01
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    bme280_sdo_low:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: bme280_i2c_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - USENS
+          - RSDA
+          - RSCL
+          - RSDO
+      model_files:
+        - path: ../../models/spice/bosch/bme280_i2c_observation.lib
+          sha256: 284426f41fc892ef9d928e11a9c808d73d1816adcf1740d977d281071910a327
+      node_bindings:
+        - { node: rail3v3, net: bme280_3v3 }
+        - { node: sda, net: i2c_sda }
+        - { node: scl, net: i2c_scl }
+        - { node: sdo, net: bme280_sdo_low }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: rail3v3, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: rail3v3, endpoint: { component: USENS, pin: VDD } }
+        - { node: rail3v3, endpoint: { component: USENS, pin: VDDIO } }
+        - { node: "0", endpoint: { component: USENS, pin: GND } }
+        - { node: rail3v3, endpoint: { component: USENS, pin: CSB } }
+        - { node: sda, endpoint: { component: USENS, pin: SDI } }
+        - { node: sdo, endpoint: { component: USENS, pin: SDO } }
+        - { node: scl, endpoint: { component: USENS, pin: SCK } }
+        - { node: rail3v3, endpoint: { component: RSDA, pin: A } }
+        - { node: sda, endpoint: { component: RSDA, pin: B } }
+        - { node: rail3v3, endpoint: { component: RSCL, pin: A } }
+        - { node: scl, endpoint: { component: RSCL, pin: B } }
+        - { node: sdo, endpoint: { component: RSDO, pin: A } }
+        - { node: "0", endpoint: { component: RSDO, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: i2c_idle_address_snapshot
+          description: BME280 I2C mode selected by CSB high, idle pull-ups on SDA/SCL, and SDO low selecting address 0x76.
+      probes:
+        - name: v_vdd
+          expression: V(rail3v3)
+        - name: v_vddio
+          expression: V(rail3v3)
+        - name: v_csb
+          expression: V(rail3v3)
+        - name: v_sda
+          expression: V(sda)
+        - name: v_scl
+          expression: V(scl)
+        - name: v_sdo
+          expression: V(sdo)
+      assertions:
+        - name: vdd_above_operating_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 1.71
+        - name: vdd_below_operating_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: vddio_above_operating_min
+          probe: v_vddio
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 1.2
+        - name: vddio_below_operating_max
+          probe: v_vddio
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: csb_selects_i2c_mode
+          probe: v_csb
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: sda_idle_high_from_pullup
+          probe: v_sda
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: scl_idle_high_from_pullup
+          probe: v_scl
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: sdo_low_selects_i2c_address_0x76
+          probe: v_sdo
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.5

@@ -24,11 +24,14 @@ Facts retained in `vendor.bosch.bme280`:
 - In I2C mode, `SDO` selects the address: low gives `0x76`, high gives `0x77`;
   Bosch notes that `SDO` cannot be left floating.
 - Bosch warns that interface pins must not be held high while `VDDIO` is off.
+- The generated-SPICE face is intentionally high impedance and only observes
+  the surrounding board's rail, pull-up, interface-select, and address-select
+  states.
 
 Model boundary:
 
 - The pack is a static board-boundary model for supply-voltage and pin-binding
-  review.
+  review plus a reduced generated-SPICE I2C board-observation model.
 - It does not model humidity, pressure, or temperature accuracy; register
   protocol; compensation formulas; I2C/SPI timing; response time; noise;
   condensation; aging; self-heating; or calibration behavior.

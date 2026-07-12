@@ -1,6 +1,17 @@
 component_id: vendor.bosch.bme280
-version: 0.1.0
+version: 0.2.0
 category: environmental_sensor
+simulation:
+  spice:
+    model_name: CIRCUITCI_BME280_I2C_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/bosch/bme280_i2c_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VDDIO, GND, CSB, SDI, SDO, SCK]
+    valid_operating_notes:
+      - Reduced high-impedance I2C board-observation model for preliminary VDD/VDDIO rail, SDA/SCL pull-up, CSB interface-select, and SDO address-select checks.
+      - Uses source-backed 1.71 V to 3.6 V VDD range, 1.2 V to 3.6 V VDDIO range, CSB I2C/SPI select, and SDO-selected I2C address metadata.
+      - Humidity, pressure, temperature, compensation formulas, register protocol, I2C/SPI timing, response time, noise, condensation, aging, self-heating, and calibration are out of scope.
 ports:
   VDD:
     kind: electrical_power
@@ -111,6 +122,7 @@ model_quality:
     - environmental_sensor_power_tree_supply_voltage
     - i2c_spi_pin_boundary_review
     - low_power_sensor_board_review
+    - preliminary_generated_spice_observation
   not_valid_for:
     - humidity_pressure_temperature_accuracy_signoff
     - compensation_algorithm_or_register_protocol_validation

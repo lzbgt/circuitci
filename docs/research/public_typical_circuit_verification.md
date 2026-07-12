@@ -56,7 +56,7 @@ audit the modeled facts without relying on chat history.
 | Microchip MCP1316T-29LE/OT reset-supervisor use | <https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP131X-2X-Voltage-Supervisor-DS20001985.pdf> | `docs/research/datasheets/microchip/mcp131x_2x_voltage_supervisor.pdf` |
 | Abracon ABM3 8 MHz crystal support network | <https://abracon.com/Resonators/ABM3.pdf> | `docs/research/datasheets/abracon/abm3.pdf` |
 | Winbond W25Q64JV SPI/QSPI NOR flash power use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
-| Bosch BME280 environmental sensor I2C power use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
+| Bosch BME280 environmental sensor I2C power and observation use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
 | TI CSD17484F4 N-channel MOSFET switching/discharge use | <https://www.ti.com/lit/gpn/CSD17484F4> | `docs/research/datasheets/ti/csd17484f4.pdf` |
 | Kingbright APT1608SURCK red 0603 LED indicator use | <https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf> | `docs/research/datasheets/kingbright/apt1608surck.pdf` |
 | onsemi 1N4148WS switching diode use | <https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf> | `docs/research/datasheets/onsemi/1n4148ws.pdf` |
@@ -362,6 +362,7 @@ cases:
 | `winbond_w25q64jv_spi_flash_power_passes` | `examples/good_winbond_w25q64jv_spi_flash_power/project.yaml` | pass | W25Q64JV SPI/QSPI NOR flash on a 3.3 V VCC rail with every 8-pin SPI/QSPI board-boundary pin bound. |
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `examples/bad_winbond_w25q64jv_vcc_overvoltage/project.yaml` | fail | Detects W25Q64JV `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `bosch_bme280_i2c_power_passes` | `examples/good_bosch_bme280_i2c_power/project.yaml` | pass | BME280 with source-backed 3.3 V `VDD`/`VDDIO`, `CSB` tied high for I2C, and `SDO` tied low for address `0x76`. |
+| `bosch_bme280_i2c_observation_passes` | `examples/good_bosch_bme280_i2c_observation/project.yaml` | pass | BME280 generated-SPICE I2C observation with source-backed 3.3 V `VDD`/`VDDIO`, idle SDA/SCL pull-ups, `CSB` high for I2C, and `SDO` low for address `0x76`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `examples/bad_bosch_bme280_vddio_overvoltage/project.yaml` | fail | Detects BME280 `VDDIO` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `onsemi_1n4148ws_switching_diode_passes` | `examples/good_diode_switching/project.yaml` | pass | 1N4148WS switching diode feeds a 1 k load while retaining the source-backed generated-SPICE model and diode operating-limit probes. |
 | `onsemi_1n4148ws_overcurrent_detected` | `examples/bad_diode_overcurrent/project.yaml` | fail | Detects 1N4148WS forward current above the source-backed 150 mA average rectified-current rating. |
@@ -408,7 +409,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=295, passed=295, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=296, passed=296, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -583,7 +584,7 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred twenty-eight public-reference pass cases produced zero critical
+All one hundred twenty-nine public-reference pass cases produced zero critical
 findings.
 All one hundred sixty-seven paired injected-error cases failed with the expected
 critical finding ID, and all one hundred sixty-seven repair-pair checks passed.

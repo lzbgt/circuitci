@@ -955,16 +955,17 @@ pin contract for `POWER_TREE_VALID` and the explicit port list for
 board-boundary review; it does not emulate SPI commands, JEDEC ID, SFDP tables,
 erase/program sequencing, flash contents, XIP behavior, write-protection
 policy, or high-speed signal integrity.
-`vendor.bosch.bme280` adds a source-backed static environmental sensor pack.
-Official Bosch documentation backs its 1.71 V to 3.6 V `VDD` rail range,
-1.2 V to 3.6 V `VDDIO` rail range, separate digital-interface supply, I2C/SPI
-pin roles, 2.5 mm x 2.5 mm x 0.93 mm package, low-power use-current metadata,
-I2C/SPI clock-class metadata, and SDO-selected I2C address metadata. The
-validator currently uses the two power-pin contracts for `POWER_TREE_VALID`
-and the explicit port list for board-boundary review; it does not validate
-humidity, pressure, or temperature accuracy, compensation algorithms, register
-protocols, bus timing, response time, noise, drift, self-heating, or
-calibration behavior.
+`vendor.bosch.bme280` adds a source-backed environmental sensor pack. Official
+Bosch documentation backs its 1.71 V to 3.6 V `VDD` rail range, 1.2 V to 3.6 V
+`VDDIO` rail range, separate digital-interface supply, I2C/SPI pin roles,
+2.5 mm x 2.5 mm x 0.93 mm package, low-power use-current metadata, I2C/SPI
+clock-class metadata, and SDO-selected I2C address metadata. The validator uses
+the two power-pin contracts for `POWER_TREE_VALID`, the explicit port list for
+board-boundary review, and a high-impedance generated-SPICE face for
+preliminary I2C rail, pull-up, `CSB`, and `SDO` address-select observations. It
+does not validate humidity, pressure, or temperature accuracy, compensation
+algorithms, register protocols, bus timing, response time, noise, drift,
+self-heating, or calibration behavior.
 `vendor.kingbright.apt1608surck` adds a source-backed common indicator LED
 pack. Official Kingbright documentation backs its 30 mA DC forward-current
 limit, 5 V reverse-voltage limit, 75 mW power limit, 1.95 V typical and 2.5 V
