@@ -60,6 +60,7 @@ audit the modeled facts without relying on chat history.
 | Microchip AT24C02C I2C EEPROM power and observation use | <https://ww1.microchip.com/downloads/en/DeviceDoc/AT24C01C-AT24C02C-I2C-Compatible-Two-Wire-Serial-EEPROM-1Kbit-2Kbit-20006111A.pdf> | `docs/research/datasheets/microchip/at24c01c_at24c02c_datasheet_ds20006111a.pdf` |
 | Microchip MCP23017 I2C GPIO expander power and observation use | <https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP23017-Data-Sheet-DS20001952.pdf> | `docs/research/datasheets/microchip/mcp23017_mcp23s17_datasheet_ds20001952d.pdf` |
 | Microchip ATECC608A I2C secure element power and observation use | <https://ww1.microchip.com/downloads/en/DeviceDoc/40001977A.pdf> | `docs/research/datasheets/microchip/atecc608a_datasheet_summary_40001977a.pdf` |
+| Nuvoton NAU7802 bridge/sensor ADC power and observation use | <https://www.nuvoton.com/export/resource-files/en-us--DS_NAU7802_DataSheet_EN_Rev2.6.pdf> | `docs/research/datasheets/nuvoton/nau7802_datasheet_rev2_6.pdf` |
 | Bosch BME280 environmental sensor I2C power and observation use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
 | TI CSD17484F4 N-channel MOSFET switching/discharge use | <https://www.ti.com/lit/gpn/CSD17484F4> | `docs/research/datasheets/ti/csd17484f4.pdf` |
 | Kingbright APT1608SURCK red 0603 LED indicator use | <https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf> | `docs/research/datasheets/kingbright/apt1608surck.pdf` |
@@ -99,8 +100,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines one hundred thirty-eight
-public-reference passing cases and one hundred seventy paired injected-error
+`suites/public_typical_circuits.yaml` combines 140 public-reference passing
+cases and 171 paired injected-error
 cases:
 
 | Case | Fixture | Expected result | Purpose |
@@ -377,6 +378,9 @@ cases:
 | `microchip_atecc608a_i2c_secure_element_power_passes` | `examples/good_microchip_atecc608a_i2c_secure_element_power/project.yaml` | pass | ATECC608A I2C secure element on a 3.3 V VCC rail with every functional SOIC board-boundary pin bound. |
 | `microchip_atecc608a_i2c_secure_element_observation_passes` | `examples/good_microchip_atecc608a_i2c_secure_element_observation/project.yaml` | pass | ATECC608A generated-SPICE I2C observation with source-backed 3.3 V `VCC` and idle-high `SDA`/`SCL` pull-ups. |
 | `microchip_atecc608a_vcc_overvoltage_detected` | `examples/bad_microchip_atecc608a_vcc_overvoltage/project.yaml` | fail | Detects ATECC608A `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
+| `nuvoton_nau7802_bridge_adc_power_passes` | `examples/good_nuvoton_nau7802_bridge_adc_power/project.yaml` | pass | NAU7802 bridge ADC on 3.3 V `DVDD`/`AVDD` rails with every modeled SOP-16 board-boundary pin bound. |
+| `nuvoton_nau7802_bridge_adc_observation_passes` | `examples/good_nuvoton_nau7802_bridge_adc_observation/project.yaml` | pass | NAU7802 generated-SPICE observation with source-backed 3.3 V rails, reference, idle `SCLK`/`SDIO`, `DRDY`, and bridge-input bias. |
+| `nuvoton_nau7802_dvdd_overvoltage_detected` | `examples/bad_nuvoton_nau7802_dvdd_overvoltage/project.yaml` | fail | Detects NAU7802 `DVDD` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `bosch_bme280_i2c_power_passes` | `examples/good_bosch_bme280_i2c_power/project.yaml` | pass | BME280 with source-backed 3.3 V `VDD`/`VDDIO`, `CSB` tied high for I2C, and `SDO` tied low for address `0x76`. |
 | `bosch_bme280_i2c_observation_passes` | `examples/good_bosch_bme280_i2c_observation/project.yaml` | pass | BME280 generated-SPICE I2C observation with source-backed 3.3 V `VDD`/`VDDIO`, idle SDA/SCL pull-ups, `CSB` high for I2C, and `SDO` low for address `0x76`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `examples/bad_bosch_bme280_vddio_overvoltage/project.yaml` | fail | Detects BME280 `VDDIO` connected to a 5 V rail above the source-backed 3.6 V maximum. |
@@ -425,7 +429,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=308, passed=308, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=311, passed=311, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -585,6 +589,7 @@ Observed detection details:
 | `microchip_at24c02c_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `UEEPROM.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `microchip_mcp23017_vdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `UIOX.VDD` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `microchip_atecc608a_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `USEC.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
+| `nuvoton_nau7802_dvdd_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `UADC.DVDD` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UBME.VDDIO` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `onsemi_1n4148ws_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `IF_AV`: maximum simulated current was `0.384935 A`, limit is `0.150000 A`; it also exceeded `PD` at `0.443047 W` against `0.200000 W`. |
 | `onsemi_1n4148ws_reverse_voltage_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `VRRM`: maximum simulated voltage was `119.995528 V`, limit is `100.000000 V`. |
@@ -603,10 +608,10 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred thirty-eight public-reference pass cases produced zero critical
+All 140 public-reference pass cases produced zero critical
 findings.
-All one hundred seventy paired injected-error cases failed with the expected
-critical finding ID, and all one hundred seventy repair-pair checks passed.
+All 171 paired injected-error cases failed with the expected
+critical finding ID, and all 171 repair-pair checks passed.
 
 ## Interpretation Limits
 

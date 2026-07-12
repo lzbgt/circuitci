@@ -230,3 +230,30 @@ fn atecc608a_i2c_secure_element_scope_example_workflow_creates_model_aware_obser
         ],
     );
 }
+
+#[test]
+fn nau7802_bridge_adc_scope_example_workflow_creates_model_aware_observation_checks() {
+    assert_observation_workflow(
+        "nau7802_bridge_adc_scope",
+        "UADC",
+        "uadc_observation",
+        &[
+            "v_uadc_dvdd",
+            "v_uadc_vin1p",
+            "v_uadc_vin1n",
+            "v_uadc_sclk",
+            "v_uadc_sdio",
+            "v_uadc_drdy",
+        ],
+        &[
+            "v_uadc_dvdd_min_voltage",
+            "v_uadc_dvdd_avdd_min_voltage",
+            "v_uadc_sclk_i2c_idle_high",
+            "v_uadc_sdio_i2c_idle_high",
+            "v_uadc_drdy_data_ready_idle_high",
+            "v_uadc_dvdd_reference_voltage_min",
+            "v_uadc_vin1p_input_bias_min",
+            "v_uadc_vin1n_input_bias_max",
+        ],
+    );
+}

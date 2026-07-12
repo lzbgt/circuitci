@@ -1,0 +1,365 @@
+project:
+  name: good_nuvoton_nau7802_bridge_adc_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      UADC: ADC:NAU7802
+      RSCL: Device:R
+      RSDIO: Device:R
+      RDRDY: Device:R
+      RBP: Device:R
+      RBN: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UADC: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSCL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSDIO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RDRDY: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RBP: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RBN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 168.0 }
+      component:UADC: { x: 396.0, y: 328.0 }
+      component:RSCL: { x: 760.0, y: 136.0 }
+      component:RSDIO: { x: 760.0, y: 232.0 }
+      component:RDRDY: { x: 760.0, y: 328.0 }
+      component:RBP: { x: 760.0, y: 456.0 }
+      component:RBN: { x: 760.0, y: 552.0 }
+      net:nau_3v3: { x: 224.0, y: 96.0 }
+      net:i2c_scl: { x: 640.0, y: 136.0 }
+      net:i2c_sdio: { x: 640.0, y: 232.0 }
+      net:adc_drdy: { x: 640.0, y: 328.0 }
+      net:bridge_sig_p: { x: 640.0, y: 456.0 }
+      net:bridge_sig_n: { x: 640.0, y: 552.0 }
+      net:gnd: { x: 396.0, y: 640.0 }
+    wire_routes:
+      VDD.P->nau_3v3:
+        points:
+          - { x: 160.0, y: 168.0 }
+          - { x: 224.0, y: 96.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 120.0, y: 640.0 }
+      UADC.DVDD->nau_3v3:
+        points:
+          - { x: 316.0, y: 136.0 }
+          - { x: 224.0, y: 96.0 }
+      UADC.AVDD->nau_3v3:
+        points:
+          - { x: 316.0, y: 184.0 }
+          - { x: 224.0, y: 96.0 }
+      UADC.REFP->nau_3v3:
+        points:
+          - { x: 316.0, y: 232.0 }
+          - { x: 224.0, y: 96.0 }
+      UADC.DVSS->gnd:
+        points:
+          - { x: 356.0, y: 640.0 }
+      UADC.AVSS->gnd:
+        points:
+          - { x: 396.0, y: 640.0 }
+      UADC.REFN->gnd:
+        points:
+          - { x: 436.0, y: 640.0 }
+      UADC.SCLK->i2c_scl:
+        points:
+          - { x: 608.0, y: 136.0 }
+          - { x: 640.0, y: 136.0 }
+      UADC.SDIO->i2c_sdio:
+        points:
+          - { x: 608.0, y: 232.0 }
+          - { x: 640.0, y: 232.0 }
+      UADC.DRDY->adc_drdy:
+        points:
+          - { x: 608.0, y: 328.0 }
+          - { x: 640.0, y: 328.0 }
+      UADC.VIN1P->bridge_sig_p:
+        points:
+          - { x: 608.0, y: 456.0 }
+          - { x: 640.0, y: 456.0 }
+      UADC.VIN1N->bridge_sig_n:
+        points:
+          - { x: 608.0, y: 552.0 }
+          - { x: 640.0, y: 552.0 }
+      UADC.VIN2P->bridge_sig_p:
+        points:
+          - { x: 608.0, y: 488.0 }
+          - { x: 640.0, y: 456.0 }
+      UADC.VIN2N->bridge_sig_n:
+        points:
+          - { x: 608.0, y: 584.0 }
+          - { x: 640.0, y: 552.0 }
+      UADC.VBG->gnd:
+        points:
+          - { x: 520.0, y: 640.0 }
+      RSCL.A->nau_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSCL.B->i2c_scl:
+        points:
+          - { x: 760.0, y: 136.0 }
+      RSDIO.A->nau_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSDIO.B->i2c_sdio:
+        points:
+          - { x: 760.0, y: 232.0 }
+      RDRDY.A->nau_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RDRDY.B->adc_drdy:
+        points:
+          - { x: 760.0, y: 328.0 }
+      RBP.A->nau_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RBP.B->bridge_sig_p:
+        points:
+          - { x: 760.0, y: 456.0 }
+      RBN.A->bridge_sig_n:
+        points:
+          - { x: 760.0, y: 552.0 }
+      RBN.B->gnd:
+        points:
+          - { x: 760.0, y: 640.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: NAU7802_3V3_SOURCE
+      pins:
+        P: nau_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UADC:
+      model: vendor.nuvoton.nau7802
+      part_number: NAU7802SGI
+      parameters:
+        observation_sclk_state: 1.0
+        observation_sdio_state: 1.0
+        observation_drdy_state: 1.0
+      power_domains:
+        DVDD: nau_3v3
+        AVDD: nau_3v3
+      pins:
+        DVDD: nau_3v3
+        DVSS: gnd
+        AVDD: nau_3v3
+        AVSS: gnd
+        REFP: nau_3v3
+        REFN: gnd
+        VIN1P: bridge_sig_p
+        VIN1N: bridge_sig_n
+        VIN2P: bridge_sig_p
+        VIN2N: bridge_sig_n
+        SCLK: i2c_scl
+        SDIO: i2c_sdio
+        DRDY: adc_drdy
+        VBG: gnd
+    RSCL:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: nau_3v3
+        B: i2c_scl
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSDIO:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: nau_3v3
+        B: i2c_sdio
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RDRDY:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: nau_3v3
+        B: adc_drdy
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RBP:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: nau_3v3
+        B: bridge_sig_p
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RBN:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: bridge_sig_n
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    nau_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    gnd:
+      kind: ground
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_sdio:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    adc_drdy:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    bridge_sig_p:
+      kind: digital_or_analog
+      nominal_voltage: 1.65
+    bridge_sig_n:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+
+scenarios:
+  - name: nau7802_bridge_adc_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - UADC
+          - RSCL
+          - RSDIO
+          - RDRDY
+          - RBP
+          - RBN
+      model_files:
+        - path: ../../models/spice/nuvoton/nau7802_bridge_adc_observation.lib
+          sha256: 5c5fadc9ce0015bc0b455175e243c76fbfc909c24985de5adbc8f3f470c3b7e8
+      node_bindings:
+        - { node: dvdd, net: nau_3v3 }
+        - { node: vin1p, net: bridge_sig_p }
+        - { node: vin1n, net: bridge_sig_n }
+        - { node: sclk, net: i2c_scl }
+        - { node: sdio, net: i2c_sdio }
+        - { node: drdy, net: adc_drdy }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: dvdd, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: dvdd, endpoint: { component: UADC, pin: DVDD } }
+        - { node: "0", endpoint: { component: UADC, pin: DVSS } }
+        - { node: dvdd, endpoint: { component: UADC, pin: AVDD } }
+        - { node: "0", endpoint: { component: UADC, pin: AVSS } }
+        - { node: dvdd, endpoint: { component: UADC, pin: REFP } }
+        - { node: "0", endpoint: { component: UADC, pin: REFN } }
+        - { node: vin1p, endpoint: { component: UADC, pin: VIN1P } }
+        - { node: vin1n, endpoint: { component: UADC, pin: VIN1N } }
+        - { node: vin1p, endpoint: { component: UADC, pin: VIN2P } }
+        - { node: vin1n, endpoint: { component: UADC, pin: VIN2N } }
+        - { node: sclk, endpoint: { component: UADC, pin: SCLK } }
+        - { node: sdio, endpoint: { component: UADC, pin: SDIO } }
+        - { node: drdy, endpoint: { component: UADC, pin: DRDY } }
+        - { node: "0", endpoint: { component: UADC, pin: VBG } }
+        - { node: dvdd, endpoint: { component: RSCL, pin: A } }
+        - { node: sclk, endpoint: { component: RSCL, pin: B } }
+        - { node: dvdd, endpoint: { component: RSDIO, pin: A } }
+        - { node: sdio, endpoint: { component: RSDIO, pin: B } }
+        - { node: dvdd, endpoint: { component: RDRDY, pin: A } }
+        - { node: drdy, endpoint: { component: RDRDY, pin: B } }
+        - { node: dvdd, endpoint: { component: RBP, pin: A } }
+        - { node: vin1p, endpoint: { component: RBP, pin: B } }
+        - { node: vin1n, endpoint: { component: RBN, pin: A } }
+        - { node: "0", endpoint: { component: RBN, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: bridge_adc_idle_snapshot
+          description: NAU7802 idle board bias with DVDD/AVDD at 3.3 V, I2C pull-ups high, DRDY pulled high, and defined bridge input endpoints.
+      probes:
+        - name: v_dvdd
+          expression: V(dvdd)
+        - name: v_sdio
+          expression: V(sdio)
+        - name: v_sclk
+          expression: V(sclk)
+        - name: v_drdy
+          expression: V(drdy)
+        - name: v_vin1p
+          expression: V(vin1p)
+        - name: v_vin1n
+          expression: V(vin1n)
+      assertions:
+        - name: dvdd_above_operating_min
+          probe: v_dvdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: dvdd_below_operating_max
+          probe: v_dvdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: sdio_idle_high
+          probe: v_sdio
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: sclk_idle_high
+          probe: v_sclk
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: drdy_idle_high
+          probe: v_drdy
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: vin1p_bridge_bias_present
+          probe: v_vin1p
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 1.0
+        - name: vin1n_bridge_bias_low
+          probe: v_vin1n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.2

@@ -991,6 +991,18 @@ generated-SPICE face for preliminary VCC and idle I2C pull-up observations. It
 does not emulate cryptographic commands, key storage, provisioning state, RNG
 behavior, secure boot policy, wake/sleep timing, single-wire operation, I2C
 transaction content, firmware, or signal integrity.
+`vendor.nuvoton.nau7802` adds a source-backed bridge/sensor ADC pack. Official
+Nuvoton documentation backs its 2.7 V to 5.5 V DVDD rail range, external 2.7 V
+to 5.5 V AVDD/LDO rail range, SOP-16/QFN-16 pin roles, 2-wire
+I2C-compatible slave interface, DRDY output, bridge reference/input pins,
+400 kHz fast-mode I2C class, 400 pF bus-capacitance limit, and 10 mA AVDD LDO
+load-current limit. The validator uses the power pin contract for
+`POWER_TREE_VALID`, the explicit port list for board-boundary review, and a
+high-impedance generated-SPICE face for preliminary rail, reference,
+bridge-input, I2C idle, and DRDY observations. It does not emulate conversion
+codes, PGA gain, calibration, register protocol, I2C timing, streaming data
+mode, bridge excitation accuracy, oscillator behavior, temperature sensing, or
+metrology accuracy.
 `vendor.bosch.bme280` adds a source-backed environmental sensor pack. Official
 Bosch documentation backs its 1.71 V to 3.6 V `VDD` rail range, 1.2 V to 3.6 V
 `VDDIO` rail range, separate digital-interface supply, I2C/SPI pin roles,

@@ -1,0 +1,175 @@
+component_id: vendor.nuvoton.nau7802
+version: 0.1.0
+category: bridge_adc
+simulation:
+  spice:
+    model_name: CIRCUITCI_NAU7802_BRIDGE_ADC_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/nuvoton/nau7802_bridge_adc_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [DVDD, DVSS, AVDD, AVSS, REFP, REFN, VIN1P, VIN1N, VIN2P, VIN2N, SCLK, SDIO, DRDY, VBG]
+    valid_operating_notes:
+      - Reduced high-impedance NAU7802 bridge ADC board-observation model for preliminary DVDD/AVDD rail, reference, bridge-input, I2C pull-up, and DRDY line-state checks.
+      - Uses source-backed 2.7 V to 5.5 V DVDD range, external 2.7 V to 5.5 V AVDD range, I2C-compatible 2-wire slave interface, and bridge ADC pin roles.
+      - ADC conversion, PGA gain, calibration, register protocol, I2C timing, streaming mode, bridge excitation accuracy, oscillator behavior, temperature sensor behavior, and metrology accuracy are out of scope.
+ports:
+  DVDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.7
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.0021
+  DVSS:
+    kind: electrical_ground
+    required: true
+  AVDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.7
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.010
+  AVSS:
+    kind: electrical_ground
+    required: true
+  REFP:
+    kind: passive
+    required: true
+  REFN:
+    kind: passive
+    required: true
+  VIN1P:
+    kind: passive
+    required: true
+  VIN1N:
+    kind: passive
+    required: true
+  VIN2P:
+    kind: passive
+    required: true
+  VIN2N:
+    kind: passive
+    required: true
+  SCLK:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.31
+      vil_max_V: 0.99
+  SDIO:
+    kind: digital_electrical_io
+    required: true
+    electrical:
+      vih_min_V: 2.31
+      vil_max_V: 0.99
+  DRDY:
+    kind: digital_electrical_output
+    required: true
+  VBG:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: Nuvoton Technology
+  part_number: NAU7802SGI
+  package: SOP-16, 150 mil
+  polarity: "24bit_bridge_sensor_adc"
+  pinout:
+    REFP: Positive reference input
+    VIN1N: Inverting input 1
+    VIN1P: Non-inverting input 1
+    VIN2N: Inverting input 2
+    VIN2P: Non-inverting input 2
+    VBG: High-impedance reference voltage output and bypass
+    REFN: Negative reference input
+    AVSS: Analog ground
+    DVSS: Digital ground
+    XIN: External crystal oscillator input
+    XOUT: External crystal oscillator output
+    DRDY: Data-ready output
+    SCLK: Serial data clock input
+    SDIO: Serial data input/output
+    DVDD: Digital power supply
+    AVDD: Analog power supply or LDO output
+  electrical_characteristics:
+    dvdd_supply:
+      min: 2.7
+      max: 5.5
+      unit: V
+    avdd_external_supply:
+      min: 2.7
+      max: 5.5
+      unit: V
+      notes: Datasheet also states AVDD should not exceed DVDD.
+    operating_current_internal_osc_ldo:
+      typ: 2.1
+      unit: mA
+    operating_current_internal_osc_no_ldo:
+      typ: 2.0
+      unit: mA
+    power_down_current:
+      typ: 0.2
+      max: 1.0
+      unit: uA
+    avdd_ldo_load_current:
+      max: 10.0
+      unit: mA
+    i2c_standard_mode_clock:
+      min: 0.0
+      max: 100.0
+      unit: kHz
+    i2c_fast_mode_clock:
+      min: 0.0
+      max: 400.0
+      unit: kHz
+    i2c_bus_capacitance:
+      max: 400.0
+      unit: pF
+    digital_input_high:
+      min: 0.7
+      unit: DVDD_ratio
+    digital_input_low:
+      max: 0.3
+      unit: DVDD_ratio
+    sdio_sclk_pullup_options:
+      values: [1.6, 50.0]
+      unit: kOhm
+  device_parameters:
+    adc_resolution:
+      value: 24
+      unit: bit
+      simulation_relevance: Conversion codes and accuracy are out of scope for this board-observation model.
+    effective_precision:
+      value: 23
+      unit: ENOB
+      simulation_relevance: Metrology accuracy is out of scope for this board-observation model.
+    pga_gain_min:
+      value: 1
+      unit: ratio
+    pga_gain_max:
+      value: 128
+      unit: ratio
+    avdd_ldo_options:
+      values: [2.4, 2.7, 3.0, 3.3, 3.6, 4.2, 4.5]
+      unit: V
+  documents:
+    - title: NAU7802 Precision ADC with 2-wire Control Interface Data Sheet Rev 2.6
+      path: docs/research/datasheets/nuvoton/nau7802_datasheet_rev2_6.pdf
+      source_url: https://www.nuvoton.com/export/resource-files/en-us--DS_NAU7802_DataSheet_EN_Rev2.6.pdf
+      sha256: 1d52edc0267ea1c529003af5b29b1088cee01c64a511079258359ede91633a7d
+      retrieved: "2026-07-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - bridge_adc_power_tree_supply_voltage
+    - i2c_pin_boundary_review
+    - bridge_reference_and_input_bias_review
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - adc_conversion_accuracy_signoff
+    - pga_gain_or_filter_response_validation
+    - calibration_or_register_protocol_validation
+    - i2c_timing_signoff
+    - load_cell_metrology_or_bridge_excitation_accuracy
+    - oscillator_or_temperature_sensor_validation

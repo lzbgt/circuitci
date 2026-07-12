@@ -286,6 +286,13 @@ const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXAMPLE_NAME: &str =
 const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_TRACES: &[&str] = &["v_vcc", "v_sda", "v_scl"];
 const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V ATECC608A secure element with idle I2C pull-ups";
+const NAU7802_BRIDGE_ADC_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_nuvoton_nau7802_bridge_adc_observation/project.yaml";
+const NAU7802_BRIDGE_ADC_SCOPE_EXAMPLE_NAME: &str = "good_nuvoton_nau7802_bridge_adc_observation";
+const NAU7802_BRIDGE_ADC_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_dvdd", "v_sdio", "v_sclk", "v_drdy", "v_vin1p", "v_vin1n"];
+const NAU7802_BRIDGE_ADC_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V NAU7802 bridge ADC with idle I2C pull-ups, DRDY high, and defined bridge input bias";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -901,6 +908,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_TRACES,
         expected_frequency: ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("USEC"),
+    },
+    GuiProjectExample {
+        id: "nau7802_bridge_adc_scope",
+        category: "Sensors",
+        open_label: "Open NAU7802 Bridge ADC Example",
+        run_label: "Open NAU7802 + Run Scopes",
+        workflow_title: "NAU7802 Bridge ADC Workflow",
+        summary: "Source-backed NAU7802 rail, reference, I2C pull-up, DRDY, and bridge-input observation.",
+        project_path: NAU7802_BRIDGE_ADC_SCOPE_EXAMPLE_PROJECT,
+        project_name: NAU7802_BRIDGE_ADC_SCOPE_EXAMPLE_NAME,
+        expected_traces: NAU7802_BRIDGE_ADC_SCOPE_EXPECTED_TRACES,
+        expected_frequency: NAU7802_BRIDGE_ADC_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UADC"),
     },
     GuiProjectExample {
         id: "esds552_scope",

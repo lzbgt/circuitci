@@ -392,7 +392,9 @@ generated-SPICE VDD/VDDIO, I2C pull-up, `CSB`, and `SDO` address-select
 observation. The SHT31-DIS I2C sensor fixture opens a generated-SPICE VDD,
 I2C pull-up, `ADDR`, `nRESET`, and `ALERT` line-state observation. The
 W25Q64JV SPI flash fixture opens a generated-SPICE VCC and
-standby SPI/QSPI line-bias observation. The ESDS552 RS-485 ESD fixture opens a
+standby SPI/QSPI line-bias observation. The NAU7802 bridge ADC fixture opens a
+generated-SPICE DVDD/AVDD, reference, bridge-input, I2C pull-up, and DRDY
+line-state observation. The ESDS552 RS-485 ESD fixture opens a
 generated-SPICE
 A/B standoff observation with the source-backed 11 pF maximum line-capacitance
 load. The THVD1450 RS-485 transceiver fixture opens a generated-SPICE VCC,
@@ -676,7 +678,7 @@ form:
   USB-UART bridge fixture, CP2102N USB-UART bridge fixture, FT232R USB-UART bridge fixture, CH347 USB-JTAG
   debug bridge fixture, CMSIS-DAP SWD probe fixture, STM32L431 boot/UART/SWD fixture, nRF52840 board fixture, ESP32-WROOM-32E boot/UART
   fixture, ESP32-S3-WROOM boot/USB fixture, LicheeRV-Nano-W module fixture, AT32F435 motion-core fixture, AT32M416 motor-control fixture, TXS0108E level-shifter
-  fixture, NL27WZ17 logic-buffer fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, ESD2CAN24-Q1 CAN ESD fixture, TCAN3413 CAN transceiver fixture, DRV8323 gate-driver fixture, PCA9685 PWM-driver fixture, ICM-42688-P IMU fixture, BME280 I2C sensor fixture, SHT31-DIS I2C sensor fixture, W25Q64JV SPI flash fixture, ESDS552 RS-485 ESD fixture, THVD1450 RS-485 transceiver fixture, AP2112K LDO rail fixture, AMS1117 LDO rail fixture, TPS54331 buck rail fixture,
+  fixture, NL27WZ17 logic-buffer fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, ESD2CAN24-Q1 CAN ESD fixture, TCAN3413 CAN transceiver fixture, DRV8323 gate-driver fixture, PCA9685 PWM-driver fixture, ICM-42688-P IMU fixture, BME280 I2C sensor fixture, SHT31-DIS I2C sensor fixture, W25Q64JV SPI flash fixture, NAU7802 bridge ADC fixture, ESDS552 RS-485 ESD fixture, THVD1450 RS-485 transceiver fixture, AP2112K LDO rail fixture, AMS1117 LDO rail fixture, TPS54331 buck rail fixture,
   TPS62162 buck rail fixture,
   TPS63802 buck-boost rail fixture, TPS61023 boost rail fixture, TPS2121
   power-mux fixture, TPS2115A power-mux fixture, TPS22918 load-switch fixture, TPS25948 eFuse fixture, TPS24751 hot-swap fixture, MCP73831 charger fixture, BQ24075
@@ -695,7 +697,7 @@ form:
   STM32L431 boot/UART/SWD, nRF52840 board, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB, LicheeRV-Nano-W module,
   AT32F435 motion core, AT32M416 motor control,
   TXS0108E level shifter, NL27WZ17 logic buffer,
-  TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, BME280 I2C sensor, SHT31-DIS I2C sensor, W25Q64JV SPI flash, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO, AMS1117 LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux, TPS2115A power mux,
+  TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, BME280 I2C sensor, SHT31-DIS I2C sensor, W25Q64JV SPI flash, NAU7802 bridge ADC, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO, AMS1117 LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load-switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power-path charger, and
   TLV803 reset fixtures, also show `Create Checks` to append a generated run
   setup with model-aware probes and observation checks for the placed component.

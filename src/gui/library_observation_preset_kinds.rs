@@ -765,6 +765,107 @@ pub(super) fn add_secure_element_observation_assertions(
     }
 }
 
+pub(super) fn add_bridge_adc_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "bridge_adc" {
+        return;
+    }
+    for pin in ["DVDD", "AVDD"] {
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            pin,
+            stop_time_us,
+            assertions,
+        );
+    }
+    let logic_high_v = voltage_for_component_pin(project, component, "DVDD").unwrap_or(3.3);
+    for (pin, parameter, default_state, high_suffix, low_suffix) in [
+        (
+            "SCLK",
+            "observation_sclk_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "SDIO",
+            "observation_sdio_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "DRDY",
+            "observation_drdy_state",
+            1.0,
+            "data_ready_idle_high",
+            "data_ready_asserted_low",
+        ),
+    ] {
+        add_pin_state_assertion(
+            component,
+            model,
+            probes,
+            scenario_name,
+            stop_time_us,
+            &PinStateAssertionSpec {
+                pin,
+                parameter,
+                default_state,
+                high_suffix,
+                low_suffix,
+                logic_high_v,
+            },
+            assertions,
+        );
+    }
+    for (pin, parameter, fallback_v, suffix) in [
+        (
+            "REFP",
+            "observation_refp_v",
+            logic_high_v,
+            "reference_voltage",
+        ),
+        ("VIN1P", "observation_vin1p_v", logic_high_v, "input_bias"),
+        ("VIN1N", "observation_vin1n_v", 0.0, "input_bias"),
+    ] {
+        let Some(probe) = probe_for_component_pin(probes, component, pin) else {
+            continue;
+        };
+        let target_v = component_parameter_f64(component, parameter)
+            .or_else(|| voltage_for_component_pin(project, component, pin))
+            .unwrap_or(fallback_v);
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}_min", probe.probe_name, suffix),
+            &probe.probe_name,
+            "mean",
+            "above",
+            (target_v - 0.1).max(0.0),
+            (0.0, stop_time_us),
+        ));
+        assertions.push(default_voltage_assertion(
+            scenario_name,
+            &format!("{}_{}_max", probe.probe_name, suffix),
+            &probe.probe_name,
+            "mean",
+            "below",
+            target_v + 0.1,
+            (0.0, stop_time_us),
+        ));
+    }
+}
+
 pub(super) fn add_linux_som_observation_assertions(
     component: &crate::board_ir::ComponentSpec,
     model: &crate::library::ComponentModel,

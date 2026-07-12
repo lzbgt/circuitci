@@ -1,0 +1,67 @@
+project:
+  name: bad_nuvoton_nau7802_dvdd_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    UADC:
+      model: vendor.nuvoton.nau7802
+      part_number: NAU7802SGI
+      power_domains:
+        DVDD: rail_6v
+        AVDD: rail_3v3
+      pins:
+        DVDD: rail_6v
+        DVSS: gnd
+        AVDD: rail_3v3
+        AVSS: gnd
+        REFP: rail_3v3
+        REFN: gnd
+        VIN1P: bridge_sig_p
+        VIN1N: bridge_sig_n
+        VIN2P: bridge_sig_p
+        VIN2N: bridge_sig_n
+        SCLK: i2c_scl
+        SDIO: i2c_sda
+        DRDY: adc_drdy
+        VBG: adc_vbg
+  nets:
+    rail_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+      supply_current_limit_A: 0.05
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    gnd:
+      kind: ground
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    adc_drdy:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    bridge_sig_p:
+      kind: digital_or_analog
+      nominal_voltage: 1.66
+    bridge_sig_n:
+      kind: digital_or_analog
+      nominal_voltage: 1.64
+    adc_vbg:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+
+scenarios:
+  - name: nau7802_dvdd_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

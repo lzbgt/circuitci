@@ -1,0 +1,22 @@
+* Reduced Nuvoton NAU7802 bridge ADC board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* rail, reference, bridge-input, I2C idle, and DRDY line-state checks. It does
+* not model ADC conversion, PGA gain, calibration, register protocol, I2C
+* timing, oscillator behavior, bridge excitation, or metrology accuracy.
+
+.subckt CIRCUITCI_NAU7802_BRIDGE_ADC_OBSERVATION DVDD DVSS AVDD AVSS REFP REFN VIN1P VIN1N VIN2P VIN2N SCLK SDIO DRDY VBG
+* All observed pins are high impedance. External pull-ups, sources, bridge
+* resistors, references, and board metadata define the observable state.
+RDVDD DVDD DVSS 1G
+RAVDD AVDD AVSS 1G
+RREFP REFP AVSS 1G
+RREFN REFN AVSS 1G
+RVIN1P VIN1P AVSS 1G
+RVIN1N VIN1N AVSS 1G
+RVIN2P VIN2P AVSS 1G
+RVIN2N VIN2N AVSS 1G
+RSCLK SCLK DVSS 1G
+RSDIO SDIO DVSS 1G
+RDRDY DRDY DVSS 1G
+RVBG VBG AVSS 1G
+.ends CIRCUITCI_NAU7802_BRIDGE_ADC_OBSERVATION

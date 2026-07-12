@@ -131,8 +131,8 @@ existing CircuitCI checks:
   (source-backed observation pack added), `ATECC608A-SSHDA-T` (source-backed
   observation pack added),
   `MCP23017-E/SS` (source-backed observation pack added).
-- Sensors/audio: `NAU7802SGI`, `AHT20`, `CPS121`, `MAX98357A`, `INMP441`,
-  `SU-03T`.
+- Sensors/audio: `NAU7802SGI` (source-backed observation pack added), `AHT20`,
+  `CPS121`, `MAX98357A`, `INMP441`, `SU-03T`.
 - RF modules and interfaces: `DX-LR30-433M22S`, E22 modules,
   `SX1262`/`LLCC68`, U.FL/SMA connectors, chip antennas.
 - Board-entry/connectors: USB-C 16-pin, JST/GH/PH, FPC, antenna connectors.

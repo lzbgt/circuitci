@@ -410,6 +410,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   cryptographic commands, key storage, provisioning state, RNG behavior,
   secure boot policy, wake/sleep timing, single-wire operation, I2C transaction
   content, firmware, or signal integrity.
+- `examples/good_nuvoton_nau7802_bridge_adc_observation` proves the Nuvoton
+  NAU7802 source-backed bridge ADC model can use a reduced high-impedance
+  generated-SPICE face for DVDD/AVDD rails, reference, bridge-input, idle
+  `SCLK`/`SDIO`, and `DRDY` line-state observations. The macro observes board
+  biasing and does not emulate ADC conversion codes, PGA gain, calibration,
+  register protocol, I2C timing, streaming data mode, bridge excitation
+  accuracy, oscillator behavior, temperature sensing, or metrology accuracy.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

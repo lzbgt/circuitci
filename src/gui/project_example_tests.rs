@@ -534,6 +534,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("USEC"),
         },
         ExpectedProjectExample {
+            id: "nau7802_bridge_adc_scope",
+            category: "Sensors",
+            open_label: "Open NAU7802 Bridge ADC Example",
+            run_label: "Open NAU7802 + Run Scopes",
+            summary: "Source-backed NAU7802 rail, reference, I2C pull-up, DRDY, and bridge-input observation.",
+            project_path: "examples/good_nuvoton_nau7802_bridge_adc_observation/project.yaml",
+            project_name: "good_nuvoton_nau7802_bridge_adc_observation",
+            expected_traces: &["v_dvdd", "v_sdio", "v_sclk", "v_drdy", "v_vin1p", "v_vin1n"],
+            expected_frequency: "3.3 V NAU7802 bridge ADC with idle I2C pull-ups, DRDY high, and defined bridge input bias",
+            observation_preset_component: Some("UADC"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

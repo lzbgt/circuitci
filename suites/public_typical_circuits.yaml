@@ -1546,6 +1546,21 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: nuvoton_nau7802_bridge_adc_power_passes
+    project: ../examples/good_nuvoton_nau7802_bridge_adc_power/project.yaml
+    expect: pass
+
+  - id: nuvoton_nau7802_bridge_adc_observation_passes
+    project: ../examples/good_nuvoton_nau7802_bridge_adc_observation/project.yaml
+    expect: pass
+
+  - id: nuvoton_nau7802_dvdd_overvoltage_detected
+    project: ../examples/bad_nuvoton_nau7802_dvdd_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: bosch_bme280_i2c_power_passes
     project: ../examples/good_bosch_bme280_i2c_power/project.yaml
     expect: pass
@@ -2648,6 +2663,12 @@ repairs:
   - id: fix_microchip_atecc608a_vcc_overvoltage
     detects_case: microchip_atecc608a_vcc_overvoltage_detected
     fixed_case: microchip_atecc608a_i2c_secure_element_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_nuvoton_nau7802_dvdd_overvoltage
+    detects_case: nuvoton_nau7802_dvdd_overvoltage_detected
+    fixed_case: nuvoton_nau7802_bridge_adc_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

@@ -157,6 +157,16 @@ emulate cryptographic commands, key storage, provisioning, RNG behavior,
 secure boot policy, wake/sleep timing, single-wire operation, firmware, or
 signal-integrity timing. See `docs/microchip_atecc608a_model.md`.
 
+`vendor.nuvoton.nau7802` provides a source-backed model for Nuvoton's NAU7802
+24-bit bridge/sensor ADC. It models the 2.7 V to 5.5 V `DVDD` range, external
+2.7 V to 5.5 V `AVDD/LDO` range, SOP-16/QFN-16 board-boundary pin roles,
+2-wire I2C-compatible slave metadata, bridge reference/input pins, and a
+reduced high-impedance generated-SPICE observation face for rails, idle
+`SCLK`/`SDIO`, `DRDY`, reference, and bridge-input bias. It does not emulate
+ADC conversion codes, PGA gain, calibration, register protocol, I2C timing,
+streaming data mode, bridge excitation accuracy, oscillator behavior,
+temperature sensing, or metrology accuracy. See `docs/nuvoton_nau7802_model.md`.
+
 `vendor.bosch.bme280` provides a source-backed model for Bosch's BME280
 humidity, pressure, and temperature sensor. It models the 1.71 V to 3.6 V
 `VDD` range, the 1.2 V to 3.6 V `VDDIO` range, I2C/SPI board-boundary pins,
@@ -851,7 +861,8 @@ Current analog support:
   CSB, and SDO address-select observations, SHT31-DIS-style environmental-sensor
   VDD, I2C pull-up, ADDR, nRESET, and ALERT observations, W25Q64JV-style
   SPI/QSPI flash VCC, standby chip-select, write-protect, hold/reset, and
-  idle-line observations,
+  idle-line observations, NAU7802-style bridge ADC DVDD/AVDD, reference,
+  bridge-input, I2C idle-line, and DRDY observations,
   AMS1117-style fixed 3.3 V LDO rail observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
