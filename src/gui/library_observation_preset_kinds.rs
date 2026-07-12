@@ -4,6 +4,15 @@ use super::library_observation_presets::{
     default_voltage_assertion, probe_for_component_pin, voltage_for_component_pin,
 };
 
+struct PinStateAssertionSpec<'a> {
+    pin: &'a str,
+    parameter: &'a str,
+    default_state: f64,
+    high_suffix: &'a str,
+    low_suffix: &'a str,
+    logic_high_v: f64,
+}
+
 pub(super) fn supports_comms_output_observation(model: &crate::library::ComponentModel) -> bool {
     matches!(
         model.category.as_str(),
@@ -292,6 +301,201 @@ pub(super) fn add_imu_observation_assertions(
             threshold,
             (0.0, stop_time_us),
         ));
+    }
+}
+
+pub(super) fn add_environmental_sensor_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "environmental_sensor" {
+        return;
+    }
+    for pin in ["VDD", "VDDIO"] {
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            pin,
+            stop_time_us,
+            assertions,
+        );
+    }
+    let logic_high_v = voltage_for_component_pin(project, component, "VDDIO")
+        .or_else(|| voltage_for_component_pin(project, component, "VDD"))
+        .unwrap_or(3.3);
+    for (pin, parameter, default_state, high_suffix, low_suffix) in [
+        (
+            "CSB",
+            "observation_csb_state",
+            1.0,
+            "i2c_select_high",
+            "spi_select_low",
+        ),
+        (
+            "SDI",
+            "observation_sdi_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "SCK",
+            "observation_sck_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "SDO",
+            "observation_sdo_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "SDA",
+            "observation_sda_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "SCL",
+            "observation_scl_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "ADDR",
+            "observation_addr_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "NRESET",
+            "observation_nreset_state",
+            1.0,
+            "reset_released_high",
+            "reset_held_low",
+        ),
+        (
+            "ALERT",
+            "observation_alert_state",
+            0.0,
+            "alert_high",
+            "alert_idle_low",
+        ),
+    ] {
+        add_pin_state_assertion(
+            component,
+            model,
+            probes,
+            scenario_name,
+            stop_time_us,
+            &PinStateAssertionSpec {
+                pin,
+                parameter,
+                default_state,
+                high_suffix,
+                low_suffix,
+                logic_high_v,
+            },
+            assertions,
+        );
+    }
+}
+
+pub(super) fn add_spi_flash_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "spi_flash" {
+        return;
+    }
+    add_port_voltage_window_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        "VCC",
+        stop_time_us,
+        assertions,
+    );
+    let logic_high_v = voltage_for_component_pin(project, component, "VCC").unwrap_or(3.3);
+    for (pin, parameter, default_state, high_suffix, low_suffix) in [
+        (
+            "CS_N",
+            "observation_cs_n_state",
+            1.0,
+            "standby_high",
+            "selected_low",
+        ),
+        (
+            "WP_N_IO2",
+            "observation_wp_n_io2_state",
+            1.0,
+            "write_protect_released_high",
+            "write_protect_asserted_low",
+        ),
+        (
+            "HOLD_N_RESET_N_IO3",
+            "observation_hold_n_reset_n_io3_state",
+            1.0,
+            "hold_reset_released_high",
+            "hold_reset_asserted_low",
+        ),
+        (
+            "CLK",
+            "observation_clk_state",
+            0.0,
+            "clk_high",
+            "clk_idle_low",
+        ),
+        (
+            "DI_IO0",
+            "observation_di_io0_state",
+            0.0,
+            "mosi_high",
+            "mosi_idle_low",
+        ),
+        (
+            "DO_IO1",
+            "observation_do_io1_state",
+            0.0,
+            "miso_high",
+            "miso_reference_low",
+        ),
+    ] {
+        add_pin_state_assertion(
+            component,
+            model,
+            probes,
+            scenario_name,
+            stop_time_us,
+            &PinStateAssertionSpec {
+                pin,
+                parameter,
+                default_state,
+                high_suffix,
+                low_suffix,
+                logic_high_v,
+            },
+            assertions,
+        );
     }
 }
 
@@ -1019,6 +1223,41 @@ fn add_port_voltage_window_assertions(
             (0.0, stop_time_us),
         ));
     }
+}
+
+fn add_pin_state_assertion(
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    spec: &PinStateAssertionSpec<'_>,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let Some(probe) = probe_for_component_pin(probes, component, spec.pin) else {
+        return;
+    };
+    let Some(port) = model.ports.get(spec.pin) else {
+        return;
+    };
+    let state = component_parameter_f64(component, spec.parameter).unwrap_or(spec.default_state);
+    let assertion_stem = voltage_window_assertion_stem(&probe.probe_name, spec.pin);
+    let (suffix, relation, threshold) = if state >= 0.5 {
+        let (relation, threshold) = port_state_relation_threshold(port, state, spec.logic_high_v);
+        (spec.high_suffix, relation, threshold)
+    } else {
+        let (relation, threshold) = port_state_relation_threshold(port, state, spec.logic_high_v);
+        (spec.low_suffix, relation, threshold)
+    };
+    assertions.push(default_voltage_assertion(
+        scenario_name,
+        &format!("{assertion_stem}_{suffix}"),
+        &probe.probe_name,
+        "mean",
+        relation,
+        threshold,
+        (0.0, stop_time_us),
+    ));
 }
 
 fn voltage_window_assertion_stem(probe_name: &str, pin: &str) -> String {

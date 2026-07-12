@@ -49,6 +49,8 @@ mod library_observation_preset_kinds;
 mod library_observation_presets;
 mod project;
 #[cfg(test)]
+mod project_example_sensor_workflow_tests;
+#[cfg(test)]
 mod project_example_tests;
 #[cfg(test)]
 mod project_example_workflow_tests;
