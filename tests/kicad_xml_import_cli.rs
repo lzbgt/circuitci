@@ -784,26 +784,72 @@ analog_scenarios:
 }
 
 #[test]
-fn import_kicad_netlist_rejects_model_backed_component_without_model_file() {
-    assert_bad_kicad_mapping_contains(
-        r#"
+fn import_kicad_netlist_infers_model_file_for_model_backed_component() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let input_path = dir.path().join("board.net");
+    let mapping_path = dir.path().join("infer_model_file.kicad-map.yaml");
+    let output = dir.path().join("inferred.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &input_path,
+        std::fs::read_to_string("examples/import_kicad_xml/board.net").unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        &mapping_path,
+        format!(
+            r#"
+libraries:
+  - {}
+  - {}
 components:
   D1:
     model: vendor.onsemi.1n4148ws
-    pin_map: { "1": A, "2": K }
+    pin_map: {{ "1": A, "2": K }}
 analog_scenarios:
   - name: missing_model_file
     components: [D1]
     ground_net: GND
-    analysis: { type: tran, stop_time_us: 100.0, max_step_us: 1.0 }
+    analysis: {{ type: tran, stop_time_us: 100.0, max_step_us: 1.0 }}
     stimuli:
-      - { name: diode, description: explicit diode model should require model file }
+      - {{ name: diode, description: explicit diode model should infer model file }}
     probes:
-      - { name: reset, expression: V(net_reset_rc), quantity: voltage }
+      - {{ name: reset, expression: V(net_reset_rc), quantity: voltage }}
     assertions:
-      - { name: reset_sample, probe: reset, at_us: 100.0, relation: above, threshold_v: 0.1 }
+      - {{ name: reset_sample, probe: reset, at_us: 100.0, relation: above, threshold_v: 0.1 }}
 "#,
-        "scenario.model_files does not declare it",
+            repo.join("libs/generic").display(),
+            repo.join("libs/vendor/onsemi/diodes").display(),
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            input_path.to_str().unwrap(),
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let model_file = &imported["scenarios"][0]["analog"]["model_files"][0];
+    assert_eq!(model_file["path"], "../../models/spice/onsemi/1n4148ws.lib");
+    assert_eq!(
+        model_file["sha256"],
+        "dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504"
     );
 }
 

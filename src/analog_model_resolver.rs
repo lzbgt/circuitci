@@ -66,6 +66,21 @@ pub(crate) fn declared_model_file_path_for_project(
     absolute_path(&candidate).map_err(|error| error.to_string())
 }
 
+pub(crate) fn inferred_model_file_for_model_path(
+    source_dir: &Path,
+    model_path: &str,
+) -> Result<InferredAnalogModelFile, String> {
+    let canonical_path = resolve_model_path_from_dir(source_dir, model_path)?;
+    Ok(InferredAnalogModelFile {
+        model_file: analog_model_file_for_path(
+            source_dir,
+            &canonical_path,
+            ModelFileMetadata::default(),
+        )?,
+        canonical_path,
+    })
+}
+
 fn infer_generated_component_model_files(
     bound: &BoundBoard<'_>,
     component_ids: &[String],
@@ -82,12 +97,15 @@ fn infer_generated_component_model_files(
         let Some(spice) = model.simulation.spice.as_ref() else {
             continue;
         };
-        let canonical_path = resolve_model_path(bound, &spice.model_path).map_err(|error| {
-            format!(
-                "Failed to resolve SPICE model file {} for generated component {}: {error}",
-                spice.model_path, component_id
-            )
-        })?;
+        let canonical_path =
+            resolve_model_path_from_dir(&bound.project.source_dir, &spice.model_path).map_err(
+                |error| {
+                    format!(
+                        "Failed to resolve SPICE model file {} for generated component {}: {error}",
+                        spice.model_path, component_id
+                    )
+                },
+            )?;
         if !seen_inferred.insert(canonical_path.clone()) {
             continue;
         }
@@ -104,8 +122,47 @@ fn inferred_model_file(
     spice: &SpiceModel,
     canonical_path: &Path,
 ) -> Result<AnalogModelFile, String> {
+    analog_model_file_for_path(
+        &bound.project.source_dir,
+        canonical_path,
+        ModelFileMetadata {
+            model_package_name: spice.model_package_name.clone(),
+            model_package_version: spice.model_package_version.clone(),
+            model_package_artifact_id: spice.model_package_artifact_id.clone(),
+            model_package_lock_path: optional_project_relative_existing_path(
+                bound,
+                spice.model_package_lock_path.as_deref(),
+            )?,
+            model_package_lock_sha256: spice.model_package_lock_sha256.clone(),
+            model_package_registry_path: optional_project_relative_existing_path(
+                bound,
+                spice.model_package_registry_path.as_deref(),
+            )?,
+            model_package_registry_sha256: spice.model_package_registry_sha256.clone(),
+            model_package_registry_entry: spice.model_package_registry_entry.clone(),
+        },
+    )
+}
+
+#[derive(Default)]
+struct ModelFileMetadata {
+    model_package_name: Option<String>,
+    model_package_version: Option<String>,
+    model_package_artifact_id: Option<String>,
+    model_package_lock_path: Option<String>,
+    model_package_lock_sha256: Option<String>,
+    model_package_registry_path: Option<String>,
+    model_package_registry_sha256: Option<String>,
+    model_package_registry_entry: Option<String>,
+}
+
+fn analog_model_file_for_path(
+    source_dir: &Path,
+    canonical_path: &Path,
+    metadata: ModelFileMetadata,
+) -> Result<AnalogModelFile, String> {
     Ok(AnalogModelFile {
-        path: relative_path(&canonical_source_dir(bound), canonical_path)
+        path: relative_path(&canonical_source_dir(source_dir), canonical_path)
             .unwrap_or_else(|| canonical_path.to_path_buf())
             .to_string_lossy()
             .replace('\\', "/"),
@@ -122,20 +179,14 @@ fn inferred_model_file(
         xyce_configure_options: Vec::new(),
         conformance_artifact: None,
         conformance_sha256: None,
-        model_package_name: spice.model_package_name.clone(),
-        model_package_version: spice.model_package_version.clone(),
-        model_package_artifact_id: spice.model_package_artifact_id.clone(),
-        model_package_lock_path: optional_project_relative_existing_path(
-            bound,
-            spice.model_package_lock_path.as_deref(),
-        )?,
-        model_package_lock_sha256: spice.model_package_lock_sha256.clone(),
-        model_package_registry_path: optional_project_relative_existing_path(
-            bound,
-            spice.model_package_registry_path.as_deref(),
-        )?,
-        model_package_registry_sha256: spice.model_package_registry_sha256.clone(),
-        model_package_registry_entry: spice.model_package_registry_entry.clone(),
+        model_package_name: metadata.model_package_name,
+        model_package_version: metadata.model_package_version,
+        model_package_artifact_id: metadata.model_package_artifact_id,
+        model_package_lock_path: metadata.model_package_lock_path,
+        model_package_lock_sha256: metadata.model_package_lock_sha256,
+        model_package_registry_path: metadata.model_package_registry_path,
+        model_package_registry_sha256: metadata.model_package_registry_sha256,
+        model_package_registry_entry: metadata.model_package_registry_entry,
     })
 }
 
@@ -191,12 +242,16 @@ fn declared_model_file_path(bound: &BoundBoard<'_>, path: &str) -> Result<PathBu
 }
 
 fn resolve_model_path(bound: &BoundBoard<'_>, model_path: &str) -> Result<PathBuf, String> {
+    resolve_model_path_from_dir(&bound.project.source_dir, model_path)
+}
+
+fn resolve_model_path_from_dir(source_dir: &Path, model_path: &str) -> Result<PathBuf, String> {
     let path = Path::new(model_path);
     if path.is_absolute() {
         return absolute_path(path).map_err(|error| error.to_string());
     }
 
-    for base in bound.project.source_dir.ancestors() {
+    for base in source_dir.ancestors() {
         let candidate = base.join(path);
         if candidate.exists() {
             return absolute_path(&candidate).map_err(|error| error.to_string());
@@ -205,7 +260,7 @@ fn resolve_model_path(bound: &BoundBoard<'_>, model_path: &str) -> Result<PathBu
 
     Err(format!(
         "relative model path {model_path} was not found from project directory {} or any ancestor",
-        bound.project.source_dir.display()
+        source_dir.display()
     ))
 }
 
@@ -218,15 +273,18 @@ fn optional_project_relative_existing_path(
     };
     let canonical_path = resolve_model_path(bound, path)?;
     Ok(Some(
-        relative_path(&canonical_source_dir(bound), &canonical_path)
-            .unwrap_or(canonical_path)
-            .to_string_lossy()
-            .replace('\\', "/"),
+        relative_path(
+            &canonical_source_dir(&bound.project.source_dir),
+            &canonical_path,
+        )
+        .unwrap_or(canonical_path)
+        .to_string_lossy()
+        .replace('\\', "/"),
     ))
 }
 
-fn canonical_source_dir(bound: &BoundBoard<'_>) -> PathBuf {
-    absolute_path(&bound.project.source_dir).unwrap_or_else(|_| bound.project.source_dir.clone())
+fn canonical_source_dir(source_dir: &Path) -> PathBuf {
+    absolute_path(source_dir).unwrap_or_else(|_| source_dir.to_path_buf())
 }
 
 #[cfg(any(feature = "gui", test))]

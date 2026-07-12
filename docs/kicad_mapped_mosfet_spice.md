@@ -17,8 +17,10 @@ names or displayed values.
 - A mapped MOSFET scenario must list every generated component explicitly.
 - Components with primitive behavior, such as resistors or voltage sources,
   must declare mapping-file `spice` metadata.
-- Components whose selected model has `simulation.spice` metadata must declare
-  a matching SHA-pinned `model_files` entry in the scenario.
+- Components whose selected model has `simulation.spice` metadata may omit
+  `model_files`; the importer infers the missing SHA-pinned model-file entry
+  from the same shared resolver used by GUI run setup and validation. Explicit
+  `model_files` remain valid and are still verified fail-closed.
 - MOSFET body behavior is still owned by the component model. If the board does
   not bind a `B` pin, generated SPICE requires
   `simulation.spice.body_pin_policy: tie_to_source_when_absent`.

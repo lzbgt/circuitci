@@ -1,3 +1,4 @@
+use crate::analog_model_resolver::inferred_model_file_for_model_path;
 use anyhow::{Context, Result, bail};
 mod passive_values;
 mod types;
@@ -348,15 +349,16 @@ fn build_project_yaml(
     let import_models =
         load_import_models(&libraries_for_project(mapping, &loaded_mapping.base_dir))?;
     let mut scenarios = mapping.scenarios.clone();
-    scenarios.extend(build_analog_scenarios(
+    let analog_context = AnalogScenarioBuildContext {
         parsed,
-        mapping,
-        &loaded_mapping.base_dir,
-        &components,
-        &nets,
-        &net_names,
-        &import_models,
-    )?);
+        mapping_base_dir: &loaded_mapping.base_dir,
+        output_dir: options.output.parent().unwrap_or_else(|| Path::new(".")),
+        components: &components,
+        nets: &nets,
+        net_names: &net_names,
+        models: &import_models,
+    };
+    scenarios.extend(build_analog_scenarios(mapping, &analog_context)?);
     Ok(ProjectYaml {
         project: ProjectMetaYaml {
             name: options.name.clone(),
@@ -429,27 +431,32 @@ fn layout_from_mapping(
     Ok((!footprints.is_empty()).then_some(BoardLayoutYaml { footprints }))
 }
 
+struct AnalogScenarioBuildContext<'a> {
+    parsed: &'a ParsedKicadNetlist,
+    mapping_base_dir: &'a Path,
+    output_dir: &'a Path,
+    components: &'a BTreeMap<String, ComponentYaml>,
+    nets: &'a BTreeMap<String, NetYaml>,
+    net_names: &'a [String],
+    models: &'a BTreeMap<String, ImportedComponentModel>,
+}
+
 fn build_analog_scenarios(
-    parsed: &ParsedKicadNetlist,
     mapping: &KicadMapping,
-    mapping_base_dir: &Path,
-    components: &BTreeMap<String, ComponentYaml>,
-    nets: &BTreeMap<String, NetYaml>,
-    net_names: &[String],
-    models: &BTreeMap<String, ImportedComponentModel>,
+    context: &AnalogScenarioBuildContext<'_>,
 ) -> Result<Vec<serde_yaml_ng::Value>> {
-    let raw_net_to_board = raw_net_to_board_map(parsed, net_names)?;
+    let raw_net_to_board = raw_net_to_board_map(context.parsed, context.net_names)?;
     mapping
         .analog_scenarios
         .iter()
         .map(|scenario| {
-            let model_files = scenario_model_files(scenario, mapping_base_dir)?;
+            let model_files = scenario_model_files(scenario, context)?;
             validate_analog_scenario_mapping(
                 scenario,
-                components,
-                nets,
+                context.components,
+                context.nets,
                 &raw_net_to_board,
-                models,
+                context.models,
                 &model_files,
             )?;
             let generated_components = scenario.components.clone();
@@ -465,7 +472,8 @@ fn build_analog_scenarios(
             let mut used_nets = BTreeSet::new();
             used_nets.insert(ground_net.clone());
             for component_id in &generated_components {
-                let component = components
+                let component = context
+                    .components
                     .get(component_id)
                     .expect("scenario components were validated before binding generation");
                 used_nets.extend(component.pins.values().cloned());
@@ -487,7 +495,8 @@ fn build_analog_scenarios(
                 .collect::<BTreeMap<_, _>>();
             let mut pin_bindings = Vec::new();
             for component_id in &generated_components {
-                let component = components
+                let component = context
+                    .components
                     .get(component_id)
                     .expect("scenario components were validated before pin binding generation");
                 for (pin, net) in &component.pins {
@@ -664,13 +673,13 @@ fn require_model_file_for_component(
 
 fn scenario_model_files(
     scenario: &AnalogScenarioMapping,
-    mapping_base_dir: &Path,
+    context: &AnalogScenarioBuildContext<'_>,
 ) -> Result<Vec<ModelFileYaml>> {
-    scenario
+    let mut model_files = scenario
         .model_files
         .iter()
         .map(|file| {
-            let resolved = resolve_mapping_path(mapping_base_dir, &file.path);
+            let resolved = resolve_mapping_path(context.mapping_base_dir, &file.path);
             if !resolved.is_file() {
                 bail!(
                     "KiCad analog scenario {} model file {} does not exist.",
@@ -701,7 +710,58 @@ fn scenario_model_files(
                 sha256: Some(expected_sha.to_ascii_lowercase()),
             })
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+
+    add_inferred_scenario_model_files(
+        scenario,
+        context.output_dir,
+        context.components,
+        context.models,
+        &mut model_files,
+    )?;
+    Ok(model_files)
+}
+
+fn add_inferred_scenario_model_files(
+    scenario: &AnalogScenarioMapping,
+    output_dir: &Path,
+    components: &BTreeMap<String, ComponentYaml>,
+    models: &BTreeMap<String, ImportedComponentModel>,
+    model_files: &mut Vec<ModelFileYaml>,
+) -> Result<()> {
+    let mut existing = model_files
+        .iter()
+        .map(|model_file| PathBuf::from(&model_file.path))
+        .collect::<BTreeSet<_>>();
+    for component_id in &scenario.components {
+        let Some(component) = components.get(component_id) else {
+            continue;
+        };
+        if component.spice.is_some() {
+            continue;
+        }
+        let Some(spice) = models
+            .get(&component.model)
+            .and_then(|model| model.simulation.spice.as_ref())
+        else {
+            continue;
+        };
+        let inferred = inferred_model_file_for_model_path(output_dir, &spice.model_path)
+            .map_err(anyhow::Error::msg)
+            .with_context(|| {
+                format!(
+                    "KiCad analog scenario {} component {} could not infer SPICE model file {}.",
+                    scenario.name, component_id, spice.model_path
+                )
+            })?;
+        if existing.insert(inferred.canonical_path) {
+            model_files.push(ModelFileYaml {
+                path: inferred.model_file.path,
+                sha256: inferred.model_file.sha256,
+            });
+        }
+    }
+    Ok(())
 }
 
 fn file_sha256_hex(path: &Path) -> Result<String> {

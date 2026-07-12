@@ -177,9 +177,6 @@ analog_scenarios:
   - name: rc_transient
     components: [V1, R1, D1, C1]
     ground_net: GND
-    model_files:
-      - path: ../../models/spice/onsemi/1n4148ws.lib
-        sha256: dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504
     analysis: { type: tran, stop_time_us: 2000.0, max_step_us: 10.0 }
     stimuli:
       - { name: mapped_source, description: V1 is an explicit 3.3 V source. }
@@ -194,8 +191,11 @@ Scenario generation remains fail-closed:
 - `components` is explicit; CircuitCI does not auto-include analog-looking parts.
 - each generated component must have explicit mapping-file `spice` primitive
   metadata or selected model `simulation.spice` metadata,
-- every generated component whose selected model uses `simulation.spice` must
-  have a matching SHA-pinned `model_files` entry,
+- generated components whose selected model uses `simulation.spice` get missing
+  `model_files` entries inferred from the component model, with SHA-256 pins
+  computed through the same resolver used by GUI run setup and validation,
+- explicitly declared `model_files` entries are still checked fail-closed for
+  existence and SHA-256 matches,
 - `operating_conditions`, such as `allow_pulse_ratings`, are copied only when
   explicitly declared in the mapping file,
 - `stimuli`, `probes`, and `assertions` must be non-empty,
@@ -275,8 +275,8 @@ Import fails instead of guessing when it sees:
 - mapping pin names that do not exist on the imported component,
 - mapped components that change model without mapping every connected pin,
 - duplicate mapped model pin names on a component,
-- generated components whose selected model uses `simulation.spice` but whose
-  scenario omits a matching SHA-pinned `model_files` entry,
+- generated component model paths that cannot be resolved from the generated
+  project directory or one of its ancestors,
 - model files that are missing, unpinned, or whose SHA-256 does not match,
 - missing component refs or node pins,
 - XML parse errors,
