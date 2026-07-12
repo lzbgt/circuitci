@@ -495,6 +495,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UFLASH"),
         },
         ExpectedProjectExample {
+            id: "at24c02c_i2c_eeprom_scope",
+            category: "Memory",
+            open_label: "Open AT24C02C EEPROM Example",
+            run_label: "Open AT24C02C + Run Scopes",
+            summary: "Source-backed AT24C02C rail, I2C pull-up, address-select, and write-protect observation.",
+            project_path: "examples/good_microchip_at24c02c_i2c_eeprom_observation/project.yaml",
+            project_name: "good_microchip_at24c02c_i2c_eeprom_observation",
+            expected_traces: &["v_vcc", "v_sda", "v_scl", "v_a0", "v_a1", "v_a2", "v_wp"],
+            expected_frequency: "3.3 V AT24C02C I2C EEPROM with idle pull-ups, low address pins, and WP low",
+            observation_preset_component: Some("UEEPROM"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

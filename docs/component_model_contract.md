@@ -958,6 +958,18 @@ standby `/CS`, `/WP`, `/HOLD or /RESET`, `CLK`, `DI/IO0`, and `DO/IO1` line
 observations. It does not emulate SPI commands, JEDEC ID, SFDP tables,
 erase/program sequencing, flash contents, XIP behavior, write-protection
 policy, or high-speed signal integrity.
+`vendor.microchip.at24c02c` adds a source-backed I2C serial EEPROM pack.
+Official Microchip documentation backs its 1.7 V to 5.5 V VCC rail range,
+3 mA active write-current class, SOIC-8 pin roles, open-drain `SDA`,
+idle-high `SCL` guidance, known-state guidance for `A0`/`A1`/`A2`/`WP`,
+2 Kbit density, 8-byte page size, 5 ms maximum write-cycle time, 1M write-cycle
+endurance, and 100-year retention metadata. The validator uses the power pin
+contract for `POWER_TREE_VALID`, the explicit port list for board-boundary
+review, and a high-impedance generated-SPICE face for preliminary VCC, I2C
+pull-up, address-select, and write-protect observations. It does not emulate
+I2C transactions, acknowledge polling, EEPROM contents, write-cycle timing,
+write-protect policy, retention/endurance lifetime, or high-speed signal
+integrity.
 `vendor.bosch.bme280` adds a source-backed environmental sensor pack. Official
 Bosch documentation backs its 1.71 V to 3.6 V `VDD` rail range, 1.2 V to 3.6 V
 `VDDIO` rail range, separate digital-interface supply, I2C/SPI pin roles,

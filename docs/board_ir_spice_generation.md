@@ -388,6 +388,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   The macro observes board biasing and does not emulate commands, JEDEC ID,
   SFDP, memory contents, erase/program state, XIP, retention, endurance, or
   signal integrity.
+- `examples/good_microchip_at24c02c_i2c_eeprom_observation` proves the
+  Microchip AT24C02C source-backed I2C EEPROM model can use a reduced
+  high-impedance generated-SPICE face for VCC, idle `SDA`/`SCL`, `A0`/`A1`/`A2`
+  address-select, and `WP` write-protect observations. The macro observes
+  board biasing and does not emulate I2C transactions, acknowledge polling,
+  EEPROM contents, write-cycle timing, retention, endurance, or signal
+  integrity.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

@@ -510,6 +510,91 @@ pub(super) fn add_spi_flash_observation_assertions(
     }
 }
 
+pub(super) fn add_i2c_eeprom_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "i2c_eeprom" {
+        return;
+    }
+    add_port_voltage_window_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        "VCC",
+        stop_time_us,
+        assertions,
+    );
+    let logic_high_v = voltage_for_component_pin(project, component, "VCC").unwrap_or(3.3);
+    for (pin, parameter, default_state, high_suffix, low_suffix) in [
+        (
+            "SDA",
+            "observation_sda_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "SCL",
+            "observation_scl_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "A0",
+            "observation_a0_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "A1",
+            "observation_a1_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "A2",
+            "observation_a2_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "WP",
+            "observation_wp_state",
+            0.0,
+            "write_protect_high",
+            "write_enable_low",
+        ),
+    ] {
+        add_pin_state_assertion(
+            component,
+            model,
+            probes,
+            scenario_name,
+            stop_time_us,
+            &PinStateAssertionSpec {
+                pin,
+                parameter,
+                default_state,
+                high_suffix,
+                low_suffix,
+                logic_high_v,
+            },
+            assertions,
+        );
+    }
+}
+
 pub(super) fn add_linux_som_observation_assertions(
     component: &crate::board_ir::ComponentSpec,
     model: &crate::library::ComponentModel,

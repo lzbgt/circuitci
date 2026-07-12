@@ -1501,6 +1501,21 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: microchip_at24c02c_i2c_eeprom_power_passes
+    project: ../examples/good_microchip_at24c02c_i2c_eeprom_power/project.yaml
+    expect: pass
+
+  - id: microchip_at24c02c_i2c_eeprom_observation_passes
+    project: ../examples/good_microchip_at24c02c_i2c_eeprom_observation/project.yaml
+    expect: pass
+
+  - id: microchip_at24c02c_vcc_overvoltage_detected
+    project: ../examples/bad_microchip_at24c02c_vcc_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: bosch_bme280_i2c_power_passes
     project: ../examples/good_bosch_bme280_i2c_power/project.yaml
     expect: pass
@@ -2585,6 +2600,12 @@ repairs:
   - id: fix_winbond_w25q64jv_vcc_overvoltage
     detects_case: winbond_w25q64jv_vcc_overvoltage_detected
     fixed_case: winbond_w25q64jv_spi_flash_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_microchip_at24c02c_vcc_overvoltage
+    detects_case: microchip_at24c02c_vcc_overvoltage_detected
+    fixed_case: microchip_at24c02c_i2c_eeprom_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

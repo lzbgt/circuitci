@@ -129,6 +129,15 @@ It does not emulate SPI commands, JEDEC ID, SFDP tables, flash contents, XIP
 behavior, write-protect policy, or signal-integrity timing. See
 `docs/winbond_w25q64jv_model.md`.
 
+`vendor.microchip.at24c02c` provides a source-backed model for Microchip's
+AT24C02C 2 Kbit I2C serial EEPROM. It models the 1.7 V to 5.5 V `VCC` range,
+3 mA active write-current class, SOIC-8 I2C/address/write-protect
+board-boundary pins, memory-geometry metadata, and a reduced high-impedance
+generated-SPICE observation face for VCC, idle `SDA`/`SCL`, address-select
+pins, and `WP`. It does not emulate I2C transactions, acknowledge polling,
+EEPROM contents, write-cycle timing, write-protect policy, retention/endurance
+lifetime, or signal-integrity timing. See `docs/microchip_at24c02c_model.md`.
+
 `vendor.bosch.bme280` provides a source-backed model for Bosch's BME280
 humidity, pressure, and temperature sensor. It models the 1.71 V to 3.6 V
 `VDD` range, the 1.2 V to 3.6 V `VDDIO` range, I2C/SPI board-boundary pins,

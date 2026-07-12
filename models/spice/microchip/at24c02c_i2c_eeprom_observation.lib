@@ -1,0 +1,18 @@
+* Reduced Microchip AT24C02C I2C EEPROM board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level VCC, I2C pull-up, address-select, and write-protect line checks.
+* It does not model I2C transactions, EEPROM contents, write cycles, endurance,
+* retention, acknowledge polling, or timing sign-off.
+
+.subckt CIRCUITCI_AT24C02C_I2C_EEPROM_OBSERVATION VCC GND A0 A1 A2 SDA SCL WP
+* All address, I2C, and write-protect pins are high impedance. External
+* pull-ups, pull-downs, host sources, and board metadata define the observable
+* state.
+RVCC VCC GND 1G
+RA0 A0 GND 1G
+RA1 A1 GND 1G
+RA2 A2 GND 1G
+RSDA SDA GND 1G
+RSCL SCL GND 1G
+RWP WP GND 1G
+.ends CIRCUITCI_AT24C02C_I2C_EEPROM_OBSERVATION

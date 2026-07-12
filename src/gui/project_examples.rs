@@ -262,6 +262,14 @@ const W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V W25Q64JV standby bias with /CS, /WP, /HOLD high and idle SPI lines";
+const AT24C02C_I2C_EEPROM_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_microchip_at24c02c_i2c_eeprom_observation/project.yaml";
+const AT24C02C_I2C_EEPROM_SCOPE_EXAMPLE_NAME: &str =
+    "good_microchip_at24c02c_i2c_eeprom_observation";
+const AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vcc", "v_sda", "v_scl", "v_a0", "v_a1", "v_a2", "v_wp"];
+const AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V AT24C02C I2C EEPROM with idle pull-ups, low address pins, and WP low";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -838,6 +846,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_TRACES,
         expected_frequency: W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UFLASH"),
+    },
+    GuiProjectExample {
+        id: "at24c02c_i2c_eeprom_scope",
+        category: "Memory",
+        open_label: "Open AT24C02C EEPROM Example",
+        run_label: "Open AT24C02C + Run Scopes",
+        workflow_title: "AT24C02C I2C EEPROM Workflow",
+        summary: "Source-backed AT24C02C rail, I2C pull-up, address-select, and write-protect observation.",
+        project_path: AT24C02C_I2C_EEPROM_SCOPE_EXAMPLE_PROJECT,
+        project_name: AT24C02C_I2C_EEPROM_SCOPE_EXAMPLE_NAME,
+        expected_traces: AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_TRACES,
+        expected_frequency: AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UEEPROM"),
     },
     GuiProjectExample {
         id: "esds552_scope",

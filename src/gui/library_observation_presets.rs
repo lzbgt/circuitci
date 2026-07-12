@@ -4,11 +4,12 @@ use super::analog::{
 };
 use super::library_observation_preset_kinds::{
     add_comms_output_observation_assertions, add_environmental_sensor_observation_assertions,
-    add_gate_driver_observation_assertions, add_imu_observation_assertions,
-    add_level_shifter_observation_assertions, add_linux_som_observation_assertions,
-    add_logic_buffer_observation_assertions, add_mcu_observation_assertions,
-    add_protection_clamp_observation_assertions, add_pwm_driver_observation_assertions,
-    add_spi_flash_observation_assertions, supports_comms_output_observation,
+    add_gate_driver_observation_assertions, add_i2c_eeprom_observation_assertions,
+    add_imu_observation_assertions, add_level_shifter_observation_assertions,
+    add_linux_som_observation_assertions, add_logic_buffer_observation_assertions,
+    add_mcu_observation_assertions, add_protection_clamp_observation_assertions,
+    add_pwm_driver_observation_assertions, add_spi_flash_observation_assertions,
+    supports_comms_output_observation,
 };
 use anyhow::{Context, Result};
 use std::collections::BTreeSet;
@@ -425,6 +426,15 @@ fn observation_default_assertions(
         &mut assertions,
     );
     add_spi_flash_observation_assertions(
+        project,
+        component,
+        model,
+        probes,
+        scenario_name,
+        stop_time_us,
+        &mut assertions,
+    );
+    add_i2c_eeprom_observation_assertions(
         project,
         component,
         model,

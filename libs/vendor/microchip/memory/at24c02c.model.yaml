@@ -1,0 +1,138 @@
+component_id: vendor.microchip.at24c02c
+version: 0.1.0
+category: i2c_eeprom
+simulation:
+  spice:
+    model_name: CIRCUITCI_AT24C02C_I2C_EEPROM_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/microchip/at24c02c_i2c_eeprom_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, GND, A0, A1, A2, SDA, SCL, WP]
+    valid_operating_notes:
+      - Reduced high-impedance I2C EEPROM board-observation model for preliminary VCC rail, I2C pull-up, address-select, and write-protect line-state checks.
+      - Uses source-backed 1.7 V to 5.5 V operating range, VCC-ratio input thresholds, SOIC-8 pin roles, 2 Kbit memory geometry, 8-byte page write, and 5 ms maximum self-timed write-cycle metadata.
+      - I2C transactions, acknowledge polling, EEPROM contents, write-cycle timing sign-off, endurance/retention lifetime prediction, and bus signal integrity are out of scope.
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.7
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.003
+  GND:
+    kind: electrical_ground
+    required: true
+  A0:
+    kind: digital_electrical_input
+    required: true
+  A1:
+    kind: digital_electrical_input
+    required: true
+  A2:
+    kind: digital_electrical_input
+    required: true
+  SDA:
+    kind: digital_electrical_io
+    required: true
+  SCL:
+    kind: digital_electrical_input
+    required: true
+  WP:
+    kind: digital_electrical_input
+    required: true
+datasheet:
+  manufacturer: Microchip Technology
+  part_number: AT24C02C-SSHM-T
+  package: 8-lead SOIC
+  polarity: "2Kbit_i2c_serial_eeprom"
+  pinout:
+    A0: Device address input bit 0
+    A1: Device address input bit 1
+    A2: Device address input bit 2
+    GND: Ground
+    SDA: Open-drain serial data input/output
+    SCL: Serial clock input
+    WP: Write-protect input
+    VCC: Device power supply
+  electrical_characteristics:
+    supply_voltage:
+      conditions: Low-voltage grade operating range.
+      min: 1.7
+      max: 5.5
+      unit: V
+    read_supply_current:
+      conditions: VCC = 5.0 V, read at 400 kHz.
+      typ: 0.4
+      max: 1.0
+      unit: mA
+    write_supply_current:
+      conditions: VCC = 5.0 V, write at 400 kHz.
+      typ: 2.0
+      max: 3.0
+      unit: mA
+    standby_current:
+      conditions: VCC = 5.5 V, VIN = VCC or GND.
+      max: 6.0
+      unit: uA
+    input_low_voltage:
+      max: 0.3
+      unit: VCC_ratio
+    input_high_voltage:
+      min: 0.7
+      unit: VCC_ratio
+    output_low_voltage:
+      conditions: VCC = 3.0 V, IOL = 2.1 mA.
+      max: 0.4
+      unit: V
+  device_parameters:
+    density:
+      conditions: AT24C02C organization.
+      typ: 2
+      unit: Kbit
+    organization:
+      conditions: 256 x 8 memory array.
+      typ: 256
+      unit: byte
+    page_size:
+      conditions: Page write buffer.
+      typ: 8
+      unit: byte
+    max_i2c_clock_fast_mode_plus:
+      conditions: VCC = 2.5 V to 5.5 V.
+      max: 1
+      unit: MHz
+    write_cycle_time:
+      conditions: Self-timed write cycle.
+      max: 5
+      unit: ms
+    endurance:
+      conditions: High-reliability write endurance.
+      min: 1000000
+      unit: cycle
+    data_retention:
+      conditions: High-reliability data retention.
+      min: 100
+      unit: year
+  documents:
+    - title: AT24C01C/AT24C02C I2C-Compatible Two-Wire Serial EEPROM Data Sheet
+      path: docs/research/datasheets/microchip/at24c01c_at24c02c_datasheet_ds20006111a.pdf
+      source_url: https://ww1.microchip.com/downloads/en/DeviceDoc/AT24C01C-AT24C02C-I2C-Compatible-Two-Wire-Serial-EEPROM-1Kbit-2Kbit-20006111A.pdf
+      sha256: b6466f4cce6d4ed5bdaaf3854c7bd2eb10f9258a678d09ccdf233f6b3f2fa424
+      retrieved: "2026-07-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - i2c_eeprom_power_tree_supply_voltage
+    - static_i2c_eeprom_pin_boundary_review
+    - preliminary_generated_spice_observation
+    - common_iot_board_eeprom_presence_review
+  not_valid_for:
+    - i2c_protocol_timing_signoff
+    - acknowledge_polling_or_address_scan_verification
+    - eeprom_content_or_firmware_validation
+    - write_cycle_timing_signoff
+    - write_protect_policy_signoff
+    - retention_or_endurance_lifetime_prediction
+    - signal_integrity_or_layout_signoff

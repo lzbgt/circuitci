@@ -153,3 +153,30 @@ fn w25q64jv_spi_flash_scope_example_workflow_creates_model_aware_observation_che
         ],
     );
 }
+
+#[test]
+fn at24c02c_i2c_eeprom_scope_example_workflow_creates_model_aware_observation_checks() {
+    assert_observation_workflow(
+        "at24c02c_i2c_eeprom_scope",
+        "UEEPROM",
+        "ueeprom_observation",
+        &[
+            "v_ueeprom_vcc",
+            "v_ueeprom_sda",
+            "v_ueeprom_scl",
+            "v_ueeprom_a0",
+            "v_ueeprom_a1",
+            "v_ueeprom_a2",
+            "v_ueeprom_wp",
+        ],
+        &[
+            "v_ueeprom_vcc_min_voltage",
+            "v_ueeprom_sda_i2c_idle_high",
+            "v_ueeprom_scl_i2c_idle_high",
+            "v_ueeprom_a0_address_select_low",
+            "v_ueeprom_a1_address_select_low",
+            "v_ueeprom_a2_address_select_low",
+            "v_ueeprom_wp_write_enable_low",
+        ],
+    );
+}

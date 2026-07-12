@@ -1,0 +1,48 @@
+project:
+  name: bad_microchip_at24c02c_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    UEEPROM:
+      model: vendor.microchip.at24c02c
+      part_number: AT24C02C-SSHM-T
+      power_domains:
+        VCC: rail_6v
+      pins:
+        VCC: rail_6v
+        GND: gnd
+        A0: eeprom_a0
+        A1: eeprom_a1
+        A2: eeprom_a2
+        SDA: i2c_sda
+        SCL: i2c_scl
+        WP: eeprom_wp
+  nets:
+    rail_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    gnd:
+      kind: ground
+    eeprom_a0:
+      kind: digital_or_analog
+    eeprom_a1:
+      kind: digital_or_analog
+    eeprom_a2:
+      kind: digital_or_analog
+    i2c_sda:
+      kind: digital_or_analog
+    i2c_scl:
+      kind: digital_or_analog
+    eeprom_wp:
+      kind: digital_or_analog
+
+scenarios:
+  - name: at24c02c_vcc_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

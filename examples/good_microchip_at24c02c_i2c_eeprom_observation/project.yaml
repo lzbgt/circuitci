@@ -1,0 +1,361 @@
+project:
+  name: good_microchip_at24c02c_i2c_eeprom_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      UEEPROM: Memory_EEPROM:AT24C02C
+      RSDA: Device:R
+      RSCL: Device:R
+      RA0: Device:R
+      RA1: Device:R
+      RA2: Device:R
+      RWP: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UEEPROM: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSDA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSCL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RA0: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RA1: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RA2: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RWP: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 80.0, y: 176.0 }
+      component:UEEPROM: { x: 392.0, y: 288.0 }
+      component:RSDA: { x: 760.0, y: 160.0 }
+      component:RSCL: { x: 760.0, y: 272.0 }
+      component:RA0: { x: 160.0, y: 392.0 }
+      component:RA1: { x: 160.0, y: 456.0 }
+      component:RA2: { x: 160.0, y: 520.0 }
+      component:RWP: { x: 760.0, y: 424.0 }
+      net:eeprom_3v3: { x: 224.0, y: 96.0 }
+      net:i2c_sda: { x: 660.0, y: 160.0 }
+      net:i2c_scl: { x: 660.0, y: 272.0 }
+      net:eeprom_a0_low: { x: 260.0, y: 392.0 }
+      net:eeprom_a1_low: { x: 260.0, y: 456.0 }
+      net:eeprom_a2_low: { x: 260.0, y: 520.0 }
+      net:eeprom_wp_low: { x: 660.0, y: 424.0 }
+      net:gnd: { x: 392.0, y: 632.0 }
+    wire_routes:
+      VCC.P->eeprom_3v3:
+        points:
+          - { x: 160.0, y: 176.0 }
+          - { x: 224.0, y: 96.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 120.0, y: 632.0 }
+      UEEPROM.VCC->eeprom_3v3:
+        points:
+          - { x: 312.0, y: 160.0 }
+          - { x: 224.0, y: 96.0 }
+      UEEPROM.GND->gnd:
+        points:
+          - { x: 392.0, y: 632.0 }
+      UEEPROM.SDA->i2c_sda:
+        points:
+          - { x: 608.0, y: 160.0 }
+      UEEPROM.SCL->i2c_scl:
+        points:
+          - { x: 608.0, y: 272.0 }
+      UEEPROM.A0->eeprom_a0_low:
+        points:
+          - { x: 260.0, y: 392.0 }
+      UEEPROM.A1->eeprom_a1_low:
+        points:
+          - { x: 260.0, y: 456.0 }
+      UEEPROM.A2->eeprom_a2_low:
+        points:
+          - { x: 260.0, y: 520.0 }
+      UEEPROM.WP->eeprom_wp_low:
+        points:
+          - { x: 608.0, y: 424.0 }
+      RSDA.A->eeprom_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSDA.B->i2c_sda:
+        points:
+          - { x: 760.0, y: 160.0 }
+      RSCL.A->eeprom_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSCL.B->i2c_scl:
+        points:
+          - { x: 760.0, y: 272.0 }
+      RA0.A->eeprom_a0_low:
+        points:
+          - { x: 160.0, y: 392.0 }
+      RA0.B->gnd:
+        points:
+          - { x: 160.0, y: 632.0 }
+      RA1.A->eeprom_a1_low:
+        points:
+          - { x: 160.0, y: 456.0 }
+      RA1.B->gnd:
+        points:
+          - { x: 160.0, y: 632.0 }
+      RA2.A->eeprom_a2_low:
+        points:
+          - { x: 160.0, y: 520.0 }
+      RA2.B->gnd:
+        points:
+          - { x: 160.0, y: 632.0 }
+      RWP.A->eeprom_wp_low:
+        points:
+          - { x: 760.0, y: 424.0 }
+      RWP.B->gnd:
+        points:
+          - { x: 760.0, y: 632.0 }
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      part_number: EEPROM_3V3_SOURCE
+      pins:
+        P: eeprom_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UEEPROM:
+      model: vendor.microchip.at24c02c
+      part_number: AT24C02C-SSHM-T
+      parameters:
+        observation_a0_state: 0.0
+        observation_a1_state: 0.0
+        observation_a2_state: 0.0
+        observation_sda_state: 1.0
+        observation_scl_state: 1.0
+        observation_wp_state: 0.0
+      power_domains:
+        VCC: eeprom_3v3
+      pins:
+        VCC: eeprom_3v3
+        GND: gnd
+        A0: eeprom_a0_low
+        A1: eeprom_a1_low
+        A2: eeprom_a2_low
+        SDA: i2c_sda
+        SCL: i2c_scl
+        WP: eeprom_wp_low
+    RSDA:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: eeprom_3v3
+        B: i2c_sda
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSCL:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: eeprom_3v3
+        B: i2c_scl
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RA0:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: eeprom_a0_low
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RA1:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: eeprom_a1_low
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RA2:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: eeprom_a2_low
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RWP:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: eeprom_wp_low
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    eeprom_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.01
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    eeprom_a0_low:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    eeprom_a1_low:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    eeprom_a2_low:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    eeprom_wp_low:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: at24c02c_i2c_standby_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCC
+          - UEEPROM
+          - RSDA
+          - RSCL
+          - RA0
+          - RA1
+          - RA2
+          - RWP
+      model_files:
+        - path: ../../models/spice/microchip/at24c02c_i2c_eeprom_observation.lib
+          sha256: 640679128decca9f81e0557ce07b3a935965ff67f4fe725794735d8bff767614
+      node_bindings:
+        - { node: vcc, net: eeprom_3v3 }
+        - { node: a0, net: eeprom_a0_low }
+        - { node: a1, net: eeprom_a1_low }
+        - { node: a2, net: eeprom_a2_low }
+        - { node: sda, net: i2c_sda }
+        - { node: scl, net: i2c_scl }
+        - { node: wp, net: eeprom_wp_low }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VCC, pin: P } }
+        - { node: "0", endpoint: { component: VCC, pin: N } }
+        - { node: vcc, endpoint: { component: UEEPROM, pin: VCC } }
+        - { node: "0", endpoint: { component: UEEPROM, pin: GND } }
+        - { node: a0, endpoint: { component: UEEPROM, pin: A0 } }
+        - { node: a1, endpoint: { component: UEEPROM, pin: A1 } }
+        - { node: a2, endpoint: { component: UEEPROM, pin: A2 } }
+        - { node: sda, endpoint: { component: UEEPROM, pin: SDA } }
+        - { node: scl, endpoint: { component: UEEPROM, pin: SCL } }
+        - { node: wp, endpoint: { component: UEEPROM, pin: WP } }
+        - { node: vcc, endpoint: { component: RSDA, pin: A } }
+        - { node: sda, endpoint: { component: RSDA, pin: B } }
+        - { node: vcc, endpoint: { component: RSCL, pin: A } }
+        - { node: scl, endpoint: { component: RSCL, pin: B } }
+        - { node: a0, endpoint: { component: RA0, pin: A } }
+        - { node: "0", endpoint: { component: RA0, pin: B } }
+        - { node: a1, endpoint: { component: RA1, pin: A } }
+        - { node: "0", endpoint: { component: RA1, pin: B } }
+        - { node: a2, endpoint: { component: RA2, pin: A } }
+        - { node: "0", endpoint: { component: RA2, pin: B } }
+        - { node: wp, endpoint: { component: RWP, pin: A } }
+        - { node: "0", endpoint: { component: RWP, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: i2c_eeprom_standby_snapshot
+          description: AT24C02C standby bias with SDA/SCL high, A0/A1/A2 low, and WP low for normal writes.
+      probes:
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_sda
+          expression: V(sda)
+        - name: v_scl
+          expression: V(scl)
+        - name: v_a0
+          expression: V(a0)
+        - name: v_a1
+          expression: V(a1)
+        - name: v_a2
+          expression: V(a2)
+        - name: v_wp
+          expression: V(wp)
+      assertions:
+        - name: vcc_above_operating_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 1.7
+        - name: vcc_below_operating_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: sda_idle_high
+          probe: v_sda
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: scl_idle_high
+          probe: v_scl
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: a0_address_low
+          probe: v_a0
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: a1_address_low
+          probe: v_a1
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: a2_address_low
+          probe: v_a2
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: wp_normal_write_low
+          probe: v_wp
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99

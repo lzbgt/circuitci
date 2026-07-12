@@ -57,6 +57,7 @@ audit the modeled facts without relying on chat history.
 | Microchip MCP1316T-29LE/OT reset-supervisor use | <https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP131X-2X-Voltage-Supervisor-DS20001985.pdf> | `docs/research/datasheets/microchip/mcp131x_2x_voltage_supervisor.pdf` |
 | Abracon ABM3 8 MHz crystal support network | <https://abracon.com/Resonators/ABM3.pdf> | `docs/research/datasheets/abracon/abm3.pdf` |
 | Winbond W25Q64JV SPI/QSPI NOR flash power and observation use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
+| Microchip AT24C02C I2C EEPROM power and observation use | <https://ww1.microchip.com/downloads/en/DeviceDoc/AT24C01C-AT24C02C-I2C-Compatible-Two-Wire-Serial-EEPROM-1Kbit-2Kbit-20006111A.pdf> | `docs/research/datasheets/microchip/at24c01c_at24c02c_datasheet_ds20006111a.pdf` |
 | Bosch BME280 environmental sensor I2C power and observation use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
 | TI CSD17484F4 N-channel MOSFET switching/discharge use | <https://www.ti.com/lit/gpn/CSD17484F4> | `docs/research/datasheets/ti/csd17484f4.pdf` |
 | Kingbright APT1608SURCK red 0603 LED indicator use | <https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf> | `docs/research/datasheets/kingbright/apt1608surck.pdf` |
@@ -96,8 +97,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines one hundred thirty-two
-public-reference passing cases and one hundred sixty-seven paired injected-error
+`suites/public_typical_circuits.yaml` combines one hundred thirty-four
+public-reference passing cases and one hundred sixty-eight paired injected-error
 cases:
 
 | Case | Fixture | Expected result | Purpose |
@@ -365,6 +366,9 @@ cases:
 | `winbond_w25q64jv_spi_flash_power_passes` | `examples/good_winbond_w25q64jv_spi_flash_power/project.yaml` | pass | W25Q64JV SPI/QSPI NOR flash on a 3.3 V VCC rail with every 8-pin SPI/QSPI board-boundary pin bound. |
 | `winbond_w25q64jv_spi_flash_observation_passes` | `examples/good_winbond_w25q64jv_spi_flash_observation/project.yaml` | pass | W25Q64JV generated-SPICE standby observation with source-backed 3.3 V `VCC`, `/CS` high, `/WP` high, `/HOLD or /RESET` high, and low idle bias on `CLK`, `DI/IO0`, and high-impedance `DO/IO1`. |
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `examples/bad_winbond_w25q64jv_vcc_overvoltage/project.yaml` | fail | Detects W25Q64JV `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
+| `microchip_at24c02c_i2c_eeprom_power_passes` | `examples/good_microchip_at24c02c_i2c_eeprom_power/project.yaml` | pass | AT24C02C I2C EEPROM on a 3.3 V VCC rail with all SOIC-8 board-boundary pins bound. |
+| `microchip_at24c02c_i2c_eeprom_observation_passes` | `examples/good_microchip_at24c02c_i2c_eeprom_observation/project.yaml` | pass | AT24C02C generated-SPICE I2C observation with source-backed 3.3 V `VCC`, idle-high `SDA`/`SCL`, `A0`/`A1`/`A2` low address select, and `WP` low for normal writes. |
+| `microchip_at24c02c_vcc_overvoltage_detected` | `examples/bad_microchip_at24c02c_vcc_overvoltage/project.yaml` | fail | Detects AT24C02C `VCC` connected to a 6 V rail above the source-backed 5.5 V maximum. |
 | `bosch_bme280_i2c_power_passes` | `examples/good_bosch_bme280_i2c_power/project.yaml` | pass | BME280 with source-backed 3.3 V `VDD`/`VDDIO`, `CSB` tied high for I2C, and `SDO` tied low for address `0x76`. |
 | `bosch_bme280_i2c_observation_passes` | `examples/good_bosch_bme280_i2c_observation/project.yaml` | pass | BME280 generated-SPICE I2C observation with source-backed 3.3 V `VDD`/`VDDIO`, idle SDA/SCL pull-ups, `CSB` high for I2C, and `SDO` low for address `0x76`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `examples/bad_bosch_bme280_vddio_overvoltage/project.yaml` | fail | Detects BME280 `VDDIO` connected to a 5 V rail above the source-backed 3.6 V maximum. |
@@ -408,12 +412,12 @@ Run command:
 circuitci validate-suite suites/public_typical_circuits.yaml --output out/public-typical-circuits
 ```
 
-## 2026-07-05 Result
+## 2026-07-13 Result
 
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=299, passed=299, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=302, passed=302, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -570,6 +574,7 @@ Observed detection details:
 | `ti_tlv803ea29_nominal_rail_detected` | `POWER_TREE_VALID` | Reset supervisor `USUP` monitored rail `rail_2v9` nominal voltage `2.900000 V` is not above worst-case release threshold `2.988600 V`. |
 | `abracon_abm3_8mhz_load_capacitance_detected` | `CLOCK_SOURCE_VALID` | Clock source `U1` uses crystal `Y1` with effective load capacitance `6.000000e-12 F`, outside the modeled crystal load range. |
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UFLASH.VCC` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
+| `microchip_at24c02c_vcc_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_6v` supplies `UEEPROM.VCC` at `6.000000 V`, outside the model maximum operating voltage `5.500000 V`. |
 | `bosch_bme280_vddio_overvoltage_detected` | `POWER_TREE_VALID` | Power rail `rail_5v` supplies `UBME.VDDIO` at `5.000000 V`, outside the model maximum operating voltage `3.600000 V`. |
 | `onsemi_1n4148ws_overcurrent_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `IF_AV`: maximum simulated current was `0.384935 A`, limit is `0.150000 A`; it also exceeded `PD` at `0.443047 W` against `0.200000 W`. |
 | `onsemi_1n4148ws_reverse_voltage_detected` | `SPICE_OPERATING_LIMIT` | Component `D1` exceeded datasheet `VRRM`: maximum simulated voltage was `119.995528 V`, limit is `100.000000 V`. |
