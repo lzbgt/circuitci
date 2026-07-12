@@ -25,7 +25,8 @@ The generated project:
 - binds element terminals back to Board IR endpoints through
   `analog.pin_bindings`,
 - preserves `.include` and `.lib` dependencies as `analog.model_files`,
-- computes SHA-256 pins for included model files that resolve locally,
+- resolves `.include` and `.lib` dependencies relative to the source deck and
+  emits SHA-256 pins for every imported model file,
 - emits voltage probes for discovered non-ground SPICE nodes,
 - creates one file-backed `analog_transient` scenario using the original deck.
 
@@ -80,6 +81,7 @@ The importer rejects malformed element lines instead of guessing:
 
 - too few tokens for the element prefix,
 - malformed `.include` or `.lib` path,
+- `.include` or `.lib` path that does not resolve to a local file,
 - unsupported control blocks embedded in the source deck,
 - orphan continuation lines,
 - element names that cannot be represented as Board IR component IDs.

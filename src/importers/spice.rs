@@ -1,3 +1,4 @@
+use crate::analog_model_resolver::declared_model_file_path_for_source_dir;
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -33,8 +34,7 @@ struct ParsedElement {
 
 #[derive(Debug)]
 struct IncludeFile {
-    path: String,
-    resolved: Option<PathBuf>,
+    resolved: PathBuf,
 }
 
 #[derive(Debug)]
@@ -389,14 +389,16 @@ fn parse_include(tokens: &[String], source_dir: &Path) -> Result<IncludeFile> {
         bail!("{} directive requires a path.", tokens[0]);
     }
     let path = tokens[1].clone();
-    let candidate = Path::new(&path);
-    let resolved = if candidate.is_absolute() {
-        candidate.is_file().then(|| candidate.to_path_buf())
-    } else {
-        let joined = source_dir.join(candidate);
-        joined.is_file().then_some(joined)
-    };
-    Ok(IncludeFile { path, resolved })
+    let resolved = declared_model_file_path_for_source_dir(source_dir, &path)
+        .map_err(anyhow::Error::msg)
+        .with_context(|| format!("Failed to resolve SPICE include {path}."))?;
+    if !resolved.is_file() {
+        bail!(
+            "SPICE include {} does not resolve to a file.",
+            resolved.display()
+        );
+    }
+    Ok(IncludeFile { resolved })
 }
 
 fn parse_tran(tokens: &[String]) -> Option<TranSpec> {
@@ -883,20 +885,19 @@ fn model_files_for_yaml(includes: &[IncludeFile], output_dir: &Path) -> Result<V
     let mut seen = BTreeSet::new();
     let mut files = Vec::new();
     for include in includes {
-        let path = include.resolved.as_ref().map_or_else(
-            || include.path.clone(),
-            |path| path_for_yaml(path, output_dir),
-        );
+        let path = path_for_yaml(&include.resolved, output_dir);
         if !seen.insert(path.clone()) {
             continue;
         }
-        let sha256 = include.resolved.as_ref().map(file_sha256_hex).transpose()?;
-        files.push(ModelFileYaml { path, sha256 });
+        files.push(ModelFileYaml {
+            path,
+            sha256: Some(file_sha256_hex(&include.resolved)?),
+        });
     }
     Ok(files)
 }
 
-fn file_sha256_hex(path: &PathBuf) -> Result<String> {
+fn file_sha256_hex(path: &Path) -> Result<String> {
     let bytes = fs::read(path).with_context(|| format!("Failed to read {}", path.display()))?;
     let mut hasher = Sha256::new();
     hasher.update(bytes);

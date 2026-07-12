@@ -634,6 +634,34 @@ fn import_spice_rejects_malformed_element_line() {
 }
 
 #[test]
+fn import_spice_rejects_missing_include_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let deck = dir.path().join("missing_include.cir");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(
+        &deck,
+        ".include missing_vendor_model.lib\nV1 in 0 DC 3.3\nR1 in 0 1k\n.end\n",
+    )
+    .unwrap();
+    let output_result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!output_result.status.success());
+    assert!(!output.exists());
+    let stderr = String::from_utf8_lossy(&output_result.stderr);
+    assert!(
+        stderr.contains("does not resolve to a file"),
+        "unexpected stderr:\n{stderr}"
+    );
+}
+
+#[test]
 fn generated_mosfet_low_side_switch_runs_with_embedded_ngspice_when_available() {
     let (_project_dir, project_path) =
         embedded_backend_project("examples/good_mosfet_low_side_switch/project.yaml");
