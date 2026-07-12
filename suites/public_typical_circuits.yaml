@@ -1384,6 +1384,10 @@ cases:
     project: ../examples/good_tdk_icm42688p_imu_observation/project.yaml
     expect: pass
 
+  - id: sensirion_sht31_i2c_observation_passes
+    project: ../examples/good_sensirion_sht31_i2c_observation/project.yaml
+    expect: pass
+
   - id: jst_xh_servo_connector_observation_passes
     project: ../examples/good_jst_xh_servo_connector_observation/project.yaml
     expect: pass

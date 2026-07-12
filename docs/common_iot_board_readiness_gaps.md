@@ -85,7 +85,14 @@ range, active current class, SPI/QSPI board-boundary pin review, and a reduced
 high-impedance generated-SPICE standby observation face for chip-select,
 write-protect, hold/reset, clock, and data-line idle bias; SPI protocol timing,
 JEDEC ID/SFDP behavior, flash contents, XIP performance, and write-protection
-policy remain outside that model. Kingbright
+policy remain outside that model. Sensirion SHT31-DIS now covers a second
+source-backed humidity/temperature sensor pack with 2.15 V to 5.5 V supply,
+I2C address-select/reset/alert board-boundary metadata, and a reduced
+high-impedance generated-SPICE I2C observation face for rail, pull-up, address,
+reset, and alert line-state checks; measurement accuracy, compensation,
+register protocol, clock stretching, alert thresholds, heater behavior, drift,
+self-heating, contamination, and calibration remain outside that model.
+Kingbright
 APT1608SURCK now covers a first source-backed common indicator LED pack with
 generated SPICE operating-limit probes for forward current, reverse voltage,
 and power dissipation; optical output, color bins, pulse-drive derating,
@@ -219,13 +226,14 @@ netlists. The missing work is board-facing behavior:
 The current QEMU path requires explicit pin observations. It does not infer
 correct package-pin behavior from MCU internals.
 
-Source-backed common peripherals now include the Bosch BME280 environmental
-sensor pack. That pack moves one high-volume sensor class out of generic
-coverage by modeling the source-backed `VDD` and `VDDIO` operating ranges plus
-I2C/SPI board-boundary pins for `POWER_TREE_VALID` and pin-binding review. It
-also has a reduced high-impedance generated-SPICE face for I2C rail, pull-up,
-`CSB`, and `SDO` address-select observations. It still leaves sensor accuracy,
-compensation algorithms, register protocol, bus-timing sign-off, response time,
+Source-backed common peripherals now include Bosch BME280 and Sensirion
+SHT31-DIS environmental sensor packs. Those packs move common sensor classes
+out of generic coverage by modeling source-backed rail ranges plus I2C/SPI or
+I2C board-boundary pins for `POWER_TREE_VALID` and pin-binding review. They
+also have reduced high-impedance generated-SPICE faces for rail, pull-up,
+address/interface-select, reset, and alert/address line-state observations.
+They still leave sensor accuracy, compensation algorithms, register protocol,
+bus-timing sign-off, clock stretching, alert threshold logic, response time,
 noise, drift, self-heating, and calibration outside the validator boundary.
 
 ## 4. Automatic Scenario Generation

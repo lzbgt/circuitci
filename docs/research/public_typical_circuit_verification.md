@@ -43,6 +43,7 @@ audit the modeled facts without relying on chat history.
 | TI DRV8323 gate-driver use | <https://www.ti.com/lit/ds/symlink/drv8323.pdf> | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` |
 | NXP PCA9685 PWM-driver use | <https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf> and NXP product page | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` and `docs/research/smart_robot/sources/pca9685_product.html` |
 | TDK InvenSense ICM-42688-P IMU use | <https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/ds-000347-icm-42688-p-v1.6.pdf> | `docs/research/smart_robot/sources/icm42688p_datasheet.pdf` |
+| Sensirion SHT31-DIS humidity/temperature sensor use | <https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf> | `docs/research/datasheets/sensirion/sht3x_dis_datasheet.pdf` |
 | JST XH/VH connector contact use | JST connector datasheets plus retained handling precautions | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf`, `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf`, and `docs/research/smart_robot/sources/jst_handling_precautions_terminals_connectors.pdf` |
 | JLCPCB circular drill diameter process use | <https://jlcpcb.com/capabilities/pcb-capabilities> | `docs/research/fabrication/jlcpcb/pcb_capabilities.html` and retained Nuxt page assets |
 | ST STM8S003F3P6 MCU power use | <https://www.st.com/resource/en/datasheet/stm8s003f3.pdf> | `docs/research/datasheets/st/stm8s003f3_datasheet.pdf` |
@@ -95,8 +96,8 @@ part-specific research notes under `docs/research/datasheets/` and
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines one hundred twenty-seven
-public-reference passing cases and one hundred sixty-six paired injected-error
+`suites/public_typical_circuits.yaml` combines one hundred thirty-one
+public-reference passing cases and one hundred sixty-seven paired injected-error
 cases:
 
 | Case | Fixture | Expected result | Purpose |
@@ -340,6 +341,7 @@ cases:
 | `ti_drv8323_vm_overvoltage_detected` | `examples/bad_drv8323_vm_overvoltage/project.yaml` | fail | Detects DRV8323 `VM` connected to a 70 V motor rail above the source-backed 60 V maximum. |
 | `nxp_pca9685_pwm_driver_observation_passes` | `examples/good_pca9685_pwm_driver_observation/project.yaml` | pass | PCA9685 generated-SPICE PWM-driver observation with source-backed VDD, OE low, I2C idle states, and four representative PWM output samples. |
 | `tdk_icm42688p_imu_observation_passes` | `examples/good_tdk_icm42688p_imu_observation/project.yaml` | pass | ICM-42688-P generated-SPICE IMU observation with source-backed VDD/VDDIO, SPI idle inputs, SDO, and INT1 line states. |
+| `sensirion_sht31_i2c_observation_passes` | `examples/good_sensirion_sht31_i2c_observation/project.yaml` | pass | SHT31-DIS generated-SPICE I2C observation with source-backed VDD, SDA/SCL pull-ups, ADDR low, nRESET high, and ALERT idle low. |
 | `jst_xh_servo_connector_observation_passes` | `examples/good_jst_xh_servo_connector_observation/project.yaml` | pass | JST XH generated-SPICE servo connector observation with source-backed contact-resistance pass-through on power, ground, and PWM signal pins. |
 | `jst_vh_actuator_bus_connector_observation_passes` | `examples/good_jst_vh_actuator_bus_connector_observation/project.yaml` | pass | JST VH generated-SPICE actuator-bus connector observation with source-backed contact-resistance pass-through on power, CAN, enable, fault, and sync pins. |
 | `st_stm8s003f3p6_power_passes` | `examples/good_st_stm8s003f3p6_power/project.yaml` | pass | STM8S003F3P6 with 5 V `VDD`, `VCAP` pin support capacitor, active-low reset, SWIM, and UART1 TX/RX boundaries. |
@@ -410,7 +412,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=297, passed=297, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=298, passed=298, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -585,7 +587,7 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred thirty public-reference pass cases produced zero critical
+All one hundred thirty-one public-reference pass cases produced zero critical
 findings.
 All one hundred sixty-seven paired injected-error cases failed with the expected
 critical finding ID, and all one hundred sixty-seven repair-pair checks passed.

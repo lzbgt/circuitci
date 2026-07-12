@@ -230,6 +230,13 @@ const BME280_I2C_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vdd", "v_vddio", "v_csb", "v_sda", "v_scl", "v_sdo"];
 const BME280_I2C_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V BME280 I2C rails, pull-ups, CSB high, and SDO low address select";
+const SHT31_I2C_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_sensirion_sht31_i2c_observation/project.yaml";
+const SHT31_I2C_SCOPE_EXAMPLE_NAME: &str = "good_sensirion_sht31_i2c_observation";
+const SHT31_I2C_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v_vdd", "v_sda", "v_scl", "v_reset_n", "v_addr", "v_alert"];
+const SHT31_I2C_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V SHT31-DIS I2C pull-ups, ADDR low, nRESET high, and ALERT idle low";
 const W25Q64JV_SPI_FLASH_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_winbond_w25q64jv_spi_flash_observation/project.yaml";
 const W25Q64JV_SPI_FLASH_SCOPE_EXAMPLE_NAME: &str = "good_winbond_w25q64jv_spi_flash_observation";
@@ -774,6 +781,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         project_name: BME280_I2C_SCOPE_EXAMPLE_NAME,
         expected_traces: BME280_I2C_SCOPE_EXPECTED_TRACES,
         expected_frequency: BME280_I2C_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("USENS"),
+    },
+    GuiProjectExample {
+        id: "sht31_i2c_scope",
+        category: "Sensor",
+        open_label: "Open SHT31 I2C Example",
+        run_label: "Open SHT31 + Run Scopes",
+        workflow_title: "SHT31 I2C Workflow",
+        summary: "Source-backed SHT31-DIS rail, I2C pull-up, address, reset, and alert observation.",
+        project_path: SHT31_I2C_SCOPE_EXAMPLE_PROJECT,
+        project_name: SHT31_I2C_SCOPE_EXAMPLE_NAME,
+        expected_traces: SHT31_I2C_SCOPE_EXPECTED_TRACES,
+        expected_frequency: SHT31_I2C_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("USENS"),
     },
     GuiProjectExample {

@@ -1,0 +1,120 @@
+component_id: vendor.sensirion.sht31_dis
+version: 0.1.0
+category: environmental_sensor
+simulation:
+  spice:
+    model_name: CIRCUITCI_SHT31_I2C_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/sensirion/sht31_i2c_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VSS, SDA, SCL, ADDR, NRESET, ALERT]
+    valid_operating_notes:
+      - Reduced high-impedance I2C board-observation model for preliminary VDD rail, SDA/SCL pull-up, ADDR address-select, nRESET, and ALERT-line checks.
+      - Uses source-backed 2.15 V to 5.5 V VDD range, 1 MHz I2C interface class, ADDR-selected 0x44/0x45 address metadata, and documented nRESET/ALERT board-boundary guidance.
+      - Humidity, temperature, compensation formulas, register protocol, I2C timing, clock stretching, alert-limit logic, heater behavior, response time, contamination, drift, self-heating, and calibration are out of scope.
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.15
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.0015
+  VSS:
+    kind: electrical_ground
+    required: true
+  SDA:
+    kind: digital_electrical_io
+    required: true
+  SCL:
+    kind: digital_electrical_input
+    required: true
+  ADDR:
+    kind: digital_electrical_input
+    required: true
+  NRESET:
+    kind: digital_electrical_input
+    required: false
+  ALERT:
+    kind: digital_electrical_output
+    required: false
+datasheet:
+  manufacturer: Sensirion
+  part_number: SHT31-DIS
+  package: 2.5 mm x 2.5 mm x 0.9 mm DFN-8
+  polarity: humidity_temperature_sensor
+  pinout:
+    VDD: Supply voltage.
+    VSS: Ground reference.
+    SDA: I2C serial data.
+    SCL: I2C serial clock.
+    ADDR: I2C address select input.
+    NRESET: Active-low reset input, named nRESET in the datasheet.
+    ALERT: Programmable alert output.
+  electrical_characteristics:
+    vdd_supply:
+      min: 2.15
+      typ: 3.3
+      max: 5.5
+      unit: V
+    idle_current_single_shot_25c:
+      typ: 0.2
+      max: 2.0
+      unit: uA
+    idle_current_periodic:
+      typ: 45
+      unit: uA
+    measuring_current:
+      typ: 600
+      max: 1500
+      unit: uA
+    average_current_1hz_low_repeatability:
+      typ: 1.7
+      unit: uA
+  device_parameters:
+    package_length:
+      value: 2.5
+      unit: mm
+    package_width:
+      value: 2.5
+      unit: mm
+    package_height:
+      value: 0.9
+      unit: mm
+    i2c_max_clock:
+      value: 1.0
+      unit: MHz
+      simulation_relevance: Board-level I2C timing remains out of scope for this static model.
+    i2c_address_addr_low:
+      value: 68
+      unit: address_decimal
+      simulation_relevance: ADDR tied low selects 0x44.
+    i2c_address_addr_high:
+      value: 69
+      unit: address_decimal
+      simulation_relevance: ADDR tied high selects 0x45.
+    nreset_internal_pullup:
+      value: 50
+      unit: kOhm_typical
+      simulation_relevance: The reduced observation fixture still uses an explicit external pull-up to make board intent visible.
+  documents:
+    - title: Sensirion Datasheet SHT3x-DIS Humidity and Temperature Sensor
+      path: docs/research/datasheets/sensirion/sht3x_dis_datasheet.pdf
+      source_url: https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf
+      sha256: 095b1853e7f4328f5897c9ca6c392a7dd8b0202eda66b0a2629f9cb840dd496d
+      retrieved: "2026-07-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - environmental_sensor_power_tree_supply_voltage
+    - i2c_pin_boundary_review
+    - low_power_sensor_board_review
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - humidity_temperature_accuracy_signoff
+    - compensation_algorithm_or_register_protocol_validation
+    - i2c_timing_or_clock_stretching_signoff
+    - alert_threshold_logic_validation
+    - heater_contamination_drift_or_self_heating_analysis
+    - environmental_chamber_or_calibration_validation

@@ -968,6 +968,17 @@ preliminary I2C rail, pull-up, `CSB`, and `SDO` address-select observations. It
 does not validate humidity, pressure, or temperature accuracy, compensation
 algorithms, register protocols, bus timing, response time, noise, drift,
 self-heating, or calibration behavior.
+`vendor.sensirion.sht31_dis` adds a source-backed environmental sensor pack.
+Official Sensirion documentation backs its 2.15 V to 5.5 V `VDD` rail range,
+I2C pin roles, 1 MHz I2C class, `ADDR`-selected `0x44`/`0x45` addresses,
+2.5 mm x 2.5 mm x 0.9 mm package, reset guidance, alert pin role, and current
+classes. The validator uses the power-pin contract for `POWER_TREE_VALID`, the
+explicit port list for board-boundary review, and a high-impedance
+generated-SPICE face for preliminary I2C rail, pull-up, `ADDR`, `nRESET`, and
+`ALERT` observations. It does not validate humidity or temperature accuracy,
+compensation algorithms, register protocols, bus timing, clock stretching,
+alert threshold logic, heater behavior, response time, contamination, drift,
+self-heating, or calibration behavior.
 `vendor.kingbright.apt1608surck` adds a source-backed common indicator LED
 pack. Official Kingbright documentation backs its 30 mA DC forward-current
 limit, 5 V reverse-voltage limit, 75 mW power limit, 1.95 V typical and 2.5 V

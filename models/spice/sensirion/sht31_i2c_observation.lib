@@ -1,0 +1,17 @@
+* Reduced Sensirion SHT31-DIS I2C board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level rail, I2C pull-up, ADDR select, nRESET, and ALERT line checks.
+* It does not model humidity, temperature, compensation, registers, I2C
+* transactions, clock stretching, alert-threshold logic, heating, drift,
+* contamination, or calibration.
+
+.subckt CIRCUITCI_SHT31_I2C_OBSERVATION VDD VSS SDA SCL ADDR NRESET ALERT
+* All signal pins are high impedance. External pull-ups, pull-downs, sources,
+* and board metadata define the observable state.
+RVDD VDD VSS 1G
+RSDA SDA VSS 1G
+RSCL SCL VSS 1G
+RADDR ADDR VSS 1G
+RNRESET NRESET VSS 1G
+RALERT ALERT VSS 1G
+.ends CIRCUITCI_SHT31_I2C_OBSERVATION

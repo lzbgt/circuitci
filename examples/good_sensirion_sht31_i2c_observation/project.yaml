@@ -1,0 +1,320 @@
+project:
+  name: good_sensirion_sht31_i2c_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      USENS: Sensor:SHT31-DIS
+      RSDA: Device:R
+      RSCL: Device:R
+      RADDR: Device:R
+      RRESET: Device:R
+      RALERT: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:USENS: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSDA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSCL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RADDR: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RRESET: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RALERT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 168.0 }
+      component:USENS: { x: 376.0, y: 280.0 }
+      component:RSDA: { x: 760.0, y: 128.0 }
+      component:RSCL: { x: 760.0, y: 232.0 }
+      component:RRESET: { x: 760.0, y: 336.0 }
+      component:RADDR: { x: 760.0, y: 456.0 }
+      component:RALERT: { x: 760.0, y: 568.0 }
+      net:sht31_3v3: { x: 224.0, y: 96.0 }
+      net:i2c_sda: { x: 672.0, y: 128.0 }
+      net:i2c_scl: { x: 672.0, y: 232.0 }
+      net:reset_n: { x: 672.0, y: 336.0 }
+      net:addr_0x44: { x: 672.0, y: 456.0 }
+      net:alert_idle: { x: 672.0, y: 568.0 }
+      net:gnd: { x: 376.0, y: 640.0 }
+    wire_routes:
+      VDD.P->sht31_3v3:
+        points:
+          - { x: 160.0, y: 168.0 }
+          - { x: 224.0, y: 96.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 120.0, y: 640.0 }
+      USENS.VDD->sht31_3v3:
+        points:
+          - { x: 296.0, y: 160.0 }
+          - { x: 224.0, y: 96.0 }
+      USENS.VSS->gnd:
+        points:
+          - { x: 376.0, y: 640.0 }
+      USENS.SDA->i2c_sda:
+        points:
+          - { x: 608.0, y: 160.0 }
+          - { x: 672.0, y: 128.0 }
+      USENS.SCL->i2c_scl:
+        points:
+          - { x: 608.0, y: 232.0 }
+          - { x: 672.0, y: 232.0 }
+      USENS.NRESET->reset_n:
+        points:
+          - { x: 608.0, y: 320.0 }
+          - { x: 672.0, y: 336.0 }
+      USENS.ADDR->addr_0x44:
+        points:
+          - { x: 608.0, y: 408.0 }
+          - { x: 672.0, y: 456.0 }
+      USENS.ALERT->alert_idle:
+        points:
+          - { x: 608.0, y: 496.0 }
+          - { x: 672.0, y: 568.0 }
+      RSDA.A->sht31_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSDA.B->i2c_sda:
+        points:
+          - { x: 760.0, y: 128.0 }
+      RSCL.A->sht31_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSCL.B->i2c_scl:
+        points:
+          - { x: 760.0, y: 232.0 }
+      RRESET.A->sht31_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RRESET.B->reset_n:
+        points:
+          - { x: 760.0, y: 336.0 }
+      RADDR.A->addr_0x44:
+        points:
+          - { x: 760.0, y: 456.0 }
+      RADDR.B->gnd:
+        points:
+          - { x: 760.0, y: 640.0 }
+      RALERT.A->alert_idle:
+        points:
+          - { x: 760.0, y: 568.0 }
+      RALERT.B->gnd:
+        points:
+          - { x: 760.0, y: 640.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: SHT31_3V3_SOURCE
+      pins:
+        P: sht31_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    USENS:
+      model: vendor.sensirion.sht31_dis
+      part_number: SHT31-DIS-B
+      power_domains:
+        VDD: sht31_3v3
+      pins:
+        VDD: sht31_3v3
+        VSS: gnd
+        SDA: i2c_sda
+        SCL: i2c_scl
+        ADDR: addr_0x44
+        NRESET: reset_n
+        ALERT: alert_idle
+    RSDA:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: sht31_3v3
+        B: i2c_sda
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSCL:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: sht31_3v3
+        B: i2c_scl
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RRESET:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: sht31_3v3
+        B: reset_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RADDR:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: addr_0x44
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RALERT:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: alert_idle
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+  nets:
+    sht31_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.01
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    reset_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    addr_0x44:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    alert_idle:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: sht31_i2c_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - USENS
+          - RSDA
+          - RSCL
+          - RRESET
+          - RADDR
+          - RALERT
+      model_files:
+        - path: ../../models/spice/sensirion/sht31_i2c_observation.lib
+          sha256: 117594415f1273dbd1146822da2559208a13416ca95f131443d5e75d8b19a951
+      node_bindings:
+        - { node: rail3v3, net: sht31_3v3 }
+        - { node: sda, net: i2c_sda }
+        - { node: scl, net: i2c_scl }
+        - { node: reset_n, net: reset_n }
+        - { node: addr, net: addr_0x44 }
+        - { node: alert, net: alert_idle }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: rail3v3, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: rail3v3, endpoint: { component: USENS, pin: VDD } }
+        - { node: "0", endpoint: { component: USENS, pin: VSS } }
+        - { node: sda, endpoint: { component: USENS, pin: SDA } }
+        - { node: scl, endpoint: { component: USENS, pin: SCL } }
+        - { node: addr, endpoint: { component: USENS, pin: ADDR } }
+        - { node: reset_n, endpoint: { component: USENS, pin: NRESET } }
+        - { node: alert, endpoint: { component: USENS, pin: ALERT } }
+        - { node: rail3v3, endpoint: { component: RSDA, pin: A } }
+        - { node: sda, endpoint: { component: RSDA, pin: B } }
+        - { node: rail3v3, endpoint: { component: RSCL, pin: A } }
+        - { node: scl, endpoint: { component: RSCL, pin: B } }
+        - { node: rail3v3, endpoint: { component: RRESET, pin: A } }
+        - { node: reset_n, endpoint: { component: RRESET, pin: B } }
+        - { node: addr, endpoint: { component: RADDR, pin: A } }
+        - { node: "0", endpoint: { component: RADDR, pin: B } }
+        - { node: alert, endpoint: { component: RALERT, pin: A } }
+        - { node: "0", endpoint: { component: RALERT, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: i2c_idle_address_snapshot
+          description: SHT31-DIS I2C idle state with pull-ups, ADDR low for 0x44, nRESET high, and ALERT idle low.
+      probes:
+        - name: v_vdd
+          expression: V(rail3v3)
+        - name: v_sda
+          expression: V(sda)
+        - name: v_scl
+          expression: V(scl)
+        - name: v_reset_n
+          expression: V(reset_n)
+        - name: v_addr
+          expression: V(addr)
+        - name: v_alert
+          expression: V(alert)
+      assertions:
+        - name: vdd_above_operating_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.15
+        - name: vdd_below_operating_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: sda_idle_high_from_pullup
+          probe: v_sda
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: scl_idle_high_from_pullup
+          probe: v_scl
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: reset_released_high
+          probe: v_reset_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: addr_selects_default_address_low
+          probe: v_addr
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: alert_idle_low
+          probe: v_alert
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99

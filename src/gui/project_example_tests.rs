@@ -445,6 +445,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("USENS"),
         },
         ExpectedProjectExample {
+            id: "sht31_i2c_scope",
+            category: "Sensor",
+            open_label: "Open SHT31 I2C Example",
+            run_label: "Open SHT31 + Run Scopes",
+            summary: "Source-backed SHT31-DIS rail, I2C pull-up, address, reset, and alert observation.",
+            project_path: "examples/good_sensirion_sht31_i2c_observation/project.yaml",
+            project_name: "good_sensirion_sht31_i2c_observation",
+            expected_traces: &["v_vdd", "v_sda", "v_scl", "v_reset_n", "v_addr", "v_alert"],
+            expected_frequency: "3.3 V SHT31-DIS I2C pull-ups, ADDR low, nRESET high, and ALERT idle low",
+            observation_preset_component: Some("USENS"),
+        },
+        ExpectedProjectExample {
             id: "w25q64jv_spi_flash_scope",
             category: "Memory",
             open_label: "Open W25Q64JV Flash Example",

@@ -366,6 +366,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   `SDO` address-select observations. The macro observes board wiring and does
   not emulate measurements, registers, compensation formulas, bus transactions,
   timing, noise, or calibration.
+- `examples/good_sensirion_sht31_i2c_observation` proves the Sensirion
+  SHT31-DIS source-backed humidity/temperature sensor model can use a reduced
+  high-impedance generated-SPICE face for VDD, I2C pull-ups, `ADDR` address
+  select, `nRESET`, and `ALERT` idle-state observations. The macro observes
+  board wiring and does not emulate measurements, registers, compensation
+  formulas, bus transactions, clock stretching, alert thresholds, heater
+  behavior, drift, or calibration.
 - `examples/good_winbond_w25q64jv_spi_flash_observation` proves the Winbond
   W25Q64JV source-backed SPI/QSPI NOR flash model can use a reduced
   high-impedance generated-SPICE face for VCC, standby `/CS`, `/WP`,
