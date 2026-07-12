@@ -1,0 +1,13 @@
+* Reduced Microchip ATECC608A I2C secure-element board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level VCC and I2C pull-up line checks. It does not model cryptographic
+* commands, key storage, secure boot, provisioning, RNG behavior, wake/sleep
+* timing, or I2C transaction sign-off.
+
+.subckt CIRCUITCI_ATECC608A_I2C_SECURE_ELEMENT_OBSERVATION VCC GND SDA SCL
+* VCC and I2C pins are high impedance. External pull-ups, host sources, and
+* board metadata define the observable state.
+RVCC VCC GND 1G
+RSDA SDA GND 1G
+RSCL SCL GND 1G
+.ends CIRCUITCI_ATECC608A_I2C_SECURE_ELEMENT_OBSERVATION

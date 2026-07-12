@@ -1472,6 +1472,32 @@ fn microchip_mcp23017_vdd_overvoltage_uses_datasheet_limit() {
 }
 
 #[test]
+fn microchip_atecc608a_i2c_secure_element_power_board_passes_static_checks() {
+    let report =
+        run_validation("examples/good_microchip_atecc608a_i2c_secure_element_power/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn microchip_atecc608a_vcc_overvoltage_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_microchip_atecc608a_vcc_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["component"] == "USEC")
+        .expect("expected ATECC608A VCC finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["net"], "rail_6v");
+    assert_eq!(failure["measured"]["nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["operating_voltage_maximum_V"], 5.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn bosch_bme280_i2c_power_board_passes_static_checks() {
     let report = run_validation("examples/good_bosch_bme280_i2c_power/project.yaml");
     assert_eq!(report["result"], "pass");

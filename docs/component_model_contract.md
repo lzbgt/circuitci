@@ -981,6 +981,16 @@ pull-up, address-select, reset, interrupt-idle, and representative GPIO
 observations. It does not emulate I2C transactions, register configuration,
 GPIO direction, interrupt-on-change logic, weak pull-up behavior, output-load
 thermal limits, firmware pin-state sequencing, or high-speed signal integrity.
+`vendor.microchip.atecc608a` adds a source-backed I2C secure-element pack.
+Official Microchip documentation backs its 2.0 V to 5.5 V VCC rail range,
+1 MHz I2C class, 8-lead SOIC functional pin roles, 3 mA non-ECC active
+current, 14 mA ECC active current, 800 uA idle current, and 150 nA sleep-current
+metadata. The validator uses the power pin contract for `POWER_TREE_VALID`, the
+explicit port list for board-boundary review, and a high-impedance
+generated-SPICE face for preliminary VCC and idle I2C pull-up observations. It
+does not emulate cryptographic commands, key storage, provisioning state, RNG
+behavior, secure boot policy, wake/sleep timing, single-wire operation, I2C
+transaction content, firmware, or signal integrity.
 `vendor.bosch.bme280` adds a source-backed environmental sensor pack. Official
 Bosch documentation backs its 1.71 V to 3.6 V `VDD` rail range, 1.2 V to 3.6 V
 `VDDIO` rail range, separate digital-interface supply, I2C/SPI pin roles,

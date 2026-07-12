@@ -1,0 +1,38 @@
+project:
+  name: bad_microchip_atecc608a_vcc_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    USEC:
+      model: vendor.microchip.atecc608a
+      part_number: ATECC608A-SSHDA-T
+      power_domains:
+        VCC: rail_6v
+      pins:
+        VCC: rail_6v
+        GND: gnd
+        SDA: i2c_sda
+        SCL: i2c_scl
+  nets:
+    rail_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    gnd:
+      kind: ground
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 6.0
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 6.0
+
+scenarios:
+  - name: atecc608a_vcc_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

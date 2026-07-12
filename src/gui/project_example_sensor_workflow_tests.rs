@@ -215,3 +215,18 @@ fn mcp23017_i2c_gpio_expander_scope_example_workflow_creates_model_aware_observa
         ],
     );
 }
+
+#[test]
+fn atecc608a_i2c_secure_element_scope_example_workflow_creates_model_aware_observation_checks() {
+    assert_observation_workflow(
+        "atecc608a_i2c_secure_element_scope",
+        "USEC",
+        "usec_observation",
+        &["v_usec_vcc", "v_usec_sda", "v_usec_scl"],
+        &[
+            "v_usec_vcc_min_voltage",
+            "v_usec_sda_i2c_idle_high",
+            "v_usec_scl_i2c_idle_high",
+        ],
+    );
+}

@@ -128,7 +128,8 @@ existing CircuitCI checks:
 - Protection: `USBLC6-2SC6`, `TPD4E05U06DQAR`, `SMF5.0A`, `SM6T6V8CA`,
   resettable fuses.
 - Memory/security/I/O expanders: `W25Q32JVSSIQ`, `AT24C02C-SSHM-T`
-  (source-backed observation pack added), `ATECC608A-SSHDA-T`,
+  (source-backed observation pack added), `ATECC608A-SSHDA-T` (source-backed
+  observation pack added),
   `MCP23017-E/SS` (source-backed observation pack added).
 - Sensors/audio: `NAU7802SGI`, `AHT20`, `CPS121`, `MAX98357A`, `INMP441`,
   `SU-03T`.

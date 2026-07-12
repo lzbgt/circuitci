@@ -1531,6 +1531,21 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: microchip_atecc608a_i2c_secure_element_power_passes
+    project: ../examples/good_microchip_atecc608a_i2c_secure_element_power/project.yaml
+    expect: pass
+
+  - id: microchip_atecc608a_i2c_secure_element_observation_passes
+    project: ../examples/good_microchip_atecc608a_i2c_secure_element_observation/project.yaml
+    expect: pass
+
+  - id: microchip_atecc608a_vcc_overvoltage_detected
+    project: ../examples/bad_microchip_atecc608a_vcc_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: bosch_bme280_i2c_power_passes
     project: ../examples/good_bosch_bme280_i2c_power/project.yaml
     expect: pass
@@ -2627,6 +2642,12 @@ repairs:
   - id: fix_microchip_mcp23017_vdd_overvoltage
     detects_case: microchip_mcp23017_vdd_overvoltage_detected
     fixed_case: microchip_mcp23017_i2c_gpio_expander_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_microchip_atecc608a_vcc_overvoltage
+    detects_case: microchip_atecc608a_vcc_overvoltage_detected
+    fixed_case: microchip_atecc608a_i2c_secure_element_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

@@ -1,0 +1,114 @@
+component_id: vendor.microchip.atecc608a
+version: 0.1.0
+category: secure_element
+simulation:
+  spice:
+    model_name: CIRCUITCI_ATECC608A_I2C_SECURE_ELEMENT_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/microchip/atecc608a_i2c_secure_element_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, GND, SDA, SCL]
+    valid_operating_notes:
+      - Reduced high-impedance ATECC608A I2C secure-element board-observation model for preliminary VCC rail and I2C pull-up line-state checks.
+      - Uses source-backed 2.0 V to 5.5 V supply range, 1 MHz I2C class, 8-lead SOIC functional pin roles, and active/idle/sleep current metadata.
+      - Cryptographic commands, provisioning, key storage, RNG behavior, secure boot policy, wake/sleep timing, single-wire operation, I2C transaction content, and signal integrity are out of scope.
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.014
+  GND:
+    kind: electrical_ground
+    required: true
+  SDA:
+    kind: digital_electrical_io
+    required: true
+  SCL:
+    kind: digital_electrical_input
+    required: true
+datasheet:
+  manufacturer: Microchip Technology
+  part_number: ATECC608A-SSHDA-T
+  package: 8-lead SOIC
+  polarity: "i2c_cryptoauthentication_secure_element"
+  pinout:
+    VCC: Power supply
+    GND: Ground
+    SDA: I2C serial data
+    SCL: I2C serial clock input
+  electrical_characteristics:
+    supply_voltage:
+      conditions: Recommended operating supply voltage.
+      min: 2.0
+      max: 5.5
+      unit: V
+    io_level_voltage:
+      conditions: I/O level range.
+      min: 1.8
+      max: 5.5
+      unit: V
+    active_supply_current_io_or_non_ecc:
+      conditions: Waiting for I/O during transfers or non-ECC command execution.
+      typ: 2.0
+      max: 3.0
+      unit: mA
+    active_supply_current_ecc_fast:
+      conditions: ECC command execution, clock divider 0x0.
+      max: 14.0
+      unit: mA
+    idle_supply_current:
+      conditions: Idle mode, SDA/SCL outside the linear region.
+      typ: 800.0
+      unit: uA
+    sleep_current:
+      conditions: Sleep mode, VCC <= 3.6 V, TA <= 55 C.
+      typ: 30.0
+      max: 150.0
+      unit: nA
+    output_low_voltage:
+      conditions: Active mode, VCC = 2.5 V to 5.5 V.
+      max: 0.4
+      unit: V
+    output_low_current:
+      conditions: Active mode, VCC = 2.5 V to 5.5 V, VOL = 0.4 V.
+      max: 4.0
+      unit: mA
+  device_parameters:
+    max_i2c_clock:
+      conditions: I2C interface.
+      max: 1
+      unit: MHz
+    protected_slots:
+      conditions: Protected storage for keys, certificates, or data.
+      typ: 16
+      unit: slot
+    serial_number:
+      conditions: Guaranteed unique serial number.
+      typ: 72
+      unit: bit
+  documents:
+    - title: ATECC608A Microchip CryptoAuthentication Device Data Sheet Summary
+      path: docs/research/datasheets/microchip/atecc608a_datasheet_summary_40001977a.pdf
+      source_url: https://ww1.microchip.com/downloads/en/DeviceDoc/40001977A.pdf
+      sha256: 3e971d6d284ebc64fc81d168788b9abd32da81a90ce1e0bb56037b0ca16a4a26
+      retrieved: "2026-07-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - secure_element_power_tree_supply_voltage
+    - static_i2c_secure_element_pin_boundary_review
+    - preliminary_generated_spice_observation
+    - common_iot_board_secure_element_presence_review
+  not_valid_for:
+    - cryptographic_command_or_slot_policy_verification
+    - secure_boot_or_firmware_validation
+    - rng_quality_or_authenticity_signoff
+    - provisioning_or_certificate_chain_verification
+    - wake_sleep_timing_signoff
+    - single_wire_interface_verification
+    - i2c_protocol_timing_signoff
+    - signal_integrity_or_layout_signoff

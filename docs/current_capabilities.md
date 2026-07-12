@@ -148,6 +148,15 @@ does not emulate I2C transactions, register configuration, GPIO direction,
 interrupt-on-change behavior, weak pull-ups, output-load thermal limits, or
 signal-integrity timing. See `docs/microchip_mcp23017_model.md`.
 
+`vendor.microchip.atecc608a` provides a source-backed model for Microchip's
+ATECC608A I2C CryptoAuthentication secure element. It models the 2.0 V to
+5.5 V `VCC` supply range, 1 MHz I2C class, 8-lead SOIC functional pin surface,
+active/idle/sleep current metadata, and a reduced high-impedance
+generated-SPICE observation face for `VCC` and idle `SDA`/`SCL`. It does not
+emulate cryptographic commands, key storage, provisioning, RNG behavior,
+secure boot policy, wake/sleep timing, single-wire operation, firmware, or
+signal-integrity timing. See `docs/microchip_atecc608a_model.md`.
+
 `vendor.bosch.bme280` provides a source-backed model for Bosch's BME280
 humidity, pressure, and temperature sensor. It models the 1.71 V to 3.6 V
 `VDD` range, the 1.2 V to 3.6 V `VDDIO` range, I2C/SPI board-boundary pins,

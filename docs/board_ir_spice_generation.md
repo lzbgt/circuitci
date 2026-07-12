@@ -403,6 +403,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   emulate I2C transactions, register configuration, GPIO direction,
   interrupt-on-change logic, weak pull-up behavior, output-load sign-off, or
   signal integrity.
+- `examples/good_microchip_atecc608a_i2c_secure_element_observation` proves
+  the Microchip ATECC608A source-backed I2C secure-element model can use a
+  reduced high-impedance generated-SPICE face for VCC and idle `SDA`/`SCL`
+  pull-up observations. The macro observes board biasing and does not emulate
+  cryptographic commands, key storage, provisioning state, RNG behavior,
+  secure boot policy, wake/sleep timing, single-wire operation, I2C transaction
+  content, firmware, or signal integrity.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

@@ -522,6 +522,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UIOX"),
         },
         ExpectedProjectExample {
+            id: "atecc608a_i2c_secure_element_scope",
+            category: "Security",
+            open_label: "Open ATECC608A Secure Element Example",
+            run_label: "Open ATECC608A + Run Scopes",
+            summary: "Source-backed ATECC608A rail and idle I2C pull-up observation.",
+            project_path: "examples/good_microchip_atecc608a_i2c_secure_element_observation/project.yaml",
+            project_name: "good_microchip_atecc608a_i2c_secure_element_observation",
+            expected_traces: &["v_vcc", "v_sda", "v_scl"],
+            expected_frequency: "3.3 V ATECC608A secure element with idle I2C pull-ups",
+            observation_preset_component: Some("USEC"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

@@ -342,7 +342,8 @@ order, reuses the generated model-file inference path for SHA-pinned
 `analog.model_files`, and adds model-aware default checks when metadata supports
 them, including USB-UART supply windows, sensor I2C idle/address/reset states,
 SPI-flash standby line states, I2C EEPROM address/write-protect states, and
-I2C I/O expander address/reset/interrupt/GPIO states.
+I2C I/O expander address/reset/interrupt/GPIO states, and secure-element
+rail/I2C idle states.
 When two modeled pins intentionally share one Board IR net, such as
 nRF52840 `VDD` and `VDDH`, the preset reuses one voltage probe but keeps
 pin-qualified assertion names so both pin limits remain visible and

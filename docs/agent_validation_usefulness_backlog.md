@@ -19,8 +19,8 @@ Useful next packs:
   source-backed CH340C/CH340N slices, CP210x variants, FT232, and
   CMSIS-DAP/debug probe circuits.
 - Common regulators, chargers, power muxes, reset supervisors, level shifters,
-  ESD arrays, sensors, flash memories, EEPROMs, I/O expanders, crystals, LEDs,
-  and small-signal discretes seen on real boards.
+  ESD arrays, sensors, flash memories, EEPROMs, secure elements, I/O expanders,
+  crystals, LEDs, and small-signal discretes seen on real boards.
 
 Done means:
 

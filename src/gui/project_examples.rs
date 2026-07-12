@@ -279,6 +279,13 @@ const MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_TRACES: &[&str] = &[
     "v_gpb0",
 ];
 const MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_FREQUENCY: &str = "3.3 V MCP23017 I2C expander with idle pull-ups, low address pins, released reset, idle interrupts, GPA0 high, and GPB0 low";
+const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_microchip_atecc608a_i2c_secure_element_observation/project.yaml";
+const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXAMPLE_NAME: &str =
+    "good_microchip_atecc608a_i2c_secure_element_observation";
+const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_TRACES: &[&str] = &["v_vcc", "v_sda", "v_scl"];
+const ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V ATECC608A secure element with idle I2C pull-ups";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -881,6 +888,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_TRACES,
         expected_frequency: MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UIOX"),
+    },
+    GuiProjectExample {
+        id: "atecc608a_i2c_secure_element_scope",
+        category: "Security",
+        open_label: "Open ATECC608A Secure Element Example",
+        run_label: "Open ATECC608A + Run Scopes",
+        workflow_title: "ATECC608A I2C Secure Element Workflow",
+        summary: "Source-backed ATECC608A rail and idle I2C pull-up observation.",
+        project_path: ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXAMPLE_PROJECT,
+        project_name: ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXAMPLE_NAME,
+        expected_traces: ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_TRACES,
+        expected_frequency: ATECC608A_I2C_SECURE_ELEMENT_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("USEC"),
     },
     GuiProjectExample {
         id: "esds552_scope",
