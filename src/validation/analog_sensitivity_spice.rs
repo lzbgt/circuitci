@@ -25,7 +25,7 @@ use super::analog_spice::{
 use super::analog_sweep_reports::{
     push_sweep_margin_summaries, record_sweep_measurements, tag_corner_finding, tag_corner_findings,
 };
-use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
+use super::analog_util::{push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 
 pub(super) struct AnalogSensitivitySinks<'a> {
@@ -66,50 +66,6 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
     if let Some(finding) = validate_netlist_source(bound, scenario, artifacts) {
         findings.push(finding);
         return;
-    }
-    for model_file in &analog.model_files {
-        let path = bound.project.source_dir.join(&model_file.path);
-        if !path.is_file() {
-            let mut finding = Finding::critical(
-                "ANALOG_MODEL_UNAVAILABLE",
-                &scenario.name,
-                format!(
-                    "SPICE model file {} is required for physical analog sensitivity analysis.",
-                    path.display()
-                ),
-            );
-            finding
-                .limit
-                .insert("required_artifact".to_string(), json!("spice_model_file"));
-            findings.push(finding);
-            return;
-        }
-        if let Some(expected) = &model_file.sha256 {
-            match file_sha256_hex(&path) {
-                Ok(actual) if actual.eq_ignore_ascii_case(expected) => {}
-                Ok(actual) => {
-                    let mut finding = Finding::critical(
-                        "ANALOG_MODEL_HASH_MISMATCH",
-                        &scenario.name,
-                        format!(
-                            "SPICE model file {} does not match the declared SHA-256.",
-                            path.display()
-                        ),
-                    );
-                    finding.measured.insert("sha256".to_string(), json!(actual));
-                    finding
-                        .limit
-                        .insert("expected_sha256".to_string(), json!(expected));
-                    findings.push(finding);
-                    return;
-                }
-                Err(message) => {
-                    validation_input_missing(findings, scenario, message);
-                    return;
-                }
-            }
-        }
-        push_artifact(artifacts, &path);
     }
 
     if analog.node_bindings.is_empty() || analog.pin_bindings.is_empty() {
