@@ -49,7 +49,14 @@ pub(crate) fn inferred_model_files_for_components(
     project.source_dir = project_source_dir(project_path);
     let (library, findings) = crate::library::load_library(project_path, &project);
     let bound = crate::library::bind_project(&project, library, findings);
-    infer_generated_component_model_files(&bound, component_ids)
+    inferred_model_files_for_bound_components(&bound, component_ids)
+}
+
+pub(crate) fn inferred_model_files_for_bound_components(
+    bound: &BoundBoard<'_>,
+    component_ids: &[String],
+) -> Result<Vec<InferredAnalogModelFile>, String> {
+    infer_generated_component_model_files(bound, component_ids)
 }
 
 #[cfg(feature = "gui")]

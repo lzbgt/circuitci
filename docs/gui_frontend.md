@@ -639,8 +639,9 @@ scenarios. Generated run-setup creation and generated component inclusion use
 `src/gui/analog_model_files.rs` to add missing SHA-pinned entries without
 requiring manual path/hash entry. That helper delegates inference, path
 resolution, hashing, and package metadata propagation to the shared
-`src/analog_model_resolver.rs` core used by validation, so GUI-generated YAML
-and simulator validation cannot drift.
+`src/analog_model_resolver.rs` core used by validation and `repair-yaml`
+package-metadata migration, so GUI-generated YAML, simulator validation, and
+repair provenance cannot drift.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
 generation for generated-from-Board simulations, with assertion display and YAML
 field-name mapping split into `src/gui/analog_assertion_fields.rs` and focused

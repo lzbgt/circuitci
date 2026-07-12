@@ -589,7 +589,8 @@ the path, while removal must only delete the selected model-file entry from the
 target analog scenario. `src/gui/analog_model_files.rs` owns automatic
 model-file YAML insertion for generated run setups, but it delegates path
 resolution, SHA-256 hashing, and package metadata propagation to
-`src/analog_model_resolver.rs`, the same shared resolver used by validation.
+`src/analog_model_resolver.rs`, the same shared resolver used by validation and
+`repair-yaml` package-metadata migration.
 Scenario creation in `src/gui/analog_run_setup.rs` and generated component
 inclusion in `src/gui/analog_generated.rs` should call the GUI helper instead
 of duplicating YAML insertion, and must not reimplement resolver policy.

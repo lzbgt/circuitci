@@ -34,10 +34,10 @@ Supported repair classes:
   `power_domain`.
 - `analog-model-package-metadata`: migrates older generated analog scenarios by
   adding missing `analog.model_files[]` package-lock and registry fields inferred
-  from component-library `simulation.spice` metadata. It is additive only; if an
-  existing package field disagrees with the library metadata, the proposal is
-  blocked with `reason_code: package_metadata_conflict` instead of overwriting
-  provenance.
+  through the same shared generated-SPICE model resolver used by validation and
+  GUI run-setup creation. It is additive only; if an existing package field
+  disagrees with the inferred model-file metadata, the proposal is blocked with
+  `reason_code: package_metadata_conflict` instead of overwriting provenance.
 - `bundle-install-package-metadata`: imports scenario-ready pins from a passing
   `install-model-package-bundle` report. It requires `--bundle-install-report`,
   matches analog model files by `model_package_artifact_id` or installed runtime

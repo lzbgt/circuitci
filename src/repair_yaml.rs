@@ -1,7 +1,10 @@
 mod proposals;
 
+use crate::analog_model_resolver::{
+    declared_model_file_path_for_source_dir, inferred_model_files_for_bound_components,
+};
 use crate::board_ir::{BoardProject, load_project};
-use crate::library::load_library;
+use crate::library::{bind_project, load_library};
 use crate::repair_yaml_bundle_install::load_bundle_install_package_metadata;
 use crate::reports::{Finding, ValidationReport};
 use crate::suite::validate_and_write_project_report;
@@ -537,8 +540,7 @@ fn analog_model_package_metadata_proposals(
         let Some(generated) = analog.generated.as_ref() else {
             continue;
         };
-        let package_models =
-            package_models_for_generated_components(project_path, project, library, generated)?;
+        let package_models = package_models_for_generated_components(project, library, generated)?;
         if package_models.is_empty() {
             continue;
         }
@@ -564,7 +566,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_name",
                 model_file.model_package_name.as_deref(),
-                expected.model_package_name.as_deref(),
+                expected.model_file.model_package_name.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -572,7 +574,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_version",
                 model_file.model_package_version.as_deref(),
-                expected.model_package_version.as_deref(),
+                expected.model_file.model_package_version.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -580,7 +582,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_artifact_id",
                 model_file.model_package_artifact_id.as_deref(),
-                expected.model_package_artifact_id.as_deref(),
+                expected.model_file.model_package_artifact_id.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -588,7 +590,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_lock_path",
                 model_file.model_package_lock_path.as_deref(),
-                expected.model_package_lock_path.as_deref(),
+                expected.model_file.model_package_lock_path.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -596,7 +598,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_lock_sha256",
                 model_file.model_package_lock_sha256.as_deref(),
-                expected.model_package_lock_sha256.as_deref(),
+                expected.model_file.model_package_lock_sha256.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -604,7 +606,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_registry_path",
                 model_file.model_package_registry_path.as_deref(),
-                expected.model_package_registry_path.as_deref(),
+                expected.model_file.model_package_registry_path.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -612,7 +614,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_registry_sha256",
                 model_file.model_package_registry_sha256.as_deref(),
-                expected.model_package_registry_sha256.as_deref(),
+                expected.model_file.model_package_registry_sha256.as_deref(),
             );
             collect_package_metadata_edit(
                 &mut edits,
@@ -620,7 +622,7 @@ fn analog_model_package_metadata_proposals(
                 &yaml_path,
                 "model_package_registry_entry",
                 model_file.model_package_registry_entry.as_deref(),
-                expected.model_package_registry_entry.as_deref(),
+                expected.model_file.model_package_registry_entry.as_deref(),
             );
             if conflicts.is_empty() && edits.is_empty() {
                 continue;
@@ -821,66 +823,43 @@ fn bundle_install_package_metadata_proposals(
 struct AnalogPackageModelMetadata {
     canonical_model_path: PathBuf,
     components: Vec<String>,
-    model_package_name: Option<String>,
-    model_package_version: Option<String>,
-    model_package_artifact_id: Option<String>,
-    model_package_lock_path: Option<String>,
-    model_package_lock_sha256: Option<String>,
-    model_package_registry_path: Option<String>,
-    model_package_registry_sha256: Option<String>,
-    model_package_registry_entry: Option<String>,
+    model_file: crate::board_ir::AnalogModelFile,
 }
 
 fn package_models_for_generated_components(
-    project_path: &Path,
     project: &BoardProject,
     library: &crate::library::ComponentLibrary,
     generated: &crate::board_ir::AnalogGeneratedNetlist,
 ) -> Result<Vec<AnalogPackageModelMetadata>> {
     let mut models = Vec::new();
     let mut seen = BTreeSet::new();
+    let bound = bind_project(project, library.clone(), Vec::new());
     for component_id in &generated.components {
-        let Some(component) = project.board.components.get(component_id) else {
-            continue;
-        };
-        let Some(model) = library.get(&component.model) else {
-            continue;
-        };
-        let Some(spice) = model.simulation.spice.as_ref() else {
-            continue;
-        };
-        if spice.model_package_name.is_none()
-            && spice.model_package_lock_path.is_none()
-            && spice.model_package_registry_path.is_none()
-        {
-            continue;
+        let inferred = inferred_model_files_for_bound_components(
+            &bound,
+            std::slice::from_ref(component_id),
+        )
+        .map_err(|error| {
+            anyhow::anyhow!(
+                "Failed to infer generated analog model file for component {component_id}: {error}"
+            )
+        })?;
+        for inferred in inferred {
+            if inferred.model_file.model_package_name.is_none()
+                && inferred.model_file.model_package_lock_path.is_none()
+                && inferred.model_file.model_package_registry_path.is_none()
+            {
+                continue;
+            }
+            if !seen.insert(inferred.canonical_path.clone()) {
+                continue;
+            }
+            models.push(AnalogPackageModelMetadata {
+                canonical_model_path: inferred.canonical_path,
+                components: vec![component_id.clone()],
+                model_file: inferred.model_file,
+            });
         }
-        let Some(canonical_model_path) =
-            canonicalize_project_relative_path(project_path, &spice.model_path)?
-        else {
-            continue;
-        };
-        if !seen.insert(canonical_model_path.clone()) {
-            continue;
-        }
-        models.push(AnalogPackageModelMetadata {
-            canonical_model_path,
-            components: vec![component_id.clone()],
-            model_package_name: spice.model_package_name.clone(),
-            model_package_version: spice.model_package_version.clone(),
-            model_package_artifact_id: spice.model_package_artifact_id.clone(),
-            model_package_lock_path: project_relative_existing_path(
-                project_path,
-                spice.model_package_lock_path.as_deref(),
-            )?,
-            model_package_lock_sha256: spice.model_package_lock_sha256.clone(),
-            model_package_registry_path: project_relative_existing_path(
-                project_path,
-                spice.model_package_registry_path.as_deref(),
-            )?,
-            model_package_registry_sha256: spice.model_package_registry_sha256.clone(),
-            model_package_registry_entry: spice.model_package_registry_entry.clone(),
-        });
     }
     Ok(models)
 }
@@ -931,75 +910,14 @@ fn collect_metadata_edit(
     }
 }
 
-fn project_relative_existing_path(
-    project_path: &Path,
-    path: Option<&str>,
-) -> Result<Option<String>> {
-    let Some(path) = path else {
-        return Ok(None);
-    };
-    let Some(canonical_path) = canonicalize_project_relative_path(project_path, path)? else {
-        return Ok(None);
-    };
-    let project_dir = project_path.parent().unwrap_or_else(|| Path::new("."));
-    Ok(Some(
-        relative_path(&canonicalize_existing_path(project_dir)?, &canonical_path)
-            .unwrap_or(canonical_path)
-            .to_string_lossy()
-            .replace('\\', "/"),
-    ))
-}
-
 fn canonicalize_project_relative_path(project_path: &Path, path: &str) -> Result<Option<PathBuf>> {
-    let path = Path::new(path);
-    if path.is_absolute() {
-        return Ok(Some(canonicalize_existing_path(path)?));
-    }
     let project_dir = project_path.parent().unwrap_or_else(|| Path::new("."));
-    let project_dir = canonicalize_existing_path(project_dir)?;
-    for base in project_dir.ancestors() {
-        let candidate = base.join(path);
-        if candidate.exists() {
-            return Ok(Some(canonicalize_existing_path(&candidate)?));
-        }
+    let resolved = declared_model_file_path_for_source_dir(project_dir, path)
+        .map_err(|error| anyhow::anyhow!("Failed to resolve analog model file {path}: {error}"))?;
+    if resolved.exists() {
+        return Ok(Some(canonicalize_existing_path(&resolved)?));
     }
     Ok(None)
-}
-
-fn relative_path(from_dir: &Path, to: &Path) -> Option<PathBuf> {
-    let from_components = from_dir.components().collect::<Vec<_>>();
-    let to_components = to.components().collect::<Vec<_>>();
-    let common = from_components
-        .iter()
-        .zip(&to_components)
-        .take_while(|(left, right)| left == right)
-        .count();
-    if common == 0 {
-        return None;
-    }
-
-    let mut path = PathBuf::new();
-    for component in &from_components[common..] {
-        match component {
-            std::path::Component::Normal(_) => path.push(".."),
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => path.push(".."),
-            std::path::Component::Prefix(_) | std::path::Component::RootDir => return None,
-        }
-    }
-    for component in &to_components[common..] {
-        match component {
-            std::path::Component::Normal(value) => path.push(value),
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => path.push(".."),
-            std::path::Component::Prefix(_) | std::path::Component::RootDir => return None,
-        }
-    }
-    Some(if path.as_os_str().is_empty() {
-        PathBuf::from(".")
-    } else {
-        path
-    })
 }
 
 fn apply_proposals(
