@@ -663,9 +663,12 @@ Each declares an explicit `pin_order` and points at
 `models/spice/generic/analog_behavioral.lib`. They also reference the built-in
 compact-model package registry entry `generic_analog_behavioral_spice`, backed
 by `models/packages/generic/analog_behavioral.lock.json` and
-`models/packages/compact_model_registry.json`. Generated Board IR scenarios must
-still list that file in `analog.model_files` with its SHA-256 hash and package
-pins, so reports show exactly which reusable macro-model artifact was used.
+`models/packages/compact_model_registry.json`. Generated Board IR validation can
+infer that file from component metadata, SHA-pin it, and merge package pins into
+the effective model-file set, so reports show exactly which reusable
+macro-model artifact was used even when a generated scenario omits the authored
+`analog.model_files` entry. If a generated scenario explicitly declares that
+file, the authored entry still needs its own SHA-256 pin.
 These models are useful for
 topology, waveform, sweep, and GUI workflow checks. They are not valid for
 vendor-part sign-off, op-amp stability/noise/slew/current analysis,

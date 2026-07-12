@@ -78,7 +78,6 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
         push_canceled_finding(findings, scenario);
         return;
     }
-
     on_progress(
         "Checking analog model evidence",
         format!(
@@ -104,57 +103,6 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
     if should_cancel() {
         push_canceled_finding(findings, scenario);
         return;
-    }
-    for model_file in &analog.model_files {
-        let path = bound.project.source_dir.join(&model_file.path);
-        if !path.is_file() {
-            let mut finding = Finding::critical(
-                "ANALOG_MODEL_UNAVAILABLE",
-                &scenario.name,
-                format!(
-                    "SPICE model file {} is required for physical analog simulation.",
-                    path.display()
-                ),
-            );
-            finding
-                .limit
-                .insert("required_artifact".to_string(), json!("spice_model_file"));
-            finding.suggested_fixes.push(
-                "Add sourced or bench-calibrated SPICE model files for the simulated devices."
-                    .to_string(),
-            );
-            findings.push(finding);
-            return;
-        }
-        if let Some(expected) = &model_file.sha256 {
-            match file_sha256_hex(&path) {
-                Ok(actual) if actual.eq_ignore_ascii_case(expected) => {}
-                Ok(actual) => {
-                    let mut finding = Finding::critical(
-                        "ANALOG_MODEL_HASH_MISMATCH",
-                        &scenario.name,
-                        format!(
-                            "SPICE model file {} does not match the declared SHA-256.",
-                            path.display()
-                        ),
-                    );
-                    finding.measured.insert("sha256".to_string(), json!(actual));
-                    finding
-                        .limit
-                        .insert("expected_sha256".to_string(), json!(expected));
-                    finding.suggested_fixes.push(
-                        "Update the model file provenance or use the exact model artifact declared by the scenario.".to_string(),
-                    );
-                    findings.push(finding);
-                    return;
-                }
-                Err(message) => {
-                    validation_input_missing(findings, scenario, message);
-                    return;
-                }
-            }
-        }
-        push_artifact(artifacts, &path);
     }
     if should_cancel() {
         push_canceled_finding(findings, scenario);

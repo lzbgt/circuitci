@@ -89,14 +89,16 @@ condition, so precharged storage-capacitor pulse circuits can be represented
 without a hand-authored raw netlist.
 
 Discrete semiconductors should derive their SPICE model name/type/path from the
-component model's `simulation.spice` metadata. The scenario still declares
-`model_files` with SHA-256 pins so a physical result is tied to exact model
-artifacts. GUI generated run-setup creation and generated component inclusion
-infer missing `model_files` entries from active component-library
-`simulation.spice.model_path` metadata and write portable relative paths plus
-SHA-256 pins when the files can be resolved from the project directory or an
-ancestor. Hand-authored YAML and CLI validation still fail closed if required
-model files are missing or unpinned.
+component model's `simulation.spice` metadata. Generated Board IR scenarios may
+still declare `model_files` explicitly, but validation also builds an effective
+model-file set by resolving active generated components'
+`simulation.spice.model_path` values from the project directory or an ancestor,
+hashing the artifacts, and adding missing entries. If a scenario explicitly
+declares the matching model file, that declaration must still carry its own
+SHA-256 pin; the resolver does not silently repair unpinned authored evidence.
+File-backed decks still depend on authored `analog.model_files` because
+CircuitCI cannot know which includes are required without parsing the user deck
+contract.
 
 Compiled Verilog-A compact models should be declared as OpenVAF/OSDI artifacts
 instead of opaque binary blobs. An `analog.model_files[]` entry for a compiled

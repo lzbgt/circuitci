@@ -361,6 +361,69 @@ fn generated_aht20_i2c_observation_uses_resolved_datasheet_backed_model_pack() {
 }
 
 #[test]
+fn generated_aht20_i2c_observation_infers_model_file_when_scenario_omits_it() {
+    std::fs::create_dir_all("out").unwrap();
+    let project_dir = tempfile::tempdir_in("examples").unwrap();
+    let output_dir = tempfile::tempdir_in("out").unwrap();
+    let source =
+        std::fs::read_to_string("examples/good_aosong_aht20_i2c_observation/project.yaml").unwrap();
+    let project = source.replace(
+        "      model_files:\n        - path: ../../models/spice/aosong/aht20_i2c_observation.lib\n          sha256: cbb7ebb94896b20e0e835e70d6e5dac1edc31ffae6bbe8200666c352da567a39\n",
+        "      model_files: []\n",
+    );
+    assert!(
+        project.contains("      model_files: []\n"),
+        "fixture edit did not remove the authored model_files block"
+    );
+    let project_path = project_dir.path().join("project.yaml");
+    std::fs::write(&project_path, project).unwrap();
+
+    let status = std::process::Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            output_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(output_dir.path().join("report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_report_schema_valid(&report);
+    assert!(
+        report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|failure| failure["id"] != "ANALOG_MODEL_UNAVAILABLE"),
+        "core resolver should infer the AHT20 package SPICE artifact"
+    );
+    let artifacts = report["artifacts"].as_array().unwrap();
+    let generated_board = artifacts
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .find(|artifact| artifact.ends_with("generated_board.cir"))
+        .expect("generated board deck artifact");
+    let deck = std::fs::read_to_string(generated_board).unwrap();
+    assert!(
+        deck.contains("models/spice/aosong/aht20_i2c_observation.lib"),
+        "generated deck must include the inferred AHT20 model file:\n{deck}"
+    );
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+}
+
+#[test]
 fn generated_nrf52840_board_observation_uses_datasheet_backed_model_pack() {
     let report = run_validation("examples/good_nordic_nrf52840_board_observation/project.yaml");
     if binary_available("ngspice") {

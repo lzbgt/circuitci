@@ -92,7 +92,12 @@ Required fields:
 - `backend`: `ngspice`, `xyce`, `embedded_ngspice`, or `auto`.
 - `netlist`: path to a SPICE-compatible deck.
 - `model_files`: SPICE model-card, subcircuit, or compiled OSDI files used by
-  the deck. Ordinary SPICE includes should be SHA-pinned. OpenVAF/OSDI compact
+  the deck. For `generated_from_board` scenarios, validation supplements this
+  list from generated components' source-backed `simulation.spice.model_path`
+  metadata and SHA-pins the inferred artifacts before writing the generated
+  deck. Explicit matching entries remain fail-closed if they omit their own
+  SHA-256 pin. File-backed decks still require explicit entries. Ordinary SPICE
+  includes should be SHA-pinned. OpenVAF/OSDI compact
   model artifacts additionally declare `artifact_format: osdi_shared_object`,
   `source_path`, `source_sha256`, `compiler: openvaf`, `compiler_version`, and
   `compiler_command` so the compiled shared object is tied to auditable

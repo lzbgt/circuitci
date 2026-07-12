@@ -1,5 +1,7 @@
+use super::analog_model_resolver::effective_model_files;
 use crate::board_ir::{
-    AnalogScenario, AnalogSweepComponentField, ComponentSpec, SpicePrimitive, SpicePulseSpec,
+    AnalogModelFile, AnalogScenario, AnalogSweepComponentField, ComponentSpec, SpicePrimitive,
+    SpicePulseSpec,
 };
 use crate::library::{
     BoundBoard, ComponentModel, SpiceInstanceParameter, SpiceModel, SpiceModelType,
@@ -41,7 +43,8 @@ pub(super) fn generate_board_netlist(
     text.push_str("* Source project: ");
     text.push_str(&bound.project.project.name);
     text.push('\n');
-    for model_file in &analog.model_files {
+    let model_files = effective_model_files(bound, analog)?;
+    for model_file in &model_files {
         if model_file.artifact_format.as_deref() == Some("osdi_shared_object") {
             continue;
         }
@@ -80,8 +83,15 @@ pub(super) fn generate_board_netlist(
                 component.model
             )
         })?;
-        let line =
-            generate_component_line(bound, analog, &node_by_net, component_id, component, model)?;
+        let line = generate_component_line(
+            bound,
+            analog,
+            &model_files,
+            &node_by_net,
+            component_id,
+            component,
+            model,
+        )?;
         text.push_str(&line);
         text.push('\n');
     }
@@ -113,6 +123,7 @@ fn node_bindings(analog: &AnalogScenario) -> Result<BTreeMap<String, String>, St
 fn generate_component_line(
     bound: &BoundBoard<'_>,
     analog: &AnalogScenario,
+    model_files: &[AnalogModelFile],
     node_by_net: &BTreeMap<String, String>,
     component_id: &str,
     component: &ComponentSpec,
@@ -236,7 +247,7 @@ fn generate_component_line(
         )
     })?;
     validate_spice_token("SPICE model name", &spice_model.model_name)?;
-    require_declared_model_file(bound, analog, component_id, &spice_model.model_path)?;
+    require_declared_model_file(bound, model_files, component_id, &spice_model.model_path)?;
     match spice_model.model_type {
         SpiceModelType::Diode => {
             let anode = pin_node(component_id, component, node_by_net, "A")?;
@@ -666,14 +677,14 @@ fn optional_pin_node(
 
 fn require_declared_model_file(
     bound: &BoundBoard<'_>,
-    analog: &AnalogScenario,
+    model_files: &[AnalogModelFile],
     component_id: &str,
     model_path: &str,
 ) -> Result<(), String> {
     let expected = resolve_model_path(bound, model_path).map_err(|error| {
         format!("Failed to resolve model path {model_path} for {component_id}: {error}")
     })?;
-    for model_file in &analog.model_files {
+    for model_file in model_files {
         let declared =
             absolute_path(&bound.project.source_dir.join(&model_file.path)).map_err(|error| {
                 format!(

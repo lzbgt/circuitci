@@ -1170,10 +1170,12 @@ Current analog support:
   reduced-fidelity and omits buck-boost switching, DPM/MPPT, supplement mode,
   BATFET dynamics, register sequencing, thermal regulation, timers,
   battery-chemistry, cell safety, and final charger sign-off behavior.
-- GUI generated run-setup creation and generated component inclusion infer
+- GUI generated run-setup creation and core generated-SPICE validation infer
   required `simulation.spice.model_path` files from active component-library
-  metadata, resolve them the same way validation does, and write SHA-256-pinned
-  `analog.model_files` entries automatically when missing.
+  metadata. GUI edits write SHA-256-pinned `analog.model_files` entries when
+  missing, while CLI validation builds an effective model-file set for
+  `generated_from_board` scenarios and includes those inferred artifacts in the
+  generated deck/report without requiring hand-authored YAML duplication.
 - The GUI component model browser marks `simulation.spice`-backed library parts
   as SPICE-ready, makes that metadata searchable, and shows model type, model
   name, model file, provenance, pin order, and the first operating note before

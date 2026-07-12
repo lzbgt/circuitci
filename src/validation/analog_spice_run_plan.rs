@@ -9,9 +9,10 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use super::analog_model_compiler::validate_model_compiler_provenance;
+use super::analog_model_resolver::effective_model_files;
 use super::analog_runner::{ModelSectionOverride, ParameterOverride};
 use super::analog_sweep_sampling::monte_carlo_component_value_samples;
-use super::analog_util::{component_value_parameter_name, push_artifact};
+use super::analog_util::{component_value_parameter_name, file_sha256_hex, push_artifact};
 use super::spice_netlist::generate_board_netlist;
 
 const MAX_ANALOG_SWEEP_CORNERS: usize = 64;
@@ -493,7 +494,100 @@ pub(super) fn validate_netlist_source(
     if netlist_finding.is_some() {
         return netlist_finding;
     }
+    if let Some(finding) = validate_model_file_artifacts(bound, scenario, artifacts) {
+        return Some(finding);
+    }
     validate_model_compiler_provenance(bound, scenario, artifacts)
+}
+
+fn validate_model_file_artifacts(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    artifacts: &mut Vec<String>,
+) -> Option<Finding> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before model file validation");
+    let model_files = match effective_model_files(bound, analog) {
+        Ok(model_files) => model_files,
+        Err(message) => {
+            let mut finding =
+                Finding::critical("ANALOG_MODEL_UNAVAILABLE", &scenario.name, message);
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_model_file"));
+            finding.suggested_fixes.push(
+                "Use model-pack simulation.spice metadata with an existing SPICE model artifact, or declare an analog.model_files entry explicitly.".to_string(),
+            );
+            return Some(finding);
+        }
+    };
+
+    for model_file in &model_files {
+        if model_file_is_compiler_managed(model_file) {
+            continue;
+        }
+        let path = bound.project.source_dir.join(&model_file.path);
+        if !path.is_file() {
+            let mut finding = Finding::critical(
+                "ANALOG_MODEL_UNAVAILABLE",
+                &scenario.name,
+                format!(
+                    "SPICE model file {} is required for physical analog simulation.",
+                    path.display()
+                ),
+            );
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_model_file"));
+            finding.suggested_fixes.push(
+                "Add sourced or bench-calibrated SPICE model files for the simulated devices."
+                    .to_string(),
+            );
+            return Some(finding);
+        }
+        if let Some(expected) = &model_file.sha256 {
+            match file_sha256_hex(&path) {
+                Ok(actual) if actual.eq_ignore_ascii_case(expected) => {}
+                Ok(actual) => {
+                    let mut finding = Finding::critical(
+                        "ANALOG_MODEL_HASH_MISMATCH",
+                        &scenario.name,
+                        format!(
+                            "SPICE model file {} does not match the declared SHA-256.",
+                            path.display()
+                        ),
+                    );
+                    finding.measured.insert("sha256".to_string(), json!(actual));
+                    finding
+                        .limit
+                        .insert("expected_sha256".to_string(), json!(expected));
+                    finding.suggested_fixes.push(
+                        "Update the model file provenance or use the exact model artifact declared by the scenario.".to_string(),
+                    );
+                    return Some(finding);
+                }
+                Err(message) => {
+                    let mut finding =
+                        Finding::critical("ANALOG_MODEL_UNAVAILABLE", &scenario.name, message);
+                    finding
+                        .limit
+                        .insert("required_artifact".to_string(), json!("spice_model_file"));
+                    return Some(finding);
+                }
+            }
+        }
+        push_artifact(artifacts, &path);
+    }
+    None
+}
+
+fn model_file_is_compiler_managed(model_file: &crate::board_ir::AnalogModelFile) -> bool {
+    matches!(
+        model_file.artifact_format.as_deref(),
+        Some("osdi_shared_object" | "xyce_adms_plugin")
+    )
 }
 
 pub(super) fn prepare_source_netlist(
