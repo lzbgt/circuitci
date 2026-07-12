@@ -28,6 +28,17 @@ pub(super) fn add_comms_output_observation_assertions(
     stop_time_us: f64,
     assertions: &mut Vec<AnalogAssertionDraft>,
 ) {
+    for pin in ["VCC", "VREGIN", "VIO", "VCCIO"] {
+        add_port_voltage_window_assertions(
+            component,
+            model,
+            probes,
+            scenario_name,
+            pin,
+            stop_time_us,
+            assertions,
+        );
+    }
     for (pin, port) in &model.ports {
         if port.kind != crate::library::PortKind::DigitalElectricalOutput {
             continue;

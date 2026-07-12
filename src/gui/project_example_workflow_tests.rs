@@ -210,6 +210,52 @@ fn ch340c_scope_example_workflow_creates_model_aware_observation_checks() {
 }
 
 #[test]
+fn ch340n_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("ch340n_usb_uart_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.diagnostics.last().unwrap_or(&app.status)
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UUSB".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "uusb_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "uusb_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_uusb_vcc"));
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_uusb_txd"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uusb_vcc_min_voltage")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uusb_txd_output_high")
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == "v_uusb_rts_n_output_high")
+    );
+}
+
+#[test]
 fn cp2102n_scope_example_workflow_creates_model_aware_observation_checks() {
     let mut app = CircuitCiApp::default();
 
@@ -1634,6 +1680,45 @@ fn tps24751_scope_example_workflow_creates_model_aware_observation_checks() {
             .assertions
             .iter()
             .any(|assertion| { assertion.name == "v_uhotswap_vout_enabled_max_voltage" })
+    );
+}
+
+#[test]
+fn tps2121_scope_example_workflow_creates_model_aware_observation_checks() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("tps2121_power_mux_scope"), None);
+
+    assert!(
+        app.create_scope_example_observation_preset(),
+        "{}",
+        app.diagnostics.last().unwrap_or(&app.status)
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("UMUX".to_string()))
+    );
+    assert_eq!(app.analog_generated_scenario, "umux_observation");
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "umux_observation")
+        .unwrap();
+    let analog = scenario.analog.as_ref().unwrap();
+    assert!(analog.probes.iter().any(|probe| probe.name == "v_umux_out"));
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| { assertion.name == "v_umux_out_selected_source_min_voltage" })
+    );
+    assert!(
+        analog
+            .assertions
+            .iter()
+            .any(|assertion| { assertion.name == "v_umux_out_selected_source_max_voltage" })
     );
 }
 
