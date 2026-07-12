@@ -415,4 +415,35 @@ mod tests {
             "ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59"
         );
     }
+
+    #[test]
+    fn inferred_model_file_resolves_vendor_sensor_pack_from_example_tree() {
+        let project_path = Path::new("examples/good_aosong_aht20_i2c_observation/project.yaml");
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(include_str!(
+            "../../examples/good_aosong_aht20_i2c_observation/project.yaml"
+        ))
+        .unwrap();
+
+        let values = model_file_values_for_generated_components(
+            project_path,
+            &project,
+            &["UAHT".to_string()],
+        )
+        .unwrap();
+
+        assert_eq!(values.len(), 1);
+        let entry = values[0].as_mapping().unwrap();
+        assert_eq!(
+            entry
+                .get(key("path"))
+                .and_then(serde_yaml_ng::Value::as_str),
+            Some("../../models/spice/aosong/aht20_i2c_observation.lib")
+        );
+        assert_eq!(
+            entry
+                .get(key("sha256"))
+                .and_then(serde_yaml_ng::Value::as_str),
+            Some("cbb7ebb94896b20e0e835e70d6e5dac1edc31ffae6bbe8200666c352da567a39")
+        );
+    }
 }

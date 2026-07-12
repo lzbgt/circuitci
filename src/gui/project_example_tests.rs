@@ -481,6 +481,18 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("USENS"),
         },
         ExpectedProjectExample {
+            id: "aht20_i2c_scope",
+            category: "Sensor",
+            open_label: "Open AHT20 I2C Example",
+            run_label: "Open AHT20 + Run Scopes",
+            summary: "Source-backed AHT20 rail and idle I2C pull-up observation.",
+            project_path: "examples/good_aosong_aht20_i2c_observation/project.yaml",
+            project_name: "good_aosong_aht20_i2c_observation",
+            expected_traces: &["v_vdd", "v_sda", "v_scl"],
+            expected_frequency: "3.3 V AHT20 I2C humidity/temperature sensor with idle pull-ups",
+            observation_preset_component: Some("UAHT"),
+        },
+        ExpectedProjectExample {
             id: "w25q64jv_spi_flash_scope",
             category: "Memory",
             open_label: "Open W25Q64JV Flash Example",

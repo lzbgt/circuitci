@@ -187,6 +187,17 @@ protocol, bus timing, clock stretching, alert threshold logic, response time,
 heater behavior, drift, self-heating, or calibration. See
 `docs/sensirion_sht31_model.md`.
 
+`vendor.aosong.aht20` provides a source-backed model for Aosong's AHT20
+humidity and temperature sensor. It models the 2.2 V to 5.5 V `VDD` range,
+4-pin I2C board-boundary surface, fixed `0x38` address metadata,
+10 kHz to 400 kHz measurement-clock guidance, VDD-referenced SDA/SCL
+pull-up threshold behavior, recommended 2.0 kOhm to 4.7 kOhm pull-ups, and a
+reduced high-impedance generated-SPICE I2C observation face for rail and idle
+pull-up line states. It does not validate humidity or temperature accuracy,
+calibration state, command protocol, conversion timing, power-on readiness,
+bus timing, self-heating, contamination/recovery behavior, reflow drift, or
+environmental-chamber signoff. See `docs/aosong_aht20_model.md`.
+
 `vendor.kingbright.apt1608surck` provides a source-backed static/generated-SPICE
 model for a common 0603 Hyper Red indicator LED. It records the 30 mA DC
 forward-current limit, 5 V reverse-voltage limit, 75 mW power limit,
@@ -859,7 +870,8 @@ Current analog support:
   observations, ICM-42688-P-style IMU VDD/VDDIO, SPI line-state, and INT1
   observations, BME280-style environmental-sensor VDD/VDDIO, I2C pull-up,
   CSB, and SDO address-select observations, SHT31-DIS-style environmental-sensor
-  VDD, I2C pull-up, ADDR, nRESET, and ALERT observations, W25Q64JV-style
+  VDD, I2C pull-up, ADDR, nRESET, and ALERT observations, AHT20-style
+  environmental-sensor VDD and I2C pull-up observations, W25Q64JV-style
   SPI/QSPI flash VCC, standby chip-select, write-protect, hold/reset, and
   idle-line observations, NAU7802-style bridge ADC DVDD/AVDD, reference,
   bridge-input, I2C idle-line, and DRDY observations,

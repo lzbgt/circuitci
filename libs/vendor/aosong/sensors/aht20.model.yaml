@@ -1,0 +1,110 @@
+component_id: vendor.aosong.aht20
+version: 0.1.0
+category: environmental_sensor
+simulation:
+  spice:
+    model_name: CIRCUITCI_AHT20_I2C_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/aosong/aht20_i2c_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, GND, SDA, SCL]
+    valid_operating_notes:
+      - Reduced high-impedance AHT20 I2C environmental-sensor board-observation model for preliminary VDD rail and I2C pull-up line-state checks.
+      - Uses source-backed 2.2 V to 5.5 V VDD range, 0x38 I2C address metadata, 10 kHz to 400 kHz measurement-clock guidance, and VDD-referenced SDA/SCL pull-up guidance.
+      - Humidity, temperature, calibration state, command protocol, measurement timing, power-on readiness timing, self-heating, contamination, recovery processing, reflow drift, and I2C timing sign-off are out of scope.
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.2
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+  SDA:
+    kind: digital_electrical_io
+    required: true
+  SCL:
+    kind: digital_electrical_input
+    required: true
+datasheet:
+  manufacturer: Aosong Electronics
+  part_number: AHT20
+  package: 3 mm x 3 mm x 1.0 mm SMD
+  polarity: humidity_temperature_sensor
+  pinout:
+    VDD: Sensor supply input.
+    GND: Ground reference.
+    SDA: I2C serial data input/output.
+    SCL: I2C serial clock input.
+  electrical_characteristics:
+    vdd_supply:
+      min: 2.2
+      max: 5.5
+      unit: V
+    digital_input_high:
+      min: 0.7
+      unit: VDD_ratio
+    digital_input_low:
+      max: 0.3
+      unit: VDD_ratio
+    low_output_voltage:
+      max: 0.4
+      unit: V
+    input_current_per_pin_absolute:
+      min: -10
+      max: 10
+      unit: mA
+  device_parameters:
+    package_length:
+      value: 3.0
+      unit: mm
+    package_width:
+      value: 3.0
+      unit: mm
+    package_height:
+      value: 1.0
+      unit: mm
+    i2c_address:
+      value: 56
+      unit: address_decimal
+      simulation_relevance: 0x38 fixed device address.
+    i2c_measurement_clock_min:
+      value: 10
+      unit: kHz
+      simulation_relevance: Board-level I2C timing remains out of scope for this static model.
+    i2c_measurement_clock_max:
+      value: 400
+      unit: kHz
+      simulation_relevance: Board-level I2C timing remains out of scope for this static model.
+    recommended_pullup_min:
+      value: 2.0
+      unit: kOhm
+    recommended_pullup_max:
+      value: 4.7
+      unit: kOhm
+    recommended_vdd_decoupling:
+      value: 10
+      unit: uF
+  documents:
+    - title: AHT20 Humidity and Temperature Sensor Data Sheet V1.0
+      path: docs/research/datasheets/aosong/aht20_datasheet_v1_0_2021.pdf
+      source_url: https://www.aosong.com/userfiles/files/media/Data%20Sheet%20AHT20.pdf
+      sha256: 1e460b777986e711f301eb468265603ea6242ab44735b2686801d78d9779079e
+      retrieved: "2026-07-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - environmental_sensor_power_tree_supply_voltage
+    - i2c_pin_boundary_review
+    - low_power_sensor_board_review
+    - preliminary_generated_spice_observation
+  not_valid_for:
+    - humidity_temperature_accuracy_signoff
+    - calibration_or_command_protocol_validation
+    - measurement_timing_or_power_on_delay_signoff
+    - i2c_timing_or_signal_integrity_signoff
+    - self_heating_contamination_recovery_or_reflow_drift_analysis
+    - environmental_chamber_or_calibration_validation

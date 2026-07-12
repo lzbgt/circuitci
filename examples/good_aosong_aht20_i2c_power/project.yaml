@@ -1,0 +1,38 @@
+project:
+  name: good_aosong_aht20_i2c_power
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    UAHT:
+      model: vendor.aosong.aht20
+      part_number: AHT20
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        SDA: i2c_sda
+        SCL: i2c_scl
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+
+scenarios:
+  - name: aht20_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

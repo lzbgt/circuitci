@@ -232,6 +232,40 @@ fn atecc608a_i2c_secure_element_scope_example_workflow_creates_model_aware_obser
 }
 
 #[test]
+fn aht20_i2c_scope_example_workflow_creates_resolved_model_observation_checks() {
+    assert_observation_workflow(
+        "aht20_i2c_scope",
+        "UAHT",
+        "uaht_observation",
+        &["v_uaht_vdd", "v_uaht_sda", "v_uaht_scl"],
+        &[
+            "v_uaht_vdd_min_voltage",
+            "v_uaht_sda_i2c_idle_high",
+            "v_uaht_scl_i2c_idle_high",
+        ],
+    );
+
+    let mut app = CircuitCiApp::default();
+    app.request_project_example_load(gui_project_example_by_id("aht20_i2c_scope"), None);
+    assert!(app.create_scope_example_observation_preset());
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let analog = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == "uaht_observation")
+        .and_then(|scenario| scenario.analog.as_ref())
+        .unwrap();
+    assert!(analog.model_files.iter().any(|model_file| {
+        model_file
+            .path
+            .ends_with("models/spice/aosong/aht20_i2c_observation.lib")
+            && model_file.sha256.as_deref()
+                == Some("cbb7ebb94896b20e0e835e70d6e5dac1edc31ffae6bbe8200666c352da567a39")
+    }));
+}
+
+#[test]
 fn nau7802_bridge_adc_scope_example_workflow_creates_model_aware_observation_checks() {
     assert_observation_workflow(
         "nau7802_bridge_adc_scope",

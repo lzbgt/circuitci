@@ -14,6 +14,8 @@ const EXPORT_CANVAS_MIN_WIDTH: f32 = 720.0;
 const EXPORT_CANVAS_MIN_HEIGHT: f32 = 420.0;
 const EXPORT_PADDING: f32 = 80.0;
 const GRID_STEP: f32 = 32.0;
+const WIRE_STROKE: &str = "#d5e7ff";
+const WIRE_STROKE_WIDTH: f32 = 2.8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SketchSvgExportSummary {
@@ -177,7 +179,7 @@ fn draw_edges(svg: &mut String, graph: &SketchGraph) {
             .collect::<Vec<_>>()
             .join(" ");
         svg.push_str(&format!(
-            r##"<polyline data-net="{}" data-source="{}" points="{}" fill="none" stroke="#6f7a88" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/>"##,
+            r##"<polyline data-net="{}" data-source="{}" points="{}" fill="none" stroke="{WIRE_STROKE}" stroke-width="{WIRE_STROKE_WIDTH:.1}" stroke-linecap="round" stroke-linejoin="round"/>"##,
             xml_escape(&edge.net_id),
             xml_escape(&edge.source),
             points
@@ -882,6 +884,7 @@ mod tests {
         assert!(svg.contains(r#"viewBox=""#));
         assert!(svg.contains(r#"<rect "#));
         assert!(svg.contains(r#"<circle "#));
+        assert!(svg.contains(r##"stroke="#d5e7ff" stroke-width="2.8""##));
     }
 
     #[test]

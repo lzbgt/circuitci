@@ -381,6 +381,14 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   board wiring and does not emulate measurements, registers, compensation
   formulas, bus transactions, clock stretching, alert thresholds, heater
   behavior, drift, or calibration.
+- `examples/good_aosong_aht20_i2c_observation` proves the Aosong AHT20
+  source-backed humidity/temperature sensor model can use the generated-SPICE
+  resolver path to find and SHA-pin a reduced high-impedance model file from
+  `simulation.spice.model_path`, bind pins in declared order, and observe VDD
+  plus idle SDA/SCL pull-up line states. The macro observes board wiring and
+  does not emulate measurements, calibration, command protocol, conversion
+  timing, power-on readiness, bus timing, self-heating, contamination/recovery,
+  reflow drift, or environmental-chamber behavior.
 - `examples/good_winbond_w25q64jv_spi_flash_observation` proves the Winbond
   W25Q64JV source-backed SPI/QSPI NOR flash model can use a reduced
   high-impedance generated-SPICE face for VCC, standby `/CS`, `/WP`,

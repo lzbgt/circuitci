@@ -1561,6 +1561,21 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: aosong_aht20_i2c_power_passes
+    project: ../examples/good_aosong_aht20_i2c_power/project.yaml
+    expect: pass
+
+  - id: aosong_aht20_i2c_observation_passes
+    project: ../examples/good_aosong_aht20_i2c_observation/project.yaml
+    expect: pass
+
+  - id: aosong_aht20_vdd_overvoltage_detected
+    project: ../examples/bad_aosong_aht20_vdd_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: bosch_bme280_i2c_power_passes
     project: ../examples/good_bosch_bme280_i2c_power/project.yaml
     expect: pass
@@ -2669,6 +2684,12 @@ repairs:
   - id: fix_nuvoton_nau7802_dvdd_overvoltage
     detects_case: nuvoton_nau7802_dvdd_overvoltage_detected
     fixed_case: nuvoton_nau7802_bridge_adc_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_aosong_aht20_vdd_overvoltage
+    detects_case: aosong_aht20_vdd_overvoltage_detected
+    fixed_case: aosong_aht20_i2c_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

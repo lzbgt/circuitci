@@ -1,0 +1,196 @@
+project:
+  name: good_aosong_aht20_i2c_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      UAHT: Sensor:AHT20
+      RSDA: Device:R
+      RSCL: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UAHT: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSDA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSCL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 88.0, y: 168.0 }
+      component:UAHT: { x: 376.0, y: 280.0 }
+      component:RSDA: { x: 720.0, y: 176.0 }
+      component:RSCL: { x: 720.0, y: 288.0 }
+      net:aht20_3v3: { x: 224.0, y: 96.0 }
+      net:i2c_sda: { x: 612.0, y: 176.0 }
+      net:i2c_scl: { x: 612.0, y: 288.0 }
+      net:gnd: { x: 376.0, y: 512.0 }
+    wire_routes:
+      VDD.P->aht20_3v3:
+        points:
+          - { x: 168.0, y: 168.0 }
+          - { x: 224.0, y: 96.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 128.0, y: 512.0 }
+      UAHT.VDD->aht20_3v3:
+        points:
+          - { x: 296.0, y: 176.0 }
+          - { x: 224.0, y: 96.0 }
+      UAHT.GND->gnd:
+        points:
+          - { x: 376.0, y: 512.0 }
+      UAHT.SDA->i2c_sda:
+        points:
+          - { x: 612.0, y: 176.0 }
+      UAHT.SCL->i2c_scl:
+        points:
+          - { x: 612.0, y: 288.0 }
+      RSDA.A->aht20_3v3:
+        points:
+          - { x: 720.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSDA.B->i2c_sda:
+        points:
+          - { x: 720.0, y: 176.0 }
+      RSCL.A->aht20_3v3:
+        points:
+          - { x: 720.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RSCL.B->i2c_scl:
+        points:
+          - { x: 720.0, y: 288.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: AHT20_3V3_SOURCE
+      pins:
+        P: aht20_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UAHT:
+      model: vendor.aosong.aht20
+      part_number: AHT20
+      parameters:
+        observation_sda_state: 1.0
+        observation_scl_state: 1.0
+      power_domains:
+        VDD: aht20_3v3
+      pins:
+        VDD: aht20_3v3
+        GND: gnd
+        SDA: i2c_sda
+        SCL: i2c_scl
+    RSDA:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: aht20_3v3
+        B: i2c_sda
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSCL:
+      model: generic.analog.resistor
+      part_number: 4.7k
+      pins:
+        A: aht20_3v3
+        B: i2c_scl
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+  nets:
+    aht20_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+
+scenarios:
+  - name: aht20_i2c_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - UAHT
+          - RSDA
+          - RSCL
+      model_files:
+        - path: ../../models/spice/aosong/aht20_i2c_observation.lib
+          sha256: cbb7ebb94896b20e0e835e70d6e5dac1edc31ffae6bbe8200666c352da567a39
+      node_bindings:
+        - { node: vdd, net: aht20_3v3 }
+        - { node: sda, net: i2c_sda }
+        - { node: scl, net: i2c_scl }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: vdd, endpoint: { component: UAHT, pin: VDD } }
+        - { node: "0", endpoint: { component: UAHT, pin: GND } }
+        - { node: sda, endpoint: { component: UAHT, pin: SDA } }
+        - { node: scl, endpoint: { component: UAHT, pin: SCL } }
+        - { node: vdd, endpoint: { component: RSDA, pin: A } }
+        - { node: sda, endpoint: { component: RSDA, pin: B } }
+        - { node: vdd, endpoint: { component: RSCL, pin: A } }
+        - { node: scl, endpoint: { component: RSCL, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: aht20_idle_i2c_snapshot
+          description: AHT20 idle board bias with VDD at 3.3 V and SDA/SCL pulled high.
+      probes:
+        - name: v_vdd
+          expression: V(vdd)
+        - name: v_sda
+          expression: V(sda)
+        - name: v_scl
+          expression: V(scl)
+      assertions:
+        - name: vdd_above_operating_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.2
+        - name: vdd_below_operating_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: sda_idle_high
+          probe: v_sda
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: scl_idle_high
+          probe: v_scl
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31

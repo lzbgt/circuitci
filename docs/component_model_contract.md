@@ -1025,6 +1025,18 @@ generated-SPICE face for preliminary I2C rail, pull-up, `ADDR`, `nRESET`, and
 compensation algorithms, register protocols, bus timing, clock stretching,
 alert threshold logic, heater behavior, response time, contamination, drift,
 self-heating, or calibration behavior.
+`vendor.aosong.aht20` adds a source-backed environmental sensor pack. Official
+Aosong documentation backs its 2.2 V to 5.5 V `VDD` rail range, 4-pin
+3 mm x 3 mm x 1.0 mm SMD package, fixed `0x38` I2C address, VDD-referenced
+SDA/SCL threshold ratios, 10 kHz to 400 kHz measurement-clock guidance,
+2.0 kOhm to 4.7 kOhm pull-up examples, and 10 uF VDD decoupling guidance. The
+validator uses the power-pin contract for `POWER_TREE_VALID`, the explicit
+port list for board-boundary review, and a generated-SPICE resolver path that
+SHA-pins the high-impedance model file for preliminary VDD and idle SDA/SCL
+observations. It does not validate humidity or temperature accuracy,
+calibration state, command protocol, conversion timing, power-on readiness,
+I2C timing, self-heating, contamination/recovery behavior, reflow drift, or
+environmental-chamber signoff.
 `vendor.kingbright.apt1608surck` adds a source-backed common indicator LED
 pack. Official Kingbright documentation backs its 30 mA DC forward-current
 limit, 5 V reverse-voltage limit, 75 mW power limit, 1.95 V typical and 2.5 V

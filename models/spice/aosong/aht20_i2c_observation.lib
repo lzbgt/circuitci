@@ -1,0 +1,13 @@
+* Reduced Aosong AHT20 I2C humidity/temperature sensor board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary VDD
+* rail and I2C pull-up line-state checks. It does not model humidity,
+* temperature, calibration, command protocol, power-on readiness timing,
+* self-heating, contamination, recovery, reflow drift, or I2C timing sign-off.
+
+.subckt CIRCUITCI_AHT20_I2C_OBSERVATION VDD GND SDA SCL
+* VDD and I2C pins are high impedance. External pull-ups, sources, and board
+* metadata define the observable state.
+RVDD VDD GND 1G
+RSDA SDA GND 1G
+RSCL SCL GND 1G
+.ends CIRCUITCI_AHT20_I2C_OBSERVATION
