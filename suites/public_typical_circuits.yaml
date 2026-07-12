@@ -1482,6 +1482,10 @@ cases:
     project: ../examples/good_winbond_w25q64jv_spi_flash_power/project.yaml
     expect: pass
 
+  - id: winbond_w25q64jv_spi_flash_observation_passes
+    project: ../examples/good_winbond_w25q64jv_spi_flash_observation/project.yaml
+    expect: pass
+
   - id: winbond_w25q64jv_vcc_overvoltage_detected
     project: ../examples/bad_winbond_w25q64jv_vcc_overvoltage/project.yaml
     expect: fail

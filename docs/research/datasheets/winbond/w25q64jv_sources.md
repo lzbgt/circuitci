@@ -23,11 +23,15 @@ Retrieved on 2026-07-05. The official Winbond search result pointed to
 - The model records input/output capacitance, VCC-ratio logic thresholds,
   256-byte page size, 4 KiB sector size, 100k minimum program-erase endurance,
   and 20-year minimum data retention as datasheet metadata.
+- The generated-SPICE face is intentionally high impedance and only observes
+  the surrounding board's VCC, standby chip-select, write-protect, hold/reset,
+  clock, and data-line idle-bias states.
 
 ## Model Boundary
 
-`vendor.winbond.w25q64jv` is a static board-boundary model. It supports
-power-tree voltage/current screening and explicit SPI/QSPI pin binding review.
+`vendor.winbond.w25q64jv` is a board-boundary model. It supports power-tree
+voltage/current screening, explicit SPI/QSPI pin binding review, and a reduced
+generated-SPICE standby board-observation model.
 
 The model does not emulate SPI commands, JEDEC ID, SFDP tables, erase/program
 state machines, write-protect policy, XIP performance, flash content, firmware

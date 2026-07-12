@@ -1,0 +1,335 @@
+project:
+  name: good_winbond_w25q64jv_spi_flash_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      UFLASH: Memory_Flash:W25Q64JV
+      RCS: Device:R
+      RWP: Device:R
+      RHOLD: Device:R
+      RCLK: Device:R
+      RDI: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UFLASH: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RCS: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RWP: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RHOLD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RCLK: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RDI: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VCC: { x: 80.0, y: 176.0 }
+      component:UFLASH: { x: 392.0, y: 288.0 }
+      component:RCS: { x: 760.0, y: 128.0 }
+      component:RWP: { x: 760.0, y: 240.0 }
+      component:RHOLD: { x: 760.0, y: 352.0 }
+      component:RCLK: { x: 760.0, y: 456.0 }
+      component:RDI: { x: 760.0, y: 544.0 }
+      net:flash_3v3: { x: 224.0, y: 96.0 }
+      net:flash_cs_n: { x: 660.0, y: 128.0 }
+      net:flash_wp_n: { x: 660.0, y: 240.0 }
+      net:flash_hold_n: { x: 660.0, y: 352.0 }
+      net:flash_clk: { x: 660.0, y: 456.0 }
+      net:flash_mosi: { x: 660.0, y: 544.0 }
+      net:flash_miso: { x: 520.0, y: 512.0 }
+      net:gnd: { x: 392.0, y: 632.0 }
+    wire_routes:
+      VCC.P->flash_3v3:
+        points:
+          - { x: 160.0, y: 176.0 }
+          - { x: 224.0, y: 96.0 }
+      VCC.N->gnd:
+        points:
+          - { x: 120.0, y: 632.0 }
+      UFLASH.VCC->flash_3v3:
+        points:
+          - { x: 312.0, y: 160.0 }
+          - { x: 224.0, y: 96.0 }
+      UFLASH.GND->gnd:
+        points:
+          - { x: 392.0, y: 632.0 }
+      UFLASH.CS_N->flash_cs_n:
+        points:
+          - { x: 608.0, y: 176.0 }
+          - { x: 660.0, y: 128.0 }
+      UFLASH.WP_N_IO2->flash_wp_n:
+        points:
+          - { x: 608.0, y: 240.0 }
+      UFLASH.HOLD_N_RESET_N_IO3->flash_hold_n:
+        points:
+          - { x: 608.0, y: 352.0 }
+      UFLASH.CLK->flash_clk:
+        points:
+          - { x: 608.0, y: 456.0 }
+      UFLASH.DI_IO0->flash_mosi:
+        points:
+          - { x: 608.0, y: 544.0 }
+      UFLASH.DO_IO1->flash_miso:
+        points:
+          - { x: 520.0, y: 512.0 }
+      RCS.A->flash_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RCS.B->flash_cs_n:
+        points:
+          - { x: 760.0, y: 128.0 }
+      RWP.A->flash_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RWP.B->flash_wp_n:
+        points:
+          - { x: 760.0, y: 240.0 }
+      RHOLD.A->flash_3v3:
+        points:
+          - { x: 760.0, y: 96.0 }
+          - { x: 224.0, y: 96.0 }
+      RHOLD.B->flash_hold_n:
+        points:
+          - { x: 760.0, y: 352.0 }
+      RCLK.A->flash_clk:
+        points:
+          - { x: 760.0, y: 456.0 }
+      RCLK.B->gnd:
+        points:
+          - { x: 760.0, y: 632.0 }
+      RDI.A->flash_mosi:
+        points:
+          - { x: 760.0, y: 544.0 }
+      RDI.B->gnd:
+        points:
+          - { x: 760.0, y: 632.0 }
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      part_number: FLASH_3V3_SOURCE
+      pins:
+        P: flash_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UFLASH:
+      model: vendor.winbond.w25q64jv
+      part_number: W25Q64JVSSIQ
+      power_domains:
+        VCC: flash_3v3
+      pins:
+        VCC: flash_3v3
+        GND: gnd
+        CS_N: flash_cs_n
+        DO_IO1: flash_miso
+        WP_N_IO2: flash_wp_n
+        DI_IO0: flash_mosi
+        CLK: flash_clk
+        HOLD_N_RESET_N_IO3: flash_hold_n
+    RCS:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: flash_3v3
+        B: flash_cs_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RWP:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: flash_3v3
+        B: flash_wp_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RHOLD:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: flash_3v3
+        B: flash_hold_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RCLK:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: flash_clk
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RDI:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: flash_mosi
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+  nets:
+    flash_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    flash_cs_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    flash_wp_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    flash_hold_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    flash_clk:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    flash_mosi:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    flash_miso:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: w25q64jv_spi_standby_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VCC
+          - UFLASH
+          - RCS
+          - RWP
+          - RHOLD
+          - RCLK
+          - RDI
+      model_files:
+        - path: ../../models/spice/winbond/w25q64jv_spi_observation.lib
+          sha256: 310e4643719d9fa9d23612ab937c9822f1accb328faae66b763c0c8f1b77a19e
+      node_bindings:
+        - { node: vcc, net: flash_3v3 }
+        - { node: cs_n, net: flash_cs_n }
+        - { node: wp_n, net: flash_wp_n }
+        - { node: hold_n, net: flash_hold_n }
+        - { node: clk, net: flash_clk }
+        - { node: mosi, net: flash_mosi }
+        - { node: miso, net: flash_miso }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vcc, endpoint: { component: VCC, pin: P } }
+        - { node: "0", endpoint: { component: VCC, pin: N } }
+        - { node: vcc, endpoint: { component: UFLASH, pin: VCC } }
+        - { node: "0", endpoint: { component: UFLASH, pin: GND } }
+        - { node: cs_n, endpoint: { component: UFLASH, pin: CS_N } }
+        - { node: miso, endpoint: { component: UFLASH, pin: DO_IO1 } }
+        - { node: wp_n, endpoint: { component: UFLASH, pin: WP_N_IO2 } }
+        - { node: mosi, endpoint: { component: UFLASH, pin: DI_IO0 } }
+        - { node: clk, endpoint: { component: UFLASH, pin: CLK } }
+        - { node: hold_n, endpoint: { component: UFLASH, pin: HOLD_N_RESET_N_IO3 } }
+        - { node: vcc, endpoint: { component: RCS, pin: A } }
+        - { node: cs_n, endpoint: { component: RCS, pin: B } }
+        - { node: vcc, endpoint: { component: RWP, pin: A } }
+        - { node: wp_n, endpoint: { component: RWP, pin: B } }
+        - { node: vcc, endpoint: { component: RHOLD, pin: A } }
+        - { node: hold_n, endpoint: { component: RHOLD, pin: B } }
+        - { node: clk, endpoint: { component: RCLK, pin: A } }
+        - { node: "0", endpoint: { component: RCLK, pin: B } }
+        - { node: mosi, endpoint: { component: RDI, pin: A } }
+        - { node: "0", endpoint: { component: RDI, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: spi_standby_snapshot
+          description: W25Q64JV standby bias with /CS high, /WP high, /HOLD high, CLK low, DI low, and high-impedance DO referenced low.
+      probes:
+        - name: v_vcc
+          expression: V(vcc)
+        - name: v_cs_n
+          expression: V(cs_n)
+        - name: v_wp_n
+          expression: V(wp_n)
+        - name: v_hold_n
+          expression: V(hold_n)
+        - name: v_clk
+          expression: V(clk)
+        - name: v_mosi
+          expression: V(mosi)
+        - name: v_miso
+          expression: V(miso)
+      assertions:
+        - name: vcc_above_operating_min
+          probe: v_vcc
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: vcc_below_operating_max
+          probe: v_vcc
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: cs_n_high_standby
+          probe: v_cs_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: wp_n_high_unprotected
+          probe: v_wp_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: hold_n_reset_n_high_released
+          probe: v_hold_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: clk_idle_low
+          probe: v_clk
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: mosi_idle_low
+          probe: v_mosi
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: miso_high_z_reference_low
+          probe: v_miso
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99

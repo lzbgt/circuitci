@@ -55,7 +55,7 @@ audit the modeled facts without relying on chat history.
 | TI TLV803EA29 reset-supervisor use | <https://www.ti.com/lit/ds/symlink/tlv803e.pdf> | `docs/research/datasheets/ti/tlv803e-tlv809e-tlv810e.pdf` |
 | Microchip MCP1316T-29LE/OT reset-supervisor use | <https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP131X-2X-Voltage-Supervisor-DS20001985.pdf> | `docs/research/datasheets/microchip/mcp131x_2x_voltage_supervisor.pdf` |
 | Abracon ABM3 8 MHz crystal support network | <https://abracon.com/Resonators/ABM3.pdf> | `docs/research/datasheets/abracon/abm3.pdf` |
-| Winbond W25Q64JV SPI/QSPI NOR flash power use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
+| Winbond W25Q64JV SPI/QSPI NOR flash power and observation use | <https://www.winbond.com/resource-files/W25Q64JV_DTR%20RevL%2004272026%20Plus.pdf> | `docs/research/datasheets/winbond/w25q64jv_dtr_rev_l_2026.pdf` |
 | Bosch BME280 environmental sensor I2C power and observation use | <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf> | `docs/research/datasheets/bosch/bme280_datasheet.pdf` |
 | TI CSD17484F4 N-channel MOSFET switching/discharge use | <https://www.ti.com/lit/gpn/CSD17484F4> | `docs/research/datasheets/ti/csd17484f4.pdf` |
 | Kingbright APT1608SURCK red 0603 LED indicator use | <https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SURCK.pdf> | `docs/research/datasheets/kingbright/apt1608surck.pdf` |
@@ -360,6 +360,7 @@ cases:
 | `abracon_abm3_8mhz_clock_passes` | `examples/good_clock_source_crystal/project.yaml` | pass | ABM3 8 MHz crystal between MCU oscillator pins with 32 pF leg capacitors and modeled 2 pF stray capacitance, producing the source-backed 18 pF load target. |
 | `abracon_abm3_8mhz_load_capacitance_detected` | `examples/bad_clock_source_load_capacitance/project.yaml` | fail | Detects 8 pF leg capacitors that produce only 6 pF effective load against the ABM3 18 pF target. |
 | `winbond_w25q64jv_spi_flash_power_passes` | `examples/good_winbond_w25q64jv_spi_flash_power/project.yaml` | pass | W25Q64JV SPI/QSPI NOR flash on a 3.3 V VCC rail with every 8-pin SPI/QSPI board-boundary pin bound. |
+| `winbond_w25q64jv_spi_flash_observation_passes` | `examples/good_winbond_w25q64jv_spi_flash_observation/project.yaml` | pass | W25Q64JV generated-SPICE standby observation with source-backed 3.3 V `VCC`, `/CS` high, `/WP` high, `/HOLD or /RESET` high, and low idle bias on `CLK`, `DI/IO0`, and high-impedance `DO/IO1`. |
 | `winbond_w25q64jv_vcc_overvoltage_detected` | `examples/bad_winbond_w25q64jv_vcc_overvoltage/project.yaml` | fail | Detects W25Q64JV `VCC` connected to a 5 V rail above the source-backed 3.6 V maximum. |
 | `bosch_bme280_i2c_power_passes` | `examples/good_bosch_bme280_i2c_power/project.yaml` | pass | BME280 with source-backed 3.3 V `VDD`/`VDDIO`, `CSB` tied high for I2C, and `SDO` tied low for address `0x76`. |
 | `bosch_bme280_i2c_observation_passes` | `examples/good_bosch_bme280_i2c_observation/project.yaml` | pass | BME280 generated-SPICE I2C observation with source-backed 3.3 V `VDD`/`VDDIO`, idle SDA/SCL pull-ups, `CSB` high for I2C, and `SDO` low for address `0x76`. |
@@ -409,7 +410,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=296, passed=296, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=297, passed=297, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -584,7 +585,7 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All one hundred twenty-nine public-reference pass cases produced zero critical
+All one hundred thirty public-reference pass cases produced zero critical
 findings.
 All one hundred sixty-seven paired injected-error cases failed with the expected
 critical finding ID, and all one hundred sixty-seven repair-pair checks passed.

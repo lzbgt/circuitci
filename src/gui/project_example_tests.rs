@@ -445,6 +445,20 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("USENS"),
         },
         ExpectedProjectExample {
+            id: "w25q64jv_spi_flash_scope",
+            category: "Memory",
+            open_label: "Open W25Q64JV Flash Example",
+            run_label: "Open W25Q64JV + Run Scopes",
+            summary: "Source-backed W25Q64JV rail and SPI standby-bias observation.",
+            project_path: "examples/good_winbond_w25q64jv_spi_flash_observation/project.yaml",
+            project_name: "good_winbond_w25q64jv_spi_flash_observation",
+            expected_traces: &[
+                "v_vcc", "v_cs_n", "v_wp_n", "v_hold_n", "v_clk", "v_mosi", "v_miso",
+            ],
+            expected_frequency: "3.3 V W25Q64JV standby bias with /CS, /WP, /HOLD high and idle SPI lines",
+            observation_preset_component: Some("UFLASH"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

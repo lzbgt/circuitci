@@ -366,6 +366,13 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   `SDO` address-select observations. The macro observes board wiring and does
   not emulate measurements, registers, compensation formulas, bus transactions,
   timing, noise, or calibration.
+- `examples/good_winbond_w25q64jv_spi_flash_observation` proves the Winbond
+  W25Q64JV source-backed SPI/QSPI NOR flash model can use a reduced
+  high-impedance generated-SPICE face for VCC, standby `/CS`, `/WP`,
+  `/HOLD or /RESET`, `CLK`, `DI/IO0`, and `DO/IO1` line-state observations.
+  The macro observes board biasing and does not emulate commands, JEDEC ID,
+  SFDP, memory contents, erase/program state, XIP, retention, endurance, or
+  signal integrity.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

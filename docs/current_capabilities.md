@@ -118,12 +118,14 @@ capacitors while leaving oscillator startup, negative-resistance margin,
 drive-level stress, ppm accuracy, layout parasitics, and phase noise out of
 scope. See `docs/abracon_abm3_8mhz_18pf_model.md`.
 
-`vendor.winbond.w25q64jv` provides a source-backed static model for Winbond's
+`vendor.winbond.w25q64jv` provides a source-backed model for Winbond's
 W25Q64JV 3 V 64 Mbit SPI/QSPI NOR flash family. It models the 2.7 V to 3.6 V
 VCC range, 25 mA program/erase/write-current class, 8-pin SPI/QSPI
-board-boundary pins, and memory-geometry metadata. It does not emulate SPI
-commands, JEDEC ID, SFDP tables, flash contents, XIP behavior, write-protect
-policy, or signal-integrity timing. See `docs/winbond_w25q64jv_model.md`.
+board-boundary pins, memory-geometry metadata, and a reduced high-impedance
+generated-SPICE standby observation face for VCC and SPI/QSPI idle-bias lines.
+It does not emulate SPI commands, JEDEC ID, SFDP tables, flash contents, XIP
+behavior, write-protect policy, or signal-integrity timing. See
+`docs/winbond_w25q64jv_model.md`.
 
 `vendor.bosch.bme280` provides a source-backed model for Bosch's BME280
 humidity, pressure, and temperature sensor. It models the 1.71 V to 3.6 V
@@ -806,7 +808,9 @@ Current analog support:
   PCA9685-style PWM-driver VDD/OE, I2C idle-line, and low-load PWM output
   observations, ICM-42688-P-style IMU VDD/VDDIO, SPI line-state, and INT1
   observations, BME280-style environmental-sensor VDD/VDDIO, I2C pull-up,
-  CSB, and SDO address-select observations,
+  CSB, and SDO address-select observations, W25Q64JV-style SPI/QSPI flash
+  VCC, standby chip-select, write-protect, hold/reset, and idle-line
+  observations,
   AMS1117-style fixed 3.3 V LDO rail observations,
   TPS54331-style 5 V buck-regulator rail observations,
   TPS62162-style 3.3 V buck-regulator rail observations,
@@ -823,7 +827,7 @@ Current analog support:
   STM32L431 boot/UART/SWD, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB,
   LicheeRV-Nano-W module, AT32F435 motion core, AT32M416 motor control,
   TXS0108E level shifter, TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD,
-  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, BME280 I2C sensor, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
+  ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, BME280 I2C sensor, W25Q64JV SPI flash, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO rail, AMS1117 LDO rail, TPS54331 buck rail, TPS62162 buck rail, TPS63802 buck-boost rail,
   TPS61023 boost rail, TPS2121 power mux, TPS2115A power mux,
   TPS22918 load switch, TPS25948 eFuse, TPS24751 hot-swap, MCP73831 charger, BQ24075 power path, BQ25798 NVDC
   power path, TLV803 reset-supervisor, loop-stability Bode, DC divider-bias,

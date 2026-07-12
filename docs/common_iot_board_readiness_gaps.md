@@ -80,10 +80,12 @@ outside that static model. Abracon ABM3 now covers a first source-backed common
 8 MHz crystal pack for static oscillator support-network and load-capacitance
 screening; oscillator startup, drive-level stress, ppm accuracy, layout
 parasitics, and phase-noise behavior remain outside that static model. Winbond
-W25Q64JV now covers a first source-backed SPI/QSPI NOR flash static pack for
-VCC range, active current class, and SPI/QSPI board-boundary pin review; SPI
-protocol timing, JEDEC ID/SFDP behavior, flash contents, XIP performance, and
-write-protection policy remain outside that static model. Kingbright
+W25Q64JV now covers a first source-backed SPI/QSPI NOR flash pack for VCC
+range, active current class, SPI/QSPI board-boundary pin review, and a reduced
+high-impedance generated-SPICE standby observation face for chip-select,
+write-protect, hold/reset, clock, and data-line idle bias; SPI protocol timing,
+JEDEC ID/SFDP behavior, flash contents, XIP performance, and write-protection
+policy remain outside that model. Kingbright
 APT1608SURCK now covers a first source-backed common indicator LED pack with
 generated SPICE operating-limit probes for forward current, reverse voltage,
 and power dissipation; optical output, color bins, pulse-drive derating,

@@ -1,0 +1,17 @@
+* Reduced Winbond W25Q64JV SPI/QSPI standby board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level VCC, SPI idle-bias, and reset/write-protect pull-up checks. It
+* does not model commands, JEDEC ID, SFDP, memory contents, erase/program
+* state machines, XIP behavior, retention, endurance, or signal integrity.
+
+.subckt CIRCUITCI_W25Q64JV_SPI_OBSERVATION VCC GND CS_N DO_IO1 WP_N_IO2 DI_IO0 CLK HOLD_N_RESET_N_IO3
+* All SPI/QSPI pins are high impedance. External pull-ups, pull-downs, host
+* sources, and board metadata define the observable line state.
+RVCC VCC GND 1G
+RCS CS_N GND 1G
+RDO DO_IO1 GND 1G
+RWP WP_N_IO2 GND 1G
+RDI DI_IO0 GND 1G
+RCLK CLK GND 1G
+RHOLD HOLD_N_RESET_N_IO3 GND 1G
+.ends CIRCUITCI_W25Q64JV_SPI_OBSERVATION

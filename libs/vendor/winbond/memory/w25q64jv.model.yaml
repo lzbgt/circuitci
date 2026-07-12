@@ -1,6 +1,17 @@
 component_id: vendor.winbond.w25q64jv
-version: 0.1.0
+version: 0.2.0
 category: spi_flash
+simulation:
+  spice:
+    model_name: CIRCUITCI_W25Q64JV_SPI_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/winbond/w25q64jv_spi_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VCC, GND, CS_N, DO_IO1, WP_N_IO2, DI_IO0, CLK, HOLD_N_RESET_N_IO3]
+    valid_operating_notes:
+      - Reduced high-impedance SPI/QSPI standby board-observation model for preliminary VCC rail, CS_N standby, WP_N, HOLD_N/RESET_N, CLK, DI/IO0, and DO/IO1 line-state checks.
+      - Uses source-backed 2.7 V to 3.6 V operating range, VCC-ratio input thresholds, standby-current condition with /CS at VCC, and 8-pin SPI/QSPI role metadata.
+      - SPI commands, JEDEC ID, SFDP, memory contents, erase/program state machines, XIP behavior, retention, endurance, write-protect policy, and signal integrity are out of scope.
 ports:
   VCC:
     kind: electrical_power
@@ -127,6 +138,7 @@ model_quality:
     - spi_flash_power_tree_supply_voltage
     - static_spi_qspi_pin_boundary_review
     - preliminary_boot_memory_board_review
+    - preliminary_generated_spice_observation
   not_valid_for:
     - spi_protocol_timing_signoff
     - jedec_id_or_sfdp_verification

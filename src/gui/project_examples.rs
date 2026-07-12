@@ -230,6 +230,14 @@ const BME280_I2C_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vdd", "v_vddio", "v_csb", "v_sda", "v_scl", "v_sdo"];
 const BME280_I2C_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V BME280 I2C rails, pull-ups, CSB high, and SDO low address select";
+const W25Q64JV_SPI_FLASH_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_winbond_w25q64jv_spi_flash_observation/project.yaml";
+const W25Q64JV_SPI_FLASH_SCOPE_EXAMPLE_NAME: &str = "good_winbond_w25q64jv_spi_flash_observation";
+const W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vcc", "v_cs_n", "v_wp_n", "v_hold_n", "v_clk", "v_mosi", "v_miso",
+];
+const W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_FREQUENCY: &str =
+    "3.3 V W25Q64JV standby bias with /CS, /WP, /HOLD high and idle SPI lines";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -767,6 +775,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: BME280_I2C_SCOPE_EXPECTED_TRACES,
         expected_frequency: BME280_I2C_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("USENS"),
+    },
+    GuiProjectExample {
+        id: "w25q64jv_spi_flash_scope",
+        category: "Memory",
+        open_label: "Open W25Q64JV Flash Example",
+        run_label: "Open W25Q64JV + Run Scopes",
+        workflow_title: "W25Q64JV SPI Flash Workflow",
+        summary: "Source-backed W25Q64JV rail and SPI standby-bias observation.",
+        project_path: W25Q64JV_SPI_FLASH_SCOPE_EXAMPLE_PROJECT,
+        project_name: W25Q64JV_SPI_FLASH_SCOPE_EXAMPLE_NAME,
+        expected_traces: W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_TRACES,
+        expected_frequency: W25Q64JV_SPI_FLASH_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UFLASH"),
     },
     GuiProjectExample {
         id: "esds552_scope",
