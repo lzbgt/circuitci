@@ -1,7 +1,8 @@
+use crate::analog_model_resolver::declared_model_file_path_for_project;
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogModelFileDraft {
@@ -80,7 +81,9 @@ pub(super) fn append_analog_model_file(
             scenario.name
         );
     }
-    let resolved_path = resolve_model_file_path(project_path, &path);
+    let resolved_path = declared_model_file_path_for_project(project_path, &path)
+        .map_err(anyhow::Error::msg)
+        .with_context(|| format!("Failed to resolve SPICE model file {path}."))?;
     let actual_sha = file_sha256_hex(&resolved_path).with_context(|| {
         format!(
             "Failed to hash SPICE model file {}.",
@@ -159,7 +162,9 @@ pub(super) fn remove_analog_model_file(
 
 pub(super) fn model_file_sha256(project_path: &Path, model_path: &str) -> Result<String> {
     let path = normalized_model_path(model_path)?;
-    let resolved_path = resolve_model_file_path(project_path, &path);
+    let resolved_path = declared_model_file_path_for_project(project_path, &path)
+        .map_err(anyhow::Error::msg)
+        .with_context(|| format!("Failed to resolve SPICE model file {path}."))?;
     file_sha256_hex(&resolved_path).with_context(|| {
         format!(
             "Failed to hash SPICE model file {}.",
@@ -192,18 +197,6 @@ fn normalized_model_path(path: &str) -> Result<String> {
         anyhow::bail!("SPICE model file path must fit on one line.");
     }
     Ok(path.to_string())
-}
-
-fn resolve_model_file_path(project_path: &Path, model_path: &str) -> PathBuf {
-    let path = Path::new(model_path);
-    if path.is_absolute() {
-        return path.to_path_buf();
-    }
-    project_path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."))
-        .join(path)
 }
 
 fn file_sha256_hex(path: &Path) -> Result<String> {

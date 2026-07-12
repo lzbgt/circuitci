@@ -635,11 +635,12 @@ trace styles, and saved compare-set coverage so interaction work can grow
 without turning the runtime module into a test fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
-scenarios. Generated run-setup creation and generated component inclusion use
-`src/gui/analog_model_files.rs` to add missing SHA-pinned entries without
-requiring manual path/hash entry. That helper delegates inference, path
-resolution, hashing, and package metadata propagation to the shared
-`src/analog_model_resolver.rs` core used by validation and `repair-yaml`
+scenarios. Manual add/hash actions resolve model-file paths through
+`src/analog_model_resolver.rs`. Generated run-setup creation and generated
+component inclusion use `src/gui/analog_model_files.rs` to add missing
+SHA-pinned entries without requiring manual path/hash entry. That helper also
+delegates inference, path resolution, hashing, and package metadata propagation
+to the shared resolver core used by validation and `repair-yaml`
 package-metadata migration, so GUI-generated YAML, simulator validation, and
 repair provenance cannot drift.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML

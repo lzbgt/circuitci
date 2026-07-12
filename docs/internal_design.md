@@ -585,8 +585,9 @@ orientation-aware live ghost and snap/pin-side feedback, or the blank-canvas
 context menu pointer.
 `src/gui/analog_models.rs` owns analog `model_files` listing and mutation. GUI
 additions must hash the selected file and write an explicit SHA-256 alongside
-the path, while removal must only delete the selected model-file entry from the
-target analog scenario. `src/gui/analog_model_files.rs` owns automatic
+the path, resolving that path through `src/analog_model_resolver.rs`; removal
+must only delete the selected model-file entry from the target analog scenario.
+`src/gui/analog_model_files.rs` owns automatic
 model-file YAML insertion for generated run setups, but it delegates path
 resolution, SHA-256 hashing, and package metadata propagation to
 `src/analog_model_resolver.rs`, the same shared resolver used by validation and
