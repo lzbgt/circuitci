@@ -1,3 +1,4 @@
+pub(crate) mod analog_model_resolver;
 pub mod board_ir;
 pub mod cancellation;
 pub mod charger_programming;

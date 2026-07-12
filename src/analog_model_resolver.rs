@@ -1,11 +1,18 @@
 use crate::board_ir::{AnalogModelFile, AnalogScenario};
 use crate::library::{BoundBoard, SpiceModel};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
+use std::env;
+use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-use super::analog_util::{absolute_path, file_sha256_hex};
+#[derive(Debug, Clone)]
+pub(crate) struct InferredAnalogModelFile {
+    pub(crate) model_file: AnalogModelFile,
+    pub(crate) canonical_path: PathBuf,
+}
 
-pub(super) fn effective_model_files(
+pub(crate) fn effective_model_files(
     bound: &BoundBoard<'_>,
     analog: &AnalogScenario,
 ) -> Result<Vec<AnalogModelFile>, String> {
@@ -18,8 +25,54 @@ pub(super) fn effective_model_files(
         return Ok(model_files);
     };
 
+    for inferred in infer_generated_component_model_files(bound, &generated.components)? {
+        if let Some(index) = canonical_paths
+            .iter()
+            .position(|path| path.as_ref() == Some(&inferred.canonical_path))
+        {
+            merge_inferred_model_file(&mut model_files[index], inferred.model_file);
+            continue;
+        }
+        canonical_paths.push(Some(inferred.canonical_path));
+        model_files.push(inferred.model_file);
+    }
+    Ok(model_files)
+}
+
+#[cfg(any(feature = "gui", test))]
+pub(crate) fn inferred_model_files_for_components(
+    project_path: &Path,
+    project: &crate::board_ir::BoardProject,
+    component_ids: &[String],
+) -> Result<Vec<InferredAnalogModelFile>, String> {
+    let mut project = project.clone();
+    project.source_dir = project_source_dir(project_path);
+    let (library, findings) = crate::library::load_library(project_path, &project);
+    let bound = crate::library::bind_project(&project, library, findings);
+    infer_generated_component_model_files(&bound, component_ids)
+}
+
+#[cfg(feature = "gui")]
+pub(crate) fn declared_model_file_path_for_project(
+    project_path: &Path,
+    path: &str,
+) -> Result<PathBuf, String> {
+    let path = Path::new(path);
+    let candidate = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        project_source_dir(project_path).join(path)
+    };
+    absolute_path(&candidate).map_err(|error| error.to_string())
+}
+
+fn infer_generated_component_model_files(
+    bound: &BoundBoard<'_>,
+    component_ids: &[String],
+) -> Result<Vec<InferredAnalogModelFile>, String> {
+    let mut entries = Vec::new();
     let mut seen_inferred = BTreeSet::new();
-    for component_id in &generated.components {
+    for component_id in component_ids {
         let Some(component) = bound.project.board.components.get(component_id) else {
             continue;
         };
@@ -38,18 +91,12 @@ pub(super) fn effective_model_files(
         if !seen_inferred.insert(canonical_path.clone()) {
             continue;
         }
-        let inferred = inferred_model_file(bound, spice, &canonical_path)?;
-        if let Some(index) = canonical_paths
-            .iter()
-            .position(|path| path.as_ref() == Some(&canonical_path))
-        {
-            merge_inferred_model_file(&mut model_files[index], inferred);
-            continue;
-        }
-        canonical_paths.push(Some(canonical_path));
-        model_files.push(inferred);
+        entries.push(InferredAnalogModelFile {
+            model_file: inferred_model_file(bound, spice, &canonical_path)?,
+            canonical_path,
+        });
     }
-    Ok(model_files)
+    Ok(entries)
 }
 
 fn inferred_model_file(
@@ -182,6 +229,47 @@ fn canonical_source_dir(bound: &BoundBoard<'_>) -> PathBuf {
     absolute_path(&bound.project.source_dir).unwrap_or_else(|_| bound.project.source_dir.clone())
 }
 
+#[cfg(any(feature = "gui", test))]
+fn project_source_dir(project_path: &Path) -> PathBuf {
+    project_path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf()
+}
+
+fn file_sha256_hex(path: &Path) -> Result<String, String> {
+    let bytes = fs::read(path)
+        .map_err(|error| format!("Failed to read model file {}: {error}", path.display()))?;
+    let digest = Sha256::digest(&bytes);
+    Ok(digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>())
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                normalized.pop();
+            }
+            Component::Normal(part) => normalized.push(part),
+            Component::RootDir | Component::Prefix(_) => normalized.push(component.as_os_str()),
+        }
+    }
+    normalized
+}
+
+fn absolute_path(path: &Path) -> std::io::Result<PathBuf> {
+    if path.is_absolute() {
+        return Ok(normalize_path(path));
+    }
+    Ok(normalize_path(&env::current_dir()?.join(path)))
+}
+
 fn relative_path(from_dir: &Path, to: &Path) -> Option<PathBuf> {
     let from_components = from_dir.components().collect::<Vec<_>>();
     let to_components = to.components().collect::<Vec<_>>();
@@ -221,21 +309,19 @@ fn relative_path(from_dir: &Path, to: &Path) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::library::{bind_project, load_library};
-
     #[test]
     fn effective_model_files_infer_generated_component_pack_artifacts() {
         let project_path = Path::new("examples/good_aosong_aht20_i2c_observation/project.yaml");
         let mut project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(include_str!(
-            "../../examples/good_aosong_aht20_i2c_observation/project.yaml"
+            "../examples/good_aosong_aht20_i2c_observation/project.yaml"
         ))
         .unwrap();
         project.source_dir = project_path.parent().unwrap().to_path_buf();
         let analog = project.scenarios[0].analog.as_mut().unwrap();
         analog.model_files.clear();
 
-        let (library, findings) = load_library(project_path, &project);
-        let bound = bind_project(&project, library, findings);
+        let (library, findings) = crate::library::load_library(project_path, &project);
+        let bound = crate::library::bind_project(&project, library, findings);
         let model_files =
             effective_model_files(&bound, bound.project.scenarios[0].analog.as_ref().unwrap())
                 .unwrap();
@@ -248,6 +334,34 @@ mod tests {
         assert_eq!(
             model_files[0].sha256.as_deref(),
             Some("cbb7ebb94896b20e0e835e70d6e5dac1edc31ffae6bbe8200666c352da567a39")
+        );
+    }
+
+    #[test]
+    fn inferred_model_files_for_components_matches_effective_resolver() {
+        let project_path = Path::new("examples/good_aosong_aht20_i2c_observation/project.yaml");
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(include_str!(
+            "../examples/good_aosong_aht20_i2c_observation/project.yaml"
+        ))
+        .unwrap();
+
+        let entries =
+            inferred_model_files_for_components(project_path, &project, &["UAHT".to_string()])
+                .unwrap();
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(
+            entries[0].model_file.path,
+            "../../models/spice/aosong/aht20_i2c_observation.lib"
+        );
+        assert_eq!(
+            entries[0].model_file.sha256.as_deref(),
+            Some("cbb7ebb94896b20e0e835e70d6e5dac1edc31ffae6bbe8200666c352da567a39")
+        );
+        assert!(
+            entries[0]
+                .canonical_path
+                .ends_with("aht20_i2c_observation.lib")
         );
     }
 }

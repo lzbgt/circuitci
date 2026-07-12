@@ -1,22 +1,10 @@
+use crate::analog_model_resolver::{
+    InferredAnalogModelFile, declared_model_file_path_for_project,
+    inferred_model_files_for_components,
+};
 use anyhow::{Context, Result};
-use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
-use std::path::{Component, Path, PathBuf};
-
-#[derive(Debug, Clone)]
-pub(super) struct InferredAnalogModelFile {
-    pub(super) path: String,
-    pub(super) sha256: String,
-    model_package_name: Option<String>,
-    model_package_version: Option<String>,
-    model_package_artifact_id: Option<String>,
-    model_package_lock_path: Option<String>,
-    model_package_lock_sha256: Option<String>,
-    model_package_registry_path: Option<String>,
-    model_package_registry_sha256: Option<String>,
-    model_package_registry_entry: Option<String>,
-    canonical_path: PathBuf,
-}
+use std::path::Path;
 
 pub(super) fn model_file_values_for_generated_components(
     project_path: &Path,
@@ -24,7 +12,8 @@ pub(super) fn model_file_values_for_generated_components(
     component_ids: &[String],
 ) -> Result<Vec<serde_yaml_ng::Value>> {
     Ok(
-        inferred_model_files_for_components(project_path, project, component_ids)?
+        inferred_model_files_for_components(project_path, project, component_ids)
+            .map_err(anyhow::Error::msg)?
             .into_iter()
             .map(|entry| model_file_value(&entry))
             .collect(),
@@ -51,7 +40,8 @@ pub(super) fn add_missing_generated_model_files(
         return Ok(text.to_string());
     };
     let inferred =
-        inferred_model_files_for_components(project_path, &project, &generated.components)?;
+        inferred_model_files_for_components(project_path, &project, &generated.components)
+            .map_err(anyhow::Error::msg)?;
     if inferred.is_empty() {
         return Ok(text.to_string());
     }
@@ -63,7 +53,7 @@ pub(super) fn add_missing_generated_model_files(
         .collect();
     let mut existing_canonical = BTreeSet::new();
     for model_file in &analog.model_files {
-        if let Ok(path) = declared_model_file_path(project_path, &model_file.path) {
+        if let Ok(path) = declared_model_file_path_for_project(project_path, &model_file.path) {
             existing_canonical.insert(path);
         }
     }
@@ -71,7 +61,7 @@ pub(super) fn add_missing_generated_model_files(
     let missing = inferred
         .into_iter()
         .filter(|entry| {
-            !existing_paths.contains(&entry.path)
+            !existing_paths.contains(&entry.model_file.path)
                 && !existing_canonical.contains(&entry.canonical_path)
         })
         .collect::<Vec<_>>();
@@ -85,7 +75,7 @@ pub(super) fn add_missing_generated_model_files(
     let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
     let model_files = ensure_child_sequence_mut(analog_mapping, "model_files", "model files")?;
     for entry in missing {
-        existing_paths.insert(entry.path.clone());
+        existing_paths.insert(entry.model_file.path.clone());
         model_files.push(model_file_value(&entry));
     }
     let updated =
@@ -95,121 +85,53 @@ pub(super) fn add_missing_generated_model_files(
     Ok(updated)
 }
 
-fn inferred_model_files_for_components(
-    project_path: &Path,
-    project: &crate::board_ir::BoardProject,
-    component_ids: &[String],
-) -> Result<Vec<InferredAnalogModelFile>> {
-    let (library, _findings) = crate::library::load_library(project_path, project);
-    let mut entries = Vec::new();
-    let mut seen = BTreeSet::new();
-    for component_id in component_ids {
-        let Some(component) = project.board.components.get(component_id) else {
-            continue;
-        };
-        let Some(model) = library.get(&component.model) else {
-            continue;
-        };
-        let Some(spice) = model.simulation.spice.as_ref() else {
-            continue;
-        };
-        let canonical_path =
-            resolve_model_path(project_path, &spice.model_path).with_context(|| {
-                format!(
-                    "Failed to resolve SPICE model file {} for component {}.",
-                    spice.model_path, component_id
-                )
-            })?;
-        if !seen.insert(canonical_path.clone()) {
-            continue;
-        }
-        let project_dir = canonical_project_dir(project_path)?;
-        let path = relative_path(&project_dir, &canonical_path)
-            .unwrap_or_else(|| canonical_path.clone())
-            .to_string_lossy()
-            .replace('\\', "/");
-        let sha256 = file_sha256_hex(&canonical_path).with_context(|| {
-            format!(
-                "Failed to hash SPICE model file {}.",
-                canonical_path.display()
-            )
-        })?;
-        let model_package_lock_path = optional_project_relative_existing_path(
-            project_path,
-            spice.model_package_lock_path.as_deref(),
-        )
-        .context("Failed to resolve compact-model package lock path.")?;
-        let model_package_registry_path = optional_project_relative_existing_path(
-            project_path,
-            spice.model_package_registry_path.as_deref(),
-        )
-        .context("Failed to resolve compact-model package registry path.")?;
-        entries.push(InferredAnalogModelFile {
-            path,
-            sha256,
-            model_package_name: spice.model_package_name.clone(),
-            model_package_version: spice.model_package_version.clone(),
-            model_package_artifact_id: spice.model_package_artifact_id.clone(),
-            model_package_lock_path,
-            model_package_lock_sha256: spice.model_package_lock_sha256.clone(),
-            model_package_registry_path,
-            model_package_registry_sha256: spice.model_package_registry_sha256.clone(),
-            model_package_registry_entry: spice.model_package_registry_entry.clone(),
-            canonical_path,
-        });
-    }
-    Ok(entries)
-}
-
 fn model_file_value(entry: &InferredAnalogModelFile) -> serde_yaml_ng::Value {
+    let model_file = &entry.model_file;
     let mut mapping = serde_yaml_ng::Mapping::new();
     mapping.insert(
         serde_yaml_ng::Value::String("path".to_string()),
-        serde_yaml_ng::Value::String(entry.path.clone()),
+        serde_yaml_ng::Value::String(model_file.path.clone()),
     );
-    mapping.insert(
-        serde_yaml_ng::Value::String("sha256".to_string()),
-        serde_yaml_ng::Value::String(entry.sha256.clone()),
-    );
+    insert_optional_string(&mut mapping, "sha256", model_file.sha256.as_deref());
     insert_optional_string(
         &mut mapping,
         "model_package_name",
-        entry.model_package_name.as_deref(),
+        model_file.model_package_name.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_version",
-        entry.model_package_version.as_deref(),
+        model_file.model_package_version.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_artifact_id",
-        entry.model_package_artifact_id.as_deref(),
+        model_file.model_package_artifact_id.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_lock_path",
-        entry.model_package_lock_path.as_deref(),
+        model_file.model_package_lock_path.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_lock_sha256",
-        entry.model_package_lock_sha256.as_deref(),
+        model_file.model_package_lock_sha256.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_registry_path",
-        entry.model_package_registry_path.as_deref(),
+        model_file.model_package_registry_path.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_registry_sha256",
-        entry.model_package_registry_sha256.as_deref(),
+        model_file.model_package_registry_sha256.as_deref(),
     );
     insert_optional_string(
         &mut mapping,
         "model_package_registry_entry",
-        entry.model_package_registry_entry.as_deref(),
+        model_file.model_package_registry_entry.as_deref(),
     );
     serde_yaml_ng::Value::Mapping(mapping)
 }
@@ -221,114 +143,6 @@ fn insert_optional_string(mapping: &mut serde_yaml_ng::Mapping, name: &str, valu
             serde_yaml_ng::Value::String(value.to_string()),
         );
     }
-}
-
-fn resolve_model_path(project_path: &Path, model_path: &str) -> Result<PathBuf> {
-    let path = Path::new(model_path);
-    if path.is_absolute() {
-        return path
-            .canonicalize()
-            .with_context(|| format!("Could not canonicalize {}.", path.display()));
-    }
-
-    let project_dir = canonical_project_dir(project_path)?;
-    for base in project_dir.ancestors() {
-        let candidate = base.join(path);
-        if candidate.exists() {
-            return candidate
-                .canonicalize()
-                .with_context(|| format!("Could not canonicalize {}.", candidate.display()));
-        }
-    }
-    anyhow::bail!(
-        "relative model path {model_path} was not found from project directory {} or any ancestor",
-        project_dir.display()
-    );
-}
-
-fn declared_model_file_path(project_path: &Path, model_path: &str) -> Result<PathBuf> {
-    let path = Path::new(model_path);
-    let candidate = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        canonical_project_dir(project_path)?.join(path)
-    };
-    candidate
-        .canonicalize()
-        .with_context(|| format!("Could not canonicalize {}.", candidate.display()))
-}
-
-fn canonical_project_dir(project_path: &Path) -> Result<PathBuf> {
-    let project_dir = project_path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    project_dir.canonicalize().with_context(|| {
-        format!(
-            "Could not canonicalize project dir {}.",
-            project_dir.display()
-        )
-    })
-}
-
-fn relative_path(from_dir: &Path, to: &Path) -> Option<PathBuf> {
-    let from_components = from_dir.components().collect::<Vec<_>>();
-    let to_components = to.components().collect::<Vec<_>>();
-    let common = from_components
-        .iter()
-        .zip(&to_components)
-        .take_while(|(left, right)| left == right)
-        .count();
-    if common == 0 {
-        return None;
-    }
-
-    let mut path = PathBuf::new();
-    for component in &from_components[common..] {
-        match component {
-            Component::Normal(_) => path.push(".."),
-            Component::CurDir => {}
-            Component::ParentDir => path.push(".."),
-            Component::Prefix(_) | Component::RootDir => return None,
-        }
-    }
-    for component in &to_components[common..] {
-        match component {
-            Component::Normal(value) => path.push(value),
-            Component::CurDir => {}
-            Component::ParentDir => path.push(".."),
-            Component::Prefix(_) | Component::RootDir => return None,
-        }
-    }
-    Some(if path.as_os_str().is_empty() {
-        PathBuf::from(".")
-    } else {
-        path
-    })
-}
-
-fn optional_project_relative_existing_path(
-    project_path: &Path,
-    path: Option<&str>,
-) -> Result<Option<String>> {
-    let Some(path) = path else {
-        return Ok(None);
-    };
-    let canonical_path = resolve_model_path(project_path, path)?;
-    let project_dir = canonical_project_dir(project_path)?;
-    Ok(Some(
-        relative_path(&project_dir, &canonical_path)
-            .unwrap_or(canonical_path)
-            .to_string_lossy()
-            .replace('\\', "/"),
-    ))
-}
-
-fn file_sha256_hex(path: &Path) -> Result<String> {
-    let bytes = std::fs::read(path)?;
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    Ok(format!("{:x}", hasher.finalize()))
 }
 
 fn key(name: &str) -> serde_yaml_ng::Value {
@@ -407,12 +221,12 @@ mod tests {
 
         assert_eq!(entries.len(), 1);
         assert_eq!(
-            entries[0].path,
+            entries[0].model_file.path,
             "../../models/spice/generic/analog_behavioral.lib"
         );
         assert_eq!(
-            entries[0].sha256,
-            "ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59"
+            entries[0].model_file.sha256.as_deref(),
+            Some("ad5aec2585e6d9803b3b6f7930c19148e252c1cf4362b550893e85afdd025e59")
         );
     }
 

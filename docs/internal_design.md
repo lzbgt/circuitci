@@ -587,13 +587,12 @@ context menu pointer.
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the
 target analog scenario. `src/gui/analog_model_files.rs` owns automatic
-model-file inference for generated run setups: it looks up included components
-in the active component library, reads `simulation.spice.model_path`, resolves
-the path from the project directory or an ancestor exactly like validation, and
-writes missing SHA-pinned `analog.model_files` entries. Scenario creation in
-`src/gui/analog_run_setup.rs` and generated component inclusion in
-`src/gui/analog_generated.rs` should call that helper instead of duplicating
-path resolution or hashing.
+model-file YAML insertion for generated run setups, but it delegates path
+resolution, SHA-256 hashing, and package metadata propagation to
+`src/analog_model_resolver.rs`, the same shared resolver used by validation.
+Scenario creation in `src/gui/analog_run_setup.rs` and generated component
+inclusion in `src/gui/analog_generated.rs` should call the GUI helper instead
+of duplicating YAML insertion, and must not reimplement resolver policy.
 `src/gui/analog_overview.rs` owns read-only generated analog run-setup audit
 snapshots for Observations-stage display. It may summarize timing/backend,
 included components, source primitives, probes, checks, model files, and

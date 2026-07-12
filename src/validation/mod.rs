@@ -19,7 +19,6 @@ mod analog_hb_assertions;
 mod analog_measure_runner;
 mod analog_measure_spice;
 mod analog_model_compiler;
-mod analog_model_resolver;
 mod analog_noise_assertions;
 mod analog_noise_runner;
 mod analog_noise_spice;

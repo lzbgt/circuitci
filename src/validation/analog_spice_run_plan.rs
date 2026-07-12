@@ -9,11 +9,11 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use super::analog_model_compiler::validate_model_compiler_provenance;
-use super::analog_model_resolver::effective_model_files;
 use super::analog_runner::{ModelSectionOverride, ParameterOverride};
 use super::analog_sweep_sampling::monte_carlo_component_value_samples;
 use super::analog_util::{component_value_parameter_name, file_sha256_hex, push_artifact};
 use super::spice_netlist::generate_board_netlist;
+use crate::analog_model_resolver::effective_model_files;
 
 const MAX_ANALOG_SWEEP_CORNERS: usize = 64;
 

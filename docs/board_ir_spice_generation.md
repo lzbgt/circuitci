@@ -96,6 +96,9 @@ model-file set by resolving active generated components'
 hashing the artifacts, and adding missing entries. If a scenario explicitly
 declares the matching model file, that declaration must still carry its own
 SHA-256 pin; the resolver does not silently repair unpinned authored evidence.
+The GUI uses this same shared resolver when it inserts missing generated
+`analog.model_files[]` entries, so authored run setup and validation evidence
+share one path-resolution and package-metadata policy.
 File-backed decks still depend on authored `analog.model_files` because
 CircuitCI cannot know which includes are required without parsing the user deck
 contract.

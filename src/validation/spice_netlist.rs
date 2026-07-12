@@ -1,4 +1,4 @@
-use super::analog_model_resolver::effective_model_files;
+use crate::analog_model_resolver::effective_model_files;
 use crate::board_ir::{
     AnalogModelFile, AnalogScenario, AnalogSweepComponentField, ComponentSpec, SpicePrimitive,
     SpicePulseSpec,
