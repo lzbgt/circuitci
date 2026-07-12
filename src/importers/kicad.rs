@@ -1,4 +1,6 @@
-use crate::analog_model_resolver::inferred_model_file_for_model_path;
+use crate::analog_model_resolver::{
+    declared_model_file_path_for_source_dir, inferred_model_file_for_model_path,
+};
 use anyhow::{Context, Result, bail};
 mod passive_values;
 mod types;
@@ -458,6 +460,7 @@ fn build_analog_scenarios(
                 &raw_net_to_board,
                 context.models,
                 &model_files,
+                context.output_dir,
             )?;
             let generated_components = scenario.components.clone();
             let ground_net = raw_net_to_board
@@ -545,6 +548,7 @@ fn validate_analog_scenario_mapping(
     raw_net_to_board: &BTreeMap<String, String>,
     models: &BTreeMap<String, ImportedComponentModel>,
     model_files: &[ModelFileYaml],
+    output_dir: &Path,
 ) -> Result<()> {
     if scenario.components.is_empty() {
         bail!(
@@ -630,6 +634,7 @@ fn validate_analog_scenario_mapping(
                 component_id,
                 &spice.model_path,
                 model_files,
+                output_dir,
             )?;
         }
     }
@@ -641,18 +646,33 @@ fn require_model_file_for_component(
     component_id: &str,
     model_path: &str,
     model_files: &[ModelFileYaml],
+    output_dir: &Path,
 ) -> Result<()> {
-    let expected = Path::new(model_path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(model_path);
-    let Some(model_file) = model_files.iter().find(|file| {
-        file.path == model_path
-            || Path::new(&file.path)
-                .file_name()
-                .and_then(|name| name.to_str())
-                == Some(expected)
-    }) else {
+    let expected = inferred_model_file_for_model_path(output_dir, model_path)
+        .map_err(anyhow::Error::msg)
+        .with_context(|| {
+            format!(
+                "KiCad analog scenario {} component {} could not resolve SPICE model file {}.",
+                scenario.name, component_id, model_path
+            )
+        })?
+        .canonical_path;
+    let mut matching_model_file = None;
+    for model_file in model_files {
+        let declared = declared_model_file_path_for_source_dir(output_dir, &model_file.path)
+            .map_err(anyhow::Error::msg)
+            .with_context(|| {
+                format!(
+                    "KiCad analog scenario {} model file {} could not be resolved.",
+                    scenario.name, model_file.path
+                )
+            })?;
+        if declared == expected {
+            matching_model_file = Some(model_file);
+            break;
+        }
+    }
+    let Some(model_file) = matching_model_file else {
         bail!(
             "KiCad analog scenario {} component {} requires SPICE model file {}, but scenario.model_files does not declare it.",
             scenario.name,

@@ -195,7 +195,9 @@ Scenario generation remains fail-closed:
   `model_files` entries inferred from the component model, with SHA-256 pins
   computed through the same resolver used by GUI run setup and validation,
 - explicitly declared `model_files` entries are still checked fail-closed for
-  existence and SHA-256 matches,
+  existence and SHA-256 matches, then matched to required component
+  `simulation.spice.model_path` files by canonical path through the shared
+  generated-SPICE resolver rather than by filename,
 - `operating_conditions`, such as `allow_pulse_ratings`, are copied only when
   explicitly declared in the mapping file,
 - `stimuli`, `probes`, and `assertions` must be non-empty,
