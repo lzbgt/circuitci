@@ -1,4 +1,7 @@
-use crate::analog_model_resolver::effective_model_files;
+use crate::analog_model_resolver::{
+    declared_model_file_path_for_source_dir, effective_model_files,
+    inferred_model_file_for_model_path,
+};
 use crate::board_ir::{
     AnalogModelFile, AnalogScenario, AnalogSweepComponentField, ComponentSpec, SpicePrimitive,
     SpicePulseSpec,
@@ -8,9 +11,8 @@ use crate::library::{
 };
 use crate::validation::analog_util::component_value_parameter_name;
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::Path;
 
 pub(super) fn generate_board_netlist(
     bound: &BoundBoard<'_>,
@@ -49,9 +51,10 @@ pub(super) fn generate_board_netlist(
             continue;
         }
         let path =
-            absolute_path(&bound.project.source_dir.join(&model_file.path)).map_err(|error| {
-                format!("Failed to resolve model file {}: {error}", model_file.path)
-            })?;
+            declared_model_file_path_for_source_dir(&bound.project.source_dir, &model_file.path)
+                .map_err(|error| {
+                    format!("Failed to resolve model file {}: {error}", model_file.path)
+                })?;
         text.push_str(".include \"");
         text.push_str(&path.to_string_lossy());
         text.push_str("\"\n");
@@ -681,17 +684,20 @@ fn require_declared_model_file(
     component_id: &str,
     model_path: &str,
 ) -> Result<(), String> {
-    let expected = resolve_model_path(bound, model_path).map_err(|error| {
-        format!("Failed to resolve model path {model_path} for {component_id}: {error}")
-    })?;
+    let expected = inferred_model_file_for_model_path(&bound.project.source_dir, model_path)
+        .map_err(|error| {
+            format!("Failed to resolve model path {model_path} for {component_id}: {error}")
+        })?
+        .canonical_path;
     for model_file in model_files {
         let declared =
-            absolute_path(&bound.project.source_dir.join(&model_file.path)).map_err(|error| {
-                format!(
-                    "Failed to resolve declared model file {} for {component_id}: {error}",
-                    model_file.path
-                )
-            })?;
+            declared_model_file_path_for_source_dir(&bound.project.source_dir, &model_file.path)
+                .map_err(|error| {
+                    format!(
+                        "Failed to resolve declared model file {} for {component_id}: {error}",
+                        model_file.path
+                    )
+                })?;
         if declared == expected {
             if model_file.sha256.is_none() {
                 return Err(format!(
@@ -703,25 +709,6 @@ fn require_declared_model_file(
     }
     Err(format!(
         "Generated SPICE component {component_id} requires model file {model_path}, but analog.model_files does not declare it."
-    ))
-}
-
-fn resolve_model_path(bound: &BoundBoard<'_>, model_path: &str) -> Result<PathBuf, String> {
-    let path = Path::new(model_path);
-    if path.is_absolute() {
-        return absolute_path(path).map_err(|error| error.to_string());
-    }
-
-    for base in bound.project.source_dir.ancestors() {
-        let candidate = base.join(path);
-        if candidate.exists() {
-            return absolute_path(&candidate).map_err(|error| error.to_string());
-        }
-    }
-
-    Err(format!(
-        "relative model path {model_path} was not found from project directory {} or any ancestor",
-        bound.project.source_dir.display()
     ))
 }
 
@@ -784,28 +771,6 @@ fn validate_spice_token(label: &str, token: &str) -> Result<(), String> {
         ));
     }
     Ok(())
-}
-
-fn absolute_path(path: &Path) -> std::io::Result<PathBuf> {
-    if path.is_absolute() {
-        return Ok(normalize_path(path));
-    }
-    Ok(normalize_path(&env::current_dir()?.join(path)))
-}
-
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut normalized = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                normalized.pop();
-            }
-            Component::Normal(part) => normalized.push(part),
-            Component::RootDir | Component::Prefix(_) => normalized.push(component.as_os_str()),
-        }
-    }
-    normalized
 }
 
 #[cfg(test)]

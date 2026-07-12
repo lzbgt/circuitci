@@ -57,11 +57,18 @@ pub(crate) fn declared_model_file_path_for_project(
     project_path: &Path,
     path: &str,
 ) -> Result<PathBuf, String> {
+    declared_model_file_path_for_source_dir(&project_source_dir(project_path), path)
+}
+
+pub(crate) fn declared_model_file_path_for_source_dir(
+    source_dir: &Path,
+    path: &str,
+) -> Result<PathBuf, String> {
     let path = Path::new(path);
     let candidate = if path.is_absolute() {
         path.to_path_buf()
     } else {
-        project_source_dir(project_path).join(path)
+        source_dir.join(path)
     };
     absolute_path(&candidate).map_err(|error| error.to_string())
 }
@@ -232,13 +239,7 @@ fn fill_optional(target: &mut Option<String>, inferred: Option<String>) {
 }
 
 fn declared_model_file_path(bound: &BoundBoard<'_>, path: &str) -> Result<PathBuf, String> {
-    let path = Path::new(path);
-    let candidate = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        bound.project.source_dir.join(path)
-    };
-    absolute_path(&candidate).map_err(|error| error.to_string())
+    declared_model_file_path_for_source_dir(&bound.project.source_dir, path)
 }
 
 fn resolve_model_path(bound: &BoundBoard<'_>, model_path: &str) -> Result<PathBuf, String> {
