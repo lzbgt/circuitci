@@ -1,0 +1,194 @@
+component_id: vendor.microchip.mcp23017
+version: 0.1.0
+category: i2c_io_expander
+simulation:
+  spice:
+    model_name: CIRCUITCI_MCP23017_I2C_GPIO_EXPANDER_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/microchip/mcp23017_i2c_gpio_expander_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VSS, SCL, SDA, A0, A1, A2, RESET, INTA, INTB, GPA0, GPA1, GPA2, GPA3, GPA4, GPA5, GPA6, GPA7, GPB0, GPB1, GPB2, GPB3, GPB4, GPB5, GPB6, GPB7]
+    valid_operating_notes:
+      - Reduced high-impedance I2C GPIO-expander board-observation model for preliminary VDD rail, I2C pull-up, address-select, reset, interrupt, and representative GPIO line-state checks.
+      - Uses source-backed 1.8 V to 5.5 V operating range, 1.7 MHz I2C class, 28-pin SSOP pin roles, interrupt output metadata, and GPIO absolute output-current metadata.
+      - I2C transactions, register state, GPIO direction, interrupt-on-change logic, weak pull-up behavior, per-pin output-load sign-off, and signal integrity are out of scope.
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.8
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.001
+  VSS:
+    kind: electrical_ground
+    required: true
+  SCL:
+    kind: digital_electrical_input
+    required: true
+  SDA:
+    kind: digital_electrical_io
+    required: true
+  A0:
+    kind: digital_electrical_input
+    required: true
+  A1:
+    kind: digital_electrical_input
+    required: true
+  A2:
+    kind: digital_electrical_input
+    required: true
+  RESET:
+    kind: digital_electrical_input
+    required: true
+  INTA:
+    kind: digital_electrical_output
+    required: true
+  INTB:
+    kind: digital_electrical_output
+    required: true
+  GPA0:
+    kind: digital_electrical_io
+    required: true
+  GPA1:
+    kind: digital_electrical_io
+    required: true
+  GPA2:
+    kind: digital_electrical_io
+    required: true
+  GPA3:
+    kind: digital_electrical_io
+    required: true
+  GPA4:
+    kind: digital_electrical_io
+    required: true
+  GPA5:
+    kind: digital_electrical_io
+    required: true
+  GPA6:
+    kind: digital_electrical_io
+    required: true
+  GPA7:
+    kind: digital_electrical_output
+    required: true
+  GPB0:
+    kind: digital_electrical_io
+    required: true
+  GPB1:
+    kind: digital_electrical_io
+    required: true
+  GPB2:
+    kind: digital_electrical_io
+    required: true
+  GPB3:
+    kind: digital_electrical_io
+    required: true
+  GPB4:
+    kind: digital_electrical_io
+    required: true
+  GPB5:
+    kind: digital_electrical_io
+    required: true
+  GPB6:
+    kind: digital_electrical_io
+    required: true
+  GPB7:
+    kind: digital_electrical_output
+    required: true
+datasheet:
+  manufacturer: Microchip Technology
+  part_number: MCP23017-E/SS
+  package: 28-lead SSOP
+  polarity: "16bit_i2c_gpio_expander"
+  pinout:
+    VDD: Power
+    VSS: Ground
+    SCL: I2C serial clock input
+    SDA: I2C serial data input/output
+    A0: Hardware address pin bit 0
+    A1: Hardware address pin bit 1
+    A2: Hardware address pin bit 2
+    RESET: Hardware reset input
+    INTA: PORTA interrupt output
+    INTB: PORTB interrupt output
+    GPA0: PORTA GPIO bit 0
+    GPA1: PORTA GPIO bit 1
+    GPA2: PORTA GPIO bit 2
+    GPA3: PORTA GPIO bit 3
+    GPA4: PORTA GPIO bit 4
+    GPA5: PORTA GPIO bit 5
+    GPA6: PORTA GPIO bit 6
+    GPA7: PORTA bit 7 output-only pin on MCP23017
+    GPB0: PORTB GPIO bit 0
+    GPB1: PORTB GPIO bit 1
+    GPB2: PORTB GPIO bit 2
+    GPB3: PORTB GPIO bit 3
+    GPB4: PORTB GPIO bit 4
+    GPB5: PORTB GPIO bit 5
+    GPB6: PORTB GPIO bit 6
+    GPB7: PORTB bit 7 output-only pin on MCP23017
+  electrical_characteristics:
+    supply_voltage:
+      conditions: Operating range.
+      min: 1.8
+      max: 5.5
+      unit: V
+    supply_current:
+      conditions: SCL/SCK = 1 MHz.
+      max: 1.0
+      unit: mA
+    standby_current:
+      conditions: -40 C to +85 C.
+      max: 1.0
+      unit: uA
+    gpio_output_current_absolute:
+      conditions: Absolute maximum current sunk or sourced by any output pin.
+      max: 25
+      unit: mA
+    input_low_voltage_schmitt:
+      max: 0.2
+      unit: VDD_ratio
+    input_high_voltage_schmitt:
+      min: 0.8
+      unit: VDD_ratio
+    gpio_weak_pullup_current:
+      conditions: VDD = 5 V, GP pins = VSS.
+      min: 40
+      typ: 75
+      max: 115
+      unit: uA
+  device_parameters:
+    gpio_width:
+      conditions: Two 8-bit ports, PORTA and PORTB.
+      typ: 16
+      unit: bit
+    max_i2c_clock:
+      conditions: MCP23017 I2C interface.
+      max: 1.7
+      unit: MHz
+    i2c_address_count:
+      conditions: Three hardware address pins.
+      typ: 8
+      unit: device
+  documents:
+    - title: MCP23017/MCP23S17 16-Bit I/O Expander with Serial Interface Data Sheet
+      path: docs/research/datasheets/microchip/mcp23017_mcp23s17_datasheet_ds20001952d.pdf
+      source_url: https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP23017-Data-Sheet-DS20001952.pdf
+      sha256: 63cb5f2bec44434cdeeada1790d0316c9dc06b33febb489ad87bb0e2d540496a
+      retrieved: "2026-07-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - i2c_io_expander_power_tree_supply_voltage
+    - static_i2c_gpio_expander_pin_boundary_review
+    - preliminary_generated_spice_observation
+    - common_iot_board_io_expander_presence_review
+  not_valid_for:
+    - i2c_protocol_timing_signoff
+    - register_configuration_or_gpio_direction_verification
+    - interrupt_on_change_logic_verification
+    - gpio_output_load_or_thermal_signoff
+    - weak_pullup_behavior_signoff
+    - firmware_or_pin_state_sequence_validation
+    - signal_integrity_or_layout_signoff

@@ -1,0 +1,669 @@
+project:
+  name: good_microchip_mcp23017_i2c_gpio_expander_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      UIOX: Interface_Expansion:MCP23017
+      RSDA: Device:R
+      RSCL: Device:R
+      RRESET: Device:R
+      RINTA: Device:R
+      RINTB: Device:R
+      RA0: Device:R
+      RA1: Device:R
+      RA2: Device:R
+      RGPA0: Device:R
+      RGPB0: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UIOX: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RSDA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSCL: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RRESET: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RINTA: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RINTB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RA0: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RA1: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RA2: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RGPA0: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RGPB0: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 80.0, y: 176.0 }
+      component:UIOX: { x: 420.0, y: 328.0 }
+      component:RSDA: { x: 980.0, y: 136.0 }
+      component:RSCL: { x: 980.0, y: 232.0 }
+      component:RRESET: { x: 980.0, y: 328.0 }
+      component:RINTA: { x: 980.0, y: 440.0 }
+      component:RINTB: { x: 980.0, y: 536.0 }
+      component:RA0: { x: 176.0, y: 400.0 }
+      component:RA1: { x: 176.0, y: 472.0 }
+      component:RA2: { x: 176.0, y: 544.0 }
+      component:RGPA0: { x: 520.0, y: 112.0 }
+      component:RGPB0: { x: 520.0, y: 616.0 }
+      net:iox_3v3: { x: 240.0, y: 88.0 }
+      net:i2c_sda: { x: 860.0, y: 136.0 }
+      net:i2c_scl: { x: 860.0, y: 232.0 }
+      net:iox_reset_n: { x: 860.0, y: 328.0 }
+      net:iox_inta: { x: 860.0, y: 440.0 }
+      net:iox_intb: { x: 860.0, y: 536.0 }
+      net:iox_a0: { x: 280.0, y: 400.0 }
+      net:iox_a1: { x: 280.0, y: 472.0 }
+      net:iox_a2: { x: 280.0, y: 544.0 }
+      net:iox_gpa0: { x: 520.0, y: 176.0 }
+      net:iox_gpb0: { x: 520.0, y: 560.0 }
+      net:iox_gpa1: { x: 704.0, y: 404.0 }
+      net:iox_gpa2: { x: 704.0, y: 428.0 }
+      net:iox_gpa3: { x: 704.0, y: 452.0 }
+      net:iox_gpa4: { x: 704.0, y: 476.0 }
+      net:iox_gpa5: { x: 704.0, y: 500.0 }
+      net:iox_gpa6: { x: 704.0, y: 524.0 }
+      net:iox_gpa7: { x: 704.0, y: 548.0 }
+      net:iox_gpb1: { x: 824.0, y: 380.0 }
+      net:iox_gpb2: { x: 824.0, y: 404.0 }
+      net:iox_gpb3: { x: 824.0, y: 428.0 }
+      net:iox_gpb4: { x: 824.0, y: 452.0 }
+      net:iox_gpb5: { x: 824.0, y: 476.0 }
+      net:iox_gpb6: { x: 824.0, y: 500.0 }
+      net:iox_gpb7: { x: 824.0, y: 524.0 }
+      net:gnd: { x: 420.0, y: 688.0 }
+    wire_routes:
+      VDD.P->iox_3v3:
+        points:
+          - { x: 160.0, y: 176.0 }
+          - { x: 240.0, y: 88.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 120.0, y: 688.0 }
+      UIOX.VDD->iox_3v3:
+        points:
+          - { x: 340.0, y: 176.0 }
+          - { x: 240.0, y: 88.0 }
+      UIOX.VSS->gnd:
+        points:
+          - { x: 420.0, y: 688.0 }
+      UIOX.SDA->i2c_sda:
+        points:
+          - { x: 860.0, y: 136.0 }
+      UIOX.SCL->i2c_scl:
+        points:
+          - { x: 860.0, y: 232.0 }
+      UIOX.RESET->iox_reset_n:
+        points:
+          - { x: 860.0, y: 328.0 }
+      UIOX.INTA->iox_inta:
+        points:
+          - { x: 860.0, y: 440.0 }
+      UIOX.INTB->iox_intb:
+        points:
+          - { x: 860.0, y: 536.0 }
+      UIOX.A0->iox_a0:
+        points:
+          - { x: 280.0, y: 400.0 }
+      UIOX.A1->iox_a1:
+        points:
+          - { x: 280.0, y: 472.0 }
+      UIOX.A2->iox_a2:
+        points:
+          - { x: 280.0, y: 544.0 }
+      UIOX.GPA0->iox_gpa0:
+        points:
+          - { x: 520.0, y: 176.0 }
+      UIOX.GPB0->iox_gpb0:
+        points:
+          - { x: 520.0, y: 560.0 }
+      UIOX.GPA1->iox_gpa1:
+        points:
+          - { x: 704.0, y: 404.0 }
+      UIOX.GPA2->iox_gpa2:
+        points:
+          - { x: 704.0, y: 428.0 }
+      UIOX.GPA3->iox_gpa3:
+        points:
+          - { x: 704.0, y: 452.0 }
+      UIOX.GPA4->iox_gpa4:
+        points:
+          - { x: 704.0, y: 476.0 }
+      UIOX.GPA5->iox_gpa5:
+        points:
+          - { x: 704.0, y: 500.0 }
+      UIOX.GPA6->iox_gpa6:
+        points:
+          - { x: 704.0, y: 524.0 }
+      UIOX.GPA7->iox_gpa7:
+        points:
+          - { x: 704.0, y: 548.0 }
+      UIOX.GPB1->iox_gpb1:
+        points:
+          - { x: 824.0, y: 380.0 }
+      UIOX.GPB2->iox_gpb2:
+        points:
+          - { x: 824.0, y: 404.0 }
+      UIOX.GPB3->iox_gpb3:
+        points:
+          - { x: 824.0, y: 428.0 }
+      UIOX.GPB4->iox_gpb4:
+        points:
+          - { x: 824.0, y: 452.0 }
+      UIOX.GPB5->iox_gpb5:
+        points:
+          - { x: 824.0, y: 476.0 }
+      UIOX.GPB6->iox_gpb6:
+        points:
+          - { x: 824.0, y: 500.0 }
+      UIOX.GPB7->iox_gpb7:
+        points:
+          - { x: 824.0, y: 524.0 }
+      RSDA.A->iox_3v3:
+        points:
+          - { x: 980.0, y: 88.0 }
+          - { x: 240.0, y: 88.0 }
+      RSDA.B->i2c_sda:
+        points:
+          - { x: 980.0, y: 136.0 }
+      RSCL.A->iox_3v3:
+        points:
+          - { x: 980.0, y: 88.0 }
+          - { x: 240.0, y: 88.0 }
+      RSCL.B->i2c_scl:
+        points:
+          - { x: 980.0, y: 232.0 }
+      RRESET.A->iox_3v3:
+        points:
+          - { x: 980.0, y: 88.0 }
+          - { x: 240.0, y: 88.0 }
+      RRESET.B->iox_reset_n:
+        points:
+          - { x: 980.0, y: 328.0 }
+      RINTA.A->iox_3v3:
+        points:
+          - { x: 980.0, y: 88.0 }
+          - { x: 240.0, y: 88.0 }
+      RINTA.B->iox_inta:
+        points:
+          - { x: 980.0, y: 440.0 }
+      RINTB.A->iox_3v3:
+        points:
+          - { x: 980.0, y: 88.0 }
+          - { x: 240.0, y: 88.0 }
+      RINTB.B->iox_intb:
+        points:
+          - { x: 980.0, y: 536.0 }
+      RGPA0.A->iox_3v3:
+        points:
+          - { x: 980.0, y: 88.0 }
+          - { x: 240.0, y: 88.0 }
+      RGPA0.B->iox_gpa0:
+        points:
+          - { x: 980.0, y: 176.0 }
+      RA0.A->iox_a0:
+        points:
+          - { x: 176.0, y: 400.0 }
+      RA0.B->gnd:
+        points:
+          - { x: 176.0, y: 688.0 }
+      RA1.A->iox_a1:
+        points:
+          - { x: 176.0, y: 472.0 }
+      RA1.B->gnd:
+        points:
+          - { x: 176.0, y: 688.0 }
+      RA2.A->iox_a2:
+        points:
+          - { x: 176.0, y: 544.0 }
+      RA2.B->gnd:
+        points:
+          - { x: 176.0, y: 688.0 }
+      RGPB0.A->iox_gpb0:
+        points:
+          - { x: 176.0, y: 560.0 }
+      RGPB0.B->gnd:
+        points:
+          - { x: 176.0, y: 688.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: IOX_3V3_SOURCE
+      pins:
+        P: iox_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    UIOX:
+      model: vendor.microchip.mcp23017
+      part_number: MCP23017-E/SS
+      parameters:
+        observation_a0_state: 0.0
+        observation_a1_state: 0.0
+        observation_a2_state: 0.0
+        observation_sda_state: 1.0
+        observation_scl_state: 1.0
+        observation_reset_state: 1.0
+        observation_inta_state: 1.0
+        observation_intb_state: 1.0
+        observation_gpa0_state: 1.0
+        observation_gpb0_state: 0.0
+      power_domains:
+        VDD: iox_3v3
+      pins:
+        VDD: iox_3v3
+        VSS: gnd
+        SCL: i2c_scl
+        SDA: i2c_sda
+        A0: iox_a0
+        A1: iox_a1
+        A2: iox_a2
+        RESET: iox_reset_n
+        INTA: iox_inta
+        INTB: iox_intb
+        GPA0: iox_gpa0
+        GPA1: iox_gpa1
+        GPA2: iox_gpa2
+        GPA3: iox_gpa3
+        GPA4: iox_gpa4
+        GPA5: iox_gpa5
+        GPA6: iox_gpa6
+        GPA7: iox_gpa7
+        GPB0: iox_gpb0
+        GPB1: iox_gpb1
+        GPB2: iox_gpb2
+        GPB3: iox_gpb3
+        GPB4: iox_gpb4
+        GPB5: iox_gpb5
+        GPB6: iox_gpb6
+        GPB7: iox_gpb7
+    RSDA:
+      model: generic.analog.resistor
+      part_number: 4700ohm
+      pins:
+        A: iox_3v3
+        B: i2c_sda
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RSCL:
+      model: generic.analog.resistor
+      part_number: 4700ohm
+      pins:
+        A: iox_3v3
+        B: i2c_scl
+      spice:
+        primitive: resistor
+        value_ohm: 4700.0
+    RRESET:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_3v3
+        B: iox_reset_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RINTA:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_3v3
+        B: iox_inta
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RINTB:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_3v3
+        B: iox_intb
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RA0:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_a0
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RA1:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_a1
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RA2:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_a2
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RGPA0:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_3v3
+        B: iox_gpa0
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RGPB0:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: iox_gpb0
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+  nets:
+    iox_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.02
+    gnd:
+      kind: ground
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_a0:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_a1:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_a2:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_reset_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_inta:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_intb:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_gpa0:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_gpb0:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa1:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa2:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa3:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa4:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa5:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa6:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa7:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb1:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb2:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb3:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb4:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb5:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb6:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb7:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+
+scenarios:
+  - name: mcp23017_i2c_gpio_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - UIOX
+          - RSDA
+          - RSCL
+          - RRESET
+          - RINTA
+          - RINTB
+          - RA0
+          - RA1
+          - RA2
+          - RGPA0
+          - RGPB0
+      model_files:
+        - path: ../../models/spice/microchip/mcp23017_i2c_gpio_expander_observation.lib
+          sha256: 9f36889a662e625a1d4c81f4ea0155c9979355a0fd0a0c16a2f3876dcf7b8c2f
+      node_bindings:
+        - { node: vdd, net: iox_3v3 }
+        - { node: scl, net: i2c_scl }
+        - { node: sda, net: i2c_sda }
+        - { node: a0, net: iox_a0 }
+        - { node: a1, net: iox_a1 }
+        - { node: a2, net: iox_a2 }
+        - { node: reset, net: iox_reset_n }
+        - { node: inta, net: iox_inta }
+        - { node: intb, net: iox_intb }
+        - { node: gpa0, net: iox_gpa0 }
+        - { node: gpa1, net: iox_gpa1 }
+        - { node: gpa2, net: iox_gpa2 }
+        - { node: gpa3, net: iox_gpa3 }
+        - { node: gpa4, net: iox_gpa4 }
+        - { node: gpa5, net: iox_gpa5 }
+        - { node: gpa6, net: iox_gpa6 }
+        - { node: gpa7, net: iox_gpa7 }
+        - { node: gpb0, net: iox_gpb0 }
+        - { node: gpb1, net: iox_gpb1 }
+        - { node: gpb2, net: iox_gpb2 }
+        - { node: gpb3, net: iox_gpb3 }
+        - { node: gpb4, net: iox_gpb4 }
+        - { node: gpb5, net: iox_gpb5 }
+        - { node: gpb6, net: iox_gpb6 }
+        - { node: gpb7, net: iox_gpb7 }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: vdd, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: vdd, endpoint: { component: UIOX, pin: VDD } }
+        - { node: "0", endpoint: { component: UIOX, pin: VSS } }
+        - { node: scl, endpoint: { component: UIOX, pin: SCL } }
+        - { node: sda, endpoint: { component: UIOX, pin: SDA } }
+        - { node: a0, endpoint: { component: UIOX, pin: A0 } }
+        - { node: a1, endpoint: { component: UIOX, pin: A1 } }
+        - { node: a2, endpoint: { component: UIOX, pin: A2 } }
+        - { node: reset, endpoint: { component: UIOX, pin: RESET } }
+        - { node: inta, endpoint: { component: UIOX, pin: INTA } }
+        - { node: intb, endpoint: { component: UIOX, pin: INTB } }
+        - { node: gpa0, endpoint: { component: UIOX, pin: GPA0 } }
+        - { node: gpa1, endpoint: { component: UIOX, pin: GPA1 } }
+        - { node: gpa2, endpoint: { component: UIOX, pin: GPA2 } }
+        - { node: gpa3, endpoint: { component: UIOX, pin: GPA3 } }
+        - { node: gpa4, endpoint: { component: UIOX, pin: GPA4 } }
+        - { node: gpa5, endpoint: { component: UIOX, pin: GPA5 } }
+        - { node: gpa6, endpoint: { component: UIOX, pin: GPA6 } }
+        - { node: gpa7, endpoint: { component: UIOX, pin: GPA7 } }
+        - { node: gpb0, endpoint: { component: UIOX, pin: GPB0 } }
+        - { node: gpb1, endpoint: { component: UIOX, pin: GPB1 } }
+        - { node: gpb2, endpoint: { component: UIOX, pin: GPB2 } }
+        - { node: gpb3, endpoint: { component: UIOX, pin: GPB3 } }
+        - { node: gpb4, endpoint: { component: UIOX, pin: GPB4 } }
+        - { node: gpb5, endpoint: { component: UIOX, pin: GPB5 } }
+        - { node: gpb6, endpoint: { component: UIOX, pin: GPB6 } }
+        - { node: gpb7, endpoint: { component: UIOX, pin: GPB7 } }
+        - { node: vdd, endpoint: { component: RSDA, pin: A } }
+        - { node: sda, endpoint: { component: RSDA, pin: B } }
+        - { node: vdd, endpoint: { component: RSCL, pin: A } }
+        - { node: scl, endpoint: { component: RSCL, pin: B } }
+        - { node: vdd, endpoint: { component: RRESET, pin: A } }
+        - { node: reset, endpoint: { component: RRESET, pin: B } }
+        - { node: vdd, endpoint: { component: RINTA, pin: A } }
+        - { node: inta, endpoint: { component: RINTA, pin: B } }
+        - { node: vdd, endpoint: { component: RINTB, pin: A } }
+        - { node: intb, endpoint: { component: RINTB, pin: B } }
+        - { node: a0, endpoint: { component: RA0, pin: A } }
+        - { node: "0", endpoint: { component: RA0, pin: B } }
+        - { node: a1, endpoint: { component: RA1, pin: A } }
+        - { node: "0", endpoint: { component: RA1, pin: B } }
+        - { node: a2, endpoint: { component: RA2, pin: A } }
+        - { node: "0", endpoint: { component: RA2, pin: B } }
+        - { node: vdd, endpoint: { component: RGPA0, pin: A } }
+        - { node: gpa0, endpoint: { component: RGPA0, pin: B } }
+        - { node: gpb0, endpoint: { component: RGPB0, pin: A } }
+        - { node: "0", endpoint: { component: RGPB0, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: i2c_gpio_expander_idle_snapshot
+          description: MCP23017 idle bias with SDA/SCL high, reset released, address pins low, interrupt outputs high, GPA0 high, and GPB0 low.
+      probes:
+        - name: v_vdd
+          expression: V(vdd)
+        - name: v_sda
+          expression: V(sda)
+        - name: v_scl
+          expression: V(scl)
+        - name: v_a0
+          expression: V(a0)
+        - name: v_a1
+          expression: V(a1)
+        - name: v_a2
+          expression: V(a2)
+        - name: v_reset
+          expression: V(reset)
+        - name: v_inta
+          expression: V(inta)
+        - name: v_intb
+          expression: V(intb)
+        - name: v_gpa0
+          expression: V(gpa0)
+        - name: v_gpb0
+          expression: V(gpb0)
+      assertions:
+        - name: vdd_above_operating_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 1.8
+        - name: vdd_below_operating_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: sda_idle_high
+          probe: v_sda
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.64
+        - name: scl_idle_high
+          probe: v_scl
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.64
+        - name: a0_address_low
+          probe: v_a0
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.66
+        - name: a1_address_low
+          probe: v_a1
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.66
+        - name: a2_address_low
+          probe: v_a2
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.66
+        - name: reset_released_high
+          probe: v_reset
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.64
+        - name: inta_idle_high
+          probe: v_inta
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: intb_idle_high
+          probe: v_intb
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: gpa0_reference_high
+          probe: v_gpa0
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.31
+        - name: gpb0_reference_low
+          probe: v_gpb0
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.66

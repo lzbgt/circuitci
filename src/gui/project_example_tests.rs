@@ -507,6 +507,21 @@ fn gui_project_example_registry_lists_scope_and_observation_fixtures() {
             observation_preset_component: Some("UEEPROM"),
         },
         ExpectedProjectExample {
+            id: "mcp23017_i2c_gpio_expander_scope",
+            category: "I/O Expander",
+            open_label: "Open MCP23017 I/O Expander Example",
+            run_label: "Open MCP23017 + Run Scopes",
+            summary: "Source-backed MCP23017 rail, I2C pull-up, address, reset, interrupt, and GPIO observation.",
+            project_path: "examples/good_microchip_mcp23017_i2c_gpio_expander_observation/project.yaml",
+            project_name: "good_microchip_mcp23017_i2c_gpio_expander_observation",
+            expected_traces: &[
+                "v_vdd", "v_sda", "v_scl", "v_a0", "v_a1", "v_a2", "v_reset", "v_inta", "v_intb",
+                "v_gpa0", "v_gpb0",
+            ],
+            expected_frequency: "3.3 V MCP23017 I2C expander with idle pull-ups, low address pins, released reset, idle interrupts, GPA0 high, and GPB0 low",
+            observation_preset_component: Some("UIOX"),
+        },
+        ExpectedProjectExample {
             id: "esds552_scope",
             category: "Protection",
             open_label: "Open ESDS552 Example",

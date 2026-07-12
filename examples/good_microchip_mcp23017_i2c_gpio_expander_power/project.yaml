@@ -1,0 +1,127 @@
+project:
+  name: good_microchip_mcp23017_i2c_gpio_expander_power
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor
+
+board:
+  components:
+    UIOX:
+      model: vendor.microchip.mcp23017
+      part_number: MCP23017-E/SS
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        VSS: gnd
+        SCL: i2c_scl
+        SDA: i2c_sda
+        A0: iox_a0
+        A1: iox_a1
+        A2: iox_a2
+        RESET: iox_reset_n
+        INTA: iox_inta
+        INTB: iox_intb
+        GPA0: iox_gpa0
+        GPA1: iox_gpa1
+        GPA2: iox_gpa2
+        GPA3: iox_gpa3
+        GPA4: iox_gpa4
+        GPA5: iox_gpa5
+        GPA6: iox_gpa6
+        GPA7: iox_gpa7
+        GPB0: iox_gpb0
+        GPB1: iox_gpb1
+        GPB2: iox_gpb2
+        GPB3: iox_gpb3
+        GPB4: iox_gpb4
+        GPB5: iox_gpb5
+        GPB6: iox_gpb6
+        GPB7: iox_gpb7
+
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    i2c_scl:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    i2c_sda:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_a0:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_a1:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_a2:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_reset_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_inta:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_intb:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    iox_gpa0:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa1:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa2:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa3:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa4:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa5:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa6:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpa7:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb0:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb1:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb2:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb3:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb4:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb5:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb6:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    iox_gpb7:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+
+scenarios:
+  - name: microchip_mcp23017_i2c_gpio_expander_power
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

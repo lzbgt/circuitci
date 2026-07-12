@@ -595,6 +595,119 @@ pub(super) fn add_i2c_eeprom_observation_assertions(
     }
 }
 
+pub(super) fn add_i2c_io_expander_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    model: &crate::library::ComponentModel,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    if model.category != "i2c_io_expander" {
+        return;
+    }
+    add_port_voltage_window_assertions(
+        component,
+        model,
+        probes,
+        scenario_name,
+        "VDD",
+        stop_time_us,
+        assertions,
+    );
+    let logic_high_v = voltage_for_component_pin(project, component, "VDD").unwrap_or(3.3);
+    for (pin, parameter, default_state, high_suffix, low_suffix) in [
+        (
+            "SDA",
+            "observation_sda_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "SCL",
+            "observation_scl_state",
+            1.0,
+            "i2c_idle_high",
+            "i2c_idle_low",
+        ),
+        (
+            "A0",
+            "observation_a0_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "A1",
+            "observation_a1_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "A2",
+            "observation_a2_state",
+            0.0,
+            "address_select_high",
+            "address_select_low",
+        ),
+        (
+            "RESET",
+            "observation_reset_state",
+            1.0,
+            "reset_released_high",
+            "reset_asserted_low",
+        ),
+        (
+            "INTA",
+            "observation_inta_state",
+            1.0,
+            "interrupt_idle_high",
+            "interrupt_asserted_low",
+        ),
+        (
+            "INTB",
+            "observation_intb_state",
+            1.0,
+            "interrupt_idle_high",
+            "interrupt_asserted_low",
+        ),
+        (
+            "GPA0",
+            "observation_gpa0_state",
+            1.0,
+            "gpio_reference_high",
+            "gpio_reference_low",
+        ),
+        (
+            "GPB0",
+            "observation_gpb0_state",
+            0.0,
+            "gpio_reference_high",
+            "gpio_reference_low",
+        ),
+    ] {
+        add_pin_state_assertion(
+            component,
+            model,
+            probes,
+            scenario_name,
+            stop_time_us,
+            &PinStateAssertionSpec {
+                pin,
+                parameter,
+                default_state,
+                high_suffix,
+                low_suffix,
+                logic_high_v,
+            },
+            assertions,
+        );
+    }
+}
+
 pub(super) fn add_linux_som_observation_assertions(
     component: &crate::board_ir::ComponentSpec,
     model: &crate::library::ComponentModel,

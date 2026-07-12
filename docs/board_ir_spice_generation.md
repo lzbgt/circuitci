@@ -395,6 +395,14 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   board biasing and does not emulate I2C transactions, acknowledge polling,
   EEPROM contents, write-cycle timing, retention, endurance, or signal
   integrity.
+- `examples/good_microchip_mcp23017_i2c_gpio_expander_observation` proves the
+  Microchip MCP23017 source-backed I2C GPIO expander model can use a reduced
+  high-impedance generated-SPICE face for VDD, idle `SDA`/`SCL`, `A0`/`A1`/`A2`
+  address-select, `RESET`, `INTA`/`INTB`, and representative `GPA0`/`GPB0`
+  line-state observations. The macro observes board biasing and does not
+  emulate I2C transactions, register configuration, GPIO direction,
+  interrupt-on-change logic, weak pull-up behavior, output-load sign-off, or
+  signal integrity.
 - `examples/good_ti_esds552_rs485_esd_observation` proves the TI ESDS552
   datasheet-backed RS-485/RS-422 ESD/surge model can use a reduced
   generated-SPICE face for normal-operation A/B standoff checks with the

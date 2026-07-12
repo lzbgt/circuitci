@@ -138,6 +138,16 @@ pins, and `WP`. It does not emulate I2C transactions, acknowledge polling,
 EEPROM contents, write-cycle timing, write-protect policy, retention/endurance
 lifetime, or signal-integrity timing. See `docs/microchip_at24c02c_model.md`.
 
+`vendor.microchip.mcp23017` provides a source-backed model for Microchip's
+MCP23017 16-bit I2C GPIO expander. It models the 1.8 V to 5.5 V `VDD` range,
+1 mA supply-current class, 28-pin SSOP I2C/address/reset/interrupt/GPIO
+board-boundary pins, 1.7 MHz I2C class metadata, and a reduced high-impedance
+generated-SPICE observation face for `VDD`, idle `SDA`/`SCL`, address-select
+pins, released reset, idle interrupt lines, and representative GPIO states. It
+does not emulate I2C transactions, register configuration, GPIO direction,
+interrupt-on-change behavior, weak pull-ups, output-load thermal limits, or
+signal-integrity timing. See `docs/microchip_mcp23017_model.md`.
+
 `vendor.bosch.bme280` provides a source-backed model for Bosch's BME280
 humidity, pressure, and temperature sensor. It models the 1.71 V to 3.6 V
 `VDD` range, the 1.2 V to 3.6 V `VDDIO` range, I2C/SPI board-boundary pins,

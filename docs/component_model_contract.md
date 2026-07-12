@@ -970,6 +970,17 @@ pull-up, address-select, and write-protect observations. It does not emulate
 I2C transactions, acknowledge polling, EEPROM contents, write-cycle timing,
 write-protect policy, retention/endurance lifetime, or high-speed signal
 integrity.
+`vendor.microchip.mcp23017` adds a source-backed I2C GPIO expander pack.
+Official Microchip documentation backs its 1.8 V to 5.5 V VDD rail range,
+1 mA supply-current class, 1.7 MHz I2C class, 28-pin SSOP pin roles, three
+hardware address pins, two interrupt outputs, and 16 GPIO pins with `GPA7` and
+`GPB7` recorded as output-only on MCP23017. The validator uses the power pin
+contract for `POWER_TREE_VALID`, the explicit port list for board-boundary
+review, and a high-impedance generated-SPICE face for preliminary VDD, I2C
+pull-up, address-select, reset, interrupt-idle, and representative GPIO
+observations. It does not emulate I2C transactions, register configuration,
+GPIO direction, interrupt-on-change logic, weak pull-up behavior, output-load
+thermal limits, firmware pin-state sequencing, or high-speed signal integrity.
 `vendor.bosch.bme280` adds a source-backed environmental sensor pack. Official
 Bosch documentation backs its 1.71 V to 3.6 V `VDD` rail range, 1.2 V to 3.6 V
 `VDDIO` rail range, separate digital-interface supply, I2C/SPI pin roles,

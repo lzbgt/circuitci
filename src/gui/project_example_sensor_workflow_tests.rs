@@ -180,3 +180,38 @@ fn at24c02c_i2c_eeprom_scope_example_workflow_creates_model_aware_observation_ch
         ],
     );
 }
+
+#[test]
+fn mcp23017_i2c_gpio_expander_scope_example_workflow_creates_model_aware_observation_checks() {
+    assert_observation_workflow(
+        "mcp23017_i2c_gpio_expander_scope",
+        "UIOX",
+        "uiox_observation",
+        &[
+            "v_uiox_vdd",
+            "v_uiox_scl",
+            "v_uiox_sda",
+            "v_uiox_a0",
+            "v_uiox_a1",
+            "v_uiox_a2",
+            "v_uiox_reset",
+            "v_uiox_inta",
+            "v_uiox_intb",
+            "v_uiox_gpa0",
+            "v_uiox_gpb0",
+        ],
+        &[
+            "v_uiox_vdd_min_voltage",
+            "v_uiox_sda_i2c_idle_high",
+            "v_uiox_scl_i2c_idle_high",
+            "v_uiox_a0_address_select_low",
+            "v_uiox_a1_address_select_low",
+            "v_uiox_a2_address_select_low",
+            "v_uiox_reset_reset_released_high",
+            "v_uiox_inta_interrupt_idle_high",
+            "v_uiox_intb_interrupt_idle_high",
+            "v_uiox_gpa0_gpio_reference_high",
+            "v_uiox_gpb0_gpio_reference_low",
+        ],
+    );
+}

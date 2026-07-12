@@ -1516,6 +1516,21 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: microchip_mcp23017_i2c_gpio_expander_power_passes
+    project: ../examples/good_microchip_mcp23017_i2c_gpio_expander_power/project.yaml
+    expect: pass
+
+  - id: microchip_mcp23017_i2c_gpio_expander_observation_passes
+    project: ../examples/good_microchip_mcp23017_i2c_gpio_expander_observation/project.yaml
+    expect: pass
+
+  - id: microchip_mcp23017_vdd_overvoltage_detected
+    project: ../examples/bad_microchip_mcp23017_vdd_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: bosch_bme280_i2c_power_passes
     project: ../examples/good_bosch_bme280_i2c_power/project.yaml
     expect: pass
@@ -2606,6 +2621,12 @@ repairs:
   - id: fix_microchip_at24c02c_vcc_overvoltage
     detects_case: microchip_at24c02c_vcc_overvoltage_detected
     fixed_case: microchip_at24c02c_i2c_eeprom_power_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_microchip_mcp23017_vdd_overvoltage
+    detects_case: microchip_mcp23017_vdd_overvoltage_detected
+    fixed_case: microchip_mcp23017_i2c_gpio_expander_power_passes
     fixes_findings:
       - POWER_TREE_VALID
 

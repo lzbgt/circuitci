@@ -1,0 +1,36 @@
+* Reduced Microchip MCP23017 I2C GPIO expander board-observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary
+* board-level VDD, I2C pull-up, address-select, reset, interrupt, and selected
+* GPIO line-state checks. It does not model I2C transactions, registers,
+* interrupt-on-change logic, GPIO direction, weak pull-ups, or timing sign-off.
+
+.subckt CIRCUITCI_MCP23017_I2C_GPIO_EXPANDER_OBSERVATION VDD VSS SCL SDA A0 A1 A2 RESET INTA INTB GPA0 GPA1 GPA2 GPA3 GPA4 GPA5 GPA6 GPA7 GPB0 GPB1 GPB2 GPB3 GPB4 GPB5 GPB6 GPB7
+* All I2C, address, reset, interrupt, and GPIO pins are high impedance.
+* External pull-ups, pull-downs, host sources, loads, and board metadata define
+* the observable line state.
+RVDD VDD VSS 1G
+RSCL SCL VSS 1G
+RSDA SDA VSS 1G
+RA0 A0 VSS 1G
+RA1 A1 VSS 1G
+RA2 A2 VSS 1G
+RRESET RESET VSS 1G
+RINTA INTA VSS 1G
+RINTB INTB VSS 1G
+RGPA0 GPA0 VSS 1G
+RGPA1 GPA1 VSS 1G
+RGPA2 GPA2 VSS 1G
+RGPA3 GPA3 VSS 1G
+RGPA4 GPA4 VSS 1G
+RGPA5 GPA5 VSS 1G
+RGPA6 GPA6 VSS 1G
+RGPA7 GPA7 VSS 1G
+RGPB0 GPB0 VSS 1G
+RGPB1 GPB1 VSS 1G
+RGPB2 GPB2 VSS 1G
+RGPB3 GPB3 VSS 1G
+RGPB4 GPB4 VSS 1G
+RGPB5 GPB5 VSS 1G
+RGPB6 GPB6 VSS 1G
+RGPB7 GPB7 VSS 1G
+.ends CIRCUITCI_MCP23017_I2C_GPIO_EXPANDER_OBSERVATION

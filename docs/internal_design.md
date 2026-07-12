@@ -609,10 +609,10 @@ and `.noise` output/input source settings. `src/gui/library_observation_presets.
 owns Library/Example `Create Checks` orchestration, generated transient scenario
 creation, and probe insertion. `src/gui/library_observation_preset_kinds.rs`
 owns category-specific generated checks for comms supply/output states, gate
-drivers, PWM drivers, IMUs, environmental sensors, SPI flash, I2C EEPROM, MCU
-line-state checks, level shifters, logic buffers, and protection clamps,
-keeping the orchestration module below the 2000-line source guard as more model
-families are added.
+drivers, PWM drivers, IMUs, environmental sensors, SPI flash, I2C EEPROM, I2C
+I/O expanders, MCU line-state checks, level shifters, logic buffers, and
+protection clamps, keeping the orchestration module below the 2000-line source
+guard as more model families are added.
 `src/gui/analog_ac_presets.rs` owns GUI Bode check
 presets that append ordinary AC assertion rows for common low-pass and
 unity-gain observations plus loop-stability phase/gain margin checks.

@@ -270,6 +270,15 @@ const AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v_vcc", "v_sda", "v_scl", "v_a0", "v_a1", "v_a2", "v_wp"];
 const AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V AT24C02C I2C EEPROM with idle pull-ups, low address pins, and WP low";
+const MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_microchip_mcp23017_i2c_gpio_expander_observation/project.yaml";
+const MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXAMPLE_NAME: &str =
+    "good_microchip_mcp23017_i2c_gpio_expander_observation";
+const MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd", "v_sda", "v_scl", "v_a0", "v_a1", "v_a2", "v_reset", "v_inta", "v_intb", "v_gpa0",
+    "v_gpb0",
+];
+const MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_FREQUENCY: &str = "3.3 V MCP23017 I2C expander with idle pull-ups, low address pins, released reset, idle interrupts, GPA0 high, and GPB0 low";
 const ESDS552_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_ti_esds552_rs485_esd_observation/project.yaml";
 const ESDS552_SCOPE_EXAMPLE_NAME: &str = "good_ti_esds552_rs485_esd_observation";
@@ -859,6 +868,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_TRACES,
         expected_frequency: AT24C02C_I2C_EEPROM_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UEEPROM"),
+    },
+    GuiProjectExample {
+        id: "mcp23017_i2c_gpio_expander_scope",
+        category: "I/O Expander",
+        open_label: "Open MCP23017 I/O Expander Example",
+        run_label: "Open MCP23017 + Run Scopes",
+        workflow_title: "MCP23017 I2C I/O Expander Workflow",
+        summary: "Source-backed MCP23017 rail, I2C pull-up, address, reset, interrupt, and GPIO observation.",
+        project_path: MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXAMPLE_PROJECT,
+        project_name: MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXAMPLE_NAME,
+        expected_traces: MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_TRACES,
+        expected_frequency: MCP23017_I2C_GPIO_EXPANDER_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UIOX"),
     },
     GuiProjectExample {
         id: "esds552_scope",
