@@ -1,6 +1,17 @@
 component_id: vendor.nordic.nrf52840
-version: 0.1.0
+version: 0.2.0
 category: mcu
+simulation:
+  spice:
+    model_name: CIRCUITCI_NRF52840_BOARD_OBSERVATION
+    model_type: subckt
+    model_path: models/spice/nordic/nrf52840_board_observation.lib
+    provenance: datasheet_limited_generic_behavioral
+    pin_order: [VDD, VDDH, VBUS, VSS, nRESET, SWDCLK, SWDIO, P0_06, P0_08, USB_DP, USB_DM, ANT]
+    valid_operating_notes:
+      - Reduced high-impedance board-observation model for preliminary VDD, VDDH, VBUS, reset, SWD, UART/GPIO idle, USB boundary, and antenna feed-state checks.
+      - Uses source-backed 1.7 V to 3.6 V normal VDD range, 2.5 V to 5.5 V VDDH range, 4.35 V to 5.5 V VBUS range, reset/SWD/USB/RF pin identities, and named GPIO/UART-capable pin boundaries.
+      - GPIO thresholds and drive strength, firmware, BLE/Thread/Zigbee radio behavior, RF matching, USB signal integrity, DCDC networks, reset UICR programming, thermal behavior, and transient current waveforms are out of scope.
 ports:
   VDD:
     kind: electrical_power
@@ -121,6 +132,7 @@ model_quality:
     - optional_usb_vbus_supply_range
     - reset_pin_polarity
     - swd_usb_gpio_pin_boundary
+    - preliminary_generated_spice_observation
   not_valid_for:
     - high_voltage_mode_regulator_sequencing
     - gpio_threshold_or_drive_strength_signoff

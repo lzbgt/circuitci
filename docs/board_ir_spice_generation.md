@@ -275,6 +275,14 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
   parameters, not inferred firmware execution, boot ROM timing, SWD
   transactions, flash programming effects, package mapping, layout, thermal, or
   EMC behavior.
+- `examples/good_nordic_nrf52840_board_observation` proves the Nordic
+  nRF52840 MCU model can use a reduced high-impedance generated-SPICE face for
+  preliminary VDD, VDDH, VBUS, reset, SWD, UART/GPIO idle, USB boundary, and
+  antenna feed-state observations. The macro observes explicit board sources,
+  pull resistors, and loads, not firmware execution, reset UICR programming,
+  GPIO thresholds or drive strength, USB protocol, RF behavior, antenna
+  matching, DCDC support networks, thermal behavior, or transient current
+  waveforms.
 - `examples/good_jst_xh_servo_connector_observation` and
   `examples/good_jst_vh_actuator_bus_connector_observation` prove the
   source-backed JST XH/VH connector models can use reduced generated-SPICE

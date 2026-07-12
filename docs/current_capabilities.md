@@ -95,7 +95,9 @@ IOVDD/VREG_VIN/DVDD/USB_VDD/ADC_AVDD supply ranges, internal `VREG_VOUT`
 external-flash versus BOOTSEL-USB strap checks. The nRF52840 pack uses
 official Nordic documentation and a retained product-spec PDF mirror to model
 `VDD`, optional `VDDH`, optional `VBUS`, reset, SWD, USB, and RF antenna
-board-boundary pins. The STM8S003F3P6 pack uses official ST documentation to
+board-boundary pins, plus a reduced generated-SPICE high-impedance observation
+face for preliminary reset/SWD/UART/GPIO/USB/antenna board-bias checks. The
+STM8S003F3P6 pack uses official ST documentation to
 model `VDD`, `VCAP`, active-low `NRST`, SWIM, and UART1 board-boundary pins.
 The STC15W408AS pack uses official STC documentation to model the `VCC` range,
 active-high reset boundary, and primary/alternate UART pins. See

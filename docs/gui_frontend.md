@@ -353,11 +353,14 @@ reference. Direct-open regulator and charger/power-path examples include
 AMS1117, TPS54331, TPS62162, TPS63802, TPS61023, TPS2121, TPS2115A, MCP73831, BQ24075, and BQ25798
 fixtures for generated-SPICE rail, charge-current, and load-current
 observations. Direct-open USB/debug bridge examples include CH340C, CH340N,
-CP2102N, FT232R, CH347, CMSIS-DAP SWD, STM32L431 boot/UART/SWD, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM
+CP2102N, FT232R, CH347, CMSIS-DAP SWD, STM32L431 boot/UART/SWD,
+nRF52840 board, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM
 boot/USB, LicheeRV-Nano-W, AT32F435 motion-core, and AT32M416 motor-control fixtures for
 generated-SPICE rail, reset/strap, USB, UART, SWD, motion-enable, fault-IRQ, CAN,
 RS-485, servo-enable, PWM, driver-interface, encoder, current-sense, and
-output-state observations. The
+output-state observations. The nRF52840 board fixture opens a generated-SPICE
+VDD/VDDH/VBUS, reset, SWD, UART/GPIO idle, USB boundary, and antenna feed-state
+observation. The
 TXS0108E level-shifter fixture opens a
 mixed-voltage generated-SPICE A-to-B observation with rail, OE, input, and
 translated-output checks. The NL27WZ17 logic-buffer fixture opens a
@@ -664,7 +667,7 @@ form:
   astable-style fixture, RC low-pass sine fixture, comparator threshold
   fixture, op-amp buffer fixture, CH340C USB-UART bridge fixture, CH340N
   USB-UART bridge fixture, CP2102N USB-UART bridge fixture, FT232R USB-UART bridge fixture, CH347 USB-JTAG
-  debug bridge fixture, CMSIS-DAP SWD probe fixture, STM32L431 boot/UART/SWD fixture, ESP32-WROOM-32E boot/UART
+  debug bridge fixture, CMSIS-DAP SWD probe fixture, STM32L431 boot/UART/SWD fixture, nRF52840 board fixture, ESP32-WROOM-32E boot/UART
   fixture, ESP32-S3-WROOM boot/USB fixture, LicheeRV-Nano-W module fixture, AT32F435 motion-core fixture, AT32M416 motor-control fixture, TXS0108E level-shifter
   fixture, NL27WZ17 logic-buffer fixture, TPD2EUSB30 USB ESD fixture, PRTR5V0U2X USB ESD fixture, ESD2CAN24-Q1 CAN ESD fixture, TCAN3413 CAN transceiver fixture, DRV8323 gate-driver fixture, PCA9685 PWM-driver fixture, ICM-42688-P IMU fixture, BME280 I2C sensor fixture, SHT31-DIS I2C sensor fixture, W25Q64JV SPI flash fixture, ESDS552 RS-485 ESD fixture, THVD1450 RS-485 transceiver fixture, AP2112K LDO rail fixture, AMS1117 LDO rail fixture, TPS54331 buck rail fixture,
   TPS62162 buck rail fixture,
@@ -682,7 +685,7 @@ form:
   Readiness. Examples that contain a known SPICE-ready function block, such as
   the comparator threshold, op-amp buffer, CH340C USB-UART, CH340N USB-UART,
   CP2102N USB-UART, FT232R USB-UART, CH347 USB-JTAG, CMSIS-DAP SWD,
-  STM32L431 boot/UART/SWD, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB, LicheeRV-Nano-W module,
+  STM32L431 boot/UART/SWD, nRF52840 board, ESP32-WROOM-32E boot/UART, ESP32-S3-WROOM boot/USB, LicheeRV-Nano-W module,
   AT32F435 motion core, AT32M416 motor control,
   TXS0108E level shifter, NL27WZ17 logic buffer,
   TPD2EUSB30 USB ESD, PRTR5V0U2X USB ESD, ESD2CAN24-Q1 CAN ESD, TCAN3413 CAN transceiver, DRV8323 gate driver, PCA9685 PWM driver, ICM-42688-P IMU, BME280 I2C sensor, SHT31-DIS I2C sensor, W25Q64JV SPI flash, ESDS552 RS-485 ESD, THVD1450 RS-485 transceiver, AP2112K LDO, AMS1117 LDO, TPS54331 buck, TPS62162 buck, TPS63802 buck-boost, TPS61023 boost, TPS2121 power mux, TPS2115A power mux,

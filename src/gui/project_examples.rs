@@ -84,6 +84,23 @@ const STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_TRACES: &[&str] = &[
 ];
 const STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_FREQUENCY: &str =
     "3.3 V STM32L431 with NRST released, BOOT0 low, USART1 idle high, and SWD idle lines";
+const NRF52840_BOARD_SCOPE_EXAMPLE_PROJECT: &str =
+    "examples/good_nordic_nrf52840_board_observation/project.yaml";
+const NRF52840_BOARD_SCOPE_EXAMPLE_NAME: &str = "good_nordic_nrf52840_board_observation";
+const NRF52840_BOARD_SCOPE_EXPECTED_TRACES: &[&str] = &[
+    "v_vdd",
+    "v_vddh",
+    "v_vbus",
+    "v_reset_n",
+    "v_swdio",
+    "v_swdclk",
+    "v_uart_tx",
+    "v_uart_rx",
+    "v_usb_dp",
+    "v_usb_dm",
+    "v_ant",
+];
+const NRF52840_BOARD_SCOPE_EXPECTED_FREQUENCY: &str = "3.3 V nRF52840 with VDD/VDDH, 5 V VBUS, released reset, SWD, UART, USB, and antenna idle states";
 const ESP32_S3_WROOM_SCOPE_EXAMPLE_PROJECT: &str =
     "examples/good_esp32_s3_wroom_boot_usb_observation/project.yaml";
 const ESP32_S3_WROOM_SCOPE_EXAMPLE_NAME: &str = "good_esp32_s3_wroom_boot_usb_observation";
@@ -561,6 +578,19 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
         expected_traces: STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_TRACES,
         expected_frequency: STM32L431_BOOT_UART_SWD_SCOPE_EXPECTED_FREQUENCY,
         observation_preset_component: Some("UMCU"),
+    },
+    GuiProjectExample {
+        id: "nrf52840_board_scope",
+        category: "MCU",
+        open_label: "Open nRF52840 Board Example",
+        run_label: "Open nRF52840 + Run Scopes",
+        workflow_title: "nRF52840 Board Workflow",
+        summary: "Source-backed nRF52840 rail, reset, SWD, UART, USB, and antenna boundary observation.",
+        project_path: NRF52840_BOARD_SCOPE_EXAMPLE_PROJECT,
+        project_name: NRF52840_BOARD_SCOPE_EXAMPLE_NAME,
+        expected_traces: NRF52840_BOARD_SCOPE_EXPECTED_TRACES,
+        expected_frequency: NRF52840_BOARD_SCOPE_EXPECTED_FREQUENCY,
+        observation_preset_component: Some("UNRF"),
     },
     GuiProjectExample {
         id: "esp32_s3_wroom_boot_usb_scope",

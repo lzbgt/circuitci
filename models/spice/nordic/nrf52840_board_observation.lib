@@ -1,0 +1,22 @@
+* Reduced Nordic nRF52840 board-boundary observation behavior.
+* This source-backed macro-model is intentionally limited to preliminary rail,
+* reset, SWD, UART/GPIO idle, USB boundary, and antenna feed-state checks. It
+* does not model GPIO thresholds or drive strength, firmware, BLE/Thread/Zigbee
+* radio behavior, RF matching, USB signal integrity, DCDC networks, reset UICR
+* programming, thermal behavior, or transient current waveforms.
+
+.subckt CIRCUITCI_NRF52840_BOARD_OBSERVATION VDD VDDH VBUS VSS nRESET SWDCLK SWDIO P0_06 P0_08 USB_DP USB_DM ANT
+* All non-supply pins are high impedance. External pull-ups, pull-downs,
+* sources, and board metadata define the observable state.
+RVDD VDD VSS 1G
+RVDDH VDDH VSS 1G
+RVBUS VBUS VSS 1G
+RRESET nRESET VSS 1G
+RSWDCLK SWDCLK VSS 1G
+RSWDIO SWDIO VSS 1G
+RP006 P0_06 VSS 1G
+RP008 P0_08 VSS 1G
+RUSBDP USB_DP VSS 1G
+RUSBDM USB_DM VSS 1G
+RANT ANT VSS 1G
+.ends CIRCUITCI_NRF52840_BOARD_OBSERVATION

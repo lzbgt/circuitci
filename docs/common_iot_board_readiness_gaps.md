@@ -303,11 +303,13 @@ VREG_VOUT-to-DVDD regulator budget, RUN reset polarity, and QSPI_SS BOOTSEL
 bias; USB signal integrity, oscillator accuracy, flash timing, BOOTROM
 protocol behavior, firmware execution, and transient current waveforms remain
 outside the static model. The nRF52840 slice proves normal-voltage `VDD`,
-optional `VDDH`, optional USB `VBUS`, reset/SWD/USB/RF pin boundaries, and a
-VDD-overvoltage public fixture; GPIO thresholds, DCDC support networks,
-antenna matching, RF protocol behavior, UICR reset programming, firmware
-execution, and thermal/transient-current behavior remain outside the static
-model. The STM8S003F3P6 slice proves `VDD`, required `VCAP` pin binding,
+optional `VDDH`, optional USB `VBUS`, reset/SWD/USB/RF pin boundaries, a
+VDD-overvoltage public fixture, and a reduced generated-SPICE high-impedance
+observation face for board-side reset/SWD/UART/GPIO/USB/antenna bias checks;
+GPIO thresholds, DCDC support networks, antenna matching, RF protocol behavior,
+UICR reset programming, firmware execution, and thermal/transient-current
+behavior remain outside the model. The STM8S003F3P6 slice proves `VDD`,
+required `VCAP` pin binding,
 active-low `NRST`, SWIM, UART1 TX/RX pin boundaries, and a VDD-overvoltage
 public fixture; `VCAP` component sizing, formula-based GPIO thresholds,
 SWIM/UART protocol behavior, firmware execution, and thermal/transient-current

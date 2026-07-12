@@ -1248,6 +1248,10 @@ cases:
     project: ../examples/good_nordic_nrf52840_normal_voltage_power/project.yaml
     expect: pass
 
+  - id: nordic_nrf52840_board_observation_passes
+    project: ../examples/good_nordic_nrf52840_board_observation/project.yaml
+    expect: pass
+
   - id: nordic_nrf52840_vdd_overvoltage_detected
     project: ../examples/bad_nordic_nrf52840_vdd_overvoltage/project.yaml
     expect: fail

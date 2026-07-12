@@ -1,0 +1,519 @@
+project:
+  name: good_nordic_nrf52840_board_observation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor
+
+board:
+  schematic:
+    component_symbols:
+      VDD: Simulation_SPICE:VDC
+      VUSB: Simulation_SPICE:VDC
+      UNRF: MCU_Nordic:nRF52840-QIAA
+      RRESET: Device:R
+      RSWDIO: Device:R
+      RSWDCLK: Device:R
+      RTX: Device:R
+      RRX: Device:R
+      RDP: Device:R
+      RDM: Device:R
+      RANT: Device:R
+    node_styles:
+      component:VDD: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VUSB: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:UNRF: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:RRESET: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSWDIO: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RSWDCLK: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RRX: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RDP: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RDM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RANT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+    node_positions:
+      component:VDD: { x: 72.0, y: 156.0 }
+      component:VUSB: { x: 72.0, y: 316.0 }
+      component:UNRF: { x: 360.0, y: 304.0 }
+      component:RRESET: { x: 800.0, y: 96.0 }
+      component:RSWDIO: { x: 800.0, y: 184.0 }
+      component:RSWDCLK: { x: 800.0, y: 272.0 }
+      component:RTX: { x: 800.0, y: 360.0 }
+      component:RRX: { x: 800.0, y: 448.0 }
+      component:RDP: { x: 800.0, y: 536.0 }
+      component:RDM: { x: 800.0, y: 608.0 }
+      component:RANT: { x: 560.0, y: 640.0 }
+      net:nrf_3v3: { x: 224.0, y: 88.0 }
+      net:usb_5v: { x: 224.0, y: 248.0 }
+      net:reset_n: { x: 688.0, y: 96.0 }
+      net:swdio: { x: 688.0, y: 184.0 }
+      net:swdclk: { x: 688.0, y: 272.0 }
+      net:uart_tx: { x: 688.0, y: 360.0 }
+      net:uart_rx: { x: 688.0, y: 448.0 }
+      net:usb_dp: { x: 688.0, y: 536.0 }
+      net:usb_dm: { x: 688.0, y: 608.0 }
+      net:ant_feed: { x: 520.0, y: 592.0 }
+      net:gnd: { x: 360.0, y: 680.0 }
+    wire_routes:
+      VDD.P->nrf_3v3:
+        points:
+          - { x: 144.0, y: 156.0 }
+          - { x: 224.0, y: 88.0 }
+      VDD.N->gnd:
+        points:
+          - { x: 112.0, y: 680.0 }
+      VUSB.P->usb_5v:
+        points:
+          - { x: 144.0, y: 316.0 }
+          - { x: 224.0, y: 248.0 }
+      VUSB.N->gnd:
+        points:
+          - { x: 112.0, y: 680.0 }
+      UNRF.VDD->nrf_3v3:
+        points:
+          - { x: 288.0, y: 168.0 }
+          - { x: 224.0, y: 88.0 }
+      UNRF.VDDH->nrf_3v3:
+        points:
+          - { x: 288.0, y: 216.0 }
+          - { x: 224.0, y: 88.0 }
+      UNRF.VBUS->usb_5v:
+        points:
+          - { x: 288.0, y: 264.0 }
+          - { x: 224.0, y: 248.0 }
+      UNRF.VSS->gnd:
+        points:
+          - { x: 360.0, y: 680.0 }
+      UNRF.nRESET->reset_n:
+        points:
+          - { x: 600.0, y: 144.0 }
+          - { x: 688.0, y: 96.0 }
+      UNRF.SWDIO->swdio:
+        points:
+          - { x: 600.0, y: 200.0 }
+          - { x: 688.0, y: 184.0 }
+      UNRF.SWDCLK->swdclk:
+        points:
+          - { x: 600.0, y: 256.0 }
+          - { x: 688.0, y: 272.0 }
+      UNRF.P0_06->uart_tx:
+        points:
+          - { x: 600.0, y: 312.0 }
+          - { x: 688.0, y: 360.0 }
+      UNRF.P0_08->uart_rx:
+        points:
+          - { x: 600.0, y: 368.0 }
+          - { x: 688.0, y: 448.0 }
+      UNRF.USB_DP->usb_dp:
+        points:
+          - { x: 600.0, y: 424.0 }
+          - { x: 688.0, y: 536.0 }
+      UNRF.USB_DM->usb_dm:
+        points:
+          - { x: 600.0, y: 480.0 }
+          - { x: 688.0, y: 608.0 }
+      UNRF.ANT->ant_feed:
+        points:
+          - { x: 520.0, y: 536.0 }
+          - { x: 520.0, y: 592.0 }
+      RRESET.A->nrf_3v3:
+        points:
+          - { x: 800.0, y: 88.0 }
+          - { x: 224.0, y: 88.0 }
+      RRESET.B->reset_n:
+        points:
+          - { x: 800.0, y: 96.0 }
+      RSWDIO.A->nrf_3v3:
+        points:
+          - { x: 800.0, y: 88.0 }
+          - { x: 224.0, y: 88.0 }
+      RSWDIO.B->swdio:
+        points:
+          - { x: 800.0, y: 184.0 }
+      RSWDCLK.A->swdclk:
+        points:
+          - { x: 800.0, y: 272.0 }
+      RSWDCLK.B->gnd:
+        points:
+          - { x: 800.0, y: 680.0 }
+      RTX.A->nrf_3v3:
+        points:
+          - { x: 800.0, y: 88.0 }
+          - { x: 224.0, y: 88.0 }
+      RTX.B->uart_tx:
+        points:
+          - { x: 800.0, y: 360.0 }
+      RRX.A->nrf_3v3:
+        points:
+          - { x: 800.0, y: 88.0 }
+          - { x: 224.0, y: 88.0 }
+      RRX.B->uart_rx:
+        points:
+          - { x: 800.0, y: 448.0 }
+      RDP.A->usb_dp:
+        points:
+          - { x: 800.0, y: 536.0 }
+      RDP.B->gnd:
+        points:
+          - { x: 800.0, y: 680.0 }
+      RDM.A->usb_dm:
+        points:
+          - { x: 800.0, y: 608.0 }
+      RDM.B->gnd:
+        points:
+          - { x: 800.0, y: 680.0 }
+      RANT.A->ant_feed:
+        points:
+          - { x: 560.0, y: 592.0 }
+      RANT.B->gnd:
+        points:
+          - { x: 560.0, y: 680.0 }
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      part_number: NRF52840_3V3_SOURCE
+      pins:
+        P: nrf_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+    UNRF:
+      model: vendor.nordic.nrf52840
+      part_number: NRF52840-QIAA
+      power_domains:
+        VDD: nrf_3v3
+        VDDH: nrf_3v3
+        VBUS: usb_5v
+      pins:
+        VDD: nrf_3v3
+        VDDH: nrf_3v3
+        VBUS: usb_5v
+        VSS: gnd
+        nRESET: reset_n
+        SWDCLK: swdclk
+        SWDIO: swdio
+        P0_06: uart_tx
+        P0_08: uart_rx
+        USB_DP: usb_dp
+        USB_DM: usb_dm
+        ANT: ant_feed
+    RRESET:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: nrf_3v3
+        B: reset_n
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RSWDIO:
+      model: generic.analog.resistor
+      part_number: 10k
+      pins:
+        A: nrf_3v3
+        B: swdio
+      spice:
+        primitive: resistor
+        value_ohm: 10000.0
+    RSWDCLK:
+      model: generic.analog.resistor
+      part_number: 100k
+      pins:
+        A: swdclk
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000.0
+    RTX:
+      model: generic.analog.resistor
+      part_number: 47k
+      pins:
+        A: nrf_3v3
+        B: uart_tx
+      spice:
+        primitive: resistor
+        value_ohm: 47000.0
+    RRX:
+      model: generic.analog.resistor
+      part_number: 47k
+      pins:
+        A: nrf_3v3
+        B: uart_rx
+      spice:
+        primitive: resistor
+        value_ohm: 47000.0
+    RDP:
+      model: generic.analog.resistor
+      part_number: 1M
+      pins:
+        A: usb_dp
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1000000.0
+    RDM:
+      model: generic.analog.resistor
+      part_number: 1M
+      pins:
+        A: usb_dm
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1000000.0
+    RANT:
+      model: generic.analog.resistor
+      part_number: 50R
+      pins:
+        A: ant_feed
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 50.0
+  nets:
+    nrf_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 0.02
+    reset_n:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    swdio:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    swdclk:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    uart_tx:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    uart_rx:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    ant_feed:
+      kind: digital_or_analog
+      nominal_voltage: 0.0
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: nrf52840_board_observation
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VUSB
+          - UNRF
+          - RRESET
+          - RSWDIO
+          - RSWDCLK
+          - RTX
+          - RRX
+          - RDP
+          - RDM
+          - RANT
+      model_files:
+        - path: ../../models/spice/nordic/nrf52840_board_observation.lib
+          sha256: 67b3deaa843f9f158ab31e9376e1b8b94b04c0790dd9e247bab6449026f9080d
+      node_bindings:
+        - { node: rail3v3, net: nrf_3v3 }
+        - { node: usb5v, net: usb_5v }
+        - { node: reset_n, net: reset_n }
+        - { node: swdio, net: swdio }
+        - { node: swdclk, net: swdclk }
+        - { node: uart_tx, net: uart_tx }
+        - { node: uart_rx, net: uart_rx }
+        - { node: usb_dp, net: usb_dp }
+        - { node: usb_dm, net: usb_dm }
+        - { node: ant, net: ant_feed }
+        - { node: "0", net: gnd }
+      pin_bindings:
+        - { node: rail3v3, endpoint: { component: VDD, pin: P } }
+        - { node: "0", endpoint: { component: VDD, pin: N } }
+        - { node: usb5v, endpoint: { component: VUSB, pin: P } }
+        - { node: "0", endpoint: { component: VUSB, pin: N } }
+        - { node: rail3v3, endpoint: { component: UNRF, pin: VDD } }
+        - { node: rail3v3, endpoint: { component: UNRF, pin: VDDH } }
+        - { node: usb5v, endpoint: { component: UNRF, pin: VBUS } }
+        - { node: "0", endpoint: { component: UNRF, pin: VSS } }
+        - { node: reset_n, endpoint: { component: UNRF, pin: nRESET } }
+        - { node: swdclk, endpoint: { component: UNRF, pin: SWDCLK } }
+        - { node: swdio, endpoint: { component: UNRF, pin: SWDIO } }
+        - { node: uart_tx, endpoint: { component: UNRF, pin: P0_06 } }
+        - { node: uart_rx, endpoint: { component: UNRF, pin: P0_08 } }
+        - { node: usb_dp, endpoint: { component: UNRF, pin: USB_DP } }
+        - { node: usb_dm, endpoint: { component: UNRF, pin: USB_DM } }
+        - { node: ant, endpoint: { component: UNRF, pin: ANT } }
+        - { node: rail3v3, endpoint: { component: RRESET, pin: A } }
+        - { node: reset_n, endpoint: { component: RRESET, pin: B } }
+        - { node: rail3v3, endpoint: { component: RSWDIO, pin: A } }
+        - { node: swdio, endpoint: { component: RSWDIO, pin: B } }
+        - { node: swdclk, endpoint: { component: RSWDCLK, pin: A } }
+        - { node: "0", endpoint: { component: RSWDCLK, pin: B } }
+        - { node: rail3v3, endpoint: { component: RTX, pin: A } }
+        - { node: uart_tx, endpoint: { component: RTX, pin: B } }
+        - { node: rail3v3, endpoint: { component: RRX, pin: A } }
+        - { node: uart_rx, endpoint: { component: RRX, pin: B } }
+        - { node: usb_dp, endpoint: { component: RDP, pin: A } }
+        - { node: "0", endpoint: { component: RDP, pin: B } }
+        - { node: usb_dm, endpoint: { component: RDM, pin: A } }
+        - { node: "0", endpoint: { component: RDM, pin: B } }
+        - { node: ant, endpoint: { component: RANT, pin: A } }
+        - { node: "0", endpoint: { component: RANT, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 40.0
+        max_step_us: 0.2
+      stimuli:
+        - name: board_boundary_idle_snapshot
+          description: nRF52840 board-boundary snapshot with valid rails, reset released, SWD/UART idle bias, USB idle bias, and antenna feed termination.
+      probes:
+        - name: v_vdd
+          expression: V(rail3v3)
+        - name: v_vddh
+          expression: V(rail3v3)
+        - name: v_vbus
+          expression: V(usb5v)
+        - name: v_reset_n
+          expression: V(reset_n)
+        - name: v_swdio
+          expression: V(swdio)
+        - name: v_swdclk
+          expression: V(swdclk)
+        - name: v_uart_tx
+          expression: V(uart_tx)
+        - name: v_uart_rx
+          expression: V(uart_rx)
+        - name: v_usb_dp
+          expression: V(usb_dp)
+        - name: v_usb_dm
+          expression: V(usb_dm)
+        - name: v_ant
+          expression: V(ant)
+      assertions:
+        - name: vdd_above_operating_min
+          probe: v_vdd
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 1.7
+        - name: vdd_below_operating_max
+          probe: v_vdd
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 3.6
+        - name: vddh_above_operating_min
+          probe: v_vddh
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.5
+        - name: vddh_below_operating_max
+          probe: v_vddh
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: vbus_above_operating_min
+          probe: v_vbus
+          aggregation: min
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 4.35
+        - name: vbus_below_operating_max
+          probe: v_vbus
+          aggregation: max
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 5.5
+        - name: reset_released_high
+          probe: v_reset_n
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: swdio_idle_high
+          probe: v_swdio
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: swdclk_idle_low
+          probe: v_swdclk
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: uart_tx_idle_high
+          probe: v_uart_tx
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: uart_rx_idle_high
+          probe: v_uart_rx
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: above
+          threshold_v: 2.7
+        - name: usb_dp_idle_low
+          probe: v_usb_dp
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: usb_dm_idle_low
+          probe: v_usb_dm
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.99
+        - name: antenna_feed_dc_terminated
+          probe: v_ant
+          aggregation: mean
+          start_us: 1.0
+          end_us: 40.0
+          relation: below
+          threshold_v: 0.1

@@ -904,15 +904,16 @@ exercise board-level power-tree and BOOTSEL strap checks, but not USB signal
 integrity, crystal startup/accuracy, QSPI flash protocol timing, BOOTROM USB
 protocol behavior, firmware execution, thermal behavior, or transient current
 waveforms.
-`vendor.nordic.nrf52840` adds a source-backed static nRF52-class pack without
-a generated-SPICE face yet. Official Nordic documentation backs its `VDD`
-normal-voltage range, optional `VDDH` high-voltage range, optional USB `VBUS`
-range, configurable `P0.18` reset boundary, SWD pins, USB pins, and antenna
-pin identity. That model can exercise board-level supply voltage checks, but
-not high-voltage-mode regulator sequencing, GPIO threshold or drive-strength
-sign-off, DCDC support networks, USB signal integrity, antenna matching, NFC,
-RF protocol behavior, UICR reset programming, firmware execution, thermal
-behavior, or transient current waveforms.
+`vendor.nordic.nrf52840` adds a source-backed nRF52-class pack with a reduced
+generated-SPICE high-impedance observation face. Official Nordic documentation
+backs its `VDD` normal-voltage range, optional `VDDH` high-voltage range,
+optional USB `VBUS` range, configurable `P0.18` reset boundary, SWD pins, USB
+pins, and antenna pin identity. That model can exercise board-level supply
+voltage checks and preliminary reset/SWD/UART/GPIO/USB/antenna board-bias
+observations, but not high-voltage-mode regulator sequencing, GPIO threshold or
+drive-strength sign-off, DCDC support networks, USB signal integrity, antenna
+matching, NFC, RF protocol behavior, UICR reset programming, firmware
+execution, thermal behavior, or transient current waveforms.
 `vendor.st.stm8s003f3p6` adds a source-backed static STM8S003F3P6 pack without
 a generated-SPICE face yet. Official ST documentation backs its `VDD` supply
 range, required `VCAP` board pin, active-low `NRST`, `PD1/SWIM`, and
