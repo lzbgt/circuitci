@@ -31,6 +31,8 @@ The generated project:
   commands while importing `tran` timing and reviewed raw `.meas`/`meas`
   statements when present,
 - emits voltage probes for discovered non-ground SPICE nodes,
+- projects supported `.save`, `.probe`, `.print`, and `.plot` output
+  expressions into scenario probes for GUI/waveform review,
 - creates a file-backed `analog_dc` scenario when the deck contains `.op`,
 - creates a file-backed `analog_dc_sweep` scenario when the deck contains a
   numeric `.dc SOURCE START STOP STEP` sweep,
@@ -118,6 +120,16 @@ instead of becoming Board IR primitive metadata. Voltage-output dependent
 sources (`E`, `H`, and `B` with `V=`) get the same branch probes. Those current
 probes support GUI oscilloscope inspection of supply or stimulus source current
 without requiring generated-from-Board branch instrumentation.
+
+Supported output-control directives add scenario probes without changing the
+file-backed solver deck. `.save` and `.probe` accept explicit `V(...)` and
+`I(...)` expressions; `.save all` is accepted as a no-op because imported
+scenarios already include voltage probes for all discovered non-ground nodes.
+Deck-body `.print TYPE ...` and `.plot TYPE ...` project `V(...)` and `I(...)`
+outputs for supported analysis types such as `tran`, `ac`, `dc`, `op`, `noise`,
+`tf`, `pz`, and `sens`. Closed `.control` blocks may also use `print V(...)` or
+`plot I(...)`. Unsupported algebraic output expressions fail closed until the
+probe schema can preserve them without losing meaning.
 
 ## File-Backed Scenario Contract
 
@@ -249,6 +261,9 @@ The importer rejects malformed element lines instead of guessing:
   least one `DISTOF1` source, requires `DISTOF2` sources when `F2OVERF1` is
   present, and requires one supported `V(...)` or `I(...)` distortion output
   expression from `.print disto`, `.plot disto`, or a control-block `print`,
+- unsupported `.save`, `.probe`, `.print`, or `.plot` output expressions;
+  imported scenario probes currently accept only `V(...)`, `I(...)`, and
+  no-op `all`,
 - malformed `.four` or control-block `fourier` cards; imported Fourier
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,

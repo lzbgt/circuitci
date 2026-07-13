@@ -6,12 +6,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[path = "spice_elements.rs"]
+mod spice_elements;
 #[path = "spice_scenarios.rs"]
 mod spice_scenarios;
 #[cfg(test)]
 #[path = "spice_tests.rs"]
 mod spice_tests;
 
+use spice_elements::{parse_element, parse_spice_number};
 use spice_scenarios::{
     ac_scenario_for_yaml, dc_sweep_scenario_for_yaml, distortion_scenario_for_yaml,
     fourier_scenario_for_yaml, measure_scenario_for_yaml, noise_scenario_for_yaml,
@@ -45,6 +48,7 @@ struct ParsedDeck {
     distortion: Option<DistortionSpec>,
     fourier: Vec<FourierSpec>,
     measures: Vec<MeasureStatementSpec>,
+    explicit_probes: Vec<OutputProbeSpec>,
 }
 
 #[derive(Debug)]
@@ -175,6 +179,12 @@ struct MeasureStatementSpec {
     mode: String,
     name: String,
     statement: String,
+}
+
+#[derive(Debug, Clone)]
+struct OutputProbeSpec {
+    expression: String,
+    quantity: Option<&'static str>,
 }
 
 #[derive(Debug)]
@@ -528,6 +538,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut fourier = Vec::new();
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
+    let mut explicit_probes = Vec::new();
     let mut in_control = false;
     let mut control_distortion_active = false;
     for line in logical_lines {
@@ -582,7 +593,12 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".print" | ".plot" | "print" | "plot" => {
                     if control_distortion_active && distortion_output_expression.is_none() {
                         distortion_output_expression = parse_control_distortion_output(&tokens)?;
+                    } else {
+                        explicit_probes.extend(parse_control_probe_outputs(&tokens)?);
                     }
+                }
+                ".save" | "save" | ".probe" | "probe" => {
+                    explicit_probes.extend(parse_save_probe_outputs(&tokens)?);
                 }
                 ".four" | "four" | "fourier" => {
                     control_distortion_active = false;
@@ -614,7 +630,11 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".disto" => distortion_directive = Some(parse_distortion(&tokens)?),
                 ".print" | ".plot" => {
                     distortion_output_expression = parse_print_or_plot_distortion_output(&tokens)?
-                        .or(distortion_output_expression)
+                        .or(distortion_output_expression);
+                    explicit_probes.extend(parse_print_or_plot_probe_outputs(&tokens)?);
+                }
+                ".save" | ".probe" => {
+                    explicit_probes.extend(parse_save_probe_outputs(&tokens)?);
                 }
                 ".four" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" => {
@@ -670,6 +690,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         distortion,
         fourier,
         measures,
+        explicit_probes,
     })
 }
 
@@ -1029,6 +1050,71 @@ fn parse_control_distortion_output(tokens: &[String]) -> Result<Option<String>> 
     }
 }
 
+fn parse_print_or_plot_probe_outputs(tokens: &[String]) -> Result<Vec<OutputProbeSpec>> {
+    if tokens.len() < 3 {
+        return Ok(Vec::new());
+    }
+    if tokens[1].eq_ignore_ascii_case("disto") {
+        return Ok(Vec::new());
+    }
+    if is_supported_analysis_print_mode(&tokens[1]) {
+        return output_probes_from_tokens(&tokens[2..]);
+    }
+    Ok(Vec::new())
+}
+
+fn parse_control_probe_outputs(tokens: &[String]) -> Result<Vec<OutputProbeSpec>> {
+    if tokens.len() < 2 {
+        return Ok(Vec::new());
+    }
+    output_probes_from_tokens(&tokens[1..])
+}
+
+fn parse_save_probe_outputs(tokens: &[String]) -> Result<Vec<OutputProbeSpec>> {
+    if tokens.len() < 2 {
+        return Ok(Vec::new());
+    }
+    output_probes_from_tokens(&tokens[1..])
+}
+
+fn output_probes_from_tokens(tokens: &[String]) -> Result<Vec<OutputProbeSpec>> {
+    let mut probes = Vec::new();
+    for token in tokens {
+        let expression = token.trim();
+        if expression.eq_ignore_ascii_case("all") {
+            continue;
+        }
+        if !is_supported_output_expression(expression) {
+            bail!(
+                "SPICE output directive expression {expression} is not supported; import-spice currently accepts V(...) and I(...)."
+            );
+        }
+        probes.push(OutputProbeSpec {
+            expression: expression.to_string(),
+            quantity: output_expression_quantity(expression),
+        });
+    }
+    Ok(probes)
+}
+
+fn is_supported_analysis_print_mode(mode: &str) -> bool {
+    matches!(
+        mode.to_ascii_lowercase().as_str(),
+        "tran" | "ac" | "dc" | "op" | "noise" | "tf" | "pz" | "sens"
+    )
+}
+
+fn output_expression_quantity(expression: &str) -> Option<&'static str> {
+    if expression
+        .get(..2)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("i("))
+    {
+        Some("current")
+    } else {
+        None
+    }
+}
+
 fn pole_zero_spec_from_directive(
     directive: PoleZeroDirective,
     elements: &[ParsedElement],
@@ -1239,377 +1325,6 @@ fn push_measure_statement(
     Ok(())
 }
 
-fn parse_element(tokens: &[String], line: &str) -> Result<ParsedElement> {
-    let name = tokens[0].clone();
-    validate_refdes(&name)?;
-    let prefix = name
-        .chars()
-        .next()
-        .expect("tokenized element name is not empty")
-        .to_ascii_uppercase();
-    match prefix {
-        'R' => parse_two_terminal(tokens, "generic.analog.resistor", |value| {
-            SpicePrimitiveSpec::Resistor { value_ohm: value }
-        }),
-        'C' => parse_two_terminal(tokens, "generic.analog.capacitor", |value| {
-            SpicePrimitiveSpec::Capacitor { value_f: value }
-        }),
-        'L' => parse_two_terminal(tokens, "generic.analog.inductor", |value| {
-            SpicePrimitiveSpec::Inductor { value_h: value }
-        }),
-        'V' => parse_voltage_source(tokens),
-        'I' => parse_current_source(tokens),
-        'E' => parse_voltage_controlled_source(tokens, ImportedSourceKind::Voltage),
-        'G' => parse_voltage_controlled_source(tokens, ImportedSourceKind::Current),
-        'F' => parse_current_controlled_source(tokens, ImportedSourceKind::Current),
-        'H' => parse_current_controlled_source(tokens, ImportedSourceKind::Voltage),
-        'B' => parse_behavioral_source(tokens),
-        'D' => parse_fixed_pins(
-            tokens,
-            3,
-            &["A", "K"],
-            "generic.analog.imported_spice_device",
-        ),
-        'Q' => {
-            if tokens.len() >= 5 {
-                let pin_names = if tokens.len() >= 6 {
-                    vec!["C", "B", "E", "S"]
-                } else {
-                    vec!["C", "B", "E"]
-                };
-                parse_fixed_pins(
-                    tokens,
-                    pin_names.len() + 2,
-                    &pin_names,
-                    "generic.analog.imported_spice_device",
-                )
-            } else {
-                bail!("Malformed BJT element line: {line}")
-            }
-        }
-        'M' => parse_fixed_pins(
-            tokens,
-            6,
-            &["D", "G", "S", "B"],
-            "generic.analog.imported_spice_device",
-        ),
-        'X' => parse_subckt(tokens, line),
-        _ if tokens.len() >= 4 => parse_fixed_pins(
-            tokens,
-            4,
-            &["A", "B"],
-            "generic.analog.imported_spice_device",
-        ),
-        _ => bail!("Unsupported or malformed SPICE element line: {line}"),
-    }
-}
-
-fn parse_two_terminal<F>(tokens: &[String], model: &str, primitive: F) -> Result<ParsedElement>
-where
-    F: FnOnce(f64) -> SpicePrimitiveSpec,
-{
-    if tokens.len() < 4 {
-        bail!(
-            "Malformed two-terminal SPICE element line: {}",
-            tokens.join(" ")
-        );
-    }
-    let spice = parse_spice_number(&tokens[3]).map(primitive);
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: model.to_string(),
-        pins: vec![
-            ("A".to_string(), tokens[1].clone()),
-            ("B".to_string(), tokens[2].clone()),
-        ],
-        spice,
-        source_kind: None,
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_voltage_source(tokens: &[String]) -> Result<ParsedElement> {
-    if tokens.len() < 4 {
-        bail!(
-            "Malformed voltage-source SPICE element line: {}",
-            tokens.join(" ")
-        );
-    }
-    let spice = parse_voltage_source_primitive(tokens)?;
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: "generic.analog.imported_spice_device".to_string(),
-        pins: vec![
-            ("P".to_string(), tokens[1].clone()),
-            ("N".to_string(), tokens[2].clone()),
-        ],
-        spice,
-        source_kind: Some(ImportedSourceKind::Voltage),
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
-    if tokens.len() < 4 {
-        bail!(
-            "Malformed current-source SPICE element line: {}",
-            tokens.join(" ")
-        );
-    }
-    let spice = parse_current_source_primitive(tokens)?;
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: "generic.analog.imported_spice_device".to_string(),
-        pins: vec![
-            ("P".to_string(), tokens[1].clone()),
-            ("N".to_string(), tokens[2].clone()),
-        ],
-        spice,
-        source_kind: Some(ImportedSourceKind::Current),
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_voltage_controlled_source(
-    tokens: &[String],
-    source_kind: ImportedSourceKind,
-) -> Result<ParsedElement> {
-    if tokens.len() < 6 {
-        bail!(
-            "Malformed voltage-controlled SPICE source line: {}",
-            tokens.join(" ")
-        );
-    }
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: "generic.analog.imported_spice_device".to_string(),
-        pins: vec![
-            ("P".to_string(), tokens[1].clone()),
-            ("N".to_string(), tokens[2].clone()),
-            ("CP".to_string(), tokens[3].clone()),
-            ("CN".to_string(), tokens[4].clone()),
-        ],
-        spice: None,
-        source_kind: Some(source_kind),
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_current_controlled_source(
-    tokens: &[String],
-    source_kind: ImportedSourceKind,
-) -> Result<ParsedElement> {
-    if tokens.len() < 5 {
-        bail!(
-            "Malformed current-controlled SPICE source line: {}",
-            tokens.join(" ")
-        );
-    }
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: "generic.analog.imported_spice_device".to_string(),
-        pins: vec![
-            ("P".to_string(), tokens[1].clone()),
-            ("N".to_string(), tokens[2].clone()),
-        ],
-        spice: None,
-        source_kind: Some(source_kind),
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_behavioral_source(tokens: &[String]) -> Result<ParsedElement> {
-    if tokens.len() < 4 {
-        bail!(
-            "Malformed behavioral SPICE source line: {}",
-            tokens.join(" ")
-        );
-    }
-    let source_expression = tokens[3..].join("");
-    let source_expression = source_expression.to_ascii_uppercase();
-    let source_kind = if source_expression.starts_with("V=") {
-        Some(ImportedSourceKind::Voltage)
-    } else if source_expression.starts_with("I=") {
-        Some(ImportedSourceKind::Current)
-    } else {
-        None
-    };
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: "generic.analog.imported_spice_device".to_string(),
-        pins: vec![
-            ("P".to_string(), tokens[1].clone()),
-            ("N".to_string(), tokens[2].clone()),
-        ],
-        spice: None,
-        source_kind,
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_fixed_pins(
-    tokens: &[String],
-    min_tokens: usize,
-    pin_names: &[&str],
-    model: &str,
-) -> Result<ParsedElement> {
-    if tokens.len() < min_tokens {
-        bail!("Malformed SPICE element line: {}", tokens.join(" "));
-    }
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: model.to_string(),
-        pins: pin_names
-            .iter()
-            .enumerate()
-            .map(|(index, pin)| ((*pin).to_string(), tokens[index + 1].clone()))
-            .collect(),
-        spice: None,
-        source_kind: None,
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_subckt(tokens: &[String], line: &str) -> Result<ParsedElement> {
-    if tokens.len() < 4 {
-        bail!("Malformed subcircuit instance line: {line}");
-    }
-    let node_count = tokens.len() - 2;
-    Ok(ParsedElement {
-        name: tokens[0].clone(),
-        model: "generic.analog.imported_spice_device".to_string(),
-        pins: (0..node_count)
-            .map(|index| (format!("P{}", index + 1), tokens[index + 1].clone()))
-            .collect(),
-        spice: None,
-        source_kind: None,
-        distortion_role: distortion_role_from_tokens(tokens),
-    })
-}
-
-fn parse_voltage_source_primitive(tokens: &[String]) -> Result<Option<SpicePrimitiveSpec>> {
-    let spec = tokens[3..].join(" ");
-    if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
-        return Ok(Some(SpicePrimitiveSpec::PulseVoltageSource {
-            pulse: parse_pulse(&spec)?,
-        }));
-    }
-    if source_uses_file_backed_waveform(tokens) {
-        return Ok(None);
-    }
-    Ok(Some(SpicePrimitiveSpec::DcVoltageSource {
-        dc_v: parse_independent_source_dc_value(tokens, "voltage")?,
-    }))
-}
-
-fn parse_current_source_primitive(tokens: &[String]) -> Result<Option<SpicePrimitiveSpec>> {
-    let spec = tokens[3..].join(" ");
-    if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
-        return Ok(Some(SpicePrimitiveSpec::PulseCurrentSource {
-            pulse: parse_current_pulse(&spec)?,
-        }));
-    }
-    if source_uses_file_backed_waveform(tokens) {
-        return Ok(None);
-    }
-    Ok(Some(SpicePrimitiveSpec::DcCurrentSource {
-        dc_a: parse_independent_source_dc_value(tokens, "current")?,
-    }))
-}
-
-fn source_uses_file_backed_waveform(tokens: &[String]) -> bool {
-    tokens[3..].iter().any(|token| {
-        let upper = token.trim_start().to_ascii_uppercase();
-        let function = upper
-            .split_once('(')
-            .map_or(upper.as_str(), |(name, _)| name);
-        matches!(function, "SIN" | "SINE" | "PWL" | "EXP" | "SFFM" | "AM")
-    })
-}
-
-fn parse_pulse(spec: &str) -> Result<PulseSpec> {
-    let start = spec.find('(').context("PULSE source is missing '('")?;
-    let end = spec.rfind(')').context("PULSE source is missing ')'")?;
-    let values: Vec<_> = spec[start + 1..end]
-        .split(|character: char| character == ',' || character.is_whitespace())
-        .filter(|field| !field.is_empty())
-        .map(parse_spice_number)
-        .collect::<Option<Vec<_>>>()
-        .context("PULSE source contains an unparseable numeric value")?;
-    if values.len() < 7 {
-        bail!("PULSE source requires at least seven values.");
-    }
-    Ok(PulseSpec {
-        initial_v: values[0],
-        pulsed_v: values[1],
-        delay_us: values[2] * 1_000_000.0,
-        rise_us: values[3] * 1_000_000.0,
-        fall_us: values[4] * 1_000_000.0,
-        width_us: values[5] * 1_000_000.0,
-        period_us: values[6] * 1_000_000.0,
-    })
-}
-
-fn parse_independent_source_dc_value(tokens: &[String], kind: &str) -> Result<f64> {
-    if tokens[3].eq_ignore_ascii_case("AC") {
-        return Ok(0.0);
-    }
-    let value_token = if tokens[3].eq_ignore_ascii_case("DC") {
-        if tokens.len() < 5 {
-            bail!("{} source DC keyword requires a value.", kind);
-        }
-        &tokens[4]
-    } else {
-        &tokens[3]
-    };
-    parse_spice_number(value_token)
-        .with_context(|| format!("Could not parse {kind} source value {value_token}"))
-}
-
-fn parse_current_pulse(spec: &str) -> Result<CurrentPulseSpec> {
-    let pulse = parse_pulse(spec)?;
-    Ok(CurrentPulseSpec {
-        initial_a: pulse.initial_v,
-        pulsed_a: pulse.pulsed_v,
-        delay_us: pulse.delay_us,
-        rise_us: pulse.rise_us,
-        fall_us: pulse.fall_us,
-        width_us: pulse.width_us,
-        period_us: pulse.period_us,
-    })
-}
-
-fn validate_refdes(name: &str) -> Result<()> {
-    if name.is_empty()
-        || !name.chars().all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
-        })
-    {
-        bail!("SPICE element name {name:?} cannot be represented as a Board IR component id.");
-    }
-    Ok(())
-}
-
-fn parse_spice_number(token: &str) -> Option<f64> {
-    let upper = token.trim().to_ascii_uppercase();
-    for (suffix, scale) in [
-        ("MEG", 1e6),
-        ("T", 1e12),
-        ("G", 1e9),
-        ("K", 1e3),
-        ("M", 1e-3),
-        ("U", 1e-6),
-        ("N", 1e-9),
-        ("P", 1e-12),
-        ("F", 1e-15),
-    ] {
-        if let Some(number) = upper.strip_suffix(suffix) {
-            return number.parse::<f64>().ok().map(|value| value * scale);
-        }
-    }
-    upper.parse::<f64>().ok()
-}
-
 fn build_project_yaml(
     options: &SpiceImportOptions,
     deck: &ParsedDeck,
@@ -1681,6 +1396,7 @@ fn build_project_yaml(
                 quantity: Some("current"),
             }),
     );
+    append_explicit_probes(&mut probes, &deck.explicit_probes);
     let tran = deck.tran.as_ref();
     let stop_time_us = tran.map_or(options.stop_time_us, |value| value.stop_time_us);
     let max_step_us = tran.map_or(options.max_step_us, |value| value.max_step_us);
@@ -1773,6 +1489,23 @@ fn build_project_yaml(
         board: BoardYaml { components, nets },
         scenarios,
     })
+}
+
+fn append_explicit_probes(probes: &mut Vec<ProbeYaml>, explicit: &[OutputProbeSpec]) {
+    let mut seen = probes
+        .iter()
+        .map(|probe| probe.expression.to_ascii_lowercase())
+        .collect::<BTreeSet<_>>();
+    for probe in explicit {
+        if !seen.insert(probe.expression.to_ascii_lowercase()) {
+            continue;
+        }
+        probes.push(ProbeYaml {
+            name: format!("probe_{}", sanitize_identifier(&probe.expression)),
+            expression: probe.expression.clone(),
+            quantity: probe.quantity,
+        });
+    }
 }
 
 impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
