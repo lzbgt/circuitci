@@ -653,14 +653,8 @@ fn parse_voltage_source(tokens: &[String]) -> Result<ParsedElement> {
             pulse: parse_pulse(&spec)?,
         }
     } else {
-        let value_token = if tokens[3].eq_ignore_ascii_case("DC") && tokens.len() >= 5 {
-            &tokens[4]
-        } else {
-            &tokens[3]
-        };
         SpicePrimitiveSpec::DcVoltageSource {
-            dc_v: parse_spice_number(value_token)
-                .with_context(|| format!("Could not parse voltage source value {value_token}"))?,
+            dc_v: parse_independent_source_dc_value(tokens, "voltage")?,
         }
     };
     Ok(ParsedElement {
@@ -687,14 +681,8 @@ fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
             pulse: parse_current_pulse(&spec)?,
         }
     } else {
-        let value_token = if tokens[3].eq_ignore_ascii_case("DC") && tokens.len() >= 5 {
-            &tokens[4]
-        } else {
-            &tokens[3]
-        };
         SpicePrimitiveSpec::DcCurrentSource {
-            dc_a: parse_spice_number(value_token)
-                .with_context(|| format!("Could not parse current source value {value_token}"))?,
+            dc_a: parse_independent_source_dc_value(tokens, "current")?,
         }
     };
     Ok(ParsedElement {
@@ -765,6 +753,22 @@ fn parse_pulse(spec: &str) -> Result<PulseSpec> {
         width_us: values[5] * 1_000_000.0,
         period_us: values[6] * 1_000_000.0,
     })
+}
+
+fn parse_independent_source_dc_value(tokens: &[String], kind: &str) -> Result<f64> {
+    if tokens[3].eq_ignore_ascii_case("AC") {
+        return Ok(0.0);
+    }
+    let value_token = if tokens[3].eq_ignore_ascii_case("DC") {
+        if tokens.len() < 5 {
+            bail!("{} source DC keyword requires a value.", kind);
+        }
+        &tokens[4]
+    } else {
+        &tokens[3]
+    };
+    parse_spice_number(value_token)
+        .with_context(|| format!("Could not parse {kind} source value {value_token}"))
 }
 
 fn parse_current_pulse(spec: &str) -> Result<CurrentPulseSpec> {

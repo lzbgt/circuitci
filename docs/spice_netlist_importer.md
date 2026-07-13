@@ -56,11 +56,14 @@ The importer understands common SPICE element prefixes:
 | other two-terminal sources/passives | `A`, `B` | `generic.analog.imported_spice_device` |
 
 Imported independent voltage and current sources preserve DC and `PULSE(...)`
-primitive metadata in Board IR. Imported elements keep their simulator behavior in the original deck.
-CircuitCI does not invent datasheet-backed device metadata for them during
-import. Primitive values are preserved in Board IR where they can be represented
-losslessly, but `netlist_source: file` still makes the deck the solver source
-of truth.
+primitive metadata in Board IR. Common small-signal source forms such as
+`V1 in 0 AC 1` and `V1 in 0 DC 0 AC 1` import successfully; AC magnitude and
+phase remain in the original file-backed deck rather than being projected into
+Board IR primitive metadata. Imported elements keep their simulator behavior in
+the original deck. CircuitCI does not invent datasheet-backed device metadata
+for them during import. Primitive values are preserved in Board IR where they
+can be represented losslessly, but `netlist_source: file` still makes the deck
+the solver source of truth.
 
 The importer derives voltage probes for every non-ground deck node and current
 probes for imported independent voltage sources using SPICE branch expressions

@@ -615,6 +615,49 @@ fn import_spice_preserves_current_source_primitives() {
 }
 
 #[test]
+fn import_spice_accepts_ac_only_independent_sources() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("ac_sources.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nI1 out 0 AC 1m\nR1 in out 1k\n.ac dec 10 10 10k\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_ac_sources",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["V1"]["spice"]["primitive"],
+        "dc_voltage_source"
+    );
+    assert_eq!(imported["board"]["components"]["V1"]["spice"]["dc_v"], 0.0);
+    assert_eq!(
+        imported["board"]["components"]["I1"]["spice"]["primitive"],
+        "dc_current_source"
+    );
+    assert_eq!(imported["board"]["components"]["I1"]["spice"]["dc_a"], 0.0);
+}
+
+#[test]
 fn import_spice_accepts_ngspice_control_block_timing() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
