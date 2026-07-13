@@ -541,6 +541,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut explicit_probes = Vec::new();
     let mut in_control = false;
     let mut control_distortion_active = false;
+    let mut subckt_depth = 0usize;
     for line in logical_lines {
         let tokens = tokenize(&line);
         if tokens.is_empty() {
@@ -548,6 +549,18 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         }
         let first = tokens[0].as_str();
         let command = first.to_ascii_lowercase();
+        if subckt_depth > 0 {
+            match command.as_str() {
+                ".subckt" => subckt_depth += 1,
+                ".ends" => subckt_depth -= 1,
+                ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
+                ".global" => {
+                    nodes.extend(parse_global_nodes(&tokens)?);
+                }
+                _ => {}
+            }
+            continue;
+        }
         if in_control {
             match command.as_str() {
                 ".endc" | "endc" => {
@@ -622,6 +635,8 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".global" => {
                     nodes.extend(parse_global_nodes(&tokens)?);
                 }
+                ".subckt" => subckt_depth = 1,
+                ".ends" => bail!("SPICE .ends appears without a preceding .subckt block."),
                 ".tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" => op = true,
                 ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
@@ -661,6 +676,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     }
     if in_control {
         bail!("SPICE .control block is missing a closing .endc.");
+    }
+    if subckt_depth > 0 {
+        bail!("SPICE .subckt block is missing a closing .ends.");
     }
     if elements.is_empty() {
         bail!(

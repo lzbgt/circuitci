@@ -24,6 +24,9 @@ The generated project:
 - binds SPICE nodes back to Board IR nets through `analog.node_bindings`,
 - binds element terminals back to Board IR endpoints through
   `analog.pin_bindings`,
+- treats inline `.subckt` / `.ends` definitions as solver-owned model text
+  rather than top-level Board IR topology, while preserving top-level `X...`
+  instances as reviewable imported devices,
 - declares `.global` nodes as Board IR nets and `analog.node_bindings`, even
   when those nodes only appear inside included subcircuit models,
 - preserves `.include` and `.lib` dependencies as `analog.model_files`,
@@ -88,6 +91,12 @@ The importer understands common SPICE element prefixes:
 | `M` | `D`, `G`, `S`, `B` | `generic.analog.imported_spice_device` |
 | `X` | `P1..PN` | `generic.analog.imported_spice_device` |
 | other two-terminal sources/passives | `A`, `B` | `generic.analog.imported_spice_device` |
+
+Inline subcircuit definitions stay in the source deck and are not expanded into
+top-level Board IR components. This avoids presenting implementation details
+inside `.subckt` bodies as physical board components. Top-level subcircuit
+instances (`X...`) remain imported as generic devices with ordered `P1..PN`
+pins so their board-visible connectivity is reviewable.
 
 Imported independent voltage and current sources preserve DC and `PULSE(...)`
 primitive metadata in Board IR. Common small-signal source forms such as
@@ -250,6 +259,7 @@ The importer rejects malformed element lines instead of guessing:
 - malformed `.include` or `.lib` path,
 - `.include` or `.lib` path that does not resolve to a local file,
 - malformed `.global` directives,
+- unmatched or unclosed `.subckt` / `.ends` blocks,
 - unmatched or unclosed `.control` / `.endc` blocks,
 - malformed `.dc` cards or `.dc` sweeps with non-finite values, zero span, or a
   non-positive/oversized step,

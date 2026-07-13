@@ -1155,6 +1155,104 @@ fn import_spice_projects_global_nodes_to_nets_and_bindings() {
 }
 
 #[test]
+fn import_spice_skips_inline_subckt_definition_internals() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("inline_subckt_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        ".global VDD\n.subckt BUF IN OUT\nRINT OUT VDD 1k\nCINT OUT 0 1n\n.ends BUF\nV1 in 0 DC 1\nXU1 in out BUF\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_inline_subckt_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let components = imported["board"]["components"].as_object().unwrap();
+    assert!(components.contains_key("V1"));
+    assert!(components.contains_key("XU1"));
+    assert!(!components.contains_key("RINT"));
+    assert!(!components.contains_key("CINT"));
+    assert_eq!(
+        components["XU1"]["pins"]["P1"],
+        Value::String("net_in".to_string())
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_vdd"]["kind"],
+        "digital_or_analog"
+    );
+}
+
+#[test]
+fn import_spice_rejects_unmatched_subckt_end() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_ends_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(&deck, "V1 in 0 DC 1\n.ends BUF\nR1 in 0 1k\n.end\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_ends_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("SPICE .ends appears without a preceding .subckt block"));
+}
+
+#[test]
+fn import_spice_rejects_unclosed_subckt_definition() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_subckt_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        ".subckt BUF IN OUT\nRINT OUT IN 1k\nV1 in 0 DC 1\nXU1 in out BUF\n.end\n",
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_subckt_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("SPICE .subckt block is missing a closing .ends"));
+}
+
+#[test]
 fn import_spice_creates_fourier_scenario_for_four_deck() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
