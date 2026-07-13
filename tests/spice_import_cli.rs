@@ -225,3 +225,108 @@ fn import_spice_creates_op_and_dc_sweep_scenarios_when_both_requested() {
     assert_eq!(scenarios[1]["analog"]["analysis"]["type"], "dc_sweep");
     assert_eq!(scenarios[1]["analog"]["analysis"]["dc_sweep_source"], "V1");
 }
+
+#[test]
+fn import_spice_creates_ac_scenario_for_ac_deck() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("ac_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nR1 in out 1k\nC1 out 0 100n\n.ac dec 10 10 100k\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_ac_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_ac");
+    assert_eq!(
+        scenarios[0]["checks"],
+        Value::Array(vec![Value::String("SPICE_AC_ANALYSIS".to_string())])
+    );
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "ac");
+    assert_eq!(analysis["start_frequency_hz"], 10.0);
+    assert_eq!(analysis["stop_frequency_hz"], 100000.0);
+    assert_eq!(analysis["points_per_decade"], 10);
+    assert!(analysis.get("stop_time_us").is_none());
+
+    let report = run_validation(output.to_str().unwrap());
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert!(
+            report["artifacts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|artifact| artifact.as_str().unwrap().ends_with("bode.csv"))
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_creates_op_and_ac_scenarios_when_both_requested() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("op_ac_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nR1 in out 1k\nC1 out 0 100n\n.control\nop\nac dec 10 10 100k\n.endc\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_op_ac_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 2);
+    assert_eq!(scenarios[0]["type"], "analog_dc");
+    assert_eq!(scenarios[0]["analog"]["analysis"]["type"], "op");
+    assert_eq!(scenarios[1]["type"], "analog_ac");
+    assert_eq!(scenarios[1]["analog"]["analysis"]["type"], "ac");
+    assert_eq!(
+        scenarios[1]["analog"]["analysis"]["start_frequency_hz"],
+        10.0
+    );
+}

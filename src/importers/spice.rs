@@ -25,7 +25,6 @@ struct ParsedDeck {
     op: bool,
     dc: Option<DcSweepSpec>,
     ac: Option<AcSpec>,
-    ac_parse_error: Option<String>,
     measures: Vec<MeasureStatementSpec>,
 }
 
@@ -363,7 +362,6 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut op = false;
     let mut dc = None;
     let mut ac = None;
-    let mut ac_parse_error = None;
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
     let mut in_control = false;
@@ -380,6 +378,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".tran" | "tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" | "op" => op = true,
                 ".dc" | "dc" => dc = Some(parse_dc_sweep(&tokens)?),
+                ".ac" | "ac" => ac = Some(parse_ac(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -397,10 +396,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" => op = true,
                 ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
-                ".ac" => match parse_ac(&tokens) {
-                    Ok(spec) => ac = Some(spec),
-                    Err(error) => ac_parse_error = Some(error.to_string()),
-                },
+                ".ac" => ac = Some(parse_ac(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -437,7 +433,6 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         op,
         dc,
         ac,
-        ac_parse_error,
         measures,
     })
 }
@@ -534,7 +529,7 @@ fn parse_ac(tokens: &[String]) -> Result<AcSpec> {
         bail!(".ac directive requires sweep type, point count, start, and stop.");
     }
     if !tokens[1].eq_ignore_ascii_case("dec") {
-        bail!("import-spice .meas ac import currently requires .ac dec sweeps.");
+        bail!("import-spice AC import currently requires .ac dec sweeps.");
     }
     let points_per_decade = tokens[2]
         .parse::<u32>()
@@ -1077,7 +1072,10 @@ fn build_project_yaml(
     if let Some(dc) = &deck.dc {
         scenarios.push(dc_sweep_scenario_for_yaml(options, &parts, dc));
     }
-    if deck.tran.is_some() || (!deck.op && deck.dc.is_none()) {
+    if let Some(ac) = &deck.ac {
+        scenarios.push(ac_scenario_for_yaml(options, &parts, ac));
+    }
+    if deck.tran.is_some() || (!deck.op && deck.dc.is_none() && deck.ac.is_none()) {
         scenarios.push(transient_scenario_for_yaml(
             options,
             &parts,
@@ -1219,6 +1217,44 @@ fn dc_sweep_scenario_for_yaml(
     }
 }
 
+fn ac_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    ac: &AcSpec,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_ac".to_string(),
+        scenario_type: "analog_ac".to_string(),
+        checks: vec!["SPICE_AC_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "ac".to_string(),
+                stop_time_us: None,
+                max_step_us: None,
+                start_frequency_hz: Some(ac.start_frequency_hz),
+                stop_frequency_hz: Some(ac.stop_frequency_hz),
+                points_per_decade: Some(ac.points_per_decade),
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
 fn measure_scenario_for_yaml(
     options: &SpiceImportOptions,
     deck: &ParsedDeck,
@@ -1234,11 +1270,10 @@ fn measure_scenario_for_yaml(
         stop_frequency_hz,
         points_per_decade,
     ) = if mode == "ac" {
-        let ac = deck.ac.as_ref().with_context(|| {
-            deck.ac_parse_error.clone().unwrap_or_else(|| {
-                "SPICE .meas ac import requires a valid .ac dec sweep.".to_string()
-            })
-        })?;
+        let ac = deck
+            .ac
+            .as_ref()
+            .context("SPICE .meas ac import requires a valid .ac dec sweep.")?;
         (
             None,
             None,
