@@ -22,6 +22,7 @@ struct ParsedDeck {
     includes: Vec<IncludeFile>,
     nodes: BTreeSet<String>,
     tran: Option<TranSpec>,
+    op: bool,
     ac: Option<AcSpec>,
     ac_parse_error: Option<String>,
     measures: Vec<MeasureStatementSpec>,
@@ -340,6 +341,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut includes = Vec::new();
     let mut nodes = BTreeSet::new();
     let mut tran = None;
+    let mut op = false;
     let mut ac = None;
     let mut ac_parse_error = None;
     let mut measures = Vec::new();
@@ -356,6 +358,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
             match command.as_str() {
                 ".endc" | "endc" => in_control = false,
                 ".tran" | "tran" => tran = parse_tran(&tokens).or(tran),
+                ".op" | "op" => op = true,
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -371,6 +374,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
             match command.as_str() {
                 ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
                 ".tran" => tran = parse_tran(&tokens).or(tran),
+                ".op" => op = true,
                 ".ac" => match parse_ac(&tokens) {
                     Ok(spec) => ac = Some(spec),
                     Err(error) => ac_parse_error = Some(error.to_string()),
@@ -408,6 +412,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         includes,
         nodes,
         tran,
+        op,
         ac,
         ac_parse_error,
         measures,
@@ -1013,7 +1018,45 @@ fn build_project_yaml(
         }],
         probes,
     };
-    let mut scenarios = vec![ScenarioYaml {
+    let mut scenarios = Vec::new();
+    if deck.op {
+        scenarios.push(operating_point_scenario_for_yaml(options, &parts));
+    }
+    if deck.tran.is_some() || !deck.op {
+        scenarios.push(transient_scenario_for_yaml(
+            options,
+            &parts,
+            stop_time_us,
+            max_step_us,
+        ));
+    }
+    if !deck.measures.is_empty() {
+        scenarios.push(measure_scenario_for_yaml(
+            options,
+            deck,
+            parts,
+            stop_time_us,
+            max_step_us,
+        )?);
+    }
+    Ok(ProjectYaml {
+        project: ProjectMetaYaml {
+            name: options.name.clone(),
+            version: "0.1.0".to_string(),
+        },
+        libraries: vec![generic_analog_library_path()],
+        board: BoardYaml { components, nets },
+        scenarios,
+    })
+}
+
+fn transient_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    stop_time_us: f64,
+    max_step_us: f64,
+) -> ScenarioYaml {
+    ScenarioYaml {
         name: "imported_spice_transient".to_string(),
         scenario_type: "analog_transient".to_string(),
         checks: vec!["SPICE_TRANSIENT_ANALYSIS".to_string()],
@@ -1038,25 +1081,39 @@ fn build_project_yaml(
             probes: parts.probes.clone(),
             assertions: Vec::new(),
         },
-    }];
-    if !deck.measures.is_empty() {
-        scenarios.push(measure_scenario_for_yaml(
-            options,
-            deck,
-            parts,
-            stop_time_us,
-            max_step_us,
-        )?);
     }
-    Ok(ProjectYaml {
-        project: ProjectMetaYaml {
-            name: options.name.clone(),
-            version: "0.1.0".to_string(),
+}
+
+fn operating_point_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_operating_point".to_string(),
+        scenario_type: "analog_dc".to_string(),
+        checks: vec!["SPICE_DC_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "op".to_string(),
+                stop_time_us: None,
+                max_step_us: None,
+                start_frequency_hz: None,
+                stop_frequency_hz: None,
+                points_per_decade: None,
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
         },
-        libraries: vec![generic_analog_library_path()],
-        board: BoardYaml { components, nets },
-        scenarios,
-    })
+    }
 }
 
 fn measure_scenario_for_yaml(

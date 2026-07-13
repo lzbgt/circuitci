@@ -31,7 +31,10 @@ The generated project:
   commands while importing `tran` timing and reviewed raw `.meas`/`meas`
   statements when present,
 - emits voltage probes for discovered non-ground SPICE nodes,
-- creates one file-backed `analog_transient` scenario using the original deck,
+- creates a file-backed `analog_dc` scenario when the deck contains `.op`,
+- creates one file-backed `analog_transient` scenario using the original deck
+  when the deck contains transient timing, or by default when no `.op` was
+  requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -109,6 +112,11 @@ as waveform evidence only, not as design sign-off.
 
 File-backed scenarios may also have `model_files: []` when the deck uses only
 built-in SPICE primitives such as R, C, and independent sources.
+
+Decks that request `.op` import as `analog_dc` scenarios with `analysis:
+{type: op}` and `SPICE_DC_ANALYSIS`. If the same deck also requests transient
+timing, the importer emits both operating-point and transient scenarios against
+the same source deck.
 
 ## Fail-Closed Rules
 
