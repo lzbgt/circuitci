@@ -1253,6 +1253,196 @@ fn import_spice_rejects_unclosed_subckt_definition() {
 }
 
 #[test]
+fn import_spice_records_model_cards_as_review_metadata() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("model_card_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nD1 in 0 DMOD\n.model DMOD D(Is=1e-14 N=1)\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_model_card_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let components = imported["board"]["components"].as_object().unwrap();
+    assert!(components.contains_key("V1"));
+    assert!(components.contains_key("D1"));
+    let directives = &imported["scenarios"][0]["parameters"]["imported_spice_directives"];
+    assert_eq!(
+        directives["model_cards"],
+        Value::Array(vec![Value::String(
+            ".model DMOD D(Is=1e-14 N=1)".to_string()
+        )])
+    );
+}
+
+#[test]
+fn import_spice_skips_inline_lib_section_topology() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("inline_lib_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        ".lib TT\n.model DMOD D(Is=1e-14 N=1)\nRSUB hidden 0 1k\n.endl TT\nV1 in 0 DC 1\nD1 in 0 DMOD\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_inline_lib_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let components = imported["board"]["components"].as_object().unwrap();
+    assert!(components.contains_key("V1"));
+    assert!(components.contains_key("D1"));
+    assert!(!components.contains_key("RSUB"));
+    assert!(imported["board"]["nets"].get("net_hidden").is_none());
+    let directives = &imported["scenarios"][0]["parameters"]["imported_spice_directives"];
+    assert_eq!(
+        directives["model_cards"],
+        Value::Array(vec![Value::String(
+            ".model DMOD D(Is=1e-14 N=1)".to_string()
+        )])
+    );
+}
+
+#[test]
+fn import_spice_imports_file_backed_lib_with_section() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("file_lib_deck.cir");
+    let model_lib = dir.path().join("models.lib");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &model_lib,
+        ".lib TT\n.model DMOD D(Is=1e-14 N=1)\n.endl TT\n",
+    )
+    .unwrap();
+    std::fs::write(
+        &deck,
+        ".lib models.lib TT\nV1 in 0 DC 1\nD1 in 0 DMOD\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_file_lib_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let model_files = imported["scenarios"][0]["analog"]["model_files"]
+        .as_array()
+        .unwrap();
+    assert_eq!(model_files.len(), 1);
+    assert!(
+        model_files[0]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with("models.lib")
+    );
+    assert_eq!(model_files[0]["sha256"].as_str().unwrap().len(), 64);
+}
+
+#[test]
+fn import_spice_rejects_unmatched_inline_lib_end() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_endl_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(&deck, "V1 in 0 DC 1\n.endl TT\nR1 in 0 1k\n.end\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_endl_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("SPICE .endl appears without a preceding inline .lib block"));
+}
+
+#[test]
+fn import_spice_rejects_unclosed_inline_lib_section() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_inline_lib_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        ".lib TT\n.model DMOD D(Is=1e-14)\nV1 in 0 DC 1\nD1 in 0 DMOD\n.end\n",
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_inline_lib_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("SPICE inline .lib block is missing a closing .endl"));
+}
+
+#[test]
 fn import_spice_records_deck_directives_as_review_metadata() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

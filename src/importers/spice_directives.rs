@@ -8,6 +8,7 @@ pub(super) struct ImportedDirectiveMetadata {
     pub(super) option_cards: Vec<String>,
     pub(super) initial_condition_cards: Vec<String>,
     pub(super) nodeset_cards: Vec<String>,
+    pub(super) model_cards: Vec<String>,
     pub(super) ambient_temperature_c: Option<f64>,
     pub(super) ambiguous_temperature: bool,
 }
@@ -33,6 +34,10 @@ pub(super) fn record_imported_directive(
         }
         "nodeset" => {
             metadata.nodeset_cards.push(line.to_string());
+            Ok(())
+        }
+        "model" => {
+            metadata.model_cards.push(line.to_string());
             Ok(())
         }
         _ => Ok(()),
@@ -102,6 +107,11 @@ pub(super) fn scenario_parameters_for_directives(
         &mut directive_map,
         "nodeset_cards",
         metadata.nodeset_cards.as_slice(),
+    );
+    insert_string_array(
+        &mut directive_map,
+        "model_cards",
+        metadata.model_cards.as_slice(),
     );
     if let Some(temperature_c) = metadata.ambient_temperature_c {
         directive_map.insert(

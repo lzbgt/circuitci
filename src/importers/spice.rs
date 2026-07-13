@@ -568,6 +568,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut in_control = false;
     let mut control_distortion_active = false;
     let mut subckt_depth = 0usize;
+    let mut inline_lib_depth = 0usize;
     for line in logical_lines {
         let tokens = tokenize(&line);
         if tokens.is_empty() {
@@ -575,13 +576,36 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         }
         let first = tokens[0].as_str();
         let command = first.to_ascii_lowercase();
+        if inline_lib_depth > 0 {
+            match command.as_str() {
+                ".lib" => {
+                    handle_lib_directive(&tokens, source_dir, &mut includes, &mut inline_lib_depth)?
+                }
+                ".endl" | "endl" => inline_lib_depth -= 1,
+                ".include" => includes.push(parse_include(&tokens, source_dir)?),
+                ".global" => {
+                    nodes.extend(parse_global_nodes(&tokens)?);
+                }
+                ".temp" | ".option" | ".options" | ".ic" | ".nodeset" | ".model" => {
+                    record_imported_directive(&mut directive_metadata, &tokens, &line)?;
+                }
+                _ => {}
+            }
+            continue;
+        }
         if subckt_depth > 0 {
             match command.as_str() {
                 ".subckt" => subckt_depth += 1,
                 ".ends" => subckt_depth -= 1,
-                ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
+                ".include" => includes.push(parse_include(&tokens, source_dir)?),
+                ".lib" => {
+                    handle_lib_directive(&tokens, source_dir, &mut includes, &mut inline_lib_depth)?
+                }
                 ".global" => {
                     nodes.extend(parse_global_nodes(&tokens)?);
+                }
+                ".temp" | ".option" | ".options" | ".ic" | ".nodeset" | ".model" => {
+                    record_imported_directive(&mut directive_metadata, &tokens, &line)?;
                 }
                 _ => {}
             }
@@ -640,7 +664,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                     explicit_probes.extend(parse_save_probe_outputs(&tokens)?);
                 }
                 ".temp" | "temp" | ".option" | "option" | ".options" | "options" | ".ic" | "ic"
-                | ".nodeset" | "nodeset" => {
+                | ".nodeset" | "nodeset" | ".model" | "model" => {
                     record_imported_directive(&mut directive_metadata, &tokens, &line)?;
                 }
                 ".four" | "four" | "fourier" => {
@@ -661,12 +685,16 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         }
         if first.starts_with('.') {
             match command.as_str() {
-                ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
+                ".include" => includes.push(parse_include(&tokens, source_dir)?),
+                ".lib" => {
+                    handle_lib_directive(&tokens, source_dir, &mut includes, &mut inline_lib_depth)?
+                }
                 ".global" => {
                     nodes.extend(parse_global_nodes(&tokens)?);
                 }
                 ".subckt" => subckt_depth = 1,
                 ".ends" => bail!("SPICE .ends appears without a preceding .subckt block."),
+                ".endl" => bail!("SPICE .endl appears without a preceding inline .lib block."),
                 ".tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" => op = true,
                 ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
@@ -684,7 +712,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".save" | ".probe" => {
                     explicit_probes.extend(parse_save_probe_outputs(&tokens)?);
                 }
-                ".temp" | ".option" | ".options" | ".ic" | ".nodeset" => {
+                ".temp" | ".option" | ".options" | ".ic" | ".nodeset" | ".model" => {
                     record_imported_directive(&mut directive_metadata, &tokens, &line)?;
                 }
                 ".four" => fourier.extend(parse_fourier(&tokens)?),
@@ -712,6 +740,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     }
     if subckt_depth > 0 {
         bail!("SPICE .subckt block is missing a closing .ends.");
+    }
+    if inline_lib_depth > 0 {
+        bail!("SPICE inline .lib block is missing a closing .endl.");
     }
     if elements.is_empty() {
         bail!(
@@ -822,6 +853,39 @@ fn parse_include(tokens: &[String], source_dir: &Path) -> Result<IncludeFile> {
         );
     }
     Ok(IncludeFile { resolved })
+}
+
+fn handle_lib_directive(
+    tokens: &[String],
+    source_dir: &Path,
+    includes: &mut Vec<IncludeFile>,
+    inline_lib_depth: &mut usize,
+) -> Result<()> {
+    if tokens.len() < 2 {
+        bail!("SPICE .lib directive requires a file path or section name.");
+    }
+    if lib_directive_references_external_file(tokens, source_dir) {
+        includes.push(parse_include(tokens, source_dir)?);
+    } else {
+        *inline_lib_depth += 1;
+    }
+    Ok(())
+}
+
+fn lib_directive_references_external_file(tokens: &[String], source_dir: &Path) -> bool {
+    if tokens.len() >= 3 {
+        return true;
+    }
+    let candidate = tokens[1].as_str();
+    if declared_model_file_path_for_source_dir(source_dir, candidate)
+        .map(|path| path.is_file())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    candidate.contains('/')
+        || candidate.contains('\\')
+        || Path::new(candidate).extension().is_some()
 }
 
 fn parse_global_nodes(tokens: &[String]) -> Result<Vec<String>> {

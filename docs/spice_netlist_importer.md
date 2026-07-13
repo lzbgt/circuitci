@@ -27,21 +27,24 @@ The generated project:
 - treats inline `.subckt` / `.ends` definitions as solver-owned model text
   rather than top-level Board IR topology, while preserving top-level `X...`
   instances as reviewable imported devices,
+- treats inline `.lib SECTION` / `.endl` model-library sections as solver-owned
+  model text rather than top-level Board IR topology,
 - declares `.global` nodes as Board IR nets and `analog.node_bindings`, even
   when those nodes only appear inside included subcircuit models,
-- preserves `.include` and `.lib` dependencies as `analog.model_files`,
-- resolves `.include` and `.lib` dependencies relative to the source deck and
-  emits SHA-256 pins for every imported model file,
+- preserves `.include` and file-backed `.lib PATH [SECTION]` dependencies as
+  `analog.model_files`,
+- resolves `.include` and file-backed `.lib` dependencies relative to the source
+  deck and emits SHA-256 pins for every imported model file,
 - tolerates closed ngspice `.control` / `.endc` blocks, ignoring simulator
   commands while importing `tran` timing and reviewed raw `.meas`/`meas`
   statements when present,
 - emits voltage probes for discovered non-ground SPICE nodes,
 - projects supported `.save`, `.probe`, `.print`, and `.plot` output
   expressions into scenario probes for GUI/waveform review,
-- records `.temp`, `.option(s)`, `.ic`, and `.nodeset` cards under
-  `scenario.parameters.imported_spice_directives`; a single numeric `.temp`
-  is also mirrored to `analog.operating_conditions.ambient_temperature_c` for
-  review context,
+- records `.temp`, `.option(s)`, `.ic`, `.nodeset`, and `.model` cards under
+  `scenario.parameters.imported_spice_directives`; a single numeric `.temp` is
+  also mirrored to `analog.operating_conditions.ambient_temperature_c` for review
+  context,
 - creates a file-backed `analog_dc` scenario when the deck contains `.op`,
 - creates a file-backed `analog_dc_sweep` scenario when the deck contains a
   numeric `.dc SOURCE START STOP STEP` sweep,
@@ -130,6 +133,14 @@ numeric `.temp` card is additionally mirrored into
 `analog.operating_conditions.ambient_temperature_c`; multi-temperature sweeps or
 expression-backed temperatures are marked `ambiguous_temperature` and are not
 mirrored into operating conditions.
+
+Top-level and model-library `.model` cards are likewise left in the file-backed
+deck for the solver and copied to `imported_spice_directives.model_cards` for
+review provenance. Inline `.lib SECTION` blocks are scoped like inline
+subcircuit definitions: their internal elements are not projected as top-level
+Board IR components. File-backed `.lib PATH [SECTION]` cards remain explicit
+`analog.model_files` dependencies with SHA-256 pins; the selected library section
+stays in the original deck as solver truth.
 
 Dependent and behavioral sources also keep their simulator behavior in the
 source deck. Voltage-controlled `E`/`G` sources expose output pins (`P`, `N`) and
@@ -266,9 +277,10 @@ The importer rejects malformed element lines instead of guessing:
 
 - too few tokens for the element prefix,
 - malformed `.include` or `.lib` path,
-- `.include` or `.lib` path that does not resolve to a local file,
+- `.include` or file-backed `.lib` path that does not resolve to a local file,
 - malformed `.global` directives,
 - unmatched or unclosed `.subckt` / `.ends` blocks,
+- unmatched or unclosed inline `.lib` / `.endl` blocks,
 - unmatched or unclosed `.control` / `.endc` blocks,
 - malformed `.dc` cards or `.dc` sweeps with non-finite values, zero span, or a
   non-positive/oversized step,
@@ -292,8 +304,8 @@ The importer rejects malformed element lines instead of guessing:
 - unsupported `.save`, `.probe`, `.print`, or `.plot` output expressions;
   imported scenario probes currently accept only `V(...)`, `I(...)`, and
   no-op `all`,
-- malformed `.temp`, `.option(s)`, `.ic`, or `.nodeset` directives with no
-  directive arguments,
+- malformed `.temp`, `.option(s)`, `.ic`, `.nodeset`, or `.model` directives
+  with no directive arguments,
 - malformed `.four` or control-block `fourier` cards; imported Fourier
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,
