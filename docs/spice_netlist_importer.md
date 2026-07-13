@@ -43,12 +43,16 @@ The generated project:
 - creates a file-backed `analog_pole_zero` scenario when the deck contains
   `.pz INP INN OUT REF vol|cur pol|zer|pz` or the same command inside a
   closed `.control` block,
+- creates a file-backed `analog_sensitivity` scenario when the deck contains
+  `.sens OUTPUT_EXPR` or `.sens OUTPUT_EXPR ac dec POINTS START STOP`, including
+  the same commands inside a closed `.control` block,
 - creates file-backed `analog_fourier` scenarios when the deck contains
   `.four FREQUENCY OUTPUT_EXPR...` or a closed-control-block
   `fourier FREQUENCY OUTPUT_EXPR...` command,
 - creates one file-backed `analog_transient` scenario using the original deck
   when the deck contains transient timing, or by default when no `.op`, `.dc`,
-  `.ac`, `.noise`, `.tf`, `.pz`, or `.four`/`fourier` analysis was requested,
+  `.ac`, `.noise`, `.tf`, `.pz`, `.sens`, or `.four`/`fourier` analysis was
+  requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -172,6 +176,18 @@ generated pole-zero wrapper. If a deck also requests `.op`, `.dc`, `.ac`,
 `.noise`, `.tf`, or transient timing, the importer emits sibling scenarios for
 each requested analysis.
 
+Decks that request `.sens OUTPUT_EXPR` import as DC `analog_sensitivity`
+scenarios with `analysis: {type: sens, sensitivity_mode: dc}` and
+`SPICE_SENSITIVITY_ANALYSIS`. Decks that request `.sens OUTPUT_EXPR ac dec
+POINTS START STOP` import as AC sensitivity scenarios with the same frequency
+fields used by AC analysis. Closed `.control` blocks may use `sens` or `.sens`
+with the same imported contract. CircuitCI records safe passive primitive
+filters (`R`, `C`, and `L` elements whose values were losslessly represented in
+Board IR) so explicit Xyce backends have named sensitivity parameters; ngspice
+still owns the full file-backed deck behavior. If a deck also requests `.op`,
+`.dc`, `.ac`, `.noise`, `.tf`, `.pz`, or transient timing, the importer emits
+sibling scenarios for each requested analysis.
+
 Decks that request `.four FREQUENCY OUTPUT_EXPR...` import as one
 `analog_fourier` scenario per output expression with `analysis: {type:
 fourier}` and `SPICE_FOURIER_ANALYSIS`. Closed `.control` blocks may use the
@@ -184,8 +200,8 @@ Fourier output expressions currently must fit the CircuitCI Fourier schema:
 `V(node)`, `V(node,reference)`, or `I(source)`. More general ngspice
 `par(...)` output expressions fail closed until the analysis schema can retain
 them without losing meaning. If a deck also requests `.op`, `.dc`, `.ac`,
-`.noise`, `.tf`, or transient timing, the importer emits sibling scenarios for
-each requested analysis.
+`.noise`, `.tf`, `.pz`, `.sens`, or transient timing, the importer emits sibling
+scenarios for each requested analysis.
 
 ## Fail-Closed Rules
 
@@ -206,6 +222,9 @@ The importer rejects malformed element lines instead of guessing:
 - malformed `.pz` cards, unsupported transfer kind/mode, or `.pz` input node
   pairs that do not match exactly one imported source of the requested
   voltage/current kind,
+- malformed or unsupported `.sens` cards; imported sensitivity analysis
+  currently accepts `.sens OUTPUT_EXPR` for DC or `.sens OUTPUT_EXPR ac dec
+  POINTS START STOP` for AC, with `OUTPUT_EXPR` starting with `V(` or `I(`,
 - malformed `.four` or control-block `fourier` cards; imported Fourier
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,

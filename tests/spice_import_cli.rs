@@ -703,6 +703,150 @@ fn import_spice_rejects_pole_zero_without_matching_input_source() {
 }
 
 #[test]
+fn import_spice_creates_sensitivity_scenario_for_sens_deck() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("sensitivity_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nR2 out 0 1k\n.sens V(out)\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_sensitivity_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_sensitivity");
+    assert_eq!(
+        scenarios[0]["checks"],
+        Value::Array(vec![Value::String(
+            "SPICE_SENSITIVITY_ANALYSIS".to_string()
+        )])
+    );
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "sens");
+    assert_eq!(analysis["sensitivity_output_expression"], "V(out)");
+    assert_eq!(analysis["sensitivity_mode"], "dc");
+    assert_eq!(
+        analysis["sensitivity_filters"],
+        Value::Array(vec![
+            Value::String("R1".to_string()),
+            Value::String("R2".to_string())
+        ])
+    );
+    assert!(analysis.get("stop_time_us").is_none());
+
+    let report = run_validation(output.to_str().unwrap());
+    if binary_available("ngspice") || binary_available("Xyce") || binary_available("xyce") {
+        assert_eq!(report["result"], "pass");
+        assert!(
+            report["artifacts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|artifact| artifact
+                    .as_str()
+                    .unwrap()
+                    .ends_with("sensitivity_summary.csv"))
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_creates_control_ac_sensitivity_scenario() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("ac_sensitivity_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nR1 in out 1k\nC1 out 0 100n\n.control\nsens V(out) ac dec 5 10 1k\n.endc\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_ac_sensitivity_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_sensitivity");
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "sens");
+    assert_eq!(analysis["sensitivity_mode"], "ac");
+    assert_eq!(analysis["sensitivity_output_expression"], "V(out)");
+    assert_eq!(analysis["points_per_decade"], 5);
+    assert_eq!(analysis["start_frequency_hz"], 10.0);
+    assert_eq!(analysis["stop_frequency_hz"], 1000.0);
+}
+
+#[test]
+fn import_spice_rejects_unsupported_sensitivity_card() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_sensitivity_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in 0 1k\n.sens par('v(in)*v(in)')\n.end\n",
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_sensitivity_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("SPICE .sens output must be a voltage or current expression"));
+}
+
+#[test]
 fn import_spice_creates_fourier_scenario_for_four_deck() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

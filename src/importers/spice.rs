@@ -6,9 +6,18 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[path = "spice_scenarios.rs"]
+mod spice_scenarios;
 #[cfg(test)]
 #[path = "spice_tests.rs"]
 mod spice_tests;
+
+use spice_scenarios::{
+    ac_scenario_for_yaml, dc_sweep_scenario_for_yaml, fourier_scenario_for_yaml,
+    measure_scenario_for_yaml, noise_scenario_for_yaml, operating_point_scenario_for_yaml,
+    pole_zero_scenario_for_yaml, sensitivity_scenario_for_yaml,
+    transfer_function_scenario_for_yaml, transient_scenario_for_yaml,
+};
 
 #[derive(Debug, Clone)]
 pub struct SpiceImportOptions {
@@ -32,6 +41,7 @@ struct ParsedDeck {
     noise: Option<NoiseSpec>,
     transfer_function: Option<TransferFunctionSpec>,
     pole_zero: Option<PoleZeroSpec>,
+    sensitivity: Option<SensitivitySpec>,
     fourier: Vec<FourierSpec>,
     measures: Vec<MeasureStatementSpec>,
 }
@@ -109,6 +119,21 @@ struct PoleZeroDirective {
     reference_node: String,
     source_kind: ImportedSourceKind,
     mode: String,
+}
+
+#[derive(Debug)]
+struct SensitivitySpec {
+    output_expression: String,
+    mode: String,
+    ac: Option<AcSpec>,
+    filters: Vec<String>,
+}
+
+#[derive(Debug)]
+struct SensitivityDirective {
+    output_expression: String,
+    mode: String,
+    ac: Option<AcSpec>,
 }
 
 #[derive(Debug)]
@@ -297,6 +322,14 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pole_zero_assertions: Vec<AssertionYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    sensitivity_output_expression: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sensitivity_mode: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    sensitivity_filters: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    sensitivity_assertions: Vec<AssertionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     fourier_fundamental_frequency_hz: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fourier_output_expression: Option<String>,
@@ -318,39 +351,6 @@ struct AnalysisYaml {
     measure_mode: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     measure_statements: Vec<MeasureStatementYaml>,
-}
-
-fn analysis_yaml(analysis_type: &str) -> AnalysisYaml {
-    AnalysisYaml {
-        analysis_type: analysis_type.to_string(),
-        stop_time_us: None,
-        max_step_us: None,
-        start_frequency_hz: None,
-        stop_frequency_hz: None,
-        points_per_decade: None,
-        noise_output_node: None,
-        noise_reference_node: None,
-        noise_input_source: None,
-        transfer_output_expression: None,
-        transfer_input_source: None,
-        transfer_function_assertions: Vec::new(),
-        pole_zero_output_node: None,
-        pole_zero_reference_node: None,
-        pole_zero_input_source: None,
-        pole_zero_mode: None,
-        pole_zero_assertions: Vec::new(),
-        fourier_fundamental_frequency_hz: None,
-        fourier_output_expression: None,
-        fourier_harmonics: None,
-        fourier_assertions: Vec::new(),
-        dc_sweep_source: None,
-        dc_sweep_start: None,
-        dc_sweep_stop: None,
-        dc_sweep_step: None,
-        dc_sweep_assertions: Vec::new(),
-        measure_mode: None,
-        measure_statements: Vec::new(),
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -476,6 +476,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut noise = None;
     let mut transfer_function = None;
     let mut pole_zero_directive = None;
+    let mut sensitivity_directive = None;
     let mut fourier = Vec::new();
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
@@ -497,6 +498,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".noise" | "noise" => noise = Some(parse_noise(&tokens)?),
                 ".tf" | "tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
                 ".pz" | "pz" => pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?),
+                ".sens" | "sens" => sensitivity_directive = Some(parse_sensitivity(&tokens)?),
                 ".four" | "four" | "fourier" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
@@ -519,6 +521,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".noise" => noise = Some(parse_noise(&tokens)?),
                 ".tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
                 ".pz" => pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?),
+                ".sens" => sensitivity_directive = Some(parse_sensitivity(&tokens)?),
                 ".four" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
@@ -551,6 +554,8 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let pole_zero = pole_zero_directive
         .map(|directive| pole_zero_spec_from_directive(directive, &elements))
         .transpose()?;
+    let sensitivity = sensitivity_directive
+        .map(|directive| sensitivity_spec_from_directive(directive, &elements));
     Ok(ParsedDeck {
         elements,
         includes,
@@ -562,6 +567,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         noise,
         transfer_function,
         pole_zero,
+        sensitivity,
         fourier,
         measures,
     })
@@ -816,6 +822,40 @@ fn parse_pole_zero_directive(tokens: &[String]) -> Result<PoleZeroDirective> {
     })
 }
 
+fn parse_sensitivity(tokens: &[String]) -> Result<SensitivityDirective> {
+    if tokens.len() < 2 {
+        bail!(".sens directive requires an output expression.");
+    }
+    let output_expression = tokens[1].trim();
+    if !is_supported_output_expression(output_expression) {
+        bail!("SPICE .sens output must be a voltage or current expression like V(out) or I(V1).");
+    }
+    if tokens.len() == 2 || (tokens.len() == 3 && tokens[2].eq_ignore_ascii_case("dc")) {
+        return Ok(SensitivityDirective {
+            output_expression: output_expression.to_string(),
+            mode: "dc".to_string(),
+            ac: None,
+        });
+    }
+    if tokens.len() == 7 && tokens[2].eq_ignore_ascii_case("ac") {
+        let ac_tokens = vec![
+            ".ac".to_string(),
+            tokens[3].clone(),
+            tokens[4].clone(),
+            tokens[5].clone(),
+            tokens[6].clone(),
+        ];
+        return Ok(SensitivityDirective {
+            output_expression: output_expression.to_string(),
+            mode: "ac".to_string(),
+            ac: Some(parse_ac(&ac_tokens)?),
+        });
+    }
+    bail!(
+        "import-spice sensitivity import supports .sens OUTPUT_EXPR or .sens OUTPUT_EXPR ac dec POINTS START STOP."
+    );
+}
+
 fn pole_zero_spec_from_directive(
     directive: PoleZeroDirective,
     elements: &[ParsedElement],
@@ -868,6 +908,35 @@ fn pole_zero_spec_from_directive(
         input_source: input_source.name.clone(),
         mode: directive.mode,
     })
+}
+
+fn sensitivity_spec_from_directive(
+    directive: SensitivityDirective,
+    elements: &[ParsedElement],
+) -> SensitivitySpec {
+    SensitivitySpec {
+        output_expression: directive.output_expression,
+        mode: directive.mode,
+        ac: directive.ac,
+        filters: sensitivity_filters_from_elements(elements),
+    }
+}
+
+fn sensitivity_filters_from_elements(elements: &[ParsedElement]) -> Vec<String> {
+    elements
+        .iter()
+        .filter(|element| {
+            matches!(
+                element.spice,
+                Some(
+                    SpicePrimitiveSpec::Resistor { .. }
+                        | SpicePrimitiveSpec::Capacitor { .. }
+                        | SpicePrimitiveSpec::Inductor { .. }
+                )
+            )
+        })
+        .map(|element| element.name.clone())
+        .collect()
 }
 
 fn parse_fourier(tokens: &[String]) -> Result<Vec<FourierSpec>> {
@@ -1410,6 +1479,9 @@ fn build_project_yaml(
     if let Some(pole_zero) = &deck.pole_zero {
         scenarios.push(pole_zero_scenario_for_yaml(options, &parts, pole_zero));
     }
+    if let Some(sensitivity) = &deck.sensitivity {
+        scenarios.push(sensitivity_scenario_for_yaml(options, &parts, sensitivity));
+    }
     let multiple_fourier_outputs = deck.fourier.len() > 1;
     for (index, fourier) in deck.fourier.iter().enumerate() {
         scenarios.push(fourier_scenario_for_yaml(
@@ -1429,6 +1501,7 @@ fn build_project_yaml(
             && deck.noise.is_none()
             && deck.transfer_function.is_none()
             && deck.pole_zero.is_none()
+            && deck.sensitivity.is_none()
             && deck.fourier.is_empty())
     {
         scenarios.push(transient_scenario_for_yaml(
@@ -1456,324 +1529,6 @@ fn build_project_yaml(
         board: BoardYaml { components, nets },
         scenarios,
     })
-}
-
-fn transient_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    stop_time_us: f64,
-    max_step_us: f64,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_transient".to_string(),
-        scenario_type: "analog_transient".to_string(),
-        checks: vec!["SPICE_TRANSIENT_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                stop_time_us: Some(stop_time_us),
-                max_step_us: Some(max_step_us),
-                ..analysis_yaml("tran")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn operating_point_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_operating_point".to_string(),
-        scenario_type: "analog_dc".to_string(),
-        checks: vec!["SPICE_DC_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: analysis_yaml("op"),
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn dc_sweep_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    dc: &DcSweepSpec,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_dc_sweep".to_string(),
-        scenario_type: "analog_dc_sweep".to_string(),
-        checks: vec!["SPICE_DC_SWEEP_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                dc_sweep_source: Some(dc.source.clone()),
-                dc_sweep_start: Some(dc.start),
-                dc_sweep_stop: Some(dc.stop),
-                dc_sweep_step: Some(dc.step),
-                ..analysis_yaml("dc_sweep")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn ac_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    ac: &AcSpec,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_ac".to_string(),
-        scenario_type: "analog_ac".to_string(),
-        checks: vec!["SPICE_AC_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                start_frequency_hz: Some(ac.start_frequency_hz),
-                stop_frequency_hz: Some(ac.stop_frequency_hz),
-                points_per_decade: Some(ac.points_per_decade),
-                ..analysis_yaml("ac")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn noise_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    noise: &NoiseSpec,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_noise".to_string(),
-        scenario_type: "analog_noise".to_string(),
-        checks: vec!["SPICE_NOISE_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                start_frequency_hz: Some(noise.start_frequency_hz),
-                stop_frequency_hz: Some(noise.stop_frequency_hz),
-                points_per_decade: Some(noise.points_per_decade),
-                noise_output_node: Some(noise.output_node.clone()),
-                noise_reference_node: noise.reference_node.clone(),
-                noise_input_source: Some(noise.input_source.clone()),
-                ..analysis_yaml("noise")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn transfer_function_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    transfer_function: &TransferFunctionSpec,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_transfer_function".to_string(),
-        scenario_type: "analog_transfer_function".to_string(),
-        checks: vec!["SPICE_TRANSFER_FUNCTION_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                transfer_output_expression: Some(transfer_function.output_expression.clone()),
-                transfer_input_source: Some(transfer_function.input_source.clone()),
-                ..analysis_yaml("tf")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn pole_zero_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    pole_zero: &PoleZeroSpec,
-) -> ScenarioYaml {
-    ScenarioYaml {
-        name: "imported_spice_pole_zero".to_string(),
-        scenario_type: "analog_pole_zero".to_string(),
-        checks: vec!["SPICE_POLE_ZERO_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                pole_zero_output_node: Some(pole_zero.output_node.clone()),
-                pole_zero_reference_node: Some(pole_zero.reference_node.clone()),
-                pole_zero_input_source: Some(pole_zero.input_source.clone()),
-                pole_zero_mode: Some(pole_zero.mode.clone()),
-                ..analysis_yaml("pz")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn fourier_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    parts: &AnalogScenarioParts,
-    fourier: &FourierSpec,
-    index: usize,
-    multiple_outputs: bool,
-    stop_time_us: f64,
-    max_step_us: f64,
-) -> ScenarioYaml {
-    let name = if multiple_outputs {
-        format!("imported_spice_fourier_{}", index + 1)
-    } else {
-        "imported_spice_fourier".to_string()
-    };
-    ScenarioYaml {
-        name,
-        scenario_type: "analog_fourier".to_string(),
-        checks: vec!["SPICE_FOURIER_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist.clone(),
-            model_files: parts.model_files.clone(),
-            node_bindings: parts.node_bindings.clone(),
-            pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                stop_time_us: Some(stop_time_us),
-                max_step_us: Some(max_step_us),
-                fourier_fundamental_frequency_hz: Some(fourier.fundamental_frequency_hz),
-                fourier_output_expression: Some(fourier.output_expression.clone()),
-                ..analysis_yaml("fourier")
-            },
-            stimuli: parts.stimuli.clone(),
-            probes: parts.probes.clone(),
-            assertions: Vec::new(),
-        },
-    }
-}
-
-fn measure_scenario_for_yaml(
-    options: &SpiceImportOptions,
-    deck: &ParsedDeck,
-    parts: AnalogScenarioParts,
-    stop_time_us: f64,
-    max_step_us: f64,
-) -> Result<ScenarioYaml> {
-    let mode = common_measure_mode(&deck.measures)?;
-    let (
-        tran_stop_time_us,
-        tran_max_step_us,
-        start_frequency_hz,
-        stop_frequency_hz,
-        points_per_decade,
-    ) = if mode == "ac" {
-        let ac = deck
-            .ac
-            .as_ref()
-            .context("SPICE .meas ac import requires a valid .ac dec sweep.")?;
-        (
-            None,
-            None,
-            Some(ac.start_frequency_hz),
-            Some(ac.stop_frequency_hz),
-            Some(ac.points_per_decade),
-        )
-    } else {
-        (Some(stop_time_us), Some(max_step_us), None, None, None)
-    };
-    Ok(ScenarioYaml {
-        name: format!("{}_measure", mode),
-        scenario_type: "analog_measure".to_string(),
-        checks: vec!["SPICE_MEASURE_ANALYSIS".to_string()],
-        analog: AnalogYaml {
-            backend: options.backend.clone(),
-            netlist_source: "file".to_string(),
-            netlist: parts.netlist,
-            model_files: parts.model_files,
-            node_bindings: parts.node_bindings,
-            pin_bindings: parts.pin_bindings,
-            analysis: AnalysisYaml {
-                stop_time_us: tran_stop_time_us,
-                max_step_us: tran_max_step_us,
-                start_frequency_hz,
-                stop_frequency_hz,
-                points_per_decade,
-                measure_mode: Some(mode.to_string()),
-                measure_statements: deck
-                    .measures
-                    .iter()
-                    .map(|measure| MeasureStatementYaml {
-                        name: measure.name.clone(),
-                        statement: measure.statement.clone(),
-                    })
-                    .collect(),
-                ..analysis_yaml("measure")
-            },
-            stimuli: parts.stimuli,
-            probes: parts.probes,
-            assertions: Vec::new(),
-        },
-    })
-}
-
-fn common_measure_mode(measures: &[MeasureStatementSpec]) -> Result<&str> {
-    let first = measures
-        .first()
-        .context("measure scenario requires at least one measure statement")?;
-    if let Some(other) = measures.iter().find(|measure| measure.mode != first.mode) {
-        bail!(
-            "SPICE .meas statements mix modes {} and {}; import-spice emits one measure scenario per deck.",
-            first.mode,
-            other.mode
-        );
-    }
-    Ok(&first.mode)
 }
 
 impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
