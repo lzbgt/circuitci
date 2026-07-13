@@ -619,6 +619,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         if first.starts_with('.') {
             match command.as_str() {
                 ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
+                ".global" => {
+                    nodes.extend(parse_global_nodes(&tokens)?);
+                }
                 ".tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" => op = true,
                 ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
@@ -767,6 +770,22 @@ fn parse_include(tokens: &[String], source_dir: &Path) -> Result<IncludeFile> {
         );
     }
     Ok(IncludeFile { resolved })
+}
+
+fn parse_global_nodes(tokens: &[String]) -> Result<Vec<String>> {
+    if tokens.len() < 2 {
+        bail!("SPICE .global directive requires at least one node.");
+    }
+    tokens[1..]
+        .iter()
+        .map(|token| {
+            let node = token.trim();
+            if node.is_empty() {
+                bail!("SPICE .global directive contains an empty node name.");
+            }
+            Ok(node.to_string())
+        })
+        .collect()
 }
 
 fn parse_tran(tokens: &[String]) -> Option<TranSpec> {

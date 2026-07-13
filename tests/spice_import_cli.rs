@@ -1106,6 +1106,55 @@ fn import_spice_rejects_unsupported_output_probe_expression() {
 }
 
 #[test]
+fn import_spice_projects_global_nodes_to_nets_and_bindings() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("global_deck.cir");
+    let model = dir.path().join("amp.lib");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(&model, ".subckt AMP IN OUT\nRLOAD OUT VDD 1k\n.ends AMP\n").unwrap();
+    std::fs::write(
+        &deck,
+        format!(
+            ".include {}\n.global VDD\nV1 in 0 DC 1\nXU1 in out AMP\n.tran 1u 10u\n.end\n",
+            model.display()
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_global_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["nets"]["net_vdd"]["kind"],
+        "digital_or_analog"
+    );
+    let bindings = imported["scenarios"][0]["analog"]["node_bindings"]
+        .as_array()
+        .unwrap();
+    assert!(bindings.iter().any(|binding| {
+        binding["node"] == Value::String("VDD".to_string())
+            && binding["net"] == Value::String("net_vdd".to_string())
+    }));
+}
+
+#[test]
 fn import_spice_creates_fourier_scenario_for_four_deck() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

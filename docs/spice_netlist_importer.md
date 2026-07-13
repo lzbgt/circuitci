@@ -24,6 +24,8 @@ The generated project:
 - binds SPICE nodes back to Board IR nets through `analog.node_bindings`,
 - binds element terminals back to Board IR endpoints through
   `analog.pin_bindings`,
+- declares `.global` nodes as Board IR nets and `analog.node_bindings`, even
+  when those nodes only appear inside included subcircuit models,
 - preserves `.include` and `.lib` dependencies as `analog.model_files`,
 - resolves `.include` and `.lib` dependencies relative to the source deck and
   emits SHA-256 pins for every imported model file,
@@ -104,6 +106,12 @@ Numeric `R`/`C`/`L` values are projected into Board IR primitive metadata.
 Parameterized or expression-valued passives such as `R1 in out {RVAL}` remain
 file-backed and import without synthesized primitive metadata; `.param` cards
 and expression evaluation stay in the original deck.
+
+Deck-level `.global` nodes are projected into Board IR nets and scenario
+`node_bindings` so hidden rails used by subcircuits remain visible during GUI
+review and downstream checks. Other deck-level simulator settings such as
+`.temp`, `.options`, `.ic`, and `.nodeset` remain in the file-backed source deck
+unless a scenario schema field can represent them losslessly.
 
 Dependent and behavioral sources also keep their simulator behavior in the
 source deck. Voltage-controlled `E`/`G` sources expose output pins (`P`, `N`) and
@@ -241,6 +249,7 @@ The importer rejects malformed element lines instead of guessing:
 - too few tokens for the element prefix,
 - malformed `.include` or `.lib` path,
 - `.include` or `.lib` path that does not resolve to a local file,
+- malformed `.global` directives,
 - unmatched or unclosed `.control` / `.endc` blocks,
 - malformed `.dc` cards or `.dc` sweeps with non-finite values, zero span, or a
   non-positive/oversized step,
