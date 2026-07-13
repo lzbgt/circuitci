@@ -646,6 +646,98 @@ fn import_spice_accepts_ngspice_control_block_timing() {
 }
 
 #[test]
+fn import_spice_preserves_ngspice_measure_statements() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("measure_block.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 3.3\nR1 in out 1k\nC1 out 0 100n\n.control\ntran 2u 20u\nmeas tran avg_out AVG V(out) FROM=0 TO=20u\n.endc\n.end\n",
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "measure_block_import",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 2);
+    let measure = scenarios
+        .iter()
+        .find(|scenario| scenario["type"] == "analog_measure")
+        .unwrap();
+    let analysis = &measure["analog"]["analysis"];
+    assert_eq!(analysis["type"], "measure");
+    assert_eq!(analysis["measure_mode"], "tran");
+    assert_eq!(analysis["stop_time_us"], 20.0);
+    assert_eq!(analysis["max_step_us"], 2.0);
+    assert_eq!(analysis["measure_statements"][0]["name"], "avg_out");
+    assert_eq!(
+        analysis["measure_statements"][0]["statement"],
+        "meas tran avg_out AVG V(out) FROM=0 TO=20u"
+    );
+}
+
+#[test]
+fn import_spice_preserves_ngspice_ac_measure_statements() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("measure_ac.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nC1 out 0 100n\n.ac dec 20 10 100k\n.meas ac gain_mid FIND V(out) AT=1k\n.end\n",
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "measure_ac_import",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let measure = imported["scenarios"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|scenario| scenario["type"] == "analog_measure")
+        .unwrap();
+    let analysis = &measure["analog"]["analysis"];
+    assert_eq!(analysis["measure_mode"], "ac");
+    assert_eq!(analysis["start_frequency_hz"], 10.0);
+    assert_eq!(analysis["stop_frequency_hz"], 100_000.0);
+    assert_eq!(analysis["points_per_decade"], 20);
+    assert_eq!(analysis["measure_statements"][0]["name"], "gain_mid");
+}
+
+#[test]
 fn import_spice_rejects_malformed_element_line() {
     let dir = tempfile::tempdir().unwrap();
     let deck = dir.path().join("bad.cir");

@@ -28,9 +28,16 @@ The generated project:
 - resolves `.include` and `.lib` dependencies relative to the source deck and
   emits SHA-256 pins for every imported model file,
 - tolerates closed ngspice `.control` / `.endc` blocks, ignoring simulator
-  commands while importing `tran` timing when present,
+  commands while importing `tran` timing and reviewed raw `.meas`/`meas`
+  statements when present,
 - emits voltage probes for discovered non-ground SPICE nodes,
-- creates one file-backed `analog_transient` scenario using the original deck.
+- creates one file-backed `analog_transient` scenario using the original deck,
+- creates an additional file-backed `analog_measure` scenario when the deck
+  contains ngspice `.meas`/`meas` cards. Raw measure statements remain
+  ngspice-specific text; explicit Xyce backends fail closed through the normal
+  measure-analysis adapter boundary. Transient measure imports use deck
+  `.tran` timing when present, otherwise the CLI/default import timing. AC
+  measure imports require a valid `.ac dec` sweep.
 
 ## Element Mapping
 
@@ -85,6 +92,8 @@ The importer rejects malformed element lines instead of guessing:
 - malformed `.include` or `.lib` path,
 - `.include` or `.lib` path that does not resolve to a local file,
 - unmatched or unclosed `.control` / `.endc` blocks,
+- malformed `.meas` cards, duplicate `.meas` result names, mixed `.meas` modes,
+  or `.meas ac` cards without a valid `.ac dec` sweep,
 - orphan continuation lines,
 - element names that cannot be represented as Board IR component IDs.
 

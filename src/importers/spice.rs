@@ -22,6 +22,9 @@ struct ParsedDeck {
     includes: Vec<IncludeFile>,
     nodes: BTreeSet<String>,
     tran: Option<TranSpec>,
+    ac: Option<AcSpec>,
+    ac_parse_error: Option<String>,
+    measures: Vec<MeasureStatementSpec>,
 }
 
 #[derive(Debug)]
@@ -41,6 +44,20 @@ struct IncludeFile {
 struct TranSpec {
     stop_time_us: f64,
     max_step_us: f64,
+}
+
+#[derive(Debug)]
+struct AcSpec {
+    start_frequency_hz: f64,
+    stop_frequency_hz: f64,
+    points_per_decade: u32,
+}
+
+#[derive(Debug)]
+struct MeasureStatementSpec {
+    mode: String,
+    name: String,
+    statement: String,
 }
 
 #[derive(Debug)]
@@ -154,26 +171,26 @@ struct AnalogYaml {
     assertions: Vec<AssertionYaml>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct ModelFileYaml {
     path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     sha256: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct NodeBindingYaml {
     node: String,
     net: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct PinBindingYaml {
     node: String,
     endpoint: EndpointYaml,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct EndpointYaml {
     component: String,
     pin: String,
@@ -183,17 +200,35 @@ struct EndpointYaml {
 struct AnalysisYaml {
     #[serde(rename = "type")]
     analysis_type: String,
-    stop_time_us: f64,
-    max_step_us: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stop_time_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_step_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start_frequency_hz: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stop_frequency_hz: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    points_per_decade: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    measure_mode: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    measure_statements: Vec<MeasureStatementYaml>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
+struct MeasureStatementYaml {
+    name: String,
+    statement: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 struct StimulusYaml {
     name: String,
     description: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct ProbeYaml {
     name: String,
     expression: String,
@@ -203,6 +238,16 @@ struct ProbeYaml {
 
 #[derive(Debug, Serialize)]
 struct AssertionYaml {}
+
+#[derive(Debug, Clone)]
+struct AnalogScenarioParts {
+    netlist: String,
+    model_files: Vec<ModelFileYaml>,
+    node_bindings: Vec<NodeBindingYaml>,
+    pin_bindings: Vec<PinBindingYaml>,
+    stimuli: Vec<StimulusYaml>,
+    probes: Vec<ProbeYaml>,
+}
 
 pub fn import_spice(options: &SpiceImportOptions) -> Result<()> {
     import_spice_with_progress(options, |_, _| {})
@@ -288,6 +333,10 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut includes = Vec::new();
     let mut nodes = BTreeSet::new();
     let mut tran = None;
+    let mut ac = None;
+    let mut ac_parse_error = None;
+    let mut measures = Vec::new();
+    let mut measure_names = BTreeSet::new();
     let mut in_control = false;
     for line in logical_lines {
         let tokens = tokenize(&line);
@@ -300,6 +349,13 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
             match command.as_str() {
                 ".endc" | "endc" => in_control = false,
                 ".tran" | "tran" => tran = parse_tran(&tokens).or(tran),
+                ".meas" | ".measure" | "meas" | "measure" => {
+                    push_measure_statement(
+                        &mut measures,
+                        &mut measure_names,
+                        parse_measure_statement(&tokens, &line)?,
+                    )?;
+                }
                 _ => {}
             }
             continue;
@@ -308,6 +364,17 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
             match command.as_str() {
                 ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
                 ".tran" => tran = parse_tran(&tokens).or(tran),
+                ".ac" => match parse_ac(&tokens) {
+                    Ok(spec) => ac = Some(spec),
+                    Err(error) => ac_parse_error = Some(error.to_string()),
+                },
+                ".meas" | ".measure" => {
+                    push_measure_statement(
+                        &mut measures,
+                        &mut measure_names,
+                        parse_measure_statement(&tokens, &line)?,
+                    )?;
+                }
                 ".control" => in_control = true,
                 ".endc" => bail!("SPICE .endc appears without a preceding .control block."),
                 _ => {}
@@ -334,6 +401,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         includes,
         nodes,
         tran,
+        ac,
+        ac_parse_error,
+        measures,
     })
 }
 
@@ -422,6 +492,69 @@ fn parse_tran(tokens: &[String]) -> Option<TranSpec> {
         stop_time_us,
         max_step_us,
     })
+}
+
+fn parse_ac(tokens: &[String]) -> Result<AcSpec> {
+    if tokens.len() < 5 {
+        bail!(".ac directive requires sweep type, point count, start, and stop.");
+    }
+    if !tokens[1].eq_ignore_ascii_case("dec") {
+        bail!("import-spice .meas ac import currently requires .ac dec sweeps.");
+    }
+    let points_per_decade = tokens[2]
+        .parse::<u32>()
+        .with_context(|| format!("Could not parse .ac points-per-decade {}", tokens[2]))?;
+    let start_frequency_hz = parse_spice_number(&tokens[3])
+        .with_context(|| format!("Could not parse .ac start frequency {}", tokens[3]))?;
+    let stop_frequency_hz = parse_spice_number(&tokens[4])
+        .with_context(|| format!("Could not parse .ac stop frequency {}", tokens[4]))?;
+    if points_per_decade == 0
+        || !start_frequency_hz.is_finite()
+        || !stop_frequency_hz.is_finite()
+        || start_frequency_hz <= 0.0
+        || stop_frequency_hz <= start_frequency_hz
+    {
+        bail!(".ac dec sweep must use positive finite start/stop frequencies and points.");
+    }
+    Ok(AcSpec {
+        start_frequency_hz,
+        stop_frequency_hz,
+        points_per_decade,
+    })
+}
+
+fn parse_measure_statement(tokens: &[String], line: &str) -> Result<MeasureStatementSpec> {
+    if tokens.len() < 4 {
+        bail!("SPICE .meas statement must include mode, name, operation, and expression.");
+    }
+    let command = tokens[0].trim_start_matches('.');
+    if !command.eq_ignore_ascii_case("meas") && !command.eq_ignore_ascii_case("measure") {
+        bail!("SPICE measure statement must start with meas, .meas, measure, or .measure.");
+    }
+    let mode = tokens[1].to_ascii_lowercase();
+    if !matches!(mode.as_str(), "tran" | "ac") {
+        bail!(
+            "SPICE .meas mode {} is not supported by import-spice.",
+            tokens[1]
+        );
+    }
+    Ok(MeasureStatementSpec {
+        mode,
+        name: tokens[2].clone(),
+        statement: line.to_string(),
+    })
+}
+
+fn push_measure_statement(
+    measures: &mut Vec<MeasureStatementSpec>,
+    names: &mut BTreeSet<String>,
+    measure: MeasureStatementSpec,
+) -> Result<()> {
+    if !names.insert(measure.name.to_ascii_lowercase()) {
+        bail!("Duplicate SPICE .meas result name {}.", measure.name);
+    }
+    measures.push(measure);
+    Ok(())
 }
 
 fn parse_element(tokens: &[String], line: &str) -> Result<ParsedElement> {
@@ -721,7 +854,7 @@ fn build_project_yaml(
             },
         );
     }
-    let node_bindings = deck
+    let node_bindings: Vec<NodeBindingYaml> = deck
         .nodes
         .iter()
         .map(|node| NodeBindingYaml {
@@ -756,6 +889,55 @@ fn build_project_yaml(
             }),
     );
     let tran = deck.tran.as_ref();
+    let stop_time_us = tran.map_or(options.stop_time_us, |value| value.stop_time_us);
+    let max_step_us = tran.map_or(options.max_step_us, |value| value.max_step_us);
+    let parts = AnalogScenarioParts {
+        netlist: path_for_yaml(&options.input, output_dir),
+        model_files: model_files_for_yaml(&deck.includes, output_dir)?,
+        node_bindings,
+        pin_bindings,
+        stimuli: vec![StimulusYaml {
+            name: "imported_deck_sources".to_string(),
+            description: "Stimuli are defined by independent sources in the imported SPICE deck."
+                .to_string(),
+        }],
+        probes,
+    };
+    let mut scenarios = vec![ScenarioYaml {
+        name: "imported_spice_transient".to_string(),
+        scenario_type: "analog_transient".to_string(),
+        checks: vec!["SPICE_TRANSIENT_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "tran".to_string(),
+                stop_time_us: Some(stop_time_us),
+                max_step_us: Some(max_step_us),
+                start_frequency_hz: None,
+                stop_frequency_hz: None,
+                points_per_decade: None,
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }];
+    if !deck.measures.is_empty() {
+        scenarios.push(measure_scenario_for_yaml(
+            options,
+            deck,
+            parts,
+            stop_time_us,
+            max_step_us,
+        )?);
+    }
     Ok(ProjectYaml {
         project: ProjectMetaYaml {
             name: options.name.clone(),
@@ -763,33 +945,87 @@ fn build_project_yaml(
         },
         libraries: vec![generic_analog_library_path()],
         board: BoardYaml { components, nets },
-        scenarios: vec![ScenarioYaml {
-            name: "imported_spice_transient".to_string(),
-            scenario_type: "analog_transient".to_string(),
-            checks: vec!["SPICE_TRANSIENT_ANALYSIS".to_string()],
-            analog: AnalogYaml {
-                backend: options.backend.clone(),
-                netlist_source: "file".to_string(),
-                netlist: path_for_yaml(&options.input, output_dir),
-                model_files: model_files_for_yaml(&deck.includes, output_dir)?,
-                node_bindings,
-                pin_bindings,
-                analysis: AnalysisYaml {
-                    analysis_type: "tran".to_string(),
-                    stop_time_us: tran.map_or(options.stop_time_us, |value| value.stop_time_us),
-                    max_step_us: tran.map_or(options.max_step_us, |value| value.max_step_us),
-                },
-                stimuli: vec![StimulusYaml {
-                    name: "imported_deck_sources".to_string(),
-                    description:
-                        "Stimuli are defined by independent sources in the imported SPICE deck."
-                            .to_string(),
-                }],
-                probes,
-                assertions: Vec::new(),
-            },
-        }],
+        scenarios,
     })
+}
+
+fn measure_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    deck: &ParsedDeck,
+    parts: AnalogScenarioParts,
+    stop_time_us: f64,
+    max_step_us: f64,
+) -> Result<ScenarioYaml> {
+    let mode = common_measure_mode(&deck.measures)?;
+    let (
+        tran_stop_time_us,
+        tran_max_step_us,
+        start_frequency_hz,
+        stop_frequency_hz,
+        points_per_decade,
+    ) = if mode == "ac" {
+        let ac = deck.ac.as_ref().with_context(|| {
+            deck.ac_parse_error.clone().unwrap_or_else(|| {
+                "SPICE .meas ac import requires a valid .ac dec sweep.".to_string()
+            })
+        })?;
+        (
+            None,
+            None,
+            Some(ac.start_frequency_hz),
+            Some(ac.stop_frequency_hz),
+            Some(ac.points_per_decade),
+        )
+    } else {
+        (Some(stop_time_us), Some(max_step_us), None, None, None)
+    };
+    Ok(ScenarioYaml {
+        name: format!("{}_measure", mode),
+        scenario_type: "analog_measure".to_string(),
+        checks: vec!["SPICE_MEASURE_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist,
+            model_files: parts.model_files,
+            node_bindings: parts.node_bindings,
+            pin_bindings: parts.pin_bindings,
+            analysis: AnalysisYaml {
+                analysis_type: "measure".to_string(),
+                stop_time_us: tran_stop_time_us,
+                max_step_us: tran_max_step_us,
+                start_frequency_hz,
+                stop_frequency_hz,
+                points_per_decade,
+                measure_mode: Some(mode.to_string()),
+                measure_statements: deck
+                    .measures
+                    .iter()
+                    .map(|measure| MeasureStatementYaml {
+                        name: measure.name.clone(),
+                        statement: measure.statement.clone(),
+                    })
+                    .collect(),
+            },
+            stimuli: parts.stimuli,
+            probes: parts.probes,
+            assertions: Vec::new(),
+        },
+    })
+}
+
+fn common_measure_mode(measures: &[MeasureStatementSpec]) -> Result<&str> {
+    let first = measures
+        .first()
+        .context("measure scenario requires at least one measure statement")?;
+    if let Some(other) = measures.iter().find(|measure| measure.mode != first.mode) {
+        bail!(
+            "SPICE .meas statements mix modes {} and {}; import-spice emits one measure scenario per deck.",
+            first.mode,
+            other.mode
+        );
+    }
+    Ok(&first.mode)
 }
 
 impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
@@ -1022,6 +1258,7 @@ V1 in 0 DC 3.3
 R1 in 0 1k
 .control
 tran 2u 20u
+meas tran avg_in AVG V(in) FROM=0 TO=20u
 run
 write waveform.raw
 .endc
@@ -1034,6 +1271,13 @@ write waveform.raw
         let tran = parsed.tran.as_ref().unwrap();
         assert_eq!(tran.max_step_us, 2.0);
         assert_eq!(tran.stop_time_us, 20.0);
+        assert_eq!(parsed.measures.len(), 1);
+        assert_eq!(parsed.measures[0].mode, "tran");
+        assert_eq!(parsed.measures[0].name, "avg_in");
+        assert_eq!(
+            parsed.measures[0].statement,
+            "meas tran avg_in AVG V(in) FROM=0 TO=20u"
+        );
     }
 
     #[test]
