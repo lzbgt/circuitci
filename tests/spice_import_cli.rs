@@ -559,6 +559,150 @@ fn import_spice_creates_op_and_transfer_function_scenarios_when_both_requested()
 }
 
 #[test]
+fn import_spice_creates_pole_zero_scenario_for_pz_deck() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("pz_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nC1 out 0 100n\n.pz in 0 out 0 vol pz\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_pz_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_pole_zero");
+    assert_eq!(
+        scenarios[0]["checks"],
+        Value::Array(vec![Value::String("SPICE_POLE_ZERO_ANALYSIS".to_string())])
+    );
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "pz");
+    assert_eq!(analysis["pole_zero_output_node"], "out");
+    assert_eq!(analysis["pole_zero_reference_node"], "0");
+    assert_eq!(analysis["pole_zero_input_source"], "V1");
+    assert_eq!(analysis["pole_zero_mode"], "poles_and_zeros");
+    assert!(analysis.get("stop_time_us").is_none());
+
+    let report = run_validation(output.to_str().unwrap());
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert!(
+            report["artifacts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|artifact| artifact
+                    .as_str()
+                    .unwrap()
+                    .ends_with("pole_zero_summary.csv"))
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_creates_op_and_control_pole_zero_scenarios_when_both_requested() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("op_pz_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "I1 in 0 DC 1m\nR1 in out 1k\nC1 out 0 100n\n.control\nop\npz in 0 out 0 cur pol\n.endc\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_op_pz_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 2);
+    assert_eq!(scenarios[0]["type"], "analog_dc");
+    assert_eq!(scenarios[0]["analog"]["analysis"]["type"], "op");
+    assert_eq!(scenarios[1]["type"], "analog_pole_zero");
+    assert_eq!(scenarios[1]["analog"]["analysis"]["type"], "pz");
+    assert_eq!(
+        scenarios[1]["analog"]["analysis"]["pole_zero_input_source"],
+        "I1"
+    );
+    assert_eq!(
+        scenarios[1]["analog"]["analysis"]["pole_zero_mode"],
+        "poles"
+    );
+}
+
+#[test]
+fn import_spice_rejects_pole_zero_without_matching_input_source() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_pz_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 source 0 DC 1\nR1 source out 1k\nC1 out 0 100n\n.pz in 0 out 0 vol pz\n.end\n",
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_pz_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr
+            .contains("SPICE .pz input nodes in 0 must match exactly one imported voltage source")
+    );
+}
+
+#[test]
 fn import_spice_creates_fourier_scenario_for_four_deck() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

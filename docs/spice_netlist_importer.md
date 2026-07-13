@@ -40,12 +40,15 @@ The generated project:
   numeric `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` sweep,
 - creates a file-backed `analog_transfer_function` scenario when the deck
   contains `.tf OUTPUT_EXPR INPUT_SOURCE`,
+- creates a file-backed `analog_pole_zero` scenario when the deck contains
+  `.pz INP INN OUT REF vol|cur pol|zer|pz` or the same command inside a
+  closed `.control` block,
 - creates file-backed `analog_fourier` scenarios when the deck contains
   `.four FREQUENCY OUTPUT_EXPR...` or a closed-control-block
   `fourier FREQUENCY OUTPUT_EXPR...` command,
 - creates one file-backed `analog_transient` scenario using the original deck
   when the deck contains transient timing, or by default when no `.op`, `.dc`,
-  `.ac`, `.noise`, `.tf`, or `.four`/`fourier` analysis was requested,
+  `.ac`, `.noise`, `.tf`, `.pz`, or `.four`/`fourier` analysis was requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -157,6 +160,18 @@ the checked ngspice wrapper and normalized summary. If a deck also requests
 `.op`, `.dc`, `.ac`, `.noise`, or transient timing, the importer emits sibling
 scenarios for each requested analysis.
 
+Decks that request `.pz INP INN OUT REF vol|cur pol|zer|pz` import as
+`analog_pole_zero` scenarios with `analysis: {type: pz}` and
+`SPICE_POLE_ZERO_ANALYSIS`. Ngspice defines the first node pair as the input
+port and the second node pair as the output port. CircuitCI records the output
+node/reference, extraction mode, and the imported independent input source whose
+`P`/`N` pins exactly match the requested input node pair and voltage/current
+kind. If no imported source matches, or more than one source matches, import
+fails closed instead of guessing which source should be removed from the
+generated pole-zero wrapper. If a deck also requests `.op`, `.dc`, `.ac`,
+`.noise`, `.tf`, or transient timing, the importer emits sibling scenarios for
+each requested analysis.
+
 Decks that request `.four FREQUENCY OUTPUT_EXPR...` import as one
 `analog_fourier` scenario per output expression with `analysis: {type:
 fourier}` and `SPICE_FOURIER_ANALYSIS`. Closed `.control` blocks may use the
@@ -188,6 +203,9 @@ The importer rejects malformed element lines instead of guessing:
   accepts `.noise V(OUT[,REF]) INPUT dec POINTS START STOP`,
 - malformed `.tf` cards; imported transfer-function analysis currently accepts
   `.tf OUTPUT_EXPR INPUT_SOURCE` where `OUTPUT_EXPR` starts with `V(` or `I(`,
+- malformed `.pz` cards, unsupported transfer kind/mode, or `.pz` input node
+  pairs that do not match exactly one imported source of the requested
+  voltage/current kind,
 - malformed `.four` or control-block `fourier` cards; imported Fourier
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,

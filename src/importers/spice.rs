@@ -31,6 +31,7 @@ struct ParsedDeck {
     ac: Option<AcSpec>,
     noise: Option<NoiseSpec>,
     transfer_function: Option<TransferFunctionSpec>,
+    pole_zero: Option<PoleZeroSpec>,
     fourier: Vec<FourierSpec>,
     measures: Vec<MeasureStatementSpec>,
 }
@@ -44,7 +45,7 @@ struct ParsedElement {
     source_kind: Option<ImportedSourceKind>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ImportedSourceKind {
     Voltage,
     Current,
@@ -90,6 +91,24 @@ struct NoiseSpec {
 struct TransferFunctionSpec {
     output_expression: String,
     input_source: String,
+}
+
+#[derive(Debug)]
+struct PoleZeroSpec {
+    output_node: String,
+    reference_node: String,
+    input_source: String,
+    mode: String,
+}
+
+#[derive(Debug)]
+struct PoleZeroDirective {
+    input_positive_node: String,
+    input_negative_node: String,
+    output_node: String,
+    reference_node: String,
+    source_kind: ImportedSourceKind,
+    mode: String,
 }
 
 #[derive(Debug)]
@@ -268,6 +287,16 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     transfer_function_assertions: Vec<AssertionYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pole_zero_output_node: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pole_zero_reference_node: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pole_zero_input_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pole_zero_mode: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pole_zero_assertions: Vec<AssertionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     fourier_fundamental_frequency_hz: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fourier_output_expression: Option<String>,
@@ -289,6 +318,39 @@ struct AnalysisYaml {
     measure_mode: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     measure_statements: Vec<MeasureStatementYaml>,
+}
+
+fn analysis_yaml(analysis_type: &str) -> AnalysisYaml {
+    AnalysisYaml {
+        analysis_type: analysis_type.to_string(),
+        stop_time_us: None,
+        max_step_us: None,
+        start_frequency_hz: None,
+        stop_frequency_hz: None,
+        points_per_decade: None,
+        noise_output_node: None,
+        noise_reference_node: None,
+        noise_input_source: None,
+        transfer_output_expression: None,
+        transfer_input_source: None,
+        transfer_function_assertions: Vec::new(),
+        pole_zero_output_node: None,
+        pole_zero_reference_node: None,
+        pole_zero_input_source: None,
+        pole_zero_mode: None,
+        pole_zero_assertions: Vec::new(),
+        fourier_fundamental_frequency_hz: None,
+        fourier_output_expression: None,
+        fourier_harmonics: None,
+        fourier_assertions: Vec::new(),
+        dc_sweep_source: None,
+        dc_sweep_start: None,
+        dc_sweep_stop: None,
+        dc_sweep_step: None,
+        dc_sweep_assertions: Vec::new(),
+        measure_mode: None,
+        measure_statements: Vec::new(),
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -413,6 +475,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut ac = None;
     let mut noise = None;
     let mut transfer_function = None;
+    let mut pole_zero_directive = None;
     let mut fourier = Vec::new();
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
@@ -433,6 +496,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".ac" | "ac" => ac = Some(parse_ac(&tokens)?),
                 ".noise" | "noise" => noise = Some(parse_noise(&tokens)?),
                 ".tf" | "tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
+                ".pz" | "pz" => pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?),
                 ".four" | "four" | "fourier" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
@@ -454,6 +518,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".ac" => ac = Some(parse_ac(&tokens)?),
                 ".noise" => noise = Some(parse_noise(&tokens)?),
                 ".tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
+                ".pz" => pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?),
                 ".four" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
@@ -483,6 +548,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
             path.display()
         );
     }
+    let pole_zero = pole_zero_directive
+        .map(|directive| pole_zero_spec_from_directive(directive, &elements))
+        .transpose()?;
     Ok(ParsedDeck {
         elements,
         includes,
@@ -493,6 +561,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         ac,
         noise,
         transfer_function,
+        pole_zero,
         fourier,
         measures,
     })
@@ -719,6 +788,85 @@ fn parse_transfer_function(tokens: &[String]) -> Result<TransferFunctionSpec> {
     Ok(TransferFunctionSpec {
         output_expression: output_expression.to_string(),
         input_source: input_source.to_string(),
+    })
+}
+
+fn parse_pole_zero_directive(tokens: &[String]) -> Result<PoleZeroDirective> {
+    if tokens.len() < 7 {
+        bail!(".pz directive requires input nodes, output nodes, transfer kind, and mode.");
+    }
+    let source_kind = match tokens[5].to_ascii_lowercase().as_str() {
+        "vol" => ImportedSourceKind::Voltage,
+        "cur" => ImportedSourceKind::Current,
+        _ => bail!("SPICE .pz transfer kind must be vol or cur."),
+    };
+    let mode = match tokens[6].to_ascii_lowercase().as_str() {
+        "pol" => "poles",
+        "zer" => "zeros",
+        "pz" => "poles_and_zeros",
+        _ => bail!("SPICE .pz mode must be pol, zer, or pz."),
+    };
+    Ok(PoleZeroDirective {
+        input_positive_node: tokens[1].clone(),
+        input_negative_node: tokens[2].clone(),
+        output_node: tokens[3].clone(),
+        reference_node: tokens[4].clone(),
+        source_kind,
+        mode: mode.to_string(),
+    })
+}
+
+fn pole_zero_spec_from_directive(
+    directive: PoleZeroDirective,
+    elements: &[ParsedElement],
+) -> Result<PoleZeroSpec> {
+    let matching_sources = elements
+        .iter()
+        .filter(|element| {
+            matches!(
+                (directive.source_kind, element.spice.as_ref()),
+                (
+                    ImportedSourceKind::Voltage,
+                    Some(
+                        SpicePrimitiveSpec::DcVoltageSource { .. }
+                            | SpicePrimitiveSpec::PulseVoltageSource { .. }
+                    )
+                ) | (
+                    ImportedSourceKind::Current,
+                    Some(
+                        SpicePrimitiveSpec::DcCurrentSource { .. }
+                            | SpicePrimitiveSpec::PulseCurrentSource { .. }
+                    )
+                )
+            )
+        })
+        .filter(|element| {
+            element
+                .pins
+                .iter()
+                .any(|(pin, node)| pin == "P" && node == &directive.input_positive_node)
+                && element
+                    .pins
+                    .iter()
+                    .any(|(pin, node)| pin == "N" && node == &directive.input_negative_node)
+        })
+        .collect::<Vec<_>>();
+    let [input_source] = matching_sources.as_slice() else {
+        bail!(
+            "SPICE .pz input nodes {} {} must match exactly one imported {} source.",
+            directive.input_positive_node,
+            directive.input_negative_node,
+            match directive.source_kind {
+                ImportedSourceKind::Voltage => "voltage",
+                ImportedSourceKind::Current => "current",
+            }
+        );
+    };
+    Ok(PoleZeroSpec {
+        output_node: directive.output_node,
+        reference_node: directive.reference_node,
+        input_source: input_source.name.clone(),
+        mode: directive.mode,
     })
 }
 
@@ -1259,6 +1407,9 @@ fn build_project_yaml(
             transfer_function,
         ));
     }
+    if let Some(pole_zero) = &deck.pole_zero {
+        scenarios.push(pole_zero_scenario_for_yaml(options, &parts, pole_zero));
+    }
     let multiple_fourier_outputs = deck.fourier.len() > 1;
     for (index, fourier) in deck.fourier.iter().enumerate() {
         scenarios.push(fourier_scenario_for_yaml(
@@ -1277,6 +1428,7 @@ fn build_project_yaml(
             && deck.ac.is_none()
             && deck.noise.is_none()
             && deck.transfer_function.is_none()
+            && deck.pole_zero.is_none()
             && deck.fourier.is_empty())
     {
         scenarios.push(transient_scenario_for_yaml(
@@ -1324,29 +1476,9 @@ fn transient_scenario_for_yaml(
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
             analysis: AnalysisYaml {
-                analysis_type: "tran".to_string(),
                 stop_time_us: Some(stop_time_us),
                 max_step_us: Some(max_step_us),
-                start_frequency_hz: None,
-                stop_frequency_hz: None,
-                points_per_decade: None,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
+                ..analysis_yaml("tran")
             },
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
@@ -1370,31 +1502,7 @@ fn operating_point_scenario_for_yaml(
             model_files: parts.model_files.clone(),
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
-            analysis: AnalysisYaml {
-                analysis_type: "op".to_string(),
-                stop_time_us: None,
-                max_step_us: None,
-                start_frequency_hz: None,
-                stop_frequency_hz: None,
-                points_per_decade: None,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
-            },
+            analysis: analysis_yaml("op"),
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
             assertions: Vec::new(),
@@ -1419,29 +1527,11 @@ fn dc_sweep_scenario_for_yaml(
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
             analysis: AnalysisYaml {
-                analysis_type: "dc_sweep".to_string(),
-                stop_time_us: None,
-                max_step_us: None,
-                start_frequency_hz: None,
-                stop_frequency_hz: None,
-                points_per_decade: None,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
                 dc_sweep_source: Some(dc.source.clone()),
                 dc_sweep_start: Some(dc.start),
                 dc_sweep_stop: Some(dc.stop),
                 dc_sweep_step: Some(dc.step),
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
+                ..analysis_yaml("dc_sweep")
             },
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
@@ -1467,29 +1557,10 @@ fn ac_scenario_for_yaml(
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
             analysis: AnalysisYaml {
-                analysis_type: "ac".to_string(),
-                stop_time_us: None,
-                max_step_us: None,
                 start_frequency_hz: Some(ac.start_frequency_hz),
                 stop_frequency_hz: Some(ac.stop_frequency_hz),
                 points_per_decade: Some(ac.points_per_decade),
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
+                ..analysis_yaml("ac")
             },
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
@@ -1515,29 +1586,13 @@ fn noise_scenario_for_yaml(
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
             analysis: AnalysisYaml {
-                analysis_type: "noise".to_string(),
-                stop_time_us: None,
-                max_step_us: None,
                 start_frequency_hz: Some(noise.start_frequency_hz),
                 stop_frequency_hz: Some(noise.stop_frequency_hz),
                 points_per_decade: Some(noise.points_per_decade),
                 noise_output_node: Some(noise.output_node.clone()),
                 noise_reference_node: noise.reference_node.clone(),
                 noise_input_source: Some(noise.input_source.clone()),
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
+                ..analysis_yaml("noise")
             },
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
@@ -1563,29 +1618,39 @@ fn transfer_function_scenario_for_yaml(
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
             analysis: AnalysisYaml {
-                analysis_type: "tf".to_string(),
-                stop_time_us: None,
-                max_step_us: None,
-                start_frequency_hz: None,
-                stop_frequency_hz: None,
-                points_per_decade: None,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
                 transfer_output_expression: Some(transfer_function.output_expression.clone()),
                 transfer_input_source: Some(transfer_function.input_source.clone()),
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
+                ..analysis_yaml("tf")
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
+fn pole_zero_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    pole_zero: &PoleZeroSpec,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_pole_zero".to_string(),
+        scenario_type: "analog_pole_zero".to_string(),
+        checks: vec!["SPICE_POLE_ZERO_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                pole_zero_output_node: Some(pole_zero.output_node.clone()),
+                pole_zero_reference_node: Some(pole_zero.reference_node.clone()),
+                pole_zero_input_source: Some(pole_zero.input_source.clone()),
+                pole_zero_mode: Some(pole_zero.mode.clone()),
+                ..analysis_yaml("pz")
             },
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
@@ -1620,29 +1685,11 @@ fn fourier_scenario_for_yaml(
             node_bindings: parts.node_bindings.clone(),
             pin_bindings: parts.pin_bindings.clone(),
             analysis: AnalysisYaml {
-                analysis_type: "fourier".to_string(),
                 stop_time_us: Some(stop_time_us),
                 max_step_us: Some(max_step_us),
-                start_frequency_hz: None,
-                stop_frequency_hz: None,
-                points_per_decade: None,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
                 fourier_fundamental_frequency_hz: Some(fourier.fundamental_frequency_hz),
                 fourier_output_expression: Some(fourier.output_expression.clone()),
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
-                measure_mode: None,
-                measure_statements: Vec::new(),
+                ..analysis_yaml("fourier")
             },
             stimuli: parts.stimuli.clone(),
             probes: parts.probes.clone(),
@@ -1692,27 +1739,11 @@ fn measure_scenario_for_yaml(
             node_bindings: parts.node_bindings,
             pin_bindings: parts.pin_bindings,
             analysis: AnalysisYaml {
-                analysis_type: "measure".to_string(),
                 stop_time_us: tran_stop_time_us,
                 max_step_us: tran_max_step_us,
                 start_frequency_hz,
                 stop_frequency_hz,
                 points_per_decade,
-                noise_output_node: None,
-                noise_reference_node: None,
-                noise_input_source: None,
-                transfer_output_expression: None,
-                transfer_input_source: None,
-                transfer_function_assertions: Vec::new(),
-                fourier_fundamental_frequency_hz: None,
-                fourier_output_expression: None,
-                fourier_harmonics: None,
-                fourier_assertions: Vec::new(),
-                dc_sweep_source: None,
-                dc_sweep_start: None,
-                dc_sweep_stop: None,
-                dc_sweep_step: None,
-                dc_sweep_assertions: Vec::new(),
                 measure_mode: Some(mode.to_string()),
                 measure_statements: deck
                     .measures
@@ -1722,6 +1753,7 @@ fn measure_scenario_for_yaml(
                         statement: measure.statement.clone(),
                     })
                     .collect(),
+                ..analysis_yaml("measure")
             },
             stimuli: parts.stimuli,
             probes: parts.probes,
