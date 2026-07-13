@@ -38,6 +38,10 @@ The generated project:
 - emits voltage probes for discovered non-ground SPICE nodes,
 - projects supported `.save`, `.probe`, `.print`, and `.plot` output
   expressions into scenario probes for GUI/waveform review,
+- records `.temp`, `.option(s)`, `.ic`, and `.nodeset` cards under
+  `scenario.parameters.imported_spice_directives`; a single numeric `.temp`
+  is also mirrored to `analog.operating_conditions.ambient_temperature_c` for
+  review context,
 - creates a file-backed `analog_dc` scenario when the deck contains `.op`,
 - creates a file-backed `analog_dc_sweep` scenario when the deck contains a
   numeric `.dc SOURCE START STOP STEP` sweep,
@@ -119,8 +123,13 @@ and expression evaluation stay in the original deck.
 Deck-level `.global` nodes are projected into Board IR nets and scenario
 `node_bindings` so hidden rails used by subcircuits remain visible during GUI
 review and downstream checks. Other deck-level simulator settings such as
-`.temp`, `.options`, `.ic`, and `.nodeset` remain in the file-backed source deck
-unless a scenario schema field can represent them losslessly.
+`.options`, `.ic`, and `.nodeset` remain in the file-backed source deck as the
+solver source of truth, but the raw cards are also copied into
+`scenario.parameters.imported_spice_directives` for review provenance. A single
+numeric `.temp` card is additionally mirrored into
+`analog.operating_conditions.ambient_temperature_c`; multi-temperature sweeps or
+expression-backed temperatures are marked `ambiguous_temperature` and are not
+mirrored into operating conditions.
 
 Dependent and behavioral sources also keep their simulator behavior in the
 source deck. Voltage-controlled `E`/`G` sources expose output pins (`P`, `N`) and
@@ -283,6 +292,8 @@ The importer rejects malformed element lines instead of guessing:
 - unsupported `.save`, `.probe`, `.print`, or `.plot` output expressions;
   imported scenario probes currently accept only `V(...)`, `I(...)`, and
   no-op `all`,
+- malformed `.temp`, `.option(s)`, `.ic`, or `.nodeset` directives with no
+  directive arguments,
 - malformed `.four` or control-block `fourier` cards; imported Fourier
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,

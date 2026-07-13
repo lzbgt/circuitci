@@ -49,6 +49,7 @@ struct ParsedDeck {
     fourier: Vec<FourierSpec>,
     measures: Vec<MeasureStatementSpec>,
     explicit_probes: Vec<OutputProbeSpec>,
+    directive_metadata: ImportedDirectiveMetadata,
 }
 
 #[derive(Debug)]
@@ -187,6 +188,16 @@ struct OutputProbeSpec {
     quantity: Option<&'static str>,
 }
 
+#[derive(Debug, Default)]
+struct ImportedDirectiveMetadata {
+    temp_cards: Vec<String>,
+    option_cards: Vec<String>,
+    initial_condition_cards: Vec<String>,
+    nodeset_cards: Vec<String>,
+    ambient_temperature_c: Option<f64>,
+    ambiguous_temperature: bool,
+}
+
 #[derive(Debug)]
 enum SpicePrimitiveSpec {
     Resistor { value_ohm: f64 },
@@ -281,6 +292,8 @@ struct ScenarioYaml {
     #[serde(rename = "type")]
     scenario_type: String,
     checks: Vec<String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    parameters: BTreeMap<String, serde_yaml_ng::Value>,
     analog: AnalogYaml,
 }
 
@@ -289,6 +302,8 @@ struct AnalogYaml {
     backend: String,
     netlist_source: String,
     netlist: String,
+    #[serde(skip_serializing_if = "OperatingConditionsYaml::is_empty")]
+    operating_conditions: OperatingConditionsYaml,
     model_files: Vec<ModelFileYaml>,
     node_bindings: Vec<NodeBindingYaml>,
     pin_bindings: Vec<PinBindingYaml>,
@@ -296,6 +311,18 @@ struct AnalogYaml {
     stimuli: Vec<StimulusYaml>,
     probes: Vec<ProbeYaml>,
     assertions: Vec<AssertionYaml>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+struct OperatingConditionsYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ambient_temperature_c: Option<f64>,
+}
+
+impl OperatingConditionsYaml {
+    fn is_empty(&self) -> bool {
+        self.ambient_temperature_c.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -435,6 +462,8 @@ struct AssertionYaml {}
 #[derive(Debug, Clone)]
 struct AnalogScenarioParts {
     netlist: String,
+    parameters: BTreeMap<String, serde_yaml_ng::Value>,
+    operating_conditions: OperatingConditionsYaml,
     model_files: Vec<ModelFileYaml>,
     node_bindings: Vec<NodeBindingYaml>,
     pin_bindings: Vec<PinBindingYaml>,
@@ -539,6 +568,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
     let mut explicit_probes = Vec::new();
+    let mut directive_metadata = ImportedDirectiveMetadata::default();
     let mut in_control = false;
     let mut control_distortion_active = false;
     let mut subckt_depth = 0usize;
@@ -613,6 +643,10 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".save" | "save" | ".probe" | "probe" => {
                     explicit_probes.extend(parse_save_probe_outputs(&tokens)?);
                 }
+                ".temp" | "temp" | ".option" | "option" | ".options" | "options" | ".ic" | "ic"
+                | ".nodeset" | "nodeset" => {
+                    record_imported_directive(&mut directive_metadata, &tokens, &line)?;
+                }
                 ".four" | "four" | "fourier" => {
                     control_distortion_active = false;
                     fourier.extend(parse_fourier(&tokens)?);
@@ -653,6 +687,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 }
                 ".save" | ".probe" => {
                     explicit_probes.extend(parse_save_probe_outputs(&tokens)?);
+                }
+                ".temp" | ".option" | ".options" | ".ic" | ".nodeset" => {
+                    record_imported_directive(&mut directive_metadata, &tokens, &line)?;
                 }
                 ".four" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" => {
@@ -712,6 +749,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         fourier,
         measures,
         explicit_probes,
+        directive_metadata,
     })
 }
 
@@ -788,6 +826,65 @@ fn parse_include(tokens: &[String], source_dir: &Path) -> Result<IncludeFile> {
         );
     }
     Ok(IncludeFile { resolved })
+}
+
+fn record_imported_directive(
+    metadata: &mut ImportedDirectiveMetadata,
+    tokens: &[String],
+    line: &str,
+) -> Result<()> {
+    let command = tokens[0].trim_start_matches('.').to_ascii_lowercase();
+    if tokens.len() < 2 {
+        bail!("SPICE .{command} directive requires at least one argument.");
+    }
+    match command.as_str() {
+        "temp" => record_temp_directive(metadata, tokens, line),
+        "option" | "options" => {
+            metadata.option_cards.push(line.to_string());
+            Ok(())
+        }
+        "ic" => {
+            metadata.initial_condition_cards.push(line.to_string());
+            Ok(())
+        }
+        "nodeset" => {
+            metadata.nodeset_cards.push(line.to_string());
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn record_temp_directive(
+    metadata: &mut ImportedDirectiveMetadata,
+    tokens: &[String],
+    line: &str,
+) -> Result<()> {
+    metadata.temp_cards.push(line.to_string());
+    let parsed = tokens[1..]
+        .iter()
+        .map(|token| parse_spice_number(token))
+        .collect::<Option<Vec<_>>>();
+    let Some(values) = parsed else {
+        metadata.ambiguous_temperature = true;
+        metadata.ambient_temperature_c = None;
+        return Ok(());
+    };
+    if values.len() != 1 || !values[0].is_finite() {
+        metadata.ambiguous_temperature = true;
+        metadata.ambient_temperature_c = None;
+        return Ok(());
+    }
+    let value = values[0];
+    if let Some(existing) = metadata.ambient_temperature_c {
+        if (existing - value).abs() > f64::EPSILON {
+            metadata.ambiguous_temperature = true;
+            metadata.ambient_temperature_c = None;
+        }
+    } else if !metadata.ambiguous_temperature {
+        metadata.ambient_temperature_c = Some(value);
+    }
+    Ok(())
 }
 
 fn parse_global_nodes(tokens: &[String]) -> Result<Vec<String>> {
@@ -1439,6 +1536,8 @@ fn build_project_yaml(
     let max_step_us = tran.map_or(options.max_step_us, |value| value.max_step_us);
     let parts = AnalogScenarioParts {
         netlist: path_for_yaml(&options.input, output_dir),
+        parameters: scenario_parameters_for_directives(&deck.directive_metadata),
+        operating_conditions: operating_conditions_for_directives(&deck.directive_metadata),
         model_files: model_files_for_yaml(&deck.includes, output_dir)?,
         node_bindings,
         pin_bindings,
@@ -1543,6 +1642,79 @@ fn append_explicit_probes(probes: &mut Vec<ProbeYaml>, explicit: &[OutputProbeSp
             quantity: probe.quantity,
         });
     }
+}
+
+fn operating_conditions_for_directives(
+    metadata: &ImportedDirectiveMetadata,
+) -> OperatingConditionsYaml {
+    OperatingConditionsYaml {
+        ambient_temperature_c: metadata.ambient_temperature_c,
+    }
+}
+
+fn scenario_parameters_for_directives(
+    metadata: &ImportedDirectiveMetadata,
+) -> BTreeMap<String, serde_yaml_ng::Value> {
+    let mut directive_map = BTreeMap::new();
+    insert_string_array(
+        &mut directive_map,
+        "temp_cards",
+        metadata.temp_cards.as_slice(),
+    );
+    insert_string_array(
+        &mut directive_map,
+        "option_cards",
+        metadata.option_cards.as_slice(),
+    );
+    insert_string_array(
+        &mut directive_map,
+        "initial_condition_cards",
+        metadata.initial_condition_cards.as_slice(),
+    );
+    insert_string_array(
+        &mut directive_map,
+        "nodeset_cards",
+        metadata.nodeset_cards.as_slice(),
+    );
+    if let Some(temperature_c) = metadata.ambient_temperature_c {
+        directive_map.insert(
+            "ambient_temperature_c".to_string(),
+            serde_yaml_ng::to_value(temperature_c).unwrap_or(serde_yaml_ng::Value::Null),
+        );
+    }
+    if metadata.ambiguous_temperature {
+        directive_map.insert(
+            "ambiguous_temperature".to_string(),
+            serde_yaml_ng::Value::Bool(true),
+        );
+    }
+    let mut parameters = BTreeMap::new();
+    if !directive_map.is_empty() {
+        parameters.insert(
+            "imported_spice_directives".to_string(),
+            serde_yaml_ng::to_value(directive_map).unwrap_or(serde_yaml_ng::Value::Null),
+        );
+    }
+    parameters
+}
+
+fn insert_string_array(
+    values: &mut BTreeMap<String, serde_yaml_ng::Value>,
+    key: &str,
+    cards: &[String],
+) {
+    if cards.is_empty() {
+        return;
+    }
+    values.insert(
+        key.to_string(),
+        serde_yaml_ng::Value::Sequence(
+            cards
+                .iter()
+                .map(|card| serde_yaml_ng::Value::String(card.clone()))
+                .collect(),
+        ),
+    );
 }
 
 impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {

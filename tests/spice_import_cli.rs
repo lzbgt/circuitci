@@ -1253,6 +1253,112 @@ fn import_spice_rejects_unclosed_subckt_definition() {
 }
 
 #[test]
+fn import_spice_records_deck_directives_as_review_metadata() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("directive_metadata_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nC1 out 0 10n\n.temp 85\n.options reltol=1e-4 method=gear\n.ic V(out)=0\n.nodeset V(in)=1\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_directive_metadata_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenario = &imported["scenarios"][0];
+    assert_eq!(
+        scenario["analog"]["operating_conditions"]["ambient_temperature_c"],
+        85.0
+    );
+    let directives = &scenario["parameters"]["imported_spice_directives"];
+    assert_eq!(directives["ambient_temperature_c"], 85.0);
+    assert_eq!(
+        directives["temp_cards"],
+        Value::Array(vec![Value::String(".temp 85".to_string())])
+    );
+    assert_eq!(
+        directives["option_cards"],
+        Value::Array(vec![Value::String(
+            ".options reltol=1e-4 method=gear".to_string()
+        )])
+    );
+    assert_eq!(
+        directives["initial_condition_cards"],
+        Value::Array(vec![Value::String(".ic V(out)=0".to_string())])
+    );
+    assert_eq!(
+        directives["nodeset_cards"],
+        Value::Array(vec![Value::String(".nodeset V(in)=1".to_string())])
+    );
+}
+
+#[test]
+fn import_spice_keeps_multi_temp_directive_as_solver_truth_only() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("multi_temp_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in 0 1k\n.temp -40 25 85\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_multi_temp_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenario = &imported["scenarios"][0];
+    assert!(
+        scenario["analog"]
+            .as_object()
+            .unwrap()
+            .get("operating_conditions")
+            .is_none()
+    );
+    let directives = &scenario["parameters"]["imported_spice_directives"];
+    assert_eq!(directives["ambiguous_temperature"], true);
+    assert_eq!(
+        directives["temp_cards"],
+        Value::Array(vec![Value::String(".temp -40 25 85".to_string())])
+    );
+    assert!(directives.get("ambient_temperature_c").is_none());
+}
+
+#[test]
 fn import_spice_creates_fourier_scenario_for_four_deck() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
