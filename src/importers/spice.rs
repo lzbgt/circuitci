@@ -31,6 +31,7 @@ struct ParsedDeck {
     ac: Option<AcSpec>,
     noise: Option<NoiseSpec>,
     transfer_function: Option<TransferFunctionSpec>,
+    fourier: Vec<FourierSpec>,
     measures: Vec<MeasureStatementSpec>,
 }
 
@@ -89,6 +90,12 @@ struct NoiseSpec {
 struct TransferFunctionSpec {
     output_expression: String,
     input_source: String,
+}
+
+#[derive(Debug)]
+struct FourierSpec {
+    fundamental_frequency_hz: f64,
+    output_expression: String,
 }
 
 #[derive(Debug)]
@@ -261,6 +268,14 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     transfer_function_assertions: Vec<AssertionYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    fourier_fundamental_frequency_hz: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fourier_output_expression: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fourier_harmonics: Option<u32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    fourier_assertions: Vec<AssertionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dc_sweep_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dc_sweep_start: Option<f64>,
@@ -398,6 +413,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut ac = None;
     let mut noise = None;
     let mut transfer_function = None;
+    let mut fourier = Vec::new();
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
     let mut in_control = false;
@@ -417,6 +433,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".ac" | "ac" => ac = Some(parse_ac(&tokens)?),
                 ".noise" | "noise" => noise = Some(parse_noise(&tokens)?),
                 ".tf" | "tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
+                ".four" | "four" | "fourier" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -437,6 +454,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".ac" => ac = Some(parse_ac(&tokens)?),
                 ".noise" => noise = Some(parse_noise(&tokens)?),
                 ".tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
+                ".four" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -475,6 +493,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         ac,
         noise,
         transfer_function,
+        fourier,
         measures,
     })
 }
@@ -690,10 +709,7 @@ fn parse_transfer_function(tokens: &[String]) -> Result<TransferFunctionSpec> {
         bail!(".tf directive requires output expression and input source.");
     }
     let output_expression = tokens[1].trim();
-    if output_expression.is_empty()
-        || !(output_expression[..2.min(output_expression.len())].eq_ignore_ascii_case("v(")
-            || output_expression[..2.min(output_expression.len())].eq_ignore_ascii_case("i("))
-    {
+    if !is_supported_output_expression(output_expression) {
         bail!("SPICE .tf output must be a voltage or current expression like V(out) or I(V1).");
     }
     let input_source = tokens[2].trim();
@@ -704,6 +720,40 @@ fn parse_transfer_function(tokens: &[String]) -> Result<TransferFunctionSpec> {
         output_expression: output_expression.to_string(),
         input_source: input_source.to_string(),
     })
+}
+
+fn parse_fourier(tokens: &[String]) -> Result<Vec<FourierSpec>> {
+    if tokens.len() < 3 {
+        bail!(".four directive requires fundamental frequency and at least one output expression.");
+    }
+    let fundamental_frequency_hz = parse_spice_number(&tokens[1])
+        .with_context(|| format!("Could not parse .four fundamental frequency {}", tokens[1]))?;
+    if !fundamental_frequency_hz.is_finite() || fundamental_frequency_hz <= 0.0 {
+        bail!(".four fundamental frequency must be positive and finite.");
+    }
+    tokens[2..]
+        .iter()
+        .map(|token| {
+            let output_expression = token.trim();
+            if !is_supported_output_expression(output_expression) {
+                bail!(
+                    "SPICE .four output must be a voltage or current expression like V(out) or I(V1)."
+                );
+            }
+            Ok(FourierSpec {
+                fundamental_frequency_hz,
+                output_expression: output_expression.to_string(),
+            })
+        })
+        .collect()
+}
+
+fn is_supported_output_expression(expression: &str) -> bool {
+    let trimmed = expression.trim();
+    trimmed.ends_with(')')
+        && trimmed.get(..2).is_some_and(|prefix| {
+            prefix.eq_ignore_ascii_case("v(") || prefix.eq_ignore_ascii_case("i(")
+        })
 }
 
 fn parse_measure_statement(tokens: &[String], line: &str) -> Result<MeasureStatementSpec> {
@@ -1209,12 +1259,25 @@ fn build_project_yaml(
             transfer_function,
         ));
     }
+    let multiple_fourier_outputs = deck.fourier.len() > 1;
+    for (index, fourier) in deck.fourier.iter().enumerate() {
+        scenarios.push(fourier_scenario_for_yaml(
+            options,
+            &parts,
+            fourier,
+            index,
+            multiple_fourier_outputs,
+            stop_time_us,
+            max_step_us,
+        ));
+    }
     if deck.tran.is_some()
         || (!deck.op
             && deck.dc.is_none()
             && deck.ac.is_none()
             && deck.noise.is_none()
-            && deck.transfer_function.is_none())
+            && deck.transfer_function.is_none()
+            && deck.fourier.is_empty())
     {
         scenarios.push(transient_scenario_for_yaml(
             options,
@@ -1273,6 +1336,10 @@ fn transient_scenario_for_yaml(
                 transfer_output_expression: None,
                 transfer_input_source: None,
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1316,6 +1383,10 @@ fn operating_point_scenario_for_yaml(
                 transfer_output_expression: None,
                 transfer_input_source: None,
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1360,6 +1431,10 @@ fn dc_sweep_scenario_for_yaml(
                 transfer_output_expression: None,
                 transfer_input_source: None,
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: Some(dc.source.clone()),
                 dc_sweep_start: Some(dc.start),
                 dc_sweep_stop: Some(dc.stop),
@@ -1404,6 +1479,10 @@ fn ac_scenario_for_yaml(
                 transfer_output_expression: None,
                 transfer_input_source: None,
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1448,6 +1527,10 @@ fn noise_scenario_for_yaml(
                 transfer_output_expression: None,
                 transfer_input_source: None,
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1492,6 +1575,67 @@ fn transfer_function_scenario_for_yaml(
                 transfer_output_expression: Some(transfer_function.output_expression.clone()),
                 transfer_input_source: Some(transfer_function.input_source.clone()),
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
+fn fourier_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    fourier: &FourierSpec,
+    index: usize,
+    multiple_outputs: bool,
+    stop_time_us: f64,
+    max_step_us: f64,
+) -> ScenarioYaml {
+    let name = if multiple_outputs {
+        format!("imported_spice_fourier_{}", index + 1)
+    } else {
+        "imported_spice_fourier".to_string()
+    };
+    ScenarioYaml {
+        name,
+        scenario_type: "analog_fourier".to_string(),
+        checks: vec!["SPICE_FOURIER_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "fourier".to_string(),
+                stop_time_us: Some(stop_time_us),
+                max_step_us: Some(max_step_us),
+                start_frequency_hz: None,
+                stop_frequency_hz: None,
+                points_per_decade: None,
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: Some(fourier.fundamental_frequency_hz),
+                fourier_output_expression: Some(fourier.output_expression.clone()),
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1560,6 +1704,10 @@ fn measure_scenario_for_yaml(
                 transfer_output_expression: None,
                 transfer_input_source: None,
                 transfer_function_assertions: Vec::new(),
+                fourier_fundamental_frequency_hz: None,
+                fourier_output_expression: None,
+                fourier_harmonics: None,
+                fourier_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,

@@ -40,9 +40,12 @@ The generated project:
   numeric `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` sweep,
 - creates a file-backed `analog_transfer_function` scenario when the deck
   contains `.tf OUTPUT_EXPR INPUT_SOURCE`,
+- creates file-backed `analog_fourier` scenarios when the deck contains
+  `.four FREQUENCY OUTPUT_EXPR...` or a closed-control-block
+  `fourier FREQUENCY OUTPUT_EXPR...` command,
 - creates one file-backed `analog_transient` scenario using the original deck
   when the deck contains transient timing, or by default when no `.op`, `.dc`,
-  `.ac`, `.noise`, or `.tf` analysis was requested,
+  `.ac`, `.noise`, `.tf`, or `.four`/`fourier` analysis was requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -154,6 +157,21 @@ the checked ngspice wrapper and normalized summary. If a deck also requests
 `.op`, `.dc`, `.ac`, `.noise`, or transient timing, the importer emits sibling
 scenarios for each requested analysis.
 
+Decks that request `.four FREQUENCY OUTPUT_EXPR...` import as one
+`analog_fourier` scenario per output expression with `analysis: {type:
+fourier}` and `SPICE_FOURIER_ANALYSIS`. Closed `.control` blocks may use the
+ngspice `fourier FREQUENCY OUTPUT_EXPR...` command with the same imported
+contract. The imported file-backed deck remains solver truth for source
+waveforms, device equations, and model files; CircuitCI records the requested
+fundamental frequency and output expression so the Fourier runner can generate
+the checked transient-backed `.four` wrapper and normalized summary. Imported
+Fourier output expressions currently must fit the CircuitCI Fourier schema:
+`V(node)`, `V(node,reference)`, or `I(source)`. More general ngspice
+`par(...)` output expressions fail closed until the analysis schema can retain
+them without losing meaning. If a deck also requests `.op`, `.dc`, `.ac`,
+`.noise`, `.tf`, or transient timing, the importer emits sibling scenarios for
+each requested analysis.
+
 ## Fail-Closed Rules
 
 The importer rejects malformed element lines instead of guessing:
@@ -170,6 +188,9 @@ The importer rejects malformed element lines instead of guessing:
   accepts `.noise V(OUT[,REF]) INPUT dec POINTS START STOP`,
 - malformed `.tf` cards; imported transfer-function analysis currently accepts
   `.tf OUTPUT_EXPR INPUT_SOURCE` where `OUTPUT_EXPR` starts with `V(` or `I(`,
+- malformed `.four` or control-block `fourier` cards; imported Fourier
+  analysis currently accepts positive finite fundamental frequency plus
+  `V(...)` or `I(...)` output expressions,
 - malformed `.meas` cards, duplicate `.meas` result names, mixed `.meas` modes,
   or `.meas ac` cards without a valid `.ac dec` sweep,
 - orphan continuation lines,
