@@ -772,6 +772,49 @@ fn import_spice_preserves_dependent_source_pin_semantics() {
 }
 
 #[test]
+fn import_spice_accepts_parameterized_passive_values() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("parameterized_passives.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        ".param RVAL=1k CVAL=47n LVAL=1u\nV1 in 0 DC 1\nR1 in mid {RVAL}\nC1 mid 0 {CVAL}\nL1 mid out {LVAL}\nR2 out 0 2k\n.tran 0.1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_parameterized_passives",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let components = &imported["board"]["components"];
+    assert!(components["R1"].get("spice").is_none());
+    assert!(components["C1"].get("spice").is_none());
+    assert!(components["L1"].get("spice").is_none());
+    assert_eq!(components["R2"]["spice"]["primitive"], "resistor");
+    assert!((components["R2"]["spice"]["value_ohm"].as_f64().unwrap() - 2000.0).abs() < 1.0e-12);
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["model_files"],
+        Value::Array(vec![])
+    );
+}
+
+#[test]
 fn import_spice_accepts_ngspice_control_block_timing() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

@@ -73,6 +73,11 @@ import. Primitive values are preserved in Board IR where they can be represented
 losslessly, but `netlist_source: file` still makes the deck the solver source of
 truth.
 
+Numeric `R`/`C`/`L` values are projected into Board IR primitive metadata.
+Parameterized or expression-valued passives such as `R1 in out {RVAL}` remain
+file-backed and import without synthesized primitive metadata; `.param` cards
+and expression evaluation stay in the original deck.
+
 Dependent and behavioral sources also keep their simulator behavior in the
 source deck. Voltage-controlled `E`/`G` sources expose output pins (`P`, `N`) and
 control-node pins (`CP`, `CN`) so imported topology remains reviewable.

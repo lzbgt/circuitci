@@ -639,8 +639,7 @@ where
             tokens.join(" ")
         );
     }
-    let value = parse_spice_number(&tokens[3])
-        .with_context(|| format!("Could not parse SPICE value {}", tokens[3]))?;
+    let spice = parse_spice_number(&tokens[3]).map(primitive);
     Ok(ParsedElement {
         name: tokens[0].clone(),
         model: model.to_string(),
@@ -648,7 +647,7 @@ where
             ("A".to_string(), tokens[1].clone()),
             ("B".to_string(), tokens[2].clone()),
         ],
-        spice: Some(primitive(value)),
+        spice,
         source_kind: None,
     })
 }
