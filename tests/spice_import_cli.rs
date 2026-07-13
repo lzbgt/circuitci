@@ -847,6 +847,144 @@ fn import_spice_rejects_unsupported_sensitivity_card() {
 }
 
 #[test]
+fn import_spice_creates_distortion_scenario_for_disto_deck() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("distortion_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "VIN out 0 DC 0.2 DISTOF1 1.0 0.0\nD1 out 0 DMOD\n.model DMOD D(Is=1e-14 N=1)\n.disto dec 3 1k 10k\n.print disto I(VIN)\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_distortion_deck",
+            "--backend",
+            "ngspice",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_distortion");
+    assert_eq!(
+        scenarios[0]["checks"],
+        Value::Array(vec![Value::String("SPICE_DISTORTION_ANALYSIS".to_string())])
+    );
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "disto");
+    assert_eq!(analysis["distortion_mode"], "harmonic");
+    assert_eq!(analysis["distortion_start_frequency_hz"], 1000.0);
+    assert_eq!(analysis["distortion_stop_frequency_hz"], 10000.0);
+    assert_eq!(analysis["distortion_points_per_decade"], 3);
+    assert_eq!(analysis["distortion_output_expression"], "I(VIN)");
+    assert_eq!(
+        analysis["distortion_f1_sources"],
+        Value::Array(vec![Value::String("VIN".to_string())])
+    );
+    assert!(analysis.get("distortion_f2_sources").is_none());
+    assert!(analysis.get("distortion_f2_over_f1").is_none());
+    assert!(analysis.get("stop_time_us").is_none());
+}
+
+#[test]
+fn import_spice_creates_control_intermodulation_distortion_scenario() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("intermod_disto_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in1 0 DC 0.01 DISTOF1 1.0 0.0\nV2 in2 0 DC 0.002 DISTOF2 1.0 0.0\nR1 in1 out 1k\nR2 in2 out 2k\nC1 out 0 1u\n.control\ndisto dec 20 10 1Meg 0.9\nprint V(out)\n.endc\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_intermod_disto_deck",
+            "--backend",
+            "ngspice",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_distortion");
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "disto");
+    assert_eq!(analysis["distortion_mode"], "intermodulation");
+    assert_eq!(analysis["distortion_points_per_decade"], 20);
+    assert_eq!(analysis["distortion_start_frequency_hz"], 10.0);
+    assert_eq!(analysis["distortion_stop_frequency_hz"], 1_000_000.0);
+    assert_eq!(analysis["distortion_output_expression"], "V(out)");
+    assert_eq!(
+        analysis["distortion_f1_sources"],
+        Value::Array(vec![Value::String("V1".to_string())])
+    );
+    assert_eq!(
+        analysis["distortion_f2_sources"],
+        Value::Array(vec![Value::String("V2".to_string())])
+    );
+    assert!((analysis["distortion_f2_over_f1"].as_f64().unwrap() - 0.9).abs() < 1.0e-12);
+}
+
+#[test]
+fn import_spice_rejects_distortion_without_output_expression() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("bad_disto_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 out 0 DC 0.2 DISTOF1 1.0 0.0\nD1 out 0 DMOD\n.model DMOD D(Is=1e-14 N=1)\n.disto dec 3 1k 10k\n.end\n",
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_bad_disto_deck",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("SPICE .disto import requires a supported output expression"));
+}
+
+#[test]
 fn import_spice_creates_fourier_scenario_for_four_deck() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

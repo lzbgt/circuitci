@@ -13,9 +13,9 @@ mod spice_scenarios;
 mod spice_tests;
 
 use spice_scenarios::{
-    ac_scenario_for_yaml, dc_sweep_scenario_for_yaml, fourier_scenario_for_yaml,
-    measure_scenario_for_yaml, noise_scenario_for_yaml, operating_point_scenario_for_yaml,
-    pole_zero_scenario_for_yaml, sensitivity_scenario_for_yaml,
+    ac_scenario_for_yaml, dc_sweep_scenario_for_yaml, distortion_scenario_for_yaml,
+    fourier_scenario_for_yaml, measure_scenario_for_yaml, noise_scenario_for_yaml,
+    operating_point_scenario_for_yaml, pole_zero_scenario_for_yaml, sensitivity_scenario_for_yaml,
     transfer_function_scenario_for_yaml, transient_scenario_for_yaml,
 };
 
@@ -42,6 +42,7 @@ struct ParsedDeck {
     transfer_function: Option<TransferFunctionSpec>,
     pole_zero: Option<PoleZeroSpec>,
     sensitivity: Option<SensitivitySpec>,
+    distortion: Option<DistortionSpec>,
     fourier: Vec<FourierSpec>,
     measures: Vec<MeasureStatementSpec>,
 }
@@ -53,6 +54,7 @@ struct ParsedElement {
     pins: Vec<(String, String)>,
     spice: Option<SpicePrimitiveSpec>,
     source_kind: Option<ImportedSourceKind>,
+    distortion_role: DistortionSourceRole,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,6 +136,32 @@ struct SensitivityDirective {
     output_expression: String,
     mode: String,
     ac: Option<AcSpec>,
+}
+
+#[derive(Debug)]
+struct DistortionSpec {
+    mode: String,
+    start_frequency_hz: f64,
+    stop_frequency_hz: f64,
+    points_per_decade: u32,
+    output_expression: String,
+    f1_sources: Vec<String>,
+    f2_sources: Vec<String>,
+    f2_over_f1: Option<f64>,
+}
+
+#[derive(Debug)]
+struct DistortionDirective {
+    start_frequency_hz: f64,
+    stop_frequency_hz: f64,
+    points_per_decade: u32,
+    f2_over_f1: Option<f64>,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct DistortionSourceRole {
+    f1: bool,
+    f2: bool,
 }
 
 #[derive(Debug)]
@@ -330,6 +358,24 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     sensitivity_assertions: Vec<AssertionYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_start_frequency_hz: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_stop_frequency_hz: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_points_per_decade: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_output_expression: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    distortion_f1_sources: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    distortion_f2_sources: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_f2_over_f1: Option<f64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    distortion_assertions: Vec<AssertionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     fourier_fundamental_frequency_hz: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fourier_output_expression: Option<String>,
@@ -477,10 +523,13 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut transfer_function = None;
     let mut pole_zero_directive = None;
     let mut sensitivity_directive = None;
+    let mut distortion_directive = None;
+    let mut distortion_output_expression = None;
     let mut fourier = Vec::new();
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
     let mut in_control = false;
+    let mut control_distortion_active = false;
     for line in logical_lines {
         let tokens = tokenize(&line);
         if tokens.is_empty() {
@@ -490,17 +539,57 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         let command = first.to_ascii_lowercase();
         if in_control {
             match command.as_str() {
-                ".endc" | "endc" => in_control = false,
-                ".tran" | "tran" => tran = parse_tran(&tokens).or(tran),
-                ".op" | "op" => op = true,
-                ".dc" | "dc" => dc = Some(parse_dc_sweep(&tokens)?),
-                ".ac" | "ac" => ac = Some(parse_ac(&tokens)?),
-                ".noise" | "noise" => noise = Some(parse_noise(&tokens)?),
-                ".tf" | "tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
-                ".pz" | "pz" => pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?),
-                ".sens" | "sens" => sensitivity_directive = Some(parse_sensitivity(&tokens)?),
-                ".four" | "four" | "fourier" => fourier.extend(parse_fourier(&tokens)?),
+                ".endc" | "endc" => {
+                    in_control = false;
+                    control_distortion_active = false;
+                }
+                ".tran" | "tran" => {
+                    control_distortion_active = false;
+                    tran = parse_tran(&tokens).or(tran);
+                }
+                ".op" | "op" => {
+                    control_distortion_active = false;
+                    op = true;
+                }
+                ".dc" | "dc" => {
+                    control_distortion_active = false;
+                    dc = Some(parse_dc_sweep(&tokens)?);
+                }
+                ".ac" | "ac" => {
+                    control_distortion_active = false;
+                    ac = Some(parse_ac(&tokens)?);
+                }
+                ".noise" | "noise" => {
+                    control_distortion_active = false;
+                    noise = Some(parse_noise(&tokens)?);
+                }
+                ".tf" | "tf" => {
+                    control_distortion_active = false;
+                    transfer_function = Some(parse_transfer_function(&tokens)?);
+                }
+                ".pz" | "pz" => {
+                    control_distortion_active = false;
+                    pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?);
+                }
+                ".sens" | "sens" => {
+                    control_distortion_active = false;
+                    sensitivity_directive = Some(parse_sensitivity(&tokens)?);
+                }
+                ".disto" | "disto" => {
+                    control_distortion_active = true;
+                    distortion_directive = Some(parse_distortion(&tokens)?);
+                }
+                ".print" | ".plot" | "print" | "plot" => {
+                    if control_distortion_active && distortion_output_expression.is_none() {
+                        distortion_output_expression = parse_control_distortion_output(&tokens)?;
+                    }
+                }
+                ".four" | "four" | "fourier" => {
+                    control_distortion_active = false;
+                    fourier.extend(parse_fourier(&tokens)?);
+                }
                 ".meas" | ".measure" | "meas" | "measure" => {
+                    control_distortion_active = false;
                     push_measure_statement(
                         &mut measures,
                         &mut measure_names,
@@ -522,6 +611,11 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
                 ".pz" => pole_zero_directive = Some(parse_pole_zero_directive(&tokens)?),
                 ".sens" => sensitivity_directive = Some(parse_sensitivity(&tokens)?),
+                ".disto" => distortion_directive = Some(parse_distortion(&tokens)?),
+                ".print" | ".plot" => {
+                    distortion_output_expression = parse_print_or_plot_distortion_output(&tokens)?
+                        .or(distortion_output_expression)
+                }
                 ".four" => fourier.extend(parse_fourier(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
@@ -556,6 +650,11 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         .transpose()?;
     let sensitivity = sensitivity_directive
         .map(|directive| sensitivity_spec_from_directive(directive, &elements));
+    let distortion = distortion_directive
+        .map(|directive| {
+            distortion_spec_from_directive(directive, distortion_output_expression, &elements)
+        })
+        .transpose()?;
     Ok(ParsedDeck {
         elements,
         includes,
@@ -568,6 +667,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         transfer_function,
         pole_zero,
         sensitivity,
+        distortion,
         fourier,
         measures,
     })
@@ -856,6 +956,79 @@ fn parse_sensitivity(tokens: &[String]) -> Result<SensitivityDirective> {
     );
 }
 
+fn parse_distortion(tokens: &[String]) -> Result<DistortionDirective> {
+    if tokens.len() < 5 {
+        bail!(".disto directive requires sweep type, point count, start, and stop.");
+    }
+    if !tokens[1].eq_ignore_ascii_case("dec") {
+        bail!("import-spice distortion import currently requires .disto dec POINTS START STOP.");
+    }
+    let points_per_decade = tokens[2]
+        .parse::<u32>()
+        .with_context(|| format!("Could not parse .disto points-per-decade {}", tokens[2]))?;
+    let start_frequency_hz = parse_spice_number(&tokens[3])
+        .with_context(|| format!("Could not parse .disto start frequency {}", tokens[3]))?;
+    let stop_frequency_hz = parse_spice_number(&tokens[4])
+        .with_context(|| format!("Could not parse .disto stop frequency {}", tokens[4]))?;
+    if points_per_decade == 0
+        || points_per_decade > 1000
+        || !start_frequency_hz.is_finite()
+        || !stop_frequency_hz.is_finite()
+        || start_frequency_hz <= 0.0
+        || stop_frequency_hz <= start_frequency_hz
+    {
+        bail!(
+            ".disto dec sweep must use positive finite start/stop frequencies and points in 1..=1000."
+        );
+    }
+    let f2_over_f1 = if tokens.len() >= 6 {
+        let ratio = parse_spice_number(&tokens[5])
+            .with_context(|| format!("Could not parse .disto f2overf1 {}", tokens[5]))?;
+        if !ratio.is_finite() || ratio <= 0.0 || ratio >= 1.0 {
+            bail!(".disto intermodulation f2overf1 must be finite and in 0..1.");
+        }
+        Some(ratio)
+    } else {
+        None
+    };
+    Ok(DistortionDirective {
+        start_frequency_hz,
+        stop_frequency_hz,
+        points_per_decade,
+        f2_over_f1,
+    })
+}
+
+fn parse_print_or_plot_distortion_output(tokens: &[String]) -> Result<Option<String>> {
+    if tokens.len() < 3 || !tokens[1].eq_ignore_ascii_case("disto") {
+        return Ok(None);
+    }
+    if tokens.len() != 3 {
+        bail!(
+            "import-spice distortion import requires exactly one .print/.plot disto output expression."
+        );
+    }
+    let output_expression = tokens[2].trim();
+    if !is_supported_output_expression(output_expression) {
+        bail!(
+            "SPICE .print/.plot disto output must be a voltage or current expression like V(out) or I(V1)."
+        );
+    }
+    Ok(Some(output_expression.to_string()))
+}
+
+fn parse_control_distortion_output(tokens: &[String]) -> Result<Option<String>> {
+    if tokens.len() != 2 {
+        return Ok(None);
+    }
+    let output_expression = tokens[1].trim();
+    if is_supported_output_expression(output_expression) {
+        Ok(Some(output_expression.to_string()))
+    } else {
+        Ok(None)
+    }
+}
+
 fn pole_zero_spec_from_directive(
     directive: PoleZeroDirective,
     elements: &[ParsedElement],
@@ -922,6 +1095,52 @@ fn sensitivity_spec_from_directive(
     }
 }
 
+fn distortion_spec_from_directive(
+    directive: DistortionDirective,
+    output_expression: Option<String>,
+    elements: &[ParsedElement],
+) -> Result<DistortionSpec> {
+    let Some(output_expression) = output_expression else {
+        bail!(
+            "SPICE .disto import requires a supported output expression from .print disto, .plot disto, or a control-block print command."
+        );
+    };
+    let f1_sources = elements
+        .iter()
+        .filter(|element| element.distortion_role.f1)
+        .map(|element| element.name.clone())
+        .collect::<Vec<_>>();
+    let f2_sources = elements
+        .iter()
+        .filter(|element| element.distortion_role.f2)
+        .map(|element| element.name.clone())
+        .collect::<Vec<_>>();
+    if f1_sources.is_empty() {
+        bail!("SPICE .disto import requires at least one independent source marked DISTOF1.");
+    }
+    let mode = if f2_sources.is_empty() {
+        if directive.f2_over_f1.is_some() {
+            bail!("SPICE .disto f2overf1 requires at least one independent source marked DISTOF2.");
+        }
+        "harmonic"
+    } else {
+        if directive.f2_over_f1.is_none() {
+            bail!("SPICE .disto DISTOF2 sources require an explicit f2overf1 ratio.");
+        }
+        "intermodulation"
+    };
+    Ok(DistortionSpec {
+        mode: mode.to_string(),
+        start_frequency_hz: directive.start_frequency_hz,
+        stop_frequency_hz: directive.stop_frequency_hz,
+        points_per_decade: directive.points_per_decade,
+        output_expression,
+        f1_sources,
+        f2_sources,
+        f2_over_f1: directive.f2_over_f1,
+    })
+}
+
 fn sensitivity_filters_from_elements(elements: &[ParsedElement]) -> Vec<String> {
     elements
         .iter()
@@ -937,6 +1156,19 @@ fn sensitivity_filters_from_elements(elements: &[ParsedElement]) -> Vec<String> 
         })
         .map(|element| element.name.clone())
         .collect()
+}
+
+fn distortion_role_from_tokens(tokens: &[String]) -> DistortionSourceRole {
+    let mut role = DistortionSourceRole::default();
+    for token in tokens {
+        if token.eq_ignore_ascii_case("distof1") {
+            role.f1 = true;
+        }
+        if token.eq_ignore_ascii_case("distof2") {
+            role.f2 = true;
+        }
+    }
+    role
 }
 
 fn parse_fourier(tokens: &[String]) -> Result<Vec<FourierSpec>> {
@@ -1092,6 +1324,7 @@ where
         ],
         spice,
         source_kind: None,
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1112,6 +1345,7 @@ fn parse_voltage_source(tokens: &[String]) -> Result<ParsedElement> {
         ],
         spice,
         source_kind: Some(ImportedSourceKind::Voltage),
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1132,6 +1366,7 @@ fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
         ],
         spice,
         source_kind: Some(ImportedSourceKind::Current),
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1156,6 +1391,7 @@ fn parse_voltage_controlled_source(
         ],
         spice: None,
         source_kind: Some(source_kind),
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1178,6 +1414,7 @@ fn parse_current_controlled_source(
         ],
         spice: None,
         source_kind: Some(source_kind),
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1206,6 +1443,7 @@ fn parse_behavioral_source(tokens: &[String]) -> Result<ParsedElement> {
         ],
         spice: None,
         source_kind,
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1228,6 +1466,7 @@ fn parse_fixed_pins(
             .collect(),
         spice: None,
         source_kind: None,
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1244,6 +1483,7 @@ fn parse_subckt(tokens: &[String], line: &str) -> Result<ParsedElement> {
             .collect(),
         spice: None,
         source_kind: None,
+        distortion_role: distortion_role_from_tokens(tokens),
     })
 }
 
@@ -1482,6 +1722,9 @@ fn build_project_yaml(
     if let Some(sensitivity) = &deck.sensitivity {
         scenarios.push(sensitivity_scenario_for_yaml(options, &parts, sensitivity));
     }
+    if let Some(distortion) = &deck.distortion {
+        scenarios.push(distortion_scenario_for_yaml(options, &parts, distortion));
+    }
     let multiple_fourier_outputs = deck.fourier.len() > 1;
     for (index, fourier) in deck.fourier.iter().enumerate() {
         scenarios.push(fourier_scenario_for_yaml(
@@ -1502,6 +1745,7 @@ fn build_project_yaml(
             && deck.transfer_function.is_none()
             && deck.pole_zero.is_none()
             && deck.sensitivity.is_none()
+            && deck.distortion.is_none()
             && deck.fourier.is_empty())
     {
         scenarios.push(transient_scenario_for_yaml(

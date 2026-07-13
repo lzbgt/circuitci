@@ -242,6 +242,40 @@ pub(super) fn sensitivity_scenario_for_yaml(
     }
 }
 
+pub(super) fn distortion_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    distortion: &DistortionSpec,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_distortion".to_string(),
+        scenario_type: "analog_distortion".to_string(),
+        checks: vec!["SPICE_DISTORTION_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                distortion_mode: Some(distortion.mode.clone()),
+                distortion_start_frequency_hz: Some(distortion.start_frequency_hz),
+                distortion_stop_frequency_hz: Some(distortion.stop_frequency_hz),
+                distortion_points_per_decade: Some(distortion.points_per_decade),
+                distortion_output_expression: Some(distortion.output_expression.clone()),
+                distortion_f1_sources: distortion.f1_sources.clone(),
+                distortion_f2_sources: distortion.f2_sources.clone(),
+                distortion_f2_over_f1: distortion.f2_over_f1,
+                ..analysis_yaml("disto")
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
 pub(super) fn fourier_scenario_for_yaml(
     options: &SpiceImportOptions,
     parts: &AnalogScenarioParts,
@@ -368,6 +402,15 @@ fn analysis_yaml(analysis_type: &str) -> AnalysisYaml {
         sensitivity_mode: None,
         sensitivity_filters: Vec::new(),
         sensitivity_assertions: Vec::new(),
+        distortion_mode: None,
+        distortion_start_frequency_hz: None,
+        distortion_stop_frequency_hz: None,
+        distortion_points_per_decade: None,
+        distortion_output_expression: None,
+        distortion_f1_sources: Vec::new(),
+        distortion_f2_sources: Vec::new(),
+        distortion_f2_over_f1: None,
+        distortion_assertions: Vec::new(),
         fourier_fundamental_frequency_hz: None,
         fourier_output_expression: None,
         fourier_harmonics: None,

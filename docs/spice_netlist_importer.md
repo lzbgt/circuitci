@@ -46,13 +46,17 @@ The generated project:
 - creates a file-backed `analog_sensitivity` scenario when the deck contains
   `.sens OUTPUT_EXPR` or `.sens OUTPUT_EXPR ac dec POINTS START STOP`, including
   the same commands inside a closed `.control` block,
+- creates a file-backed `analog_distortion` scenario when the deck contains
+  `.disto dec POINTS START STOP [F2OVERF1]`, marked `DISTOF1`/`DISTOF2`
+  independent source lines, and a supported `.print disto`, `.plot disto`, or
+  control-block `print` output expression,
 - creates file-backed `analog_fourier` scenarios when the deck contains
   `.four FREQUENCY OUTPUT_EXPR...` or a closed-control-block
   `fourier FREQUENCY OUTPUT_EXPR...` command,
 - creates one file-backed `analog_transient` scenario using the original deck
   when the deck contains transient timing, or by default when no `.op`, `.dc`,
-  `.ac`, `.noise`, `.tf`, `.pz`, `.sens`, or `.four`/`fourier` analysis was
-  requested,
+  `.ac`, `.noise`, `.tf`, `.pz`, `.sens`, `.disto`, or `.four`/`fourier`
+  analysis was requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -188,6 +192,21 @@ still owns the full file-backed deck behavior. If a deck also requests `.op`,
 `.dc`, `.ac`, `.noise`, `.tf`, `.pz`, or transient timing, the importer emits
 sibling scenarios for each requested analysis.
 
+Decks that request `.disto dec POINTS START STOP` import as harmonic
+`analog_distortion` scenarios with `analysis: {type: disto, distortion_mode:
+harmonic}` and `SPICE_DISTORTION_ANALYSIS`. At least one imported independent
+source must be marked `DISTOF1`. Decks that request `.disto dec POINTS START
+STOP F2OVERF1` import as intermodulation scenarios when at least one source is
+marked `DISTOF2`; the ratio must be finite and in `0..1`. Closed `.control`
+blocks may use `disto dec ...` with an unambiguous `print V(...)` or `print
+I(...)` command. Deck-body `.print disto OUTPUT_EXPR` and `.plot disto
+OUTPUT_EXPR` are also accepted. The imported file-backed deck remains solver
+truth; CircuitCI records the sweep, output expression, and F1/F2 source names
+so the distortion runner can generate its checked ngspice wrapper and
+normalized spectrum/summary artifacts. If a deck also requests `.op`, `.dc`,
+`.ac`, `.noise`, `.tf`, `.pz`, `.sens`, or transient timing, the importer emits
+sibling scenarios for each requested analysis.
+
 Decks that request `.four FREQUENCY OUTPUT_EXPR...` import as one
 `analog_fourier` scenario per output expression with `analysis: {type:
 fourier}` and `SPICE_FOURIER_ANALYSIS`. Closed `.control` blocks may use the
@@ -200,8 +219,8 @@ Fourier output expressions currently must fit the CircuitCI Fourier schema:
 `V(node)`, `V(node,reference)`, or `I(source)`. More general ngspice
 `par(...)` output expressions fail closed until the analysis schema can retain
 them without losing meaning. If a deck also requests `.op`, `.dc`, `.ac`,
-`.noise`, `.tf`, `.pz`, `.sens`, or transient timing, the importer emits sibling
-scenarios for each requested analysis.
+`.noise`, `.tf`, `.pz`, `.sens`, `.disto`, or transient timing, the importer
+emits sibling scenarios for each requested analysis.
 
 ## Fail-Closed Rules
 
@@ -225,6 +244,11 @@ The importer rejects malformed element lines instead of guessing:
 - malformed or unsupported `.sens` cards; imported sensitivity analysis
   currently accepts `.sens OUTPUT_EXPR` for DC or `.sens OUTPUT_EXPR ac dec
   POINTS START STOP` for AC, with `OUTPUT_EXPR` starting with `V(` or `I(`,
+- malformed or unsupported `.disto` cards; imported distortion analysis
+  currently accepts `.disto dec POINTS START STOP [F2OVERF1]`, requires at
+  least one `DISTOF1` source, requires `DISTOF2` sources when `F2OVERF1` is
+  present, and requires one supported `V(...)` or `I(...)` distortion output
+  expression from `.print disto`, `.plot disto`, or a control-block `print`,
 - malformed `.four` or control-block `fourier` cards; imported Fourier
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,
