@@ -25,6 +25,7 @@ struct ParsedDeck {
     op: bool,
     dc: Option<DcSweepSpec>,
     ac: Option<AcSpec>,
+    noise: Option<NoiseSpec>,
     measures: Vec<MeasureStatementSpec>,
 }
 
@@ -67,6 +68,16 @@ struct DcSweepSpec {
     start: f64,
     stop: f64,
     step: f64,
+}
+
+#[derive(Debug)]
+struct NoiseSpec {
+    output_node: String,
+    reference_node: Option<String>,
+    input_source: String,
+    start_frequency_hz: f64,
+    stop_frequency_hz: f64,
+    points_per_decade: u32,
 }
 
 #[derive(Debug)]
@@ -227,6 +238,12 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     points_per_decade: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    noise_output_node: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    noise_reference_node: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    noise_input_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dc_sweep_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dc_sweep_start: Option<f64>,
@@ -362,6 +379,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut op = false;
     let mut dc = None;
     let mut ac = None;
+    let mut noise = None;
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
     let mut in_control = false;
@@ -379,6 +397,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".op" | "op" => op = true,
                 ".dc" | "dc" => dc = Some(parse_dc_sweep(&tokens)?),
                 ".ac" | "ac" => ac = Some(parse_ac(&tokens)?),
+                ".noise" | "noise" => noise = Some(parse_noise(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -397,6 +416,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".op" => op = true,
                 ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
                 ".ac" => ac = Some(parse_ac(&tokens)?),
+                ".noise" => noise = Some(parse_noise(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -433,6 +453,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         op,
         dc,
         ac,
+        noise,
         measures,
     })
 }
@@ -580,6 +601,67 @@ fn parse_dc_sweep(tokens: &[String]) -> Result<DcSweepSpec> {
         stop,
         step,
     })
+}
+
+fn parse_noise(tokens: &[String]) -> Result<NoiseSpec> {
+    if tokens.len() < 7 {
+        bail!(
+            ".noise directive requires output, input source, sweep type, point count, start, and stop."
+        );
+    }
+    let (output_node, reference_node) = parse_noise_output_expression(&tokens[1])?;
+    if !tokens[3].eq_ignore_ascii_case("dec") {
+        bail!("import-spice noise import currently requires .noise ... dec POINTS START STOP.");
+    }
+    let points_per_decade = tokens[4]
+        .parse::<u32>()
+        .with_context(|| format!("Could not parse .noise points-per-decade {}", tokens[4]))?;
+    let start_frequency_hz = parse_spice_number(&tokens[5])
+        .with_context(|| format!("Could not parse .noise start frequency {}", tokens[5]))?;
+    let stop_frequency_hz = parse_spice_number(&tokens[6])
+        .with_context(|| format!("Could not parse .noise stop frequency {}", tokens[6]))?;
+    if points_per_decade == 0
+        || points_per_decade > 1000
+        || !start_frequency_hz.is_finite()
+        || !stop_frequency_hz.is_finite()
+        || start_frequency_hz <= 0.0
+        || stop_frequency_hz <= start_frequency_hz
+    {
+        bail!(
+            ".noise dec sweep must use positive finite start/stop frequencies and points in 1..=1000."
+        );
+    }
+    Ok(NoiseSpec {
+        output_node,
+        reference_node,
+        input_source: tokens[2].clone(),
+        start_frequency_hz,
+        stop_frequency_hz,
+        points_per_decade,
+    })
+}
+
+fn parse_noise_output_expression(expression: &str) -> Result<(String, Option<String>)> {
+    let trimmed = expression.trim();
+    if trimmed.len() < 4 || !trimmed[..2].eq_ignore_ascii_case("v(") || !trimmed.ends_with(')') {
+        bail!("SPICE .noise output must be a voltage expression like V(out) or V(out,ref).");
+    }
+    let inner = &trimmed[2..trimmed.len() - 1];
+    let mut nodes = inner.split(',').map(str::trim);
+    let Some(output_node) = nodes.next().filter(|value| !value.is_empty()) else {
+        bail!("SPICE .noise output expression is missing an output node.");
+    };
+    if is_ground_node(output_node) {
+        bail!("SPICE .noise output node must not be ground.");
+    }
+    let reference_node = nodes
+        .next()
+        .filter(|value| !value.is_empty() && !is_ground_node(value))
+        .map(str::to_string);
+    if nodes.next().is_some() {
+        bail!("SPICE .noise output expression accepts at most output and reference nodes.");
+    }
+    Ok((output_node.to_string(), reference_node))
 }
 
 fn parse_measure_statement(tokens: &[String], line: &str) -> Result<MeasureStatementSpec> {
@@ -1075,7 +1157,12 @@ fn build_project_yaml(
     if let Some(ac) = &deck.ac {
         scenarios.push(ac_scenario_for_yaml(options, &parts, ac));
     }
-    if deck.tran.is_some() || (!deck.op && deck.dc.is_none() && deck.ac.is_none()) {
+    if let Some(noise) = &deck.noise {
+        scenarios.push(noise_scenario_for_yaml(options, &parts, noise));
+    }
+    if deck.tran.is_some()
+        || (!deck.op && deck.dc.is_none() && deck.ac.is_none() && deck.noise.is_none())
+    {
         scenarios.push(transient_scenario_for_yaml(
             options,
             &parts,
@@ -1127,6 +1214,9 @@ fn transient_scenario_for_yaml(
                 start_frequency_hz: None,
                 stop_frequency_hz: None,
                 points_per_decade: None,
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1164,6 +1254,9 @@ fn operating_point_scenario_for_yaml(
                 start_frequency_hz: None,
                 stop_frequency_hz: None,
                 points_per_decade: None,
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1202,6 +1295,9 @@ fn dc_sweep_scenario_for_yaml(
                 start_frequency_hz: None,
                 stop_frequency_hz: None,
                 points_per_decade: None,
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
                 dc_sweep_source: Some(dc.source.clone()),
                 dc_sweep_start: Some(dc.start),
                 dc_sweep_stop: Some(dc.stop),
@@ -1240,6 +1336,50 @@ fn ac_scenario_for_yaml(
                 start_frequency_hz: Some(ac.start_frequency_hz),
                 stop_frequency_hz: Some(ac.stop_frequency_hz),
                 points_per_decade: Some(ac.points_per_decade),
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
+fn noise_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    noise: &NoiseSpec,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_noise".to_string(),
+        scenario_type: "analog_noise".to_string(),
+        checks: vec!["SPICE_NOISE_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "noise".to_string(),
+                stop_time_us: None,
+                max_step_us: None,
+                start_frequency_hz: Some(noise.start_frequency_hz),
+                stop_frequency_hz: Some(noise.stop_frequency_hz),
+                points_per_decade: Some(noise.points_per_decade),
+                noise_output_node: Some(noise.output_node.clone()),
+                noise_reference_node: noise.reference_node.clone(),
+                noise_input_source: Some(noise.input_source.clone()),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1302,6 +1442,9 @@ fn measure_scenario_for_yaml(
                 start_frequency_hz,
                 stop_frequency_hz,
                 points_per_decade,
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,

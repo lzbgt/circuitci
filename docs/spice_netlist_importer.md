@@ -36,9 +36,11 @@ The generated project:
   numeric `.dc SOURCE START STOP STEP` sweep,
 - creates a file-backed `analog_ac` scenario when the deck contains a numeric
   `.ac dec POINTS START STOP` sweep,
+- creates a file-backed `analog_noise` scenario when the deck contains a
+  numeric `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` sweep,
 - creates one file-backed `analog_transient` scenario using the original deck
   when the deck contains transient timing, or by default when no `.op`, `.dc`,
-  or `.ac` analysis was requested,
+  `.ac`, or `.noise` analysis was requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -134,6 +136,13 @@ deck remains solver truth for source AC magnitudes/phases and device equations.
 If a deck also requests `.op`, `.dc`, or transient timing, the importer emits
 sibling scenarios for each requested analysis.
 
+Decks that request `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` import as
+`analog_noise` scenarios with `analysis: {type: noise}` and
+`SPICE_NOISE_ANALYSIS`. The imported file-backed deck remains solver truth for
+source noise, device equations, and any model-file noise parameters. If a deck
+also requests `.op`, `.dc`, `.ac`, or transient timing, the importer emits
+sibling scenarios for each requested analysis.
+
 ## Fail-Closed Rules
 
 The importer rejects malformed element lines instead of guessing:
@@ -146,6 +155,8 @@ The importer rejects malformed element lines instead of guessing:
   non-positive/oversized step,
 - malformed or unsupported `.ac` cards; imported AC analysis currently accepts
   `.ac dec POINTS START STOP`,
+- malformed or unsupported `.noise` cards; imported noise analysis currently
+  accepts `.noise V(OUT[,REF]) INPUT dec POINTS START STOP`,
 - malformed `.meas` cards, duplicate `.meas` result names, mixed `.meas` modes,
   or `.meas ac` cards without a valid `.ac dec` sweep,
 - orphan continuation lines,
