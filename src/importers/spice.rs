@@ -23,6 +23,7 @@ struct ParsedDeck {
     nodes: BTreeSet<String>,
     tran: Option<TranSpec>,
     op: bool,
+    dc: Option<DcSweepSpec>,
     ac: Option<AcSpec>,
     ac_parse_error: Option<String>,
     measures: Vec<MeasureStatementSpec>,
@@ -59,6 +60,14 @@ struct AcSpec {
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
     points_per_decade: u32,
+}
+
+#[derive(Debug)]
+struct DcSweepSpec {
+    source: String,
+    start: f64,
+    stop: f64,
+    step: f64,
 }
 
 #[derive(Debug)]
@@ -219,6 +228,16 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     points_per_decade: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    dc_sweep_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dc_sweep_start: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dc_sweep_stop: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dc_sweep_step: Option<f64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    dc_sweep_assertions: Vec<AssertionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     measure_mode: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     measure_statements: Vec<MeasureStatementYaml>,
@@ -342,6 +361,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut nodes = BTreeSet::new();
     let mut tran = None;
     let mut op = false;
+    let mut dc = None;
     let mut ac = None;
     let mut ac_parse_error = None;
     let mut measures = Vec::new();
@@ -359,6 +379,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".endc" | "endc" => in_control = false,
                 ".tran" | "tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" | "op" => op = true,
+                ".dc" | "dc" => dc = Some(parse_dc_sweep(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -375,6 +396,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
                 ".tran" => tran = parse_tran(&tokens).or(tran),
                 ".op" => op = true,
+                ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
                 ".ac" => match parse_ac(&tokens) {
                     Ok(spec) => ac = Some(spec),
                     Err(error) => ac_parse_error = Some(error.to_string()),
@@ -413,6 +435,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         nodes,
         tran,
         op,
+        dc,
         ac,
         ac_parse_error,
         measures,
@@ -532,6 +555,35 @@ fn parse_ac(tokens: &[String]) -> Result<AcSpec> {
         start_frequency_hz,
         stop_frequency_hz,
         points_per_decade,
+    })
+}
+
+fn parse_dc_sweep(tokens: &[String]) -> Result<DcSweepSpec> {
+    if tokens.len() < 5 {
+        bail!(".dc directive requires source, start, stop, and step.");
+    }
+    let start = parse_spice_number(&tokens[2])
+        .with_context(|| format!("Could not parse .dc start {}", tokens[2]))?;
+    let stop = parse_spice_number(&tokens[3])
+        .with_context(|| format!("Could not parse .dc stop {}", tokens[3]))?;
+    let step = parse_spice_number(&tokens[4])
+        .with_context(|| format!("Could not parse .dc step {}", tokens[4]))?;
+    if !start.is_finite()
+        || !stop.is_finite()
+        || !step.is_finite()
+        || step <= 0.0
+        || (stop - start).abs() < f64::EPSILON
+        || step > (stop - start).abs()
+    {
+        bail!(
+            ".dc sweep must use finite distinct start/stop values and a positive step no larger than the sweep span."
+        );
+    }
+    Ok(DcSweepSpec {
+        source: tokens[1].clone(),
+        start,
+        stop,
+        step,
     })
 }
 
@@ -1022,7 +1074,10 @@ fn build_project_yaml(
     if deck.op {
         scenarios.push(operating_point_scenario_for_yaml(options, &parts));
     }
-    if deck.tran.is_some() || !deck.op {
+    if let Some(dc) = &deck.dc {
+        scenarios.push(dc_sweep_scenario_for_yaml(options, &parts, dc));
+    }
+    if deck.tran.is_some() || (!deck.op && deck.dc.is_none()) {
         scenarios.push(transient_scenario_for_yaml(
             options,
             &parts,
@@ -1074,6 +1129,11 @@ fn transient_scenario_for_yaml(
                 start_frequency_hz: None,
                 stop_frequency_hz: None,
                 points_per_decade: None,
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
                 measure_mode: None,
                 measure_statements: Vec::new(),
             },
@@ -1106,6 +1166,49 @@ fn operating_point_scenario_for_yaml(
                 start_frequency_hz: None,
                 stop_frequency_hz: None,
                 points_per_decade: None,
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
+fn dc_sweep_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    dc: &DcSweepSpec,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_dc_sweep".to_string(),
+        scenario_type: "analog_dc_sweep".to_string(),
+        checks: vec!["SPICE_DC_SWEEP_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "dc_sweep".to_string(),
+                stop_time_us: None,
+                max_step_us: None,
+                start_frequency_hz: None,
+                stop_frequency_hz: None,
+                points_per_decade: None,
+                dc_sweep_source: Some(dc.source.clone()),
+                dc_sweep_start: Some(dc.start),
+                dc_sweep_stop: Some(dc.stop),
+                dc_sweep_step: Some(dc.step),
+                dc_sweep_assertions: Vec::new(),
                 measure_mode: None,
                 measure_statements: Vec::new(),
             },
@@ -1164,6 +1267,11 @@ fn measure_scenario_for_yaml(
                 start_frequency_hz,
                 stop_frequency_hz,
                 points_per_decade,
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
                 measure_mode: Some(mode.to_string()),
                 measure_statements: deck
                     .measures

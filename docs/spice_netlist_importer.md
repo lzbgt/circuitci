@@ -32,9 +32,11 @@ The generated project:
   statements when present,
 - emits voltage probes for discovered non-ground SPICE nodes,
 - creates a file-backed `analog_dc` scenario when the deck contains `.op`,
+- creates a file-backed `analog_dc_sweep` scenario when the deck contains a
+  numeric `.dc SOURCE START STOP STEP` sweep,
 - creates one file-backed `analog_transient` scenario using the original deck
-  when the deck contains transient timing, or by default when no `.op` was
-  requested,
+  when the deck contains transient timing, or by default when no `.op` or `.dc`
+  was requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -118,6 +120,12 @@ Decks that request `.op` import as `analog_dc` scenarios with `analysis:
 timing, the importer emits both operating-point and transient scenarios against
 the same source deck.
 
+Decks that request `.dc SOURCE START STOP STEP` import as `analog_dc_sweep`
+scenarios with `analysis: {type: dc_sweep}` and `SPICE_DC_SWEEP_ANALYSIS`.
+The importer accepts one numeric source sweep and keeps the original deck as
+solver truth. If a deck also requests `.op` or transient timing, the importer
+emits sibling scenarios for each requested analysis.
+
 ## Fail-Closed Rules
 
 The importer rejects malformed element lines instead of guessing:
@@ -126,6 +134,8 @@ The importer rejects malformed element lines instead of guessing:
 - malformed `.include` or `.lib` path,
 - `.include` or `.lib` path that does not resolve to a local file,
 - unmatched or unclosed `.control` / `.endc` blocks,
+- malformed `.dc` cards or `.dc` sweeps with non-finite values, zero span, or a
+  non-positive/oversized step,
 - malformed `.meas` cards, duplicate `.meas` result names, mixed `.meas` modes,
   or `.meas ac` cards without a valid `.ac dec` sweep,
 - orphan continuation lines,
