@@ -444,3 +444,116 @@ fn import_spice_creates_op_and_noise_scenarios_when_both_requested() {
         "out"
     );
 }
+
+#[test]
+fn import_spice_creates_transfer_function_scenario_for_tf_deck() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("tf_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nR2 out 0 1k\n.tf V(out) V1\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_tf_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0]["type"], "analog_transfer_function");
+    assert_eq!(
+        scenarios[0]["checks"],
+        Value::Array(vec![Value::String(
+            "SPICE_TRANSFER_FUNCTION_ANALYSIS".to_string()
+        )])
+    );
+    let analysis = &scenarios[0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "tf");
+    assert_eq!(analysis["transfer_output_expression"], "V(out)");
+    assert_eq!(analysis["transfer_input_source"], "V1");
+    assert!(analysis.get("stop_time_us").is_none());
+
+    let report = run_validation(output.to_str().unwrap());
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert!(
+            report["artifacts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|artifact| artifact
+                    .as_str()
+                    .unwrap()
+                    .ends_with("transfer_function_summary.csv"))
+        );
+        assert_eq!(
+            report["transfer_function_summaries"][0]["input_source"],
+            "V1"
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_creates_op_and_transfer_function_scenarios_when_both_requested() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("op_tf_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nR2 out 0 1k\n.control\nop\ntf V(out) V1\n.endc\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_op_tf_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let scenarios = imported["scenarios"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 2);
+    assert_eq!(scenarios[0]["type"], "analog_dc");
+    assert_eq!(scenarios[0]["analog"]["analysis"]["type"], "op");
+    assert_eq!(scenarios[1]["type"], "analog_transfer_function");
+    assert_eq!(scenarios[1]["analog"]["analysis"]["type"], "tf");
+    assert_eq!(
+        scenarios[1]["analog"]["analysis"]["transfer_output_expression"],
+        "V(out)"
+    );
+}

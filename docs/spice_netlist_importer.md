@@ -38,9 +38,11 @@ The generated project:
   `.ac dec POINTS START STOP` sweep,
 - creates a file-backed `analog_noise` scenario when the deck contains a
   numeric `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` sweep,
+- creates a file-backed `analog_transfer_function` scenario when the deck
+  contains `.tf OUTPUT_EXPR INPUT_SOURCE`,
 - creates one file-backed `analog_transient` scenario using the original deck
   when the deck contains transient timing, or by default when no `.op`, `.dc`,
-  `.ac`, or `.noise` analysis was requested,
+  `.ac`, `.noise`, or `.tf` analysis was requested,
 - creates an additional file-backed `analog_measure` scenario when the deck
   contains ngspice `.meas`/`meas` cards. Raw measure statements remain
   ngspice-specific text; explicit Xyce backends fail closed through the normal
@@ -143,6 +145,15 @@ source noise, device equations, and any model-file noise parameters. If a deck
 also requests `.op`, `.dc`, `.ac`, or transient timing, the importer emits
 sibling scenarios for each requested analysis.
 
+Decks that request `.tf OUTPUT_EXPR INPUT_SOURCE` import as
+`analog_transfer_function` scenarios with `analysis: {type: tf}` and
+`SPICE_TRANSFER_FUNCTION_ANALYSIS`. The imported file-backed deck remains solver
+truth for device equations and model files; CircuitCI records the requested
+output expression and input source so the transfer-function runner can generate
+the checked ngspice wrapper and normalized summary. If a deck also requests
+`.op`, `.dc`, `.ac`, `.noise`, or transient timing, the importer emits sibling
+scenarios for each requested analysis.
+
 ## Fail-Closed Rules
 
 The importer rejects malformed element lines instead of guessing:
@@ -157,6 +168,8 @@ The importer rejects malformed element lines instead of guessing:
   `.ac dec POINTS START STOP`,
 - malformed or unsupported `.noise` cards; imported noise analysis currently
   accepts `.noise V(OUT[,REF]) INPUT dec POINTS START STOP`,
+- malformed `.tf` cards; imported transfer-function analysis currently accepts
+  `.tf OUTPUT_EXPR INPUT_SOURCE` where `OUTPUT_EXPR` starts with `V(` or `I(`,
 - malformed `.meas` cards, duplicate `.meas` result names, mixed `.meas` modes,
   or `.meas ac` cards without a valid `.ac dec` sweep,
 - orphan continuation lines,

@@ -26,6 +26,7 @@ struct ParsedDeck {
     dc: Option<DcSweepSpec>,
     ac: Option<AcSpec>,
     noise: Option<NoiseSpec>,
+    transfer_function: Option<TransferFunctionSpec>,
     measures: Vec<MeasureStatementSpec>,
 }
 
@@ -78,6 +79,12 @@ struct NoiseSpec {
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
     points_per_decade: u32,
+}
+
+#[derive(Debug)]
+struct TransferFunctionSpec {
+    output_expression: String,
+    input_source: String,
 }
 
 #[derive(Debug)]
@@ -244,6 +251,12 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     noise_input_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    transfer_output_expression: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    transfer_input_source: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    transfer_function_assertions: Vec<AssertionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dc_sweep_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dc_sweep_start: Option<f64>,
@@ -380,6 +393,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut dc = None;
     let mut ac = None;
     let mut noise = None;
+    let mut transfer_function = None;
     let mut measures = Vec::new();
     let mut measure_names = BTreeSet::new();
     let mut in_control = false;
@@ -398,6 +412,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".dc" | "dc" => dc = Some(parse_dc_sweep(&tokens)?),
                 ".ac" | "ac" => ac = Some(parse_ac(&tokens)?),
                 ".noise" | "noise" => noise = Some(parse_noise(&tokens)?),
+                ".tf" | "tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
                 ".meas" | ".measure" | "meas" | "measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -417,6 +432,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
                 ".dc" => dc = Some(parse_dc_sweep(&tokens)?),
                 ".ac" => ac = Some(parse_ac(&tokens)?),
                 ".noise" => noise = Some(parse_noise(&tokens)?),
+                ".tf" => transfer_function = Some(parse_transfer_function(&tokens)?),
                 ".meas" | ".measure" => {
                     push_measure_statement(
                         &mut measures,
@@ -454,6 +470,7 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
         dc,
         ac,
         noise,
+        transfer_function,
         measures,
     })
 }
@@ -662,6 +679,27 @@ fn parse_noise_output_expression(expression: &str) -> Result<(String, Option<Str
         bail!("SPICE .noise output expression accepts at most output and reference nodes.");
     }
     Ok((output_node.to_string(), reference_node))
+}
+
+fn parse_transfer_function(tokens: &[String]) -> Result<TransferFunctionSpec> {
+    if tokens.len() < 3 {
+        bail!(".tf directive requires output expression and input source.");
+    }
+    let output_expression = tokens[1].trim();
+    if output_expression.is_empty()
+        || !(output_expression[..2.min(output_expression.len())].eq_ignore_ascii_case("v(")
+            || output_expression[..2.min(output_expression.len())].eq_ignore_ascii_case("i("))
+    {
+        bail!("SPICE .tf output must be a voltage or current expression like V(out) or I(V1).");
+    }
+    let input_source = tokens[2].trim();
+    if input_source.is_empty() {
+        bail!("SPICE .tf input source must be non-empty.");
+    }
+    Ok(TransferFunctionSpec {
+        output_expression: output_expression.to_string(),
+        input_source: input_source.to_string(),
+    })
 }
 
 fn parse_measure_statement(tokens: &[String], line: &str) -> Result<MeasureStatementSpec> {
@@ -1160,8 +1198,19 @@ fn build_project_yaml(
     if let Some(noise) = &deck.noise {
         scenarios.push(noise_scenario_for_yaml(options, &parts, noise));
     }
+    if let Some(transfer_function) = &deck.transfer_function {
+        scenarios.push(transfer_function_scenario_for_yaml(
+            options,
+            &parts,
+            transfer_function,
+        ));
+    }
     if deck.tran.is_some()
-        || (!deck.op && deck.dc.is_none() && deck.ac.is_none() && deck.noise.is_none())
+        || (!deck.op
+            && deck.dc.is_none()
+            && deck.ac.is_none()
+            && deck.noise.is_none()
+            && deck.transfer_function.is_none())
     {
         scenarios.push(transient_scenario_for_yaml(
             options,
@@ -1217,6 +1266,9 @@ fn transient_scenario_for_yaml(
                 noise_output_node: None,
                 noise_reference_node: None,
                 noise_input_source: None,
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1257,6 +1309,9 @@ fn operating_point_scenario_for_yaml(
                 noise_output_node: None,
                 noise_reference_node: None,
                 noise_input_source: None,
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1298,6 +1353,9 @@ fn dc_sweep_scenario_for_yaml(
                 noise_output_node: None,
                 noise_reference_node: None,
                 noise_input_source: None,
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
                 dc_sweep_source: Some(dc.source.clone()),
                 dc_sweep_start: Some(dc.start),
                 dc_sweep_stop: Some(dc.stop),
@@ -1339,6 +1397,9 @@ fn ac_scenario_for_yaml(
                 noise_output_node: None,
                 noise_reference_node: None,
                 noise_input_source: None,
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1380,6 +1441,53 @@ fn noise_scenario_for_yaml(
                 noise_output_node: Some(noise.output_node.clone()),
                 noise_reference_node: noise.reference_node.clone(),
                 noise_input_source: Some(noise.input_source.clone()),
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
+                dc_sweep_source: None,
+                dc_sweep_start: None,
+                dc_sweep_stop: None,
+                dc_sweep_step: None,
+                dc_sweep_assertions: Vec::new(),
+                measure_mode: None,
+                measure_statements: Vec::new(),
+            },
+            stimuli: parts.stimuli.clone(),
+            probes: parts.probes.clone(),
+            assertions: Vec::new(),
+        },
+    }
+}
+
+fn transfer_function_scenario_for_yaml(
+    options: &SpiceImportOptions,
+    parts: &AnalogScenarioParts,
+    transfer_function: &TransferFunctionSpec,
+) -> ScenarioYaml {
+    ScenarioYaml {
+        name: "imported_spice_transfer_function".to_string(),
+        scenario_type: "analog_transfer_function".to_string(),
+        checks: vec!["SPICE_TRANSFER_FUNCTION_ANALYSIS".to_string()],
+        analog: AnalogYaml {
+            backend: options.backend.clone(),
+            netlist_source: "file".to_string(),
+            netlist: parts.netlist.clone(),
+            model_files: parts.model_files.clone(),
+            node_bindings: parts.node_bindings.clone(),
+            pin_bindings: parts.pin_bindings.clone(),
+            analysis: AnalysisYaml {
+                analysis_type: "tf".to_string(),
+                stop_time_us: None,
+                max_step_us: None,
+                start_frequency_hz: None,
+                stop_frequency_hz: None,
+                points_per_decade: None,
+                noise_output_node: None,
+                noise_reference_node: None,
+                noise_input_source: None,
+                transfer_output_expression: Some(transfer_function.output_expression.clone()),
+                transfer_input_source: Some(transfer_function.input_source.clone()),
+                transfer_function_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
@@ -1445,6 +1553,9 @@ fn measure_scenario_for_yaml(
                 noise_output_node: None,
                 noise_reference_node: None,
                 noise_input_source: None,
+                transfer_output_expression: None,
+                transfer_input_source: None,
+                transfer_function_assertions: Vec::new(),
                 dc_sweep_source: None,
                 dc_sweep_start: None,
                 dc_sweep_stop: None,
