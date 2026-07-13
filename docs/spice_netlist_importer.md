@@ -49,6 +49,11 @@ The importer understands common SPICE element prefixes:
 | `C` | `A`, `B` | `generic.analog.capacitor` |
 | `I` | `P`, `N` | `generic.analog.imported_spice_device` |
 | `V` | `P`, `N` | `generic.analog.imported_spice_device` |
+| `E` | `P`, `N`, `CP`, `CN` | `generic.analog.imported_spice_device` |
+| `G` | `P`, `N`, `CP`, `CN` | `generic.analog.imported_spice_device` |
+| `F` | `P`, `N` | `generic.analog.imported_spice_device` |
+| `H` | `P`, `N` | `generic.analog.imported_spice_device` |
+| `B` | `P`, `N` | `generic.analog.imported_spice_device` |
 | `D` | `A`, `K` | `generic.analog.imported_spice_device` |
 | `Q` | `C`, `B`, `E`, optional `S` | `generic.analog.imported_spice_device` |
 | `M` | `D`, `G`, `S`, `B` | `generic.analog.imported_spice_device` |
@@ -68,12 +73,21 @@ import. Primitive values are preserved in Board IR where they can be represented
 losslessly, but `netlist_source: file` still makes the deck the solver source of
 truth.
 
+Dependent and behavioral sources also keep their simulator behavior in the
+source deck. Voltage-controlled `E`/`G` sources expose output pins (`P`, `N`) and
+control-node pins (`CP`, `CN`) so imported topology remains reviewable.
+Current-controlled `F`/`H` sources expose only their output pins because their
+control source is a source-name reference, not a circuit node. Behavioral `B`
+sources expose their two output pins and are treated as voltage-like only when
+the expression begins with `V=`.
+
 The importer derives voltage probes for every non-ground deck node and current
 probes for imported independent voltage sources using SPICE branch expressions
 such as `I(V1)`, including voltage sources whose waveform stays file-backed
-instead of becoming Board IR primitive metadata. Those current probes support
-GUI oscilloscope inspection of supply or stimulus source current without
-requiring generated-from-Board branch instrumentation.
+instead of becoming Board IR primitive metadata. Voltage-output dependent
+sources (`E`, `H`, and `B` with `V=`) get the same branch probes. Those current
+probes support GUI oscilloscope inspection of supply or stimulus source current
+without requiring generated-from-Board branch instrumentation.
 
 ## File-Backed Scenario Contract
 

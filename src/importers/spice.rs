@@ -584,6 +584,11 @@ fn parse_element(tokens: &[String], line: &str) -> Result<ParsedElement> {
         }),
         'V' => parse_voltage_source(tokens),
         'I' => parse_current_source(tokens),
+        'E' => parse_voltage_controlled_source(tokens, ImportedSourceKind::Voltage),
+        'G' => parse_voltage_controlled_source(tokens, ImportedSourceKind::Current),
+        'F' => parse_current_controlled_source(tokens, ImportedSourceKind::Current),
+        'H' => parse_current_controlled_source(tokens, ImportedSourceKind::Voltage),
+        'B' => parse_behavioral_source(tokens),
         'D' => parse_fixed_pins(
             tokens,
             3,
@@ -685,6 +690,80 @@ fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
         ],
         spice,
         source_kind: Some(ImportedSourceKind::Current),
+    })
+}
+
+fn parse_voltage_controlled_source(
+    tokens: &[String],
+    source_kind: ImportedSourceKind,
+) -> Result<ParsedElement> {
+    if tokens.len() < 6 {
+        bail!(
+            "Malformed voltage-controlled SPICE source line: {}",
+            tokens.join(" ")
+        );
+    }
+    Ok(ParsedElement {
+        name: tokens[0].clone(),
+        model: "generic.analog.imported_spice_device".to_string(),
+        pins: vec![
+            ("P".to_string(), tokens[1].clone()),
+            ("N".to_string(), tokens[2].clone()),
+            ("CP".to_string(), tokens[3].clone()),
+            ("CN".to_string(), tokens[4].clone()),
+        ],
+        spice: None,
+        source_kind: Some(source_kind),
+    })
+}
+
+fn parse_current_controlled_source(
+    tokens: &[String],
+    source_kind: ImportedSourceKind,
+) -> Result<ParsedElement> {
+    if tokens.len() < 5 {
+        bail!(
+            "Malformed current-controlled SPICE source line: {}",
+            tokens.join(" ")
+        );
+    }
+    Ok(ParsedElement {
+        name: tokens[0].clone(),
+        model: "generic.analog.imported_spice_device".to_string(),
+        pins: vec![
+            ("P".to_string(), tokens[1].clone()),
+            ("N".to_string(), tokens[2].clone()),
+        ],
+        spice: None,
+        source_kind: Some(source_kind),
+    })
+}
+
+fn parse_behavioral_source(tokens: &[String]) -> Result<ParsedElement> {
+    if tokens.len() < 4 {
+        bail!(
+            "Malformed behavioral SPICE source line: {}",
+            tokens.join(" ")
+        );
+    }
+    let source_expression = tokens[3..].join("");
+    let source_expression = source_expression.to_ascii_uppercase();
+    let source_kind = if source_expression.starts_with("V=") {
+        Some(ImportedSourceKind::Voltage)
+    } else if source_expression.starts_with("I=") {
+        Some(ImportedSourceKind::Current)
+    } else {
+        None
+    };
+    Ok(ParsedElement {
+        name: tokens[0].clone(),
+        model: "generic.analog.imported_spice_device".to_string(),
+        pins: vec![
+            ("P".to_string(), tokens[1].clone()),
+            ("N".to_string(), tokens[2].clone()),
+        ],
+        spice: None,
+        source_kind,
     })
 }
 

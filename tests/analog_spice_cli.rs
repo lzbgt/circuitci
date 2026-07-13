@@ -708,6 +708,70 @@ fn import_spice_accepts_file_backed_transient_source_waveforms() {
 }
 
 #[test]
+fn import_spice_preserves_dependent_source_pin_semantics() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("dependent_sources.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "VCTRL ctrlp ctrln DC 1\nVSENSE sense 0 DC 0\nE1 eout 0 ctrlp ctrln 10\nG1 gout 0 ctrlp ctrln 1m\nF1 fout 0 VSENSE 2\nH1 hout 0 VSENSE 100\nB1 bout 0 V=V(ctrlp)\nB2 ibout 0 I=V(ctrlp)/1k\nR1 eout 0 1k\nR2 gout 0 1k\nR3 fout 0 1k\nR4 hout 0 1k\nR5 bout 0 1k\nR6 ibout 0 1k\n.tran 0.1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_dependent_sources",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let components = &imported["board"]["components"];
+    assert_eq!(components["E1"]["pins"]["P"], "net_eout");
+    assert_eq!(components["E1"]["pins"]["N"], "gnd");
+    assert_eq!(components["E1"]["pins"]["CP"], "net_ctrlp");
+    assert_eq!(components["E1"]["pins"]["CN"], "net_ctrln");
+    assert_eq!(components["G1"]["pins"]["CP"], "net_ctrlp");
+    assert_eq!(components["G1"]["pins"]["CN"], "net_ctrln");
+    assert!(components["F1"]["pins"].get("CP").is_none());
+    assert!(components["H1"]["pins"].get("CP").is_none());
+    assert_eq!(components["B1"]["pins"]["P"], "net_bout");
+    assert_eq!(components["B2"]["pins"]["P"], "net_ibout");
+    for name in ["E1", "G1", "F1", "H1", "B1", "B2"] {
+        assert!(components[name].get("spice").is_none());
+    }
+    assert!(imported["board"]["nets"].get("net_vsense").is_none());
+
+    let probes = imported["scenarios"][0]["analog"]["probes"]
+        .as_array()
+        .unwrap();
+    for expression in ["I(VCTRL)", "I(VSENSE)", "I(E1)", "I(H1)", "I(B1)"] {
+        assert!(
+            probes.iter().any(|probe| probe["expression"] == expression),
+            "missing {expression}"
+        );
+    }
+    for expression in ["I(G1)", "I(F1)", "I(B2)"] {
+        assert!(
+            !probes.iter().any(|probe| probe["expression"] == expression),
+            "unexpected {expression}"
+        );
+    }
+}
+
+#[test]
 fn import_spice_accepts_ngspice_control_block_timing() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
