@@ -658,6 +658,56 @@ fn import_spice_accepts_ac_only_independent_sources() {
 }
 
 #[test]
+fn import_spice_accepts_file_backed_transient_source_waveforms() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("waveform_sources.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 SIN(0 1 1k)\nV2 bias 0 DC 0 PWL(0 0 1u 1)\nI1 out 0 EXP(0 1m 1u 0.1u 5u 0.2u)\nR1 in out 1k\nR2 bias 0 1k\n.tran 0.1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_waveform_sources",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert!(imported["board"]["components"]["V1"].get("spice").is_none());
+    assert!(imported["board"]["components"]["V2"].get("spice").is_none());
+    assert!(imported["board"]["components"]["I1"].get("spice").is_none());
+    let probes = imported["scenarios"][0]["analog"]["probes"]
+        .as_array()
+        .unwrap();
+    assert!(
+        probes
+            .iter()
+            .any(|probe| probe["name"] == "i_v1" && probe["expression"] == "I(V1)")
+    );
+    assert!(
+        probes
+            .iter()
+            .any(|probe| probe["name"] == "i_v2" && probe["expression"] == "I(V2)")
+    );
+    assert!(!probes.iter().any(|probe| probe["expression"] == "I(I1)"));
+}
+
+#[test]
 fn import_spice_accepts_ngspice_control_block_timing() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

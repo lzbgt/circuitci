@@ -59,17 +59,21 @@ Imported independent voltage and current sources preserve DC and `PULSE(...)`
 primitive metadata in Board IR. Common small-signal source forms such as
 `V1 in 0 AC 1` and `V1 in 0 DC 0 AC 1` import successfully; AC magnitude and
 phase remain in the original file-backed deck rather than being projected into
-Board IR primitive metadata. Imported elements keep their simulator behavior in
-the original deck. CircuitCI does not invent datasheet-backed device metadata
-for them during import. Primitive values are preserved in Board IR where they
-can be represented losslessly, but `netlist_source: file` still makes the deck
-the solver source of truth.
+Board IR primitive metadata. Common transient waveform forms such as
+`SIN(...)`, `SINE(...)`, `PWL(...)`, `EXP(...)`, `SFFM(...)`, and `AM(...)`
+also import as file-backed source devices without synthesized primitive
+metadata. Imported elements keep their simulator behavior in the original deck.
+CircuitCI does not invent datasheet-backed device metadata for them during
+import. Primitive values are preserved in Board IR where they can be represented
+losslessly, but `netlist_source: file` still makes the deck the solver source of
+truth.
 
 The importer derives voltage probes for every non-ground deck node and current
 probes for imported independent voltage sources using SPICE branch expressions
-such as `I(V1)`. Those current probes support GUI oscilloscope inspection of
-supply or stimulus source current without requiring generated-from-Board branch
-instrumentation.
+such as `I(V1)`, including voltage sources whose waveform stays file-backed
+instead of becoming Board IR primitive metadata. Those current probes support
+GUI oscilloscope inspection of supply or stimulus source current without
+requiring generated-from-Board branch instrumentation.
 
 ## File-Backed Scenario Contract
 

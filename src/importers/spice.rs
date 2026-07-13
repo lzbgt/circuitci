@@ -33,6 +33,13 @@ struct ParsedElement {
     model: String,
     pins: Vec<(String, String)>,
     spice: Option<SpicePrimitiveSpec>,
+    source_kind: Option<ImportedSourceKind>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ImportedSourceKind {
+    Voltage,
+    Current,
 }
 
 #[derive(Debug)]
@@ -637,6 +644,7 @@ where
             ("B".to_string(), tokens[2].clone()),
         ],
         spice: Some(primitive(value)),
+        source_kind: None,
     })
 }
 
@@ -647,16 +655,7 @@ fn parse_voltage_source(tokens: &[String]) -> Result<ParsedElement> {
             tokens.join(" ")
         );
     }
-    let spec = tokens[3..].join(" ");
-    let spice = if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
-        SpicePrimitiveSpec::PulseVoltageSource {
-            pulse: parse_pulse(&spec)?,
-        }
-    } else {
-        SpicePrimitiveSpec::DcVoltageSource {
-            dc_v: parse_independent_source_dc_value(tokens, "voltage")?,
-        }
-    };
+    let spice = parse_voltage_source_primitive(tokens)?;
     Ok(ParsedElement {
         name: tokens[0].clone(),
         model: "generic.analog.imported_spice_device".to_string(),
@@ -664,7 +663,8 @@ fn parse_voltage_source(tokens: &[String]) -> Result<ParsedElement> {
             ("P".to_string(), tokens[1].clone()),
             ("N".to_string(), tokens[2].clone()),
         ],
-        spice: Some(spice),
+        spice,
+        source_kind: Some(ImportedSourceKind::Voltage),
     })
 }
 
@@ -675,16 +675,7 @@ fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
             tokens.join(" ")
         );
     }
-    let spec = tokens[3..].join(" ");
-    let spice = if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
-        SpicePrimitiveSpec::PulseCurrentSource {
-            pulse: parse_current_pulse(&spec)?,
-        }
-    } else {
-        SpicePrimitiveSpec::DcCurrentSource {
-            dc_a: parse_independent_source_dc_value(tokens, "current")?,
-        }
-    };
+    let spice = parse_current_source_primitive(tokens)?;
     Ok(ParsedElement {
         name: tokens[0].clone(),
         model: "generic.analog.imported_spice_device".to_string(),
@@ -692,7 +683,8 @@ fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
             ("P".to_string(), tokens[1].clone()),
             ("N".to_string(), tokens[2].clone()),
         ],
-        spice: Some(spice),
+        spice,
+        source_kind: Some(ImportedSourceKind::Current),
     })
 }
 
@@ -714,6 +706,7 @@ fn parse_fixed_pins(
             .map(|(index, pin)| ((*pin).to_string(), tokens[index + 1].clone()))
             .collect(),
         spice: None,
+        source_kind: None,
     })
 }
 
@@ -729,6 +722,47 @@ fn parse_subckt(tokens: &[String], line: &str) -> Result<ParsedElement> {
             .map(|index| (format!("P{}", index + 1), tokens[index + 1].clone()))
             .collect(),
         spice: None,
+        source_kind: None,
+    })
+}
+
+fn parse_voltage_source_primitive(tokens: &[String]) -> Result<Option<SpicePrimitiveSpec>> {
+    let spec = tokens[3..].join(" ");
+    if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
+        return Ok(Some(SpicePrimitiveSpec::PulseVoltageSource {
+            pulse: parse_pulse(&spec)?,
+        }));
+    }
+    if source_uses_file_backed_waveform(tokens) {
+        return Ok(None);
+    }
+    Ok(Some(SpicePrimitiveSpec::DcVoltageSource {
+        dc_v: parse_independent_source_dc_value(tokens, "voltage")?,
+    }))
+}
+
+fn parse_current_source_primitive(tokens: &[String]) -> Result<Option<SpicePrimitiveSpec>> {
+    let spec = tokens[3..].join(" ");
+    if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
+        return Ok(Some(SpicePrimitiveSpec::PulseCurrentSource {
+            pulse: parse_current_pulse(&spec)?,
+        }));
+    }
+    if source_uses_file_backed_waveform(tokens) {
+        return Ok(None);
+    }
+    Ok(Some(SpicePrimitiveSpec::DcCurrentSource {
+        dc_a: parse_independent_source_dc_value(tokens, "current")?,
+    }))
+}
+
+fn source_uses_file_backed_waveform(tokens: &[String]) -> bool {
+    tokens[3..].iter().any(|token| {
+        let upper = token.trim_start().to_ascii_uppercase();
+        let function = upper
+            .split_once('(')
+            .map_or(upper.as_str(), |(name, _)| name);
+        matches!(function, "SIN" | "SINE" | "PWL" | "EXP" | "SFFM" | "AM")
     })
 }
 
@@ -879,13 +913,7 @@ fn build_project_yaml(
     probes.extend(
         deck.elements
             .iter()
-            .filter(|element| {
-                matches!(
-                    element.spice,
-                    Some(SpicePrimitiveSpec::DcVoltageSource { .. })
-                        | Some(SpicePrimitiveSpec::PulseVoltageSource { .. })
-                )
-            })
+            .filter(|element| matches!(element.source_kind, Some(ImportedSourceKind::Voltage)))
             .map(|element| ProbeYaml {
                 name: format!("i_{}", sanitize_identifier(&element.name)),
                 expression: format!("I({})", element.name),
