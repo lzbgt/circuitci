@@ -27,6 +27,8 @@ The generated project:
 - preserves `.include` and `.lib` dependencies as `analog.model_files`,
 - resolves `.include` and `.lib` dependencies relative to the source deck and
   emits SHA-256 pins for every imported model file,
+- tolerates closed ngspice `.control` / `.endc` blocks, ignoring simulator
+  commands while importing `tran` timing when present,
 - emits voltage probes for discovered non-ground SPICE nodes,
 - creates one file-backed `analog_transient` scenario using the original deck.
 
@@ -82,7 +84,7 @@ The importer rejects malformed element lines instead of guessing:
 - too few tokens for the element prefix,
 - malformed `.include` or `.lib` path,
 - `.include` or `.lib` path that does not resolve to a local file,
-- unsupported control blocks embedded in the source deck,
+- unmatched or unclosed `.control` / `.endc` blocks,
 - orphan continuation lines,
 - element names that cannot be represented as Board IR component IDs.
 

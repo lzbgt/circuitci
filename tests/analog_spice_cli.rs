@@ -615,6 +615,37 @@ fn import_spice_preserves_current_source_primitives() {
 }
 
 #[test]
+fn import_spice_accepts_ngspice_control_block_timing() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("control_block.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 3.3\nR1 in 0 1k\n.control\ntran 2u 20u\nrun\n.endc\n.end\n",
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "control_block_import",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analysis = &imported["scenarios"][0]["analog"]["analysis"];
+    assert_eq!(analysis["stop_time_us"], 20.0);
+    assert_eq!(analysis["max_step_us"], 2.0);
+}
+
+#[test]
 fn import_spice_rejects_malformed_element_line() {
     let dir = tempfile::tempdir().unwrap();
     let deck = dir.path().join("bad.cir");

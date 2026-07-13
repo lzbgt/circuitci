@@ -288,20 +288,28 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
     let mut includes = Vec::new();
     let mut nodes = BTreeSet::new();
     let mut tran = None;
+    let mut in_control = false;
     for line in logical_lines {
         let tokens = tokenize(&line);
         if tokens.is_empty() {
             continue;
         }
         let first = tokens[0].as_str();
+        let command = first.to_ascii_lowercase();
+        if in_control {
+            match command.as_str() {
+                ".endc" | "endc" => in_control = false,
+                ".tran" | "tran" => tran = parse_tran(&tokens).or(tran),
+                _ => {}
+            }
+            continue;
+        }
         if first.starts_with('.') {
-            let directive = first.to_ascii_lowercase();
-            match directive.as_str() {
+            match command.as_str() {
                 ".include" | ".lib" => includes.push(parse_include(&tokens, source_dir)?),
                 ".tran" => tran = parse_tran(&tokens).or(tran),
-                ".control" | ".endc" => {
-                    bail!("SPICE control blocks are not supported by import-spice: {line}")
-                }
+                ".control" => in_control = true,
+                ".endc" => bail!("SPICE .endc appears without a preceding .control block."),
                 _ => {}
             }
             continue;
@@ -311,6 +319,9 @@ fn parse_spice_deck(path: &Path) -> Result<ParsedDeck> {
             nodes.insert(node.clone());
         }
         elements.push(element);
+    }
+    if in_control {
+        bail!("SPICE .control block is missing a closing .endc.");
     }
     if elements.is_empty() {
         bail!(
@@ -998,6 +1009,47 @@ C1 out 0 100n
         assert!(parsed.nodes.contains("out"));
         assert!(parsed.nodes.contains("0"));
         assert_eq!(parsed.tran.unwrap().stop_time_us, 10.0);
+    }
+
+    #[test]
+    fn parser_uses_transient_timing_from_control_block() {
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("control.cir");
+        std::fs::write(
+            &deck,
+            "* control block deck
+V1 in 0 DC 3.3
+R1 in 0 1k
+.control
+tran 2u 20u
+run
+write waveform.raw
+.endc
+.end
+",
+        )
+        .unwrap();
+        let parsed = parse_spice_deck(&deck).unwrap();
+        assert_eq!(parsed.elements.len(), 2);
+        let tran = parsed.tran.as_ref().unwrap();
+        assert_eq!(tran.max_step_us, 2.0);
+        assert_eq!(tran.stop_time_us, 20.0);
+    }
+
+    #[test]
+    fn parser_rejects_unclosed_control_block() {
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("control.cir");
+        std::fs::write(
+            &deck,
+            "V1 in 0 DC 3.3
+.control
+tran 1u 10u
+",
+        )
+        .unwrap();
+        let error = parse_spice_deck(&deck).unwrap_err();
+        assert!(error.to_string().contains("missing a closing .endc"));
     }
 
     #[test]
