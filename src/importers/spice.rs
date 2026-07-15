@@ -819,6 +819,7 @@ fn tokenize(line: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut quote: Option<char> = None;
+    let mut paren_depth = 0usize;
     for character in line.chars() {
         if let Some(mark) = quote {
             if character == mark {
@@ -832,7 +833,12 @@ fn tokenize(line: &str) -> Vec<String> {
             quote = Some(character);
             continue;
         }
-        if character.is_whitespace() {
+        match character {
+            '(' => paren_depth += 1,
+            ')' => paren_depth = paren_depth.saturating_sub(1),
+            _ => {}
+        }
+        if character.is_whitespace() && paren_depth == 0 {
             if !current.is_empty() {
                 tokens.push(std::mem::take(&mut current));
             }
@@ -1204,14 +1210,14 @@ fn output_probes_from_tokens(tokens: &[String]) -> Result<Vec<OutputProbeSpec>> 
         if expression.eq_ignore_ascii_case("all") {
             continue;
         }
-        if !is_supported_output_expression(expression) {
+        let Some(expression) = normalize_probe_output_expression(expression) else {
             bail!(
-                "SPICE output directive expression {expression} is not supported; import-spice currently accepts V(...) and I(...)."
-            );
-        }
+                "SPICE output directive expression {expression} is not supported; import-spice currently accepts V(...), I(...), voltage aliases like VM(...)/VDB(...), and simple vector wrappers like MAG(V(...)) or DB(I(...))."
+            )
+        };
         probes.push(OutputProbeSpec {
-            expression: expression.to_string(),
-            quantity: output_expression_quantity(expression),
+            expression: expression.clone(),
+            quantity: output_expression_quantity(&expression),
         });
     }
     Ok(probes)
@@ -1233,6 +1239,70 @@ fn output_expression_quantity(expression: &str) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+fn normalize_probe_output_expression(expression: &str) -> Option<String> {
+    let trimmed = expression.trim();
+    if let Some(vector) = normalize_vector_output_expression(trimmed) {
+        return Some(vector);
+    }
+    let (function, inner) = split_function_call(trimmed)?;
+    if matches!(
+        function.to_ascii_lowercase().as_str(),
+        "db" | "mag" | "phase" | "cph" | "real" | "imag"
+    ) {
+        normalize_vector_output_expression(inner)
+    } else {
+        None
+    }
+}
+
+fn normalize_vector_output_expression(expression: &str) -> Option<String> {
+    let (function, inner) = split_function_call(expression.trim())?;
+    let function = function.to_ascii_lowercase();
+    match function.as_str() {
+        "v" => normalize_voltage_output_expression(inner),
+        "i" => normalize_current_output_expression(inner),
+        "vdb" | "vm" | "vp" | "vr" | "vi" => normalize_voltage_output_expression(inner),
+        _ => None,
+    }
+}
+
+fn split_function_call(expression: &str) -> Option<(&str, &str)> {
+    let trimmed = expression.trim();
+    let open = trimmed.find('(')?;
+    if !trimmed.ends_with(')') {
+        return None;
+    }
+    let function = trimmed[..open].trim();
+    if function.is_empty()
+        || !function
+            .chars()
+            .all(|character| character == '_' || character.is_ascii_alphabetic())
+    {
+        return None;
+    }
+    Some((function, trimmed[open + 1..trimmed.len() - 1].trim()))
+}
+
+fn normalize_voltage_output_expression(inner: &str) -> Option<String> {
+    let nodes = inner
+        .split(',')
+        .map(str::trim)
+        .filter(|node| !node.is_empty())
+        .collect::<Vec<_>>();
+    if !(1..=2).contains(&nodes.len()) {
+        return None;
+    }
+    Some(format!("V({})", nodes.join(",")))
+}
+
+fn normalize_current_output_expression(inner: &str) -> Option<String> {
+    let source = inner.trim();
+    if source.is_empty() || source.contains(',') {
+        return None;
+    }
+    Some(format!("I({source})"))
 }
 
 fn pole_zero_spec_from_directive(

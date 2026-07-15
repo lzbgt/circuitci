@@ -162,11 +162,17 @@ Supported output-control directives add scenario probes without changing the
 file-backed solver deck. `.save` and `.probe` accept explicit `V(...)` and
 `I(...)` expressions; `.save all` is accepted as a no-op because imported
 scenarios already include voltage probes for all discovered non-ground nodes.
-Deck-body `.print TYPE ...` and `.plot TYPE ...` project `V(...)` and `I(...)`
-outputs for supported analysis types such as `tran`, `ac`, `dc`, `op`, `noise`,
-`tf`, `pz`, and `sens`. Closed `.control` blocks may also use `print V(...)` or
-`plot I(...)`. Unsupported algebraic output expressions fail closed until the
-probe schema can preserve them without losing meaning.
+Deck-body `.print TYPE ...` and `.plot TYPE ...` project output expressions for
+supported analysis types such as `tran`, `ac`, `dc`, `op`, `noise`, `tf`, `pz`,
+and `sens`. Accepted expressions are raw `V(...)`/`I(...)`, documented ngspice
+voltage aliases `VM(...)`, `VDB(...)`, `VP(...)`, `VR(...)`, and `VI(...)`, and
+single-vector wrappers `MAG(...)`, `DB(...)`, `PHASE(...)`, `CPH(...)`,
+`REAL(...)`, and `IMAG(...)` around a raw `V(...)` or `I(...)` expression.
+Aliases are normalized to the underlying `V(...)` or `I(...)` scenario probe;
+the original file-backed deck remains solver truth for requested display
+transforms. Closed `.control` blocks may also use `print V(...)` or `plot
+I(...)`. Unsupported algebraic output expressions fail closed until the probe
+schema can preserve them without losing meaning.
 
 ## File-Backed Scenario Contract
 
@@ -307,8 +313,8 @@ The importer rejects malformed element lines instead of guessing:
   present, and requires one supported `V(...)` or `I(...)` distortion output
   expression from `.print disto`, `.plot disto`, or a control-block `print`,
 - unsupported `.save`, `.probe`, `.print`, or `.plot` output expressions;
-  imported scenario probes currently accept only `V(...)`, `I(...)`, and
-  no-op `all`,
+  imported scenario probes currently accept `V(...)`, `I(...)`, documented
+  voltage aliases, simple single-vector wrappers, and no-op `all`,
 - malformed `.temp`, `.option(s)`, `.ic`, `.nodeset`, or `.model` directives
   with no directive arguments,
 - malformed `.four` or control-block `fourier` cards; imported Fourier

@@ -1231,6 +1231,102 @@ fn import_spice_projects_print_and_plot_outputs_to_scenario_probes() {
 }
 
 #[test]
+fn import_spice_normalizes_print_output_aliases_to_scenario_probes() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("print_alias_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nR1 in out 1k\nC1 out 0 100n\n.print ac vm(out, in) vdb(out) db(I(V1))\n.ac dec 5 10 1k\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_print_alias_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let probes = imported["scenarios"][0]["analog"]["probes"]
+        .as_array()
+        .unwrap();
+    assert!(
+        probes
+            .iter()
+            .any(|probe| probe["expression"] == Value::String("V(out,in)".to_string()))
+    );
+    assert!(
+        probes
+            .iter()
+            .any(|probe| probe["expression"] == Value::String("V(out)".to_string()))
+    );
+    assert!(probes.iter().any(|probe| {
+        probe["expression"] == Value::String("I(V1)".to_string())
+            && probe["quantity"] == Value::String("current".to_string())
+    }));
+}
+
+#[test]
+fn import_spice_normalizes_save_output_aliases_to_scenario_probes() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("save_alias_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 1\nR1 in out 1k\nR2 out 0 1k\n.save vm(out) phase(V(in,out))\n.tran 1u 10u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_save_alias_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let probes = imported["scenarios"][0]["analog"]["probes"]
+        .as_array()
+        .unwrap();
+    assert!(
+        probes
+            .iter()
+            .any(|probe| probe["expression"] == Value::String("V(out)".to_string()))
+    );
+    assert!(
+        probes
+            .iter()
+            .any(|probe| probe["expression"] == Value::String("V(in,out)".to_string()))
+    );
+}
+
+#[test]
 fn import_spice_rejects_unsupported_output_probe_expression() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
