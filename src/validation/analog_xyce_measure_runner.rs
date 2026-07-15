@@ -10,8 +10,8 @@ use super::analog_measure_runner::{
 };
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, rewrite_include_line, sweep_temperature_c,
-    write_solver_manifest,
+    detect_nonconvergence, ngspice_error, normalized_frequency_sweep_type_upper,
+    rewrite_include_line, sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 use super::analog_xyce_runner::run_xyce_with_timeout;
@@ -366,7 +366,11 @@ fn build_xyce_measure_wrapper(
         ));
         text.push('\n');
     } else {
-        text.push_str(".AC DEC ");
+        let sweep_type =
+            normalized_frequency_sweep_type_upper(analog.analysis.sweep_type.as_deref())?;
+        text.push_str(".AC ");
+        text.push_str(sweep_type);
+        text.push(' ');
         text.push_str(
             &analog
                 .analysis

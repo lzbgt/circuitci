@@ -10,7 +10,7 @@ use super::SPICE_S_PARAMETER_ANALYSIS;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
-    external_backend_unavailable, select_backend_for_feature,
+    external_backend_unavailable, normalized_frequency_sweep_type, select_backend_for_feature,
 };
 use super::analog_sparameter_assertions::{
     evaluate_s_parameter_assertions, evaluate_s_parameter_network_assertions,
@@ -154,6 +154,10 @@ pub(super) fn validate_spice_sparameter_with_progress<F, C>(
             scenario,
             "analog_sparameter requires points_per_decade in 1..=1000.",
         );
+        return;
+    }
+    if let Err(message) = normalized_frequency_sweep_type(analog.analysis.sweep_type.as_deref()) {
+        validation_input_missing(findings, scenario, format!("analog_sparameter {message}"));
         return;
     }
     if analog.analysis.s_parameter_ports.is_empty() {

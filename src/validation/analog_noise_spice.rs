@@ -15,7 +15,7 @@ use super::analog_noise_assertions::{
 use super::analog_noise_runner::{NgspiceNoiseRunOptions, run_ngspice_noise};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
-    external_backend_unavailable, select_backend_for_feature,
+    external_backend_unavailable, normalized_frequency_sweep_type, select_backend_for_feature,
 };
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
@@ -152,6 +152,10 @@ pub(super) fn validate_spice_noise_with_progress<F, C>(
             scenario,
             "analog_noise requires points_per_decade in 1..=1000.",
         );
+        return;
+    }
+    if let Err(message) = normalized_frequency_sweep_type(analog.analysis.sweep_type.as_deref()) {
+        validation_input_missing(findings, scenario, format!("analog_noise {message}"));
         return;
     }
     let Some(output_node) = analog.analysis.noise_output_node.as_deref() else {

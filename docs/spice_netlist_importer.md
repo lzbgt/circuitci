@@ -49,19 +49,19 @@ The generated project:
 - creates a file-backed `analog_dc_sweep` scenario when the deck contains a
   numeric `.dc SOURCE START STOP STEP` sweep,
 - creates a file-backed `analog_ac` scenario when the deck contains a numeric
-  `.ac dec POINTS START STOP` sweep,
+  `.ac dec|oct|lin POINTS START STOP` sweep,
 - creates a file-backed `analog_noise` scenario when the deck contains a
-  numeric `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` sweep,
+  numeric `.noise V(OUT[,REF]) INPUT dec|oct|lin POINTS START STOP` sweep,
 - creates a file-backed `analog_transfer_function` scenario when the deck
   contains `.tf OUTPUT_EXPR INPUT_SOURCE`,
 - creates a file-backed `analog_pole_zero` scenario when the deck contains
   `.pz INP INN OUT REF vol|cur pol|zer|pz` or the same command inside a
   closed `.control` block,
 - creates a file-backed `analog_sensitivity` scenario when the deck contains
-  `.sens OUTPUT_EXPR` or `.sens OUTPUT_EXPR ac dec POINTS START STOP`, including
-  the same commands inside a closed `.control` block,
+  `.sens OUTPUT_EXPR` or `.sens OUTPUT_EXPR ac dec|oct|lin POINTS START STOP`,
+  including the same commands inside a closed `.control` block,
 - creates a file-backed `analog_distortion` scenario when the deck contains
-  `.disto dec POINTS START STOP [F2OVERF1]`, marked `DISTOF1`/`DISTOF2`
+  `.disto dec|oct|lin POINTS START STOP [F2OVERF1]`, marked `DISTOF1`/`DISTOF2`
   independent source lines, and a supported `.print disto`, `.plot disto`, or
   control-block `print` output expression,
 - creates file-backed `analog_fourier` scenarios when the deck contains
@@ -76,7 +76,7 @@ The generated project:
   ngspice-specific text; explicit Xyce backends fail closed through the normal
   measure-analysis adapter boundary. Transient measure imports use deck
   `.tran` timing when present, otherwise the CLI/default import timing. AC
-  measure imports require a valid `.ac dec` sweep.
+  measure imports require a valid `.ac dec|oct|lin` sweep.
 
 ## Element Mapping
 
@@ -195,18 +195,22 @@ The importer accepts one numeric source sweep and keeps the original deck as
 solver truth. If a deck also requests `.op` or transient timing, the importer
 emits sibling scenarios for each requested analysis.
 
-Decks that request `.ac dec POINTS START STOP` import as `analog_ac` scenarios
+Decks that request `.ac dec|oct|lin POINTS START STOP` import as `analog_ac` scenarios
 with `analysis: {type: ac}` and `SPICE_AC_ANALYSIS`. The imported file-backed
 deck remains solver truth for source AC magnitudes/phases and device equations.
 If a deck also requests `.op`, `.dc`, or transient timing, the importer emits
 sibling scenarios for each requested analysis.
 
-Decks that request `.noise V(OUT[,REF]) INPUT dec POINTS START STOP` import as
+Decks that request `.noise V(OUT[,REF]) INPUT dec|oct|lin POINTS START STOP` import as
 `analog_noise` scenarios with `analysis: {type: noise}` and
 `SPICE_NOISE_ANALYSIS`. The imported file-backed deck remains solver truth for
 source noise, device equations, and any model-file noise parameters. If a deck
 also requests `.op`, `.dc`, `.ac`, or transient timing, the importer emits
 sibling scenarios for each requested analysis.
+
+For AC-family scenarios, the importer mirrors the sweep keyword into
+`analysis.sweep_type` or `analysis.distortion_sweep_type`. Omitted sweep type
+defaults to `dec` for hand-authored and older projects.
 
 Decks that request `.tf OUTPUT_EXPR INPUT_SOURCE` import as
 `analog_transfer_function` scenarios with `analysis: {type: tf}` and
@@ -231,30 +235,31 @@ each requested analysis.
 
 Decks that request `.sens OUTPUT_EXPR` import as DC `analog_sensitivity`
 scenarios with `analysis: {type: sens, sensitivity_mode: dc}` and
-`SPICE_SENSITIVITY_ANALYSIS`. Decks that request `.sens OUTPUT_EXPR ac dec
-POINTS START STOP` import as AC sensitivity scenarios with the same frequency
-fields used by AC analysis. Closed `.control` blocks may use `sens` or `.sens`
-with the same imported contract. CircuitCI records safe passive primitive
-filters (`R`, `C`, and `L` elements whose values were losslessly represented in
-Board IR) so explicit Xyce backends have named sensitivity parameters; ngspice
-still owns the full file-backed deck behavior. If a deck also requests `.op`,
-`.dc`, `.ac`, `.noise`, `.tf`, `.pz`, or transient timing, the importer emits
-sibling scenarios for each requested analysis.
+`SPICE_SENSITIVITY_ANALYSIS`. Decks that request `.sens OUTPUT_EXPR ac
+dec|oct|lin POINTS START STOP` import as AC sensitivity scenarios with the
+same frequency fields used by AC analysis. Closed `.control` blocks may use
+`sens` or `.sens` with the same imported contract. CircuitCI records safe
+passive primitive filters (`R`, `C`, and `L` elements whose values were
+losslessly represented in Board IR) so explicit Xyce backends have named
+sensitivity parameters; ngspice still owns the full file-backed deck behavior.
+If a deck also requests `.op`, `.dc`, `.ac`, `.noise`, `.tf`, `.pz`, or
+transient timing, the importer emits sibling scenarios for each requested
+analysis.
 
-Decks that request `.disto dec POINTS START STOP` import as harmonic
+Decks that request `.disto dec|oct|lin POINTS START STOP` import as harmonic
 `analog_distortion` scenarios with `analysis: {type: disto, distortion_mode:
 harmonic}` and `SPICE_DISTORTION_ANALYSIS`. At least one imported independent
-source must be marked `DISTOF1`. Decks that request `.disto dec POINTS START
-STOP F2OVERF1` import as intermodulation scenarios when at least one source is
-marked `DISTOF2`; the ratio must be finite and in `0..1`. Closed `.control`
-blocks may use `disto dec ...` with an unambiguous `print V(...)` or `print
-I(...)` command. Deck-body `.print disto OUTPUT_EXPR` and `.plot disto
-OUTPUT_EXPR` are also accepted. The imported file-backed deck remains solver
-truth; CircuitCI records the sweep, output expression, and F1/F2 source names
-so the distortion runner can generate its checked ngspice wrapper and
-normalized spectrum/summary artifacts. If a deck also requests `.op`, `.dc`,
-`.ac`, `.noise`, `.tf`, `.pz`, `.sens`, or transient timing, the importer emits
-sibling scenarios for each requested analysis.
+source must be marked `DISTOF1`. Decks that request `.disto dec|oct|lin POINTS
+START STOP F2OVERF1` import as intermodulation scenarios when at least one
+source is marked `DISTOF2`; the ratio must be finite and in `0..1`. Closed
+`.control` blocks may use `disto dec|oct|lin ...` with an unambiguous
+`print V(...)` or `print I(...)` command. Deck-body `.print disto OUTPUT_EXPR`
+and `.plot disto OUTPUT_EXPR` are also accepted. The imported file-backed deck
+remains solver truth; CircuitCI records the sweep, output expression, and F1/F2
+source names so the distortion runner can generate its checked ngspice wrapper
+and normalized spectrum/summary artifacts. If a deck also requests `.op`,
+`.dc`, `.ac`, `.noise`, `.tf`, `.pz`, `.sens`, or transient timing, the importer
+emits sibling scenarios for each requested analysis.
 
 Decks that request `.four FREQUENCY OUTPUT_EXPR...` import as one
 `analog_fourier` scenario per output expression with `analysis: {type:
@@ -285,19 +290,19 @@ The importer rejects malformed element lines instead of guessing:
 - malformed `.dc` cards or `.dc` sweeps with non-finite values, zero span, or a
   non-positive/oversized step,
 - malformed or unsupported `.ac` cards; imported AC analysis currently accepts
-  `.ac dec POINTS START STOP`,
+  `.ac dec|oct|lin POINTS START STOP`,
 - malformed or unsupported `.noise` cards; imported noise analysis currently
-  accepts `.noise V(OUT[,REF]) INPUT dec POINTS START STOP`,
+  accepts `.noise V(OUT[,REF]) INPUT dec|oct|lin POINTS START STOP`,
 - malformed `.tf` cards; imported transfer-function analysis currently accepts
   `.tf OUTPUT_EXPR INPUT_SOURCE` where `OUTPUT_EXPR` starts with `V(` or `I(`,
 - malformed `.pz` cards, unsupported transfer kind/mode, or `.pz` input node
   pairs that do not match exactly one imported source of the requested
   voltage/current kind,
 - malformed or unsupported `.sens` cards; imported sensitivity analysis
-  currently accepts `.sens OUTPUT_EXPR` for DC or `.sens OUTPUT_EXPR ac dec
+  currently accepts `.sens OUTPUT_EXPR` for DC or `.sens OUTPUT_EXPR ac dec|oct|lin
   POINTS START STOP` for AC, with `OUTPUT_EXPR` starting with `V(` or `I(`,
 - malformed or unsupported `.disto` cards; imported distortion analysis
-  currently accepts `.disto dec POINTS START STOP [F2OVERF1]`, requires at
+  currently accepts `.disto dec|oct|lin POINTS START STOP [F2OVERF1]`, requires at
   least one `DISTOF1` source, requires `DISTOF2` sources when `F2OVERF1` is
   present, and requires one supported `V(...)` or `I(...)` distortion output
   expression from `.print disto`, `.plot disto`, or a control-block `print`,
@@ -310,7 +315,7 @@ The importer rejects malformed element lines instead of guessing:
   analysis currently accepts positive finite fundamental frequency plus
   `V(...)` or `I(...)` output expressions,
 - malformed `.meas` cards, duplicate `.meas` result names, mixed `.meas` modes,
-  or `.meas ac` cards without a valid `.ac dec` sweep,
+  or `.meas ac` cards without a valid `.ac dec|oct|lin` sweep,
 - orphan continuation lines,
 - element names that cannot be represented as Board IR component IDs.
 

@@ -14,7 +14,7 @@ use super::analog_distortion_assertions::{
 use super::analog_distortion_runner::{NgspiceDistortionRunOptions, run_ngspice_distortion};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
-    external_backend_unavailable, select_backend_for_feature,
+    external_backend_unavailable, normalized_frequency_sweep_type, select_backend_for_feature,
 };
 use super::analog_spice::{
     analog_run_plans, prepare_source_netlist, push_canceled_finding, validate_netlist_source,
@@ -172,6 +172,12 @@ pub(super) fn validate_spice_distortion_with_progress<F, C>(
             scenario,
             "analog_distortion requires distortion_points_per_decade in 1..=1000.",
         );
+        return;
+    }
+    if let Err(message) =
+        normalized_frequency_sweep_type(analog.analysis.distortion_sweep_type.as_deref())
+    {
+        validation_input_missing(findings, scenario, format!("analog_distortion {message}"));
         return;
     }
     let Some(output_expression) = nonempty(analog.analysis.distortion_output_expression.as_deref())

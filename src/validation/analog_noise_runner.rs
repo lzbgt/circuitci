@@ -6,8 +6,9 @@ use std::time::Duration;
 
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, push_ngspice_osdi_load_commands, rewrite_include_line,
-    run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, normalized_frequency_sweep_type,
+    push_ngspice_osdi_load_commands, rewrite_include_line, run_solver_with_timeout,
+    sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 
@@ -336,6 +337,7 @@ fn build_ngspice_noise_wrapper(
         .stop_frequency_hz
         .ok_or_else(|| "stop_frequency_hz is required for noise analysis".to_string())?;
     let points = analog.analysis.points_per_decade.unwrap_or(20);
+    let sweep_type = normalized_frequency_sweep_type(analog.analysis.sweep_type.as_deref())?;
     text.push_str(".control\n");
     push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
     text.push_str("set wr_vecnames\n");
@@ -344,7 +346,9 @@ fn build_ngspice_noise_wrapper(
     text.push_str(&output_expr);
     text.push(' ');
     text.push_str(input_source);
-    text.push_str(" dec ");
+    text.push(' ');
+    text.push_str(sweep_type);
+    text.push(' ');
     text.push_str(&points.to_string());
     text.push(' ');
     text.push_str(&format!("{start_hz:.12e}"));

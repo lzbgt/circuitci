@@ -602,6 +602,8 @@ pub struct AnalogTransientAnalysis {
     #[serde(default)]
     pub points_per_decade: Option<u32>,
     #[serde(default)]
+    pub sweep_type: Option<String>,
+    #[serde(default)]
     pub noise_output_node: Option<String>,
     #[serde(default)]
     pub noise_reference_node: Option<String>,
@@ -733,6 +735,8 @@ pub struct AnalogTransientAnalysis {
     pub distortion_stop_frequency_hz: Option<f64>,
     #[serde(default)]
     pub distortion_points_per_decade: Option<u32>,
+    #[serde(default)]
+    pub distortion_sweep_type: Option<String>,
     #[serde(default)]
     pub distortion_output_expression: Option<String>,
     #[serde(default)]

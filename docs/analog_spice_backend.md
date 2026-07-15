@@ -318,9 +318,9 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
 4. Expand bounded run-input sweeps exactly like transient validation,
    including raw `.param`, generated component-value parameters, model-library
    sections, and `.temp` corners.
-5. Run `ac dec`/`.AC DEC`, export complex probe data, and convert it to
-   `bode.csv` with `frequency_hz`, per-probe magnitude in dB, phase in degrees,
-   and linear magnitude columns.
+5. Run `ac dec|oct|lin`/`.AC DEC|OCT|LIN`, export complex probe data, and
+   convert it to `bode.csv` with `frequency_hz`, per-probe magnitude in dB,
+   phase in degrees, and linear magnitude columns.
 6. Evaluate AC/Bode assertions over `bode.csv`, including gain and phase at a
    frequency, group delay in seconds derived from unwrapped phase as
    `-dphi/domega`, rising or falling gain-crossing frequency checks, phase
@@ -642,7 +642,7 @@ For a scenario with check `SPICE_DISTORTION_ANALYSIS`:
    `V(node,reference)`, or `I(source)` expression.
 5. For `backend: ngspice`, CircuitCI writes a wrapper deck that annotates the
    declared source lines with explicit `DISTOF1 1.0 0.0` and `DISTOF2 1.0 0.0`
-   defaults, runs `.disto dec`, selects the ngspice distortion plots, and
+   defaults, runs `.disto dec|oct|lin`, selects the ngspice distortion plots, and
    prints the requested output expression.
 6. Successful ngspice runs retain the wrapper, solver log/raw text,
    `distortion_spectrum.csv`, `distortion_summary.csv`,

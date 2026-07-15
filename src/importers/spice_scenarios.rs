@@ -111,6 +111,7 @@ pub(super) fn ac_scenario_for_yaml(
                 start_frequency_hz: Some(ac.start_frequency_hz),
                 stop_frequency_hz: Some(ac.stop_frequency_hz),
                 points_per_decade: Some(ac.points_per_decade),
+                sweep_type: Some(ac.sweep_type.clone()),
                 ..analysis_yaml("ac")
             },
             stimuli: parts.stimuli.clone(),
@@ -142,6 +143,7 @@ pub(super) fn noise_scenario_for_yaml(
                 start_frequency_hz: Some(noise.start_frequency_hz),
                 stop_frequency_hz: Some(noise.stop_frequency_hz),
                 points_per_decade: Some(noise.points_per_decade),
+                sweep_type: Some(noise.sweep_type.clone()),
                 noise_output_node: Some(noise.output_node.clone()),
                 noise_reference_node: noise.reference_node.clone(),
                 noise_input_source: Some(noise.input_source.clone()),
@@ -221,12 +223,15 @@ pub(super) fn sensitivity_scenario_for_yaml(
     parts: &AnalogScenarioParts,
     sensitivity: &SensitivitySpec,
 ) -> ScenarioYaml {
-    let (start_frequency_hz, stop_frequency_hz, points_per_decade) =
-        sensitivity.ac.as_ref().map_or((None, None, None), |ac| {
+    let (start_frequency_hz, stop_frequency_hz, points_per_decade, sweep_type) = sensitivity
+        .ac
+        .as_ref()
+        .map_or((None, None, None, None), |ac| {
             (
                 Some(ac.start_frequency_hz),
                 Some(ac.stop_frequency_hz),
                 Some(ac.points_per_decade),
+                Some(ac.sweep_type.clone()),
             )
         });
     ScenarioYaml {
@@ -246,6 +251,7 @@ pub(super) fn sensitivity_scenario_for_yaml(
                 start_frequency_hz,
                 stop_frequency_hz,
                 points_per_decade,
+                sweep_type,
                 sensitivity_output_expression: Some(sensitivity.output_expression.clone()),
                 sensitivity_mode: Some(sensitivity.mode.clone()),
                 sensitivity_filters: sensitivity.filters.clone(),
@@ -281,6 +287,7 @@ pub(super) fn distortion_scenario_for_yaml(
                 distortion_start_frequency_hz: Some(distortion.start_frequency_hz),
                 distortion_stop_frequency_hz: Some(distortion.stop_frequency_hz),
                 distortion_points_per_decade: Some(distortion.points_per_decade),
+                distortion_sweep_type: Some(distortion.sweep_type.clone()),
                 distortion_output_expression: Some(distortion.output_expression.clone()),
                 distortion_f1_sources: distortion.f1_sources.clone(),
                 distortion_f2_sources: distortion.f2_sources.clone(),
@@ -349,20 +356,29 @@ pub(super) fn measure_scenario_for_yaml(
         start_frequency_hz,
         stop_frequency_hz,
         points_per_decade,
+        sweep_type,
     ) = if mode == "ac" {
         let ac = deck
             .ac
             .as_ref()
-            .context("SPICE .meas ac import requires a valid .ac dec sweep.")?;
+            .context("SPICE .meas ac import requires a valid .ac sweep.")?;
         (
             None,
             None,
             Some(ac.start_frequency_hz),
             Some(ac.stop_frequency_hz),
             Some(ac.points_per_decade),
+            Some(ac.sweep_type.clone()),
         )
     } else {
-        (Some(stop_time_us), Some(max_step_us), None, None, None)
+        (
+            Some(stop_time_us),
+            Some(max_step_us),
+            None,
+            None,
+            None,
+            None,
+        )
     };
     Ok(ScenarioYaml {
         name: format!("{}_measure", mode),
@@ -383,6 +399,7 @@ pub(super) fn measure_scenario_for_yaml(
                 start_frequency_hz,
                 stop_frequency_hz,
                 points_per_decade,
+                sweep_type,
                 measure_mode: Some(mode.to_string()),
                 measure_statements: deck
                     .measures
@@ -409,6 +426,7 @@ fn analysis_yaml(analysis_type: &str) -> AnalysisYaml {
         start_frequency_hz: None,
         stop_frequency_hz: None,
         points_per_decade: None,
+        sweep_type: None,
         noise_output_node: None,
         noise_reference_node: None,
         noise_input_source: None,
@@ -428,6 +446,7 @@ fn analysis_yaml(analysis_type: &str) -> AnalysisYaml {
         distortion_start_frequency_hz: None,
         distortion_stop_frequency_hz: None,
         distortion_points_per_decade: None,
+        distortion_sweep_type: None,
         distortion_output_expression: None,
         distortion_f1_sources: Vec::new(),
         distortion_f2_sources: Vec::new(),

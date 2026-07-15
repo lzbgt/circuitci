@@ -10,7 +10,7 @@ use super::SPICE_SENSITIVITY_ANALYSIS;
 use super::analog_backend_plan::{UnsupportedBackendPlan, unsupported_backend_plan_finding};
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, backend_name, embedded_solver_unavailable,
-    external_backend_unavailable, select_backend_for_feature,
+    external_backend_unavailable, normalized_frequency_sweep_type, select_backend_for_feature,
 };
 use super::analog_sensitivity_assertions::{
     evaluate_sensitivity_assertions, validate_sensitivity_assertion_contract,
@@ -177,6 +177,11 @@ pub(super) fn validate_spice_sensitivity_with_progress<F, C>(
                 scenario,
                 "analog_sensitivity AC mode requires points_per_decade in 1..=1000.",
             );
+            return;
+        }
+        if let Err(message) = normalized_frequency_sweep_type(analog.analysis.sweep_type.as_deref())
+        {
+            validation_input_missing(findings, scenario, format!("analog_sensitivity {message}"));
             return;
         }
     }

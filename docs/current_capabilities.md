@@ -558,12 +558,12 @@ Current analog support:
 - `analog_distortion` scenarios with `SPICE_DISTORTION_ANALYSIS` for
   ngspice-backed small-signal distortion analysis. The Board IR/schema can declare
   `analysis.type: disto`, `distortion_mode: harmonic|intermodulation`,
-  frequency sweep bounds, points per decade, a bound
+  sweep type, frequency sweep bounds, point count, a bound
   `distortion_output_expression`, `distortion_f1_sources[]`, optional
   `distortion_f2_sources[]`, `distortion_f2_over_f1` for intermodulation, and
   optional `distortion_assertions[]` over normalized component max magnitudes.
   For `backend: ngspice`, CircuitCI annotates declared sources with explicit
-  `DISTOF1`/`DISTOF2` defaults, runs `.disto dec`, and emits
+  `DISTOF1`/`DISTOF2` defaults, runs `.disto dec|oct|lin`, and emits
   `distortion_spectrum.csv`, `distortion_summary.csv`,
   `distortion_convergence.json`, raw solver output, and `solver_manifest.json`.
   Distortion assertions fail scenarios when `distortion_summary.csv` component

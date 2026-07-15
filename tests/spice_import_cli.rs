@@ -289,6 +289,45 @@ fn import_spice_creates_ac_scenario_for_ac_deck() {
 }
 
 #[test]
+fn import_spice_preserves_octave_ac_sweep_type() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("ac_oct_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nR1 in out 1k\nC1 out 0 100n\n.ac oct 8 10 100k\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_ac_oct_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analysis = &imported["scenarios"][0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "ac");
+    assert_eq!(analysis["sweep_type"], "oct");
+    assert_eq!(analysis["points_per_decade"], 8);
+    assert_eq!(analysis["start_frequency_hz"], 10.0);
+    assert_eq!(analysis["stop_frequency_hz"], 100000.0);
+}
+
+#[test]
 fn import_spice_creates_op_and_ac_scenarios_when_both_requested() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -400,6 +439,43 @@ fn import_spice_creates_noise_scenario_for_noise_deck() {
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
     }
     assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_preserves_linear_noise_sweep_type() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("noise_lin_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 DC 0 AC 1\nR1 in out 1k\nR2 out 0 1k\n.noise V(out) V1 lin 25 10 100k\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_noise_lin_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analysis = &imported["scenarios"][0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "noise");
+    assert_eq!(analysis["sweep_type"], "lin");
+    assert_eq!(analysis["points_per_decade"], 25);
 }
 
 #[test]
@@ -819,6 +895,44 @@ fn import_spice_creates_control_ac_sensitivity_scenario() {
 }
 
 #[test]
+fn import_spice_preserves_linear_sensitivity_sweep_type() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("lin_sensitivity_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "V1 in 0 AC 1\nR1 in out 1k\nC1 out 0 100n\n.control\nsens V(out) ac lin 11 10 1k\n.endc\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_lin_sensitivity_deck",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analysis = &imported["scenarios"][0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "sens");
+    assert_eq!(analysis["sensitivity_mode"], "ac");
+    assert_eq!(analysis["sweep_type"], "lin");
+    assert_eq!(analysis["points_per_decade"], 11);
+}
+
+#[test]
 fn import_spice_rejects_unsupported_sensitivity_card() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -900,6 +1014,45 @@ fn import_spice_creates_distortion_scenario_for_disto_deck() {
     assert!(analysis.get("distortion_f2_sources").is_none());
     assert!(analysis.get("distortion_f2_over_f1").is_none());
     assert!(analysis.get("stop_time_us").is_none());
+}
+
+#[test]
+fn import_spice_preserves_octave_distortion_sweep_type() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("octave_distortion_deck.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "VIN out 0 DC 0.2 DISTOF1 1.0 0.0\nD1 out 0 DMOD\n.model DMOD D(Is=1e-14 N=1)\n.disto oct 4 1k 10k\n.print disto I(VIN)\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_octave_distortion_deck",
+            "--backend",
+            "ngspice",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analysis = &imported["scenarios"][0]["analog"]["analysis"];
+    assert_eq!(analysis["type"], "disto");
+    assert_eq!(analysis["distortion_sweep_type"], "oct");
+    assert_eq!(analysis["distortion_points_per_decade"], 4);
 }
 
 #[test]

@@ -6,8 +6,9 @@ use std::time::Duration;
 
 use super::analog_runner::{
     ModelSectionOverride, NgspiceRunError, ParameterOverride, SolverManifestIo,
-    detect_nonconvergence, ngspice_error, parse_float, push_ngspice_osdi_load_commands,
-    rewrite_include_line, run_solver_with_timeout, sweep_temperature_c, write_solver_manifest,
+    detect_nonconvergence, ngspice_error, normalized_frequency_sweep_type, parse_float,
+    push_ngspice_osdi_load_commands, rewrite_include_line, run_solver_with_timeout,
+    sweep_temperature_c, write_solver_manifest,
 };
 use super::analog_util::{absolute_path, normalize_path, safe_artifact_name};
 use super::analog_xyce_runner::append_sparameter_reflection_metadata;
@@ -388,10 +389,13 @@ fn build_ngspice_sparameter_wrapper(
         .stop_frequency_hz
         .ok_or_else(|| "stop_frequency_hz is required for S-parameter analysis".to_string())?;
     let points = analog.analysis.points_per_decade.unwrap_or(20);
+    let sweep_type = normalized_frequency_sweep_type(analog.analysis.sweep_type.as_deref())?;
     text.push_str(".control\n");
     push_ngspice_osdi_load_commands(&mut text, bound, scenario)?;
     text.push_str("set wr_vecnames\nset wr_singlescale\n");
-    text.push_str(&format!("sp dec {points} {start_hz:.12e} {stop_hz:.12e}"));
+    text.push_str(&format!(
+        "sp {sweep_type} {points} {start_hz:.12e} {stop_hz:.12e}"
+    ));
     if noise_raw_output.is_some() {
         text.push_str(" 1");
     }

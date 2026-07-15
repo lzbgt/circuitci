@@ -2888,6 +2888,7 @@
                   "start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "stop_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "sweep_type": { "enum": ["dec", "oct", "lin"] },
                   "noise_output_node": { "type": "string", "minLength": 1 },
                   "noise_reference_node": { "type": "string", "minLength": 1 },
                   "noise_input_source": { "type": "string", "minLength": 1 },
@@ -3005,6 +3006,7 @@
                   "distortion_start_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "distortion_stop_frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
                   "distortion_points_per_decade": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "distortion_sweep_type": { "enum": ["dec", "oct", "lin"] },
                   "distortion_output_expression": { "type": "string", "minLength": 1 },
                   "distortion_f1_sources": {
                     "type": "array",

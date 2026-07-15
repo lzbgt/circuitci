@@ -17,8 +17,8 @@ use super::analog_operating_limits::{
 };
 use super::analog_runner::{
     AnalogRuntimeFeature, BackendSelection, NgspiceAcRunOptions, NgspiceRunOptions, backend_name,
-    embedded_solver_unavailable, external_backend_unavailable, run_ngspice, run_ngspice_ac,
-    select_backend_for_feature,
+    embedded_solver_unavailable, external_backend_unavailable, normalized_frequency_sweep_type,
+    run_ngspice, run_ngspice_ac, select_backend_for_feature,
 };
 use super::analog_soa::evaluate_soa_limits;
 pub(super) use super::analog_spice_run_plan::{
@@ -655,6 +655,10 @@ pub(super) fn validate_spice_ac_with_progress<F, C>(
             scenario,
             "analog_ac frequency sweep requires finite positive start/stop frequencies, stop_frequency_hz greater than start_frequency_hz, and points_per_decade in 1..=1000.",
         );
+        return;
+    }
+    if let Err(message) = normalized_frequency_sweep_type(analog.analysis.sweep_type.as_deref()) {
+        validation_input_missing(findings, scenario, format!("analog_ac {message}"));
         return;
     }
     if analog.probes.is_empty() {

@@ -87,6 +87,7 @@ struct TranSpec {
 
 #[derive(Debug)]
 struct AcSpec {
+    sweep_type: String,
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
     points_per_decade: u32,
@@ -105,6 +106,7 @@ struct NoiseSpec {
     output_node: String,
     reference_node: Option<String>,
     input_source: String,
+    sweep_type: String,
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
     points_per_decade: u32,
@@ -152,6 +154,7 @@ struct SensitivityDirective {
 #[derive(Debug)]
 struct DistortionSpec {
     mode: String,
+    sweep_type: String,
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
     points_per_decade: u32,
@@ -163,6 +166,7 @@ struct DistortionSpec {
 
 #[derive(Debug)]
 struct DistortionDirective {
+    sweep_type: String,
     start_frequency_hz: f64,
     stop_frequency_hz: f64,
     points_per_decade: u32,
@@ -361,6 +365,8 @@ struct AnalysisYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     points_per_decade: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    sweep_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     noise_output_node: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     noise_reference_node: Option<String>,
@@ -398,6 +404,8 @@ struct AnalysisYaml {
     distortion_stop_frequency_hz: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     distortion_points_per_decade: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distortion_sweep_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     distortion_output_expression: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -920,29 +928,7 @@ fn parse_ac(tokens: &[String]) -> Result<AcSpec> {
     if tokens.len() < 5 {
         bail!(".ac directive requires sweep type, point count, start, and stop.");
     }
-    if !tokens[1].eq_ignore_ascii_case("dec") {
-        bail!("import-spice AC import currently requires .ac dec sweeps.");
-    }
-    let points_per_decade = tokens[2]
-        .parse::<u32>()
-        .with_context(|| format!("Could not parse .ac points-per-decade {}", tokens[2]))?;
-    let start_frequency_hz = parse_spice_number(&tokens[3])
-        .with_context(|| format!("Could not parse .ac start frequency {}", tokens[3]))?;
-    let stop_frequency_hz = parse_spice_number(&tokens[4])
-        .with_context(|| format!("Could not parse .ac stop frequency {}", tokens[4]))?;
-    if points_per_decade == 0
-        || !start_frequency_hz.is_finite()
-        || !stop_frequency_hz.is_finite()
-        || start_frequency_hz <= 0.0
-        || stop_frequency_hz <= start_frequency_hz
-    {
-        bail!(".ac dec sweep must use positive finite start/stop frequencies and points.");
-    }
-    Ok(AcSpec {
-        start_frequency_hz,
-        stop_frequency_hz,
-        points_per_decade,
-    })
+    parse_frequency_sweep(".ac", &tokens[1], &tokens[2], &tokens[3], &tokens[4])
 }
 
 fn parse_dc_sweep(tokens: &[String]) -> Result<DcSweepSpec> {
@@ -981,16 +967,36 @@ fn parse_noise(tokens: &[String]) -> Result<NoiseSpec> {
         );
     }
     let (output_node, reference_node) = parse_noise_output_expression(&tokens[1])?;
-    if !tokens[3].eq_ignore_ascii_case("dec") {
-        bail!("import-spice noise import currently requires .noise ... dec POINTS START STOP.");
-    }
-    let points_per_decade = tokens[4]
+    let sweep = parse_frequency_sweep(".noise", &tokens[3], &tokens[4], &tokens[5], &tokens[6])?;
+    Ok(NoiseSpec {
+        output_node,
+        reference_node,
+        input_source: tokens[2].clone(),
+        sweep_type: sweep.sweep_type,
+        start_frequency_hz: sweep.start_frequency_hz,
+        stop_frequency_hz: sweep.stop_frequency_hz,
+        points_per_decade: sweep.points_per_decade,
+    })
+}
+
+fn parse_frequency_sweep(
+    directive: &str,
+    sweep_type_token: &str,
+    points_token: &str,
+    start_token: &str,
+    stop_token: &str,
+) -> Result<AcSpec> {
+    let sweep_type = match sweep_type_token.to_ascii_lowercase().as_str() {
+        "dec" | "oct" | "lin" => sweep_type_token.to_ascii_lowercase(),
+        _ => bail!("{directive} sweep type must be dec, oct, or lin."),
+    };
+    let points_per_decade = points_token
         .parse::<u32>()
-        .with_context(|| format!("Could not parse .noise points-per-decade {}", tokens[4]))?;
-    let start_frequency_hz = parse_spice_number(&tokens[5])
-        .with_context(|| format!("Could not parse .noise start frequency {}", tokens[5]))?;
-    let stop_frequency_hz = parse_spice_number(&tokens[6])
-        .with_context(|| format!("Could not parse .noise stop frequency {}", tokens[6]))?;
+        .with_context(|| format!("Could not parse {directive} point count {points_token}"))?;
+    let start_frequency_hz = parse_spice_number(start_token)
+        .with_context(|| format!("Could not parse {directive} start frequency {start_token}"))?;
+    let stop_frequency_hz = parse_spice_number(stop_token)
+        .with_context(|| format!("Could not parse {directive} stop frequency {stop_token}"))?;
     if points_per_decade == 0
         || points_per_decade > 1000
         || !start_frequency_hz.is_finite()
@@ -999,13 +1005,11 @@ fn parse_noise(tokens: &[String]) -> Result<NoiseSpec> {
         || stop_frequency_hz <= start_frequency_hz
     {
         bail!(
-            ".noise dec sweep must use positive finite start/stop frequencies and points in 1..=1000."
+            "{directive} sweep must use positive finite start/stop frequencies and point count in 1..=1000."
         );
     }
-    Ok(NoiseSpec {
-        output_node,
-        reference_node,
-        input_source: tokens[2].clone(),
+    Ok(AcSpec {
+        sweep_type,
         start_frequency_hz,
         stop_frequency_hz,
         points_per_decade,
@@ -1108,7 +1112,7 @@ fn parse_sensitivity(tokens: &[String]) -> Result<SensitivityDirective> {
         });
     }
     bail!(
-        "import-spice sensitivity import supports .sens OUTPUT_EXPR or .sens OUTPUT_EXPR ac dec POINTS START STOP."
+        "import-spice sensitivity import supports .sens OUTPUT_EXPR or .sens OUTPUT_EXPR ac dec|oct|lin POINTS START STOP."
     );
 }
 
@@ -1116,27 +1120,7 @@ fn parse_distortion(tokens: &[String]) -> Result<DistortionDirective> {
     if tokens.len() < 5 {
         bail!(".disto directive requires sweep type, point count, start, and stop.");
     }
-    if !tokens[1].eq_ignore_ascii_case("dec") {
-        bail!("import-spice distortion import currently requires .disto dec POINTS START STOP.");
-    }
-    let points_per_decade = tokens[2]
-        .parse::<u32>()
-        .with_context(|| format!("Could not parse .disto points-per-decade {}", tokens[2]))?;
-    let start_frequency_hz = parse_spice_number(&tokens[3])
-        .with_context(|| format!("Could not parse .disto start frequency {}", tokens[3]))?;
-    let stop_frequency_hz = parse_spice_number(&tokens[4])
-        .with_context(|| format!("Could not parse .disto stop frequency {}", tokens[4]))?;
-    if points_per_decade == 0
-        || points_per_decade > 1000
-        || !start_frequency_hz.is_finite()
-        || !stop_frequency_hz.is_finite()
-        || start_frequency_hz <= 0.0
-        || stop_frequency_hz <= start_frequency_hz
-    {
-        bail!(
-            ".disto dec sweep must use positive finite start/stop frequencies and points in 1..=1000."
-        );
-    }
+    let sweep = parse_frequency_sweep(".disto", &tokens[1], &tokens[2], &tokens[3], &tokens[4])?;
     let f2_over_f1 = if tokens.len() >= 6 {
         let ratio = parse_spice_number(&tokens[5])
             .with_context(|| format!("Could not parse .disto f2overf1 {}", tokens[5]))?;
@@ -1148,9 +1132,10 @@ fn parse_distortion(tokens: &[String]) -> Result<DistortionDirective> {
         None
     };
     Ok(DistortionDirective {
-        start_frequency_hz,
-        stop_frequency_hz,
-        points_per_decade,
+        sweep_type: sweep.sweep_type,
+        start_frequency_hz: sweep.start_frequency_hz,
+        stop_frequency_hz: sweep.stop_frequency_hz,
+        points_per_decade: sweep.points_per_decade,
         f2_over_f1,
     })
 }
@@ -1352,6 +1337,7 @@ fn distortion_spec_from_directive(
     };
     Ok(DistortionSpec {
         mode: mode.to_string(),
+        sweep_type: directive.sweep_type,
         start_frequency_hz: directive.start_frequency_hz,
         stop_frequency_hz: directive.stop_frequency_hz,
         points_per_decade: directive.points_per_decade,
